@@ -16,13 +16,17 @@ Bun works too, with `bun add -g frameboard`. To try it without installing, run `
 frameboard serve
 ```
 
-The command prints the address it serves on, which is `http://127.0.0.1:4173` unless you pass `--port`. Open it in a browser to see the board. `frameboard --version` prints the installed version.
+In a folder with no board, `serve` creates `.frameboard/` at the repository top, or in the current folder outside a repository, holding one empty project. It serves on `http://127.0.0.1:4173`, or on a free port when 4173 is taken, and opens the board in your browser unless you pass `--no-open`. Running `serve` again for the same board prints the address of the server already running rather than starting a second.
+
+`frameboard docs` prints every command, flag, record shape, and exit code, and `frameboard --version` prints the installed version.
 
 ## How it works
 
 Frameboard has no hosted service and no MCP server. The design is a folder of HTML files on your disk, which an agent writes and the board renders as real web pages, so animation, video, and interaction work as they would in a browser. Frameboard keeps no private copy of them.
 
-The server binds to `127.0.0.1` alone, so the board never leaves your machine. Releases before 1.0 ship the board in stages. Today the package carries the `serve` command and the board's shell, and the board folder, the agent commands, and the content checks arrive in later 0.x releases.
+A board folder holds projects, a project holds pages, and a page holds frames, each frame one `.html` file beside a `layout.json` that records where it sits. The `project`, `page`, and `frame` commands add, rename, move, and delete them on disk, and `list` shows the board. Every command takes `--json`, prints one JSON document, exits with a stable code, and never prompts, so an agent can script it.
+
+The server binds to `127.0.0.1` alone, so the board never leaves your machine. Releases before 1.0 ship the board in stages. Today the package carries the board folder, the structure commands, and the board's shell, and the live canvas, frame editing, and the content checks arrive in later 0.x releases.
 
 ## Requirements
 
