@@ -19,29 +19,50 @@ const SINGLE_QUOTE_REFERENCES = new Set(['&apos;', '&#39;', '&#x27;'])
 
 interface Declarations {
   readonly segments: readonly string[]
-  /** The style ends inside a quote, so anything appended would be swallowed by it. */
-  readonly isQuoteOpen: boolean
+  /** The style ends inside a quote or a comment, so anything appended would be swallowed by it. */
+  readonly isOpen: boolean
+}
+
+/** The end of the character reference starting at an offset, or undefined. */
+function referenceEnd(style: string, at: number): number | undefined {
+  if (style[at] !== '&') return undefined
+  CHARACTER_REFERENCE.lastIndex = at
+  return CHARACTER_REFERENCE.test(style)
+    ? CHARACTER_REFERENCE.lastIndex
+    : undefined
 }
 
 /**
  * Splits a raw, still-encoded style value at each semicolon outside
- * parentheses and quotes, keeping every segment's own spacing so an untouched
- * one is written back as it was. A character reference's own semicolon never
- * splits, and a quote written as one is still a quote to CSS once decoded.
+ * parentheses, quotes, and comments, keeping every segment's own spacing so
+ * an untouched one is written back as it was. A character reference's own
+ * semicolon never splits, a quote written as one is still a quote to CSS once
+ * decoded, and a backslash escapes the character after it, so `'a\'` leaves
+ * the quote open.
  */
 function declarations(style: string): Declarations {
   const segments: string[] = []
   let depth = 0
   let quote: string | undefined
+  let isComment = false
   let start = 0
   for (let at = 0; at < style.length; at += 1) {
     const char = style[at]
-    CHARACTER_REFERENCE.lastIndex = at
-    if (char === '&' && CHARACTER_REFERENCE.test(style)) {
-      const reference = style
-        .slice(at, CHARACTER_REFERENCE.lastIndex)
-        .toLowerCase()
-      at = CHARACTER_REFERENCE.lastIndex - 1
+    if (isComment) {
+      if (style.startsWith('*/', at)) {
+        isComment = false
+        at += 1
+      }
+      continue
+    }
+    if (char === '\\') {
+      at = (referenceEnd(style, at + 1) ?? at + 2) - 1
+      continue
+    }
+    const end = referenceEnd(style, at)
+    if (end !== undefined) {
+      const reference = style.slice(at, end).toLowerCase()
+      at = end - 1
       const referenced = DOUBLE_QUOTE_REFERENCES.has(reference)
         ? '"'
         : SINGLE_QUOTE_REFERENCES.has(reference)
@@ -51,6 +72,9 @@ function declarations(style: string): Declarations {
       else if (referenced && !quote) quote = referenced
     } else if (quote) {
       if (char === quote) quote = undefined
+    } else if (style.startsWith('/*', at)) {
+      isComment = true
+      at += 1
     } else if (char === '"' || char === "'") quote = char
     else if (char === '(') depth += 1
     else if (char === ')') depth = Math.max(0, depth - 1)
@@ -60,7 +84,7 @@ function declarations(style: string): Declarations {
     }
   }
   segments.push(style.slice(start))
-  return { segments, isQuoteOpen: quote !== undefined }
+  return { segments, isOpen: quote !== undefined || isComment }
 }
 
 function propertyOf(segment: string): string {
@@ -84,7 +108,7 @@ export type DeclarationResult =
  * dropped, so nothing further in the attribute overrides the edit, and a
  * shorthand also drops its longhands. The value arrives already escaped for
  * the attribute. An empty style means none is left. A style ending inside an
- * open quote refuses, since an appended declaration would land in the quote.
+ * open quote or comment refuses, since an appended declaration would land in it.
  */
 export function setDeclaration(
   style: string,
@@ -92,7 +116,7 @@ export function setDeclaration(
   value: string,
 ): DeclarationResult {
   const parsed = declarations(style)
-  if (parsed.isQuoteOpen) return { ok: false }
+  if (parsed.isOpen) return { ok: false }
   const longhands = SHORTHAND_LONGHANDS[property] ?? []
   const segments = parsed.segments.filter(
     (segment) => !longhands.includes(propertyOf(segment)),

@@ -31,6 +31,7 @@ const attributeName = fc.constantFrom(
   'href',
   'aria-label',
   'hidden',
+  'viewBox',
 )
 const attributeValue = fc.constantFrom(
   'a',
@@ -47,6 +48,9 @@ const attributeValue = fc.constantFrom(
   'x/',
   '😀',
   'url(a;b)',
+  "content: 'a\\'b'; padding: 1px",
+  "content: 'a\\'; padding: 1px",
+  'color: red /* ; */; margin: 0',
 )
 const quoting = fc.constantFrom('"', "'", '', 'bare')
 const gap = fc.constantFrom(' ', '  ', '\n  ', '\r\n\t', '\t')
@@ -219,7 +223,15 @@ export const changeArbitrary: fc.Arbitrary<EditChange> = fc.oneof(
   }),
   fc.record({
     kind: fc.constant('attribute' as const),
-    name: fc.constantFrom('class', 'title', 'data-x', 'id', 'aria-label'),
+    name: fc.constantFrom(
+      'class',
+      'title',
+      'data-x',
+      'id',
+      'aria-label',
+      'viewBox',
+      'xlink:href',
+    ),
     value: fc.constantFrom(
       '',
       'new',

@@ -147,6 +147,40 @@ describe('applyEdit', () => {
       })
     })
 
+    it('should set an SVG attribute parse5 adjusts the case of', () => {
+      expect(
+        applyEdit('<svg viewBox="0 0 1 1"></svg>', FIRST, {
+          kind: 'attribute',
+          name: 'viewBox',
+          value: '0 0 2 2',
+        }),
+      ).toEqual({ ok: true, html: '<svg viewBox="0 0 2 2"></svg>' })
+    })
+
+    it('should set a namespaced SVG attribute', () => {
+      expect(
+        applyEdit(
+          '<svg><use xlink:href="#a"></use></svg>',
+          { index: 4 },
+          {
+            kind: 'attribute',
+            name: 'xlink:href',
+            value: '#b',
+          },
+        ),
+      ).toEqual({ ok: true, html: '<svg><use xlink:href="#b"></use></svg>' })
+    })
+
+    it('should add an absent SVG attribute parse5 adjusts the case of', () => {
+      expect(
+        applyEdit('<svg></svg>', FIRST, {
+          kind: 'attribute',
+          name: 'viewBox',
+          value: '0 0 1 1',
+        }),
+      ).toEqual({ ok: true, html: '<svg viewbox="0 0 1 1"></svg>' })
+    })
+
     it('should refuse style, which takes a style edit', () => {
       expect(
         applyEdit('<p>x</p>', FIRST, {

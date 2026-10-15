@@ -55,20 +55,35 @@ function browserParse(source: string): DefaultTreeAdapterTypes.Document {
   })
 }
 
-function attributeOf(element: Element, name: string): string | undefined {
-  return element.attrs.find((attribute) => attribute.name === name)?.value
+type Attribute = Element['attrs'][number]
+
+/** Matches the name the file states, which parse5 adjusts in SVG and MathML. */
+function isStated(attribute: Attribute, name: string): boolean {
+  const full = attribute.prefix
+    ? `${attribute.prefix}:${attribute.name}`
+    : attribute.name
+  return full.toLowerCase() === name.toLowerCase()
 }
 
+function attributeIn(element: Element, name: string): Attribute | undefined {
+  return element.attrs.find((attribute) => isStated(attribute, name))
+}
+
+function attributeOf(element: Element, name: string): string | undefined {
+  return attributeIn(element, name)?.value
+}
+
+/** Gives the expected element the attribute as the output parsed it, or removes it. */
 function setAttributeOf(
   element: Element,
   name: string,
-  value: string | undefined,
+  written: Attribute | undefined,
 ): void {
-  const existing = element.attrs.find((attribute) => attribute.name === name)
-  if (value === undefined) {
+  const existing = attributeIn(element, name)
+  if (written === undefined) {
     element.attrs = element.attrs.filter((attribute) => attribute !== existing)
-  } else if (existing) existing.value = value
-  else element.attrs.push({ name, value })
+  } else if (existing) existing.value = written.value
+  else element.attrs.push({ ...written })
 }
 
 function textOf(element: Element): string {
@@ -79,24 +94,39 @@ function textOf(element: Element): string {
     .join('')
 }
 
-/** A decoded style read as property to value, the later declaration winning. */
+/**
+ * A decoded style read as property to value, the later declaration winning.
+ * Comments read as nothing, and a backslash escapes the character after it.
+ */
 function decodeStyle(style: string | undefined): Record<string, string> {
   const declared: Record<string, string> = {}
   const segments: string[] = []
   let quote: string | undefined
   let depth = 0
+  let text = ''
   let start = 0
-  const text = style ?? ''
-  for (let at = 0; at < text.length; at += 1) {
-    const char = text[at]
+  const source = style ?? ''
+  for (let at = 0; at < source.length; at += 1) {
+    if (!quote && source.startsWith('/*', at)) {
+      const close = source.indexOf('*/', at + 2)
+      at = close === -1 ? source.length : close + 1
+      continue
+    }
+    const char = source[at] ?? ''
+    if (char === '\\') {
+      text += source.slice(at, at + 2)
+      at += 1
+      continue
+    }
+    text += char
     if (quote) {
       if (char === quote) quote = undefined
     } else if (char === '"' || char === "'") quote = char
     else if (char === '(') depth += 1
     else if (char === ')') depth -= 1
     else if (char === ';' && depth === 0) {
-      segments.push(text.slice(start, at))
-      start = at + 1
+      segments.push(text.slice(start, -1))
+      start = text.length
     }
   }
   segments.push(text.slice(start))
@@ -131,7 +161,7 @@ function windowOf(
     if (!location.endTag) throw new Error(`<${element.tagName}> has no end tag`)
     return [location.startTag.endOffset, location.endTag.startOffset]
   }
-  const name = change.kind === 'style' ? 'style' : change.name
+  const name = change.kind === 'style' ? 'style' : change.name.toLowerCase()
   const span = location.attrs?.[name]
   if (span) {
     // Removing `\n  style` before `\n  id` leaves the same bytes as removing
@@ -226,7 +256,7 @@ function checkEdit(source: string, index: number, change: EditChange): void {
       attributeOf(written, change.name) === change.value,
       'the attribute is not the value',
     )
-    setAttributeOf(target, change.name, change.value)
+    setAttributeOf(target, change.name, attributeIn(written, change.name))
   } else {
     const wanted = decodeStyle(attributeOf(target, 'style'))
     for (const longhand of SHORTHAND_LONGHANDS[change.property] ?? []) {
@@ -238,7 +268,7 @@ function checkEdit(source: string, index: number, change: EditChange): void {
       sorted(decodeStyle(attributeOf(written, 'style'))) === sorted(wanted),
       'the declarations are not the original with the one change',
     )
-    setAttributeOf(target, 'style', attributeOf(written, 'style'))
+    setAttributeOf(target, 'style', attributeIn(written, 'style'))
   }
   holds(
     serialize(reparsed) === serialize(original),

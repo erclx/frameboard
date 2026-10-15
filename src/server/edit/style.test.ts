@@ -78,6 +78,30 @@ describe('setDeclaration', () => {
     expect(setDeclaration("content: 'a", 'color', 'red')).toEqual({ ok: false })
   })
 
+  it('should read a quote a backslash escapes as still open', () => {
+    expect(setDeclaration("content: 'a\\'", 'color', 'red')).toEqual({
+      ok: false,
+    })
+  })
+
+  it('should not split inside a string a backslash escape runs through', () => {
+    expect(
+      setDeclaration("content: 'a\\'; x: 1; y: \\''; x: 2", 'x', '3'),
+    ).toEqual({ ok: true, style: "content: 'a\\'; x: 1; y: \\''; x: 3" })
+  })
+
+  it('should not split inside a comment', () => {
+    expect(
+      setDeclaration('color: red /* ; */; margin: 0', 'color', 'blue'),
+    ).toEqual({ ok: true, style: 'color: blue; margin: 0' })
+  })
+
+  it('should refuse a style ending inside an open comment', () => {
+    expect(setDeclaration('color: red /* x', 'margin', '0')).toEqual({
+      ok: false,
+    })
+  })
+
   it('should count an encoded quote as a quote', () => {
     expect(setDeclaration('content: &quot;a', 'color', 'red')).toEqual({
       ok: false,

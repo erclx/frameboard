@@ -1,4 +1,4 @@
-import { serialize } from 'parse5'
+import { type DefaultTreeAdapterTypes, serialize } from 'parse5'
 
 import { type Element, type FrameTree, parseFrame } from './address'
 import {
@@ -158,7 +158,7 @@ function write(
   if (!next.ok) {
     return refuse(
       'open-quote',
-      `the style on <${element.tagName}> ends inside an open quote`,
+      `the style on <${element.tagName}> ends inside an open quote or comment`,
     )
   }
   return {
@@ -168,6 +168,21 @@ function write(
         ? removeAttribute(source, element, 'style')
         : setRawAttribute(source, element, 'style', next.style),
   }
+}
+
+/**
+ * Whether an attribute is the one the file states under a lowercased name.
+ * In SVG and MathML, parse5 adjusts names after tokenizing, turning `viewbox`
+ * into `viewBox` and `xlink:href` into `href` under an `xlink` prefix.
+ */
+function isNamed(
+  attribute: DefaultTreeAdapterTypes.Element['attrs'][number],
+  name: string,
+): boolean {
+  const stated = attribute.prefix
+    ? `${attribute.prefix}:${attribute.name}`
+    : attribute.name
+  return stated.toLowerCase() === name
 }
 
 /**
@@ -190,8 +205,8 @@ function changesOnlyTarget(
   if (name === undefined) {
     was.childNodes = now.childNodes
   } else {
-    const written = now.attrs.find((attribute) => attribute.name === name)
-    const others = was.attrs.filter((attribute) => attribute.name !== name)
+    const written = now.attrs.find((attribute) => isNamed(attribute, name))
+    const others = was.attrs.filter((attribute) => !isNamed(attribute, name))
     was.attrs = written ? [...others, written] : others
     now.attrs = written
       ? [...now.attrs.filter((attribute) => attribute !== written), written]
@@ -213,7 +228,7 @@ function holdsValue(element: Element, change: EditChange): boolean {
   if (change.kind === 'text') return textOf(element) === change.value
   if (change.kind === 'attribute') {
     return (
-      element.attrs.find((attribute) => attribute.name === change.name)
+      element.attrs.find((attribute) => isNamed(attribute, change.name))
         ?.value === change.value
     )
   }
