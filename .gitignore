@@ -17,3 +17,21 @@ node_modules/
 # Claude
 .canon/
 .claude/worktrees/
+
+# Build
+dist/
+
+# Coverage
+coverage/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Screenshots
+screenshots/
+
+# Vitest browser mode
+.vitest/

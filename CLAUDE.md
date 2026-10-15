@@ -1,6 +1,6 @@
 # Project
 
-[One or two line description]
+A developer working with coding agents needs a local board where agents draw screens as plain HTML files and the developer reviews and tweaks them, with no hosted design tool or MCP server.
 
 ## Context
 
@@ -11,9 +11,13 @@
 
 ## Commands
 
-- [Command to run before committing]
+- `bun run check`: the gate to run before committing, which `canon/context/development.md` breaks down
 
 ## Key paths
 
-- `src/`: [description]
+- `src/cli/`: the `frameboard` command, its commander program and the bin entry rolldown bundles into `dist/cli.js`
+- `src/server/`: the Hono app and the loopback server that serves the built client
+- `src/client/`: the React board UI, its shadcn kit under `components/ui/`, and the token stylesheet
+- `src/shared/`: code both the CLI and the server import, such as the package version
+- `e2e/`: Playwright specs, the capture harness with its cases under `e2e/capture/`, and the evidence baseline
 - `canon/DESIGN.md`: visual intent, pointing at the stylesheet that holds the values
