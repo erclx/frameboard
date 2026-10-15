@@ -7,7 +7,7 @@ description: Screenshots of frames and pages in either theme
 
 ## Overview
 
-Owns what an agent sees of a frame without a screen: PNGs of one frame or a whole page, in either theme or both. Capture runs in a real browser.
+Owns what an agent sees of a frame without a screen, being PNGs of one frame or a whole page, in either theme or both. Capture runs in a real browser.
 
 ## Layout
 

@@ -7,7 +7,7 @@ description: Light and dark across the chrome and every frame, the token stylesh
 
 ## Overview
 
-Owns how a frame gets its look from outside itself: the token stylesheets injected into it, the theme it is shown in, and the fonts served to it. The board chrome's own look belongs to `canon/DESIGN.md`.
+Owns how a frame gets its look from outside itself, being the token stylesheets injected into it, the theme it is shown in, and the fonts served to it. The board chrome's own look belongs to `canon/DESIGN.md`.
 
 ## Layout
 

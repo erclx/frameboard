@@ -7,7 +7,7 @@ description: Board folders, projects, pages, frames, layout files, assets, and h
 
 ## Overview
 
-Owns what sits on disk and how Frameboard reads it: the board folder, the projects, pages, and frames inside it, each page's layout file, each project's assets, and the address of one element inside a frame. Everything else in the tool reads and writes through this model.
+Owns what sits on disk and how Frameboard reads it, being the board folder, the projects, pages, and frames inside it, each page's layout file, each project's assets, and the address of one element inside a frame. Everything else in the tool reads and writes through this model.
 
 ## Layout
 

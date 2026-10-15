@@ -7,25 +7,28 @@ description: The content rules Frameboard enforces, the three paths that run the
 
 ## Overview
 
-Owns the content rules and where they run. A frame that breaks one is reported without anyone remembering to check: to the agent straight after its write, and on the frame's label on the board.
+Owns the content rules and where they run. A frame that breaks one is reported without anyone remembering to check, both to the agent straight after its write and on the frame's label on the board.
 
 ## Layout
 
 - `src/server/` owns the rules, the runner the server's watcher calls, and the browser-backed rules
 - `plugins/frameboard/` owns the hook that runs `check` after an agent writes a frame
 
-### The built-in rules
+### Built-in structure rules
 
 - Page and frame naming, and no folder whose name opens with a dot
 - A `head` needs a `body`, and a table needs its `tbody`
 - A frame links nothing outside its page except its project's `assets/`. A stylesheet or file shared between pages lives in `assets/`, and a link into a sibling page's folder is a finding
+
+### Built-in rendering rules
+
 - No clipped content and no scrollbar inside a frame's box
 - No assumed viewport, network, or default font
 - Both themes defined wherever a frame sets its own colors
 
 ### Project rules
 
-A project may hold a check config adding rules of three kinds: a minimum font size, no uppercase text, and the fonts allowed. Without one, the built-in rules alone apply.
+A project may hold a check config adding rules of three kinds, being a minimum font size, no uppercase text, and the fonts allowed. Without one, the built-in rules alone apply.
 
 ## Decisions
 
