@@ -20,8 +20,10 @@ export const layoutEntrySchema = z.looseObject({
   width: z.int().min(1),
   height: z.int().min(1),
   order: z.int().min(0),
-  hidden: z.boolean().default(false),
-  locked: z.boolean().default(false),
+  // Optional rather than defaulted, so a read never adds keys to an entry the
+  // write leaves alone. Readers take absent as false.
+  hidden: z.boolean().optional(),
+  locked: z.boolean().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>

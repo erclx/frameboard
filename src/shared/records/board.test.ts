@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
 
 describe('layoutFileSchema', () => {
-  it('defaults hidden and locked to false', () => {
-    const layout = layoutFileSchema.parse({
-      version: 1,
-      frames: { hero: { x: 0, y: 0, width: 10, height: 10, order: 0 } },
-    })
-
-    expect(layout.frames.hero).toMatchObject({ hidden: false, locked: false })
+  it('accepts an entry with no hidden or locked key', () => {
+    expect(
+      layoutFileSchema.safeParse({
+        version: 1,
+        frames: { hero: { x: 0, y: 0, width: 10, height: 10, order: 0 } },
+      }).success,
+    ).toBe(true)
   })
 
   it('keeps unknown keys on the file and on an entry', () => {
