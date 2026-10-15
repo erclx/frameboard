@@ -288,7 +288,8 @@ for (const { captureCase, viewport, label } of RUNS) {
   const mask = await resolveMask(page, label, captureCase.mask ?? [])
 
   const sweepDir = path.join(OUT_DIR, captureCase.section)
-  const evidenceDir = path.join('evidence', captureCase.section)
+  // Frameboard keeps its baseline beside the capture harness rather than at the root.
+  const evidenceDir = path.join('e2e', 'evidence', captureCase.section)
   const file = `${viewport.name}--${captureCase.theme}.png`
   const writesEvidence = captureCase.evidence && viewport.evidence
 
