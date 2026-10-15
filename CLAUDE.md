@@ -1,6 +1,6 @@
 # Project
 
-A developer working with coding agents needs a local board where agents draw screens as plain HTML files and the developer reviews and tweaks them, with no hosted design tool or MCP server.
+Frameboard is a local design board that coding agents draw on as plain HTML files, and you review and tweak.
 
 ## Context
 
