@@ -1,0 +1,73 @@
+name: Frameboard Checks
+
+# Project-owned checks the golden verify.yml has no seat for. A tooling sync
+# rewrites verify.yml, so these live here where a sync never reaches.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: frameboard-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-tests:
+    name: 🧩 Browser Component Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      # The unit-tests job installs no browser, so the browser project runs
+      # here instead of under test:coverage.
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Browser Tests
+        run: bunx vitest run --project browser
+
+  cli-runtimes:
+    name: 📦 CLI on Node and Bun
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # Run from outside the checkout, so the bundle cannot lean on node_modules.
+      - name: Run the Bundle Outside the Repository
+        run: |
+          cp -r dist "$RUNNER_TEMP/frameboard-dist"
+          cd "$RUNNER_TEMP"
+          node frameboard-dist/cli.js --version
+          bun frameboard-dist/cli.js --version
