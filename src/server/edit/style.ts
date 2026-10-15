@@ -87,8 +87,15 @@ function declarations(style: string): Declarations {
   return { segments, isOpen: quote !== undefined || isComment }
 }
 
+/** The property a declaration names, read past any comment ahead of it. */
 function propertyOf(segment: string): string {
-  return segment.split(':', 1)[0]?.trim().toLowerCase() ?? ''
+  return (
+    segment
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split(':', 1)[0]
+      ?.trim()
+      .toLowerCase() ?? ''
+  )
 }
 
 /** The values a style declares for one property, in order, read from a decoded style. */

@@ -282,6 +282,7 @@ const fixtures = readdirSync(FIXTURES)
 
 const FIXTURE_CHANGES: readonly EditChange[] = [
   { kind: 'style', property: 'color', value: 'blue' },
+  { kind: 'style', property: 'color', value: '' },
   { kind: 'style', property: 'font-family', value: "'Geist', serif" },
   { kind: 'attribute', name: 'title', value: 'a "q" & b' },
   { kind: 'text', value: 'Ship <it> & go' },

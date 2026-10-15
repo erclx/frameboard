@@ -51,6 +51,7 @@ const attributeValue = fc.constantFrom(
   "content: 'a\\'b'; padding: 1px",
   "content: 'a\\'; padding: 1px",
   'color: red /* ; */; margin: 0',
+  '/* a */ color: red; margin: 0',
 )
 const quoting = fc.constantFrom('"', "'", '', 'bare')
 const gap = fc.constantFrom(' ', '  ', '\n  ', '\r\n\t', '\t')

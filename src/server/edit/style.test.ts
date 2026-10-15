@@ -96,6 +96,19 @@ describe('setDeclaration', () => {
     ).toEqual({ ok: true, style: 'color: blue; margin: 0' })
   })
 
+  it('should drop a declaration a comment comes ahead of', () => {
+    expect(
+      setDeclaration('/* a */ color: red; margin: 0', 'color', ''),
+    ).toEqual({ ok: true, style: 'margin: 0' })
+  })
+
+  it('should replace a declaration a comment comes ahead of', () => {
+    expect(setDeclaration('/* a */ color: red', 'color', 'blue')).toEqual({
+      ok: true,
+      style: 'color: blue',
+    })
+  })
+
   it('should refuse a style ending inside an open comment', () => {
     expect(setDeclaration('color: red /* x', 'margin', '0')).toEqual({
       ok: false,
