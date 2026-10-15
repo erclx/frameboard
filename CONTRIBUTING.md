@@ -71,6 +71,18 @@ Branch from `main` and open the pull request against it. The template asks for t
 
 CI runs the static checks, unit tests, build, and end to end tests on every pull request, and a pull request merges once they pass. Keep each one to a single concern. A refactor that a feature needs reads better as its own pull request ahead of the feature.
 
+## Releases
+
+release-please cuts every release from the conventional commits on `main`. Each push to `main` keeps one release pull request open, holding the next version, its `CHANGELOG.md` entry, and the matching `version` in `package.json` and `plugins/frameboard/.claude-plugin/plugin.json`. Merging that pull request tags the release, and the same workflow builds the tag and publishes `frameboard` to npm.
+
+The workflow needs two repository secrets. `NPM_TOKEN` is an npm token allowed to publish `frameboard`, and `RELEASE_PLEASE_TOKEN` is a GitHub token that opens the release pull request so CI runs on it. Until both are set, the workflow fails on every push to `main` before it cuts anything.
+
+When a release exists on GitHub and npm does not serve it, the Publish Check job fails and names the tag. Publish that tag again with:
+
+```bash
+gh workflow run release-please.yml -f tag=<tag>
+```
+
 ## AI-assisted contributions
 
 Contributions written with a coding agent are welcome. You are the author of what you submit, so read every line before you open the pull request and be ready to explain it. Credit yourself in the commit, since the hook refuses a Claude or Anthropic co-author trailer.
