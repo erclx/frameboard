@@ -12,6 +12,7 @@ Owns the browser app around the frames, being the home view, the board's panels,
 ## Layout
 
 - `src/client/` owns the app
+- `src/client/public/` owns the files served at the site root, being the favicon set rendered from `icon.svg`
 - `src/server/` owns the live updates the app listens to
 
 ### Home view
