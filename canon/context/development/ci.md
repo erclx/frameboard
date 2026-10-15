@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge: which events start a run, and which checks have to pass before the branch can land. The checks call package scripts rather than defining commands of their own, so what each one runs is the subject of `canon/context/development.md`.
+Owns the GitHub Actions workflows that gate a merge: which events start a run, and which checks have to pass before the branch can land. The checks call package scripts rather than defining commands of their own, so what each one runs is the subject of `canon/context/development/local.md`.
 
 ## Layout
 

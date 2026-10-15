@@ -47,7 +47,7 @@ After changing a manifest, check it. `claude plugin validate .` reads the market
 
 Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/` or `src/server/` should start under both. After `bun run build`, run `node dist/cli.js serve` and `bun dist/cli.js serve` and open the board each time.
 
-`canon/context/development.md` lists every script and the hooks in full.
+`canon/context/development/local.md` lists every script and the hooks in full.
 
 ## Commit messages
 
