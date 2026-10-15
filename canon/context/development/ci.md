@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge: which events start a run, and which checks have to pass before the branch can land. The checks call package scripts rather than defining commands of their own, so what each one runs is the subject of `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge, being which events start a run and which checks have to pass before the branch can land. The checks call package scripts rather than defining commands of their own, so what each one runs is the subject of `canon/context/development/local.md`.
 
 ## Layout
 
@@ -22,7 +22,7 @@ Owns the GitHub Actions workflows that gate a merge: which events start a run, a
 
 ### Checks
 
-All jobs must pass before merge.
+- All jobs must pass before merge
 
 | Check                   | Workflow                | Command                                                     | What it asserts                                                      |
 | ----------------------- | ----------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -36,7 +36,9 @@ All jobs must pass before merge.
 
 ### Running CI locally
 
-`bun run check` runs typecheck, lint, format, both Vitest projects, build, and the markdown ban scan, and writes nothing. `bun run check:full` adds `bun run test:e2e`. If CI fails on format, run `bun run format` locally and commit the diff.
+- `bun run check` runs typecheck, lint, format, both Vitest projects, build, and the markdown ban scan, and writes nothing
+- `bun run check:full` adds `bun run test:e2e`
+- If CI fails on format, run `bun run format` locally and commit the diff
 
 ## Decisions
 

@@ -18,7 +18,8 @@ Owns the content rules and where they run. A frame that breaks one is reported w
 
 - Page and frame naming, and no folder whose name opens with a dot
 - A `head` needs a `body`, and a table needs its `tbody`
-- A frame links nothing outside its page except its project's `assets/`. A stylesheet or file shared between pages lives in `assets/`, and a link into a sibling page's folder is a finding
+- A frame links nothing outside its page except its project's `assets/`, where a stylesheet or file shared between pages lives
+- A link into a sibling page's folder is a finding
 
 ### Built-in rendering rules
 
@@ -28,18 +29,22 @@ Owns the content rules and where they run. A frame that breaks one is reported w
 
 ### Project rules
 
-A project may hold a check config adding rules of three kinds, being a minimum font size, no uppercase text, and the fonts allowed. Without one, the built-in rules alone apply.
+- A project may hold a check config adding rules of three kinds, being a minimum font size, no uppercase text, and the fonts allowed
+- Without one, the built-in rules alone apply
 
 ## Decisions
 
 ### Three paths, one rule set
 
-The `check` verb, the server on every file change it watches, and the plugin hook after every agent write all run the same rules. The hook hands findings back to the agent in the same turn.
+- The `check` verb, the server on every file change it watches, and the plugin hook after every agent write all run the same rules
+- The hook hands findings back to the agent in the same turn
 
 ### A project rule kind is added only when a real frame needs it
 
-The three kinds cover the house styles in hand. A config language that grows ahead of need becomes the design tool Frameboard is not.
+- The three kinds cover the house styles in hand
+- A config language that grows ahead of need becomes the design tool Frameboard is not
 
 ## Gotchas
 
-- The hook runs on every write, so it runs only the rules that need no browser. Which rules those are is settled by the browserless-checks track, and the server runs the rest.
+- The hook runs on every write, so it runs only the rules that need no browser, and the server runs the rest
+- The browserless-checks track settles which rules need no browser

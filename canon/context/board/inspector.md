@@ -28,14 +28,16 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 ### Adding one more control
 
-A control joins the inspector only when the developer's edit beats asking the agent, and only when it leaves layout alone.
+- A control joins the inspector only when the developer's edit beats asking the agent, and only when it leaves layout alone
 
 ## Decisions
 
 ### Layout stays with the agent
 
-Element position, width, height, padding, flex, gap, border width, font family, line height, and letter spacing have no control. Each is a layout call a prompt makes better, or a number that fights the layout when set by hand.
+- Element position, width, height, padding, flex, gap, border width, font family, line height, and letter spacing have no control
+- Each is a layout call a prompt makes better, or a number that fights the layout when set by hand
 
 ### Hand edits write the element's inline style or text and nothing else
 
-A token pick writes `var(--token)`, so it keeps following the theme. A raw value is marked raw.
+- A token pick writes `var(--token)`, so it keeps following the theme
+- A raw value is marked raw
