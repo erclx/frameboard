@@ -1,0 +1,44 @@
+/**
+ * Every error code and the exit it maps to. A later row appends a code and
+ * never reuses a number for another meaning.
+ */
+export const EXIT_CODES = {
+  internal: 1,
+  usage: 2,
+  'invalid-name': 2,
+  'project-required': 2,
+  'board-not-found': 3,
+  'project-not-found': 3,
+  'page-not-found': 3,
+  'frame-not-found': 3,
+  'server-not-running': 3,
+  'name-taken': 4,
+  'layout-invalid': 5,
+  'project-file-invalid': 5,
+  'lock-timeout': 6,
+} as const
+
+export type ErrorCode = keyof typeof EXIT_CODES
+
+export type ErrorDetails = Record<string, unknown>
+
+export class FrameboardError extends Error {
+  readonly code: ErrorCode
+  readonly details: ErrorDetails
+
+  constructor(
+    code: ErrorCode,
+    message: string,
+    details: ErrorDetails = {},
+    options?: ErrorOptions,
+  ) {
+    super(message, options)
+    this.name = 'FrameboardError'
+    this.code = code
+    this.details = details
+  }
+
+  get exitCode(): number {
+    return EXIT_CODES[this.code]
+  }
+}
