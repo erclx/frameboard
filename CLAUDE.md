@@ -1,17 +1,17 @@
 # Project
 
-A developer working with coding agents needs a local board where agents draw screens as plain HTML files and the developer reviews and tweaks them, with no hosted design tool or MCP server.
+Frameboard is a local design board that coding agents draw on as plain HTML files, and you review and tweak.
 
 ## Context
 
-- Before non-trivial work in a domain read `canon/context/<domain>.md`. Pick which from the index anchor below.
+- Before non-trivial work in a domain read `canon/context/<area>/<domain>.md`. Pick which from the index anchor below.
 
 @canon/REQUIREMENTS.md
 @canon/context/index.md
 
 ## Commands
 
-- `bun run check`: the gate to run before committing, which `canon/context/development.md` breaks down
+- `bun run check`: the gate to run before committing, which `canon/context/development/local.md` breaks down
 
 ## Key paths
 

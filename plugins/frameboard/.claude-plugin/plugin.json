@@ -1,0 +1,10 @@
+{
+  "name": "frameboard",
+  "version": "0.0.0",
+  "description": "A local design board that coding agents draw on as plain HTML files",
+  "author": {
+    "name": "Eric Le"
+  },
+  "repository": "https://github.com/erclx/frameboard",
+  "license": "MIT"
+}
