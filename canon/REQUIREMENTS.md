@@ -2,6 +2,8 @@
 
 A developer working with coding agents needs a local board where agents draw screens as plain HTML files and the developer reviews and tweaks them, with no hosted design tool or MCP server.
 
+This record holds at most 600 words.
+
 ## Goals
 
 ### Files and folders
@@ -10,7 +12,7 @@ A developer working with coding agents needs a local board where agents draw scr
 - The files are the design. Frameboard keeps no private copy, and a hand edit changes only what was edited in the file.
 - Frames render as real web pages, so animation, video, and interaction work
 - A board folder lives inside a repository or anywhere on disk, with or without git
-- A new, empty folder starts with one command
+- An empty folder starts with one command
 
 ### Projects and navigation
 
