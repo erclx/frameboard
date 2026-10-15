@@ -1,8 +1,5 @@
 {
-  "covers": [
-    "governance",
-    "tooling"
-  ],
+  "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
       "version": "5.38.0",
@@ -19,17 +16,13 @@
         ".claude/rules/canon/claude/output.md": "sha256:e0a6de8d5230deafac3ada50d9bef370d1e6f95b54a3ff9ad1b792c856d4ffe8",
         ".claude/rules/canon/writing/markdown.md": "sha256:6476dc705dcc97c0c14b95ca60157d7cabdd4efda381be7f5d299006ae6f2656"
       },
-      "chain": [
-        "base"
-      ]
+      "chain": ["base"]
     },
     "tooling": {
       "version": "5.38.0",
-      "syncedAt": "2026-10-14T22:42:02.862Z",
+      "syncedAt": "2026-10-15T07:45:02.523Z",
       "files": {},
-      "chain": [
-        "base"
-      ]
+      "chain": ["web", "base"]
     }
   }
 }

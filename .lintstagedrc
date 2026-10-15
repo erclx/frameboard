@@ -1,4 +1,8 @@
 {
-  "**/*.{json,md}": ["oxfmt --no-error-on-unmatched-pattern"],
+  "**/*.{js,jsx,ts,tsx}": [
+    "oxlint --fix --max-warnings 0",
+    "oxfmt --no-error-on-unmatched-pattern"
+  ],
+  "**/*.{json,css,md}": ["oxfmt --no-error-on-unmatched-pattern"],
   "**/*.md": ["canon indexes regen"]
 }
