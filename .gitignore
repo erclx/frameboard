@@ -32,3 +32,6 @@ playwright/.cache/
 
 # Screenshots
 screenshots/
+
+# Vitest browser mode
+.vitest/
