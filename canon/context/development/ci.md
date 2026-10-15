@@ -47,14 +47,17 @@ Owns the GitHub Actions workflows that gate a merge, being which events start a 
 - The browser project runs in `frameboard-checks.yml` rather than in the golden `unit-tests` job. That job installs no browser, and a hand edit to `verify.yml` is reverted by the next sync.
 - `test:coverage` runs only the `node` project, so the golden `unit-tests` job passes on a runner with no browser.
 
-### Releases
+### Release workflow
 
-The release workflow copies erclx/canon's, keeping its credential preflight, its queued `release-please` group, and its tag dispatch repair. No `canon tooling sync` writes it, so a later fix to canon's copy reaches this one by hand.
+- The release workflow copies erclx/canon's preflight, queued group, and tag dispatch repair, because each answers an incident canon measured.
+- No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand.
+- The publish job installs and builds the tag before it publishes, because the package ships only the gitignored `dist/` and canon's job runs no build.
+- The publish job refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm.
+- Publish Check passes while no release exists and reads an npm E404 as no versions, so a failed first publish still names the repair command.
 
-The publish job installs and builds the tag before it publishes, because the package ships only the gitignored `dist/`. Canon ships source and runs no build, so its job as written would publish a package that cannot run. The job also refuses a tag whose built `dist/cli.js --version` differs from the tag.
+### Release versioning
 
-`initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads a `0.0.0` entry as no release and otherwise cuts `1.0.0`. `bump-minor-pre-major` keeps a breaking change on 0.x at a minor bump. `bootstrap-sha` is the root commit rather than the branch point, so the first changelog carries a `feat` entry and a release pull request opens at all.
-
-Publish Check passes with a notice while no GitHub release exists. It reads an npm E404 for the whole package as no versions, so a first publish that failed still names the repair command.
-
-`.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and `canon tooling sync` overwrites `.oxfmtrc.json`.
+- `initial-version` is `0.0.1` against a `0.0.0` manifest, because release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`.
+- `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump rather than `1.0.0`.
+- `bootstrap-sha` is the root commit rather than the branch point, so the first changelog carries a `feat` entry and a release pull request opens.
+- `.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and a sync overwrites `.oxfmtrc.json`.
