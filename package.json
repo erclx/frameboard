@@ -1,6 +1,25 @@
 {
   "name": "frameboard",
   "version": "0.0.0",
+  "description": "A local design board that coding agents draw on as plain HTML files",
+  "keywords": [
+    "design",
+    "board",
+    "canvas",
+    "html",
+    "coding-agent",
+    "claude-code",
+    "cli"
+  ],
+  "homepage": "https://github.com/erclx/frameboard#readme",
+  "bugs": {
+    "url": "https://github.com/erclx/frameboard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/erclx/frameboard.git"
+  },
+  "license": "MIT",
   "type": "module",
   "bin": {
     "frameboard": "dist/cli.js"
