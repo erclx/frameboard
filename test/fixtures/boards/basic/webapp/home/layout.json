@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "frames": {
+    "hero": { "x": 0, "y": 0, "width": 1440, "height": 900, "order": 0, "hidden": false, "locked": false },
+    "about": { "x": 1520, "y": 0, "width": 390, "height": 844, "order": 1, "hidden": false, "locked": true }
+  }
+}
