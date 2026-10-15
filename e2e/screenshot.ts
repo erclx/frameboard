@@ -3,6 +3,8 @@ import { chromium } from '@playwright/test'
 import { mkdir } from 'fs/promises'
 import path from 'path'
 
+import { CAPTURE_CASES, EVIDENCE_ROOT } from './capture'
+
 /** One addressable part of a route, captured beside the whole-page frame. */
 interface CaptureSection {
   name: string
@@ -43,18 +45,8 @@ interface CaptureCase {
   setup?: (page: Page) => Promise<void>
 }
 
-/**
- * The board shell at `/`. Theme switching arrives with the chrome look, so the
- * case captures the light theme alone until then.
- */
-const CASES: CaptureCase[] = [
-  {
-    section: 'board',
-    theme: 'light',
-    route: '/',
-    evidence: true,
-  },
-]
+// Frameboard's cases live in e2e/capture/, which a tooling sync never writes.
+const CASES: CaptureCase[] = CAPTURE_CASES
 
 /** One case at one viewport, which is the unit a filter selects and a context is built for. */
 interface CaptureRun {
@@ -288,8 +280,7 @@ for (const { captureCase, viewport, label } of RUNS) {
   const mask = await resolveMask(page, label, captureCase.mask ?? [])
 
   const sweepDir = path.join(OUT_DIR, captureCase.section)
-  // Frameboard keeps its baseline beside the capture harness rather than at the root.
-  const evidenceDir = path.join('e2e', 'evidence', captureCase.section)
+  const evidenceDir = path.join(EVIDENCE_ROOT, captureCase.section)
   const file = `${viewport.name}--${captureCase.theme}.png`
   const writesEvidence = captureCase.evidence && viewport.evidence
 
