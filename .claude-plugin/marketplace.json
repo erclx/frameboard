@@ -1,0 +1,16 @@
+{
+  "name": "frameboard",
+  "owner": {
+    "name": "Eric Le"
+  },
+  "metadata": {
+    "description": "The Frameboard plugin for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "frameboard",
+      "source": "./plugins/frameboard",
+      "description": "A local design board that coding agents draw on as plain HTML files"
+    }
+  ]
+}
