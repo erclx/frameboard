@@ -21,6 +21,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `serve` starts the server for one board folder and records its address in the folder, so another session reuses it
   - In a folder with no board it creates `.frameboard/` with one empty project
   - It reuses a board tab already connected to the server and opens one only when none is connected, unless `--no-open` is passed
+  - A second `serve` for a board whose recorded server answers its health check prints that server's address with `reused: true` and binds nothing, so two sessions on one board share one server
 - `show <frame>` points the open board at a frame
 - `list` shows projects, pages, and frames
 - `docs` prints verbs, flags, record shapes, the content format, and the check list
@@ -32,6 +33,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `frame add`, `duplicate`, `move`, `resize`, `fit`, `order`, `rename`, and `delete` manage frames, and `frame hide` and `frame lock` set or clear those flags
   - `fit` sets a frame's height to its content, and `order` sets its stacking order
   - `duplicate` and `move` take a target page in any project, which is how copy and cut-and-paste reach the CLI
+  - `move` with `--x` and `--y` and no `--to` sets the position alone, writing `layout.json` and never the frame, so a move never collides with an agent rewriting the file
 
 ### Reading the developer
 
@@ -53,6 +55,17 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 
 - Every verb takes `--json` and `--root`, and `--project` where a project applies
 - Every verb exits with a stable code and never prompts, because an agent cannot answer a prompt
+
+### One envelope and a fixed exit per error
+
+- With `--json`, stdout carries exactly one envelope, `{ ok, data }` or `{ ok, error }`, even on a parse error, so an agent tells success from failure by one key before reading the exit code.
+- Each error code maps to one exit in `src/shared/errors.ts`, and a later row appends a code rather than reusing a number, so a script branching on an exit keeps working.
+
+### Refs name what the agent just wrote
+
+- A page ref is `<page>` or `<project>/<page>`, and a frame ref adds `/<frame>`, so a short ref works on a one-project board.
+- An argument ending in `.html` is a path to the frame file, so an agent names a frame by the file it just wrote.
+- A verb given no project takes the board's only project and otherwise fails `project-required`, since guessing between projects would write to the wrong one.
 
 ### The skill holds judgment and `docs` holds facts
 

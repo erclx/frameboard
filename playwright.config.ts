@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = 4173 + Number(process.env.WORKTREE_PORT_OFFSET ?? 0)
-const serve = `node dist/cli.js serve --port ${port}`
+const serve = `node dist/cli.js serve --root test/fixtures/boards/basic --no-open --port ${port}`
 
 export default defineConfig({
   testDir: 'e2e',

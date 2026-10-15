@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "frames": {
+    "placed": { "x": 100, "y": 50, "width": 390, "height": 844, "order": 3 },
+    "ghost": { "x": 0, "y": 0, "width": 390, "height": 844, "order": 0 }
+  }
+}

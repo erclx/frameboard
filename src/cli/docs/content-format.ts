@@ -1,0 +1,57 @@
+import { ADDRESS_FILE, RUN_FOLDER } from '@/server/address'
+import { LOCK_SUFFIX, TEMP_SUFFIX } from '@/server/board/json-record'
+import {
+  DEFAULT_BOARD_FOLDER,
+  START_PAGE,
+  START_PROJECT,
+} from '@/server/board/root'
+import {
+  ASSETS_FOLDER,
+  BOARD_FILE,
+  FRAME_EXTENSION,
+  LAYOUT_FILE,
+  PROJECT_FILE,
+} from '@/server/board/scan'
+import {
+  DEFAULT_FRAME_SIZE,
+  FRAME_GAP,
+  FRAME_SIZES,
+} from '@/shared/frame-sizes'
+import {
+  NAME_MAX_LENGTH,
+  NAME_PATTERN,
+  RESERVED_PAGE_NAMES,
+} from '@/shared/names'
+
+/** The content format `docs` prints, built from the constants the verbs run on. */
+export function contentFormat() {
+  return {
+    folders: [
+      `A board folder holds ${BOARD_FILE}. Without --root, a verb walks up from the working folder to the first folder holding ${BOARD_FILE} or ${DEFAULT_BOARD_FOLDER}/${BOARD_FILE}, stopping after the first folder holding .git.`,
+      `A project is any folder in the board whose name does not open with a dot. Its ${PROJECT_FILE} lists page names in display order, and pages it does not list follow by name.`,
+      `A page is any folder in a project except ${ASSETS_FOLDER}/ and dot-named ones. Its ${LAYOUT_FILE} holds each frame's box, stacking order, and flags.`,
+      `A frame is any *${FRAME_EXTENSION} file directly in a page, named by its stem.`,
+      `serve in a folder with no board creates ${DEFAULT_BOARD_FOLDER}/ with project ${START_PROJECT} and empty page ${START_PAGE}, and records its address in ${RUN_FOLDER}/${ADDRESS_FILE}.`,
+      `Dot-named folders, *${LOCK_SUFFIX} files, and *${TEMP_SUFFIX} files belong to Frameboard and are never content.`,
+    ],
+    names: {
+      pattern: NAME_PATTERN.source,
+      maxLength: NAME_MAX_LENGTH,
+      reservedPageNames: [...RESERVED_PAGE_NAMES],
+      collision:
+        'Two names collide when they match case-insensitively. A verb choosing a name itself takes the first free -2, -3, and onward.',
+    },
+    frameSizes: FRAME_SIZES,
+    defaultFrameSize: DEFAULT_FRAME_SIZE,
+    layout: [
+      'x and y are integers, width and height integers of at least 1, and order an integer of at least 0, where a higher order draws on top.',
+      'hidden and locked read as false when absent.',
+      'Frames sort by order, then name, and a write that changes order renumbers the page from 0.',
+      `A frame file with no entry is unplaced: it reads at desktop size, y 0, ${FRAME_GAP} px past the right edge of every frame placed before it in name order, and frame add persists that box.`,
+      'An entry with no frame file beside it is ignored on read and kept on write.',
+      `A ${LAYOUT_FILE} that does not parse is reported by list and refused by every verb writing that page, never overwritten.`,
+      `Moving or resizing a frame writes ${LAYOUT_FILE} alone and never the frame file.`,
+    ],
+    assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
+  }
+}
