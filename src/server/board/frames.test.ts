@@ -134,6 +134,34 @@ describe('frames', () => {
       })
     })
 
+    it('carries an unknown key through a rename', async () => {
+      const root = open()
+      const page = layout('webapp/home')
+      page.frames.hero.tint = 'red'
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+
+      await renameFrame(root, 'webapp/home/hero', 'banner', { cwd: root })
+
+      expect(layout('webapp/home').frames.banner).toMatchObject({ tint: 'red' })
+    })
+
+    it('carries an unknown key through a move into another project', async () => {
+      const root = open()
+      const page = layout('webapp/home')
+      page.frames.hero.tint = 'red'
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+
+      await moveFrame(root, 'webapp/home/hero', {
+        cwd: root,
+        to: 'marketing/launch',
+      })
+
+      expect(layout('marketing/launch').frames.hero).toMatchObject({
+        tint: 'red',
+        order: 1,
+      })
+    })
+
     it('add writes a skeleton and places it past every frame', async () => {
       const root = open()
 

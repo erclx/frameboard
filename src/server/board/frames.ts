@@ -180,16 +180,16 @@ export async function moveFrame(
     }
 
     await rename(source.path, join(into, `${movedName}${FRAME_EXTENSION}`))
+    // The entry travels with the file, so keys a newer writer added survive the move.
+    const carried = sourceLayout.file.frames[source.name]
     sourceLayout.remove(source.name)
     sourceLayout.names = sourceLayout.names.filter(
       (frame) => frame !== source.name,
     )
     targetLayout.names = [...others, movedName].sort()
-    targetLayout.set(movedName, {
-      ...placement,
-      box,
-      order: samePage ? placement.order : targetLayout.topOrder(),
-    })
+    const order = samePage ? placement.order : targetLayout.topOrder()
+    if (carried) targetLayout.file.frames[movedName] = { ...carried }
+    targetLayout.set(movedName, { ...placement, box, order })
     sourceLayout.renumber()
     targetLayout.renumber()
     return movedName
