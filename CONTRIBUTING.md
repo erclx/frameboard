@@ -1,6 +1,6 @@
 # Contributing to Frameboard
 
-Thanks for helping. This page covers getting a working checkout, where things live, how to test a change, and the commit and pull request rules the hooks enforce.
+This page covers getting a working checkout, where things live, how to test a change, and the commit and pull request rules the hooks enforce.
 
 ## Setup
 
@@ -43,7 +43,7 @@ After changing a manifest, check it. `claude plugin validate .` reads the market
 
 - `bun run test:run` runs Vitest once across two projects. The `node` project covers `src/cli/`, `src/server/`, and `src/shared/`, and the `browser` project runs `src/client/` in headless Chromium.
 - `bun run test:e2e` runs Playwright against the built CLI. Run `bun run build` first.
-- `bun run check:full` runs the whole gate followed by the end to end suite.
+- `bun run check:full` runs the whole gate followed by the end to end suite
 
 Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/` or `src/server/` should start under both. After `bun run build`, run `node dist/cli.js serve` and `bun dist/cli.js serve` and open the board each time.
 
@@ -53,11 +53,11 @@ Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/`
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org), and the `commit-msg` hook runs commitlint on each one. It refuses a message that breaks any of these rules:
 
-- The header reads `<type>(<scope>): <subject>`, such as `fix(server): close the socket on shutdown`.
-- The header is at most 72 characters.
+- The header reads `<type>(<scope>): <subject>`, such as `fix(server): close the socket on shutdown`
+- The header is at most 72 characters
 - The first word of the subject is lowercase. Later words may carry capitals, so a proper noun past the first word is fine.
-- The scope is lowercase, and the subject ends with no period.
-- No `Co-authored-by` trailer may credit Claude or Anthropic, by name or by address.
+- The scope is lowercase, and the subject ends with no period
+- No `Co-authored-by` trailer may credit Claude or Anthropic, by name or by address
 
 The types are the conventional set of `feat`, `fix`, `refactor`, `docs`, `chore`, `perf`, `test`, `style`, `build`, `ci`, and `revert`.
 
@@ -65,9 +65,9 @@ The types are the conventional set of `feat`, `fix`, `refactor`, `docs`, `chore`
 
 Branch from `main` and open the pull request against it. The template asks for three sections:
 
-- **Summary:** one sentence on what the change does and why.
-- **Key changes:** the files or components touched, with a reason where it is not obvious.
-- **Testing:** the commands you ran and the cases you checked.
+- **Summary:** one sentence on what the change does and why
+- **Key changes:** the files or components touched, with a reason where it is not obvious
+- **Testing:** the commands you ran and the cases you checked
 
 CI runs the static checks, unit tests, build, and end to end tests on every pull request, and a pull request merges once they pass. Keep each one to a single concern. A refactor that a feature needs reads better as its own pull request ahead of the feature.
 
