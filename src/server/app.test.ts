@@ -21,10 +21,18 @@ describe('createApp', () => {
   })
 
   it('serves the client index with the version header', async () => {
-    const response = await createApp({ clientDir }).request('/')
+    const response = await createApp({ clientDir, root: '/board' }).request('/')
 
     expect(response.status).toBe(200)
     expect(response.headers.get('x-frameboard-version')).toBe(version)
     expect(await response.text()).toContain('<title>Frameboard</title>')
+  })
+
+  it('answers the health check with the board root', async () => {
+    const response = await createApp({ clientDir, root: '/board' }).request(
+      '/api/health',
+    )
+
+    expect(await response.json()).toEqual({ version, root: '/board' })
   })
 })

@@ -25,7 +25,11 @@ export function createProgram(): Command {
     .description('Serve the board in a local browser')
     .option('-p, --port <port>', 'port to listen on', parsePort, 4173)
     .action(async ({ port }: { port: number }) => {
-      const server = await startServer({ clientDir: CLIENT_DIR, port })
+      const server = await startServer({
+        clientDir: CLIENT_DIR,
+        root: process.cwd(),
+        port,
+      })
       console.log(
         `Frameboard is serving on http://${server.hostname}:${server.port}`,
       )
