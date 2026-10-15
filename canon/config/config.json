@@ -3,7 +3,7 @@
   "domains": {
     "governance": {
       "version": "5.38.0",
-      "syncedAt": "2026-10-14T22:42:03.217Z",
+      "syncedAt": "2026-10-15T07:52:54.201Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:489451f661650947951405f4fd3f999f862148905f72b71c23c2413e954cbdbe",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -14,9 +14,34 @@
         ".claude/rules/canon/canon/tasks.md": "sha256:f648c5e2aa4b3ed9a09de2d6c0c47bc124ca3492d3678123f107e2ab8d0735e3",
         ".claude/rules/canon/canon/worktrees.md": "sha256:ca45addaab6cea09fe5f580716eace14bd9c4434db37dfd78cfee5f2688ae22d",
         ".claude/rules/canon/claude/output.md": "sha256:e0a6de8d5230deafac3ada50d9bef370d1e6f95b54a3ff9ad1b792c856d4ffe8",
+        ".claude/rules/canon/code/routing.md": "sha256:ff169dc275fbe9fda1987d022ab1a84a130189f2a7b93f9f3951561522e2534f",
+        ".claude/rules/canon/code/testing.md": "sha256:76e9ff5e862a1ef36db10f0cbc549b246fbe1bb403bf869aefefa74bbb7c7d65",
+        ".claude/rules/canon/framework/react.md": "sha256:42cfe72c7458dc0ca5c27e6baad21852d8dfc81245be52f061f7ae3e2ee5c8bc",
+        ".claude/rules/canon/framework/shadcn.md": "sha256:5d82aaa2cb5e8dbeef520feb3e32b76746771d9889962d760132c062306a38c9",
+        ".claude/rules/canon/framework/tailwind.md": "sha256:5904032cc0c90abcd734ec2a64311e67b41c68bbf60c205af7575d72fd42cb7e",
+        ".claude/rules/canon/lang/typescript.md": "sha256:5378af975febe5b4b2e2ac4edf4163fc0d9fddf406df8055a858a11bd9656416",
+        ".claude/rules/canon/lib/e2e-reliability.md": "sha256:ee043f667579fefd79594455de9fc760105f9d94cab151e2e8865f4c626db9bd",
+        ".claude/rules/canon/lib/security-server.md": "sha256:4448105f472d64e44c2e6120da279d358e7ecc8afbfd46014a15f6c77878b690",
+        ".claude/rules/canon/lib/security-web.md": "sha256:1a451cd599681bc92d028d0d58607846f3bf9aef36688d862fb413671c590a44",
+        ".claude/rules/canon/lib/test-scope.md": "sha256:952afd70b8d32d8fa04a96845caa647d0b555bb7ea23771532c22fc919f280eb",
+        ".claude/rules/canon/lib/testing-ts.md": "sha256:925731c4350aa5744a0aa97a497b69ae195f0e11527460190f6966213d9604c3",
+        ".claude/rules/canon/tooling/ci-workflow.md": "sha256:7a76379cb81d3c504c6fa7b083f6070a5e6a9e69ff3a6c1fc3d099fb6d8ce3f1",
+        ".claude/rules/canon/tooling/code-comments.md": "sha256:99088dc569de6bc72f547d53a071d1cd8f56053ef9fbd68df09d771a3c1ab1f9",
+        ".claude/rules/canon/tooling/config-comments.md": "sha256:70e23f9b7903ae9dc1239730ce3b8ecf5c0760c0fa411ece1bfac239b978c6dd",
+        ".claude/rules/canon/tooling/dependencies.md": "sha256:b3af393d75e70bb58bd5519f32804f6e5badb53d7ec5c212daf88ee6d3a8ff8b",
+        ".claude/rules/canon/ui/a11y.md": "sha256:a67c5ea54b83195beecf483b9a92a684eb8d86d6ae89aa485d060bfe97beaa24",
+        ".claude/rules/canon/ui/canvas.md": "sha256:b246e83c1f6952e37c179ec38ce92bc3424547e6a16818689e5b95561a73b14e",
+        ".claude/rules/canon/ui/copy.md": "sha256:caba63ee3c80661e1ec54021ff5352846d2bf2045e12a7fd16739d8db353cadb",
+        ".claude/rules/canon/ui/design-taste.md": "sha256:4de5f8ea0b3d986a997ba968d4c991ac8a482a878d569eda02138ce3ae72e490",
+        ".claude/rules/canon/ui/forms.md": "sha256:e93f29141344fcb939c25ff6e58c35714152f7f09931ed0222fcb777b77c8a52",
+        ".claude/rules/canon/ui/interface-casing.md": "sha256:b3768757f91c1744b00e7ab9da697d1055c5af24cd5dc3823fdf0c04feb73ab7",
+        ".claude/rules/canon/ui/link-behavior.md": "sha256:43c4aa1c8e3db74541266164f59d1e8bcd1ff30e5b19172fa6b764e3bb8b5f97",
+        ".claude/rules/canon/ui/motion.md": "sha256:7cc34317a1d1f9d695abed1487959296f71edcfd1107ff445796a3b29a69b778",
+        ".claude/rules/canon/ui/surface-capture.md": "sha256:af3e771d05b5e547290172c86d3c5dd14496c5c5443d84a0a217e8fffdc91528",
+        ".claude/rules/canon/ui/ux-completeness.md": "sha256:dd22ca3ff07d3c4fc79538802fed98d9f7b3c5715af1b1b27565b0951ec5d8c9",
         ".claude/rules/canon/writing/markdown.md": "sha256:6476dc705dcc97c0c14b95ca60157d7cabdd4efda381be7f5d299006ae6f2656"
       },
-      "chain": ["base"]
+      "chain": ["node"]
     },
     "tooling": {
       "version": "5.38.0",
