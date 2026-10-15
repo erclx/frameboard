@@ -42,6 +42,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 - `bun run test:coverage` runs the `node` project with coverage, as CI's unit-tests job does
 - `bun run test:e2e` runs Playwright against the built CLI on a port offset per worktree
 - `bun run test:e2e:changed` runs Playwright on specs the import graph reaches from the current diff
+- `bun --bun vitest run --project node src/server/edit` runs the edit writer's tests on Bun, and `FRAMEBOARD_EDIT_DIGEST=<path>` makes the property run write its output digest there for a comparison against Node
 
 ### Capture scripts
 
