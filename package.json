@@ -33,7 +33,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "vite build && rolldown -c rolldown.config.ts",
-    "preview": "node dist/cli.js serve --port ${PREVIEW_PORT:-4173}",
+    "preview": "node dist/cli.js serve --root test/fixtures/boards/basic --no-open --port ${PREVIEW_PORT:-4173}",
     "test": "vitest",
     "test:run": "vitest run --reporter=verbose",
     "test:ui": "vitest --ui",
