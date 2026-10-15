@@ -59,6 +59,7 @@ describe('docs', () => {
       'frame delete',
       'frame hide',
       'frame lock',
+      'edit',
       'docs',
     ])
   })

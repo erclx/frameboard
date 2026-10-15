@@ -16,6 +16,15 @@ export const EXIT_CODES = {
   'layout-invalid': 5,
   'project-file-invalid': 5,
   'lock-timeout': 6,
+  // `edit` refusals, each leaving the frame file as it was.
+  'invalid-edit': 7,
+  'invalid-address': 7,
+  'address-mismatch': 7,
+  'open-quote': 7,
+  'not-text-only': 7,
+  'verify-failed': 7,
+  'invalid-utf8': 7,
+  'stale-address': 7,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

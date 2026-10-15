@@ -6,6 +6,7 @@ import { resolveBoard } from '@/server/board/root'
 import { version } from '@/shared/version'
 
 import { registerDocs } from './commands/docs'
+import { registerEdit } from './commands/edit'
 import { registerFrame } from './commands/frame'
 import { registerList } from './commands/list'
 import { registerPage } from './commands/page'
@@ -140,6 +141,7 @@ export function createProgram(context: ProgramContext): Command {
   registerProject(program, context)
   registerPage(program, context)
   registerFrame(program, context)
+  registerEdit(program, context)
   registerDocs(program, context)
 
   return program
