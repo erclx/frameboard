@@ -1,0 +1,4 @@
+{
+  "**/*.{json,md}": ["oxfmt --no-error-on-unmatched-pattern"],
+  "**/*.md": ["canon indexes regen"]
+}

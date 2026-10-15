@@ -1,0 +1,35 @@
+{
+  "covers": [
+    "governance",
+    "tooling"
+  ],
+  "domains": {
+    "governance": {
+      "version": "5.38.0",
+      "syncedAt": "2026-10-14T22:42:03.217Z",
+      "files": {
+        ".claude/rules/canon/canon/context.md": "sha256:489451f661650947951405f4fd3f999f862148905f72b71c23c2413e954cbdbe",
+        ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
+        ".claude/rules/canon/canon/indexes.md": "sha256:1f63d582719cf2db0f55d404fa2277fa5c599770e95a2d75b0c96b94da1b6c8c",
+        ".claude/rules/canon/canon/plan.md": "sha256:4071764399ef86f92fdd5be091112cab4beb0c9da243a75d06610e60483f4013",
+        ".claude/rules/canon/canon/scratch.md": "sha256:a9ee8ca930662c5ac68cf83d00a081adc543011033a83ff6f2cc4289d1ba0fe7",
+        ".claude/rules/canon/canon/task-scope.md": "sha256:4b9547bff01ca54e2818072ba142b01e7cdfaf757e2523942f23272783fe6386",
+        ".claude/rules/canon/canon/tasks.md": "sha256:f648c5e2aa4b3ed9a09de2d6c0c47bc124ca3492d3678123f107e2ab8d0735e3",
+        ".claude/rules/canon/canon/worktrees.md": "sha256:ca45addaab6cea09fe5f580716eace14bd9c4434db37dfd78cfee5f2688ae22d",
+        ".claude/rules/canon/claude/output.md": "sha256:e0a6de8d5230deafac3ada50d9bef370d1e6f95b54a3ff9ad1b792c856d4ffe8",
+        ".claude/rules/canon/writing/markdown.md": "sha256:6476dc705dcc97c0c14b95ca60157d7cabdd4efda381be7f5d299006ae6f2656"
+      },
+      "chain": [
+        "base"
+      ]
+    },
+    "tooling": {
+      "version": "5.38.0",
+      "syncedAt": "2026-10-14T22:42:02.862Z",
+      "files": {},
+      "chain": [
+        "base"
+      ]
+    }
+  }
+}

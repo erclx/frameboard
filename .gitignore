@@ -1,0 +1,19 @@
+
+# System
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.*
+*.local
+!.env.example
+
+# VSCode
+.vscode/
+
+# Claude
+.canon/
+.claude/worktrees/

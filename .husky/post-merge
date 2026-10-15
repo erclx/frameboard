@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+
+# Runs the post-merge steps through `canon hooks post-merge`: archive the task a
+# merged pull request closed, push the records, reclaim merged worktrees,
+# reinstall the CLI, and update the plugin cache. The verb owns the order and
+# each line it prints.
+#
+# CANON_SKIP_RECLAIM=1 turns off the worktree reclaim.
+# CANON_SKIP_UPGRADE=1 turns off the CLI reinstall.
+# CANON_SKIP_PLUGIN_UPDATE=1 turns off the plugin cache update.
+#
+# The reclaim reads merge state through `gh`, so a machine without it on PATH
+# reclaims nothing and says nothing. Install `gh` to turn it on.
+#
+# Husky runs this as `sh -e`, and `post-rewrite` sources it on a rebase, so
+# every test sits inside an `if` or an `||` and nothing here exits non-zero.
+
+root=$(git worktree list --porcelain 2>/dev/null | grep -m 1 '^worktree ' | cut -d' ' -f2-) || root=''
+[ -n "$root" ] || exit 0
+
+# The board is shared scratch at the main worktree root, and `git worktree
+# list` puts that root first. A checkout with no board runs none of the steps.
+[ -d "$root/.canon/tasks" ] || exit 0
+
+if ! command -v canon >/dev/null 2>&1; then
+  exit 0
+fi
+
+# A global binary older than the verb cannot run it, and the verb carries the
+# only step that would update it, so reinstall here and probe again. The probe
+# reads the verb's own usage line rather than the exit, since an older binary
+# answers an unknown command's `--help` with its root help and exits zero.
+has_verb() {
+  canon hooks post-merge --help 2>/dev/null | grep -q '^Usage: canon hooks post-merge'
+}
+
+if ! has_verb; then
+  if [ -z "$CANON_SKIP_UPGRADE" ]; then
+    CANON_NON_INTERACTIVE=1 canon upgrade >/dev/null 2>&1 || true
+  fi
+fi
+
+if has_verb; then
+  canon hooks post-merge --root "$root" || true
+fi
