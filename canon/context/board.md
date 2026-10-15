@@ -23,7 +23,7 @@ Owns everything the developer sees and does in the browser: the home view of pro
 ### Board shell
 
 - A left panel with Design, Theme, and Assets tabs. Assets shows the project's `assets/` folder as thumbnails with type and size, takes dropped files, and copies the path a frame links. Design holds the pages list and the layers tree, split by a draggable divider that is remembered. The pages list scrolls on its own and its header carries a search that filters it in place, and the layers header carries a collapse-all button. Theme shows the project's tokens, read-only, with each light and dark value, and says where tokens go when there are none
-- A toolbar with Move, Hand, Frame, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle. The Frame tool drags out a new empty frame. The toolbar floats at the bottom center of the canvas
+- A toolbar with Move, Hand, Frame, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle. The Frame tool drags out a new empty frame, or adds one from a size preset, being phone at 390, tablet at 768, or desktop at 1440. The toolbar floats at the bottom center of the canvas
 - The canvas in the middle, with each frame's name above it, and pan and zoom
 - The inspector on the right, whose header shows the zoom level and opens the zoom menu, beside an avatar with the initials of git's `user.name`, the name notes are signed with. The avatar opens a menu of keyboard shortcuts, theme, and docs
 - Both side panels resize by dragging their edge, from 200 to 400px with 240 by default, a double-click on the edge resetting it and the widths remembered, and Hide UI, Cmd+\ or a button, hides both, leaving the project name with the show-panels button top left, the toolbar, and the avatar with the zoom level top right
@@ -60,6 +60,10 @@ A token pick writes `var(--token)`, so it keeps following the theme. A raw value
 ### An agent's changes stay marked until seen
 
 A frame an agent changed carries a purple dot on its label and layers row until the developer selects it or it sits on screen a moment, never cleared by a timer. Page rows and the project card count the unseen frames under them. The update toast offers Show and Next, with `]` stepping through the changes. Follow on an agent's avatar pans the board to whatever it edits, and stops on a click or a hand pan. The board never moves the view on its own. Seen state lives in the browser, never in the board folder.
+
+### A narrow screen opens with the UI hidden
+
+The narrow-screen layout stays deferred. Below about 1024px the board opens as Hide UI leaves it, so the canvas still pans and zooms and nothing is blocked. Opening one frame on a phone over the local network waits for a later release.
 
 ### Find searches what the frames hold
 
