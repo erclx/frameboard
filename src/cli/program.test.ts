@@ -54,10 +54,24 @@ describe('runCli', () => {
     expect(run.stderr).toMatch(/^frameboard: No board\.json/)
   })
 
-  it('exits 2 on a verb group run with no verb', async () => {
-    const run = await cli(['frame', '--json'], { cwd })
+  it('names the verbs of a group run with no verb under --json', async () => {
+    const run = await cli(['page', '--json'], { cwd })
 
     expect(run.exitCode).toBe(2)
+    expect(run.json().error).toMatchObject({
+      code: 'usage',
+      details: {
+        commands: ['add', 'duplicate', 'rename', 'move', 'delete'],
+      },
+    })
+  })
+
+  it('names the top-level commands when none is given under --json', async () => {
+    const run = await cli(['--json'], { cwd })
+
+    expect(run.json().error?.message).toMatch(
+      /^frameboard needs a command, one of serve, list,/,
+    )
   })
 })
 

@@ -1,4 +1,4 @@
-import { CommanderError } from 'commander'
+import { type Command, CommanderError } from 'commander'
 
 import { type ErrorCode, EXIT_CODES, FrameboardError } from '@/shared/errors'
 
@@ -22,7 +22,7 @@ export async function runCli(
     return 0
   } catch (error) {
     if (error instanceof CommanderError && error.exitCode === 0) return 0
-    const failure = toFailure(error)
+    const failure = toFailure(error, program, argv)
     if (json) {
       io.stdout(`${JSON.stringify({ ok: false, error: failure }, null, 2)}\n`)
     } else if (!(error instanceof CommanderError)) {
@@ -38,11 +38,19 @@ interface Failure {
   details: Record<string, unknown>
 }
 
-function toFailure(error: unknown): Failure {
+function toFailure(error: unknown, program: Command, argv: string[]): Failure {
   if (error instanceof FrameboardError) {
     return { code: error.code, message: error.message, details: error.details }
   }
   if (error instanceof CommanderError) {
+    const group = deepestCommand(program, argv)
+    // A group takes no flags, so `frame --json` fails on the flag before the missing verb.
+    if (
+      group.commands.length > 0 &&
+      ['commander.help', 'commander.unknownOption'].includes(error.code)
+    ) {
+      return missingCommand(group)
+    }
     return {
       code: 'usage',
       message: error.message.replace(/^error: /, ''),
@@ -53,5 +61,33 @@ function toFailure(error: unknown): Failure {
     code: 'internal',
     message: error instanceof Error ? error.message : String(error),
     details: {},
+  }
+}
+
+/** The command the words of `argv` reach, stopping at the first that names none. */
+function deepestCommand(program: Command, argv: string[]): Command {
+  let command = program
+  for (const word of argv.filter((arg) => !arg.startsWith('-'))) {
+    const next = command.commands.find((child) => child.name() === word)
+    if (!next) break
+    command = next
+  }
+  return command
+}
+
+/**
+ * Commander's error for a group run with no verb carries only its help text,
+ * which `--json` silences, so name the verbs the group takes instead.
+ */
+function missingCommand(group: Command): Failure {
+  const path = [group.name()]
+  for (let parent = group.parent; parent; parent = parent.parent) {
+    path.unshift(parent.name())
+  }
+  const commands = group.commands.map((command) => command.name())
+  return {
+    code: 'usage',
+    message: `${path.join(' ')} needs a command, one of ${commands.join(', ')}.`,
+    details: { commander: 'commander.help', commands },
   }
 }
