@@ -65,10 +65,8 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 ### An edit splices bytes at parse5's offsets and never serializes
 
 - `src/server/edit/` parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span, so spacing, line breaks, and every other attribute keep the file's own bytes
-- Serializing a tree after a DOM change was dropped, because it rewrites the whole file's formatting
-- Bun's `HTMLRewriter` was dropped, because Node lacks it and its `setAttribute` rewrites the whole start tag
+- Serializing the tree and Bun's `HTMLRewriter` were dropped, because the first rewrites the file's formatting and the second is missing on Node and rewrites the whole start tag
 - The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
-- A fast-check property run over hand frames in `test/fixtures/frames/` and 2,000 generated frames proves the bar, and CI compares its output on Node and Bun
 
 ### Notes sit beside the frames, never inside them
 
@@ -92,6 +90,6 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 
 ### Edit writer
 
-- The edit writer swaps a leading BOM for a space before parsing, because parse5 reads the BOM as text and implies the wrappers, while a browser's decoder drops it first
+- The edit writer swaps a leading BOM for a space before parsing, because parse5 reads it as text and implies the wrappers, where a browser drops it
 - An edit refuses a file whose bytes do not survive a UTF-8 round trip, because decoding rewrites a stray `0xFF` as `EF BF BD` far from the edited element
-- An edit writes through a dot-named temporary file and rereads the hash just before the rename, so a page watcher never reads the temporary file as a frame and a write landing meanwhile is refused rather than overwritten
+- An edit writes through a dot-named temporary file and rereads the hash before the rename, so a watcher skips the file and a write landing meanwhile is refused
