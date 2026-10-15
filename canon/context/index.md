@@ -7,7 +7,7 @@ subtitle: Per-domain narrative loaded on demand
 
 Per-domain narrative loaded on demand
 
-- [Board](board.md): The browser app, being the home view, the board shell, the inspector, the command palette, undo, and the editing claim
+- [Board](board/index.md): The browser app, split into the shell, the inspector, and the hand actions
 - [Capture](capture.md): Screenshots of frames and pages in either theme
 - [Checks](checks.md): The content rules Frameboard enforces, the three paths that run them, and a project's own rules
 - [CI](ci.md): GitHub Actions workflow triggers and checks
