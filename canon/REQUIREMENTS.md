@@ -23,7 +23,7 @@ This record holds at most 600 words.
 ### Hand edits
 
 - The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame at a phone, tablet, or desktop size, selects several frames, and undoes their own changes
-- A developer selects a frame or element and adjusts what is quicker by hand, being frame position and size, and an element's name, opacity, radius, type, fill, and text. A frame's colors show with their token names.
+- A developer selects a frame or element and adjusts what is quicker by hand, being frame position and size, and an element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors show with their token names.
 
 ### Working with the agent
 
@@ -49,7 +49,7 @@ This record holds at most 600 words.
 
 - Drawing tools, vector editing, or image editing
 - Layout editing, being flex, padding, element size, or position inside a frame
-- Effects controls such as border, shadow, and blending
+- Effects controls such as blending and filters
 - Components, constraints, or a plugin system
 
 ### Deferred
