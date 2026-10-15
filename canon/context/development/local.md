@@ -15,6 +15,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 - `.husky/` owns the git hooks
 - `e2e/` owns the Playwright specs, the capture harness `e2e/screenshot.ts`, its cases under `e2e/capture/`, and the committed baseline under `e2e/evidence/`
 - `test/` owns the fixture boards under `test/fixtures/boards/` and the helpers under `test/support/`, and holds no tests itself, so unit tests, specs, and later rows read one copy
+- `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
 
 ### Setup
 
@@ -65,6 +66,5 @@ Owns how the project runs on a developer machine, being installing the toolchain
   - Run `bun run format`, since the sync writes `canon/config/config.json` in a shape oxfmt rejects.
 - `scripts/worktree-port.sh` hashes a linked worktree's name into an offset from 1 to 50, leaving 0 for the main checkout, so two worktrees collide about 1 time in 50. Set `WORKTREE_PORT_OFFSET` by hand to break the tie.
 - Playwright never reuses a running server, so a port collision fails the run rather than testing another branch's code
-- A `preview` left running on the e2e port makes the e2e `serve` reuse it and exit, since both serve the `basic` fixture board, so stop the preview before running specs
-- Fixture boards are excluded from oxfmt in `.prettierignore`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
+- A `preview` running on any port makes the e2e `serve` find it through the `basic` board's shared address file, report `reused`, and exit, so stop the preview before running specs
 - A capture case that sets the chrome's `.dark` class from an init script waits for `DOMContentLoaded`. The script runs before `<html>` exists, and the frame silently comes out light.

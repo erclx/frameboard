@@ -21,7 +21,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `serve` starts the server for one board folder and records its address in the folder, so another session reuses it
   - In a folder with no board it creates `.frameboard/` with one empty project
   - It reuses a board tab already connected to the server and opens one only when none is connected, unless `--no-open` is passed
-  - A second `serve` for a board whose recorded server answers its health check prints that server's address with `reused: true` and binds nothing
+  - A second `serve` for a board whose recorded server answers its health check prints that server's address with `reused: true` and binds nothing, so two sessions on one board share one server
 - `show <frame>` points the open board at a frame
 - `list` shows projects, pages, and frames
 - `docs` prints verbs, flags, record shapes, the content format, and the check list
@@ -33,7 +33,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `frame add`, `duplicate`, `move`, `resize`, `fit`, `order`, `rename`, and `delete` manage frames, and `frame hide` and `frame lock` set or clear those flags
   - `fit` sets a frame's height to its content, and `order` sets its stacking order
   - `duplicate` and `move` take a target page in any project, which is how copy and cut-and-paste reach the CLI
-  - `move` with `--x` and `--y` and no `--to` sets the position alone, writing `layout.json` and never the frame
+  - `move` with `--x` and `--y` and no `--to` sets the position alone, writing `layout.json` and never the frame, so a move never collides with an agent rewriting the file
 
 ### Reading the developer
 
