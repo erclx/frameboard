@@ -16,7 +16,8 @@ Owns the agent interface: every verb an agent or script runs, the `docs` verb th
 
 ### Verbs
 
-- `serve` starts the server for one board folder and records its address in the folder, so another session reuses it. In a folder with no board it creates `.frameboard/` with one empty project. A fresh start opens the board in the browser unless `--no-open` is passed, and a run that finds a server already up opens nothing
+- `serve` starts the server for one board folder and records its address in the folder, so another session reuses it. In a folder with no board it creates `.frameboard/` with one empty project. It reuses a board tab already connected to the server and opens one in the browser only when none is connected, unless `--no-open` is passed
+- `show <frame>` points the open board at a frame
 - `list` shows projects, pages, and frames
 - `project add`, `rename`, and `delete` manage projects
 - `page add`, `duplicate`, `rename`, `move`, and `delete` manage pages, where `move` reorders
