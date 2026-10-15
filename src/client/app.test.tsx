@@ -1,20 +1,54 @@
 import './styles.css'
 
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { App } from './app'
 
 describe('App', () => {
-  it('paints the kit button with the primary token', () => {
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('should paint the kit button with the light primary blue', () => {
     render(<App />)
 
     const button = screen.getByRole('button')
-    const primary = getComputedStyle(document.documentElement)
-      .getPropertyValue('--primary')
-      .trim()
 
-    expect(primary).not.toBe('')
-    expect(getComputedStyle(button).backgroundColor).toBe(primary)
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(47, 123, 240)')
+  })
+
+  it('should paint the kit button with the dark primary blue under .dark', () => {
+    document.documentElement.classList.add('dark')
+
+    render(<App />)
+
+    const button = screen.getByRole('button')
+
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(78, 146, 246)')
+  })
+})
+
+describe('styles.css', () => {
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('should carry the light claim token to the text-claim utility', () => {
+    render(<span className="text-claim">claimed</span>)
+
+    expect(getComputedStyle(screen.getByText('claimed')).color).toBe(
+      'rgb(155, 63, 209)',
+    )
+  })
+
+  it('should carry the dark claim token to the text-claim utility under .dark', () => {
+    document.documentElement.classList.add('dark')
+
+    render(<span className="text-claim">claimed</span>)
+
+    expect(getComputedStyle(screen.getByText('claimed')).color).toBe(
+      'rgb(224, 163, 255)',
+    )
   })
 })
