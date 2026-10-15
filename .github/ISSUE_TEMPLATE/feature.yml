@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest something Frameboard should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: job
+    attributes:
+      label: The job
+      description: What you were trying to get done when Frameboard fell short, and how you work around it today.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      description: Which part of Frameboard the request touches.
+      options:
+        - Board
+        - CLI
+        - Skill
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The behavior you have in mind, if you have one.
