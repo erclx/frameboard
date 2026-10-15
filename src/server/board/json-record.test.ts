@@ -125,6 +125,41 @@ describe('json-record', () => {
       expect(readdirSync(dir)).toEqual(['layout.json'])
     })
 
+    it('lands both of two writers breaking one dead lock at once', async () => {
+      const deadPid = spawnSync('true').pid
+      writeFileSync(`${path}.lock`, JSON.stringify({ pid: deadPid }))
+
+      await Promise.all(
+        ['hero', 'about'].map((name, index) =>
+          updateRecord(
+            path,
+            layoutSpec,
+            (layout) => ({
+              ...layout,
+              frames: { ...layout.frames, [name]: box(index) },
+            }),
+            { timeoutMs: 500 },
+          ),
+        ),
+      )
+
+      expect(
+        Object.keys(JSON.parse(readFileSync(path, 'utf8')).frames).sort(),
+      ).toEqual(['about', 'hero'])
+      expect(readdirSync(dir)).toEqual(['layout.json'])
+    })
+
+    it('leaves a lock another writer took in its place on release', async () => {
+      const theirs = JSON.stringify({ pid: process.pid, nonce: 'theirs' })
+
+      await updateRecord(path, layoutSpec, (layout) => {
+        writeFileSync(`${path}.lock`, theirs)
+        return layout
+      })
+
+      expect(readFileSync(`${path}.lock`, 'utf8')).toBe(theirs)
+    })
+
     it('breaks a lock older than 10 s whatever its pid', async () => {
       writeFileSync(`${path}.lock`, JSON.stringify({ pid: process.pid }))
       const old = new Date(Date.now() - 11_000)

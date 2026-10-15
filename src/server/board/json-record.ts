@@ -1,5 +1,13 @@
 import { randomBytes } from 'node:crypto'
-import { open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import {
+  link,
+  open,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 import type { z } from 'zod'
@@ -102,35 +110,36 @@ export async function withLocks<T>(
   options: LockOptions = {},
 ): Promise<T> {
   const ordered = [...new Set(paths)].sort()
-  const held: string[] = []
+  const held: { lock: string; nonce: string }[] = []
   try {
     for (const path of ordered) {
-      await acquire(
-        `${path}${LOCK_SUFFIX}`,
-        options.timeoutMs ?? LOCK_TIMEOUT_MS,
-      )
-      held.push(`${path}${LOCK_SUFFIX}`)
+      const lock = `${path}${LOCK_SUFFIX}`
+      const nonce = await acquire(lock, options.timeoutMs ?? LOCK_TIMEOUT_MS)
+      held.push({ lock, nonce })
     }
     return await run()
   } finally {
-    await Promise.all(held.map((lock) => rm(lock, { force: true })))
+    await Promise.all(held.map(({ lock, nonce }) => release(lock, nonce)))
   }
 }
 
-async function acquire(lock: string, timeoutMs: number): Promise<void> {
+/** Takes the lock and returns the nonce written into it, which release checks. */
+async function acquire(lock: string, timeoutMs: number): Promise<string> {
   const deadline = Date.now() + timeoutMs
+  const nonce = randomBytes(8).toString('hex')
   for (;;) {
     try {
       const handle = await open(lock, 'wx')
-      await handle.writeFile(JSON.stringify({ pid: process.pid }))
+      await handle.writeFile(JSON.stringify({ pid: process.pid, nonce }))
       await handle.close()
-      return
+      return nonce
     } catch (error) {
       if (!isCode(error, 'EEXIST')) throw error
     }
 
-    if (await isStale(lock)) {
-      await rm(lock, { force: true })
+    const stale = await staleContent(lock)
+    if (stale !== null) {
+      await breakLock(lock, stale)
       continue
     }
     if (Date.now() >= deadline) {
@@ -144,8 +153,11 @@ async function acquire(lock: string, timeoutMs: number): Promise<void> {
   }
 }
 
-/** A lock whose pid is dead or that is older than 10 s is broken and taken. */
-async function isStale(lock: string): Promise<boolean> {
+/**
+ * The content of a lock whose pid is dead or that is older than 10 s, which
+ * is broken and taken, else null.
+ */
+async function staleContent(lock: string): Promise<string | null> {
   let text: string
   let modifiedAt: number
   try {
@@ -155,13 +167,49 @@ async function isStale(lock: string): Promise<boolean> {
     ])
   } catch (error) {
     // Gone since the open failed, so the next attempt takes it.
-    if (isCode(error, 'ENOENT')) return false
+    if (isCode(error, 'ENOENT')) return null
     throw error
   }
-  if (Date.now() - modifiedAt > LOCK_STALE_MS) return true
+  if (Date.now() - modifiedAt > LOCK_STALE_MS) return text
   // An empty lock is one created but not yet written, so it is live until it ages out.
   const pid = Number(/"pid":(\d+)/.exec(text)?.[1])
-  return Number.isInteger(pid) && !isAlive(pid)
+  return Number.isInteger(pid) && !isAlive(pid) ? text : null
+}
+
+/**
+ * Breaks a stale lock by renaming it aside, so of two waiters judging one
+ * lock stale only the first rename wins. A waiter whose rename caught a fresh
+ * lock instead, taken since it judged, puts that lock back.
+ */
+async function breakLock(lock: string, judged: string): Promise<void> {
+  const record = lock.slice(0, -LOCK_SUFFIX.length)
+  const aside = `${record}.${randomBytes(4).toString('hex')}.broken${LOCK_SUFFIX}`
+  try {
+    await rename(lock, aside)
+  } catch (error) {
+    if (isCode(error, 'ENOENT')) return
+    throw error
+  }
+  try {
+    if ((await readFile(aside, 'utf8')) !== judged) {
+      await link(aside, lock).catch((error: unknown) => {
+        if (!isCode(error, 'EEXIST')) throw error
+      })
+    }
+  } finally {
+    await rm(aside, { force: true })
+  }
+}
+
+/** Removes the lock only while it still holds this writer's nonce. */
+async function release(lock: string, nonce: string): Promise<void> {
+  try {
+    if ((await readFile(lock, 'utf8')).includes(`"nonce":"${nonce}"`)) {
+      await rm(lock, { force: true })
+    }
+  } catch (error) {
+    if (!isCode(error, 'ENOENT')) throw error
+  }
 }
 
 export function isAlive(pid: number): boolean {
