@@ -12,7 +12,7 @@ Owns the content rules and where they run. A frame that breaks one is reported w
 ## Layout
 
 - `src/server/` owns the rules, the runner the server's watcher calls, and the browser-backed rules
-- `plugin/` owns the hook that runs `check` after an agent writes a frame
+- `plugins/frameboard/` owns the hook that runs `check` after an agent writes a frame
 
 ### The built-in rules
 

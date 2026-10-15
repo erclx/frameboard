@@ -12,7 +12,7 @@ Owns the agent interface: every verb an agent or script runs, the `docs` verb th
 ## Layout
 
 - `src/cli/` owns the verbs
-- `plugin/` owns the `frameboard` skill, the check hook, and the inbox monitor
+- `plugins/frameboard/` owns the `frameboard` skill, the check hook, and the inbox monitor
 
 ### Verbs
 
