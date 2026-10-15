@@ -11,8 +11,8 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 
 ## Layout
 
-- `src/shared/` owns the types and schemas for the layout file and every record the CLI and server exchange
-- `src/server/` owns reading, watching, and writing the board folder
+- `src/shared/` owns the types and schemas for the layout file and every record the CLI and server exchange, with the schemas under `src/shared/records/`
+- `src/server/` owns reading, watching, and writing the board folder, with the folder model under `src/server/board/`
 
 ### The shape on disk
 
@@ -21,6 +21,19 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 - Each page holds one `layout.json` beside its frames, keyed by frame name, with each frame's x, y, width, and height, its stacking order, and whether it is hidden or locked
 - Each page holds a `notes.json` beside its layout, holding the developer's pinned notes for the agent
 - Each project holds an `assets/` folder for images, GIFs, video, SVG, fonts, and shared stylesheets that any of its frames may use
+
+### Records beside the content
+
+- A board folder holds `board.json`, so a verb finds a standalone board by walking up from the working folder, stopping at the repository top, rather than needing `--root`.
+- A project may hold `project.json` listing its pages in display order, so pages reorder without renaming folders, and pages it does not list follow by name.
+- `serve` writes `.run/address.json` holding the server's URL, pid, and token at mode 0600, and `.run/` ignores itself through its own `.gitignore`, so the token never reaches a commit.
+- Every record carries `"version": 1` and reads through a loose schema, so a newer Frameboard's keys survive a write by an older one.
+
+### Names
+
+- Projects, pages, and frames share one name rule in `src/shared/names.ts`, so the verbs and the naming check agree on which names are valid.
+- Two names collide when they match case-insensitively, because the default macOS volume is case-insensitive and two such files cannot sit side by side there.
+- `assets` is reserved as a page name, since that folder holds the project's shared files.
 
 ## Decisions
 
@@ -32,6 +45,11 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 ### Layout sits beside the frames, never inside them
 
 - Moving or resizing a frame writes `layout.json` alone, so a move never rewrites markup and never collides with an agent rewriting the file
+
+### A frame with no layout entry still shows
+
+- A frame file with no entry reads as unplaced, at desktop size and 80 px past every frame placed before it, so a file an agent wrote without `frame add` still appears on the board.
+- `frame add` persists that same box through `placeNext` in `src/server/board/scan.ts`, so the board and the CLI never place one frame in two places.
 
 ### Frame order is stacking order
 
@@ -58,6 +76,7 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 ## Gotchas
 
 - Every writer of `layout.json` takes a lock file beside it, merges its change, and replaces the file atomically, since two writers replacing the whole file each lose the other's edit
+- Lock files `<record>.lock` and temp files `<record>.<pid>.<random>.tmp` sit beside the record they guard, so a reader or a watcher skips both, along with `.run/`
 - A layout that does not parse is a defect to report, never an empty file to overwrite, since overwriting erases every box it held
 - A frame that states a `head` must state a `body`, and every table must state its `tbody`, because the browser builds a missing one and shifts every address after it
 - A folder whose name opens with a dot is reserved for files Frameboard generates.
