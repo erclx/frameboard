@@ -64,3 +64,4 @@ Owns how the project runs on a developer machine, being installing the toolchain
   - Run `bun run format`, since the sync writes `canon/config/config.json` in a shape oxfmt rejects.
 - `scripts/worktree-port.sh` hashes a linked worktree's name into an offset from 1 to 50, leaving 0 for the main checkout, so two worktrees collide about 1 time in 50. Set `WORKTREE_PORT_OFFSET` by hand to break the tie.
 - Playwright never reuses a running server, so a port collision fails the run rather than testing another branch's code
+- A capture case that sets the chrome's `.dark` class from an init script waits for `DOMContentLoaded`. The script runs before `<html>` exists, and the frame silently comes out light.
