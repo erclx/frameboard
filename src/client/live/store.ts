@@ -9,6 +9,8 @@ export interface LiveState {
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
   connected: boolean
+  /** The frame `show` last named, until its page's canvas brings it into view. */
+  focus: string | null
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -18,6 +20,7 @@ export function createLiveStore(): LiveStore {
     board: null,
     reloads: {},
     connected: false,
+    focus: null,
   }))
 }
 

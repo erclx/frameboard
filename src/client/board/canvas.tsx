@@ -1,6 +1,6 @@
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
@@ -11,6 +11,8 @@ const SCALE_EXTENT: [number, number] = [0.02, 4]
 const FIT_PADDING = 64
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
+/** How long the view takes to travel to a shown frame. */
+const FOCUS_MS = 400
 
 /** Each page's view for the session, so leaving a page and coming back keeps it. */
 const pageViews = new Map<string, View>()
@@ -19,6 +21,10 @@ interface CanvasProps {
   page: PageRecord
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
+  /** A frame to bring into view, as `show` asks, once it is on this page. */
+  focus?: string | null
+  /** Called once the view has started toward `focus`. */
+  onFocused?: () => void
 }
 
 /**
@@ -27,9 +33,10 @@ interface CanvasProps {
  * state, so a gesture renders nothing. Only once the view settles does React
  * hear of it, to swap frames far offscreen for placeholders.
  */
-export function Canvas({ page, reloads }: CanvasProps) {
+export function Canvas({ page, reloads, focus, onFocused }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
+  const moveToRef = useRef<((view: View) => void) | null>(null)
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )
@@ -110,12 +117,53 @@ export function Canvas({ page, reloads }: CanvasProps) {
     )
     resize.observe(viewport)
 
+    let animation = 0
+    const apply = ({ x, y, k }: View) =>
+      zoomer.transform(selection, zoomIdentity.translate(x, y).scale(k))
+    moveToRef.current = (target) => {
+      cancelAnimationFrame(animation)
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        apply(target)
+        return
+      }
+      const from = zoomTransform(viewport)
+      const began = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - began) / FOCUS_MS)
+        if (t === 1) {
+          apply(target)
+          return
+        }
+        const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2
+        apply({
+          x: from.x + (target.x - from.x) * eased,
+          y: from.y + (target.y - from.y) * eased,
+          // Scale travels evenly in ratio, so zooming in and out read alike.
+          k: from.k * (target.k / from.k) ** eased,
+        })
+        animation = requestAnimationFrame(step)
+      }
+      animation = requestAnimationFrame(step)
+    }
+
     return () => {
       clearTimeout(timer)
+      cancelAnimationFrame(animation)
+      moveToRef.current = null
       resize.disconnect()
       selection.on('.zoom', null)
     }
   }, [page.ref])
+
+  // Waits for the frame to reach this page's record, since a shown frame can
+  // arrive a batch ahead of the board that holds it.
+  useEffect(() => {
+    const frame = frames.find((candidate) => candidate.ref === focus)
+    const viewport = viewportRef.current
+    if (!frame || !viewport || !moveToRef.current) return
+    moveToRef.current(fitView([frame], sizeOf(viewport)))
+    onFocused?.()
+  }, [focus, frames, onFocused])
 
   const live = useMemo(
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),

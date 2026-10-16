@@ -1,8 +1,9 @@
 import { House } from 'lucide-react'
+import { useCallback } from 'react'
 import { Link, Redirect } from 'wouter'
 
 import { buttonVariants } from '@/client/components/ui/button'
-import { useLive } from '@/client/live/store'
+import { liveStore, useLive } from '@/client/live/store'
 import { boardUrl } from '@/shared/board-urls'
 
 import { Canvas } from './canvas'
@@ -20,6 +21,8 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     state.board?.projects.find((candidate) => candidate.name === project),
   )
   const reloads = useLive((state) => state.reloads)
+  const focus = useLive((state) => state.focus)
+  const clearFocus = useCallback(() => liveStore.setState({ focus: null }), [])
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
@@ -54,7 +57,13 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
       </aside>
       <main className="min-w-0 flex-1">
         {current ? (
-          <Canvas key={current.ref} page={current} reloads={reloads} />
+          <Canvas
+            key={current.ref}
+            page={current}
+            reloads={reloads}
+            focus={focus}
+            onFocused={clearFocus}
+          />
         ) : (
           <Missing
             message={

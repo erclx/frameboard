@@ -5,6 +5,8 @@ const CLI = resolve('dist/cli.js')
 
 export interface BoardServer {
   url: string
+  /** The `data` of the envelope `serve --json` printed. */
+  data: Record<string, unknown>
   stop: () => Promise<void>
 }
 
@@ -28,14 +30,18 @@ export function serveBoard(root: string): Promise<BoardServer> {
     let stdout = ''
     child.stdout.on('data', (chunk: Buffer) => {
       stdout += chunk.toString()
-      let envelope: { data: { url: string } }
+      let envelope: { data: { url: string } & Record<string, unknown> }
       try {
         envelope = JSON.parse(stdout)
       } catch {
         // The document has not finished printing.
         return
       }
-      done({ url: envelope.data.url, stop: () => stop(child) })
+      done({
+        url: envelope.data.url,
+        data: envelope.data,
+        stop: () => stop(child),
+      })
     })
     child.once('exit', (code) => fail(new Error(`serve exited ${code}`)))
   })

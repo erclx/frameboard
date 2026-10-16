@@ -180,6 +180,58 @@ describe('Canvas', () => {
     expect(container.querySelector('[data-frame]')).toBeNull()
   })
 
+  it('brings a focused frame into view and reports it', () => {
+    let focused = 0
+    const { container } = render(
+      <div style={{ width: 800, height: 600 }}>
+        <Canvas
+          page={page('studio/focus', [
+            frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+            frame('b', { x: 5000, y: 0, width: 200, height: 200 }),
+          ])}
+          reloads={{}}
+          focus="studio/home/b"
+          onFocused={() => (focused += 1)}
+        />
+      </div>,
+    )
+
+    expect(focused).toBe(1)
+    // Fitting b alone: centered at full size, 300 in from the left, 200 down.
+    return expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(-4700px, 200px) scale(1)')
+  })
+
+  it('waits for a focused frame that has not reached the page yet', () => {
+    let focused = 0
+    const { rerender } = render(
+      <Canvas
+        page={page('studio/later', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+        ])}
+        reloads={{}}
+        focus="studio/home/new"
+        onFocused={() => (focused += 1)}
+      />,
+    )
+    expect(focused).toBe(0)
+
+    rerender(
+      <Canvas
+        page={page('studio/later', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+          frame('new', { x: 400, y: 0, width: 200, height: 200 }),
+        ])}
+        reloads={{}}
+        focus="studio/home/new"
+        onFocused={() => (focused += 1)}
+      />,
+    )
+
+    expect(focused).toBe(1)
+  })
+
   it('keeps a page view after leaving the page and coming back', () => {
     const content = page('studio/memory', [
       frame('a', { x: 0, y: 0, width: 200, height: 200 }),
