@@ -37,7 +37,15 @@ export interface BoardWatcher {
 export async function watchBoard(root: string): Promise<BoardWatcher> {
   const listeners = new Set<BatchListener>()
   const batcher = createBatcher((paths) => {
-    for (const listener of listeners) listener(paths)
+    for (const listener of listeners) {
+      // A listener that throws would escape the timer as an uncaught
+      // exception, stopping the server and every listener after it.
+      try {
+        listener(paths)
+      } catch (error) {
+        console.error('frameboard: a board watch listener failed', error)
+      }
+    }
   })
 
   const watcher = watch(root, {
@@ -116,8 +124,8 @@ function isIgnored(root: string, path: string): boolean {
 }
 
 /**
- * The frames a batch changed what they render: a frame's own file reloads
- * that frame, any other file in a page folder reloads the page's frames since
+ * The frames a batch changed what they render: a frame's own file, or a temp
+ * file it is saved through, reloads that frame, any other file in a page folder reloads the page's frames since
  * any of them may link it, and an asset reloads the whole project. A layout or
  * notes file reloads nothing, since moving a frame must not restart it.
  * Only frames in `board` are named, in board order.
@@ -136,10 +144,11 @@ export function reloadRefs(
     } else if (rest.length === 1) {
       const name = rest[0] ?? ''
       if (name === LAYOUT_FILE || name === NOTES_FILE) continue
+      const frame = frameNameOf(name)
       refs.add(
-        name.endsWith(FRAME_EXTENSION)
-          ? `${project}/${folder}/${name.slice(0, -FRAME_EXTENSION.length)}`
-          : `${project}/${folder}/*`,
+        frame === null
+          ? `${project}/${folder}/*`
+          : `${project}/${folder}/${frame}`,
       )
     }
   }
@@ -159,4 +168,16 @@ export function reloadRefs(
     }
   }
   return named
+}
+
+/**
+ * The frame a page-folder file belongs to: `hero.html` itself, or a temp file
+ * an editor or atomic writer saves it through, such as `hero.html.swap`.
+ */
+function frameNameOf(name: string): string | null {
+  if (name.endsWith(FRAME_EXTENSION)) {
+    return name.slice(0, -FRAME_EXTENSION.length)
+  }
+  const temp = name.lastIndexOf(`${FRAME_EXTENSION}.`)
+  return temp > 0 ? name.slice(0, temp) : null
 }

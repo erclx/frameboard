@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -130,6 +130,21 @@ describe('startServer live socket', () => {
       })
       .toEqual(['board', 'reload'])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+  })
+
+  it('reloads only the frame saved through a temp file and a rename', async () => {
+    const frame = join(board.root, 'studio/home/hero.html')
+    writeFileSync(`${frame}.swap`, '<p>saved</p>')
+    renameSync(`${frame}.swap`, frame)
+
+    // The temp write and the rename can land in one batch or two, and either
+    // way no reload may name another frame on the page.
+    const reloads = () =>
+      messages.flatMap((message) =>
+        message.type === 'reload' ? message.refs : [],
+      )
+    await expect.poll(reloads, { timeout: 5000 }).toContain('studio/home/hero')
+    expect(new Set(reloads())).toEqual(new Set(['studio/home/hero']))
   })
 
   it('pushes the board and reloads nothing for a layout write', async () => {

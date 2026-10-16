@@ -93,10 +93,18 @@ async function listen({
   let bound = 0
   let token: string | null = null
   const boundPort = () => bound
+  // Scans run one at a time, so a slow scan never lands after a newer one and
+  // sends a board older than the last.
+  let scanning: Promise<unknown> = Promise.resolve()
+  const inTurn = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = scanning.then(task)
+    scanning = run.catch(() => {})
+    return run
+  }
   const hub = createHub({
     tabs,
     port: boundPort,
-    snapshot: () => scanBoard(root),
+    snapshot: () => inTurn(() => scanBoard(root)),
   })
   const app = createApp({
     clientDir,
@@ -132,7 +140,7 @@ async function listen({
   server.on('upgrade', hub.handleUpgrade)
 
   const watcher = await watchBoard(root)
-  watcher.onBatch((paths) => void pushBatch(root, paths, hub))
+  watcher.onBatch((paths) => void inTurn(() => pushBatch(root, paths, hub)))
 
   return {
     hostname: HOSTNAME,

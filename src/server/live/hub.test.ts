@@ -81,14 +81,18 @@ describe('createHub', () => {
     await expect.poll(() => tabs.count).toBe(0)
   })
 
-  it('counts a client that never says hello as no tab', async () => {
+  it('counts a hello of another role or a message that is not one as no tab', async () => {
     const socket = connect()
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'inbox' }))
     socket.send('not json')
+    // Messages are handled in order, so once the board hello's snapshot
+    // arrives the two before it have been read.
+    const snapshot = nextMessage(socket)
+    socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+    await snapshot
 
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(tabs.count).toBe(0)
+    expect(tabs.count).toBe(1)
   })
 
   it('broadcasts to every board client', async () => {

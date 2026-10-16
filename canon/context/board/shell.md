@@ -70,7 +70,7 @@ Owns the browser app around the frames, being the home view, the board's panels,
 
 ### A change reloads only what it can affect
 
-- A frame's own `.html` reloads that frame, and any other file in a page folder reloads every frame on the page, because any of them may link it.
+- A frame's own `.html`, or a temp file it is saved through such as `hero.html.swap`, reloads that frame, and any other page-folder file reloads the whole page, since any frame may link it.
 - A file under `assets/` reloads every frame in the project, since any page may link an asset.
 - `layout.json` and `notes.json` reload nothing, so a move never restarts a frame's animation or video.
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so a burst of writes from one agent turn costs one rescan and one snapshot.

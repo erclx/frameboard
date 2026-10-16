@@ -16,8 +16,6 @@ import {
   watchBoard,
 } from './watch'
 
-/** How long a test waits to be sure no batch arrives, well past the 250 ms ceiling. */
-const QUIET_MS = 600
 /** How long a test waits for the file system to report a write. */
 const SEEN_MS = 5000
 
@@ -131,6 +129,15 @@ describe('reloadRefs', () => {
     expect(await refsFor(path)).toEqual([])
   })
 
+  it.each([
+    ['an editor swap file', 'studio/home/hero.html.swap'],
+    ['an atomic writer temp file', 'studio/home/hero.html.3f2a91c4'],
+  ])('reloads only the frame saved through %s', async (_case, path) => {
+    expect(await refsFor(path, 'studio/home/hero.html')).toEqual([
+      'studio/home/hero',
+    ])
+  })
+
   it('names each frame once across a batch', async () => {
     expect(
       await refsFor('studio/home/hero.html', 'studio/home/styles.css'),
@@ -183,10 +190,27 @@ describe('watchBoard', () => {
     writeFileSync(join(board.root, 'studio/home/.draft.html'), 'x')
     writeFileSync(join(board.root, 'studio/home/layout.json.lock'), 'x')
     writeFileSync(join(board.root, 'studio/home/hero.html.tmp'), 'x')
+    // A watched write after the ignored ones, so its batch arriving means
+    // every earlier event has been reported or dropped.
+    const sentinel = join(board.root, 'studio/home/sentinel.txt')
+    writeFileSync(sentinel, 'x')
 
-    await new Promise((resolve) => setTimeout(resolve, QUIET_MS))
+    await expect
+      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .toContain(sentinel)
+    expect(new Set(batches.flat())).toEqual(new Set([sentinel]))
+  })
 
-    expect(batches).toEqual([])
+  it('keeps reporting to later listeners when one throws', async () => {
+    const after: string[][] = []
+    watcher.onBatch(() => {
+      throw new Error('a check that broke')
+    })
+    watcher.onBatch((paths) => after.push(paths))
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>three</p>')
+
+    await expect.poll(() => after.length, { timeout: SEEN_MS }).toBe(1)
   })
 
   it('stops reporting to a listener that unsubscribed', async () => {
