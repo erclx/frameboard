@@ -21,7 +21,7 @@ export default mergeConfig(
           extends: true,
           test: {
             name: 'browser',
-            include: ['src/client/**/*.test.tsx'],
+            include: ['src/client/**/*.test.{ts,tsx}'],
             setupFiles: ['src/test/setup.ts'],
             browser: {
               enabled: true,

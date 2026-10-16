@@ -3,15 +3,15 @@ import './styles.css'
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { App } from './app'
+import { Button } from './components/ui/button'
 
-describe('App', () => {
+describe('Button', () => {
   afterEach(() => {
     document.documentElement.classList.remove('dark')
   })
 
   it('should paint the kit button with the light primary blue', () => {
-    render(<App />)
+    render(<Button>New board</Button>)
 
     const button = screen.getByRole('button')
 
@@ -21,7 +21,7 @@ describe('App', () => {
   it('should paint the kit button with the dark primary blue under .dark', () => {
     document.documentElement.classList.add('dark')
 
-    render(<App />)
+    render(<Button>New board</Button>)
 
     const button = screen.getByRole('button')
 
