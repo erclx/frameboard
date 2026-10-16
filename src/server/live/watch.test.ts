@@ -1,7 +1,7 @@
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { scanBoard } from '@/server/board/scan'
 
@@ -9,10 +9,76 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
-import { type BoardWatcher, reloadRefs, watchBoard } from './watch'
+import {
+  type BoardWatcher,
+  createBatcher,
+  reloadRefs,
+  watchBoard,
+} from './watch'
 
 /** How long a test waits to be sure no batch arrives, well past the 250 ms ceiling. */
 const QUIET_MS = 600
+/** How long a test waits for the file system to report a write. */
+const SEEN_MS = 5000
+
+describe('createBatcher', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('closes a batch 50 ms after its last path', () => {
+    vi.useFakeTimers()
+    const batches: string[][] = []
+    const batcher = createBatcher((paths) => batches.push(paths))
+
+    batcher.add('a')
+    vi.advanceTimersByTime(40)
+    batcher.add('b')
+    vi.advanceTimersByTime(49)
+    expect(batches).toEqual([])
+
+    vi.advanceTimersByTime(1)
+    expect(batches).toEqual([['a', 'b']])
+  })
+
+  it('closes a busy batch 250 ms after its first path', () => {
+    vi.useFakeTimers()
+    const batches: string[][] = []
+    const batcher = createBatcher((paths) => batches.push(paths))
+
+    for (let ms = 0; ms < 250; ms += 25) {
+      batcher.add(`path-${ms}`)
+      vi.advanceTimersByTime(25)
+    }
+
+    expect(batches).toHaveLength(1)
+    expect(batches[0]).toHaveLength(10)
+  })
+
+  it('names a path once per batch', () => {
+    vi.useFakeTimers()
+    const batches: string[][] = []
+    const batcher = createBatcher((paths) => batches.push(paths))
+
+    batcher.add('a')
+    batcher.add('a')
+    vi.advanceTimersByTime(50)
+
+    expect(batches).toEqual([['a']])
+  })
+
+  it('flushes nothing once cancelled', () => {
+    vi.useFakeTimers()
+    const batches: string[][] = []
+    const batcher = createBatcher((paths) => batches.push(paths))
+
+    batcher.add('a')
+    batcher.cancel()
+    vi.advanceTimersByTime(300)
+
+    expect(batches).toEqual([])
+  })
+})
 
 describe('reloadRefs', () => {
   let board: FixtureBoard
@@ -89,15 +155,16 @@ describe('watchBoard', () => {
     board.cleanup()
   })
 
-  it('gathers writes close together into one batch', async () => {
+  it('reports each write in a batch', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>one</p>')
     writeFileSync(join(board.root, 'studio/home/styles.css'), 'p {}')
 
-    await expect.poll(() => batches.length).toBe(1)
-    expect(batches[0]?.sort()).toEqual([
-      join(board.root, 'studio/home/hero.html'),
-      join(board.root, 'studio/home/styles.css'),
-    ])
+    await expect
+      .poll(() => [...new Set(batches.flat())].sort(), { timeout: SEEN_MS })
+      .toEqual([
+        join(board.root, 'studio/home/hero.html'),
+        join(board.root, 'studio/home/styles.css'),
+      ])
   })
 
   it('reports a frame saved through a temp file and a rename as that frame', async () => {
@@ -105,7 +172,9 @@ describe('watchBoard', () => {
     writeFileSync(`${frame}.swap`, '<p>saved</p>')
     renameSync(`${frame}.swap`, frame)
 
-    await expect.poll(() => batches.flat()).toContain(frame)
+    await expect
+      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .toContain(frame)
   })
 
   it('ignores the run folder, dot-named paths, locks, and temp files', async () => {
@@ -127,7 +196,7 @@ describe('watchBoard', () => {
 
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>two</p>')
 
-    await expect.poll(() => batches.length).toBe(1)
+    await expect.poll(() => batches.length, { timeout: SEEN_MS }).toBe(1)
     expect(late).toEqual([])
   })
 })

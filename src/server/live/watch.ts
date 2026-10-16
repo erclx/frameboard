@@ -14,6 +14,12 @@ const NOTES_FILE = 'notes.json'
 const TRAILING_MS = 50
 /** A batch closes this long after its first event, however busy the folder stays. */
 const CEILING_MS = 250
+/**
+ * How long a new watch runs before it counts events. On macOS, `fs.watch`
+ * drops writes in its first few tens of milliseconds and reports changes made
+ * just before it began, so the watch resolves only once both have passed.
+ */
+const WARM_UP_MS = 100
 
 export type BatchListener = (paths: string[]) => void
 
@@ -25,35 +31,26 @@ export interface BoardWatcher {
 
 /**
  * Watches the board folder and reports changes in batches, so a burst of
- * writes from one agent turn costs one rescan. Resolves once the initial walk
- * is done, so a write after it is always seen.
+ * writes from one agent turn costs one rescan. Resolves once the watch is
+ * warm, so a write after it is always seen.
  */
 export async function watchBoard(root: string): Promise<BoardWatcher> {
   const listeners = new Set<BatchListener>()
-  let pending = new Set<string>()
-  let trailing: ReturnType<typeof setTimeout> | undefined
-  let ceiling: ReturnType<typeof setTimeout> | undefined
-
-  const flush = () => {
-    clearTimeout(trailing)
-    clearTimeout(ceiling)
-    trailing = ceiling = undefined
-    const paths = [...pending]
-    pending = new Set()
+  const batcher = createBatcher((paths) => {
     for (const listener of listeners) listener(paths)
-  }
+  })
 
   const watcher = watch(root, {
     ignoreInitial: true,
     ignored: (path) => isIgnored(root, path),
   })
+  let warm = false
   watcher.on('all', (_event, path) => {
-    pending.add(path)
-    clearTimeout(trailing)
-    trailing = setTimeout(flush, TRAILING_MS)
-    ceiling ??= setTimeout(flush, CEILING_MS)
+    if (warm) batcher.add(path)
   })
   await new Promise<void>((resolve) => watcher.once('ready', resolve))
+  await new Promise((resolve) => setTimeout(resolve, WARM_UP_MS))
+  warm = true
 
   return {
     onBatch: (listener) => {
@@ -61,11 +58,47 @@ export async function watchBoard(root: string): Promise<BoardWatcher> {
       return () => listeners.delete(listener)
     },
     close: async () => {
-      clearTimeout(trailing)
-      clearTimeout(ceiling)
+      batcher.cancel()
       listeners.clear()
       await watcher.close()
     },
+  }
+}
+
+export interface Batcher {
+  add: (path: string) => void
+  cancel: () => void
+}
+
+/**
+ * Gathers paths into batches, each closing 50 ms after its last path or 250
+ * ms after its first, whichever comes sooner, so a busy folder still flushes.
+ */
+export function createBatcher(flush: (paths: string[]) => void): Batcher {
+  let pending = new Set<string>()
+  let trailing: ReturnType<typeof setTimeout> | undefined
+  let ceiling: ReturnType<typeof setTimeout> | undefined
+
+  const cancel = () => {
+    clearTimeout(trailing)
+    clearTimeout(ceiling)
+    trailing = ceiling = undefined
+  }
+  const close = () => {
+    cancel()
+    const paths = [...pending]
+    pending = new Set()
+    flush(paths)
+  }
+
+  return {
+    add: (path) => {
+      pending.add(path)
+      clearTimeout(trailing)
+      trailing = setTimeout(close, TRAILING_MS)
+      ceiling ??= setTimeout(close, CEILING_MS)
+    },
+    cancel,
   }
 }
 
