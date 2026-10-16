@@ -18,6 +18,8 @@ async function darkChrome(page: Page): Promise<void> {
 /**
  * The home view and one board page of the preview's `basic` fixture. The
  * "Edited" times count back from each file's checkout time, so they are masked.
+ * Every `basic` frame sets no font, so the board cases also hold the label's
+ * check findings mark in both themes.
  */
 export const BOARD_CASES: CaptureCase[] = [
   {
