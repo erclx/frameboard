@@ -22,7 +22,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
   - In a folder with no board it creates `.frameboard/` with one empty project
   - It reuses a board tab already connected to the server and opens one only when none is connected, unless `--no-open` is passed
   - A second `serve` for a board whose recorded server answers its health check prints that server's address with `reused: true` and binds nothing, so two sessions on one board share one server
-- `show <frame>` points the open board at a frame
+- `show <frame>` points every open board tab at a frame, switching to its page and zooming to it, and exits 3 with `server-not-running` when no server serves the board
 - `list` shows projects, pages, and frames
 - `docs` prints verbs, flags, record shapes, the content format, and the check list
 
@@ -51,6 +51,13 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `capture` screenshots a frame or a page
 
 ## Decisions
+
+### Opening a tab is the server's call
+
+- A fresh `serve` waits up to one second for a tab left by the server before it to reconnect, so a restarted server finds that tab rather than opening a second one beside it.
+- A second `serve` asks the running server to open a tab, which it does only with no board tab connected, so `opened` is true exactly when this call opened a browser tab.
+- `--no-open` opens nothing on either path, which is how the end to end suite, `preview`, and capture run, since a test run must never launch a browser on the developer's screen.
+- `show` never starts a server, because launching a long-lived process as a side effect would break the rule that no verb needs a running server.
 
 ### Every verb is scriptable
 

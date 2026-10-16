@@ -13,7 +13,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 
 - `scripts/` owns the shell scripts and the verify runner the package scripts below call, all synced from canon's tooling stacks
 - `.husky/` owns the git hooks
-- `e2e/` owns the Playwright specs, the capture harness `e2e/screenshot.ts`, its cases under `e2e/capture/`, and the committed baseline under `e2e/evidence/`
+- `e2e/` owns the Playwright specs, the helpers they share under `e2e/support/`, the capture harness `e2e/screenshot.ts`, its cases under `e2e/capture/`, and the committed baseline under `e2e/evidence/`
 - `test/` owns the fixture boards under `test/fixtures/boards/` and the helpers under `test/support/`, and holds no tests itself, so unit tests, specs, and later rows read one copy
 - `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
 
@@ -35,6 +35,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 
 - `bun run build` builds the client into `dist/client/` with Vite, then bundles `dist/cli.js` with rolldown
 - `bun run preview` serves the built CLI on the `basic` fixture board at `PREVIEW_PORT`, defaulting to 4173, with no browser tab
+- `bun run dev` serves the client with hot reload on 5173 plus the worktree offset, proxying `/api`, the socket, and `/frames` to a `serve` on 4173 plus the offset, such as `PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) bun run preview`
 
 ### Test scripts
 
@@ -43,6 +44,11 @@ Owns how the project runs on a developer machine, being installing the toolchain
 - `bun run test:e2e` runs Playwright against the built CLI on a port offset per worktree
 - `bun run test:e2e:changed` runs Playwright on specs the import graph reaches from the current diff
 - `bun --bun vitest run --project node src/server/edit` runs the edit writer's tests on Bun, and `FRAMEBOARD_EDIT_DIGEST=<path>` makes the property run write its output digest there for a comparison against Node
+
+### Measurement script
+
+- `bun run measure:canvas` builds, then pans and pinches over fifty live frames in headed Chrome and prints p50, p95, and the share of frames over 33 ms, failing past the smoothness bar.
+- It sits outside the gate because the number describes the developer's own browser and screen, and a CI runner's figure says nothing about either.
 
 ### Capture scripts
 
@@ -69,3 +75,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 - Playwright never reuses a running server, so a port collision fails the run rather than testing another branch's code
 - A `preview` running on any port makes the e2e `serve` find it through the `basic` board's shared address file, report `reused`, and exit, so stop the preview before running specs
 - A capture case that sets the chrome's `.dark` class from an init script waits for `DOMContentLoaded`. The script runs before `<html>` exists, and the frame silently comes out light.
+
+### Specs that write board files
+
+- A spec that writes board files serves its own copy of a fixture through `e2e/support/board-server.ts`, since writing into the committed fixture the shared `webServer` serves would leak between specs.
