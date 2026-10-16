@@ -12,6 +12,7 @@ import { registerList } from './commands/list'
 import { registerPage } from './commands/page'
 import { registerProject } from './commands/project'
 import { registerServe } from './commands/serve'
+import { registerShow } from './commands/show'
 
 // The bundle lands at dist/cli.js, so the built client sits beside it.
 const CLIENT_DIR = fileURLToPath(new URL('./client', import.meta.url))
@@ -137,6 +138,7 @@ export function createProgram(context: ProgramContext): Command {
     ...context,
     clientDir: context.clientDir ?? CLIENT_DIR,
   })
+  registerShow(program, context)
   registerList(program, context)
   registerProject(program, context)
   registerPage(program, context)
