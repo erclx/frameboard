@@ -128,4 +128,25 @@ test.describe('the live board', () => {
       ),
     ).toBe(true)
   })
+
+  test('marks a frame with check findings and clears the mark on a fix', async ({
+    page,
+  }) => {
+    const hero = page.locator('[data-frame="studio/home/hero"]')
+    const frame = join(board.root, 'studio/home/hero.html')
+    await expect(
+      hero.getByRole('img', { name: '2 check findings' }),
+    ).toBeVisible()
+
+    writeFileSync(
+      frame,
+      '<!doctype html><title>hero</title><style>body { font-family: Geist }</style><h1>Studio</h1>',
+    )
+    await expect(hero.getByRole('img')).toHaveCount(0)
+
+    writeFileSync(frame, '<!doctype html><title>hero</title><h1>Studio</h1>')
+    await expect(
+      hero.getByRole('img', { name: '1 check finding' }),
+    ).toBeVisible()
+  })
 })

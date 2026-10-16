@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>specificity</title>
+    <style>
+      #lead { font-family: Geist; }
+      main p { font-family: monospace; }
+      :where(main) p.note { font-family: Inter; }
+      :is(#x, main) .tag { font-family: "Geist Mono"; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p id="lead">Lead by id</p>
+      <p>By descendant</p>
+      <p class="note">Where adds nothing</p>
+      <span class="tag">Is weighs its id</span>
+    </main>
+  </body>
+</html>

@@ -31,8 +31,29 @@ const NAMED_COLOR =
 
 /** `theme`, over the frame's own sheets and style attributes, never the token sheets. */
 export function checkTheme(source: FrameSource): Finding[] {
-  let firstColor: { path: string; location: FindingLocation | null } | null =
-    null
+  const { firstColor, bothThemes } = readThemeColors(source)
+  if (!firstColor || bothThemes) return []
+  const { path, location } = firstColor
+  return [
+    finding('theme', {
+      frame: source.ref,
+      path,
+      message:
+        'The frame sets its own colors for one theme alone. Define the other through [data-theme] or prefers-color-scheme, or take the colors from token variables.',
+      location,
+    }),
+  ]
+}
+
+export interface ThemeColors {
+  /** The first literal color the frame sets, null when it takes every color from tokens. */
+  firstColor: { path: string; location: FindingLocation | null } | null
+  /** Whether any of its sheets defines a second theme. */
+  bothThemes: boolean
+}
+
+export function readThemeColors(source: FrameSource): ThemeColors {
+  let firstColor: ThemeColors['firstColor'] = null
   let bothThemes = false
 
   for (const sheet of source.sheets) {
@@ -78,17 +99,7 @@ export function checkTheme(source: FrameSource): Finding[] {
     })
   }
 
-  if (!firstColor || bothThemes) return []
-  const { path, location } = firstColor
-  return [
-    finding('theme', {
-      frame: source.ref,
-      path,
-      message:
-        'The frame sets its own colors for one theme alone. Define the other through [data-theme] or prefers-color-scheme, or take the colors from token variables.',
-      location,
-    }),
-  ]
+  return { firstColor, bothThemes }
 }
 
 function definesTheme(node: Node): boolean {
