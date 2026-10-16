@@ -29,14 +29,14 @@ Owns the content rules and where they run. A frame that breaks one is reported w
 
 - **Fonts:** `default-font` reports text no rule gives a family, and `generic-font` text whose first family is a generic keyword, one finding per frame per family.
 - **Theme:** `theme` reports a frame setting a literal color with no second theme, which a `[data-theme]` selector, a `prefers-color-scheme` query, or `light-dark()` supplies.
-- **Project rules:** `allowed-fonts` and `uppercase` run only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`, and absent config means the built-in rules alone.
+- **Project rules:** `allowed-fonts` and `uppercase` run only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`, and a value of the wrong type leaves its rule off while the file still parses for the page verbs.
 
 ### The cascade
 
 - css-select matches each rule over the htmlparser2 adapter tree and `@bramus/specificity` weighs it, because the groundwork spike's hand-rolled specificity was wrong on six of nine selectors.
 - Custom properties resolve per element down the tree, so a scoped `--font` override reads differently from the one on `:root`.
 - The browser's monospace for `code` and `pre` and its control font for form controls are seeded, since neither inherits the page's font.
-- `tokenSheets` reads `<board>/tokens.css` and then `<board>/<project>/tokens.css` ahead of the frame's own sheets, so the frame's rule wins a tie as injection order makes it win.
+- `tokenSheets` reads `<board>/tokens.css` and then `<board>/<project>/tokens.css` ahead of the frame's own sheets, and each sheet follows the local sheets it `@import`s, so a later rule wins a tie as the browser's order makes it win.
 - Every rule inside a media query counts as applying, because a frame renders at one viewport the check cannot see.
 
 ## Decisions
