@@ -7,9 +7,18 @@ export const boardFileSchema = z.looseObject({ version: z.literal(1) })
 
 export type BoardFile = z.infer<typeof boardFileSchema>
 
+/** A project's own check rules, absent meaning the built-in rules alone. */
+export const projectChecksSchema = z.looseObject({
+  allowedFonts: z.array(z.string()).optional(),
+  noUppercase: z.boolean().optional(),
+})
+
+export type ProjectChecks = z.infer<typeof projectChecksSchema>
+
 export const projectFileSchema = z.looseObject({
   version: z.literal(1),
   pages: z.array(z.string()),
+  checks: projectChecksSchema.optional(),
 })
 
 export type ProjectFile = z.infer<typeof projectFileSchema>

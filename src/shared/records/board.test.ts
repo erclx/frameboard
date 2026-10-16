@@ -48,6 +48,30 @@ describe('projectFileSchema', () => {
       projectFileSchema.safeParse({ version: 1, pages: 'home' }).success,
     ).toBe(false)
   })
+
+  it('reads a checks config with an unknown rule kept', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: [],
+      checks: { allowedFonts: ['Geist'], noUppercase: true, minFontSize: 12 },
+    })
+
+    expect(project.checks).toEqual({
+      allowedFonts: ['Geist'],
+      noUppercase: true,
+      minFontSize: 12,
+    })
+  })
+
+  it('rejects allowed fonts that are not a list of names', () => {
+    expect(
+      projectFileSchema.safeParse({
+        version: 1,
+        pages: [],
+        checks: { allowedFonts: 'Geist' },
+      }).success,
+    ).toBe(false)
+  })
 })
 
 describe('boardFileSchema', () => {

@@ -25,6 +25,8 @@ export const EXIT_CODES = {
   'verify-failed': 7,
   'invalid-utf8': 7,
   'stale-address': 7,
+  // `check` finding anything, with the result in the error's details.
+  'check-findings': 8,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
