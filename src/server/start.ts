@@ -5,6 +5,9 @@ import type { AddressInfo } from 'node:net'
 import { serve } from '@hono/node-server'
 
 import { createApp } from './app'
+import { scanBoard } from './board/scan'
+import { createHub, type LiveHub } from './live/hub'
+import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
 
 // Loopback only: the board serves the operator's own files, so it stays off the LAN.
 const HOSTNAME = '127.0.0.1'
@@ -56,6 +59,8 @@ export interface RunningServer {
   /** The port actually bound, which differs from the requested one when that was 0 or taken. */
   port: number
   tabs: BoardTabs
+  /** The board folder's watcher, whose batches any later check can follow without a second one. */
+  watcher: BoardWatcher
   close: () => Promise<void>
 }
 
@@ -73,33 +78,66 @@ export async function startServer({
   }
 }
 
-function listen({
+async function listen({
   clientDir,
   root,
   port,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   let bound = 0
-  const app = createApp({ clientDir, root, port: () => bound })
+  const boundPort = () => bound
+  const hub = createHub({
+    tabs,
+    port: boundPort,
+    snapshot: () => scanBoard(root),
+  })
+  const app = createApp({ clientDir, root, port: boundPort })
 
-  return new Promise((resolve, reject) => {
-    const server = serve(
+  const server = await new Promise<Server>((resolve, reject) => {
+    const created = serve(
       { fetch: app.fetch, hostname: HOSTNAME, port },
       (info: AddressInfo) => {
         bound = info.port
-        resolve({
-          hostname: HOSTNAME,
-          port: info.port,
-          tabs,
-          close: () =>
-            new Promise((done, fail) => {
-              server.close((error) => (error ? fail(error) : done()))
-              // A tab's keep-alive connection would hold close open indefinitely.
-              ;(server as Server).closeAllConnections()
-            }),
-        })
+        resolve(created as Server)
       },
     )
-    server.once('error', reject)
+    created.once('error', reject)
   })
+  server.on('upgrade', hub.handleUpgrade)
+
+  const watcher = await watchBoard(root)
+  watcher.onBatch((paths) => void pushBatch(root, paths, hub))
+
+  return {
+    hostname: HOSTNAME,
+    port: bound,
+    tabs,
+    watcher,
+    close: async () => {
+      await Promise.all([watcher.close(), hub.close()])
+      await new Promise<void>((done, fail) => {
+        server.close((error) => (error ? fail(error) : done()))
+        // A tab's keep-alive connection would hold close open indefinitely.
+        server.closeAllConnections()
+      })
+    },
+  }
+}
+
+/** One rescan per batch: the whole board to every tab, then the frames to reload. */
+async function pushBatch(
+  root: string,
+  paths: string[],
+  hub: LiveHub,
+): Promise<void> {
+  let board
+  try {
+    board = await scanBoard(root)
+  } catch {
+    // A board folder mid-removal does not scan, and the next batch catches up.
+    return
+  }
+  hub.broadcast({ type: 'board', data: board })
+  const refs = reloadRefs(root, paths, board)
+  if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
 }

@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import WebSocket from 'ws'
 
+import type { ServerMessage } from '@/shared/live-messages'
+
+import {
+  copyFixtureBoard,
+  type FixtureBoard,
+} from '../../test/support/fixture-board'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
 describe('startServer', () => {
@@ -56,6 +63,59 @@ describe('startServer', () => {
     await expect(start(first.port, true)).rejects.toMatchObject({
       code: 'EADDRINUSE',
     })
+  })
+})
+
+describe('startServer live socket', () => {
+  let clientDir: string
+  let board: FixtureBoard
+  let server: RunningServer
+  let socket: WebSocket
+  let messages: ServerMessage[]
+
+  beforeEach(async () => {
+    clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+    board = copyFixtureBoard('live')
+    server = await startServer({ clientDir, root: board.root, port: 0 })
+    messages = []
+    socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+    socket.on('message', (data) => messages.push(JSON.parse(String(data))))
+    await new Promise((resolve) => socket.once('open', resolve))
+    socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+  })
+
+  afterEach(async () => {
+    socket.terminate()
+    await server.close()
+    board.cleanup()
+    rmSync(clientDir, { recursive: true, force: true })
+  })
+
+  it('counts the connected board as an open tab', async () => {
+    expect(await server.tabs.waitForOne(1000)).toBe(true)
+  })
+
+  it('pushes the board and then the changed frame after a write', async () => {
+    await expect.poll(() => messages.length).toBe(1)
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    await expect
+      .poll(() => messages.slice(1).map((message) => message.type))
+      .toEqual(['board', 'reload'])
+    expect(messages[2]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+  })
+
+  it('pushes the board and reloads nothing for a layout write', async () => {
+    await expect.poll(() => messages.length).toBe(1)
+
+    writeFileSync(
+      join(board.root, 'studio/pricing/layout.json'),
+      '{ "version": 1, "frames": {} }',
+    )
+
+    await expect.poll(() => messages.length).toBe(2)
+    expect(messages[1]?.type).toBe('board')
   })
 })
 

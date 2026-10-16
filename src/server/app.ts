@@ -8,6 +8,21 @@ import { frameRoutes } from './routes/frames'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
+/**
+ * True for `127.0.0.1` or `localhost` on the port the server bound, the only
+ * hosts the board answers. The frame route reads the developer's files, so a
+ * page on another origin reaching this port through DNS rebinding is refused.
+ */
+export function isBoardHost(host: string, port: number): boolean {
+  let url: URL
+  try {
+    url = new URL(`http://${host}`)
+  } catch {
+    return false
+  }
+  return LOOPBACK_NAMES.has(url.hostname) && Number(url.port) === port
+}
+
 export interface AppOptions {
   /** The built client folder, holding `index.html` and its assets. */
   clientDir: string
@@ -24,11 +39,8 @@ export function createApp({ clientDir, root, port }: AppOptions): Hono {
     await next()
     c.header('x-frameboard-version', version)
   })
-  // The frame route reads the developer's files, so a page on another origin
-  // reaching this port through DNS rebinding must be refused.
   app.use('*', async (c, next) => {
-    const url = new URL(c.req.url)
-    if (!LOOPBACK_NAMES.has(url.hostname) || Number(url.port) !== port()) {
+    if (!isBoardHost(new URL(c.req.url).host, port())) {
       return c.text('Forbidden host', 403)
     }
     await next()
