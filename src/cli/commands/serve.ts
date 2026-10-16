@@ -7,8 +7,10 @@ import {
   writeAddress,
 } from '@/server/address'
 import { startBoard } from '@/server/board/root'
+import { openBoard } from '@/server/live/open-board'
 import { startServer } from '@/server/start'
 
+import { postToBoard } from '../board-server'
 import {
   act,
   addVerb,
@@ -52,6 +54,14 @@ export function registerServe(
 
     const live = await findLiveServer(root)
     if (live) {
+      // The live server owns the tabs, so it decides whether one needs opening.
+      const opened =
+        options.open &&
+        (
+          (await postToBoard(live, '/api/open', {}).catch(() => null)) as {
+            opened?: boolean
+          } | null
+        )?.opened === true
       return {
         data: {
           url: live.url,
@@ -60,7 +70,7 @@ export function registerServe(
           root,
           reused: true,
           created,
-          opened: false,
+          opened,
         },
         human: `Frameboard is already serving ${root} on ${live.url}`,
       }
@@ -71,6 +81,7 @@ export function registerServe(
       root,
       port: options.port,
       strictPort: self.getOptionValueSource('port') !== 'default',
+      openUrl: io.openUrl,
     })
     const address = newAddress({
       root,
@@ -78,17 +89,21 @@ export function registerServe(
       port: server.port,
     })
     await writeAddress(root, address)
+    server.authorize(address.token)
     io.signal?.addEventListener(
       'abort',
       () => void removeAddress(root, address.token).finally(server.close),
       { once: true },
     )
 
-    let opened = false
-    if (options.open && !(await server.tabs.waitForOne(RECONNECT_WAIT_MS))) {
-      io.openUrl(address.url)
-      opened = true
-    }
+    const opened =
+      options.open &&
+      (await openBoard({
+        tabs: server.tabs,
+        url: address.url,
+        open: io.openUrl,
+        graceMs: RECONNECT_WAIT_MS,
+      }))
 
     return {
       data: {

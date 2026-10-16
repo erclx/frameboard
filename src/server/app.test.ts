@@ -23,9 +23,12 @@ describe('createApp', () => {
   })
 
   function request(url: string) {
-    return createApp({ clientDir, root: '/board', port: () => PORT }).request(
-      url,
-    )
+    return createApp({
+      clientDir,
+      root: '/board',
+      port: () => PORT,
+      actions: { token: () => null, open: async () => false, show: () => 0 },
+    }).request(url)
   }
 
   it('serves the client index with the version header', async () => {

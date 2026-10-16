@@ -39,7 +39,12 @@ describe('address', () => {
   })
 
   async function serveBoard(boardRoot: string): Promise<RunningServer> {
-    server = await startServer({ clientDir: root, root: boardRoot, port: 0 })
+    server = await startServer({
+      clientDir: root,
+      root: boardRoot,
+      port: 0,
+      openUrl: () => {},
+    })
     return server
   }
 

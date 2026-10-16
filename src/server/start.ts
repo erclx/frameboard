@@ -7,6 +7,7 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app'
 import { scanBoard } from './board/scan'
 import { createHub, type LiveHub } from './live/hub'
+import { openBoard } from './live/open-board'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
 
 // Loopback only: the board serves the operator's own files, so it stays off the LAN.
@@ -18,6 +19,8 @@ export interface StartOptions {
   port: number
   /** Fail on a taken port rather than falling back to one the OS assigns. */
   strictPort?: boolean
+  /** Opens a browser tab, for a second `serve` asking this one to open the board. */
+  openUrl: (url: string) => void
 }
 
 /**
@@ -61,6 +64,8 @@ export interface RunningServer {
   tabs: BoardTabs
   /** The board folder's watcher, whose batches any later check can follow without a second one. */
   watcher: BoardWatcher
+  /** Sets the token the write routes accept, once the address file records it. */
+  authorize: (token: string) => void
   close: () => Promise<void>
 }
 
@@ -82,16 +87,37 @@ async function listen({
   clientDir,
   root,
   port,
+  openUrl,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   let bound = 0
+  let token: string | null = null
   const boundPort = () => bound
   const hub = createHub({
     tabs,
     port: boundPort,
     snapshot: () => scanBoard(root),
   })
-  const app = createApp({ clientDir, root, port: boundPort })
+  const app = createApp({
+    clientDir,
+    root,
+    port: boundPort,
+    actions: {
+      token: () => token,
+      // A running server's tabs have long since reconnected, so it waits for none.
+      open: () =>
+        openBoard({
+          tabs,
+          url: `http://${HOSTNAME}:${bound}`,
+          open: openUrl,
+          graceMs: 0,
+        }),
+      show: (ref) => {
+        hub.broadcast({ type: 'show', ref })
+        return tabs.count
+      },
+    },
+  })
 
   const server = await new Promise<Server>((resolve, reject) => {
     const created = serve(
@@ -113,6 +139,9 @@ async function listen({
     port: bound,
     tabs,
     watcher,
+    authorize: (next) => {
+      token = next
+    },
     close: async () => {
       await Promise.all([watcher.close(), hub.close()])
       await new Promise<void>((done, fail) => {

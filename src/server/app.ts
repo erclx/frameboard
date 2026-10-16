@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 
 import { version } from '@/shared/version'
 
-import { apiRoutes } from './routes/api'
+import { apiRoutes, type BoardActions } from './routes/api'
 import { frameRoutes } from './routes/frames'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
@@ -30,9 +30,16 @@ export interface AppOptions {
   root: string
   /** The port the server bound, read per request since it is known only once listening. */
   port: () => number
+  /** What the API's write routes do. */
+  actions: BoardActions
 }
 
-export function createApp({ clientDir, root, port }: AppOptions): Hono {
+export function createApp({
+  clientDir,
+  root,
+  port,
+  actions,
+}: AppOptions): Hono {
   const app = new Hono()
 
   app.use('*', async (c, next) => {
@@ -47,7 +54,7 @@ export function createApp({ clientDir, root, port }: AppOptions): Hono {
   })
   // A second serve reads the root back to tell this board's server from another.
   app.get('/api/health', (c) => c.json({ version, root }))
-  app.route('/', apiRoutes(root))
+  app.route('/', apiRoutes(root, actions))
   app.route('/', frameRoutes(root))
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.

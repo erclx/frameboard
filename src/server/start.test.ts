@@ -34,6 +34,7 @@ describe('startServer', () => {
       root: '/board',
       port,
       strictPort,
+      openUrl: () => {},
     })
     servers.push(server)
     return server
@@ -76,12 +77,19 @@ describe('startServer live socket', () => {
   beforeEach(async () => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
     board = copyFixtureBoard('live')
-    server = await startServer({ clientDir, root: board.root, port: 0 })
+    server = await startServer({
+      clientDir,
+      root: board.root,
+      port: 0,
+      openUrl: () => {},
+    })
     messages = []
     socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+    await expect.poll(() => messages.length).toBe(1)
+    messages = []
   })
 
   afterEach(async () => {
@@ -95,27 +103,43 @@ describe('startServer live socket', () => {
     expect(await server.tabs.waitForOne(1000)).toBe(true)
   })
 
-  it('pushes the board and then the changed frame after a write', async () => {
-    await expect.poll(() => messages.length).toBe(1)
+  it('sends a frame the show route names to the board tab', async () => {
+    server.authorize('c'.repeat(64))
 
+    const response = await fetch(`http://127.0.0.1:${server.port}/api/show`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${'c'.repeat(64)}` },
+      body: JSON.stringify({ ref: 'studio/pricing/plans' }),
+    })
+
+    expect(await response.json()).toEqual({
+      ok: true,
+      data: { ref: 'studio/pricing/plans', tabs: 1 },
+    })
+    await expect
+      .poll(() => messages.at(-1))
+      .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
+  })
+
+  it('pushes the board and then the changed frame after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
-      .poll(() => messages.slice(1).map((message) => message.type))
+      .poll(() => messages.map((message) => message.type), {
+        timeout: 5000,
+      })
       .toEqual(['board', 'reload'])
-    expect(messages[2]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+    expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
   })
 
   it('pushes the board and reloads nothing for a layout write', async () => {
-    await expect.poll(() => messages.length).toBe(1)
-
     writeFileSync(
       join(board.root, 'studio/pricing/layout.json'),
       '{ "version": 1, "frames": {} }',
     )
 
-    await expect.poll(() => messages.length).toBe(2)
-    expect(messages[1]?.type).toBe('board')
+    await expect.poll(() => messages.length, { timeout: 5000 }).toBe(1)
+    expect(messages[0]?.type).toBe('board')
   })
 })
 

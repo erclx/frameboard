@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import WebSocket from 'ws'
 
 import { cli } from '../../../test/support/cli'
 
@@ -62,6 +63,32 @@ describe('serve', () => {
       created: false,
       opened: false,
     })
+  })
+
+  it('has a reused server open the board when no tab is connected to it', async () => {
+    const first = await serve('--no-open')
+
+    const second = await serve()
+
+    expect(second.json().data).toMatchObject({ reused: true, opened: true })
+    expect(first.opened).toEqual([(first.json().data as { url: string }).url])
+    expect(second.opened).toEqual([])
+  })
+
+  it('opens nothing through a reused server with a board tab connected', async () => {
+    const first = await serve('--no-open')
+    const url = (first.json().data as { url: string }).url
+    const tab = new WebSocket(`${url.replace('http', 'ws')}/api/live`)
+    await new Promise((resolve) => tab.once('open', resolve))
+    const snapshot = new Promise((resolve) => tab.once('message', resolve))
+    tab.send(JSON.stringify({ type: 'hello', role: 'board' }))
+    await snapshot
+
+    const second = await serve()
+    tab.terminate()
+
+    expect(second.json().data).toMatchObject({ reused: true, opened: false })
+    expect(first.opened).toEqual([])
   })
 
   it('opens the board when no tab reconnects within the wait', async () => {
