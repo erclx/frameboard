@@ -50,6 +50,11 @@ export function createApp({ clientDir, root, port }: AppOptions): Hono {
   app.route('/', apiRoutes(root))
   app.route('/', frameRoutes(root))
   app.use('*', serveStatic({ root: clientDir }))
+  // A board route reloaded in the browser gets the client, which routes it.
+  app.get(
+    '/p/*',
+    serveStatic({ root: clientDir, rewriteRequestPath: () => '/index.html' }),
+  )
 
   return app
 }

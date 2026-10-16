@@ -36,6 +36,19 @@ describe('createApp', () => {
     expect(await response.text()).toContain('<title>Frameboard</title>')
   })
 
+  it('serves the client index for a board route, which the client routes', async () => {
+    const response = await request(`http://127.0.0.1:${PORT}/p/studio/home`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('<title>Frameboard</title>')
+  })
+
+  it('answers 404 for an unknown path outside the board routes', async () => {
+    const response = await request(`http://127.0.0.1:${PORT}/nowhere`)
+
+    expect(response.status).toBe(404)
+  })
+
   it('answers the health check with the board root', async () => {
     const response = await request(`http://127.0.0.1:${PORT}/api/health`)
 
