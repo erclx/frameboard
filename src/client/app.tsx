@@ -1,9 +1,66 @@
-import { Button } from '@/client/components/ui/button'
+import { useState } from 'react'
+import { Link, Route, Switch } from 'wouter'
 
+import type { ProjectRecord } from '@/shared/records/list'
+
+import { BoardScreen } from './board/screen'
+import { buttonVariants } from './components/ui/button'
+import { Projects } from './home/projects'
+import { useLive } from './live/store'
+
+/** The board's routes over the live store, which `main.tsx` connects to the server. */
 export function App() {
+  const projects = useLive((state) => state.board?.projects)
+  const connected = useLive((state) => state.connected)
+
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background text-foreground">
-      <Button>New board</Button>
-    </main>
+    <div className="relative h-svh overflow-auto bg-background text-foreground">
+      {projects ? (
+        <Switch>
+          <Route path="/">
+            <Home projects={projects} />
+          </Route>
+          <Route path="/p/:project/:page">
+            {({ project, page }) => (
+              <BoardScreen project={project} page={page} />
+            )}
+          </Route>
+          <Route path="/p/:project">
+            {({ project }) => <BoardScreen project={project} />}
+          </Route>
+          <Route>
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
+              <p className="text-body text-muted-foreground">
+                Nothing on the board at this address.
+              </p>
+              <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+                Go home
+              </Link>
+            </div>
+          </Route>
+        </Switch>
+      ) : (
+        <p
+          role="status"
+          className="flex h-full items-center justify-center text-body text-muted-foreground"
+        >
+          Connecting to the board
+        </p>
+      )}
+      {projects && !connected ? (
+        <p
+          role="status"
+          className="absolute top-3 left-1/2 -translate-x-1/2 rounded-xl border border-border bg-card px-3 py-1 text-body text-muted-foreground"
+        >
+          Reconnecting to frameboard serve
+        </p>
+      ) : null}
+    </div>
   )
+}
+
+/** The home view, counting "last edited" back from when it opened. */
+function Home({ projects }: { projects: readonly ProjectRecord[] }) {
+  const [now] = useState(Date.now)
+  return <Projects projects={projects} now={now} />
 }

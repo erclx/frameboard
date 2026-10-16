@@ -21,12 +21,14 @@ export default mergeConfig(
           extends: true,
           test: {
             name: 'browser',
-            include: ['src/client/**/*.test.tsx'],
+            include: ['src/client/**/*.test.{ts,tsx}'],
             setupFiles: ['src/test/setup.ts'],
             browser: {
               enabled: true,
               provider: playwright(),
               headless: true,
+              // Wide enough for the board's panels, which hide below 1024.
+              viewport: { width: 1280, height: 800 },
               instances: [{ browser: 'chromium' }],
             },
           },

@@ -6,6 +6,7 @@ const serve = `node dist/cli.js serve --root test/fixtures/boards/basic --no-ope
 export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.spec.ts',
+  testIgnore: 'perf/**',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -11,9 +11,10 @@ Owns the browser app around the frames, being the home view, the board's panels,
 
 ## Layout
 
-- `src/client/` owns the app
+- `src/client/` owns the app, with `live/` holding the socket and the store every screen reads, `home/` the home view, and `board/` the board screen and its canvas
 - `src/client/public/` owns the files served at the site root, being the favicon set rendered from `icon.svg`
-- `src/server/` owns the live updates the app listens to
+- `src/server/live/` owns the live updates the app listens to, being the board folder's watcher, the socket hub, and the decision to open a tab
+- `src/server/routes/` owns the HTTP route modules `app.ts` mounts, one per surface, so a later surface adds a module rather than growing `app.ts`
 
 ### Home view
 
@@ -52,6 +53,28 @@ Owns the browser app around the frames, being the home view, the board's panels,
 
 ## Decisions
 
+### Frames load through a route of their own
+
+- `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the project's assets, so a frame's links to `styles.css` or `../assets/` resolve with no rewriting.
+- The frame route answers 404 for board records, dot-named paths, and any path whose realpath leaves its project, because it reads the developer's files and should say nothing of what exists.
+- Every route refuses a `Host` other than `127.0.0.1` or `localhost` on the bound port, and the socket also refuses a foreign `Origin`, so another site cannot read the board through DNS rebinding.
+- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the token on the write routes keeps a frame's script from driving the board.
+
+### The canvas keeps gestures out of React
+
+- Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and fifty live frames held a p95 frame interval near 17.6 ms on the operator's Mac.
+- A plain wheel pans and a pinch, which arrives as a wheel carrying `ctrlKey`, zooms, as design tools do, rather than every wheel zooming as `d3-zoom` does by default.
+- A transparent hit layer covers every frame until the Edit and Play toggle lands, so a drag or a wheel over a frame pans the canvas while its animation and video keep playing.
+- Once a gesture rests for 150 ms, frames outside the viewport grown by one viewport on each side swap their iframe for a placeholder, so a large page holds only the pages near the view.
+- Each page's view is kept for the session and a first visit zooms to fit, so switching pages and back returns to the same view.
+
+### A change reloads only what it can affect
+
+- A frame's own `.html`, or a temp file it is saved through such as `hero.html.swap`, reloads that frame, and any other page-folder file reloads the whole page, since any frame may link it.
+- A file under `assets/` reloads every frame in the project, since any page may link an asset.
+- `layout.json` and `notes.json` reload nothing, so a move never restarts a frame's animation or video.
+- Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so a burst of writes from one agent turn costs one rescan and one snapshot.
+
 ### An agent's changes stay marked until seen
 
 - A frame an agent changed carries a purple dot on its label and layers row until the developer selects it or it sits on screen a moment, never cleared by a timer
@@ -85,6 +108,10 @@ Owns the browser app around the frames, being the home view, the board's panels,
 - Pan, zoom, and drag preview move a CSS transform, not app state, and write the file once on release
 - Each frame is an iframe, and frames far offscreen unmount on a large board
 - A frame whose file changes on disk reloads alone, keeping pan and zoom, and new frames appear without a refresh
+
+### Watching the board folder on macOS
+
+- `fs.watch` on macOS drops writes in its first tens of milliseconds and reports changes made just before it began, so the watch counts nothing for its first 100 ms and resolves only once warm.
 
 ### Claimed frames
 

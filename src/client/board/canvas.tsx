@@ -1,0 +1,262 @@
+import { pointer, select } from 'd3-selection'
+import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+
+import type { FrameRecord, PageRecord } from '@/shared/records/list'
+
+import { mountedRefs, type Size, type View } from './cull'
+import { Frame } from './frame'
+
+const SCALE_EXTENT: [number, number] = [0.02, 4]
+const FIT_PADDING = 64
+/** How long a gesture has to rest before the view counts as settled and the cull runs. */
+const SETTLE_MS = 150
+/** How long the view takes to travel to a shown frame. */
+const FOCUS_MS = 400
+
+/** Each page's view for the session, so leaving a page and coming back keeps it. */
+const pageViews = new Map<string, View>()
+
+interface CanvasProps {
+  page: PageRecord
+  /** Per-frame reload counters by ref, absent meaning zero. */
+  reloads: Readonly<Record<string, number>>
+  /** A frame to bring into view, as `show` asks, once it is on this page. */
+  focus?: string | null
+  /** Called once the view has started toward `focus`. */
+  onFocused?: () => void
+}
+
+/**
+ * One page's frames on a pannable, zoomable layer. Pan and zoom write the
+ * layer's transform straight from the `d3-zoom` handler and never touch React
+ * state, so a gesture renders nothing. Only once the view settles does React
+ * hear of it, to swap frames far offscreen for placeholders.
+ */
+export function Canvas({ page, reloads, focus, onFocused }: CanvasProps) {
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const layerRef = useRef<HTMLDivElement>(null)
+  const moveToRef = useRef<((view: View) => void) | null>(null)
+  const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
+    null,
+  )
+  const frames = useMemo(
+    () => page.frames.filter((frame) => !frame.hidden),
+    [page.frames],
+  )
+  // Read by the zoom effect for the first fit alone, so a frame change does not rebind zoom.
+  const framesRef = useRef(frames)
+  useLayoutEffect(() => {
+    framesRef.current = frames
+  }, [frames])
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    const layer = layerRef.current
+    if (!viewport || !layer) return
+    const selection = select(viewport)
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const settle = (view: View) => setSettled({ view, size: sizeOf(viewport) })
+
+    const zoomer: ZoomBehavior<HTMLDivElement, unknown> = zoom<
+      HTMLDivElement,
+      unknown
+    >()
+      .scaleExtent(SCALE_EXTENT)
+      .on('zoom', ({ transform: { x, y, k } }) => {
+        clearTimeout(timer)
+        layer.style.transform = `translate(${x}px, ${y}px) scale(${k})`
+        layer.style.setProperty('--zoom', String(k))
+        pageViews.set(page.ref, { x, y, k })
+      })
+      .on('end', ({ transform: { x, y, k } }) => {
+        clearTimeout(timer)
+        timer = setTimeout(() => settle({ x, y, k }), SETTLE_MS)
+      })
+
+    selection
+      .call(zoomer)
+      .on('dblclick.zoom', null)
+      // A plain wheel pans and a pinch, which browsers send as a wheel with
+      // ctrlKey, zooms, as design tools do, rather than d3's wheel-zooms.
+      .on(
+        'wheel.zoom',
+        (event: WheelEvent) => {
+          event.preventDefault()
+          const k = zoomTransform(viewport).k
+          const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1
+          if (event.ctrlKey || event.metaKey) {
+            zoomer.scaleBy(
+              selection,
+              2 ** (-event.deltaY * unit * 0.01),
+              pointer(event, viewport),
+            )
+          } else {
+            zoomer.translateBy(
+              selection,
+              (-event.deltaX * unit) / k,
+              (-event.deltaY * unit) / k,
+            )
+          }
+        },
+        { passive: false },
+      )
+
+    const start =
+      pageViews.get(page.ref) ?? fitView(framesRef.current, sizeOf(viewport))
+    zoomer.transform(
+      selection,
+      zoomIdentity.translate(start.x, start.y).scale(start.k),
+    )
+    clearTimeout(timer)
+    settle(start)
+
+    const resize = new ResizeObserver(() =>
+      settle(pageViews.get(page.ref) ?? start),
+    )
+    resize.observe(viewport)
+
+    let animation = 0
+    const apply = ({ x, y, k }: View) =>
+      zoomer.transform(selection, zoomIdentity.translate(x, y).scale(k))
+    moveToRef.current = (target) => {
+      cancelAnimationFrame(animation)
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        apply(target)
+        return
+      }
+      const from = zoomTransform(viewport)
+      const began = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - began) / FOCUS_MS)
+        if (t === 1) {
+          apply(target)
+          return
+        }
+        const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2
+        apply({
+          x: from.x + (target.x - from.x) * eased,
+          y: from.y + (target.y - from.y) * eased,
+          // Scale travels evenly in ratio, so zooming in and out read alike.
+          k: from.k * (target.k / from.k) ** eased,
+        })
+        animation = requestAnimationFrame(step)
+      }
+      animation = requestAnimationFrame(step)
+    }
+
+    return () => {
+      clearTimeout(timer)
+      cancelAnimationFrame(animation)
+      moveToRef.current = null
+      resize.disconnect()
+      selection.on('.zoom', null)
+    }
+  }, [page.ref])
+
+  // Waits for the frame to reach this page's record, since a shown frame can
+  // arrive a batch ahead of the board that holds it.
+  useEffect(() => {
+    const frame = frames.find((candidate) => candidate.ref === focus)
+    const viewport = viewportRef.current
+    if (!frame || !viewport || !moveToRef.current) return
+    moveToRef.current(fitView([frame], sizeOf(viewport)))
+    onFocused?.()
+  }, [focus, frames, onFocused])
+
+  const live = useMemo(
+    () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
+    [frames, settled],
+  )
+
+  return (
+    <div
+      ref={viewportRef}
+      data-canvas
+      className="relative size-full cursor-grab touch-none overflow-hidden bg-background active:cursor-grabbing"
+    >
+      <div
+        ref={layerRef}
+        data-layer
+        className="absolute top-0 left-0 origin-top-left"
+      >
+        {page.layoutError
+          ? null
+          : frames.map((frame) => (
+              <Frame
+                key={frame.ref}
+                frame={frame}
+                live={live?.has(frame.ref) ?? false}
+                version={reloads[frame.ref] ?? 0}
+              />
+            ))}
+      </div>
+      {/* Covers every frame, so a wheel or drag over one pans the canvas rather than reaching its page. */}
+      <div data-hit-layer className="absolute inset-0" />
+      {page.layoutError ? (
+        <LayoutErrorNotice error={page.layoutError} />
+      ) : frames.length === 0 ? (
+        <EmptyNotice />
+      ) : null}
+    </div>
+  )
+}
+
+function LayoutErrorNotice({
+  error,
+}: {
+  error: NonNullable<PageRecord['layoutError']>
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+      <div
+        role="alert"
+        className="max-w-md rounded-lg border border-border bg-card p-4 text-body text-card-foreground"
+      >
+        <p className="text-panel">This page's layout does not read</p>
+        <p className="mt-1 break-all text-muted-foreground">{error.path}</p>
+        <p className="mt-2">{error.message}</p>
+      </div>
+    </div>
+  )
+}
+
+function EmptyNotice() {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+      <p className="text-body text-muted-foreground">
+        No frames on this page yet. An agent adds one with frameboard frame add.
+      </p>
+    </div>
+  )
+}
+
+function sizeOf(element: HTMLElement): Size {
+  return { width: element.clientWidth, height: element.clientHeight }
+}
+
+/** The view that shows every frame, never zoomed past 100 percent. */
+function fitView(
+  frames: readonly Pick<FrameRecord, 'box'>[],
+  size: Size,
+): View {
+  if (frames.length === 0 || size.width === 0 || size.height === 0) {
+    return { x: FIT_PADDING, y: FIT_PADDING, k: 1 }
+  }
+  const left = Math.min(...frames.map(({ box }) => box.x))
+  const top = Math.min(...frames.map(({ box }) => box.y))
+  const right = Math.max(...frames.map(({ box }) => box.x + box.width))
+  const bottom = Math.max(...frames.map(({ box }) => box.y + box.height))
+  const k = Math.min(
+    (size.width - 2 * FIT_PADDING) / (right - left),
+    (size.height - 2 * FIT_PADDING) / (bottom - top),
+    1,
+  )
+  const scale = Math.max(SCALE_EXTENT[0], k)
+  return {
+    x: (size.width - (right - left) * scale) / 2 - left * scale,
+    y: (size.height - (bottom - top) * scale) / 2 - top * scale,
+    k: scale,
+  }
+}
