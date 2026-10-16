@@ -29,3 +29,11 @@ export function finding(
     location: fields.location ?? null,
   }
 }
+
+/** One finding as `path:line:column  rule  message`, as `check` and the hook print it. */
+export function formatFinding(finding: Finding): string {
+  const at = finding.location
+    ? `${finding.path}:${finding.location.line}:${finding.location.column}`
+    : finding.path
+  return `${at}  ${finding.rule}  ${finding.message}`
+}

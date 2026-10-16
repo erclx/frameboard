@@ -7,9 +7,10 @@ import {
 } from '@/server/board/refs'
 import { FRAME_EXTENSION } from '@/server/board/scan'
 import { checkFrame } from '@/server/checks/frame'
+import { formatFinding } from '@/server/checks/rule'
 import { checkPage, checkProject } from '@/server/checks/run'
 import { FrameboardError } from '@/shared/errors'
-import type { CheckResult, Finding } from '@/shared/records/check'
+import type { CheckResult } from '@/shared/records/check'
 
 import {
   act,
@@ -86,19 +87,12 @@ async function run(
   }
 }
 
-/** One line per finding, as `path:line:column  rule  message`, then a count. */
+/** One line per finding, then a count. */
 function describe({ checked, findings }: CheckResult): string {
   const frames = `${checked} frame${checked === 1 ? '' : 's'}`
   if (findings.length === 0) return `Checked ${frames}, no findings.`
   return [
-    ...findings.map(line),
+    ...findings.map(formatFinding),
     `Checked ${frames}, ${findings.length} finding${findings.length === 1 ? '' : 's'}.`,
   ].join('\n')
-}
-
-function line(finding: Finding): string {
-  const at = finding.location
-    ? `${finding.path}:${finding.location.line}:${finding.location.column}`
-    : finding.path
-  return `${at}  ${finding.rule}  ${finding.message}`
 }
