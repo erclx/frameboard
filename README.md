@@ -20,7 +20,7 @@ In a folder with no board, `serve` creates `.frameboard/` at the repository top,
 
 The board opens on a home view listing every project. Opening one shows its pages and a canvas of its frames, each a live page you pan and zoom around, and a frame reloads on its own the moment its file changes on disk. `frameboard show <frame>` points the open board at a frame.
 
-`frameboard docs` prints every command, flag, record shape, and exit code, and `frameboard --version` prints the installed version.
+`frameboard docs` prints every command, flag, record shape, exit code, and check rule, and `frameboard --version` prints the installed version.
 
 ## How it works
 

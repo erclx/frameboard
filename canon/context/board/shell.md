@@ -83,6 +83,12 @@ Owns the browser app around the frames, being the home view, the board's panels,
 - Follow on an agent's avatar pans to whatever it edits and stops on a click or a hand pan, and otherwise the board never moves the view on its own
 - Seen state lives in the browser, never in the board folder
 
+### Check findings mark the label
+
+- A frame breaking a content rule carries a warning triangle and its finding count beside its name, and the count never shrinks, so a narrow frame truncates the name and keeps the count.
+- The triangle takes `--note` and the count the text color, because `--destructive` means Delete alone and the note amber is too light for 11px text on the light canvas.
+- The server checks every frame at start and rechecks each batch's frames, so the mark clears on the batch that fixes the file.
+
 ### A narrow screen opens with the UI hidden
 
 - The narrow-screen layout stays deferred
