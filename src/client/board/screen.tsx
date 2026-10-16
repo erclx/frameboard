@@ -21,6 +21,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     state.board?.projects.find((candidate) => candidate.name === project),
   )
   const reloads = useLive((state) => state.reloads)
+  const findings = useLive((state) => state.findings)
   const focus = useLive((state) => state.focus)
   const clearFocus = useCallback(() => liveStore.setState({ focus: null }), [])
 
@@ -61,6 +62,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
             key={current.ref}
             page={current}
             reloads={reloads}
+            findings={findings}
             focus={focus}
             onFocused={clearFocus}
           />

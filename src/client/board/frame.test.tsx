@@ -3,6 +3,7 @@ import '../styles.css'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
+import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { Frame } from './frame'
@@ -20,6 +21,17 @@ function frame(name: string): FrameRecord {
     locked: false,
     placed: true,
     modifiedAt: '2026-10-15T00:00:00.000Z',
+  }
+}
+
+function finding(message: string): Finding {
+  return {
+    rule: 'theme',
+    severity: 'error',
+    frame: 'studio/home/a',
+    path: 'studio/home/a.html',
+    message,
+    location: null,
   }
 }
 
@@ -75,5 +87,56 @@ describe('Frame', () => {
     )
 
     expect(getByTitle('checkout')).toHaveTextContent('checkout')
+  })
+
+  it('marks the label with the count of its findings and lists each one', () => {
+    const { getByRole } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={[finding('One theme alone.'), finding('Default font.')]}
+      />,
+    )
+
+    const mark = getByRole('img', { name: '2 check findings' })
+    expect(mark).toHaveTextContent('2')
+    expect(mark).toHaveAttribute('title', 'One theme alone.\nDefault font.')
+  })
+
+  it('marks nothing for a frame with no findings', () => {
+    const { queryByRole } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={[]}
+      />,
+    )
+
+    expect(queryByRole('img')).toBeNull()
+  })
+
+  it('truncates the name and keeps the count on a narrow frame', () => {
+    const narrow = {
+      ...frame('a-very-long-frame-name-that-cannot-fit'),
+      box: { x: 0, y: 0, width: 60, height: 100 },
+    }
+    const { getByRole, getByText } = render(
+      <div className="relative" style={{ paddingTop: 40 }}>
+        <Frame
+          frame={narrow}
+          live={false}
+          version={0}
+          findings={[finding('One theme alone.')]}
+        />
+      </div>,
+    )
+
+    const name = getByText(narrow.name)
+    expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+    expect(getByRole('img').getBoundingClientRect().right).toBeLessThanOrEqual(
+      Math.ceil(name.parentElement?.getBoundingClientRect().right ?? 0),
+    )
   })
 })
