@@ -27,6 +27,7 @@ describe('docs', () => {
       exitCodes: unknown
       records: Record<string, { type?: string }>
       contentFormat: { names: { pattern: string } }
+      checks: { rules: { id: string; tier: string; configKey?: string }[] }
     }
   }
 
@@ -61,6 +62,7 @@ describe('docs', () => {
       'frame hide',
       'frame lock',
       'edit',
+      'check',
       'docs',
     ])
   })
@@ -85,5 +87,22 @@ describe('docs', () => {
 
     expect(exitCodes).toEqual(EXIT_CODES)
     expect(contentFormat.names.pattern).toBe('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+  })
+
+  it('lists every check rule with its tier and the config key that turns it on', async () => {
+    const { checks } = await docs()
+
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({ id: 'theme', tier: 'selector' }),
+    )
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({ id: 'uppercase', configKey: 'noUppercase' }),
+    )
+  })
+
+  it('prints the check result record', async () => {
+    const { records } = await docs()
+
+    expect(records.checkResult?.type).toBe('object')
   })
 })

@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
 import { z } from 'zod'
 
+import { RULES } from '@/server/checks/run'
 import { EXIT_CODES } from '@/shared/errors'
 import { RECORDS } from '@/shared/records/index'
 import { version } from '@/shared/version'
@@ -31,7 +32,7 @@ export function registerDocs(program: Command, context: ProgramContext): void {
     addVerb(
       program,
       'docs',
-      'Print the verbs, exit codes, record shapes, and content format',
+      'Print the verbs, exit codes, record shapes, content format, and check rules',
     ),
     context,
     async () => {
@@ -48,6 +49,7 @@ export function registerDocs(program: Command, context: ProgramContext): void {
             ]),
           ),
           contentFormat: contentFormat(),
+          checks: { rules: RULES },
         },
         human: verbs
           .map((verb) => `frameboard ${verb.name}  ${verb.description}`)
