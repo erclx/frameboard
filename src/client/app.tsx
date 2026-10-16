@@ -1,24 +1,17 @@
-import { useEffect, useState } from 'react'
-
-import type { ListResult } from '@/shared/records/list'
+import { useEffect } from 'react'
 
 import { Canvas } from './board/canvas'
-
-const NO_RELOADS = {}
+import { connectLive } from './live/socket'
+import { liveStore, useLive } from './live/store'
 
 export function App() {
-  const [board, setBoard] = useState<ListResult | null>(null)
+  useEffect(() => connectLive(liveStore), [])
+  const page = useLive((state) => state.board?.projects[0]?.pages[0])
+  const reloads = useLive((state) => state.reloads)
 
-  useEffect(() => {
-    void fetch('/api/board')
-      .then((response) => response.json())
-      .then((body: { data: ListResult }) => setBoard(body.data))
-  }, [])
-
-  const page = board?.projects[0]?.pages[0]
   return (
     <main className="h-svh bg-background text-foreground">
-      {page ? <Canvas page={page} reloads={NO_RELOADS} /> : null}
+      {page ? <Canvas page={page} reloads={reloads} /> : null}
     </main>
   )
 }
