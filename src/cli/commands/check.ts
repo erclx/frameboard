@@ -20,7 +20,10 @@ import {
   type ProgramContext,
 } from '../program'
 
-const NOT_FOUND = new Set([
+// A board holding several projects refuses `<page>/<frame>` with no project,
+// which is the case the `<project>/<page>` reading exists for.
+const NOT_FRAME = new Set([
+  'project-required',
   'project-not-found',
   'page-not-found',
   'frame-not-found',
@@ -74,7 +77,7 @@ async function run(
   } catch (frameError) {
     if (
       !(frameError instanceof FrameboardError) ||
-      !NOT_FOUND.has(frameError.code)
+      !NOT_FRAME.has(frameError.code)
     ) {
       throw frameError
     }

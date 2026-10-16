@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { checkResultSchema } from '@/shared/records/check'
 
 import { cli } from '../../../test/support/cli'
+import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 
 // `check` only reads, so the committed fixture serves every test as is.
 const ROOT = fileURLToPath(
@@ -60,6 +61,22 @@ describe('check', () => {
     const run = await check(['rules/network'])
 
     expect(run.json().error?.details).toMatchObject({ checked: 2 })
+  })
+
+  it('reads a two-part ref as a project and page on a board of several projects', async () => {
+    const board: TempBoard = writeBoard({
+      'studio/home/hero.html': '<p>Hello</p>',
+      'other/home/hero.html': '<p>Hello</p>',
+    })
+
+    const run = await check(['studio/home'], board.root)
+    board.cleanup()
+
+    expect(run.exitCode).toBe(8)
+    expect(run.json().error?.details).toMatchObject({
+      checked: 1,
+      findings: [{ frame: 'studio/home/hero' }],
+    })
   })
 
   it('checks the whole project with no target', async () => {
