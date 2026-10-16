@@ -1,0 +1,8 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: rgb(250, 247, 240);
+}
+h1 {
+  color: rgb(20, 90, 60);
+}

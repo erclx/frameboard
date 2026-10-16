@@ -79,12 +79,14 @@ function listen({
   port,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
-  const app = createApp({ clientDir, root })
+  let bound = 0
+  const app = createApp({ clientDir, root, port: () => bound })
 
   return new Promise((resolve, reject) => {
     const server = serve(
       { fetch: app.fetch, hostname: HOSTNAME, port },
       (info: AddressInfo) => {
+        bound = info.port
         resolve({
           hostname: HOSTNAME,
           port: info.port,

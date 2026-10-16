@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export type FixtureBoardName = 'basic' | 'hand-made' | 'broken'
+export type FixtureBoardName = 'basic' | 'hand-made' | 'broken' | 'live'
 
 export interface FixtureBoard {
   /** The realpath of the copy, so it compares equal to what the board resolves. */
