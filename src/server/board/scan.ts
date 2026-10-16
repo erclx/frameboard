@@ -1,6 +1,12 @@
 import { readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import {
+  ASSETS_FOLDER,
+  BOARD_FILE,
+  FRAME_EXTENSION,
+  PROJECT_FILE,
+} from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import {
   DEFAULT_FRAME_SIZE,
@@ -23,11 +29,8 @@ import type {
 
 import { isCode, readRecord, type RecordSpec } from './json-record'
 
-export const BOARD_FILE = 'board.json'
-export const PROJECT_FILE = 'project.json'
 export const LAYOUT_FILE = 'layout.json'
-export const ASSETS_FOLDER = 'assets'
-export const FRAME_EXTENSION = '.html'
+export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, PROJECT_FILE }
 
 export const layoutSpec: RecordSpec<LayoutFile> = {
   schema: layoutFileSchema,
