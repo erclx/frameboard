@@ -63,14 +63,18 @@ describe('projectFileSchema', () => {
     })
   })
 
-  it('rejects allowed fonts that are not a list of names', () => {
-    expect(
-      projectFileSchema.safeParse({
-        version: 1,
-        pages: [],
-        checks: { allowedFonts: 'Geist' },
-      }).success,
-    ).toBe(false)
+  it('keeps a checks value the rules cannot read as written', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: ['home'],
+      checks: { allowedFonts: 'Geist' },
+    })
+
+    expect(project).toEqual({
+      version: 1,
+      pages: ['home'],
+      checks: { allowedFonts: 'Geist' },
+    })
   })
 })
 

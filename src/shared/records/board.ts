@@ -18,7 +18,10 @@ export type ProjectChecks = z.infer<typeof projectChecksSchema>
 export const projectFileSchema = z.looseObject({
   version: z.literal(1),
   pages: z.array(z.string()),
-  checks: projectChecksSchema.optional(),
+  // A checks value the rules cannot read still parses as written, so a page
+  // verb keeps the file and its page order, and the check reads that rule as
+  // off, the way it reads a missing key.
+  checks: z.union([projectChecksSchema, z.unknown()]).optional(),
 })
 
 export type ProjectFile = z.infer<typeof projectFileSchema>
