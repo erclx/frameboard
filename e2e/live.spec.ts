@@ -9,7 +9,7 @@ import {
 } from '../test/support/fixture-board'
 import { type BoardServer, serveBoard } from './support/board-server'
 
-const HOME = '/'
+const HOME = '/p/studio/home'
 
 /** Marks every live frame's window, so a reload shows as a frame that lost its mark. */
 function markFrames(page: Page): Promise<void> {
