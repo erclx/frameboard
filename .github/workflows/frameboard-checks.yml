@@ -71,3 +71,34 @@ jobs:
           cd "$RUNNER_TEMP"
           node frameboard-dist/cli.js --version
           bun frameboard-dist/cli.js --version
+
+  edit-parity:
+    name: ✂️ Edit Writer on Node and Bun
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      # bunx keeps vitest's node shebang, and --bun runs the test bodies on
+      # Bun, so the two digests compare the same edits across runtimes.
+      - name: Run the Property Run on Node
+        run: FRAMEBOARD_EDIT_DIGEST="$RUNNER_TEMP/node.digest" bunx vitest run --project node src/server/edit/property.test.ts
+
+      - name: Run the Property Run on Bun
+        run: FRAMEBOARD_EDIT_DIGEST="$RUNNER_TEMP/bun.digest" bun --bun vitest run --project node src/server/edit/property.test.ts
+
+      - name: Compare the Outputs
+        run: cmp "$RUNNER_TEMP/node.digest" "$RUNNER_TEMP/bun.digest"

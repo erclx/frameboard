@@ -60,6 +60,13 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 
 - A pick names the element's index in document order and the hash of the file it was read from
 - An edit against a hash the file no longer has is refused as stale, so a hand edit never lands on an element an agent has since moved
+- The hash is SHA-256 hex over the file's raw bytes and the index follows the browser's `querySelectorAll('*')` order, because `edit`, the inspector, `selection`, notes, and `inspect` all read the same address and would drift apart on any other rule
+
+### An edit splices bytes at parse5's offsets and never serializes
+
+- `src/server/edit/` parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span, so spacing, line breaks, and every other attribute keep the file's own bytes
+- Serializing the tree and Bun's `HTMLRewriter` were dropped, because the first rewrites the file's formatting and the second is missing on Node and rewrites the whole start tag
+- The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
 
 ### Notes sit beside the frames, never inside them
 
@@ -80,3 +87,9 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 - A layout that does not parse is a defect to report, never an empty file to overwrite, since overwriting erases every box it held
 - A frame that states a `head` must state a `body`, and every table must state its `tbody`, because the browser builds a missing one and shifts every address after it
 - A folder whose name opens with a dot is reserved for files Frameboard generates.
+
+### Edit writer
+
+- The edit writer swaps a leading BOM for a space before parsing, because parse5 reads it as text and implies the wrappers, where a browser drops it
+- An edit refuses a file whose bytes do not survive a UTF-8 round trip, because decoding rewrites a stray `0xFF` as `EF BF BD` far from the edited element
+- An edit writes through a dot-named temporary file and rereads the hash before the rename, so a watcher skips the file and a write landing meanwhile is refused

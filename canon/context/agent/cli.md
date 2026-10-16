@@ -45,6 +45,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 
 - `inspect` reports a frame's rendered elements as data, being each one's document-order index, rendered size, and computed color and type, under the same addresses the inspector and `edit` use
 - `edit` sets one property on one element and leaves every other byte alone
+  - It takes `--index`, an optional `--hash`, and one of `--style`, `--attr`, or `--text`, and returns the file's new hash
 - `editing` claims, releases, or lists claims on frames
 - `check` reports every content rule a frame, page, or project breaks
 - `capture` screenshots a frame or a page
@@ -60,6 +61,7 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 
 - With `--json`, stdout carries exactly one envelope, `{ ok, data }` or `{ ok, error }`, even on a parse error, so an agent tells success from failure by one key before reading the exit code.
 - Each error code maps to one exit in `src/shared/errors.ts`, and a later row appends a code rather than reusing a number, so a script branching on an exit keeps working.
+- Every `edit` refusal exits 7 with its reason as the code, so a script tells a refused edit from a missing frame.
 
 ### Refs name what the agent just wrote
 

@@ -2,6 +2,7 @@ import type { z } from 'zod'
 
 import { addressFileSchema } from './address'
 import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
+import { editResultSchema } from './edit'
 import {
   frameRecordSchema,
   listResultSchema,
@@ -19,4 +20,5 @@ export const RECORDS: Record<string, z.ZodType> = {
   page: pageRecordSchema,
   projectRecord: projectRecordSchema,
   list: listResultSchema,
+  edit: editResultSchema,
 }
