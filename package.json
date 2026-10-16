@@ -43,6 +43,7 @@
     "test:e2e:ui": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "check:full": "bun scripts/verify.ts && bun run test:e2e",
+    "measure:canvas": "bun run build && playwright test -c e2e/perf/playwright.config.ts",
     "smoke:prod": "bun e2e/screenshot.ts --check-console-clean --require-base-url",
     "prepare": "husky",
     "check": "bun scripts/verify.ts",
