@@ -8,6 +8,7 @@ import {
   LIVE_PATH,
   type ServerMessage,
 } from '@/shared/live-messages'
+import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 
 import { isBoardHost } from '../app'
@@ -31,6 +32,8 @@ export interface HubOptions {
   port: () => number
   /** The board as it stands, sent to a board client on its hello. */
   snapshot: () => Promise<ListResult>
+  /** Every frame's check findings, sent on a hello after the board. */
+  findings?: () => Promise<Record<string, Finding[]>>
 }
 
 /**
@@ -38,7 +41,12 @@ export interface HubOptions {
  * its role, and only a `board` client counts as an open tab and receives the
  * board's messages.
  */
-export function createHub({ tabs, port, snapshot }: HubOptions): LiveHub {
+export function createHub({
+  tabs,
+  port,
+  snapshot,
+  findings,
+}: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Set<WebSocket>()
 
@@ -47,10 +55,14 @@ export function createHub({ tabs, port, snapshot }: HubOptions): LiveHub {
       if (boards.has(socket) || !isBoardHello(String(data))) return
       boards.add(socket)
       tabs.open()
-      void snapshot().then(
-        (board) => send(socket, { type: 'board', data: board }),
-        () => {},
-      )
+      void snapshot()
+        .then(async (board) => {
+          send(socket, { type: 'board', data: board })
+          if (findings) {
+            send(socket, { type: 'findings', findings: await findings() })
+          }
+        })
+        .catch(() => {})
     })
     socket.on('close', () => {
       if (boards.delete(socket)) tabs.close()

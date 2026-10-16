@@ -73,6 +73,7 @@ describe('startServer live socket', () => {
   let server: RunningServer
   let socket: WebSocket
   let messages: ServerMessage[]
+  let hello: ServerMessage[]
 
   beforeEach(async () => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
@@ -88,7 +89,8 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(1)
+    await expect.poll(() => messages.length).toBe(2)
+    hello = messages
     messages = []
   })
 
@@ -97,6 +99,13 @@ describe('startServer live socket', () => {
     await server.close()
     board.cleanup()
     rmSync(clientDir, { recursive: true, force: true })
+  })
+
+  it('sends the board and then every frame checked on hello', () => {
+    expect(hello.map((message) => message.type)).toEqual(['board', 'findings'])
+    expect(hello[1]).toMatchObject({
+      findings: { 'studio/home/hero': expect.any(Array) },
+    })
   })
 
   it('counts the connected board as an open tab', async () => {
@@ -121,15 +130,19 @@ describe('startServer live socket', () => {
       .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
   })
 
-  it('pushes the board and then the changed frame after a write', async () => {
+  it('pushes the board, the changed frame, and its findings after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
       .poll(() => messages.map((message) => message.type), {
         timeout: 5000,
       })
-      .toEqual(['board', 'reload'])
+      .toEqual(['board', 'reload', 'findings'])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+    expect(messages[2]).toMatchObject({
+      type: 'findings',
+      findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
+    })
   })
 
   it('reloads only the frame saved through a temp file and a rename', async () => {
