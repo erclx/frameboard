@@ -30,11 +30,17 @@ import { type BoardServer, serveBoard } from './support/board-server'
 const DEFAULT = '(default)'
 
 interface Rendered {
+  /** Each text element's first family, the browser's own fonts read as `DEFAULT`. */
   families: string[]
   colors: string
 }
 
-/** What Chromium renders, with every text element read the way `textElements` picks them. */
+/**
+ * What Chromium renders, with every text element read the way `textElements`
+ * picks them. The browser's default and control fonts are probed inside the
+ * frame itself, since the default family follows the document's `lang` and a
+ * blank page probes another one on Linux.
+ */
 async function rendered(
   page: Page,
   theme: 'light' | 'dark',
@@ -54,6 +60,18 @@ async function rendered(
     ])
     const first = (family: string) =>
       (family.split(',')[0] ?? '').trim().replace(/^(['"])(.*)\1$/, '$2')
+    const probe = (tag: string, style: string) => {
+      const element = document.createElement(tag)
+      element.setAttribute('style', style)
+      root.append(element)
+      const family = first(getComputedStyle(element).fontFamily)
+      element.remove()
+      return family
+    }
+    const browserFonts = new Set([
+      probe('span', 'font-family: initial'),
+      probe('button', 'all: revert'),
+    ])
     const families = [...document.querySelectorAll('*')]
       .filter(
         (element) =>
@@ -66,6 +84,7 @@ async function rendered(
           ),
       )
       .map((element) => first(getComputedStyle(element).fontFamily))
+      .map((family) => (browserFonts.has(family) ? '(default)' : family))
     const colors = [...document.querySelectorAll('body, body *')]
       .map((element) => {
         const style = getComputedStyle(element)
@@ -74,22 +93,6 @@ async function rendered(
       .join('\n')
     return { families, colors }
   }, theme)
-}
-
-/** The family Chromium gives a paragraph and a button no rule reaches. */
-async function browserDefaults(page: Page): Promise<Set<string>> {
-  await page.setContent('<p>x</p><button>x</button>')
-  return new Set(
-    await page.evaluate(() =>
-      ['p', 'button'].map((tag) =>
-        (
-          getComputedStyle(
-            document.querySelector(tag) as Element,
-          ).fontFamily.split(',')[0] ?? ''
-        ).trim(),
-      ),
-    ),
-  )
 }
 
 /** The static answer for the same elements, in the same order. */
@@ -128,7 +131,6 @@ test.describe('the static font and theme rules against the browser', () => {
   })
 
   test('agrees on the first family of every text element', async ({ page }) => {
-    const defaults = await browserDefaults(page)
     const frames = await framesOf(board.root)
     expect(frames.length).toBeGreaterThan(0)
 
@@ -136,10 +138,7 @@ test.describe('the static font and theme rules against the browser', () => {
       await page.goto(`${server.url}${frameUrl(frame.ref)}`)
       const { families } = await rendered(page, 'light')
 
-      expect(
-        families.map((family) => (defaults.has(family) ? DEFAULT : family)),
-        frame.ref,
-      ).toEqual(staticFamilies(board.root, frame))
+      expect(families, frame.ref).toEqual(staticFamilies(board.root, frame))
     }
   })
 
@@ -187,7 +186,6 @@ test.describe('the static rules against the browser on the local corpus', () => 
     page,
   }) => {
     const root = corpus ?? ''
-    const defaults = await browserDefaults(page)
     const disagreements: string[] = []
     const frames = await framesOf(root)
     expect(frames.length).toBeGreaterThan(0)
@@ -196,9 +194,7 @@ test.describe('the static rules against the browser on the local corpus', () => 
       await page.goto(`${server.url}${frameUrl(frame.ref)}`)
       const light = await rendered(page, 'light')
       const dark = await rendered(page, 'dark')
-      const families = light.families.map((family) =>
-        defaults.has(family) ? DEFAULT : family,
-      )
+      const families = light.families
       const rules = new Set(
         checkFrame({
           root,
