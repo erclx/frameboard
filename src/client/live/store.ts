@@ -1,6 +1,7 @@
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 
 export interface LiveState {
@@ -11,6 +12,8 @@ export interface LiveState {
   connected: boolean
   /** The frame `show` last named, until its page's canvas brings it into view. */
   focus: string | null
+  /** Check findings by frame ref, absent meaning none reported yet. */
+  findings: Readonly<Record<string, readonly Finding[]>>
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -21,20 +24,29 @@ export function createLiveStore(): LiveStore {
     reloads: {},
     connected: false,
     focus: null,
+    findings: {},
   }))
 }
 
-/** Replaces the board, dropping the counters of frames it no longer holds. */
+/** Replaces the board, dropping the counters and findings of frames it no longer holds. */
 export function receiveBoard(store: LiveStore, board: ListResult): void {
   const refs = new Set(
     board.projects.flatMap((project) =>
       project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
     ),
   )
-  const reloads = Object.fromEntries(
-    Object.entries(store.getState().reloads).filter(([ref]) => refs.has(ref)),
-  )
-  store.setState({ board, reloads })
+  const held = <T>(byRef: Readonly<Record<string, T>>) =>
+    Object.fromEntries(Object.entries(byRef).filter(([ref]) => refs.has(ref)))
+  const { reloads, findings } = store.getState()
+  store.setState({ board, reloads: held(reloads), findings: held(findings) })
+}
+
+/** Replaces the findings of each frame named, an empty list clearing one. */
+export function receiveFindings(
+  store: LiveStore,
+  findings: Readonly<Record<string, readonly Finding[]>>,
+): void {
+  store.setState({ findings: { ...store.getState().findings, ...findings } })
 }
 
 /** Bumps each frame's counter, which reloads its iframe alone. */

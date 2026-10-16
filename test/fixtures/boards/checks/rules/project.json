@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "pages": [
+    "naming",
+    "head-body",
+    "table-tbody",
+    "outside-link",
+    "network",
+    "missing-file",
+    "default-font",
+    "generic-font",
+    "theme",
+    "allowed-fonts",
+    "uppercase"
+  ],
+  "checks": {
+    "allowedFonts": [
+      "Geist"
+    ],
+    "noUppercase": true
+  }
+}

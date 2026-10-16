@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server'
 
 import { createApp } from './app'
 import { scanBoard } from './board/scan'
+import { type BoardFindings, createBoardFindings } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
@@ -101,10 +102,12 @@ async function listen({
     scanning = run.catch(() => {})
     return run
   }
+  const findings = createBoardFindings(root)
   const hub = createHub({
     tabs,
     port: boundPort,
     snapshot: () => inTurn(() => scanBoard(root)),
+    findings: () => inTurn(async () => findings.all()),
   })
   const app = createApp({
     clientDir,
@@ -139,8 +142,12 @@ async function listen({
   })
   server.on('upgrade', hub.handleUpgrade)
 
+  // Every frame is checked once at start, ahead of any hello's findings.
+  void inTurn(async () => findings.update(await scanBoard(root), 'all'))
   const watcher = await watchBoard(root)
-  watcher.onBatch((paths) => void inTurn(() => pushBatch(root, paths, hub)))
+  watcher.onBatch(
+    (paths) => void inTurn(() => pushBatch(root, paths, hub, findings)),
+  )
 
   return {
     hostname: HOSTNAME,
@@ -161,11 +168,15 @@ async function listen({
   }
 }
 
-/** One rescan per batch: the whole board to every tab, then the frames to reload. */
+/**
+ * One rescan per batch: the whole board to every tab, then the frames to
+ * reload, then the findings of every frame the batch rechecked.
+ */
 async function pushBatch(
   root: string,
   paths: string[],
   hub: LiveHub,
+  findings: BoardFindings,
 ): Promise<void> {
   let board
   try {
@@ -177,4 +188,8 @@ async function pushBatch(
   hub.broadcast({ type: 'board', data: board })
   const refs = reloadRefs(root, paths, board)
   if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
+  const changed = findings.update(board, paths)
+  if (Object.keys(changed).length > 0) {
+    hub.broadcast({ type: 'findings', findings: changed })
+  }
 }

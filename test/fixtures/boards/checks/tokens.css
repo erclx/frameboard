@@ -1,0 +1,8 @@
+:root {
+  --font-body: Geist, sans-serif;
+  --fg: #18181b;
+}
+
+[data-theme='dark'] {
+  --fg: #fafafa;
+}

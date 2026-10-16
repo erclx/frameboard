@@ -7,9 +7,21 @@ export const boardFileSchema = z.looseObject({ version: z.literal(1) })
 
 export type BoardFile = z.infer<typeof boardFileSchema>
 
+/** A project's own check rules, absent meaning the built-in rules alone. */
+export const projectChecksSchema = z.looseObject({
+  allowedFonts: z.array(z.string()).optional(),
+  noUppercase: z.boolean().optional(),
+})
+
+export type ProjectChecks = z.infer<typeof projectChecksSchema>
+
 export const projectFileSchema = z.looseObject({
   version: z.literal(1),
   pages: z.array(z.string()),
+  // A checks value the rules cannot read still parses as written, so a page
+  // verb keeps the file and its page order, and the check reads that rule as
+  // off, the way it reads a missing key.
+  checks: z.union([projectChecksSchema, z.unknown()]).optional(),
 })
 
 export type ProjectFile = z.infer<typeof projectFileSchema>

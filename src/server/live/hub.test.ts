@@ -71,6 +71,33 @@ describe('createHub', () => {
     expect(message).toEqual({ type: 'board', data: SNAPSHOT })
   })
 
+  it('sends the findings after the board when the hub holds them', async () => {
+    const findings = { 'studio/home/hero': [] }
+    const withFindings = createHub({
+      tabs,
+      port: () => port,
+      snapshot: async () => SNAPSHOT,
+      findings: async () => findings,
+    })
+    server.removeAllListeners('upgrade')
+    server.on('upgrade', (request, socket, head) =>
+      withFindings.handleUpgrade(request, socket, head),
+    )
+    const socket = connect()
+    const received: ServerMessage[] = []
+    socket.on('message', (data) => received.push(JSON.parse(String(data))))
+
+    await helloAsBoard(socket)
+
+    await expect
+      .poll(() => received)
+      .toEqual([
+        { type: 'board', data: SNAPSHOT },
+        { type: 'findings', findings },
+      ])
+    await withFindings.close()
+  })
+
   it('counts a board client as an open tab until it closes', async () => {
     const socket = connect()
     await helloAsBoard(socket)

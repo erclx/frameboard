@@ -49,7 +49,8 @@ describe('show', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(1)
+    // The board, then every frame's findings.
+    await expect.poll(() => messages.length).toBe(2)
     return messages
   }
 

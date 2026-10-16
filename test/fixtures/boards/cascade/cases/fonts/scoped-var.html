@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>scoped var</title>
+    <style>
+      :root { --font: Geist; }
+      .alt { --font: serif; }
+      body, p { font-family: var(--font), sans-serif; }
+    </style>
+  </head>
+  <body>
+    <p>Root scope</p>
+    <div class="alt"><p>Scoped override</p></div>
+  </body>
+</html>

@@ -48,6 +48,34 @@ describe('projectFileSchema', () => {
       projectFileSchema.safeParse({ version: 1, pages: 'home' }).success,
     ).toBe(false)
   })
+
+  it('reads a checks config with an unknown rule kept', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: [],
+      checks: { allowedFonts: ['Geist'], noUppercase: true, minFontSize: 12 },
+    })
+
+    expect(project.checks).toEqual({
+      allowedFonts: ['Geist'],
+      noUppercase: true,
+      minFontSize: 12,
+    })
+  })
+
+  it('keeps a checks value the rules cannot read as written', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: ['home'],
+      checks: { allowedFonts: 'Geist' },
+    })
+
+    expect(project).toEqual({
+      version: 1,
+      pages: ['home'],
+      checks: { allowedFonts: 'Geist' },
+    })
+  })
 })
 
 describe('boardFileSchema', () => {

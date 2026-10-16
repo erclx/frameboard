@@ -2,6 +2,7 @@ import type { z } from 'zod'
 
 import { addressFileSchema } from './address'
 import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
+import { checkResultSchema } from './check'
 import { editResultSchema } from './edit'
 import {
   frameRecordSchema,
@@ -11,7 +12,7 @@ import {
 } from './list'
 
 /** Every record by name, the one place a later row registers a record for `docs`. */
-export const RECORDS: Record<string, z.ZodType> = {
+export const RECORDS: Record<string, z.core.$ZodType> = {
   board: boardFileSchema,
   project: projectFileSchema,
   layout: layoutFileSchema,
@@ -21,4 +22,5 @@ export const RECORDS: Record<string, z.ZodType> = {
   projectRecord: projectRecordSchema,
   list: listResultSchema,
   edit: editResultSchema,
+  checkResult: checkResultSchema,
 }

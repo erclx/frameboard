@@ -2,6 +2,7 @@ import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
@@ -21,6 +22,8 @@ interface CanvasProps {
   page: PageRecord
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
+  /** Check findings by frame ref, absent meaning none. */
+  findings?: Readonly<Record<string, readonly Finding[]>>
   /** A frame to bring into view, as `show` asks, once it is on this page. */
   focus?: string | null
   /** Called once the view has started toward `focus`. */
@@ -33,7 +36,13 @@ interface CanvasProps {
  * state, so a gesture renders nothing. Only once the view settles does React
  * hear of it, to swap frames far offscreen for placeholders.
  */
-export function Canvas({ page, reloads, focus, onFocused }: CanvasProps) {
+export function Canvas({
+  page,
+  reloads,
+  findings,
+  focus,
+  onFocused,
+}: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
@@ -189,6 +198,7 @@ export function Canvas({ page, reloads, focus, onFocused }: CanvasProps) {
                 frame={frame}
                 live={live?.has(frame.ref) ?? false}
                 version={reloads[frame.ref] ?? 0}
+                findings={findings?.[frame.ref]}
               />
             ))}
       </div>

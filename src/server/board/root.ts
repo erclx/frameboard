@@ -2,13 +2,13 @@ import { existsSync } from 'node:fs'
 import { mkdir, realpath, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 
+import { DEFAULT_BOARD_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 
 import { isCode, writeRecord } from './json-record'
 import { BOARD_FILE, listProjects, PROJECT_FILE } from './scan'
 
-/** Where a repository or a working folder keeps its board when no marker says otherwise. */
-export const DEFAULT_BOARD_FOLDER = '.frameboard'
+export { DEFAULT_BOARD_FOLDER }
 export const START_PROJECT = 'untitled'
 export const START_PAGE = 'page-1'
 

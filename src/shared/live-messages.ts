@@ -1,3 +1,4 @@
+import type { Finding } from './records/check'
 import type { ListResult } from './records/list'
 
 /** The socket path on the board's server. */
@@ -22,3 +23,8 @@ export type ServerMessage =
   | { type: 'reload'; refs: string[] }
   /** Point the open board at one frame. */
   | { type: 'show'; ref: string }
+  /**
+   * Check findings by frame ref: every frame after hello, and after each
+   * batch's `board` the frames it rechecked, where an empty list clears one.
+   */
+  | { type: 'findings'; findings: Record<string, Finding[]> }

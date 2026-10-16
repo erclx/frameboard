@@ -26,6 +26,7 @@ Owns what sits on disk and how Frameboard reads it, being the board folder, the 
 
 - A board folder holds `board.json`, so a verb finds a standalone board by walking up from the working folder, stopping at the repository top, rather than needing `--root`.
 - A project may hold `project.json` listing its pages in display order, so pages reorder without renaming folders, and pages it does not list follow by name.
+- `project.json` may hold `checks`, whose `allowedFonts` and `noUppercase` turn on the project's own check rules, so a house style travels with the project and absent means the built-in rules alone.
 - `serve` writes `.run/address.json` holding the server's URL, pid, and token at mode 0600, and `.run/` ignores itself through its own `.gitignore`, so the token never reaches a commit.
 - Every record carries `"version": 1` and reads through a loose schema, so a newer Frameboard's keys survive a write by an older one.
 

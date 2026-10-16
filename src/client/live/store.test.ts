@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 
-import { createLiveStore, receiveBoard, receiveReload } from './store'
+import {
+  createLiveStore,
+  receiveBoard,
+  receiveFindings,
+  receiveReload,
+} from './store'
 
 function boardWith(...names: string[]): ListResult {
   return {
@@ -73,5 +79,45 @@ describe('receiveReload', () => {
     receiveReload(store, ['studio/home/hero'])
 
     expect(store.getState().reloads).toEqual({ 'studio/home/hero': 2 })
+  })
+})
+
+function themeFinding(frame: string): Finding {
+  return {
+    rule: 'theme',
+    severity: 'error',
+    frame,
+    path: `${frame}.html`,
+    message: 'One theme alone.',
+    location: null,
+  }
+}
+
+describe('receiveFindings', () => {
+  it('replaces the findings of the frames named and keeps the rest', () => {
+    const store = createLiveStore()
+    receiveFindings(store, {
+      'studio/home/hero': [themeFinding('studio/home/hero')],
+      'studio/home/about': [themeFinding('studio/home/about')],
+    })
+
+    receiveFindings(store, { 'studio/home/hero': [] })
+
+    expect(store.getState().findings).toEqual({
+      'studio/home/hero': [],
+      'studio/home/about': [themeFinding('studio/home/about')],
+    })
+  })
+
+  it('drops the findings of a frame the board no longer holds', () => {
+    const store = createLiveStore()
+    receiveFindings(store, {
+      'studio/home/hero': [themeFinding('studio/home/hero')],
+      'studio/home/about': [themeFinding('studio/home/about')],
+    })
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(Object.keys(store.getState().findings)).toEqual(['studio/home/hero'])
   })
 })
