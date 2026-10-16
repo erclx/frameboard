@@ -170,6 +170,29 @@ describe('buildCascade firstFamily', () => {
     ).toBe('Linked')
   })
 
+  it('reads a sheet a style block imports from the project assets', () => {
+    expect(
+      familyOf(
+        '<style>@import "../assets/base.css";</style><p id="t">x</p>',
+        't',
+        {
+          'site/assets/base.css':
+            '@import url("type.css");\nbody { color: black }',
+          'site/assets/type.css': 'body { font-family: Geist }',
+        },
+      ),
+    ).toBe('Geist')
+  })
+
+  it('lets the importing sheet win a tie with the sheet it imports', () => {
+    expect(
+      familyOf('<link rel="stylesheet" href="a.css"><p id="t">x</p>', 't', {
+        'site/home/a.css': '@import "b.css";\np { font-family: Importer }',
+        'site/home/b.css': 'p { font-family: Imported }',
+      }),
+    ).toBe('Importer')
+  })
+
   it('skips a hover rule and a pseudo-element', () => {
     expect(
       familyOf(

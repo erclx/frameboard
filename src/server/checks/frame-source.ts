@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import type { Document, Element } from 'domhandler'
 import { parse, type Token } from 'parse5'
 import { adapter } from 'parse5-htmlparser2-tree-adapter'
+import postcss from 'postcss'
 
 import { ASSETS_FOLDER, FRAME_EXTENSION } from '@/shared/board-files'
 import type { FindingLocation } from '@/shared/records/check'
@@ -41,7 +42,10 @@ export interface FrameSource extends FrameTarget {
   document: Document
   /** Every element in document order, outside any `<template>`. */
   elements: Element[]
-  /** The frame's own sheets in document order, `<style>` blocks and local `<link>`s. */
+  /**
+   * The frame's own sheets in cascade order, being `<style>` blocks and local
+   * `<link>`s in document order, each after the local sheets it imports.
+   */
   sheets: Sheet[]
 }
 
@@ -61,6 +65,7 @@ export function readFrame(target: FrameTarget): FrameSource {
 
   const elements: Element[] = []
   const sheets: Sheet[] = []
+  const imported = new Set<string>()
   const walk = (node: Document | Element): void => {
     for (const child of node.children) {
       if (
@@ -77,16 +82,26 @@ export function readFrame(target: FrameTarget): FrameSource {
           .map((node) => ('data' in node ? node.data : ''))
           .join('')
         const start = element.children[0]?.startIndex
-        sheets.push({ css: text, origin: 'style', path, offset: start ?? 0 })
+        sheets.push(
+          ...withImports(
+            { css: text, origin: 'style', path, offset: start ?? 0 },
+            imported,
+          ),
+        )
       } else if (isStylesheetLink(element)) {
         const linked = localTarget(element.attribs.href ?? '', pageDir)
         if (linked && existsSync(linked)) {
-          sheets.push({
-            css: readFileSync(linked, 'utf8'),
-            origin: 'linked',
-            path: linked,
-            offset: 0,
-          })
+          sheets.push(
+            ...withImports(
+              {
+                css: readFileSync(linked, 'utf8'),
+                origin: 'linked',
+                path: linked,
+                offset: 0,
+              },
+              imported,
+            ),
+          )
         }
       }
       // A template's content is a fragment the page never renders.
@@ -106,6 +121,44 @@ export function readFrame(target: FrameTarget): FrameSource {
     elements,
     sheets,
   }
+}
+
+/**
+ * A sheet behind the local sheets its `@import` rules load, each read once,
+ * since an imported sheet cascades ahead of the rules that import it.
+ */
+function withImports(sheet: Sheet, imported: Set<string>): Sheet[] {
+  let root
+  try {
+    root = postcss.parse(sheet.css)
+  } catch {
+    return [sheet]
+  }
+  const before: Sheet[] = []
+  root.walkAtRules(/^import$/i, (rule) => {
+    const url = importUrl(rule.params)
+    const target = url === null ? null : localTarget(url, sheetBase(sheet))
+    if (!target || imported.has(target) || !existsSync(target)) return
+    imported.add(target)
+    before.push(
+      ...withImports(
+        {
+          css: readFileSync(target, 'utf8'),
+          origin: 'linked',
+          path: target,
+          offset: 0,
+        },
+        imported,
+      ),
+    )
+  })
+  return [...before, sheet]
+}
+
+/** The URL an `@import` rule's parameters name, quoted or through `url()`. */
+export function importUrl(params: string): string | null {
+  const match = /^\s*(?:url\(\s*)?(['"]?)([^'")\s]+)\1/i.exec(params)
+  return match?.[2] ?? null
 }
 
 export function isStylesheetLink(element: Element): boolean {

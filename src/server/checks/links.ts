@@ -11,6 +11,7 @@ import {
   boardPath,
   type FrameSource,
   hasScheme,
+  importUrl,
   isInside,
   localTarget,
   locate,
@@ -201,8 +202,8 @@ export function cssUrls(css: string): CssUrl[] {
     const start = node.source?.start?.offset ?? 0
     const end = node.source?.end?.offset ?? start
     if (node.type === 'atrule' && node.name.toLowerCase() === 'import') {
-      const match = /^\s*(?:url\(\s*)?(['"]?)([^'")\s]+)\1/i.exec(node.params)
-      if (match?.[2]) urls.push({ url: match[2], start, end, kind: 'import' })
+      const url = importUrl(node.params)
+      if (url !== null) urls.push({ url, start, end, kind: 'import' })
     } else if (node.type === 'decl') {
       for (const match of node.value.matchAll(
         /url\(\s*(['"]?)(.*?)\1\s*\)/gi,
