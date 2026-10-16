@@ -11,8 +11,9 @@ Owns the agent interface, being every verb an agent or script runs, the `docs` v
 
 ## Layout
 
-- `src/cli/` owns the verbs
+- `src/cli/` owns the verbs, with `index.ts` bundled to `dist/cli.js` and `hook.ts` to `dist/hook.js`, the check hook's own entry, which loads the rules and nothing of the CLI
 - `plugins/frameboard/` owns the `frameboard` skill, the check hook, and the inbox monitor
+- `plugins/frameboard/hooks/check.sh` resolves the installed `dist/hook.js` from the project's `node_modules` or the `frameboard` on `PATH`, since the plugin loader refuses a hook command outside the plugin
 
 Flags and JSON shapes come from `frameboard docs`, not from here.
 
@@ -47,7 +48,8 @@ Flags and JSON shapes come from `frameboard docs`, not from here.
 - `edit` sets one property on one element and leaves every other byte alone
   - It takes `--index`, an optional `--hash`, and one of `--style`, `--attr`, or `--text`, and returns the file's new hash
 - `editing` claims, releases, or lists claims on frames
-- `check` reports every content rule a frame, page, or project breaks
+- `check` reports every content rule a frame, page, or project breaks, taking a frame ref, a page ref, a path to the `.html` file, or nothing for the whole project, and exits 8 on any finding
+  - A two-part ref reads as `<page>/<frame>` first and `<project>/<page>` when no such frame exists
 - `capture` screenshots a frame or a page
 
 ## Decisions

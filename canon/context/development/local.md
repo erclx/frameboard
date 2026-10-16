@@ -33,7 +33,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 
 ### Build scripts
 
-- `bun run build` builds the client into `dist/client/` with Vite, then bundles `dist/cli.js` with rolldown
+- `bun run build` builds the client into `dist/client/` with Vite, then bundles `dist/cli.js` and the check hook's `dist/hook.js` with rolldown
 - `bun run preview` serves the built CLI on the `basic` fixture board at `PREVIEW_PORT`, defaulting to 4173, with no browser tab
 - `bun run dev` serves the client with hot reload on 5173 plus the worktree offset, proxying `/api`, the socket, and `/frames` to a `serve` on 4173 plus the offset, such as `PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) bun run preview`
 
@@ -57,7 +57,7 @@ Owns how the project runs on a developer machine, being installing the toolchain
 
 ### Shell scripts
 
-- All `.sh` files live under `scripts/`, and none go anywhere else
+- All `.sh` files live under `scripts/`, apart from `plugins/frameboard/hooks/`, whose resolver the plugin loader needs inside the plugin, and `.claude/hooks/`, which Claude Code runs from there
 
 ### Husky hooks
 

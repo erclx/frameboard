@@ -28,7 +28,9 @@ Frameboard has no hosted service and no MCP server. The design is a folder of HT
 
 A board folder holds projects, a project holds pages, and a page holds frames, each frame one `.html` file beside a `layout.json` that records where it sits. The `project`, `page`, and `frame` commands add, rename, move, and delete them on disk, and `list` shows the board. `edit` sets one inline style declaration, attribute, or text on one element of a frame and leaves every other byte of the file as it was. Every command takes `--json`, prints one JSON document, exits with a stable code, and never prompts, so an agent can script it.
 
-The server binds to `127.0.0.1` alone, so the board never leaves your machine. Releases before 1.0 ship the board in stages. Today the package carries the board folder, the structure commands, `edit`, `show`, and the live board, and editing by hand in the board and the content checks arrive in later 0.x releases.
+`frameboard check` reports every content rule a frame, page, or project breaks, such as a link outside the frame's page folder, a font the browser picks by default, or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on every change it watches and marks a frame's label with its findings. The Claude Code plugin in `plugins/frameboard/` runs them after each agent write and hands the findings back in the same turn, along with the `frameboard` skill.
+
+The server binds to `127.0.0.1` alone, so the board never leaves your machine. Releases before 1.0 ship the board in stages. Today the package carries the board folder, the structure commands, `edit`, `show`, the live board, and the content checks, and editing by hand in the board arrives in a later 0.x release.
 
 ## Requirements
 
