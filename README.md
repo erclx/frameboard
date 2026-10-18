@@ -18,7 +18,7 @@ frameboard serve
 
 In a folder with no board, `serve` creates `.frameboard/` at the repository top, or in the current folder outside a repository, holding one empty project. It serves on `http://127.0.0.1:4173`, or on a free port when 4173 is taken, and opens the board in your browser unless you pass `--no-open` or a board tab is already connected. Running `serve` again for the same board prints the address of the server already running rather than starting a second, and opens a tab only when none is open.
 
-The board opens on a home view listing every project. Opening one shows its pages and a canvas of its frames, each a live page you pan and zoom around, and a frame reloads on its own the moment its file changes on disk. `frameboard show <frame>` points the open board at a frame.
+The board opens on a home view listing every project. Opening one shows its pages and a canvas of live frames you pan and zoom, each reloading the moment its file changes. Play hands your clicks to the frames, Esc returns to Edit, and Cmd+\ hides the panels. `frameboard show <frame>` points the open board at a frame.
 
 `frameboard docs` prints every command, flag, record shape, exit code, and check rule, and `frameboard --version` prints the installed version.
 
