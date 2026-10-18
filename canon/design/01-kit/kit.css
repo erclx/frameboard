@@ -1,0 +1,129 @@
+/* Kit, re-skinned in Frameboard's chrome palette (signal is Frameboard blue, external is the agent purple). One set of tokens, two finishes. html.kit is the clean finish, html.kit.hand the hand-drawn one.
+   Dark is the default; light sits under [data-theme="light"]. Colour names a kind of thing, never decoration. */
+
+html.kit {
+  --bg: #1f1f1f; --surface: #2a2a2a; --ink: #e6e6e6; --ink-2: #949494; --hair: #353535;
+  --signal: #4e92f6; --signal-bg: rgba(78, 146, 246, 0.16); --on-signal: #ffffff;
+  --action: #3cc2c8; --action-bg: rgba(60, 194, 200, 0.14);
+  --data: #5fc48a; --data-bg: rgba(95, 196, 138, 0.14);
+  --external: #e0a3ff; --external-bg: rgba(224, 163, 255, 0.14);
+  --warn: #f5b84a; --warn-bg: rgba(245, 184, 74, 0.16);
+  --risk: #ff6b6b; --risk-bg: rgba(255, 107, 107, 0.14);
+  --font: "Geist", "Geist Variable", "DejaVu Sans", sans-serif;
+  --mono: "DejaVu Sans Mono", monospace;
+}
+html.kit[data-theme="light"] {
+  --bg: #ececec; --surface: #ffffff; --ink: #1a1a1a; --ink-2: #6e6e6e; --hair: #e4e4e4;
+  --signal: #2f7bf0; --signal-bg: rgba(47, 123, 240, 0.12); --on-signal: #ffffff;
+  --action: #0f8a90; --action-bg: rgba(15, 138, 144, 0.10);
+  --data: #1a7f45; --data-bg: rgba(26, 127, 69, 0.10);
+  --external: #9b3fd1; --external-bg: rgba(155, 63, 209, 0.10);
+  --warn: #c77a00; --warn-bg: rgba(199, 122, 0, 0.14);
+  --risk: #d92d2d; --risk-bg: rgba(217, 45, 45, 0.09);
+}
+html.kit.hand { --font: "Virgil", "DejaVu Sans", sans-serif; --mono: "Virgil", "DejaVu Sans", sans-serif; }
+
+@font-face { font-family: "Geist"; src: url("vendor/Geist-latin.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Virgil"; src: url("vendor/Virgil-Regular.woff2") format("woff2"); }
+
+html.kit { background: var(--bg); color: var(--ink); font-family: var(--font); }
+.kit body { margin: 0; padding: 60px 64px 72px; font-size: 22px; line-height: 1.45; }
+.kit .kicker { font-size: 20px; color: var(--ink-2); margin: 0 0 6px; }
+.kit h1 { font-size: 56px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; margin: 0 0 12px; }
+.kit h2 { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin: 64px 0 6px; }
+.kit h3 { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+.kit .lede { color: var(--ink-2); margin: 0 0 8px; max-width: 34em; }
+.kit .cap { color: var(--ink-2); font-size: 20px; margin: 0 0 22px; }
+.kit.hand h1, .kit.hand h2, .kit.hand h3 { font-weight: 400; letter-spacing: 0; }
+.kit code, .kit .mono { font-family: var(--mono); font-size: 20px; }
+.kit hr { border: 0; border-top: 6px solid var(--ink); margin: 0 0 8px; }
+
+/* diagram surface */
+.dia { position: relative; }
+.dia svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.nl { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 8px 14px; line-height: 1.2; }
+.nl.left { align-items: flex-start; text-align: left; }
+.nl b { font-size: 22px; font-weight: 600; }
+.nl span { font-size: 20px; color: var(--ink-2); margin-top: 4px; }
+.nl.on-signal b { color: var(--ink); }
+.nl.muted b { color: var(--ink-2); font-weight: 400; }
+.hand .nl b { font-weight: 400; }
+.el { position: absolute; transform: translate(-50%, -50%); background: var(--bg); padding: 0 8px; font-size: 20px; color: var(--ink-2); white-space: nowrap; }
+.gl { position: absolute; font-size: 20px; font-weight: 600; color: var(--ink-2); }
+.hand .gl { font-weight: 400; }
+
+/* part labels under swatches */
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px 20px; }
+.sw { height: 84px; border-radius: 4px; }
+.hand .sw { border-radius: 0; }
+.swl b { display: block; font-weight: 600; margin-top: 10px; }
+.swl span { color: var(--ink-2); font-size: 20px; }
+.typerow { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline; padding: 14px 0; border-top: 1px solid var(--hair); }
+.typerow .k { color: var(--ink-2); font-size: 20px; }
+
+/* tags: a coloured mark and a word, no pill */
+.tag { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; margin-right: 22px; }
+.tag::before { content: ""; width: 12px; height: 12px; background: var(--c, var(--ink)); }
+.tag.planned::before { background: transparent; border: 2px dashed var(--ink-2); width: 10px; height: 10px; }
+.hand .tag { font-weight: 400; }
+
+/* page parts */
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 72px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--hair); }
+.steps li::before { content: counter(s, decimal-leading-zero); font-size: 36px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.hand .steps li::before { font-weight: 400; }
+.steps b { display: block; font-weight: 600; }
+.steps span { display: block; color: var(--ink-2); }
+.callout { border-left: 6px solid var(--signal); background: var(--signal-bg); padding: 18px 24px; margin: 8px 0; }
+.callout.risk { border-left-color: var(--risk); background: var(--risk-bg); }
+.callout b { display: block; font-weight: 700; }
+.hand .callout b { font-weight: 400; }
+table.t { width: 100%; border-collapse: collapse; font-size: 21px; }
+table.t th { text-align: left; font-size: 20px; color: var(--ink-2); font-weight: 600; padding: 10px 16px 10px 0; border-bottom: 3px solid var(--ink); }
+table.t td { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+table.t td.n { text-align: right; font-variant-numeric: tabular-nums; }
+table.t th.n { text-align: right; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--c); margin-right: 8px; vertical-align: 1px; }
+.code { background: var(--surface); border: 1px solid var(--hair); padding: 18px 22px; font-family: "DejaVu Sans Mono", monospace; font-size: 20px; line-height: 1.6; white-space: pre; }
+.code .c { color: var(--ink-2); }
+dl.def { display: grid; grid-template-columns: 220px 1fr; gap: 0 24px; margin: 0; }
+dl.def dt, dl.def dd { margin: 0; padding: 12px 0; border-top: 1px solid var(--hair); }
+dl.def dt { font-weight: 600; }
+.hand dl.def dt { font-weight: 400; }
+dl.def dd { color: var(--ink-2); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 6px solid var(--ink); }
+.three > div { padding: 18px 22px 18px 0; }
+.three > div + div { padding-left: 22px; border-left: 1px solid var(--hair); }
+.three .pick { box-shadow: inset 0 6px 0 var(--signal); margin-top: -6px; padding-top: 24px; }
+.three ul { list-style: none; margin: 10px 0 0; padding: 0; }
+.three li { padding: 6px 0; }
+.stat { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: baseline; }
+.stat .big { font-size: 88px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+.hand .stat .big { font-weight: 400; }
+.stat .big.sig { color: var(--signal); }
+
+/* status mark inside a node or a line: built needs none */
+.st { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: var(--ink); font-style: normal; }
+.st::before { content: ""; width: 12px; height: 12px; background: var(--c, var(--ink)); }
+.st.warn { --c: var(--warn); }
+.st.planned::before { background: transparent; border: 2px dashed var(--ink-2); width: 10px; height: 10px; }
+.st.done { --c: var(--data); }
+.hand .st { font-weight: 400; }
+.nl .st { margin-top: 8px; }
+.nl code { font-size: 22px; font-weight: 700; }
+.hand .nl code { font-weight: 400; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 20px 0 8px; font-size: 20px; color: var(--ink-2); }
+.legend .sq { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 8px; border: 2px solid var(--c); background: var(--cb); }
+.legend .sq.dash { border-style: dashed; }
+.lane { display: block; }
+
+/* lanes: a label column beside lines, split by hairlines */
+.lanes > div { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 16px 0; border-top: 1px solid var(--hair); }
+.lanes > div:last-child { border-bottom: 1px solid var(--hair); }
+.lanes > div > b { font-weight: 600; }
+.hand .lanes > div > b { font-weight: 400; }
+.lanes p { margin: 0 0 6px; }
+.lanes p:last-child { margin-bottom: 0; }
+.lanes .m { color: var(--ink-2); }
+.lanes.wide > div { grid-template-columns: 260px 1fr; }
