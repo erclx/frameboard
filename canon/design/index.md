@@ -24,20 +24,20 @@ Each row files its frames under a folder named for the surface. A frame is cited
 | Empty page                    | `canvas`        | `12-canvas/page-empty`                                                                                                                    |
 | Avatar menu                   | `menus`         | `14-overlays/avatar-menu`                                                                                                                 |
 | Home                          | `home`          | `07-home/home-grid`, `07-home/home-list`, `07-home/home-empty`                                                                            |
-| Home right-click              | `home`          | `07-home/context-home`                                                                                                                    |
+| Home right-click              | `menus`         | `07-home/context-home`                                                                                                                    |
 | Layers tree                   | `layers`        | `08-layers/layers-edit`                                                                                                                   |
-| Pages list and search         | `pages`         | `08-layers/pages-many`, `08-layers/pages-search`                                                                                          |
-| Find                          | `find`          | `08-layers/find-panel`                                                                                                                    |
-| Theme tab                     | `theme`         | `09-tabs/theme-tab`, `09-tabs/theme-empty`                                                                                                |
-| Assets tab                    | `assets`        | `09-tabs/assets-tab`                                                                                                                      |
+| Pages list and search         | `layers`        | `08-layers/pages-many`, `08-layers/pages-search`                                                                                          |
+| Find                          | `layers`        | `08-layers/find-panel`                                                                                                                    |
+| Theme tab                     | `tabs`          | `09-tabs/theme-tab`, `09-tabs/theme-empty`                                                                                                |
+| Assets tab                    | `tabs`          | `09-tabs/assets-tab`                                                                                                                      |
 | Element inspector             | `inspector`     | `10-inspector/inspector-text`                                                                                                             |
 | Frame selection               | `inspector`     | `10-inspector/frame-selected`, `10-inspector/multi-select`                                                                                |
-| Marquee, snapping, and labels | `selection`     | `11-selection/marquee`, `11-selection/picked-snap-magenta`, `11-selection/frame-labels`                                                   |
+| Marquee, snapping, and labels | `canvas`        | `11-selection/marquee`, `11-selection/picked-snap-magenta`, `11-selection/frame-labels`                                                   |
 | Agent claim                   | `agents`        | `13-agents/picked-claim-full`, `13-agents/picked-claim-pulse`                                                                             |
 | Notes                         | `notes`         | `13-agents/note-place`, `13-agents/note-thread`                                                                                           |
-| Unseen changes and Follow     | `changes`       | `13-agents/unseen-one`, `13-agents/unseen-many`                                                                                           |
+| Unseen changes and Follow     | `agents`        | `13-agents/unseen-one`, `13-agents/unseen-many`                                                                                           |
 | Palette                       | `palette`       | `14-overlays/palette`                                                                                                                     |
-| Shortcuts                     | `shortcuts`     | `14-overlays/shortcuts`                                                                                                                   |
+| Shortcuts                     | `palette`       | `14-overlays/shortcuts`                                                                                                                   |
 | Menus and toasts              | `menus`         | `14-overlays/menu-toast`, `14-overlays/context-menus`                                                                                     |
 
 ## Files
@@ -62,28 +62,28 @@ Each row files its frames under a folder named for the surface. A frame is cited
 | `home/grid`                | 1440x900  | `grid-dark.html`, `grid-dark.png`, `grid-light.html`, `grid-light.png`                                         |
 | `home/list`                | 1440x900  | `list-dark.html`, `list-dark.png`, `list-light.html`, `list-light.png`                                         |
 | `home/empty`               | 1440x900  | `empty-dark.html`, `empty-dark.png`, `empty-light.html`, `empty-light.png`                                     |
-| `home/context-home`        | 1440x900  | `context-home-dark.html`, `context-home-dark.png`, `context-home-light.html`, `context-home-light.png`         |
+| `menus/context-home`       | 1440x900  | `context-home-dark.html`, `context-home-dark.png`, `context-home-light.html`, `context-home-light.png`         |
 | `layers/edit`              | 1440x900  | `edit-dark.html`, `edit-dark.png`, `edit-light.html`, `edit-light.png`                                         |
-| `pages/many`               | 1440x900  | `many-dark.html`, `many-dark.png`, `many-light.html`, `many-light.png`                                         |
-| `pages/search`             | 1440x900  | `search-dark.html`, `search-dark.png`, `search-light.html`, `search-light.png`                                 |
-| `find/panel`               | 1440x900  | `panel-dark.html`, `panel-dark.png`, `panel-light.html`, `panel-light.png`                                     |
-| `theme/tab`                | 1440x900  | `tab-dark.html`, `tab-dark.png`, `tab-light.html`, `tab-light.png`                                             |
-| `theme/empty`              | 1440x900  | `empty-dark.html`, `empty-dark.png`, `empty-light.html`, `empty-light.png`                                     |
-| `assets/tab`               | 1440x900  | `tab-dark.html`, `tab-dark.png`, `tab-light.html`, `tab-light.png`                                             |
+| `layers/pages-many`        | 1440x900  | `pages-many-dark.html`, `pages-many-dark.png`, `pages-many-light.html`, `pages-many-light.png`                 |
+| `layers/pages-search`      | 1440x900  | `pages-search-dark.html`, `pages-search-dark.png`, `pages-search-light.html`, `pages-search-light.png`         |
+| `layers/find-panel`        | 1440x900  | `find-panel-dark.html`, `find-panel-dark.png`, `find-panel-light.html`, `find-panel-light.png`                 |
+| `tabs/theme-tab`           | 1440x900  | `theme-tab-dark.html`, `theme-tab-dark.png`, `theme-tab-light.html`, `theme-tab-light.png`                     |
+| `tabs/theme-empty`         | 1440x900  | `theme-empty-dark.html`, `theme-empty-dark.png`, `theme-empty-light.html`, `theme-empty-light.png`             |
+| `tabs/assets-tab`          | 1440x900  | `assets-tab-dark.html`, `assets-tab-dark.png`, `assets-tab-light.html`, `assets-tab-light.png`                 |
 | `inspector/text`           | 1440x900  | `text-dark.html`, `text-dark.png`, `text-light.html`, `text-light.png`                                         |
 | `inspector/frame-selected` | 1440x900  | `frame-selected-dark.html`, `frame-selected-dark.png`, `frame-selected-light.html`, `frame-selected-light.png` |
 | `inspector/multi-select`   | 1440x900  | `multi-select-dark.html`, `multi-select-dark.png`, `multi-select-light.html`, `multi-select-light.png`         |
-| `selection/marquee`        | 1440x900  | `marquee-dark.html`, `marquee-dark.png`, `marquee-light.html`, `marquee-light.png`                             |
-| `selection/snap-magenta`   | 1440x900  | `snap-magenta-dark.html`, `snap-magenta-dark.png`, `snap-magenta-light.html`, `snap-magenta-light.png`         |
-| `selection/frame-labels`   | 1440x900  | `frame-labels-dark.html`, `frame-labels-dark.png`, `frame-labels-light.html`, `frame-labels-light.png`         |
+| `canvas/marquee`           | 1440x900  | `marquee-dark.html`, `marquee-dark.png`, `marquee-light.html`, `marquee-light.png`                             |
+| `canvas/snap-magenta`      | 1440x900  | `snap-magenta-dark.html`, `snap-magenta-dark.png`, `snap-magenta-light.html`, `snap-magenta-light.png`         |
+| `canvas/frame-labels`      | 1440x900  | `frame-labels-dark.html`, `frame-labels-dark.png`, `frame-labels-light.html`, `frame-labels-light.png`         |
 | `agents/claim-full`        | 1440x900  | `claim-full-dark.html`, `claim-full-dark.png`, `claim-full-light.html`, `claim-full-light.png`                 |
 | `agents/claim-pulse`       | 1440x900  | `claim-pulse-dark.html`, `claim-pulse-dark.png`, `claim-pulse-light.html`, `claim-pulse-light.png`             |
 | `notes/note-place`         | 1440x900  | `note-place-dark.html`, `note-place-dark.png`, `note-place-light.html`, `note-place-light.png`                 |
 | `notes/note-thread`        | 1440x900  | `note-thread-dark.html`, `note-thread-dark.png`, `note-thread-light.html`, `note-thread-light.png`             |
-| `changes/unseen-one`       | 1440x900  | `unseen-one-dark.html`, `unseen-one-dark.png`, `unseen-one-light.html`, `unseen-one-light.png`                 |
-| `changes/unseen-many`      | 1440x900  | `unseen-many-dark.html`, `unseen-many-dark.png`, `unseen-many-light.html`, `unseen-many-light.png`             |
+| `agents/unseen-one`        | 1440x900  | `unseen-one-dark.html`, `unseen-one-dark.png`, `unseen-one-light.html`, `unseen-one-light.png`                 |
+| `agents/unseen-many`       | 1440x900  | `unseen-many-dark.html`, `unseen-many-dark.png`, `unseen-many-light.html`, `unseen-many-light.png`             |
 | `palette/palette`          | 1440x900  | `palette-dark.html`, `palette-dark.png`, `palette-light.html`, `palette-light.png`                             |
-| `shortcuts/shortcuts`      | 1440x900  | `shortcuts-dark.html`, `shortcuts-dark.png`, `shortcuts-light.html`, `shortcuts-light.png`                     |
+| `palette/shortcuts`        | 1440x900  | `shortcuts-dark.html`, `shortcuts-dark.png`, `shortcuts-light.html`, `shortcuts-light.png`                     |
 | `menus/menu-toast`         | 1440x900  | `menu-toast-dark.html`, `menu-toast-dark.png`, `menu-toast-light.html`, `menu-toast-light.png`                 |
 | `menus/context-menus`      | 1440x900  | `context-menus-dark.html`, `context-menus-dark.png`, `context-menus-light.html`, `context-menus-light.png`     |
 
