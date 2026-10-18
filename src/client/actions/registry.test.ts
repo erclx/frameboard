@@ -118,6 +118,22 @@ describe('bindKeys', () => {
     expect(move.runs).toBe(0)
   })
 
+  it('runs a key pressed with no element focused', () => {
+    const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
+    register(exitPlay)
+    bind(window)
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+      }),
+    )
+
+    expect(exitPlay.runs).toBe(1)
+  })
+
   it("binds into a frame's window, limited to the keys named", async () => {
     const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
     const move = action('tool.move', { keys: ['v'] })

@@ -130,10 +130,15 @@ function press(key: string, event: KeyboardEvent): void {
   action.run()
 }
 
-/** tinykeys skips fields by tag, and `isContentEditable` adds the children of an editable root. */
+/**
+ * tinykeys skips fields by tag, and `isContentEditable` adds the children of
+ * an editable root. Its own check calls `matches` on the target, which a
+ * press aimed at a document or window lacks, so those pass through.
+ */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null
+  if (typeof target?.matches !== 'function') return false
   return (
-    defaultKeybindingsHandlerIgnore(event) || target?.isContentEditable === true
+    defaultKeybindingsHandlerIgnore(event) || target.isContentEditable === true
   )
 }
