@@ -2,10 +2,10 @@
 <html lang="en" class="kit">
 <head>
 <meta charset="utf-8">
-<title>Frameboard board</title>
-<link rel="stylesheet" href="../01-kit/kit.css">
-<script src="../01-kit/vendor/rough.js"></script>
-<script src="../01-kit/kit.js"></script>
+<title>Frameboard parts</title>
+<link rel="stylesheet" href="../kit/kit.css">
+<script src="../kit/vendor/rough.js"></script>
+<script src="../kit/kit.js"></script>
 <style>
 html.kit{--fb-background:#1f1f1f;--fb-foreground:#e6e6e6;--fb-sidebar:#2a2a2a;--fb-sidebar-foreground:#e6e6e6;--fb-sidebar-accent:#3d3d3d;--fb-sidebar-primary:#4e92f6;--fb-sidebar-border:#353535;--fb-card:#2a2a2a;--fb-popover:#2a2a2a;--fb-primary:#4e92f6;--fb-primary-foreground:#ffffff;--fb-secondary:#363636;--fb-muted:#363636;--fb-muted-foreground:#949494;--fb-accent:#3d3d3d;--fb-border:#353535;--fb-input:#363636;--fb-ring:#4e92f6;--fb-destructive:#ff6b6b;--fb-claim:#e0a3ff;--fb-note:#f5b84a;--fb-faint:#6b6b6b;--fb-success:#5fc48a;--fb-guide:#ff4fa3}
 html.kit[data-theme="light"]{--fb-background:#ececec;--fb-foreground:#1a1a1a;--fb-sidebar:#ffffff;--fb-sidebar-foreground:#1a1a1a;--fb-sidebar-accent:#e8e8e8;--fb-sidebar-primary:#2f7bf0;--fb-sidebar-border:#e4e4e4;--fb-card:#ffffff;--fb-popover:#ffffff;--fb-primary:#2f7bf0;--fb-primary-foreground:#ffffff;--fb-secondary:#f2f2f2;--fb-muted:#f2f2f2;--fb-muted-foreground:#6e6e6e;--fb-accent:#e8e8e8;--fb-border:#e4e4e4;--fb-input:#f2f2f2;--fb-ring:#2f7bf0;--fb-destructive:#d92d2d;--fb-claim:#9b3fd1;--fb-note:#c77a00;--fb-faint:#a5a5a5;--fb-success:#1a7f45;--fb-guide:#e0207f}
@@ -29,38 +29,16 @@ html.kit[data-theme="light"]{--fb-background:#ececec;--fb-foreground:#1a1a1a;--f
 </style>
 </head>
 <body>
-<p class="kicker">Frameboard design system · 3 of 3</p>
-<h1>The board</h1>
-<p class="lede">Where each part of the shell sits, and what stays when the UI hides.</p>
-<h2>Shell</h2>
-<p class="cap">Blue marks the canvas, the one thing to look at.</p>
-<div id="shell"></div>
-<h2>Hide UI</h2>
-<p class="cap">Three floating pieces stay. Cmd+\ brings the panels back.</p>
-<div id="hide"></div>
-<h2>Picks behind it</h2>
-<ol class="steps">
-  <li><div><b>Toolbar floats</b><span>Bottom center, over the canvas, unchanged when the UI hides</span></div></li>
-  <li><div><b>Zoom lives in the inspector</b><span>Beside your git initials, never in a canvas corner</span></div></li>
-  <li><div><b>Panels resize</b><span>200 to 400px, 240 by default, remembered</span></div></li>
-  <li><div><b>Play keeps the panels</b><span>Only what clicks do changes</span></div></li>
-  <li><div><b>Left panel has three tabs</b><span>Design, Theme, Assets</span></div></li>
-</ol>
-<script>
-KIT.diagram(document.getElementById('shell'), { w: 972, h: 520,
-  nodes: [
-    { id: 'l', x: 0, y: 0, w: 210, h: 520, t: 'Left panel', s: 'Design, Theme, Assets' },
-    { id: 'c', x: 240, y: 0, w: 492, h: 400, kind: 'key', t: 'Canvas', s: 'frames, labels, pins' },
-    { id: 'tb', x: 330, y: 430, w: 312, h: 60, kind: 'action', t: 'Toolbar', s: 'floats, bottom center' },
-    { id: 'r', x: 762, y: 0, w: 210, h: 520, t: 'Inspector', s: 'avatar and zoom on top' },
-  ], edges: [] });
-KIT.diagram(document.getElementById('hide'), { w: 972, h: 320,
-  groups: [{ x: 0, y: 0, w: 972, h: 320, label: 'Canvas alone' }],
-  nodes: [
-    { id: 'n', x: 20, y: 40, w: 230, h: 60, t: 'Project name', s: 'and show panels' },
-    { id: 'z', x: 722, y: 40, w: 230, h: 60, t: 'Avatar and zoom' },
-    { id: 't', x: 330, y: 230, w: 312, h: 60, kind: 'action', t: 'Toolbar' },
-  ], edges: [] });
-</script>
+<p class="kicker">Frameboard design system · 2 of 3</p>
+<h1>Parts</h1>
+<p class="lede">Each part at its real size, with the one rule it keeps.</p>
+<h2>Buttons</h2><p class="cap">One blue button per surface. Red only for Delete.</p><div class="fbx"><button class="b p"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>New project</button><button class="b">Done</button><button class="b d">Delete</button><button class="b g">Cancel</button></div>
+<h2>Fields</h2><p class="cap">No outline at rest. Blue ring on focus.</p><div class="fbx"><span class="f"><i>W</i>640</span><span class="f r"><i>H</i>188</span></div>
+<h2>Selection band</h2><p class="cap">Selected row strongest, children lighter, ancestor faintest.</p><div class="fbx"><div class="rows"><div class="rw a"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>Color swatches</div><div class="rw s"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="10" rx="1"/></svg>Swatch row</div><div class="rw k" style="padding-left:22px"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="10" rx="1"/></svg>Swatch primary</div></div></div>
+<h2>Color rows</h2><p class="cap">A token shows as a chip. A raw value gets an orange flag.</p><div class="fbx"><div class="cr"><span class="s" style="background:#4f46e5"></span><span class="t">primary</span><span class="pc">100%</span></div><div class="cr"><span class="s" style="background:#111827"></span>111827<span class="pc" style="color:var(--fb-note)">raw</span></div></div>
+<h2>Agents and notes</h2><p class="cap">Purple and a slow pulse for an agent. Orange pins for notes.</p><div class="fbx"><div><div class="ct">Pricing<span>claude · editing</span></div><div class="cf"></div></div><span class="pin">2</span></div>
+<h2>Guides</h2><p class="cap">Magenta while dragging, so lining up never reads as selected.</p><div class="fbx"><div class="gd"><i style="left:0;top:10px;width:260px;height:1px"></i><i style="left:120px;top:0;width:1px;height:60px"></i><em style="left:126px;top:30px">40</em></div></div>
+<h2>Menus</h2><p class="cap">Titled with what was clicked. Keys shown. Delete last.</p><div class="fbx"><div class="mn"><div class="mt">Frame</div><div class="mi h">Duplicate<kbd>⌘ D</kbd></div><div class="mi">Hide<kbd>⇧ ⌘ H</kbd></div><div class="ms"></div><div class="mi d">Delete<kbd>⌫</kbd></div></div></div>
+<h2>Toasts</h2><p class="cap">Bottom right. Green when done, orange when something was refused.</p><div class="fbx"><div class="ts"><span style="color:var(--fb-success)">✓</span><div><b>Copied Color swatches</b><span>PNG on the clipboard</span></div></div><div class="ts"><span style="color:var(--fb-note)">!</span><div><b>Undo skipped</b><span>An agent changed Pricing</span></div></div></div>
 </body>
 </html>

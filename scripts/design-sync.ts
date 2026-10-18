@@ -1,13 +1,14 @@
 // Lands the canvas's accepted designs in canon/design/: a PNG per theme and
-// the frame HTML beside it, for every frame canon/design/index.md carries.
-// `--check` writes nothing and exits 1 when the canvas has drifted from the
-// folder. Needs the canon CLI on PATH, which serves the main root's canvas.
+// the frame HTML beside it, filed by surface for every frame
+// canon/design/index.md carries. `--check` writes nothing and exits 1 when
+// the folder differs from what a sync would write. Needs the canon CLI on
+// PATH, which serves the main root's canvas.
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import {
-  existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -15,7 +16,7 @@ import {
 import { createServer } from 'node:net'
 import { dirname, join, relative } from 'node:path'
 
-import { chromium } from '@playwright/test'
+import { type Browser, chromium } from '@playwright/test'
 
 import {
   type CanvasFiles,
@@ -27,8 +28,8 @@ import {
   resolveCarried,
   sourceFiles,
   spliceFilesSection,
-  stripPicked,
   THEMES,
+  toReference,
   uncarriedPicked,
 } from './lib/design-reference.ts'
 
@@ -42,20 +43,19 @@ interface Canvas {
   readonly content: string
 }
 
+type Output = Map<string, string | Buffer>
+
+class SyncRefused extends Error {}
+
 const ROOT = join(import.meta.dirname, '..')
 const DESIGN = join(ROOT, 'canon', 'design')
 const INDEX = join(DESIGN, 'index.md')
 const KIT_FILES = [
-  '01-kit/kit.css',
-  '01-kit/kit.js',
-  '01-kit/vendor/rough.js',
-  '01-kit/vendor/Geist-latin.woff2',
+  'kit.css',
+  'kit.js',
+  'vendor/rough.js',
+  'vendor/Geist-latin.woff2',
 ]
-
-function fail(message: string): never {
-  console.error(message)
-  process.exit(1)
-}
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -75,7 +75,9 @@ async function serveCanvas(): Promise<{
 }> {
   const probe = spawnSync('canon', ['--version'], { stdio: 'ignore' })
   if (probe.error) {
-    fail('The canon CLI is not on PATH. Install the canon toolkit first.')
+    throw new SyncRefused(
+      'The canon CLI is not on PATH. Install the canon toolkit first.',
+    )
   }
   const port = await freePort()
   const server = spawn(
@@ -83,26 +85,31 @@ async function serveCanvas(): Promise<{
     ['canvas', 'serve', '--json', '--port', String(port)],
     { stdio: ['ignore', 'pipe', 'inherit'] },
   )
-  const canvas = await new Promise<Canvas>((resolve, reject) => {
-    let out = ''
-    server.on('exit', () => reject(new Error('canon canvas serve exited')))
-    server.stdout?.on('data', (chunk: Buffer) => {
-      out += chunk.toString()
-      const line = out.split('\n').find((l) => l.trimStart().startsWith('{'))
-      if (!line) return
-      const record = JSON.parse(line) as {
-        ok?: boolean
-        url?: string
-        content?: string
-      }
-      if (record.ok && record.url && record.content) {
-        resolve({ url: record.url, content: record.content })
-      } else {
-        reject(new Error(`canon canvas serve refused: ${line}`))
-      }
+  try {
+    const canvas = await new Promise<Canvas>((resolve, reject) => {
+      let out = ''
+      server.on('exit', () => reject(new Error('canon canvas serve exited')))
+      server.stdout?.on('data', (chunk: Buffer) => {
+        out += chunk.toString()
+        const line = out.split('\n').find((l) => l.trimStart().startsWith('{'))
+        if (!line) return
+        const record = JSON.parse(line) as {
+          ok?: boolean
+          url?: string
+          content?: string
+        }
+        if (record.ok && record.url && record.content) {
+          resolve({ url: record.url, content: record.content })
+        } else {
+          reject(new SyncRefused(`canon canvas serve refused: ${line}`))
+        }
+      })
     })
-  })
-  return { canvas, server }
+    return { canvas, server }
+  } catch (error) {
+    server.kill()
+    throw error
+  }
 }
 
 function listCanvas(content: string): CanvasFiles {
@@ -125,97 +132,35 @@ function readBox(content: string, page: string, stem: string): Box {
     readFileSync(join(content, page, 'layout.json'), 'utf8'),
   ) as { frames: Record<string, Box | undefined> }
   const box = layout.frames[stem]
-  if (!box) fail(`No layout.json box for ${page}/${stem}.`)
+  if (!box) throw new SyncRefused(`No layout.json box for ${page}/${stem}.`)
   return box
 }
 
-function write(path: string, data: string | Buffer): void {
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, data)
-}
-
-function trackedFiles(dir: string): string[] {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
+function trackedFiles(): string[] {
+  return readdirSync(DESIGN, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => relative(DESIGN, join(entry.parentPath, entry.name)))
+    .filter((path) => path !== 'index.md')
 }
 
-async function main(): Promise<void> {
-  const check = process.argv.includes('--check')
-  const index = readFileSync(INDEX, 'utf8')
-  const carried = parseCarried(index)
-  const { canvas, server } = await serveCanvas()
-  try {
-    const files = listCanvas(canvas.content)
-    const { frames, missing } = resolveCarried(carried, files)
-    if (missing.length > 0) {
-      fail(`No canvas file for: ${missing.join(', ')}. Nothing written.`)
-    }
-    const unmapped = uncarriedPicked(carried, files)
-    for (const ref of unmapped) {
-      console.error(`Picked on the canvas but not in the index: ${ref}`)
-    }
-
-    if (check) {
-      const canvasHtml = new Map<string, string>()
-      const trackedHtml = new Map<string, string>()
-      for (const frame of frames) {
-        for (const { file } of sourceFiles(frame)) {
-          const path = join(frame.page, file)
-          canvasHtml.set(path, readFileSync(join(canvas.content, path), 'utf8'))
-          if (existsSync(join(DESIGN, path))) {
-            trackedHtml.set(path, readFileSync(join(DESIGN, path), 'utf8'))
-          }
-        }
-      }
-      const drift = classifyDrift(canvasHtml, trackedHtml)
-      for (const path of drift.changed) console.error(`Changed: ${path}`)
-      for (const path of drift.missing) console.error(`Missing: ${path}`)
-      if (drift.changed.length + drift.missing.length + unmapped.length > 0) {
-        process.exit(1)
-      }
-      console.log('canon/design/ matches the canvas.')
-      return
-    }
-
-    const written = new Set<string>()
-    const rows: FileRow[] = []
-    const browser = await chromium.launch()
-    try {
-      for (const frame of frames) {
-        rows.push(await captureFrame(browser, canvas, frame, written))
-      }
-    } finally {
-      await browser.close()
-    }
-    for (const kit of KIT_FILES) {
-      write(join(DESIGN, kit), readFileSync(join(canvas.content, kit)))
-      written.add(kit)
-    }
-    for (const path of trackedFiles(DESIGN)) {
-      if (path === 'index.md' || written.has(path)) continue
-      rmSync(join(DESIGN, path))
-    }
-    write(INDEX, spliceFilesSection(index, renderFilesSection(rows)))
-    spawnSync(join(ROOT, 'node_modules', '.bin', 'oxfmt'), [INDEX], {
-      stdio: 'inherit',
-    })
-    console.log(`Wrote ${written.size} files to canon/design/.`)
-  } finally {
-    server.kill()
+function pruneEmptyDirs(dir: string): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) pruneEmptyDirs(join(dir, entry.name))
   }
+  if (dir !== DESIGN && readdirSync(dir).length === 0) rmdirSync(dir)
 }
 
+/** Draws one carried frame into the output and returns its Files row. */
 async function captureFrame(
-  browser: Awaited<ReturnType<typeof chromium.launch>>,
+  browser: Browser,
   canvas: Canvas,
   frame: CarriedFrame,
-  written: Set<string>,
+  output: Output,
 ): Promise<FileRow> {
   const sources = sourceFiles(frame)
   const first = sources[0]
-  if (!first) fail(`No source for ${frame.page}/${frame.stem}.`)
+  if (!first)
+    throw new SyncRefused(`No source for ${frame.page}/${frame.stem}.`)
   const box = readBox(
     canvas.content,
     frame.page,
@@ -227,40 +172,120 @@ async function captureFrame(
       join(canvas.content, frame.page, source.file),
       'utf8',
     )
-    const htmlPath = join(frame.page, source.file)
-    write(join(DESIGN, htmlPath), stripPicked(html))
-    written.add(htmlPath)
-    names.push(source.file)
+    output.set(join(frame.folder, source.out), toReference(html))
+    names.push(source.out)
     for (const theme of frame.single ? THEMES : [source.theme]) {
       const context = await browser.newContext({
         viewport: { width: box.width, height: box.height },
         reducedMotion: 'reduce',
       })
-      const page = await context.newPage()
-      await page.goto(`${canvas.url}frames/${frame.page}/${source.file}`)
-      await page.evaluate((value) => {
-        document.documentElement.setAttribute('data-theme', value)
-        for (const el of document.querySelectorAll('[style]')) {
-          if (/#ffd400/i.test(el.getAttribute('style') ?? '')) el.remove()
-        }
-      }, theme)
-      await page.evaluate(() => document.fonts.ready)
-      const png = `${frame.stem}-${theme}.png`
-      const pngPath = join(frame.page, png)
-      write(
-        join(DESIGN, pngPath),
-        await page.screenshot({ animations: 'disabled' }),
-      )
-      written.add(pngPath)
-      names.push(png)
-      await context.close()
+      try {
+        const page = await context.newPage()
+        await page.goto(`${canvas.url}frames/${frame.page}/${source.file}`)
+        await page.evaluate((value) => {
+          document.documentElement.setAttribute('data-theme', value)
+          for (const el of document.querySelectorAll('[style]')) {
+            if (/#ffd400/i.test(el.getAttribute('style') ?? '')) el.remove()
+          }
+        }, theme)
+        await page.evaluate(() => document.fonts.ready)
+        const png = `${frame.name}-${theme}.png`
+        output.set(
+          join(frame.folder, png),
+          await page.screenshot({ animations: 'disabled' }),
+        )
+        names.push(png)
+      } finally {
+        await context.close()
+      }
     }
   }
   return {
-    ref: `${frame.page}/${frame.stem}`,
+    ref: `${frame.folder}/${frame.name}`,
     box: `${box.width}x${box.height}`,
     files: names,
   }
 }
 
-await main()
+async function run(check: boolean): Promise<number> {
+  const index = readFileSync(INDEX, 'utf8')
+  const carried = parseCarried(index)
+  const { canvas, server } = await serveCanvas()
+  try {
+    const files = listCanvas(canvas.content)
+    const { frames, missing, clashes } = resolveCarried(carried, files)
+    if (missing.length > 0) {
+      throw new SyncRefused(
+        `No canvas file for: ${missing.join(', ')}. Nothing written.`,
+      )
+    }
+    if (clashes.length > 0) {
+      throw new SyncRefused(
+        `Two frames write ${clashes.join(', ')}. Nothing written.`,
+      )
+    }
+    const unmapped = uncarriedPicked(carried, files)
+    for (const ref of unmapped) {
+      console.error(`Picked on the canvas but not in the index: ${ref}`)
+    }
+
+    const output: Output = new Map()
+    const rows: FileRow[] = []
+    const browser = await chromium.launch()
+    try {
+      for (const frame of frames) {
+        rows.push(await captureFrame(browser, canvas, frame, output))
+      }
+    } finally {
+      await browser.close()
+    }
+    for (const kit of KIT_FILES) {
+      output.set(
+        join('kit', kit),
+        readFileSync(join(canvas.content, '01-kit', kit)),
+      )
+    }
+
+    if (check) {
+      const tracked = new Map<string, string | Buffer>()
+      for (const path of trackedFiles()) {
+        tracked.set(path, readFileSync(join(DESIGN, path)))
+      }
+      const drift = classifyDrift(output, tracked)
+      for (const path of drift.changed) console.error(`Changed: ${path}`)
+      for (const path of drift.missing) console.error(`Missing: ${path}`)
+      for (const path of drift.stray) console.error(`Stray: ${path}`)
+      const owed =
+        drift.changed.length +
+        drift.missing.length +
+        drift.stray.length +
+        unmapped.length
+      if (owed === 0) console.log('canon/design/ matches the canvas.')
+      return owed === 0 ? 0 : 1
+    }
+
+    for (const [path, data] of output) {
+      mkdirSync(dirname(join(DESIGN, path)), { recursive: true })
+      writeFileSync(join(DESIGN, path), data)
+    }
+    for (const path of trackedFiles()) {
+      if (!output.has(path)) rmSync(join(DESIGN, path))
+    }
+    pruneEmptyDirs(DESIGN)
+    writeFileSync(INDEX, spliceFilesSection(index, renderFilesSection(rows)))
+    spawnSync(join(ROOT, 'node_modules', '.bin', 'oxfmt'), [INDEX], {
+      stdio: 'inherit',
+    })
+    console.log(`Wrote ${output.size} files to canon/design/.`)
+    return 0
+  } finally {
+    server.kill()
+  }
+}
+
+try {
+  process.exitCode = await run(process.argv.includes('--check'))
+} catch (error) {
+  console.error(error instanceof SyncRefused ? error.message : error)
+  process.exitCode = 1
+}

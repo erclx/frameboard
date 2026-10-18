@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyDrift,
   parseCarried,
+  referenceName,
   resolveCarried,
   spliceFilesSection,
   stripPicked,
+  toReference,
   uncarriedPicked,
 } from './lib/design-reference.ts'
 
@@ -25,6 +27,7 @@ const canvas = new Map([
       'resize-blue-light.html',
     ],
   ],
+  ['12-canvas', ['hide-ui-dark.html', 'hide-ui-light.html']],
 ])
 
 describe('parseCarried', () => {
@@ -32,10 +35,10 @@ describe('parseCarried', () => {
     const index = [
       '## Surfaces',
       '',
-      '| Surface | Frames |',
-      '| --- | --- |',
-      '| Tokens | `02-design-system/parts`, `02-design-system/fb-base` |',
-      '| Hide UI | `05-layout/picked-hide-ui` |',
+      '| Surface | Folder | Frames |',
+      '| --- | --- | --- |',
+      '| Tokens | `design-system` | `02-design-system/parts`, `02-design-system/fb-base` |',
+      '| Hide UI | `shell` | `05-layout/picked-hide-ui` |',
       '',
       '## Files',
       '',
@@ -43,43 +46,89 @@ describe('parseCarried', () => {
     ].join('\n')
 
     expect(parseCarried(index)).toEqual([
-      '02-design-system/parts',
-      '02-design-system/fb-base',
-      '05-layout/picked-hide-ui',
+      { ref: '02-design-system/parts', folder: 'design-system' },
+      { ref: '02-design-system/fb-base', folder: 'design-system' },
+      { ref: '05-layout/picked-hide-ui', folder: 'shell' },
     ])
   })
 })
 
+describe('referenceName', () => {
+  it('should drop the picked prefix and a leading folder name', () => {
+    expect(referenceName('picked-toolbar-floating', 'toolbar')).toBe('floating')
+    expect(referenceName('home-grid', 'home')).toBe('grid')
+    expect(referenceName('note-place', 'notes')).toBe('note-place')
+  })
+
+  it('should keep the stem when the folder name is all of it', () => {
+    expect(referenceName('palette', 'palette')).toBe('palette')
+  })
+})
+
 describe('resolveCarried', () => {
-  it('should map a stem to a single file or a theme pair', () => {
-    const { frames, missing } = resolveCarried(
-      ['02-design-system/fb-base', '02-design-system/parts'],
+  it('should map a stem to a single file or a theme pair under its folder', () => {
+    const { frames, missing, clashes } = resolveCarried(
+      [
+        { ref: '02-design-system/fb-base', folder: 'design-system' },
+        { ref: '02-design-system/parts', folder: 'design-system' },
+      ],
       canvas,
     )
 
     expect(frames).toEqual([
-      { page: '02-design-system', stem: 'fb-base', single: true },
-      { page: '02-design-system', stem: 'parts', single: false },
+      {
+        page: '02-design-system',
+        stem: 'fb-base',
+        folder: 'design-system',
+        name: 'fb-base',
+        single: true,
+      },
+      {
+        page: '02-design-system',
+        stem: 'parts',
+        folder: 'design-system',
+        name: 'parts',
+        single: false,
+      },
     ])
     expect(missing).toEqual([])
+    expect(clashes).toEqual([])
   })
 
   it('should name a stem with no file, and a pair missing a theme', () => {
     const { frames, missing } = resolveCarried(
-      ['02-design-system/tokens', '05-layout/gone'],
+      [
+        { ref: '02-design-system/tokens', folder: 'design-system' },
+        { ref: '05-layout/gone', folder: 'shell' },
+      ],
       canvas,
     )
 
     expect(frames).toEqual([])
     expect(missing).toEqual(['02-design-system/tokens', '05-layout/gone'])
   })
+
+  it('should report two frames that file to one reference path', () => {
+    const { clashes } = resolveCarried(
+      [
+        { ref: '05-layout/picked-hide-ui', folder: 'shell' },
+        { ref: '12-canvas/hide-ui', folder: 'shell' },
+      ],
+      canvas,
+    )
+
+    expect(clashes).toEqual(['shell/hide-ui'])
+  })
 })
 
 describe('uncarriedPicked', () => {
   it('should report an uncarried picked frame once and stay silent on a rejected one', () => {
-    expect(uncarriedPicked(['05-layout/picked-hide-ui'], canvas)).toEqual([
-      '05-layout/picked-new',
-    ])
+    expect(
+      uncarriedPicked(
+        [{ ref: '05-layout/picked-hide-ui', folder: 'shell' }],
+        canvas,
+      ),
+    ).toEqual(['05-layout/picked-new'])
   })
 })
 
@@ -103,22 +152,39 @@ describe('stripPicked', () => {
   })
 })
 
+describe('toReference', () => {
+  it('should point the shared kit links at the folder kit', () => {
+    const html =
+      '<link href="../01-kit/kit.css"><script src="../01-kit/vendor/rough.js"></script>'
+
+    expect(toReference(html)).toBe(
+      '<link href="../kit/kit.css"><script src="../kit/vendor/rough.js"></script>',
+    )
+  })
+})
+
 describe('classifyDrift', () => {
-  it('should split changed from missing, comparing after the marker cut', () => {
-    const marked = '<p>a</p><i style="color:#ffd400"></i>'
+  it('should split changed, missing, and stray files', () => {
     const drift = classifyDrift(
-      new Map([
-        ['x/a.html', marked],
+      new Map<string, string | Uint8Array>([
+        ['x/a.html', '<p>a</p>'],
         ['x/b.html', '<p>b2</p>'],
-        ['x/c.html', '<p>c</p>'],
+        ['x/c.png', new Uint8Array([1, 2])],
+        ['x/d.png', new Uint8Array([3])],
       ]),
-      new Map([
+      new Map<string, string | Uint8Array>([
         ['x/a.html', '<p>a</p>'],
         ['x/b.html', '<p>b</p>'],
+        ['x/c.png', new Uint8Array([1, 9])],
+        ['x/old.png', new Uint8Array([4])],
       ]),
     )
 
-    expect(drift).toEqual({ changed: ['x/b.html'], missing: ['x/c.html'] })
+    expect(drift).toEqual({
+      changed: ['x/b.html', 'x/c.png'],
+      missing: ['x/d.png'],
+      stray: ['x/old.png'],
+    })
   })
 })
 

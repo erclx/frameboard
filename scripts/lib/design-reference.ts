@@ -7,21 +7,35 @@ export type Theme = 'dark' | 'light'
 
 export const THEMES: readonly Theme[] = ['dark', 'light']
 
+/** One frame the index carries: a canvas `page/stem` filed under a surface folder. */
+export interface Carried {
+  readonly ref: string
+  readonly folder: string
+}
+
 export interface CarriedFrame {
   readonly page: string
   readonly stem: string
+  readonly folder: string
+  /** The file stem under the folder, with the canvas's `picked-` and folder prefixes dropped. */
+  readonly name: string
   /** A single file switches on `data-theme`, where a pair draws one file per theme. */
   readonly single: boolean
 }
 
 export interface FrameFile {
+  /** The canvas file the frame is read from. */
   readonly file: string
+  /** The reference file it is written to, under the frame's folder. */
+  readonly out: string
   readonly theme: Theme
 }
 
 export interface Resolution {
   readonly frames: readonly CarriedFrame[]
   readonly missing: readonly string[]
+  /** Reference paths two carried frames would both write. */
+  readonly clashes: readonly string[]
 }
 
 export type CanvasFiles = ReadonlyMap<string, readonly string[]>
@@ -29,61 +43,90 @@ export type CanvasFiles = ReadonlyMap<string, readonly string[]>
 const FILES_START = '<!-- design:sync:start -->'
 const FILES_END = '<!-- design:sync:end -->'
 const PICKED_COLOR = /#ffd400/i
+const CANVAS_KIT = '../01-kit/'
+const REFERENCE_KIT = '../kit/'
 
-/** Reads every `page/stem` the index's Surfaces table cites in its Frames column. */
-export function parseCarried(index: string): string[] {
-  const carried: string[] = []
+function cell(text: string | undefined): string {
+  return (text ?? '').replace(/`/g, '').trim()
+}
+
+/** Reads each Surfaces row's folder and every `page/stem` its Frames column cites. */
+export function parseCarried(index: string): Carried[] {
+  const carried: Carried[] = []
   let inSurfaces = false
   for (const line of index.split('\n')) {
     if (line.startsWith('## ')) inSurfaces = line === '## Surfaces'
     if (!inSurfaces || !line.startsWith('|')) continue
-    const cells = line.split('|').map((cell) => cell.trim())
-    const frames = cells[2] ?? ''
-    for (const match of frames.matchAll(/`([^`/]+\/[^`/]+)`/g)) {
+    const cells = line.split('|').map((text) => text.trim())
+    const folder = cell(cells[2])
+    for (const match of (cells[3] ?? '').matchAll(/`([^`/]+\/[^`/]+)`/g)) {
       const ref = match[1]
-      if (ref !== undefined && !carried.includes(ref)) carried.push(ref)
+      if (ref !== undefined && !carried.some((entry) => entry.ref === ref)) {
+        carried.push({ ref, folder })
+      }
     }
   }
   return carried
 }
 
-/** Maps each `page/stem` to its single file or its dark and light pair. */
+/** Drops the canvas's `picked-` prefix and a leading `<folder>-` from a stem. */
+export function referenceName(stem: string, folder: string): string {
+  const bare = stem.replace(/^picked-/, '')
+  const trimmed = bare.startsWith(`${folder}-`)
+    ? bare.slice(folder.length + 1)
+    : bare
+  return trimmed === '' ? bare : trimmed
+}
+
+/** Maps each carried frame to its single file or dark and light pair. */
 export function resolveCarried(
-  carried: readonly string[],
+  carried: readonly Carried[],
   canvas: CanvasFiles,
 ): Resolution {
   const frames: CarriedFrame[] = []
   const missing: string[] = []
-  for (const ref of carried) {
+  const clashes: string[] = []
+  const taken = new Set<string>()
+  for (const { ref, folder } of carried) {
     const [page = '', stem = ''] = ref.split('/')
     const files = canvas.get(page) ?? []
-    if (files.includes(`${stem}.html`)) {
-      frames.push({ page, stem, single: true })
-    } else if (
-      THEMES.every((theme) => files.includes(`${stem}-${theme}.html`))
+    const name = referenceName(stem, folder)
+    const single = files.includes(`${stem}.html`)
+    if (
+      !single &&
+      !THEMES.every((theme) => files.includes(`${stem}-${theme}.html`))
     ) {
-      frames.push({ page, stem, single: false })
-    } else {
       missing.push(ref)
+      continue
     }
+    const target = `${folder}/${name}`
+    if (taken.has(target)) clashes.push(target)
+    taken.add(target)
+    frames.push({ page, stem, folder, name, single })
   }
-  return { frames, missing }
+  return { frames, missing, clashes }
 }
 
 /** The canvas files a carried frame is drawn from, one per theme for a pair. */
 export function sourceFiles(frame: CarriedFrame): FrameFile[] {
-  if (frame.single) return [{ file: `${frame.stem}.html`, theme: 'dark' }]
+  if (frame.single) {
+    return [
+      { file: `${frame.stem}.html`, out: `${frame.name}.html`, theme: 'dark' },
+    ]
+  }
   return THEMES.map((theme) => ({
     file: `${frame.stem}-${theme}.html`,
+    out: `${frame.name}-${theme}.html`,
     theme,
   }))
 }
 
 /** Reports each canvas `picked-` frame the index does not carry, themes folded. */
 export function uncarriedPicked(
-  carried: readonly string[],
+  carried: readonly Carried[],
   canvas: CanvasFiles,
 ): string[] {
+  const refs = carried.map((entry) => entry.ref)
   const reported = new Set<string>()
   for (const [page, files] of canvas) {
     for (const file of files) {
@@ -91,8 +134,8 @@ export function uncarriedPicked(
       const name = file.replace(/\.html$/, '')
       const stem = name.replace(/-(dark|light)$/, '')
       if (
-        !carried.includes(`${page}/${name}`) &&
-        !carried.includes(`${page}/${stem}`)
+        !refs.includes(`${page}/${name}`) &&
+        !refs.includes(`${page}/${stem}`)
       ) {
         reported.add(`${page}/${stem}`)
       }
@@ -128,24 +171,31 @@ export function stripPicked(html: string): string {
   return out
 }
 
+/** What the folder holds of a canvas frame: no marker, and links to the folder's kit. */
+export function toReference(html: string): string {
+  return stripPicked(html).replaceAll(CANVAS_KIT, REFERENCE_KIT)
+}
+
 export interface Drift {
   readonly changed: readonly string[]
   readonly missing: readonly string[]
+  readonly stray: readonly string[]
 }
 
-/** Compares each canvas file, marker cut, against its tracked copy. */
+/** Compares what a sync would write against the files the folder holds. */
 export function classifyDrift(
-  canvas: ReadonlyMap<string, string>,
-  tracked: ReadonlyMap<string, string>,
+  expected: ReadonlyMap<string, string | Uint8Array>,
+  tracked: ReadonlyMap<string, string | Uint8Array>,
 ): Drift {
   const changed: string[] = []
   const missing: string[] = []
-  for (const [path, html] of canvas) {
+  for (const [path, data] of expected) {
     const copy = tracked.get(path)
     if (copy === undefined) missing.push(path)
-    else if (copy !== stripPicked(html)) changed.push(path)
+    else if (!Buffer.from(copy).equals(Buffer.from(data))) changed.push(path)
   }
-  return { changed, missing }
+  const stray = [...tracked.keys()].filter((path) => !expected.has(path))
+  return { changed, missing, stray }
 }
 
 export interface FileRow {
