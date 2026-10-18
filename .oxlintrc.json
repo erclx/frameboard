@@ -9,6 +9,7 @@
   },
   "ignorePatterns": [
     "dist",
+    "canon/design",
     "dist-ssr",
     "coverage",
     "release",
