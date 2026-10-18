@@ -2,11 +2,13 @@ import '../styles.css'
 
 import { render } from '@testing-library/react'
 import { Profiler } from 'react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
+import { modeStore } from './mode'
+import { canvasView } from './view'
 
 function frame(
   name: string,
@@ -70,6 +72,65 @@ function wheel(container: HTMLElement, init: WheelEventInit) {
 }
 
 describe('Canvas', () => {
+  afterEach(() => {
+    modeStore.setState({ mode: 'edit', tool: 'move' })
+  })
+
+  it('covers the frames with the hit layer in Edit', () => {
+    const { container } = renderCanvas(
+      page('studio/edit', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    expect(container.querySelector('[data-hit-layer]')).not.toBeNull()
+  })
+
+  it('lifts the hit layer in Play, so a click reaches the frame', () => {
+    modeStore.setState({ mode: 'play' })
+
+    const { container } = renderCanvas(
+      page('studio/play', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    expect(container.querySelector('[data-hit-layer]')).toBeNull()
+  })
+
+  it('travels back to the fitted view when the controller fits', async () => {
+    const { container } = renderCanvas(
+      page('studio/refit', [
+        frame('wide', { x: 0, y: 0, width: 1344, height: 400 }),
+      ]),
+    )
+    wheel(container, { deltaX: 300, deltaY: 300 })
+
+    canvasView.fit()
+
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(64px, 200px) scale(0.5)')
+  })
+
+  it('reports its zoom to the controller', () => {
+    const { container } = renderCanvas(
+      page('studio/report', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    wheel(container, { deltaY: -100, ctrlKey: true })
+
+    expect(canvasView.zoom()).toBe(2)
+  })
+
+  it('tells an empty page how to add its first frame', () => {
+    const { getByRole } = renderCanvas(page('studio/empty', []))
+
+    expect(getByRole('status')).toHaveTextContent('This page has no frames')
+  })
+
   it('fits every frame into the viewport on a first visit', () => {
     const { container } = renderCanvas(
       page('studio/fit', [
