@@ -1,9 +1,15 @@
 import { TriangleAlert } from 'lucide-react'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 
+import { bindKeys } from '@/client/actions/registry'
 import { frameUrl } from '@/shared/board-urls'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
+
+import { useMode } from './mode'
+
+/** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
+const PLAY_KEYS = ['Escape']
 
 interface FrameProps {
   frame: FrameRecord
@@ -18,7 +24,8 @@ interface FrameProps {
 /**
  * One frame at its box on the canvas layer, with its name above it at a
  * constant screen size. The label is the surface later rows add check
- * findings and claim tags to.
+ * findings and claim tags to. In Play a click moves focus into the frame,
+ * so Esc is bound into its window to reach the board.
  */
 export const Frame = memo(function Frame({
   frame,
@@ -27,6 +34,27 @@ export const Frame = memo(function Frame({
   findings,
 }: FrameProps) {
   const { x, y, width, height } = frame.box
+  const iframe = useRef<HTMLIFrameElement>(null)
+  const playing = useMode((state) => state.mode === 'play')
+
+  useEffect(() => {
+    const element = iframe.current
+    if (!playing || !element) return
+    let unbind = () => {}
+    // Each load is a new document, so the binding moves to it and leaves none on the last.
+    const bind = () => {
+      unbind()
+      const target = element.contentWindow
+      unbind = target ? bindKeys(target, PLAY_KEYS) : () => {}
+    }
+    bind()
+    element.addEventListener('load', bind)
+    return () => {
+      element.removeEventListener('load', bind)
+      unbind()
+    }
+  }, [playing, live])
+
   return (
     <div
       data-frame={frame.ref}
@@ -45,6 +73,7 @@ export const Frame = memo(function Frame({
       </div>
       {live ? (
         <iframe
+          ref={iframe}
           title={frame.name}
           src={`${frameUrl(frame.ref)}?v=${version}`}
           className="block size-full border-0 bg-[color:Canvas]"

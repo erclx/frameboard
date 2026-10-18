@@ -1,12 +1,14 @@
 import '../styles.css'
 
-import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, render } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 
+import { registerActions } from '@/client/actions/registry'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { Frame } from './frame'
+import { modeStore } from './mode'
 
 function frame(name: string): FrameRecord {
   return {
@@ -51,6 +53,60 @@ function iframeOf(container: HTMLElement, name: string): HTMLIFrameElement {
   if (!iframe) throw new Error(`no iframe for ${name}`)
   return iframe
 }
+
+/** tinykeys reads a press only when it carries both a key and a code. */
+function pressEscapeIn(iframe: HTMLIFrameElement): void {
+  const inner = iframe.contentWindow as typeof window | null
+  inner?.document.dispatchEvent(
+    new inner.KeyboardEvent('keydown', {
+      key: 'Escape',
+      code: 'Escape',
+      bubbles: true,
+    }),
+  )
+}
+
+function loaded(iframe: HTMLIFrameElement): Promise<void> {
+  return new Promise((resolve) =>
+    iframe.addEventListener('load', () => resolve(), { once: true }),
+  )
+}
+
+describe('Frame in Play', () => {
+  const cleanups: (() => void)[] = []
+
+  afterEach(() => {
+    while (cleanups.length > 0) cleanups.pop()?.()
+    act(() => modeStore.setState({ mode: 'edit' }))
+  })
+
+  it('hands Esc pressed inside the frame to the board, once per press after a reload', async () => {
+    let exits = 0
+    cleanups.push(
+      registerActions([
+        {
+          id: 'mode.exitPlay',
+          label: 'Exit Play',
+          group: 'mode',
+          keys: ['Escape'],
+          run: () => (exits += 1),
+        },
+      ]),
+    )
+    act(() => modeStore.setState({ mode: 'play' }))
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    await loaded(iframeOf(container, 'a'))
+    const reloaded = loaded(iframeOf(container, 'a'))
+
+    rerender(<Frame frame={frame('a')} live version={1} />)
+    await reloaded
+    pressEscapeIn(iframeOf(container, 'a'))
+
+    expect(exits).toBe(1)
+  })
+})
 
 describe('Frame', () => {
   it('loads its frame url with its reload counter', () => {
