@@ -1,13 +1,10 @@
 import { LucideProvider } from 'lucide-react'
-import { useState } from 'react'
 import { Link, Route, Switch } from 'wouter'
-
-import type { ProjectRecord } from '@/shared/records/list'
 
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
 import { TooltipProvider } from './components/ui/tooltip'
-import { Projects } from './home/projects'
+import { Home } from './home/home'
 import { useLive } from './live/store'
 
 /** Every icon at the one stroke weight the references draw. */
@@ -72,10 +69,4 @@ function Shell() {
       ) : null}
     </div>
   )
-}
-
-/** The home view, counting "last edited" back from when it opened. */
-function Home({ projects }: { projects: readonly ProjectRecord[] }) {
-  const [now] = useState(Date.now)
-  return <Projects projects={projects} now={now} />
 }
