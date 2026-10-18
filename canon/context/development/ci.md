@@ -13,16 +13,17 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 
 ### `.github/workflows/`
 
-| Check                       | Workflow                | Command                                                                   | What it asserts                                                                 |
-| --------------------------- | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Static Checks               | `verify.yml`            | `bun run typecheck`, `bun run lint`, `bun run check:format`               | tsc, oxlint with zero warnings, and oxfmt are clean                             |
-| Unit Tests                  | `verify.yml`            | `bun run test:coverage`                                                   | the Vitest `node` project passes, with coverage                                 |
-| Build                       | `verify.yml`            | `bun run build`                                                           | Vite builds the client and rolldown bundles `dist/cli.js`                       |
-| E2E Tests                   | `verify.yml`            | `bun run test:e2e --project=chromium` with `DIST_PREBUILT`                | Playwright passes against the built CLI the Build job uploaded                  |
-| Browser Component Tests     | `frameboard-checks.yml` | `bunx vitest run --project browser`                                       | the Vitest `browser` project passes in headless Chromium                        |
-| CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                               | the bundle runs on both runtimes from outside the checkout                      |
-| Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes |
-| Phase Label Gate            | `phase-label-gate.yml`  | `canon labels scan`                                                       | no phase label, board reference, or session link in the pull request            |
+| Check                       | Workflow                | Command                                                                   | What it asserts                                                                                                                  |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Static Checks               | `verify.yml`            | `bun run typecheck`, `bun run lint`, `bun run check:format`               | tsc, oxlint with zero warnings, and oxfmt are clean                                                                              |
+| Unit Tests                  | `verify.yml`            | `bun run test:coverage`                                                   | the Vitest `node` project passes, with coverage                                                                                  |
+| Build                       | `verify.yml`            | `bun run build`                                                           | Vite builds the client and rolldown bundles `dist/cli.js`                                                                        |
+| E2E Tests                   | `verify.yml`            | `bun run test:e2e --project=chromium` with `DIST_PREBUILT`                | Playwright passes against the built CLI the Build job uploaded                                                                   |
+| Browser Component Tests     | `frameboard-checks.yml` | `bunx vitest run --project browser`                                       | the Vitest `browser` project passes in headless Chromium                                                                         |
+| CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                               | the bundle runs on both runtimes from outside the checkout                                                                       |
+| Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes                                                  |
+| macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then the built CLI from `$RUNNER_TEMP`  | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from a bundle outside the checkout |
+| Phase Label Gate            | `phase-label-gate.yml`  | `canon labels scan`                                                       | no phase label, board reference, or session link in the pull request                                                             |
 
 - `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
 - `phase-label-gate.yml` and `pr-local-preview.yml` own canon's pull request hygiene
@@ -32,7 +33,7 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 
 ## Gotchas
 
-- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and a hand edit to `verify.yml` is reverted by the next sync
+- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and the macOS job runs no browser or E2E layer either, so macOS-only rendering drift reaches CI only through a local run, and a hand edit to `verify.yml` is reverted by the next sync
 - No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand
 - `initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`
 - `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump, and `bootstrap-sha` is the root commit so the first release pull request opens
