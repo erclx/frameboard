@@ -15,23 +15,37 @@ async function darkChrome(page: Page): Promise<void> {
   })
 }
 
+/** How many frames the press waits for its control, about ten seconds, before giving up. */
+const PRESS_FRAMES = 600
+
 /**
  * Presses the control named `label` once the board has drawn it. The harness
  * runs `setup` before it navigates, so the press waits in an init script for
- * the app to render the control.
+ * the app to render the control. A button is named by its `aria-label`, or
+ * by its text where it has none, as Edit and Play are.
  */
 function pressOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
-    await page.addInitScript((name) => {
-      const press = () => {
-        const control = [...document.querySelectorAll('button')].find(
-          (button) => button.getAttribute('aria-label')?.match(name),
-        )
-        if (control) control.click()
-        else requestAnimationFrame(press)
-      }
-      document.addEventListener('DOMContentLoaded', press)
-    }, label)
+    await page.addInitScript(
+      ({ name, frames }) => {
+        let left = frames
+        const press = () => {
+          const control = [...document.querySelectorAll('button')].find(
+            (button) =>
+              (
+                button.getAttribute('aria-label') ??
+                button.textContent?.trim() ??
+                ''
+              ).match(name),
+          )
+          if (control) control.click()
+          else if (--left > 0) requestAnimationFrame(press)
+          else console.error(`No button named ${name} to press`)
+        }
+        document.addEventListener('DOMContentLoaded', press)
+      },
+      { name: label, frames: PRESS_FRAMES },
+    )
   }
 }
 
