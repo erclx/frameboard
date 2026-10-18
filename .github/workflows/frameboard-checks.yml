@@ -102,3 +102,34 @@ jobs:
 
       - name: Compare the Outputs
         run: cmp "$RUNNER_TEMP/node.digest" "$RUNNER_TEMP/bun.digest"
+
+  macos:
+    name: 🍎 macOS Unit and CLI Smoke
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      # No coverage here, since the Linux unit-tests job measures it.
+      - name: Run Unit Tests
+        run: bunx vitest run --project node
+
+      - name: Build
+        run: bun run build
+
+      - name: Smoke the Built CLI
+        run: bash scripts/smoke-cli.sh dist
