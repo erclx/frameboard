@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { registerActions } from '@/client/actions/registry'
+import { refreshActions, registerActions } from '@/client/actions/registry'
 
 export type HomeLayout = 'grid' | 'list'
 
@@ -13,11 +13,16 @@ const LAYOUT_KEY = 'frameboard.home.layout'
  */
 export function useHomeLayout(): HomeLayout {
   const [layout, setLayout] = useState<HomeLayout>(readLayout)
+  // The actions read the layout through the ref, so they register once and
+  // keep their place in the order while the layout changes.
+  const current = useRef(layout)
 
   useEffect(() => {
     const choose = (next: HomeLayout) => {
+      current.current = next
       setLayout(next)
       writeLayout(next)
+      refreshActions()
     }
     return registerActions([
       {
@@ -25,17 +30,17 @@ export function useHomeLayout(): HomeLayout {
         label: 'Grid',
         group: 'home',
         run: () => choose('grid'),
-        checked: () => layout === 'grid',
+        checked: () => current.current === 'grid',
       },
       {
         id: 'home.layoutList',
         label: 'List',
         group: 'home',
         run: () => choose('list'),
-        checked: () => layout === 'list',
+        checked: () => current.current === 'list',
       },
     ])
-  }, [layout])
+  }, [])
 
   return layout
 }
