@@ -8,14 +8,12 @@ paths:
 
 ## Style
 
-- Write short lines, one fact per line, never paragraphs.
 - Give an app mockup the app's real sizes and viewport width.
-- Set the kit's font stack `"Geist", "Geist Variable", "DejaVu Sans", sans-serif`, and `"Geist Variable", "DejaVu Sans", sans-serif` on a frame off the kit.
+- Set the font family to `"Geist Variable"` alone, since a machine family such as `DejaVu Sans` renders at another height and `canon canvas fit` reports it as `font`.
 
 ## Fit
 
 - Leave no clipped line in a frame's box.
-- Run `canon canvas fit <page>/<frame>` after changing or inserting a frame.
 - Capture the whole page with `--composite` after a frame's size or position changes.
 
 ## Kit
@@ -39,7 +37,6 @@ paths:
 
 - Prefix each page name with two digits in reading order, renumbering with `canon canvas page rename`.
 - Cite a canvas page in prose, such as a skill, a rule, or a plan, by its name without the number, such as the `kit` page. A frame's relative link to the kit keeps its numbered path.
-- Lay frames left to right in reading order.
 - Lay the candidates for one decision side by side, the dark ones in one row and the light ones in the row under it.
 - Lay a single surface as one row, dark then light.
 - Add each later round of one decision as new rows on that decision's page, never as a new page.
@@ -48,5 +45,4 @@ paths:
 ## Asking the operator
 
 - Name the page and the frame, and its row and side, whenever a question or a request to look points at the canvas.
-- Read what the operator has selected with `canon canvas selection` when they point at the canvas, and open no browser tab for them.
 - Highlight a picked frame with a yellow border and a picked badge, and lead its name with `picked-`.
