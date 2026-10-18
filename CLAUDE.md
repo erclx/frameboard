@@ -21,3 +21,4 @@ Frameboard is a local design board that coding agents draw on as plain HTML file
 - `src/shared/`: code both the CLI and the server import, such as the package version
 - `e2e/`: Playwright specs, the capture harness with its cases under `e2e/capture/`, and the evidence baseline
 - `canon/DESIGN.md`: visual intent, pointing at the stylesheet that holds the values
+- `canon/design/`: the accepted design of every surface as light and dark PNGs beside their frame HTML, written by `bun run design:sync`
