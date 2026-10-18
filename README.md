@@ -1,36 +1,40 @@
+<p align="center">
+  <img src="src/client/public/icon.svg" alt="Frameboard logo" width="64" height="64">
+</p>
+
 # Frameboard
 
 A local design board that coding agents draw on as plain HTML files, and you review and tweak.
 
-## Install
+![Frameboard, a local design board for agents and developers](.github/social-card.png)
+
+## Quick start
 
 ```bash
-npm install -g frameboard
+npx frameboard serve
 ```
 
-Bun works too, with `bun add -g frameboard`. To try it without installing, run `npx frameboard serve`.
+In a folder with no board, `serve` creates `.frameboard/` with one empty project and opens the board at `http://127.0.0.1:4173`. Install it with `npm install -g frameboard` or `bun add -g frameboard`.
 
-## First run
+## What you get
 
-```bash
-frameboard serve
-```
-
-In a folder with no board, `serve` creates `.frameboard/` at the repository top, or in the current folder outside a repository, holding one empty project. It serves on `http://127.0.0.1:4173`, or on a free port when 4173 is taken, and opens the board in your browser unless you pass `--no-open` or a board tab is already connected. Running `serve` again for the same board prints the address of the server already running rather than starting a second, and opens a tab only when none is open.
-
-The board opens on a home view listing every project. Opening one shows its pages and a canvas of live frames you pan and zoom, each reloading the moment its file changes. Play hands your clicks to the frames, Esc returns to Edit, and Cmd+\ hides the panels. `frameboard show <frame>` points the open board at a frame.
-
-`frameboard docs` prints every command, flag, record shape, exit code, and check rule, and `frameboard --version` prints the installed version.
+- Agents draw by writing HTML files and running commands that print JSON, exit with stable codes, and never prompt
+- Frames render as real web pages, so animation, video, and interaction work
+- Every frame reloads the moment its file changes, in light and dark
+- The files are the design, so Frameboard keeps no private copy and a hand edit touches only what changed
+- The server binds to `127.0.0.1`, with no hosted service and no MCP server
 
 ## How it works
 
-Frameboard has no hosted service and no MCP server. The design is a folder of HTML files on your disk, which an agent writes and the board renders as real web pages, so animation, video, and interaction work as they would in a browser. Frameboard keeps no private copy of them.
+A board folder holds projects, a project holds pages, and a page holds frames. Each frame is one `.html` file beside a `layout.json` that records where it sits.
 
-A board folder holds projects, a project holds pages, and a page holds frames, each frame one `.html` file beside a `layout.json` that records where it sits. The `project`, `page`, and `frame` commands add, rename, move, and delete them on disk, and `list` shows the board. `edit` sets one inline style declaration, attribute, or text on one element of a frame and leaves every other byte of the file as it was. Every command takes `--json`, prints one JSON document, exits with a stable code, and never prompts, so an agent can script it.
+The `project`, `page`, and `frame` commands manage them on disk, `list` shows the board, and `edit` changes one style, attribute, or text on one element without touching another byte. `show` points the open board at a frame.
 
-`frameboard check` reports every content rule a frame, page, or project breaks, such as a link outside the frame's page folder, a font the browser picks by default, or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on every change it watches and marks a frame's label with its findings. The Claude Code plugin in `plugins/frameboard/` runs them after each agent write and hands the findings back in the same turn, along with the `frameboard` skill.
+`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on each change.
 
-The server binds to `127.0.0.1` alone, so the board never leaves your machine. Releases before 1.0 ship the board in stages. Today the package carries the board folder, the structure commands, `edit`, `show`, the live board, and the content checks, and editing by hand in the board arrives in a later 0.x release.
+The Claude Code plugin in `plugins/frameboard/` runs the checks after each agent write and hands the findings back in the same turn. `frameboard docs` prints every command, flag, record shape, and exit code.
+
+Releases before 1.0 ship the board in stages. Editing by hand in the board arrives in a later 0.x release.
 
 ## Requirements
 
