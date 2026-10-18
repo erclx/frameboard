@@ -38,7 +38,7 @@ Releases before 1.0 ship the board in stages. Editing by hand in the board arriv
 
 ## Requirements
 
-Frameboard runs on Node 22 or later, or on Bun.
+Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows support is planned.
 
 ## Links
 
