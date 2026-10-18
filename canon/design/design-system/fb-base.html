@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" class="kit">
+<head>
+<meta charset="utf-8">
+<title>Frameboard base</title>
+<link rel="stylesheet" href="../kit/kit.css">
+<style>
+.pair{display:flex;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--hair)}
+.pair .sw{flex:1;height:64px;border-radius:0;margin:0}
+.swl span{display:block;color:var(--ink-2);font-size:20px}
+.swl code{font-size:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px 22px}
+.ty{display:grid;grid-template-columns:240px 1fr;align-items:baseline;padding:14px 0;border-top:1px solid var(--hair)}
+.ty .k{color:var(--ink-2);font-size:20px}
+.ty .v{font-family:"Geist Variable","Geist",sans-serif}
+</style>
+</head>
+<body>
+<p class="kicker">Frameboard design system · 1 of 3</p>
+<h1>Base</h1>
+<p class="lede">Greys carry the chrome. Each color means one thing, everywhere.</p>
+
+<h2>Signals</h2>
+<p class="cap">Left half dark theme, right half light. One meaning each.</p>
+<div class="grid3"><div class="swl"><div class="pair"><div class="sw" style="background:#4e92f6"></div><div class="sw" style="background:#2f7bf0"></div></div><b>Blue</b><span><code>--primary</code></span><span>#4e92f6 · #2f7bf0</span><span>selected, active tool</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#e0a3ff"></div><div class="sw" style="background:#9b3fd1"></div></div><b>Purple</b><span><code>--claim</code></span><span>#e0a3ff · #9b3fd1</span><span>an agent is here</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#f5b84a"></div><div class="sw" style="background:#c77a00"></div></div><b>Orange</b><span><code>--note</code></span><span>#f5b84a · #c77a00</span><span>look at this</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#ff4fa3"></div><div class="sw" style="background:#e0207f"></div></div><b>Magenta</b><span><code>--guide</code></span><span>#ff4fa3 · #e0207f</span><span>lining up while dragging</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#ff6b6b"></div><div class="sw" style="background:#d92d2d"></div></div><b>Red</b><span><code>--destructive</code></span><span>#ff6b6b · #d92d2d</span><span>Delete, nothing else</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#5fc48a"></div><div class="sw" style="background:#1a7f45"></div></div><b>Green</b><span><code>--success</code></span><span>#5fc48a · #1a7f45</span><span>it worked</span></div></div>
+
+<h2>Surfaces</h2>
+<p class="cap">Panels sit one step lighter than the canvas.</p>
+<div class="grid3"><div class="swl"><div class="pair"><div class="sw" style="background:#1f1f1f"></div><div class="sw" style="background:#ececec"></div></div><b>Canvas</b><span><code>--background</code></span><span>#1f1f1f · #ececec</span><span>behind every frame</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#2a2a2a"></div><div class="sw" style="background:#ffffff"></div></div><b>Panels</b><span><code>--sidebar</code></span><span>#2a2a2a · #ffffff</span><span>both side panels</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#2a2a2a"></div><div class="sw" style="background:#ffffff"></div></div><b>Floating</b><span><code>--card</code></span><span>#2a2a2a · #ffffff</span><span>toolbar, menus, cards</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#363636"></div><div class="sw" style="background:#f2f2f2"></div></div><b>Fields</b><span><code>--input</code></span><span>#363636 · #f2f2f2</span><span>inputs and rows</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#3d3d3d"></div><div class="sw" style="background:#e8e8e8"></div></div><b>Hover</b><span><code>--accent</code></span><span>#3d3d3d · #e8e8e8</span><span>shadcn's hover fill</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#3d3d3d"></div><div class="sw" style="background:#e8e8e8"></div></div><b>Selected row</b><span><code>--sidebar-accent</code></span><span>#3d3d3d · #e8e8e8</span><span>the current page</span></div></div>
+
+<h2>Text and lines</h2>
+<div class="grid3"><div class="swl"><div class="pair"><div class="sw" style="background:#e6e6e6"></div><div class="sw" style="background:#1a1a1a"></div></div><b>Text</b><span><code>--foreground</code></span><span>#e6e6e6 · #1a1a1a</span><span>everything you read</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#949494"></div><div class="sw" style="background:#6e6e6e"></div></div><b>Quiet text</b><span><code>--muted-foreground</code></span><span>#949494 · #6e6e6e</span><span>labels and keys</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#6b6b6b"></div><div class="sw" style="background:#a5a5a5"></div></div><b>Faint</b><span><code>--faint</code></span><span>#6b6b6b · #a5a5a5</span><span>hidden layers</span></div><div class="swl"><div class="pair"><div class="sw" style="background:#353535"></div><div class="sw" style="background:#e4e4e4"></div></div><b>Lines</b><span><code>--border</code></span><span>#353535 · #e4e4e4</span><span>dividers and outlines</span></div></div>
+
+<h2>Type</h2>
+<p class="cap">Geist only. Shown at real size.</p>
+<div class="ty"><span class="k">Page title, 20 / 600</span><span class="v" style="font-size:20px;font-weight:600">Projects</span></div>
+<div class="ty"><span class="k">Panel title, 13 / 600</span><span class="v" style="font-size:13px;font-weight:600">Diligent kite</span></div>
+<div class="ty"><span class="k">Body, 12 / 400</span><span class="v" style="font-size:12px">Swatch row</span></div>
+<div class="ty"><span class="k">Label, 11 / 600</span><span class="v" style="font-size:11px;font-weight:600;color:var(--ink-2)">Layers</span></div>
+
+<h2>Rules</h2>
+<ol class="steps">
+  <li><div><b>Blue means selected</b><span>Never a decoration, never a second meaning</span></div></li>
+  <li><div><b>Purple is always an agent</b><span>Claims, sessions, agent replies</span></div></li>
+  <li><div><b>Red only on Delete</b><span>So it stays rare enough to notice</span></div></li>
+  <li><div><b>Greys do the layout</b><span>Panels, fields, and rows differ by one grey step</span></div></li>
+  <li><div><b>Names are shadcn's</b><span>Plus claim, note, faint, success, and guide</span></div></li>
+</ol>
+</body>
+</html>

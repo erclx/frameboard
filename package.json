@@ -47,6 +47,7 @@
     "measure:canvas": "bun run build && playwright test -c e2e/perf/playwright.config.ts",
     "smoke:prod": "bun e2e/screenshot.ts --check-console-clean --require-base-url",
     "prepare": "husky",
+    "design:sync": "bun scripts/design-sync.ts",
     "check": "bun scripts/verify.ts",
     "check:format": "oxfmt --check .",
     "format": "oxfmt .",

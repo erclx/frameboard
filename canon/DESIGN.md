@@ -1,6 +1,6 @@
 # Design
 
-Values live in `src/client/styles.css`, light on `:root` and dark on `.dark`. This record holds the intent behind the board chrome's values. Frames are not covered, since each takes its look from its own project's tokens.
+Values live in `src/client/styles.css`, light on `:root` and dark on `.dark`. This record holds the intent behind the board chrome's values. Frames are not covered, since each takes its look from its own project's tokens. `canon/design/` holds the accepted look of every surface, filed by surface and captured from the canvas by `bun run design:sync`, and this record holds the intent behind it.
 
 ## Overview
 

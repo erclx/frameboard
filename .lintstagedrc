@@ -1,6 +1,6 @@
 {
   "**/*.{js,jsx,ts,tsx}": [
-    "oxlint --fix --max-warnings 0",
+    "oxlint --fix --max-warnings 0 --no-error-on-unmatched-pattern",
     "oxfmt --no-error-on-unmatched-pattern"
   ],
   "**/*.{json,css,md}": ["oxfmt --no-error-on-unmatched-pattern"],
