@@ -9,13 +9,20 @@ import { readAuthor } from './author'
 
 describe('readAuthor', () => {
   let root: string
-  /** Shuts out the machine's global and system git config, so only the board's repository speaks. */
+  /**
+   * Shuts out the machine's global and system git config, so only the
+   * board's repository speaks. It drops every inherited `GIT_` variable too,
+   * since a git hook running this suite exports `GIT_DIR`, which would point
+   * `git init` and `git config` here at the repository running the hook.
+   */
   let env: NodeJS.ProcessEnv
 
   beforeEach(() => {
     root = realpathSync(mkdtempSync(join(tmpdir(), 'frameboard-author-')))
     env = {
-      ...process.env,
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
+      ),
       GIT_CONFIG_GLOBAL: join(root, 'no-global'),
       GIT_CONFIG_NOSYSTEM: '1',
     }
