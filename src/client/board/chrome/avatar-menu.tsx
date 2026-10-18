@@ -110,6 +110,7 @@ function Avatar({ name }: { name: string | null }) {
   return (
     <span
       aria-hidden
+      data-avatar
       className="grid size-[22px] shrink-0 place-items-center rounded-full bg-foreground text-[10px] font-bold text-card"
     >
       {name ? initials(name) : <UserRound className="size-3" />}
