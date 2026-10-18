@@ -87,7 +87,7 @@ export function AvatarMenu({ name, align = 'start' }: AvatarMenuProps) {
                   key={theme.id}
                   value={theme.id}
                   onClick={() => theme.run()}
-                  className="h-7 py-0 text-body"
+                  className="h-7 py-0 text-xs"
                 >
                   {theme.label}
                 </DropdownMenuRadioItem>

@@ -29,7 +29,7 @@ export function ActionTooltip({
       <TooltipContent
         side={side}
         sideOffset={6}
-        className="rounded-md px-2 py-[5px] text-label font-normal"
+        className="rounded-md px-2 py-[5px] text-[11px]"
       >
         {key ? `${label} ${keyLabel(key)}` : label}
       </TooltipContent>

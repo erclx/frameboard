@@ -16,7 +16,7 @@ export function ChromeMenuContent({
   return (
     <DropdownMenuContent
       className={cn(
-        'w-60 rounded-[10px] p-1 text-body shadow-[0_12px_40px_rgba(0,0,0,.3)] ring-border',
+        'w-60 rounded-[10px] p-1 text-xs shadow-[0_12px_40px_rgba(0,0,0,.3)] ring-border',
         className,
       )}
       {...props}
@@ -54,8 +54,12 @@ export function ActionMenuItem({
   )
 }
 
-/** A menu row's height and padding, shared by the rows that are not actions. */
-export const MENU_ROW = 'h-7 rounded-md px-2 py-0 text-body'
+/**
+ * A menu row's height and padding, shared by the rows that are not actions.
+ * Kit parts take Tailwind's `text-xs` for the board's 12px, since `cn` reads
+ * `text-body` as a color and keeps the kit's `text-sm` beside it.
+ */
+export const MENU_ROW = 'h-7 rounded-md px-2 py-0 text-xs'
 
 export function MenuKey({ children }: { children: ReactNode }) {
   return (

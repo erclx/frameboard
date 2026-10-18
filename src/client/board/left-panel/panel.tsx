@@ -24,7 +24,7 @@ interface LeftPanelProps {
 }
 
 const TAB =
-  'h-6 rounded-[5px] border-0 font-medium text-body text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
+  'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
 
 /**
  * The left panel of `canon/design/toolbar/floating`: the header with the
@@ -72,12 +72,12 @@ export function LeftPanel({ project, page, theme }: LeftPanelProps) {
             Theme
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="design" className="flex min-h-0 flex-col text-body">
+        <TabsContent value="design" className="flex min-h-0 flex-col text-xs">
           <PagesList pages={project.pages} current={page} />
           <hr className="my-1.5 border-sidebar-border" />
           <LayersList frames={frames} />
         </TabsContent>
-        <TabsContent value="theme" className="min-h-0 text-body">
+        <TabsContent value="theme" className="min-h-0 text-xs">
           {theme}
         </TabsContent>
       </Tabs>

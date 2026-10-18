@@ -75,7 +75,9 @@ export function ZoomControl({ align = 'end', className }: ZoomControlProps) {
             key={entry.id}
             action={actions[STEPS.length + index]}
             label={entry.label}
-          />
+          >
+            {entry.label}
+          </ActionMenuItem>
         ))}
       </ChromeMenuContent>
     </DropdownMenu>
