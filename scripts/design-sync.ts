@@ -23,6 +23,7 @@ import {
   type CarriedFrame,
   classifyDrift,
   type FileRow,
+  IndexError,
   parseCarried,
   renderFilesSection,
   resolveCarried,
@@ -255,6 +256,9 @@ async function run(check: boolean): Promise<number> {
       for (const path of drift.changed) console.error(`Changed: ${path}`)
       for (const path of drift.missing) console.error(`Missing: ${path}`)
       for (const path of drift.stray) console.error(`Stray: ${path}`)
+      for (const path of drift.pngDiffers) {
+        console.error(`Warning: PNG bytes differ: ${path}`)
+      }
       const owed =
         drift.changed.length +
         drift.missing.length +
@@ -286,6 +290,10 @@ async function run(check: boolean): Promise<number> {
 try {
   process.exitCode = await run(process.argv.includes('--check'))
 } catch (error) {
-  console.error(error instanceof SyncRefused ? error.message : error)
+  console.error(
+    error instanceof SyncRefused || error instanceof IndexError
+      ? error.message
+      : error,
+  )
   process.exitCode = 1
 }

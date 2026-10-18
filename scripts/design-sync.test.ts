@@ -51,6 +51,45 @@ describe('parseCarried', () => {
       { ref: '05-layout/picked-hide-ui', folder: 'shell' },
     ])
   })
+
+  it('should read the name an as override gives', () => {
+    const index = [
+      '## Surfaces',
+      '',
+      '| Surface | Folder | Frames |',
+      '| --- | --- | --- |',
+      '| Menus | `menus` | `14-overlays/menu-toast` as `toast`, `14-overlays/context-menus` |',
+    ].join('\n')
+
+    expect(parseCarried(index)).toEqual([
+      { ref: '14-overlays/menu-toast', folder: 'menus', name: 'toast' },
+      { ref: '14-overlays/context-menus', folder: 'menus' },
+    ])
+  })
+
+  it('should refuse a row with no folder, naming the row', () => {
+    const index = [
+      '## Surfaces',
+      '',
+      '| Surface | Folder | Frames |',
+      '| --- | --- | --- |',
+      '| Hide UI | | `05-layout/picked-hide-ui` |',
+    ].join('\n')
+
+    expect(() => parseCarried(index)).toThrow('Surfaces row "Hide UI"')
+  })
+
+  it('should refuse a row still in the two-column shape', () => {
+    const index = [
+      '## Surfaces',
+      '',
+      '| Surface | Frames |',
+      '| --- | --- |',
+      '| Hide UI | `05-layout/picked-hide-ui` |',
+    ].join('\n')
+
+    expect(() => parseCarried(index)).toThrow('Surfaces row "Hide UI"')
+  })
 })
 
 describe('referenceName', () => {
@@ -164,7 +203,7 @@ describe('toReference', () => {
 })
 
 describe('classifyDrift', () => {
-  it('should split changed, missing, and stray files', () => {
+  it('should fail the HTML and the file set and only warn on PNG bytes', () => {
     const drift = classifyDrift(
       new Map<string, string | Uint8Array>([
         ['x/a.html', '<p>a</p>'],
@@ -181,7 +220,8 @@ describe('classifyDrift', () => {
     )
 
     expect(drift).toEqual({
-      changed: ['x/b.html', 'x/c.png'],
+      changed: ['x/b.html'],
+      pngDiffers: ['x/c.png'],
       missing: ['x/d.png'],
       stray: ['x/old.png'],
     })

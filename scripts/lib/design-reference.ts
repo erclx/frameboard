@@ -11,6 +11,8 @@ export const THEMES: readonly Theme[] = ['dark', 'light']
 export interface Carried {
   readonly ref: string
   readonly folder: string
+  /** The file stem the row names with `as`, where the derived one would repeat the folder. */
+  readonly name?: string
 }
 
 export interface CarriedFrame {
@@ -50,7 +52,16 @@ function cell(text: string | undefined): string {
   return (text ?? '').replace(/`/g, '').trim()
 }
 
-/** Reads each Surfaces row's folder and every `page/stem` its Frames column cites. */
+/** A Surfaces row the sync cannot file, named so the index can be fixed. */
+export class IndexError extends Error {}
+
+const FOLDER = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+/**
+ * Reads each Surfaces row's folder and every `page/stem` its Frames column
+ * cites. A row with no folder, or one still in the two-column shape, throws
+ * rather than filing into the root or carrying nothing.
+ */
 export function parseCarried(index: string): Carried[] {
   const carried: Carried[] = []
   let inSurfaces = false
@@ -58,11 +69,21 @@ export function parseCarried(index: string): Carried[] {
     if (line.startsWith('## ')) inSurfaces = line === '## Surfaces'
     if (!inSurfaces || !line.startsWith('|')) continue
     const cells = line.split('|').map((text) => text.trim())
+    if (cells[1] === 'Surface' || /^:?-+:?$/.test(cells[1] ?? '')) continue
     const folder = cell(cells[2])
-    for (const match of (cells[3] ?? '').matchAll(/`([^`/]+\/[^`/]+)`/g)) {
-      const ref = match[1]
+    if (!FOLDER.test(folder) || !(cells[3] ?? '').includes('`')) {
+      throw new IndexError(
+        `Surfaces row "${cells[1]}" needs a kebab-case Folder column and its frames in the Frames column.`,
+      )
+    }
+    const frames = (cells[3] ?? '').matchAll(
+      /`([^`/]+\/[^`/]+)`(?: as `([^`]+)`)?/g,
+    )
+    for (const [, ref, name] of frames) {
       if (ref !== undefined && !carried.some((entry) => entry.ref === ref)) {
-        carried.push({ ref, folder })
+        carried.push(
+          name === undefined ? { ref, folder } : { ref, folder, name },
+        )
       }
     }
   }
@@ -87,10 +108,10 @@ export function resolveCarried(
   const missing: string[] = []
   const clashes: string[] = []
   const taken = new Set<string>()
-  for (const { ref, folder } of carried) {
+  for (const { ref, folder, name: given } of carried) {
     const [page = '', stem = ''] = ref.split('/')
     const files = canvas.get(page) ?? []
-    const name = referenceName(stem, folder)
+    const name = given ?? referenceName(stem, folder)
     const single = files.includes(`${stem}.html`)
     if (
       !single &&
@@ -178,24 +199,29 @@ export function toReference(html: string): string {
 
 export interface Drift {
   readonly changed: readonly string[]
+  /** PNGs whose bytes differ, a warning since a PNG varies with the browser build. */
+  readonly pngDiffers: readonly string[]
   readonly missing: readonly string[]
   readonly stray: readonly string[]
 }
 
-/** Compares what a sync would write against the files the folder holds. */
+/** Compares what a sync would write against the files the folder holds, the HTML as the source and a PNG as derived. */
 export function classifyDrift(
   expected: ReadonlyMap<string, string | Uint8Array>,
   tracked: ReadonlyMap<string, string | Uint8Array>,
 ): Drift {
   const changed: string[] = []
+  const pngDiffers: string[] = []
   const missing: string[] = []
   for (const [path, data] of expected) {
     const copy = tracked.get(path)
     if (copy === undefined) missing.push(path)
-    else if (!Buffer.from(copy).equals(Buffer.from(data))) changed.push(path)
+    else if (!Buffer.from(copy).equals(Buffer.from(data))) {
+      ;(path.endsWith('.png') ? pngDiffers : changed).push(path)
+    }
   }
   const stray = [...tracked.keys()].filter((path) => !expected.has(path))
-  return { changed, missing, stray }
+  return { changed, pngDiffers, missing, stray }
 }
 
 export interface FileRow {
