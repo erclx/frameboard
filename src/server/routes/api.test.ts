@@ -61,6 +61,22 @@ describe('apiRoutes', () => {
     })
   })
 
+  describe('GET /api/author', () => {
+    it('answers the signing name in the envelope, null when unset', async () => {
+      const response = await routes().request('/api/author')
+
+      const body = await response.json()
+      expect(body).toEqual({
+        ok: true,
+        data: {
+          name: expect.toSatisfy(
+            (name) => name === null || typeof name === 'string',
+          ),
+        },
+      })
+    })
+  })
+
   describe('POST /api/show', () => {
     it('tells the board tabs to show the frame', async () => {
       const response = await post('/api/show', { ref: 'studio/home/hero' })

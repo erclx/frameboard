@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { bearerAuth } from 'hono/bearer-auth'
 import { z } from 'zod'
 
+import { readAuthor } from '@/server/author'
 import { scanBoard } from '@/server/board/scan'
 
 /** What the write routes do, handed in by the server that owns the tabs and the socket. */
@@ -31,6 +32,10 @@ export function apiRoutes(root: string, actions: BoardActions): Hono {
 
   app.get('/api/board', async (c) =>
     c.json({ ok: true, data: await scanBoard(root) }),
+  )
+
+  app.get('/api/author', async (c) =>
+    c.json({ ok: true, data: { name: await readAuthor(root) } }),
   )
 
   app.post('/api/open', authorized, async (c) =>
