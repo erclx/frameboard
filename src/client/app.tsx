@@ -1,3 +1,4 @@
+import { LucideProvider } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Route, Switch } from 'wouter'
 
@@ -5,11 +6,25 @@ import type { ProjectRecord } from '@/shared/records/list'
 
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
+import { TooltipProvider } from './components/ui/tooltip'
 import { Projects } from './home/projects'
 import { useLive } from './live/store'
 
+/** Every icon at the one stroke weight the references draw. */
+const ICON_STROKE = 1.6
+
 /** The board's routes over the live store, which `main.tsx` connects to the server. */
 export function App() {
+  return (
+    <LucideProvider strokeWidth={ICON_STROKE}>
+      <TooltipProvider delay={500}>
+        <Shell />
+      </TooltipProvider>
+    </LucideProvider>
+  )
+}
+
+function Shell() {
   const projects = useLive((state) => state.board?.projects)
   const connected = useLive((state) => state.connected)
 

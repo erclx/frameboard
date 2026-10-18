@@ -6,6 +6,7 @@ import { navigate } from 'wouter/use-browser-location'
 
 import { boardUrl } from '@/shared/board-urls'
 
+import { bindKeys } from './actions/registry'
 import { App } from './app'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
@@ -21,6 +22,7 @@ connectLive(liveStore, {
     liveStore.setState({ focus: ref })
   },
 })
+bindKeys(window)
 createRoot(root).render(
   <StrictMode>
     <App />

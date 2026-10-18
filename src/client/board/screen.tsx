@@ -1,13 +1,30 @@
-import { House } from 'lucide-react'
 import { useCallback } from 'react'
+import { useDefaultLayout } from 'react-resizable-panels'
 import { Link, Redirect } from 'wouter'
 
 import { buttonVariants } from '@/client/components/ui/button'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/client/components/ui/resizable'
 import { liveStore, useLive } from '@/client/live/store'
 import { boardUrl } from '@/shared/board-urls'
 
+import { useBoardActions } from './board-actions'
 import { Canvas } from './canvas'
-import { PagesList } from './left-panel/pages-list'
+import { HiddenPills } from './chrome/hidden-pills'
+import { PlayBanner } from './chrome/play-banner'
+import { Toolbar } from './chrome/toolbar'
+import { InspectorPanel } from './inspector/panel'
+import { LeftPanel } from './left-panel/panel'
+import { useMode } from './mode'
+
+/** Pixels, since a bare string reads as percent and 300 would mean 300 percent. */
+const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
+
+/** Where the panel widths are remembered between loads. */
+const LAYOUT_ID = 'frameboard.board.panels'
 
 interface BoardScreenProps {
   project: string
@@ -15,7 +32,11 @@ interface BoardScreenProps {
   page?: string
 }
 
-/** One project's board: the home button and pages list beside the page's canvas. */
+/**
+ * One project's board: the resizable left panel, canvas, and inspector,
+ * with the toolbar floating over the canvas. Hide UI drops both panels and
+ * leaves two pills, and Play keeps them.
+ */
 export function BoardScreen({ project, page }: BoardScreenProps) {
   const record = useLive((state) =>
     state.board?.projects.find((candidate) => candidate.name === project),
@@ -24,6 +45,16 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const findings = useLive((state) => state.findings)
   const focus = useLive((state) => state.focus)
   const clearFocus = useCallback(() => liveStore.setState({ focus: null }), [])
+  const hideUi = useMode((state) => state.hideUi)
+  const playing = useMode((state) => state.mode === 'play')
+  const layout = useDefaultLayout({
+    id: LAYOUT_ID,
+    // Hide UI renders the canvas alone, so the shown layout keeps its own record.
+    panelIds: hideUi ? ['canvas'] : ['left', 'canvas', 'right'],
+    onlySaveAfterUserInteractions: true,
+    storage: panelStorage,
+  })
+  useBoardActions()
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
@@ -35,48 +66,64 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const current = record.pages.find((candidate) => candidate.name === page)
 
   return (
-    <div className="flex h-full">
-      {/* Below about 1024px the board hides its panels and the canvas keeps the screen. */}
-      <aside className="hidden w-60 shrink-0 flex-col gap-3 border-r border-sidebar-border bg-sidebar py-2 lg:flex">
-        <div className="flex items-center gap-1 px-2">
-          <Link
-            href="/"
-            aria-label="Home"
-            title="Home"
-            className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+    <ResizablePanelGroup
+      id="board"
+      className="text-body"
+      defaultLayout={layout.defaultLayout}
+      onLayoutChanged={layout.onLayoutChanged}
+    >
+      {hideUi ? null : (
+        <>
+          <ResizablePanel
+            id="left"
+            {...PANEL}
+            groupResizeBehavior="preserve-pixel-size"
           >
-            <House aria-hidden />
-          </Link>
-          <span
-            className="min-w-0 truncate text-panel text-sidebar-foreground"
-            title={record.name}
+            <LeftPanel project={record} page={page ?? ''} />
+          </ResizablePanel>
+          <ResizableHandle aria-label="Resize the left panel" />
+        </>
+      )}
+      <ResizablePanel id="canvas">
+        <main className="relative size-full min-w-0">
+          {current ? (
+            <>
+              <Canvas
+                key={current.ref}
+                page={current}
+                reloads={reloads}
+                findings={findings}
+                focus={focus}
+                onFocused={clearFocus}
+              />
+              <Toolbar />
+            </>
+          ) : (
+            <Missing
+              message={
+                first
+                  ? `No page ${page} in ${project}.`
+                  : `${project} has no pages yet. An agent adds one with frameboard page add <name>.`
+              }
+            />
+          )}
+          {playing ? <PlayBanner /> : null}
+          {hideUi ? <HiddenPills project={record.name} /> : null}
+        </main>
+      </ResizablePanel>
+      {hideUi ? null : (
+        <>
+          <ResizableHandle aria-label="Resize the inspector" />
+          <ResizablePanel
+            id="right"
+            {...PANEL}
+            groupResizeBehavior="preserve-pixel-size"
           >
-            {record.name}
-          </span>
-        </div>
-        <PagesList pages={record.pages} current={page ?? ''} />
-      </aside>
-      <main className="min-w-0 flex-1">
-        {current ? (
-          <Canvas
-            key={current.ref}
-            page={current}
-            reloads={reloads}
-            findings={findings}
-            focus={focus}
-            onFocused={clearFocus}
-          />
-        ) : (
-          <Missing
-            message={
-              first
-                ? `No page ${page} in ${project}.`
-                : `${project} has no pages yet. An agent adds one with frameboard page add <name>.`
-            }
-          />
-        )}
-      </main>
-    </div>
+            <InspectorPanel />
+          </ResizablePanel>
+        </>
+      )}
+    </ResizablePanelGroup>
   )
 }
 
@@ -89,4 +136,22 @@ function Missing({ message }: { message: string }) {
       </Link>
     </div>
   )
+}
+
+/** A browser refusing storage keeps the widths for this visit alone. */
+const panelStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value)
+    } catch {
+      // Nothing to keep the widths in, so they last until the tab closes.
+    }
+  },
 }
