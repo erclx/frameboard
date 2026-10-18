@@ -25,3 +25,9 @@ paths:
 - Put each changed surface's reference PNG beside its built capture, light and dark, in the pull request description.
 - Name each place the build departs from its reference, with its reason, in the pull request description.
 - Report an unexplained departure from a reference as a review finding.
+
+## Naming
+
+- Give each app part one plain kebab-case folder under `canon/design/`.
+- Name each file `<name>-dark` or `<name>-light`, with no canvas page number and no `picked-` prefix.
+- Give a new design a row in `canon/design/index.md` whose Folder column names its folder, and let the sync name its files from it.
