@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
-import type { ProjectRecord } from '@/shared/records/list'
+import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
 import { Home } from './home'
 import type { HomeLayout } from './layout'
@@ -36,6 +36,42 @@ function project(
       frames: [],
     })),
   }
+}
+
+function frame(
+  name: string,
+  box: FrameRecord['box'],
+  hidden = false,
+): FrameRecord {
+  return {
+    ref: `sketch/home/${name}`,
+    project: 'sketch',
+    page: 'home',
+    name,
+    path: `/board/sketch/home/${name}.html`,
+    box,
+    order: 0,
+    hidden,
+    locked: false,
+    placed: true,
+    modifiedAt: '2026-10-15T09:00:00.000Z',
+  }
+}
+
+function withFrames(frames: FrameRecord[]): ProjectRecord {
+  const record = project('sketch', '2026-10-15T09:00:00.000Z')
+  return {
+    ...record,
+    pages: record.pages.map((page) => ({ ...page, frames })),
+  }
+}
+
+function renderOne(record: ProjectRecord, layout: HomeLayout = 'grid') {
+  return render(
+    <Router hook={memoryLocation({ path: '/' }).hook}>
+      <Projects projects={[record]} layout={layout} now={NOW} />
+    </Router>,
+  )
 }
 
 const PROJECTS = [
@@ -104,6 +140,60 @@ describe('Projects', () => {
     expect(screen.getByRole('link', { name: /webapp/ })).toHaveTextContent(
       /^webapp2 days ago$/,
     )
+  })
+})
+
+describe('FrameSkeleton in a card', () => {
+  it('draws a box for each visible frame', () => {
+    const { container } = renderOne(
+      withFrames([
+        frame('hero', { x: 0, y: 0, width: 1440, height: 900 }),
+        frame('mobile', { x: 1520, y: 0, width: 390, height: 844 }),
+        frame('draft', { x: 4000, y: 4000, width: 390, height: 844 }, true),
+      ]),
+    )
+
+    expect(container.querySelectorAll('[data-skeleton] rect')).toHaveLength(2)
+  })
+
+  it("draws one desktop frame small in a card's well rather than filling it", () => {
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+    )
+
+    expect(
+      container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
+    ).toBe('0 0 4320 1890')
+  })
+
+  it("fits a page wider than the least extent to its frames' bounds", () => {
+    const { container } = renderOne(
+      withFrames([
+        frame('hero', { x: 100, y: 50, width: 1440, height: 900 }),
+        frame('far', { x: 8000, y: 0, width: 1440, height: 3000 }),
+      ]),
+    )
+
+    expect(
+      container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
+    ).toBe('100 0 9340 3000')
+  })
+
+  it('leaves the well empty for a project with no frames', () => {
+    const { container } = renderOne(withFrames([]))
+
+    expect(container.querySelector('[data-skeleton]')).toBeNull()
+  })
+
+  it("fills the row's mark with the frames in the list", () => {
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+      'list',
+    )
+
+    expect(
+      container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
+    ).toBe('0 0 1440 900')
   })
 })
 

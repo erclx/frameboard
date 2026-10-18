@@ -4,6 +4,7 @@ import { boardUrl } from '@/shared/board-urls'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import type { HomeLayout } from './layout'
+import { FrameSkeleton } from './skeleton'
 
 interface ProjectsProps {
   projects: readonly ProjectRecord[]
@@ -31,8 +32,10 @@ export function Projects({ projects, layout, now }: ProjectsProps) {
               >
                 <span
                   aria-hidden
-                  className="m-1.5 block h-[150px] rounded-lg bg-background"
-                />
+                  className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
+                >
+                  <FrameSkeleton project={project} className="size-full" />
+                </span>
                 <span className="flex flex-col px-3 pt-1.5 pb-3">
                   <span className="truncate text-panel" title={project.name}>
                     {project.name}
@@ -61,7 +64,7 @@ export function Projects({ projects, layout, now }: ProjectsProps) {
                   href={projectHref(project)}
                   className="grid h-12 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
                 >
-                  <Mini />
+                  <Mini project={project} />
                   <span className="truncate font-medium" title={project.name}>
                     {project.name}
                   </span>
@@ -82,16 +85,14 @@ export function Projects({ projects, layout, now }: ProjectsProps) {
   )
 }
 
-/** The row's small mark of two frames on a canvas, which a thumbnail later replaces. */
-function Mini() {
+/** The row's small mark, being the card's skeleton at the size of a list row. */
+function Mini({ project }: { project: ProjectRecord }) {
   return (
     <span
       aria-hidden
-      className="relative block h-[22px] w-8 rounded bg-background"
+      className="block h-[22px] w-8 overflow-hidden rounded bg-background p-[5px]"
     >
-      {/* Frames are white pages in either theme, so the marks are too. */}
-      <i className="absolute top-[5px] left-[5px] h-3 w-[9px] bg-white" />
-      <i className="absolute top-[5px] left-[17px] h-3 w-[9px] bg-white" />
+      <FrameSkeleton project={project} fill className="size-full" />
     </span>
   )
 }
