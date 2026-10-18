@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -7,6 +8,8 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
 import { Frame } from './frame'
+import { useMode } from './mode'
+import { attachCanvas, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 const FIT_PADDING = 64
@@ -34,7 +37,9 @@ interface CanvasProps {
  * One page's frames on a pannable, zoomable layer. Pan and zoom write the
  * layer's transform straight from the `d3-zoom` handler and never touch React
  * state, so a gesture renders nothing. Only once the view settles does React
- * hear of it, to swap frames far offscreen for placeholders.
+ * hear of it, to swap frames far offscreen for placeholders. It registers
+ * itself with the view controller in `view.ts`, which the chrome's zoom
+ * controls call.
  */
 export function Canvas({
   page,
@@ -46,6 +51,8 @@ export function Canvas({
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
+  const playing = useMode((state) => state.mode === 'play')
+  const hand = useMode((state) => state.tool === 'hand')
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )
@@ -78,6 +85,7 @@ export function Canvas({
         layer.style.transform = `translate(${x}px, ${y}px) scale(${k})`
         layer.style.setProperty('--zoom', String(k))
         pageViews.set(page.ref, { x, y, k })
+        reportZoom(k)
       })
       .on('end', ({ transform: { x, y, k } }) => {
         clearTimeout(timer)
@@ -155,7 +163,15 @@ export function Canvas({
       animation = requestAnimationFrame(step)
     }
 
+    const detach = attachCanvas({
+      zoomBy: (factor) => zoomer.scaleBy(selection, factor),
+      zoomTo: (scale) => zoomer.scaleTo(selection, scale),
+      fit: () =>
+        moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport))),
+    })
+
     return () => {
+      detach()
       clearTimeout(timer)
       cancelAnimationFrame(animation)
       moveToRef.current = null
@@ -183,7 +199,10 @@ export function Canvas({
     <div
       ref={viewportRef}
       data-canvas
-      className="relative size-full cursor-grab touch-none overflow-hidden bg-background active:cursor-grabbing"
+      className={cn(
+        'relative size-full touch-none overflow-hidden bg-background',
+        hand && !playing && 'cursor-grab active:cursor-grabbing',
+      )}
     >
       <div
         ref={layerRef}
@@ -202,8 +221,10 @@ export function Canvas({
               />
             ))}
       </div>
-      {/* Covers every frame, so a wheel or drag over one pans the canvas rather than reaching its page. */}
-      <div data-hit-layer className="absolute inset-0" />
+      {/* Covers every frame in Edit, so a wheel or drag over one pans the
+          canvas rather than reaching its page. Play lifts it, so a click
+          reaches the frame. */}
+      {playing ? null : <div data-hit-layer className="absolute inset-0" />}
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (
@@ -234,9 +255,25 @@ function LayoutErrorNotice({
 
 function EmptyNotice() {
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-      <p className="text-body text-muted-foreground">
-        No frames on this page yet. An agent adds one with frameboard frame add.
+    <div
+      role="status"
+      className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-muted-foreground"
+    >
+      <div
+        aria-hidden
+        className="mx-auto mb-3.5 h-12 w-16 rounded-lg border-[1.5px] border-dashed border-faint"
+      />
+      <p className="mb-1 text-sm font-semibold text-foreground">
+        This page has no frames
+      </p>
+      <p>
+        Pick the Frame tool{' '}
+        <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
+          F
+        </kbd>{' '}
+        and drag on the canvas,
+        <br />
+        or ask your agent to draw one.
       </p>
     </div>
   )

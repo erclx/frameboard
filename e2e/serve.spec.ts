@@ -73,10 +73,10 @@ test.describe('serve and show', () => {
     await page.goto(`${server.url}/p/studio/home`)
     const layer = page.locator('[data-layer]')
     await expect(page.locator('[data-frame]')).toHaveCount(2)
-    // Fitting both home frames scales to about 0.48.
+    // Fitting both home frames between the two panels scales to about 0.35.
     await expect
       .poll(() => layer.evaluate((element) => element.style.transform))
-      .toMatch(/scale\(0\.47\d*\)$/)
+      .toMatch(/scale\(0\.35\d*\)$/)
 
     await frameboard('show', 'home/mobile', '--root', board.root)
 

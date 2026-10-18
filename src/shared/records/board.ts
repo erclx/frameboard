@@ -18,6 +18,10 @@ export type ProjectChecks = z.infer<typeof projectChecksSchema>
 export const projectFileSchema = z.looseObject({
   version: z.literal(1),
   pages: z.array(z.string()),
+  // Written once when the project is made, and absent on one made before it
+  // was recorded. A value that is not a time parses too, as checks does, and
+  // reads as no time.
+  createdAt: z.union([z.iso.datetime(), z.unknown()]).optional(),
   // A checks value the rules cannot read still parses as written, so a page
   // verb keeps the file and its page order, and the check reads that rule as
   // off, the way it reads a missing key.

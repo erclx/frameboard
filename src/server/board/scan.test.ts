@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -39,6 +40,40 @@ describe('scanBoard', () => {
       ).toEqual([
         ['marketing', ['launch']],
         ['webapp', ['settings', 'home']],
+      ])
+    })
+
+    it("reads a project's creation time, null on one that records none", async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({
+          version: 1,
+          pages: ['settings', 'home'],
+          createdAt: '2026-09-02T08:00:00.000Z',
+        }),
+      )
+
+      const { projects } = await scanBoard(board.root)
+
+      expect(projects.map((project) => project.createdAt)).toEqual([
+        null,
+        '2026-09-02T08:00:00.000Z',
+      ])
+    })
+
+    it('reads a creation time that is not a time as none', async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({ version: 1, pages: ['home'], createdAt: 'yesterday' }),
+      )
+
+      const [, webapp] = (await scanBoard(board.root)).projects
+
+      expect([webapp?.createdAt, webapp?.projectFileError]).toEqual([
+        null,
+        null,
       ])
     })
 

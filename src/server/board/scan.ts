@@ -1,6 +1,8 @@
 import { readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { z } from 'zod'
+
 import {
   ASSETS_FOLDER,
   BOARD_FILE,
@@ -83,22 +85,35 @@ export async function listFrames(pageDir: string): Promise<string[]> {
 /**
  * The page order a reader shows: listed pages that exist in that order, then
  * unlisted ones by name. A file that fails to read orders every page by name.
+ * The creation time comes from the same read, null when the file holds none.
  */
 export async function readPageOrder(projectDir: string): Promise<{
   pages: string[]
+  createdAt: string | null
   error: { path: string; message: string } | null
 }> {
   const folders = await listPageFolders(projectDir)
   const path = join(projectDir, PROJECT_FILE)
-  let listed: string[]
+  let file: ProjectFile
   try {
-    listed = (await readRecord(path, { ...projectSpec, empty: emptyProject }))
-      .pages
+    file = await readRecord(path, { ...projectSpec, empty: emptyProject })
   } catch (error) {
     if (!(error instanceof FrameboardError)) throw error
-    return { pages: folders, error: { path, message: error.message } }
+    return {
+      pages: folders,
+      createdAt: null,
+      error: { path, message: error.message },
+    }
   }
-  return { pages: orderPages(listed, folders), error: null }
+  return {
+    pages: orderPages(file.pages, folders),
+    createdAt: isTime(file.createdAt) ? file.createdAt : null,
+    error: null,
+  }
+}
+
+function isTime(value: unknown): value is string {
+  return z.iso.datetime().safeParse(value).success
 }
 
 export function orderPages(listed: string[], folders: string[]): string[] {
@@ -190,7 +205,7 @@ export async function scanProject(
   name: string,
 ): Promise<ProjectRecord> {
   const path = join(root, name)
-  const { pages: order, error } = await readPageOrder(path)
+  const { pages: order, createdAt, error } = await readPageOrder(path)
   const pages = await Promise.all(
     order.map((page, index) => scanPage(root, name, page, index)),
   )
@@ -206,6 +221,7 @@ export async function scanProject(
     name,
     path,
     modifiedAt: new Date(Math.max(...times)).toISOString(),
+    createdAt,
     projectFileError: error,
     pages,
   }

@@ -82,7 +82,10 @@ describe('root', () => {
     it('starts .frameboard/ at the repository top with one empty page', async () => {
       folder('repo', '.git')
 
-      const result = await startBoard({ cwd: folder('repo', 'src') })
+      const result = await startBoard(
+        { cwd: folder('repo', 'src') },
+        new Date('2026-10-18T09:30:00.000Z'),
+      )
 
       expect(result).toEqual({
         root: join(dir, 'repo', '.frameboard'),
@@ -93,7 +96,11 @@ describe('root', () => {
         JSON.parse(
           readFileSync(join(result.root, 'untitled', 'project.json'), 'utf8'),
         ),
-      ).toEqual({ version: 1, pages: ['page-1'] })
+      ).toEqual({
+        version: 1,
+        pages: ['page-1'],
+        createdAt: '2026-10-18T09:30:00.000Z',
+      })
     })
 
     it('starts .frameboard/ in the working folder outside a repository', async () => {

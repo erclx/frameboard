@@ -15,14 +15,16 @@ test.describe('the board', () => {
 
   test.beforeEach(async () => {
     board = copyFixtureBoard('live')
-    // A frame far from the rest, so fitting the page leaves the others far offscreen once zoomed in.
+    // A frame far from the rest, so fitting the page leaves the others far
+    // offscreen once zoomed in, and near enough that the fit between both
+    // panels stays above the 0.02 zoom floor.
     writeFileSync(
       join(board.root, 'studio/pricing/layout.json'),
       JSON.stringify({
         version: 1,
         frames: {
           plans: { x: 0, y: 0, width: 1440, height: 900, order: 0 },
-          faq: { x: 40000, y: 0, width: 1440, height: 900, order: 1 },
+          faq: { x: 30000, y: 0, width: 1440, height: 900, order: 1 },
         },
       }),
     )

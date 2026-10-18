@@ -15,19 +15,42 @@ Owns the browser app around the frames, being the home view, the board's panels,
 
 Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row.
 
-- A card shows the project's name and when it was last edited, and a list row adds a created column
-- A new project button sits beside them
+- A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
+- The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
 - Opening a card opens its board, and the board's home button is the one way back and between projects
+
+### `src/client/actions/`
+
+Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
+
+- An action is `{ id, label, group, keys?, run, enabled?, checked? }`, a row registers its own and removes them on unmount, and a row needing a field adds it as optional
+- A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
+- `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
 
 ### `src/client/board/`
 
-Owns the board screen with its left panel, toolbar, and canvas. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
+Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The left panel holds Design, being a pages list with a search and a layers tree that hides and locks frames, then Assets with dropped files, and Theme with the project's tokens read-only
-- The toolbar floats bottom center with Move, Hand, Frame, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
 - The Frame tool drags out an empty frame or adds one at a phone 390, tablet 768, or desktop 1440 preset
 - A Note tool pins a note on a frame or element, Send hands it to a listening session, and replies show in the note's thread
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
+- Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
+
+### `src/client/board/left-panel/`
+
+Owns the left panel, being its header with the way home and Hide UI, then the Design and Theme tabs.
+
+- Design holds a pages list with a search and a layers tree that hides and locks frames, then Assets with dropped files, and Theme holds the project's tokens read-only
+
+### `src/client/board/chrome/`
+
+Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
+
+- The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+
+### `src/client/board/inspector/`
+
+Owns the right panel, under a header of the avatar and the zoom level.
 
 ### `src/client/live/`
 
@@ -36,7 +59,7 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 - A frame an agent changed carries a purple dot on its label and layers row until selected or on screen a moment, never cleared by a timer
 - Page rows and the project card count the unseen frames, the update toast offers Show and Next, and `]` steps through the changes
 - Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
-- A frame breaking a content rule carries a warning triangle and its count beside its name, and the mark clears on the batch that fixes the file
+- A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
 - Seen state lives in the browser, never in the board folder
 
 ### `src/client/`
@@ -57,6 +80,7 @@ Owns the board folder's watcher, the socket hub, and the decision to open a tab.
 - A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - The server checks every frame at start and rechecks each batch's frames
+- `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 
 ### `src/server/routes/`
 
@@ -75,6 +99,6 @@ The favicon files sit beside the app.
 
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
-- A transparent hit layer covers every frame so a drag pans while animation plays, and frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
-- `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
-- The finding triangle takes `--note` and the count the text color, because `--destructive` means Delete alone and the note amber is too light for 11px text on the light canvas
+- Edit covers the frames with a hit layer so a drag pans, and Play lifts it, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
+- A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
+- `cn` reads the custom `text-body` step as a color and keeps a kit part's `text-sm` beside it, so a kit part takes Tailwind's `text-xs` for the chrome's 12px

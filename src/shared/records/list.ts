@@ -41,6 +41,8 @@ export const projectRecordSchema = z.object({
   name: z.string(),
   path: z.string(),
   modifiedAt: z.string(),
+  /** When the project was made, null for one made before the time was recorded. */
+  createdAt: z.string().nullable(),
   projectFileError: recordErrorSchema,
   pages: z.array(pageRecordSchema),
 })
