@@ -11,33 +11,24 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 ## Layout
 
-- `src/client/` owns the inspector panel
-- `src/server/` owns the write a hand edit makes into a frame
+### `src/client/`
 
-### Inspector
+Owns the inspector panel. A control joins it only when the developer's edit beats asking the agent and leaves layout alone.
 
-- **Frame:** name, position, and size, alone when a whole frame is selected
-- **Several frames:** the shared position and size, and Arrange buttons for each align and distribute key, each naming its key on hover
-- **Element:** name, opacity, and radius
-- **Typography:** size, weight, and alignment
-- **Fill:** color, through the browser's own color input with the project's tokens offered first, and fill opacity. On a text element Fill is the text color, and on any other element its background, as in Figma
-- **Text:** the element's text, when it holds text only
-- **Stroke:** the border's color, through the same token-first color row as Fill, on an element that has a border
-- **Shadow:** one of the project's shadow tokens, or none
+- **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key
+- **Element:** name, opacity, radius, and typography size, weight, and alignment, plus the element's text when it holds text only
+- **Fill:** color through the browser's color input with the project's tokens offered first, and fill opacity. On a text element it is the text color, as in Figma.
+- **Stroke and shadow:** the border color through the same token-first row, and one of the project's shadow tokens or none
 - **Selection colors:** the colors the frame uses, with token names, and a flag on raw values
 
-### Adding one more control
+### `src/server/`
 
-- A control joins the inspector only when the developer's edit beats asking the agent, and only when it leaves layout alone
+Owns the write a hand edit makes into a frame.
 
-## Decisions
+- A hand edit writes the element's inline style or text and nothing else
+- A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
 
-### Layout stays with the agent
+## Gotchas
 
 - Element position, width, height, padding, flex, gap, border width, font family, line height, and letter spacing have no control
-- Each is a layout call a prompt makes better, or a number that fights the layout when set by hand
-
-### Hand edits write the element's inline style or text and nothing else
-
-- A token pick writes `var(--token)`, so it keeps following the theme
-- A raw value is marked raw
+- Each of those is a layout call a prompt makes better, or a number that fights the layout when set by hand

@@ -11,33 +11,21 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 ## Layout
 
-- `src/server/` owns token resolution, injection, and font serving
-- `src/client/` owns the theme toggle and the per-frame override
+### `src/server/`
 
-## Decisions
+Owns token resolution, injection, and font serving.
 
-### One theme toggle, with a per-frame override
+- A board folder's `tokens.css` is the default and a project's own overrides it, with `--tokens <path>` pointing at a sheet another tool manages
+- Both are injected first in every frame's `head`, so a frame's own stylesheet still wins
+- A text face, a mono face, and a hand-drawn face are served into every frame, so a frame renders the same on the board and in a capture, and a project adds faces in its `assets/`
+
+### `src/client/`
+
+Owns the theme toggle and the per-frame override.
 
 - The chrome follows the system theme until the developer toggles it, and the choice persists
 - Frames follow the chrome, and a switch on a frame's label flips that frame alone until reload
-- One toggle rather than two independent ones keeps the board out of a mixed state
-
-### Every frame carries both themes
-
-- The board sets `data-theme` and `color-scheme` on each frame's root
-- A token sheet defines dark and light values, and so does a frame setting its own colors
-- `check` reports a frame defining only one
-
-### Tokens cascade board, then project, then frame
-
-- The board folder's `tokens.css` is the default, and a project's own `tokens.css` overrides it for that project
-- `--tokens <path>` points at a stylesheet elsewhere, which is how another tool hands over a design system it manages
-- Both are injected first in every frame's `head`, so a frame's own stylesheet still wins
-
-### Frameboard bundles three faces
-
-- A text face, a mono face, and a hand-drawn face are served into every frame, so a frame renders the same on the board and in a capture with no setup
-- A project adds its own faces in its `assets/` folder
+- The board sets `data-theme` and `color-scheme` on each frame's root, and `check` reports a frame defining only one theme
 
 ## Gotchas
 
