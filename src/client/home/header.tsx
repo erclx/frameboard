@@ -24,7 +24,7 @@ interface HomeHeaderProps {
 export function HomeHeader({ hasProjects }: HomeHeaderProps) {
   const [grid, list, newProject, theme] = useActions(IDS)
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-6">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <span className="flex flex-1 items-center gap-2 text-sm font-semibold">
         <Mark />
         Frameboard
@@ -43,7 +43,7 @@ export function HomeHeader({ hasProjects }: HomeHeaderProps) {
               <List aria-hidden className="size-3.5" />
             </LayoutButton>
           </div>
-          <NewProjectButton action={newProject} />
+          <NewProjectButton action={newProject} compact />
         </>
       ) : null}
       <button
@@ -64,13 +64,17 @@ export function HomeHeader({ hasProjects }: HomeHeaderProps) {
 export function NewProjectButton({
   action,
   className,
+  compact = false,
 }: {
   action: Action | undefined
   className?: string
+  /** Drops the label below `sm`, where the header has no room for it. */
+  compact?: boolean
 }) {
   return (
     <button
       type="button"
+      aria-label="New project"
       {...pressable(action)}
       className={cn(
         'flex h-[30px] items-center gap-1.5 rounded-lg bg-primary px-3 font-medium text-primary-foreground outline-none hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary',
@@ -78,7 +82,9 @@ export function NewProjectButton({
       )}
     >
       <Plus aria-hidden className="size-3.5" />
-      New project
+      <span className={cn('whitespace-nowrap', compact && 'hidden sm:inline')}>
+        New project
+      </span>
     </button>
   )
 }
