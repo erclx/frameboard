@@ -13,26 +13,26 @@ Owns how the project runs on a developer machine, being the toolchain, the scrip
 
 ### `scripts/`
 
-| Command                                               | Purpose                                                                                                 |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `bun run check`                                       | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, and markdown bans |
-| `bun run check:full`                                  | Runs `check`, then `test:e2e`                                                                           |
-| `bun run typecheck`                                   | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                           |
-| `bun run lint`, `bun run lint:fix`                    | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                       |
-| `bun run format`                                      | Auto-fixes oxfmt formatting                                                                             |
-| `bun run build`                                       | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown    |
-| `bun run preview`                                     | Serves the built CLI on the `basic` fixture board at `PREVIEW_PORT`, default 4173, with no browser tab  |
-| `bun run dev`                                         | Serves the client with hot reload on 5173, proxying `/api`, the socket, and `/frames` to a `preview`    |
-| `bun run test`, `bun run test:run`                    | Runs Vitest in watch mode, and both projects, `node` and `browser`, once                                |
-| `bun run test:coverage`                               | Runs the `node` project with coverage, as CI's unit-tests job does                                      |
-| `bun run test:e2e`                                    | Runs Playwright against the built CLI on a port offset per worktree                                     |
-| `bun run test:e2e:changed`                            | Runs Playwright on specs the import graph reaches from the current diff                                 |
-| `bun --bun vitest run --project node src/server/edit` | Runs the edit writer's tests on Bun, with `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest    |
-| `bun run measure:canvas`                              | Pans and pinches over fifty live frames in headed Chrome and prints p50, p95, and the share past 33 ms  |
-| `bun run screenshot`                                  | Builds, serves, and captures every case in `e2e/capture/` into `screenshots/` and `e2e/evidence/`       |
-| `bun run smoke:prod`                                  | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                    |
+| Command                                               | Purpose                                                                                                                                                                          |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`                                       | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, and markdown bans                                                                          |
+| `bun run check:full`                                  | Runs `check`, then `test:e2e`                                                                                                                                                    |
+| `bun run typecheck`                                   | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                                                                                                    |
+| `bun run lint`, `bun run lint:fix`                    | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                                                                                                |
+| `bun run format`                                      | Auto-fixes oxfmt formatting                                                                                                                                                      |
+| `bun run build`                                       | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown                                                                             |
+| `bun run preview`                                     | Serves the built CLI on the `basic` fixture board at `PREVIEW_PORT`, default 4173, with no browser tab                                                                           |
+| `bun run dev`                                         | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset, run as `PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) bun run preview` |
+| `bun run test`, `bun run test:run`                    | Runs Vitest in watch mode, and both projects, `node` and `browser`, once                                                                                                         |
+| `bun run test:coverage`                               | Runs the `node` project with coverage, as CI's unit-tests job does                                                                                                               |
+| `bun run test:e2e`                                    | Runs Playwright against the built CLI on a port offset per worktree                                                                                                              |
+| `bun run test:e2e:changed`                            | Runs Playwright on specs the import graph reaches from the current diff                                                                                                          |
+| `bun --bun vitest run --project node src/server/edit` | Runs the edit writer's tests on Bun, with `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest                                                                             |
+| `bun run measure:canvas`                              | Pans and pinches over fifty live frames in headed Chrome and prints p50, p95, and the share past 33 ms                                                                           |
+| `bun run screenshot`                                  | Builds, serves, and captures every case in `e2e/capture/` into `screenshots/` and `e2e/evidence/`                                                                                |
+| `bun run smoke:prod`                                  | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                                                                                             |
 
-- `scripts/` owns the shell scripts and the verify runner the commands above call, and every `.sh` file lives here but the plugin's resolver, which the loader needs inside the plugin, and `.claude/hooks/`
+- `scripts/` owns the shell scripts and the verify runner the commands above call, and every `.sh` file lives here but the plugin's resolver and `.claude/hooks/`
 - `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
 
 ### `.husky/`
@@ -57,7 +57,7 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 
 ## Gotchas
 
-- `canon tooling sync web . --write` rewrites golden configs and restores deleted files, so restore the three edits in `e2e/screenshot.ts`, delete `readme-screenshot.yml`, and run `bun run format`
+- A `canon tooling sync web . --write` clobbers `e2e/screenshot.ts`, so restore its `./capture` import, `CASES: CaptureCase[] = CAPTURE_CASES`, and `EVIDENCE_ROOT` line, delete `readme-screenshot.yml`, and run `bun run format`, since the sync writes `config.json` oxfmt rejects
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either

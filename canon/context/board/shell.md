@@ -63,7 +63,7 @@ Owns the board folder's watcher, the socket hub, and the decision to open a tab.
 Owns the HTTP route modules `app.ts` mounts, one per surface.
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
-- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM
+- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the token on the write routes keeps a frame's script from driving the board
 
 ### Other folders
 
