@@ -7,7 +7,7 @@ import { liveStore, useLive } from '@/client/live/store'
 import { boardUrl } from '@/shared/board-urls'
 
 import { Canvas } from './canvas'
-import { PagesList } from './pages-list'
+import { PagesList } from './left-panel/pages-list'
 
 interface BoardScreenProps {
   project: string
