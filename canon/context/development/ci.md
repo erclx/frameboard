@@ -26,6 +26,7 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 | Phase Label Gate            | `phase-label-gate.yml`  | `canon labels scan`                                                       | no phase label, board reference, or session link in the pull request                                                             |
 
 - `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
+- The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
 - `phase-label-gate.yml` and `pr-local-preview.yml` own canon's pull request hygiene
 - `release-please.yml` owns the release pull request, the npm publish, and the check that the newest release reached npm, reading `release-please-config.json` and `.release-please-manifest.json`
 - The publish job installs and builds the tag, then refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm
@@ -33,7 +34,7 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 
 ## Gotchas
 
-- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and the macOS job runs no browser or E2E layer either, so macOS-only rendering drift reaches CI only through a local run, and a hand edit to `verify.yml` is reverted by the next sync
+- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and a hand edit to `verify.yml` is reverted by the next sync
 - No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand
 - `initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`
 - `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump, and `bootstrap-sha` is the root commit so the first release pull request opens
