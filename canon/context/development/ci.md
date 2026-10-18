@@ -7,24 +7,11 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge, being which events start a run and which checks have to pass before the branch can land. The checks call package scripts rather than defining commands of their own, so what each one runs is the subject of `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all must pass, a push to `main` runs the release workflow, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
 
 ## Layout
 
-- `.github/workflows/verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites
-- `.github/workflows/frameboard-checks.yml` owns the project's own jobs, which a sync never touches
-- `.github/workflows/phase-label-gate.yml` and `.github/workflows/pr-local-preview.yml` own canon's pull request hygiene
-- `.github/workflows/release-please.yml` owns releases, being the release pull request, the npm publish, and the check that the newest release reached npm. It reads `release-please-config.json` and `.release-please-manifest.json` at the root.
-
-### Triggers
-
-- Pull requests targeting `main` run the checks below
-- A push to `main` runs the release workflow
-- `workflow_dispatch` runs any workflow from the Actions tab, and a `tag` input on the release workflow publishes that tag alone
-
-### Checks
-
-- All jobs must pass before merge
+### `.github/workflows/`
 
 | Check                       | Workflow                | Command                                                                   | What it asserts                                                                 |
 | --------------------------- | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -37,28 +24,16 @@ Owns the GitHub Actions workflows that gate a merge, being which events start a 
 | Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes |
 | Phase Label Gate            | `phase-label-gate.yml`  | `canon labels scan`                                                       | no phase label, board reference, or session link in the pull request            |
 
-### Running CI locally
+- `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
+- `phase-label-gate.yml` and `pr-local-preview.yml` own canon's pull request hygiene
+- `release-please.yml` owns the release pull request, the npm publish, and the check that the newest release reached npm, reading `release-please-config.json` and `.release-please-manifest.json`
+- The publish job installs and builds the tag, then refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm
+- A `tag` input on the release workflow publishes that tag alone
 
-- `bun run check` runs typecheck, lint, format, both Vitest projects, build, and the markdown ban scan, and writes nothing
-- `bun run check:full` adds `bun run test:e2e`
-- If CI fails on format, run `bun run format` locally and commit the diff
+## Gotchas
 
-## Decisions
-
-- The browser project runs in `frameboard-checks.yml` rather than in the golden `unit-tests` job. That job installs no browser, and a hand edit to `verify.yml` is reverted by the next sync.
-- `test:coverage` runs only the `node` project, so the golden `unit-tests` job passes on a runner with no browser.
-
-### Release workflow
-
-- The release workflow copies erclx/canon's preflight, queued group, and tag dispatch repair, because each answers an incident canon measured.
-- No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand.
-- The publish job installs and builds the tag before it publishes, because the package ships only the gitignored `dist/` and canon's job runs no build.
-- The publish job refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm.
-- Publish Check passes while no release exists and reads an npm E404 as no versions, so a failed first publish still names the repair command.
-
-### Release versioning
-
-- `initial-version` is `0.0.1` against a `0.0.0` manifest, because release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`.
-- `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump rather than `1.0.0`.
-- `bootstrap-sha` is the root commit rather than the branch point, so the first changelog carries a `feat` entry and a release pull request opens.
-- `.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and a sync overwrites `.oxfmtrc.json`.
+- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and a hand edit to `verify.yml` is reverted by the next sync
+- No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand
+- `initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`
+- `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump, and `bootstrap-sha` is the root commit so the first release pull request opens
+- `.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and a sync overwrites `.oxfmtrc.json`

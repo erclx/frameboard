@@ -35,3 +35,4 @@ screenshots/
 
 # Vitest browser mode
 .vitest/
+.claude/.tmp/
