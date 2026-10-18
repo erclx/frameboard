@@ -1,6 +1,15 @@
+import { execFileSync } from 'node:child_process'
+
 import { defineConfig, devices } from '@playwright/test'
 
-const port = 4173 + Number(process.env.WORKTREE_PORT_OFFSET ?? 0)
+// The test:e2e scripts export the offset; a bare `playwright test` derives the
+// same one, so a linked worktree never serves on the main checkout's port.
+const offset =
+  process.env.WORKTREE_PORT_OFFSET ??
+  execFileSync('bash', ['scripts/worktree-port.sh'], {
+    encoding: 'utf8',
+  }).trim()
+const port = 4173 + Number(offset)
 const serve = `node dist/cli.js serve --root test/fixtures/boards/basic --no-open --port ${port}`
 
 export default defineConfig({
