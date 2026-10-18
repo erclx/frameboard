@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.38.0",
-      "syncedAt": "2026-10-15T07:52:54.201Z",
+      "version": "5.42.0",
+      "syncedAt": "2026-10-18T08:42:32.663Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:489451f661650947951405f4fd3f999f862148905f72b71c23c2413e954cbdbe",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
