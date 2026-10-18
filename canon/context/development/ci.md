@@ -29,8 +29,7 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 - The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
 - `phase-label-gate.yml` and `pr-local-preview.yml` own canon's pull request hygiene
 - `release-please.yml` owns the release pull request, the npm publish, and the check that the newest release reached npm, reading `release-please-config.json` and `.release-please-manifest.json`
-- The publish job installs and builds the tag, then refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm
-- A `tag` input on the release workflow publishes that tag alone
+- The publish job installs and builds the tag, then refuses a tag whose built `dist/cli.js --version` differs from it, so a mismatched tarball never reaches npm, and a `tag` input on the release workflow publishes that tag alone
 
 ## Gotchas
 
