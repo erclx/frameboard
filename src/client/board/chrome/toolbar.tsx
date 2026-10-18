@@ -76,7 +76,7 @@ export function Toolbar() {
     <div
       role="toolbar"
       aria-label="Tools"
-      className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-border bg-card p-[5px] shadow-[0_6px_24px_rgba(0,0,0,.18),0_1px_3px_rgba(0,0,0,.12)]"
+      className="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-card p-[5px] shadow-[0_6px_24px_rgba(0,0,0,.18),0_1px_3px_rgba(0,0,0,.12)]"
     >
       {GROUPS.map((group, index) => (
         <Fragment key={group[0]?.id}>
@@ -91,7 +91,7 @@ export function Toolbar() {
         </Fragment>
       ))}
       <Rule />
-      <div className="flex rounded-lg bg-muted p-0.5">
+      <div className="flex shrink-0 rounded-lg bg-muted p-0.5">
         {MODES.map((slot) => (
           <ModeButton key={slot.id} slot={slot} action={actions.get(slot.id)} />
         ))}
@@ -118,7 +118,7 @@ function ToolButton({ slot, action }: ButtonProps) {
         aria-disabled={enabled ? undefined : true}
         onClick={run}
         className={cn(
-          'grid size-8 place-items-center rounded-[7px] text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
+          'grid size-8 shrink-0 place-items-center rounded-[7px] text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
           on &&
             'bg-primary text-primary-foreground hover:bg-primary aria-disabled:hover:bg-primary',
         )}
@@ -158,7 +158,7 @@ function ModeButton({ slot, action }: ButtonProps) {
 }
 
 function Rule() {
-  return <span aria-hidden className="mx-[5px] h-5 w-px bg-border" />
+  return <span aria-hidden className="mx-[5px] h-5 w-px shrink-0 bg-border" />
 }
 
 function read(slot: Slot, action: Action | undefined) {
