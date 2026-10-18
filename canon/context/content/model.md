@@ -18,6 +18,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 - Every record carries `"version": 1` and reads through a loose schema, so a newer Frameboard's keys survive a write by an older one
 - Projects, pages, and frames share one name rule in `src/shared/names.ts`, so the verbs and the naming check agree on which names are valid
 - Two names collide when they match case-insensitively, because the default macOS volume is case-insensitive, and `assets` is reserved as a page name
+- `project.json` gains a `createdAt` once, from `project add` or the first `serve` of an empty folder, and an older project reads as made at no time, never at a file's birth time
 
 ### `src/server/board/`
 
