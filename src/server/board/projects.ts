@@ -13,6 +13,7 @@ import { listProjects, PROJECT_FILE, scanProject } from './scan'
 export async function addProject(
   root: string,
   name: string,
+  now: Date = new Date(),
 ): Promise<ProjectRecord> {
   assertValidName('project', name)
   await assertFree(root, name)
@@ -20,6 +21,7 @@ export async function addProject(
   await writeRecord(join(root, name, PROJECT_FILE), {
     version: 1,
     pages: [START_PAGE],
+    createdAt: now.toISOString(),
   })
   return scanProject(root, name)
 }

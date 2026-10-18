@@ -34,6 +34,7 @@ const BOARD: ListResult = {
       name: 'studio',
       path: '/board/studio',
       modifiedAt: '2026-10-15T00:00:00.000Z',
+      createdAt: null,
       projectFileError: null,
       pages: [
         page('home', 0),

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -28,6 +28,24 @@ describe('projects', () => {
         name: 'brand',
         projectFileError: null,
         pages: [{ ref: 'brand/page-1', index: 0, frames: [] }],
+      })
+    })
+
+    it('records when it was made, once, in project.json', async () => {
+      await addProject(
+        board.root,
+        'brand',
+        new Date('2026-10-18T09:30:00.000Z'),
+      )
+
+      expect(
+        JSON.parse(
+          readFileSync(join(board.root, 'brand', 'project.json'), 'utf8'),
+        ),
+      ).toEqual({
+        version: 1,
+        pages: ['page-1'],
+        createdAt: '2026-10-18T09:30:00.000Z',
       })
     })
 

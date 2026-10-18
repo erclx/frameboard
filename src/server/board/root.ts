@@ -68,10 +68,10 @@ export function findBoard(cwd: string): string | null {
  * project with one empty page, and one missing only `board.json` gets that
  * alone.
  */
-export async function startBoard({
-  root,
-  cwd,
-}: BoardLocation): Promise<{ root: string; created: boolean }> {
+export async function startBoard(
+  { root, cwd }: BoardLocation,
+  now: Date = new Date(),
+): Promise<{ root: string; created: boolean }> {
   const target =
     root === undefined
       ? (findBoard(cwd) ??
@@ -90,6 +90,7 @@ export async function startBoard({
     await writeRecord(join(target, START_PROJECT, PROJECT_FILE), {
       version: 1,
       pages: [START_PAGE],
+      createdAt: now.toISOString(),
     })
     created = true
   }

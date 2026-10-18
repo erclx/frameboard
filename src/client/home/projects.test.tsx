@@ -21,6 +21,7 @@ function project(
     name,
     path: `/board/${name}`,
     modifiedAt,
+    createdAt: null,
     projectFileError: null,
     pages: pages.map((page, index) => ({
       ref: `${name}/${page}`,
