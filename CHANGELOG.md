@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.0](https://github.com/erclx/frameboard/compare/v0.0.1...v0.1.0) (2026-10-18)
+
+
+### Features
+
+* **board:** add the board folder model and the structure verbs ([#6](https://github.com/erclx/frameboard/issues/6)) ([ab1153b](https://github.com/erclx/frameboard/commit/ab1153bf866cfc24b290e872f4e89297a566dcce))
+* **board:** add the board shell, its action registry, and the home view ([#14](https://github.com/erclx/frameboard/issues/14)) ([47d4577](https://github.com/erclx/frameboard/commit/47d45778ba008ed78bf6b2be065614ac874a800b))
+* **board:** watch frames appear and reload live on a pannable canvas ([#9](https://github.com/erclx/frameboard/issues/9)) ([d609955](https://github.com/erclx/frameboard/commit/d6099556c1a8ec956a2c97d83303706fac47146b))
+* **check:** hand content check findings back to the agent and the board ([#10](https://github.com/erclx/frameboard/issues/10)) ([22a0d69](https://github.com/erclx/frameboard/commit/22a0d69ae407b99587c8839638cefd6c59cb1187))
+* **design:** add tracked design references and the sync command ([#12](https://github.com/erclx/frameboard/issues/12)) ([d1026ea](https://github.com/erclx/frameboard/commit/d1026eaa6b3e61e6785ba3a95398b94f452bd569))
+* **edit:** splice frame edits at parse5 source offsets ([#7](https://github.com/erclx/frameboard/issues/7)) ([dac8f33](https://github.com/erclx/frameboard/commit/dac8f3368945bd01035527113e6281f5418b97c2))
+
 ## 0.0.1 (2026-10-15)
 
 
