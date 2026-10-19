@@ -34,7 +34,9 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on each change. `capture` writes PNGs of a frame or page in either theme, `frame fit` sets a frame's height to its content, and `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type.
 
-The Claude Code plugin in `plugins/frameboard/` runs the checks after each agent write and hands the findings back in the same turn. `frameboard docs` prints every command, flag, record shape, and exit code.
+Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board. The agent answers in the note's thread through `notes reply` and closes it with `notes done`, and the notes stay in each page's `notes.json`.
+
+The Claude Code plugin in `plugins/frameboard/` runs the checks after each agent write and hands the findings back in the same turn. Its monitor runs `inbox --follow` for the session, so a sent note reaches the agent at once. `frameboard docs` prints every command, flag, record shape, and exit code.
 
 Releases before 1.0 ship the board in stages. Editing by hand in the board arrives in a later 0.x release.
 
