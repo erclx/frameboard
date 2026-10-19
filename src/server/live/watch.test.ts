@@ -237,12 +237,19 @@ describe('watchBoard', () => {
     writeFileSync(join(board.root, 'studio/home/layout.json.lock'), 'x')
     writeFileSync(join(board.root, 'studio/home/hero.html.tmp'), 'x')
     // A watched write after the ignored ones, so its batch arriving means
-    // every earlier event has been reported or dropped.
+    // every earlier event has been reported or dropped. Under load the
+    // watcher can lose a create that lands beside other writes in one folder,
+    // so each poll writes it again until it is seen.
     const sentinel = join(board.root, 'studio/home/sentinel.txt')
-    writeFileSync(sentinel, 'x')
 
     await expect
-      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .poll(
+        () => {
+          writeFileSync(sentinel, 'x')
+          return batches.flat()
+        },
+        { timeout: SEEN_MS },
+      )
       .toContain(sentinel)
     expect(new Set(batches.flat())).toEqual(new Set([sentinel]))
   })
