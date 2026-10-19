@@ -40,6 +40,16 @@ Owns the edit writer, which parses a frame with parse5 and writes new bytes only
 - The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
 - A note anchors to a frame or to an element by its address, and falls back to the frame when the file's hash has changed
 
+### `src/server/notes/`
+
+Owns the notes record, its anchors, and delivery to a listening session, apart from `board/` since the three change together.
+
+- `<page>/notes.json` is `{ version: 1, notes }`, each note naming its `frame`, `anchor`, `text`, `from`, `author`, `session`, `to`, `state`, and `thread`, with its times
+- An id is `n_` and 8 hex characters, unique across the board, so a verb finds a note by scanning every page's file, and `number` is one past the page's highest on a root note and `null` on a reply
+- A reply is a note in the same file, `thread` naming its root, so the agent's answer needs no second store
+- `state` is `open`, `queued`, `delivered`, or `done` on a root, a reply carries `open`, and a developer reply naming a session re-queues the root to it
+- Every writer, being the board routes, delivery, and the `notes` verbs, goes through `updateRecord`'s lock, and a file that does not parse is refused as `notes-invalid`, never overwritten
+
 ### Other folders
 
 Project files sit beside the pages.
