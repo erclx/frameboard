@@ -61,6 +61,7 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 - Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
 - Seen state lives in the browser, never in the board folder
+- `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
 ### `src/client/`
 
@@ -82,12 +83,21 @@ Owns the board folder's watcher, the socket hub, and the decision to open a tab.
 - The server checks every frame at start and rechecks each batch's frames
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 
+### `src/server/access/`
+
+Owns who may write, apart from the route modules.
+
+- `key.ts` loads the board key from `.run/board-key.json`, `tickets.ts` mints single-use tickets valid for two minutes, and `guard.ts` holds `isWriter` and `requireWriter`
+- A writer is the address file's token as a bearer, or the board's cookie carrying the key sent with the board's own `Origin`, and the live socket's upgrade asks the same rule
+- A route that changes the board folder or drives an agent mounts `requireWriter`, and a GET that only reads takes no guard
+
 ### `src/server/routes/`
 
 Owns the HTTP route modules `app.ts` mounts, one per surface.
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
-- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the token on the write routes keeps a frame's script from driving the board
+- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing
+- `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
 
 ### Other folders
 
@@ -97,6 +107,8 @@ The favicon files sit beside the app.
 
 ## Gotchas
 
+- A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
+- A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
 - Edit covers the frames with a hit layer so a drag pans, and Play lifts it, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
