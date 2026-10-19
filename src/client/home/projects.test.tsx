@@ -16,6 +16,7 @@ import { memoryLocation } from 'wouter/memory-location'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { createStructure, type Structure } from '@/client/live/structure'
+import { unseenStore } from '@/client/live/unseen'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
 import { Home } from './home'
@@ -115,7 +116,29 @@ function renderHome(projects: ProjectRecord[]) {
 
 afterEach(() => {
   localStorage.clear()
+  unseenStore.setState({ unseen: {}, cursor: null })
 })
+
+function markUnseen(...refs: string[]): void {
+  unseenStore.setState({
+    unseen: Object.fromEntries(
+      refs.map((ref) => [
+        ref,
+        {
+          id: `c-${ref}`,
+          frame: ref,
+          at: '2026-10-15T11:00:00.000Z',
+          hash: 'h',
+          author: null,
+          elements: [],
+          removed: 0,
+          whole: true,
+          created: false,
+        },
+      ]),
+    ),
+  })
+}
 
 describe('Projects', () => {
   it('shows each project as a card with when it was last edited', () => {
@@ -127,6 +150,38 @@ describe('Projects', () => {
     expect(screen.getByRole('link', { name: /webapp/ })).toHaveTextContent(
       'Edited 2 days ago',
     )
+  })
+
+  it("counts a card's unseen frames on its name line", () => {
+    markUnseen('studio/landing/hero', 'studio/pricing/plans')
+
+    renderProjects('grid')
+
+    expect(
+      screen.getByRole('img', { name: '2 unseen changes' }),
+    ).toBeInTheDocument()
+  })
+
+  it("counts a row's unseen frames in its name cell", () => {
+    markUnseen('studio/landing/hero')
+
+    renderProjects('list')
+
+    expect(screen.getByRole('link', { name: /studio/ })).toContainElement(
+      screen.getByRole('img', { name: '1 unseen change' }),
+    )
+  })
+
+  it('counts nothing on a project with no unseen frames', () => {
+    markUnseen('studio/landing/hero')
+
+    renderProjects('grid')
+
+    expect(
+      screen
+        .getByRole('link', { name: /webapp/ })
+        .querySelector('[data-unseen-count]'),
+    ).toBeNull()
   })
 
   it("opens a project's first page", async () => {

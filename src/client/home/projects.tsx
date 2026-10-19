@@ -4,7 +4,9 @@ import { Link } from 'wouter'
 
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
+import { UnseenCount } from '@/client/components/unseen-count'
 import type { Structure } from '@/client/live/structure'
+import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import type { HomeLayout } from './layout'
@@ -34,6 +36,7 @@ interface ProjectsProps {
  * the project's frames into it.
  */
 export function Projects({ projects, layout, now, calls }: ProjectsProps) {
+  const unseen = useUnseen((state) => state.unseen)
   return (
     <main className="px-4 py-8 sm:px-12">
       <h1 className="mb-5 text-title">Projects</h1>
@@ -56,6 +59,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     project={project}
                     calls={calls}
                     type="text-panel"
+                    unseen={unseenUnder(unseen, project.name)}
                   />
                   <Edited project={project} now={now} prefix="Edited " />
                 </span>
@@ -86,6 +90,8 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     project={project}
                     calls={calls}
                     type="font-medium"
+                    unseen={unseenUnder(unseen, project.name)}
+                    className="pr-4"
                   />
                   {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
                   <span className="hidden truncate sm:block">
@@ -155,6 +161,10 @@ interface ProjectNameProps {
   calls: Structure | undefined
   /** The name's type, which the rename field takes too. */
   type: string
+  /** How many of the project's frames an agent changed unseen, counted after the name. */
+  unseen: number
+  /** Added to the name's line, such as the list cell's gap before Edited. */
+  className?: string
 }
 
 /**
@@ -162,12 +172,21 @@ interface ProjectNameProps {
  * was refused. The field sits in the name's own line box, so the card or row
  * keeps its height while it is open.
  */
-function ProjectName({ project, calls, type }: ProjectNameProps) {
+function ProjectName({
+  project,
+  calls,
+  type,
+  unseen,
+  className,
+}: ProjectNameProps) {
   const renaming = useRenamingProject(project.name)
   if (!renaming) {
     return (
-      <span className={cn('truncate', type)} title={project.name}>
-        {project.name}
+      <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
+        <span className={cn('truncate', type)} title={project.name}>
+          {project.name}
+        </span>
+        <UnseenCount count={unseen} className="ml-auto" />
       </span>
     )
   }
