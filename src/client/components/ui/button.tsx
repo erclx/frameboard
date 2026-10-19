@@ -55,5 +55,4 @@ function Button({
 }
 
 // shadcn exports the variant helper beside the component so other kit parts can style a link as a button
-// oxlint-disable-next-line react/only-export-components
 export { Button, buttonVariants }
