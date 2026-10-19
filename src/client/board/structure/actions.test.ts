@@ -8,7 +8,12 @@ import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
 import { createSelectionStore, select, selectElement } from '../selection'
-import { createClipboardStore, structureActions } from './actions'
+import {
+  createClipboardStore,
+  renamingFrame,
+  stopFrameRename,
+  structureActions,
+} from './actions'
 
 const PAGE = 'studio/home'
 const A = frameOf('a')
@@ -157,6 +162,26 @@ describe('structureActions', () => {
     select(selection, PAGE, [LOCKED.ref])
 
     expect(enabled('frame.copy')).toBe(true)
+  })
+
+  it('opens the rename on the inspector, leaving the Frame tool', () => {
+    const { selection, mode, action } = setup()
+    select(selection, PAGE, [A.ref])
+    mode.setState({ tool: 'frame' })
+
+    action('frame.rename').run()
+
+    expect(renamingFrame()).toEqual({ ref: A.ref, surface: 'inspector' })
+    expect(mode.getState().tool).toBe('move')
+    stopFrameRename()
+  })
+
+  it('disables rename while the panels are hidden', () => {
+    const { selection, mode, enabled } = setup()
+    select(selection, PAGE, [A.ref])
+    mode.setState({ hideUi: true })
+
+    expect(enabled('frame.rename')).toBe(false)
   })
 
   it('renames only one selected frame', () => {

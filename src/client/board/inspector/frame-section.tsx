@@ -8,7 +8,12 @@ import type { FrameRecord } from '@/shared/records/list'
 
 import type { Box } from '../geometry/box'
 import { writeBoxes } from '../geometry/write'
-import { renameFrame } from '../structure/actions'
+import {
+  renameFrame,
+  startFrameRename,
+  stopFrameRename,
+  useRenamingFrame,
+} from '../structure/actions'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -42,7 +47,7 @@ export function FrameSection({
   calls,
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const renaming = useRenamingFrame('inspector')
   const [frame] = frames
   if (!frame) return null
   const several = frames.length > 1
@@ -74,10 +79,10 @@ export function FrameSection({
             name={frame.name}
             label={`Rename frame ${frame.name}`}
             onCommit={(name) => {
-              setRenaming(null)
+              stopFrameRename()
               void renameFrame(frame, name, calls)
             }}
-            onCancel={() => setRenaming(null)}
+            onCancel={stopFrameRename}
           />
         </div>
       ) : (
@@ -85,7 +90,7 @@ export function FrameSection({
           type="button"
           aria-label={`Rename frame ${frame.name}`}
           disabled={!canWrite}
-          onClick={() => setRenaming(frame.ref)}
+          onClick={() => startFrameRename(frame.ref, 'inspector')}
           className="mb-1.5 block h-[26px] w-full truncate rounded-md bg-input px-2 text-left text-xs outline-none hover:ring-1 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring/50 disabled:hover:ring-0"
         >
           {frame.name}

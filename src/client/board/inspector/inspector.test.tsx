@@ -13,6 +13,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
 import { clear, select, selectionStore } from '../selection'
+import { startFrameRename, stopFrameRename } from '../structure/actions'
 import { presetStore } from '../structure/tool'
 import { FrameSection } from './frame-section'
 import { InspectorPanel } from './panel'
@@ -50,6 +51,7 @@ describe('InspectorPanel', () => {
       clear(selectionStore)
       modeStore.setState({ tool: 'move', mode: 'edit' })
       presetStore.setState({ preset: 'desktop' })
+      stopFrameRename()
     })
   })
 
@@ -135,6 +137,17 @@ describe('InspectorPanel', () => {
 
     expect(sent).toEqual([{ ref: SWATCHES.ref, name: 'palette' }])
     expect(selectionStore.getState().frames).toEqual(['studio/home/palette'])
+  })
+
+  it('opens the name field when the palette asks to rename the frame', () => {
+    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+    renderPanel()
+
+    act(() => startFrameRename(SWATCHES.ref, 'inspector'))
+
+    expect(
+      screen.getByRole('textbox', { name: 'Rename frame Color swatches' }),
+    ).toHaveFocus()
   })
 
   it('reads Mixed where several frames differ, and adds Arrange', () => {

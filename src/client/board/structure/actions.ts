@@ -34,21 +34,39 @@ export function createClipboardStore(): ClipboardStore {
 
 export const clipboardStore = createClipboardStore()
 
-/** The frame whose name the layers list and the inspector show as a rename field, by ref. */
-const renamingStore = createStore<{ ref: string | null }>()(() => ({
-  ref: null,
-}))
+/** Where a frame's rename field opens, being its layers row or the inspector's name. */
+export type RenameSurface = 'layers' | 'inspector'
 
-export function useRenamingFrame(): string | null {
-  return useStore(renamingStore, (state) => state.ref)
+/**
+ * The frame shown as a rename field and the one surface showing it, so two
+ * fields never open at once and steal each other's focus.
+ */
+const renamingStore = createStore<{
+  ref: string | null
+  surface: RenameSurface
+}>()(() => ({ ref: null, surface: 'layers' }))
+
+/** The ref `surface` shows as a rename field, null when it shows none. */
+export function useRenamingFrame(surface: RenameSurface): string | null {
+  return useStore(renamingStore, (state) =>
+    state.surface === surface ? state.ref : null,
+  )
 }
 
-export function startFrameRename(ref: string): void {
-  renamingStore.setState({ ref })
+export function startFrameRename(ref: string, surface: RenameSurface): void {
+  renamingStore.setState({ ref, surface })
 }
 
 export function stopFrameRename(): void {
   renamingStore.setState({ ref: null })
+}
+
+/** The open rename field, for code reading it outside a render. */
+export function renamingFrame(): {
+  ref: string | null
+  surface: RenameSurface
+} {
+  return renamingStore.getState()
 }
 
 /**
@@ -127,10 +145,16 @@ export function structureActions(context: StructureContext): Action[] {
       label: 'Rename frame',
       group: 'frame',
       command: { label: 'Rename frame', icon: PencilLine },
-      enabled: () => writable() && chosen().length === 1,
+      // The inspector shows one selected frame's name whenever the panels
+      // show, unlike a layers row, which another tab can hide.
+      enabled: () =>
+        writable() && chosen().length === 1 && !mode.getState().hideUi,
       run: () => {
         const [frame] = chosen()
-        if (frame) startFrameRename(frame.ref)
+        if (!frame) return
+        // The Frame tool's presets take the inspector's place, so leave it.
+        mode.setState({ tool: 'move' })
+        startFrameRename(frame.ref, 'inspector')
       },
     },
     {

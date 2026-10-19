@@ -210,7 +210,7 @@ function FrameRow({
   children,
 }: FrameRowProps) {
   const row = useRef<HTMLLIElement>(null)
-  const renaming = useRenamingFrame() === frame.ref
+  const renaming = useRenamingFrame('layers') === frame.ref
   const edge = useReorderRow(row, {
     list: LIST,
     index,
@@ -274,12 +274,12 @@ function FrameRow({
               aria-label={`Select ${frame.name}`}
               onClick={choose}
               onDoubleClick={() => {
-                if (canWrite) startFrameRename(frame.ref)
+                if (canWrite) startFrameRename(frame.ref, 'layers')
               }}
               onKeyDown={(event) => {
                 if (event.key !== 'F2' || !canWrite) return
                 event.preventDefault()
-                startFrameRename(frame.ref)
+                startFrameRename(frame.ref, 'layers')
               }}
               className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
             >
