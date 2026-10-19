@@ -12,10 +12,11 @@ import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser, type Launcher } from './capture/browser'
 import { createWarmBrowser, createWarmRenderer } from './capture/render'
+import { type ChangeTracker, createChangeTracker } from './changes/tracker'
 import { checkRendered } from './checks/browser/rendered'
 import { readConfig } from './checks/frame'
 import { boardPath } from './checks/frame-source'
-import { createClaimsPush } from './claims/push'
+import { type ClaimsPush, createClaimsPush } from './claims/push'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
 import {
@@ -172,8 +173,12 @@ async function listen({
   })
   // The history lives in memory, so a trash a previous server left holds nothing it can undo.
   await emptyTrash(root)
-  const history = new History(root, (counts) =>
-    hub.broadcast({ type: 'history', ...counts }),
+  const tracker = createChangeTracker(root)
+  // The board's own write rereads its frames in turn, so its batch reads as nothing new.
+  const history = new History(
+    root,
+    (counts) => hub.broadcast({ type: 'history', ...counts }),
+    (step) => void inTurn(() => tracker.own(step)),
   )
   const selection = createSelectionHolder(() => tabs.writers)
   const hub = createHub({
@@ -186,6 +191,7 @@ async function listen({
     delivery,
     history: () => history.counts(),
     claims: () => inTurn(() => claims.read()),
+    changes: () => inTurn(async () => tracker.log()),
     closeTab: selection.closeTab,
   })
   const claims = createClaimsPush(root, {
@@ -279,6 +285,7 @@ async function listen({
   // queued for the browser sweep, whose findings follow as they land.
   void inTurn(async () => {
     const board = await scanBoard(root)
+    await tracker.prime(board)
     findings.update(board, 'all')
     rendered.queue(board, [])
   })
@@ -296,6 +303,8 @@ async function listen({
         findings,
         rendered,
         delivery,
+        tracker,
+        claims,
       }),
     )
   })
@@ -329,7 +338,7 @@ async function listen({
 
 /**
  * One rescan per batch: the whole board to every tab, then the frames to
- * reload, then the findings of every frame the batch rechecked, queueing the
+ * reload, then the frames an agent changed, then the findings of every frame the batch rechecked, queueing the
  * same frames for the browser checker, then the notes of every page whose
  * notes or frames it touched, whose queue it offers to delivery.
  */
@@ -342,11 +351,15 @@ async function pushBatch(
     findings,
     rendered,
     delivery,
+    tracker,
+    claims,
   }: {
     hub: LiveHub
     findings: BoardFindings
     rendered: RenderedFindings
     delivery: Delivery
+    tracker: ChangeTracker
+    claims: ClaimsPush
   },
 ): Promise<void> {
   let board
@@ -359,6 +372,8 @@ async function pushBatch(
   hub.broadcast({ type: 'board', data: board })
   const refs = reloadRefs(root, paths, board, tokens)
   if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
+  const changes = await tracker.update(board, paths, await claims.read())
+  if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
   const changed = findings.update(board, paths)
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
