@@ -9,6 +9,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { renderedHash } from './frame-dom'
 import { usePendingBox } from './geometry/write'
@@ -28,6 +29,8 @@ interface FrameProps {
   findings?: readonly Finding[]
   /** The session holding the frame, drawn as a dashed outline and a tag in Edit. */
   claim?: Claim
+  /** An agent changed the frame since the developer last looked. */
+  unseen?: boolean
 }
 
 /**
@@ -42,6 +45,7 @@ export const Frame = memo(function Frame({
   version,
   findings,
   claim,
+  unseen = false,
 }: FrameProps) {
   // A released move holds its place until the board carries it back.
   const { x, y, width, height } = usePendingBox(frame.ref) ?? frame.box
@@ -154,6 +158,8 @@ export const Frame = memo(function Frame({
             strokeWidth={1.6}
           />
         ) : null}
+        {/* The claim's tag stands in for the mark while it lives. */}
+        {unseen && !claim ? <UnseenDot /> : null}
         <span className="truncate">{frame.name}</span>
         {claimed ? <ClaimTag claim={claimed} /> : null}
         {findings && findings.length > 0 ? (

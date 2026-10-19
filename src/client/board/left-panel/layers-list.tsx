@@ -25,8 +25,10 @@ import {
   type Structure,
   structure,
 } from '@/client/live/structure'
+import { useUnseen } from '@/client/live/unseen'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { UnseenDot } from '../changes/dot'
 import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
 import { modeStore } from '../mode'
@@ -212,6 +214,7 @@ function FrameRow({
   const row = useRef<HTMLLIElement>(null)
   const renaming = useRenamingFrame('layers') === frame.ref
   const claim = useLive((state) => state.claims[frame.ref])
+  const unseen = useUnseen((state) => frame.ref in state.unseen)
   const edge = useReorderRow(row, {
     list: LIST,
     index,
@@ -294,6 +297,8 @@ function FrameRow({
               aria-label={`${claim.tag} is editing`}
               className="ml-auto size-[7px] shrink-0 rounded-full bg-claim shadow-[0_0_0_3px_color-mix(in_srgb,var(--claim)_25%,transparent)]"
             />
+          ) : unseen ? (
+            <UnseenDot />
           ) : null}
           <button
             type="button"
