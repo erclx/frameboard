@@ -23,7 +23,7 @@ Each row files its frames under a folder named for the surface. A frame is cited
 | Play with panels              | `canvas`        | `12-canvas/picked-play-panels`                                                                                                            |
 | Empty page                    | `canvas`        | `12-canvas/page-empty` as `empty`                                                                                                         |
 | Avatar menu                   | `menus`         | `14-overlays/avatar-menu` as `avatar`                                                                                                     |
-| Home                          | `home`          | `07-home/home-grid`, `07-home/home-list`, `07-home/home-empty`                                                                            |
+| Home                          | `home`          | `07-home/arm-2` as `grid`, `07-home/home-list`, `07-home/home-empty`                                                                      |
 | Home right-click              | `menus`         | `07-home/context-home` as `home`                                                                                                          |
 | Layers tree                   | `layers`        | `08-layers/layers-edit`                                                                                                                   |
 | Pages list and search         | `layers`        | `08-layers/pages-many` as `pages`, `08-layers/pages-search` as `search`                                                                   |
