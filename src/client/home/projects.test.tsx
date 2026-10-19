@@ -536,6 +536,23 @@ describe('project actions', () => {
     ])
   })
 
+  it('drops the unseen count while the name is a rename field', async () => {
+    const { calls } = server()
+    markUnseen('webapp/home/hero')
+    renderLive(PROJECTS, calls)
+    expect(
+      screen.getByRole('img', { name: '1 unseen change' }),
+    ).toBeInTheDocument()
+
+    screen.getByRole('link', { name: /webapp/ }).focus()
+    await userEvent.keyboard('{F2}')
+
+    expect(
+      screen.getByRole('textbox', { name: 'Rename project webapp' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('img', { name: /unseen/ })).toBeNull()
+  })
+
   it('cancels a rename on Esc and sends nothing', async () => {
     const { sent, calls } = server()
     renderLive(PROJECTS, calls)
