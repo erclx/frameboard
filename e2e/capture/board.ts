@@ -370,6 +370,7 @@ export const BOARD_CASES: CaptureCase[] = [
         section: 'assets-tab',
         theme,
         route: '/p/webapp/home',
+        evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(referenceAssets, leftTab('Assets'))),
