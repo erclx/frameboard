@@ -32,6 +32,10 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 - Define the dark theme beside any color you set yourself, through a `[data-theme="dark"]` rule, a `prefers-color-scheme` query, or `light-dark()`.
 - Name a font first in every `font-family`, keeping a generic family as the fallback only.
 
+## Claim a frame before you rewrite it
+
+Run `frameboard editing <page>/<frame> --json` before you change a frame, so the developer's board shows you working on it and another session knows it is taken. A claim lapses five minutes after you last ran it, so run it again while you are still at work, and drop it with `frameboard editing <page>/<frame> --release --json` once you are done. A refusal with `frame-claimed` means another session holds the frame. Leave that frame alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
+
 ## Respect what the developer changed
 
 - Read a frame again before changing it, since the developer may have edited it by hand since your last write.
