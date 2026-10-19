@@ -4,6 +4,15 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import {
+  addFrame,
+  deleteFrame,
+  duplicateFrame,
+  orderFrame,
+  readFrame,
+  renameFrame,
+  setFrameFlag,
+} from '@/server/board/frames'
+import {
   addPage,
   deletePage,
   duplicatePage,
@@ -13,6 +22,8 @@ import {
 import { resolvePageRef } from '@/server/board/refs'
 import { readPageOrder } from '@/server/board/scan'
 import type { History, Step } from '@/server/history/stack'
+import { FrameboardError } from '@/shared/errors'
+import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 
 import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal, parseBody } from './envelope'
@@ -26,6 +37,22 @@ const duplicateSchema = z.object({ ref, name: name.optional() })
 const renameSchema = z.object({ ref, name })
 const moveSchema = z.object({ ref, index })
 const deleteSchema = z.object({ ref })
+
+/** More frames than any page holds, so a body cannot grow without bound. */
+const refs = z.array(ref).min(1).max(1000)
+const coordinate = z.int()
+const frameAddSchema = z.object({
+  ref,
+  size: z.enum(Object.keys(FRAME_SIZES) as [FrameSizePreset]).optional(),
+  x: coordinate.optional(),
+  y: coordinate.optional(),
+})
+const framesSchema = z.object({ refs })
+const frameFlagSchema = z.object({
+  refs,
+  flag: z.enum(['hidden', 'locked']),
+  on: z.boolean(),
+})
 
 /**
  * The board's structure writes, each behind `requireWriter`, its body
@@ -41,6 +68,7 @@ export function structureRoutes(
 ): Hono {
   const app = new Hono()
   app.use('/api/page/*', requireWriter(access))
+  app.use('/api/frame/*', requireWriter(access))
   const cwd = root
 
   /** Runs one verb with a fresh journal and records what it reported. */
@@ -138,6 +166,100 @@ export function structureRoutes(
       }),
     )
     return c.json({ ok: true, data: result })
+  })
+
+  /** A frame write stays on its page, so the board follows no page across it. */
+  const onFrames = async (frames: string[]) => ({ page: null, frames })
+
+  /** Refuses the whole write when any frame is locked, before anything is written. */
+  const refuseLocked = async (frames: string[]) => {
+    const records = await Promise.all(
+      frames.map((frame) => readFrame(root, frame, { cwd })),
+    )
+    const locked = records.find((record) => record.locked)
+    if (locked) {
+      throw new FrameboardError('frame-locked', `${locked.ref} is locked.`, {
+        ref: locked.ref,
+      })
+    }
+  }
+
+  /** Runs `write` on each frame in turn, under one journal, so the set undoes as one step. */
+  const eachFrame = <T>(
+    frames: string[],
+    write: (
+      frame: string,
+      journal: ReturnType<History['journal']>,
+    ) => Promise<T>,
+    touched: (results: T[]) => string[],
+  ) =>
+    recorded(
+      async (journal) => {
+        const results: T[] = []
+        for (const frame of frames) results.push(await write(frame, journal))
+        return results
+      },
+      (results) => onFrames(touched(results)),
+    )
+
+  app.post('/api/frame/add', async (c) => {
+    const body = await parseBody(c.req.raw, frameAddSchema)
+    const frame = await recorded(
+      (journal) => addFrame(root, body.ref, { ...body, cwd, journal }),
+      (added) => onFrames([added.ref]),
+    )
+    return c.json({ ok: true, data: frame })
+  })
+
+  app.post('/api/frame/duplicate', async (c) => {
+    const body = await parseBody(c.req.raw, framesSchema)
+    const copies = await eachFrame(
+      body.refs,
+      (frame, journal) => duplicateFrame(root, frame, { cwd, journal }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: copies })
+  })
+
+  app.post('/api/frame/rename', async (c) => {
+    const body = await parseBody(c.req.raw, renameSchema)
+    const frame = await recorded(
+      (journal) => renameFrame(root, body.ref, body.name, { cwd, journal }),
+      (renamed) => onFrames([renamed.ref]),
+    )
+    return c.json({ ok: true, data: frame })
+  })
+
+  app.post('/api/frame/order', async (c) => {
+    const body = await parseBody(c.req.raw, moveSchema)
+    const frame = await recorded(
+      (journal) =>
+        orderFrame(root, body.ref, { cwd, index: body.index, journal }),
+      (ordered) => onFrames([ordered.ref]),
+    )
+    return c.json({ ok: true, data: frame })
+  })
+
+  app.post('/api/frame/flag', async (c) => {
+    const body = await parseBody(c.req.raw, frameFlagSchema)
+    const frames = await eachFrame(
+      body.refs,
+      (frame, journal) =>
+        setFrameFlag(root, frame, body.flag, { cwd, on: body.on, journal }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frames })
+  })
+
+  app.post('/api/frame/delete', async (c) => {
+    const body = await parseBody(c.req.raw, framesSchema)
+    await refuseLocked(body.refs)
+    const deleted = await eachFrame(
+      body.refs,
+      (frame, journal) => deleteFrame(root, frame, { cwd, journal }),
+      (results) => results.map((result) => result.deleted),
+    )
+    return c.json({ ok: true, data: deleted })
   })
 
   app.onError(answerRefusal)

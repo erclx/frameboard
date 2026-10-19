@@ -145,4 +145,118 @@ describe('structureRoutes', () => {
     expect(existsSync(join(board.root, 'studio/home/hero.html'))).toBe(true)
     expect((await history.redo()).page).toBe('studio/pricing')
   })
+
+  describe('frame routes', () => {
+    const layout = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+      ).frames
+    const frameFile = (name: string) =>
+      join(board.root, `studio/home/${name}.html`)
+
+    it('adds a frame at a preset and point, and undoes it away', async () => {
+      const response = await post('/api/frame/add', {
+        ref: 'studio/home/card',
+        size: 'tablet',
+        x: 40,
+        y: 60,
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: {
+          ref: 'studio/home/card',
+          box: { x: 40, y: 60, width: 834, height: 1194 },
+        },
+      })
+      await history.undo()
+      expect(existsSync(frameFile('card'))).toBe(false)
+      expect(layout().card).toBeUndefined()
+    })
+
+    it('duplicates several frames as one step', async () => {
+      const response = await post('/api/frame/duplicate', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [{ ref: 'studio/home/hero-2' }, { ref: 'studio/home/mobile-2' }],
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(existsSync(frameFile('hero-2'))).toBe(false)
+      expect(existsSync(frameFile('mobile-2'))).toBe(false)
+    })
+
+    it('renames a frame and undoes it back', async () => {
+      await post('/api/frame/rename', { ref: 'studio/home/hero', name: 'top' })
+      expect(existsSync(frameFile('top'))).toBe(true)
+
+      await history.undo()
+
+      expect(existsSync(frameFile('hero'))).toBe(true)
+      expect(existsSync(frameFile('top'))).toBe(false)
+    })
+
+    it('orders a frame to the bottom of the stack', async () => {
+      await post('/api/frame/order', { ref: 'studio/home/mobile', index: 0 })
+
+      expect(layout()).toMatchObject({
+        mobile: { order: 0 },
+        hero: { order: 1 },
+      })
+    })
+
+    it('sets a flag on several frames as one step', async () => {
+      await post('/api/frame/flag', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        flag: 'hidden',
+        on: true,
+      })
+
+      expect(layout()).toMatchObject({
+        hero: { hidden: true },
+        mobile: { hidden: true },
+      })
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('deletes frames and undoes them back byte for byte', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/frame/delete', { refs: ['studio/home/hero'] })
+      expect(existsSync(frameFile('hero'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('refuses to delete a locked frame and writes nothing', async () => {
+      await post('/api/frame/flag', {
+        refs: ['studio/home/hero'],
+        flag: 'locked',
+        on: true,
+      })
+
+      const response = await post('/api/frame/delete', {
+        refs: ['studio/home/mobile', 'studio/home/hero'],
+      })
+
+      expect(response.status).toBe(423)
+      expect(existsSync(frameFile('mobile'))).toBe(true)
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('refuses a frame write with no writer', async () => {
+      const response = await post(
+        '/api/frame/delete',
+        { refs: ['studio/home/hero'] },
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(existsSync(frameFile('hero'))).toBe(true)
+    })
+  })
 })
