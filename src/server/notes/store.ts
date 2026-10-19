@@ -76,23 +76,27 @@ export async function listPageNotes(root: string): Promise<PageNotes[]> {
 
 /**
  * The page holding a note id, scanning every page of the board. A page whose
- * file does not parse is skipped, since the id cannot be read from it.
+ * file does not parse cannot be read for the id, so when no other page holds
+ * it the first such page's `notes-invalid` is thrown rather than a missing note.
  */
 export async function findNote(
   root: string,
   id: string,
 ): Promise<PageNotes & { file: NotesFile; note: Note }> {
+  let unreadable: FrameboardError | undefined
   for (const place of await listPageNotes(root)) {
     let file: NotesFile
     try {
       file = await readNotes(place.path)
     } catch (error) {
-      if (error instanceof FrameboardError) continue
-      throw error
+      if (!(error instanceof FrameboardError)) throw error
+      unreadable ??= error
+      continue
     }
     const note = file.notes.find((candidate) => candidate.id === id)
     if (note) return { ...place, file, note }
   }
+  if (unreadable) throw unreadable
   throw new FrameboardError('note-not-found', `No note ${id} in this board.`, {
     id,
   })

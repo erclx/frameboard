@@ -185,6 +185,14 @@ describe('notes store', () => {
       })
     })
 
+    it('reports a note in a file that does not parse as notes-invalid', async () => {
+      writeFileSync(join(board.root, 'webapp/home/notes.json'), '{ not json')
+
+      await expect(findNote(board.root, 'n_0000abcd')).rejects.toMatchObject({
+        code: 'notes-invalid',
+      })
+    })
+
     it('refuses a file that does not parse and leaves it as it was', async () => {
       const path = join(board.root, 'webapp/home/notes.json')
       writeFileSync(path, '{ not json')
