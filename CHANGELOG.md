@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/erclx/frameboard/compare/v0.3.0...v0.4.0) (2026-10-19)
+
+
+### Features
+
+* **board:** add frame layers actions, the Frame tool, and a clipboard ([#43](https://github.com/erclx/frameboard/issues/43)) ([ba57236](https://github.com/erclx/frameboard/commit/ba572366ed7f53e470c80845bda4bf38cd98c94f))
+* **board:** mark the frames an agent changed until the developer looks ([#48](https://github.com/erclx/frameboard/issues/48)) ([ceec8bd](https://github.com/erclx/frameboard/commit/ceec8bdf9c833f8efb822b525855ccaef97831be))
+* **claims:** claim frames with editing and draw the claims on the board ([#44](https://github.com/erclx/frameboard/issues/44)) ([c3d77a6](https://github.com/erclx/frameboard/commit/c3d77a62e2aa11a5807903cb475b18117eeeb540))
+* **home:** add, rename, duplicate, and delete projects from home ([#47](https://github.com/erclx/frameboard/issues/47)) ([21363c1](https://github.com/erclx/frameboard/commit/21363c128421798b3cdac2ab28272dc20bef3f96))
+* **inspector:** edit a selected element's look and text by hand ([#46](https://github.com/erclx/frameboard/issues/46)) ([157bcea](https://github.com/erclx/frameboard/commit/157bcea7ccf5e591efb2b269c346c31a241c1967))
+
 ## [0.3.0](https://github.com/erclx/frameboard/compare/v0.2.0...v0.3.0) (2026-10-19)
 
 
