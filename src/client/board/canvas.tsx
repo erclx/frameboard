@@ -14,6 +14,9 @@ import { attachGestures } from './geometry/gestures'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
 import { modeStore, useMode } from './mode'
+import { NotesLayer } from './notes/markers'
+import { pickAt } from './notes/pick'
+import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { followSelection, selectionStore } from './selection'
 import { attachCanvas, reportZoom } from './view'
 
@@ -57,9 +60,14 @@ export function Canvas({
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
   const hitRef = useRef<HTMLDivElement>(null)
+  const notesLayerRef = useRef<HTMLDivElement>(null)
+  // The markers read the live frames, so they render again once the layer exists.
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
+  const noting = useMode((state) => state.tool === 'note')
+  useNoteTool()
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )
@@ -104,8 +112,11 @@ export function Canvas({
       })
       .on('zoom', ({ transform: { x, y, k } }) => {
         clearTimeout(timer)
-        layer.style.transform = `translate(${x}px, ${y}px) scale(${k})`
-        layer.style.setProperty('--zoom', String(k))
+        for (const moved of [layer, notesLayerRef.current]) {
+          if (!moved) continue
+          moved.style.transform = `translate(${x}px, ${y}px) scale(${k})`
+          moved.style.setProperty('--zoom', String(k))
+        }
         pageViews.set(page.ref, { x, y, k })
         reportZoom(k)
       })
@@ -263,10 +274,14 @@ export function Canvas({
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
         hand && !playing && 'cursor-grab active:cursor-grabbing',
+        noting && !playing && 'cursor-crosshair',
       )}
     >
       <div
-        ref={layerRef}
+        ref={(element) => {
+          layerRef.current = element
+          setLayer(element)
+        }}
         data-layer
         className="absolute top-0 left-0 origin-top-left"
       >
@@ -289,8 +304,32 @@ export function Canvas({
           gestures rather than its page. Play lifts it, so a click reaches
           the frame. */}
       {playing ? null : (
-        <div ref={hitRef} data-hit-layer className="absolute inset-0" />
+        <div
+          ref={hitRef}
+          data-hit-layer
+          className="absolute inset-0"
+          // The Note tool takes a click whole, so it never also selects a
+          // frame or starts a marquee.
+          onClickCapture={(event) => {
+            const viewport = viewportRef.current
+            if (!noting || !viewport || !layer) return
+            event.stopPropagation()
+            const [x, y] = zoomTransform(viewport).invert(
+              pointer(event.nativeEvent, viewport),
+            )
+            const pick = pickAt(layer, frames, { x, y })
+            if (pick) notesUi.setState({ open: { kind: 'new', pick } })
+            else closeNote()
+          }}
+        />
       )}
+      <div
+        ref={notesLayerRef}
+        data-notes-layer
+        className="pointer-events-none absolute top-0 left-0 origin-top-left"
+      >
+        <NotesLayer page={page.ref} frames={frames} container={layer} />
+      </div>
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (
