@@ -308,8 +308,9 @@ export function Canvas({
           ref={hitRef}
           data-hit-layer
           className="absolute inset-0"
-          // The Note tool takes a click whole, so it never also selects a
-          // frame or starts a marquee.
+          // A Note click opens the composer and goes no further. Selection
+          // and marquee gestures start on pointerdown, so they bind only
+          // while the Move tool is on and never see a Note press.
           onClickCapture={(event) => {
             const viewport = viewportRef.current
             if (!noting || !viewport || !layer) return

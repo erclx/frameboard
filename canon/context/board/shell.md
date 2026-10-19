@@ -40,7 +40,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 Owns the Note tool, its markers, the composer, and the thread, which change together.
 
-- The Note tool, key N, is enabled only while the tab may write, and its click is taken whole, so it never also selects a frame or starts a marquee
+- The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection and marquee gestures bind only under the Move tool
 - A pick hit-tests inside the iframe, counting through `board/frame-dom.ts` past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
 - An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost, and hides in Play and once done
 - The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
