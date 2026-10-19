@@ -242,20 +242,10 @@ test.describe('fifty live frames', () => {
   })
 
   test('pan and zoom within the smoothness bar', async ({ page }, testInfo) => {
-    await page.goto(server.url)
+    // Panning and zooming write nothing, so this tab needs no ticket.
+    await page.goto(`${server.url}/p/perf/grid`)
     const iframes = page.locator('[data-layer] iframe')
-    await expect(iframes).toHaveCount(FRAME_COUNT, { timeout: 30_000 })
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() =>
-            [...document.querySelectorAll('iframe')].every(
-              (iframe) => iframe.contentDocument?.readyState === 'complete',
-            ),
-          ),
-        { timeout: 30_000 },
-      )
-      .toBe(true)
+    await waitForLiveFrames(page)
 
     const box = await page.locator('[data-canvas]').boundingBox()
     if (!box) throw new Error('no canvas on the page')
