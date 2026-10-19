@@ -1,7 +1,8 @@
 import '../../styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -56,11 +57,15 @@ function project(pages: PageRecord[]): ProjectRecord {
   }
 }
 
-function renderPanel(record: ProjectRecord, current = 'home') {
+function renderPanel(
+  record: ProjectRecord,
+  current = 'home',
+  assets?: ReactNode,
+) {
   render(
     <Router hook={memoryLocation({ path: '/' }).hook}>
       <TooltipProvider>
-        <LeftPanel project={record} page={current} />
+        <LeftPanel project={record} page={current} assets={assets} />
       </TooltipProvider>
     </Router>,
   )
@@ -84,6 +89,20 @@ describe('LeftPanel', () => {
       'aria-disabled',
       'true',
     )
+  })
+
+  it('leaves Assets disabled with no body and opens it when given one', async () => {
+    renderPanel(project([page('home')]))
+    expect(screen.getByRole('tab', { name: 'Assets' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    cleanup()
+
+    renderPanel(project([page('home')]), 'home', <p>the files</p>)
+    await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+
+    expect(screen.getByText('the files')).toBeVisible()
   })
 
   it("lists the page's frames, a hidden one marked so", () => {

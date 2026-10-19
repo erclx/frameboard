@@ -11,6 +11,7 @@ import {
 import { liveStore, useLive } from '@/client/live/store'
 import { boardUrl } from '@/shared/board-urls'
 
+import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
 import { Canvas } from './canvas'
 import { HiddenPills } from './chrome/hidden-pills'
@@ -84,6 +85,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               project={record}
               page={page ?? ''}
               theme={<ThemeTab project={record.name} />}
+              assets={<AssetsTab project={record.name} />}
             />
           </ResizablePanel>
           <ResizableHandle aria-label="Resize the left panel" />
