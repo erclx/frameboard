@@ -25,6 +25,16 @@ Enter at a frame selects the first child of its `body`, and Esc at a child of `b
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index.
 
+### `src/client/board/structure/`
+
+Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together.
+
+- Each acts in Edit while the tab may write, on the frames selected on the canvas's page, and none acts while an element is selected, so Backspace never deletes a frame the developer sees as an element
+- Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway
+- The server holds the clipboard, being each copied frame's bytes and layout entry in memory, so a paste never reads the source and a restart empties it. A cut is a copy and a delete in one undo step.
+- A paste lands on the page on the canvas, keeping each frame's box on another page and sitting beside its source on its own, and takes the next free name rather than writing over a frame by that name
+- Paste stays disabled until a copy or cut, and again once the socket drops, since the server may have restarted
+
 ### `src/client/board/geometry/`
 
 Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom.

@@ -41,7 +41,7 @@ Owns the two overlays that list the registry, being Cmd+K's command palette and 
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool drags out an empty frame or adds one at a phone 390, tablet 768, or desktop 1440 preset
+- The Frame tool, key F, places an empty frame with its top left corner where the canvas is clicked, at the phone 390, tablet 834, or desktop 1440 preset the inspector lists while the tool is on, then selects it and returns to Move
 - A Note tool pins a note on a frame or element, Send hands it to a listening session, and replies show in the note's thread
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
@@ -59,7 +59,8 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 
 Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
 
-- Design holds a pages list with a search and a layers tree that hides and locks frames, split by a divider that remembers its height, and Theme holds the project's tokens read-only
+- Design holds a pages list with a search and a layers tree, split by a divider that remembers its height, and Theme holds the project's tokens read-only
+- The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged to a new place through `reorder.ts`, and `page-actions.ts` registers the `page.*` actions
 - Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, the name, and a `<type> · <size>` line, and a tile click copies `../assets/<name>` with each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
@@ -74,6 +75,9 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 ### `src/client/board/inspector/`
 
 Owns the right panel, under a header of the avatar and the zoom level.
+
+- Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
+- One selected frame's name renames in place on a click, through the same rename the layers row runs
 
 ### `src/client/history/`
 
