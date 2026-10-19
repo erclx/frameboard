@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
+import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from './types'
 
@@ -636,6 +637,86 @@ async function headlineOnHero(page: Page): Promise<void> {
   }, PRESS_FRAMES)
 }
 
+/**
+ * Lists a hidden `sketch` frame at the bottom of `webapp/home` through the
+ * socket's board message, so the layers list shows a hidden row with no
+ * frame joining the fixture.
+ */
+async function hiddenSketch(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        data?: ListResult
+      }
+      if (parsed.type !== 'board' || !parsed.data) {
+        socket.send(message)
+        return
+      }
+      for (const project of parsed.data.projects) {
+        for (const shown of project.pages) {
+          const about = shown.frames.find(
+            (frame) => frame.ref === 'webapp/home/about',
+          )
+          if (!about) continue
+          shown.frames.unshift({
+            ...about,
+            ref: 'webapp/home/sketch',
+            name: 'sketch',
+            path: about.path.replace(/about\.html$/, 'sketch.html'),
+            order: -1,
+            hidden: true,
+            locked: false,
+          })
+        }
+      }
+      socket.send(JSON.stringify(parsed))
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
+ * Once `ready` matches, which a control lit by write access stands for,
+ * fires `event` on the button labelled `label`. Like `pressOnLoad`, it waits
+ * in an init script, since `setup` runs before the harness navigates.
+ */
+function actWhen(
+  ready: string,
+  label: string,
+  event: 'click' | 'dblclick',
+): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ ready, label, event, frames }) => {
+        let left = frames
+        const act = () => {
+          const target = document.querySelector<HTMLButtonElement>(
+            `button[aria-label="${label}"]`,
+          )
+          if (!document.querySelector(ready) || !target) {
+            if (--left > 0) requestAnimationFrame(act)
+            else console.error(`${label} never lit`)
+            return
+          }
+          if (event === 'click') target.click()
+          else {
+            target.dispatchEvent(
+              new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+            )
+          }
+        }
+        document.addEventListener('DOMContentLoaded', act)
+      },
+      { ready, label, event, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/** The about row's lock lights once the server grants writes, so it marks a tab that may write. */
+const WRITES_GRANTED = 'button[aria-label="Unlock about"]:not([disabled])'
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -819,6 +900,52 @@ export const BOARD_CASES: CaptureCase[] = [
           both(
             onCanvas({ select: ['webapp/home/hero'] }),
             pressOnLoad('^Show the elements of hero$'),
+          ),
+        ),
+      },
+      {
+        // The hero selected, the fixture's about locked, and a hidden sketch at the bottom.
+        section: 'layers-rows',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            hiddenSketch,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen('li[aria-label="sketch, hidden"]'),
+          ),
+        ),
+      },
+      {
+        section: 'layers-rename',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            actWhen(WRITES_GRANTED, 'Select hero', 'dblclick'),
+            readyWhen('input[aria-label="Rename frame hero"]'),
+          ),
+        ),
+      },
+      {
+        section: 'frame-presets',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            actWhen(WRITES_GRANTED, 'Frame', 'click'),
+            readyWhen('[role="radiogroup"]'),
           ),
         ),
       },
