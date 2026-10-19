@@ -70,7 +70,10 @@ export function createHub({
       const message = parse(String(data))
       const inbox = inboxes.get(socket)
       if (inbox) {
-        if (message?.type === 'ack') void delivery?.ack(inbox, message.id)
+        // A failed mark leaves the note in flight, so it goes out again on reconnect.
+        if (message?.type === 'ack') {
+          void delivery?.ack(inbox, message.id).catch(() => {})
+        }
         return
       }
       if (boards.has(socket) || message?.type !== 'hello') return
