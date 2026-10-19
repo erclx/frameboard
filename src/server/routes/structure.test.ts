@@ -16,10 +16,21 @@ const BEARER = { authorization: `Bearer ${TOKEN}` }
 describe('structureRoutes', () => {
   let board: FixtureBoard
   let history: History
+  let app: ReturnType<typeof structureRoutes>
 
   beforeEach(() => {
     board = copyFixtureBoard('live')
     history = new History(board.root)
+    app = structureRoutes(
+      board.root,
+      {
+        token: () => TOKEN,
+        key: 'b'.repeat(64),
+        cookieName: 'frameboard-key-111111111111',
+        isOwnOrigin: () => false,
+      },
+      history,
+    )
   })
 
   afterEach(() => {
@@ -31,16 +42,7 @@ describe('structureRoutes', () => {
     body: unknown,
     headers: Record<string, string> = BEARER,
   ) {
-    return structureRoutes(
-      board.root,
-      {
-        token: () => TOKEN,
-        key: 'b'.repeat(64),
-        cookieName: 'frameboard-key-111111111111',
-        isOwnOrigin: () => false,
-      },
-      history,
-    ).request(path, {
+    return app.request(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
@@ -246,6 +248,73 @@ describe('structureRoutes', () => {
       expect(response.status).toBe(423)
       expect(existsSync(frameFile('mobile'))).toBe(true)
       expect(history.counts().undo).toBe(1)
+    })
+
+    it('copies frames and pastes them beside the source as one step', async () => {
+      await post('/api/clipboard/copy', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+      })
+
+      const response = await post('/api/clipboard/paste', {
+        ref: 'studio/home',
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [{ ref: 'studio/home/hero-2' }, { ref: 'studio/home/mobile-2' }],
+      })
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('refuses a paste with nothing held', async () => {
+      const response = await post('/api/clipboard/paste', {
+        ref: 'studio/home',
+      })
+
+      expect(response.status).toBe(400)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('cuts a frame as one step and pastes it onto another page', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/clipboard/cut', { refs: ['studio/home/hero'] })
+      expect(existsSync(frameFile('hero'))).toBe(false)
+      await post('/api/clipboard/paste', { ref: 'studio/pricing' })
+
+      expect(
+        readFileSync(join(board.root, 'studio/pricing/hero.html')),
+      ).toEqual(bytes)
+      expect(history.counts().undo).toBe(2)
+    })
+
+    it('undoes a cut, restoring the frame byte for byte', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+      const entry = layout().hero
+
+      await post('/api/clipboard/cut', { refs: ['studio/home/hero'] })
+      await history.undo()
+
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+      expect(layout().hero).toEqual(entry)
+    })
+
+    it('refuses to cut a locked frame and holds nothing', async () => {
+      await post('/api/frame/flag', {
+        refs: ['studio/home/hero'],
+        flag: 'locked',
+        on: true,
+      })
+
+      const response = await post('/api/clipboard/cut', {
+        refs: ['studio/home/hero'],
+      })
+
+      expect(response.status).toBe(423)
+      expect(existsSync(frameFile('hero'))).toBe(true)
+      expect(
+        (await post('/api/clipboard/paste', { ref: 'studio/home' })).status,
+      ).toBe(400)
     })
 
     it('refuses a frame write with no writer', async () => {

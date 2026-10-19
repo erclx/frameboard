@@ -19,6 +19,7 @@ import {
   movePage,
   renamePage,
 } from '@/server/board/pages'
+import { type HeldFrame, holdFrames, pasteFrames } from '@/server/board/paste'
 import { resolvePageRef } from '@/server/board/refs'
 import { readPageOrder } from '@/server/board/scan'
 import type { History, Step } from '@/server/history/stack'
@@ -48,6 +49,7 @@ const frameAddSchema = z.object({
   y: coordinate.optional(),
 })
 const framesSchema = z.object({ refs })
+const pasteSchema = z.object({ ref })
 const frameFlagSchema = z.object({
   refs,
   flag: z.enum(['hidden', 'locked']),
@@ -69,6 +71,7 @@ export function structureRoutes(
   const app = new Hono()
   app.use('/api/page/*', requireWriter(access))
   app.use('/api/frame/*', requireWriter(access))
+  app.use('/api/clipboard/*', requireWriter(access))
   const cwd = root
 
   /** Runs one verb with a fresh journal and records what it reported. */
@@ -260,6 +263,45 @@ export function structureRoutes(
       (results) => results.map((result) => result.deleted),
     )
     return c.json({ ok: true, data: deleted })
+  })
+
+  /**
+   * The frames the developer last copied or cut, held as bytes and boxes in
+   * memory, so a paste never depends on the source surviving and a restart
+   * empties it.
+   */
+  let clipboard: HeldFrame[] = []
+
+  app.post('/api/clipboard/copy', async (c) => {
+    const body = await parseBody(c.req.raw, framesSchema)
+    clipboard = await holdFrames(root, body.refs, { cwd })
+    return c.json({ ok: true, data: { held: clipboard.length } })
+  })
+
+  app.post('/api/clipboard/cut', async (c) => {
+    const body = await parseBody(c.req.raw, framesSchema)
+    await refuseLocked(body.refs)
+    const held = await holdFrames(root, body.refs, { cwd })
+    await eachFrame(
+      body.refs,
+      (frame, journal) => deleteFrame(root, frame, { cwd, journal }),
+      (results) => results.map((result) => result.deleted),
+    )
+    clipboard = held
+    return c.json({ ok: true, data: { held: clipboard.length } })
+  })
+
+  app.post('/api/clipboard/paste', async (c) => {
+    const body = await parseBody(c.req.raw, pasteSchema)
+    if (clipboard.length === 0) {
+      throw new FrameboardError('usage', 'There is nothing to paste.')
+    }
+    const held = clipboard
+    const frames = await recorded(
+      (journal) => pasteFrames(root, body.ref, held, { cwd, journal }),
+      (pasted) => onFrames(pasted.map((frame) => frame.ref)),
+    )
+    return c.json({ ok: true, data: frames })
   })
 
   app.onError(answerRefusal)

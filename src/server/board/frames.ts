@@ -496,7 +496,7 @@ class PageLayout {
  * and only the layouts it changed are written, reporting each entry that
  * differs to the journal.
  */
-async function withLayouts<T>(
+export async function withLayouts<T>(
   pages: string[],
   run: (layouts: Map<string, PageLayout>) => Promise<T>,
   journal?: Journal,
@@ -548,7 +548,7 @@ function layoutAt(layouts: Map<string, PageLayout>, page: string): PageLayout {
 }
 
 /** The explicit name when free and valid, else the next free copy of the source's. */
-function freeFrameName(
+export function freeFrameName(
   taken: string[],
   base: string,
   name: string | undefined,
