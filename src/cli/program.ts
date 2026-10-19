@@ -9,6 +9,7 @@ import { registerCapture } from './commands/capture'
 import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
+import { registerEditing } from './commands/editing'
 import { registerFrame } from './commands/frame'
 import { registerInbox } from './commands/inbox'
 import { registerInspect } from './commands/inspect'
@@ -162,6 +163,7 @@ export function createProgram(context: ProgramContext): Command {
   registerCheck(program, context)
   registerNotes(program, context)
   registerInbox(program, context)
+  registerEditing(program, context)
   registerCapture(program, { ...context, facesDir })
   registerInspect(program, { ...context, facesDir })
   registerDocs(program, context)
