@@ -1,4 +1,4 @@
-import { TriangleAlert } from 'lucide-react'
+import { Lock, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -131,6 +131,14 @@ export const Frame = memo(function Frame({
         style={{ maxWidth: `calc(${width}px * var(--zoom, 1))` }}
         title={frame.name}
       >
+        {frame.locked ? (
+          <Lock
+            role="img"
+            aria-label="Locked"
+            className="size-[11px] shrink-0"
+            strokeWidth={1.6}
+          />
+        ) : null}
         <span className="truncate">{frame.name}</span>
         {findings && findings.length > 0 ? (
           <FindingsMark findings={findings} />
