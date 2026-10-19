@@ -222,6 +222,8 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
               void deletePage(page, pages, context)
             } else return
             event.preventDefault()
+            // Delete here means the page, so the board's frame delete never hears it.
+            event.stopPropagation()
           }}
           className={cn(
             ROW,
