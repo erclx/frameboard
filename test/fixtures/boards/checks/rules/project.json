@@ -11,12 +11,17 @@
     "generic-font",
     "theme",
     "allowed-fonts",
-    "uppercase"
+    "uppercase",
+    "clipped",
+    "scrollbar",
+    "viewport",
+    "min-font-size"
   ],
   "checks": {
     "allowedFonts": [
       "Geist"
     ],
-    "noUppercase": true
+    "noUppercase": true,
+    "minFontSize": 12
   }
 }

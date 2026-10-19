@@ -108,6 +108,27 @@ describe('docs', () => {
     )
   })
 
+  it('lists the browser rules with their tier', async () => {
+    const { checks } = await docs()
+
+    expect(
+      checks.rules
+        .filter((rule) => rule.tier === 'browser')
+        .map((rule) => rule.id),
+    ).toEqual(['clipped', 'scrollbar', 'viewport', 'min-font-size'])
+  })
+
+  it('names the minFontSize key that turns on the font size rule', async () => {
+    const { checks } = await docs()
+
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({
+        id: 'min-font-size',
+        configKey: 'minFontSize',
+      }),
+    )
+  })
+
   it('prints the check result record', async () => {
     const { records } = await docs()
 

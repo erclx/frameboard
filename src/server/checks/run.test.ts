@@ -32,7 +32,7 @@ describe('checkProject', () => {
   it('checks every frame on every page', async () => {
     const { checked } = await checkProject(ROOT, 'rules')
 
-    expect(checked).toBe(22)
+    expect(checked).toBe(30)
   })
 
   it('reports each fail frame for its own rule and nothing else', async () => {
