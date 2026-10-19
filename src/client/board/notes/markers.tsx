@@ -34,6 +34,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   // Markers read their elements' boxes from the live frames as they render,
   // so a frame load renders the layer again.
   useFrameLoads(container)
+  useCloseOnEscape(open !== null)
   if (playing) return null
 
   const roots = (notes ?? []).filter(
@@ -217,6 +218,21 @@ function cornerOf(
   if (!target) return { x: x + width, y }
   const rect = target.getBoundingClientRect()
   return { x: x + Math.min(rect.right, width), y: y + Math.max(rect.top, 0) }
+}
+
+/**
+ * Closes the open note card on Esc wherever focus sits, since a card opened
+ * from its marker leaves focus on the marker rather than inside the card.
+ */
+function useCloseOnEscape(active: boolean): void {
+  useEffect(() => {
+    if (!active) return
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeNote()
+    }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [active])
 }
 
 /**

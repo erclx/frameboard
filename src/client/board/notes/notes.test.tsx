@@ -249,4 +249,19 @@ describe('NotesLayer', () => {
 
     expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
   })
+
+  it('closes a thread opened from its marker on Esc, with focus on the marker', async () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
+    renderLayer()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Note 4 on hero' }),
+    )
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(screen.queryByRole('region', { name: 'Note 4' })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Note 4 on hero' }),
+    ).toHaveAttribute('aria-expanded', 'false')
+  })
 })
