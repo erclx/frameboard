@@ -227,6 +227,11 @@ async function listen({
     history,
     selection,
     renderFrame,
+    checks: {
+      settle: rendered.settle,
+      rendered: findings.rendered,
+      unavailable: rendered.unavailable,
+    },
     actions: {
       access,
       // A running server's tabs have long since reconnected, so it waits for none.
