@@ -417,6 +417,41 @@ describe('startServer live socket', () => {
       .toEqual(['studio/pricing/plans'])
   })
 
+  it('marks nothing for 20 frames the board pasted at once', async () => {
+    const token = 'c'.repeat(64)
+    server.authorize(token)
+    const names = Array.from({ length: 20 }, (_, at) => `card-${at}`)
+    for (const name of names) {
+      writeFileSync(
+        join(board.root, `studio/home/${name}.html`),
+        `<p>${name}</p>`,
+      )
+    }
+    const changed = () =>
+      messages.flatMap((message) =>
+        message.type === 'changes'
+          ? message.changes.map((change) => change.frame)
+          : [],
+      )
+    await expect.poll(() => changed().length, { timeout: 5000 }).toBe(20)
+    messages = []
+    const post = (path: string, body: unknown) =>
+      fetch(`http://127.0.0.1:${server.port}${path}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+    await post('/api/clipboard/copy', {
+      refs: names.map((name) => `studio/home/${name}`),
+    })
+
+    const pasted = await post('/api/clipboard/paste', { ref: 'studio/pricing' })
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    expect(pasted.status).toBe(200)
+    await expect.poll(changed, { timeout: 5000 }).toEqual(['studio/home/hero'])
+  })
+
   it('reloads only the frame saved through a temp file and a rename', async () => {
     const frame = join(board.root, 'studio/home/hero.html')
     writeFileSync(`${frame}.swap`, '<p>saved</p>')
