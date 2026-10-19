@@ -33,7 +33,7 @@ export function AssetsTab({
   const list = useAssetList(project, load, reads)
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [refusals, setRefusals] = useState<string[]>([])
+  const [refusals, setRefusals] = useState<{ id: string; text: string }[]>([])
   const picker = useRef<HTMLInputElement>(null)
 
   async function add(files: File[]) {
@@ -42,10 +42,18 @@ export function AssetsTab({
     try {
       const result = await upload(project, files)
       setRefusals(
-        result.refused.map((entry) => `${entry.name}: ${entry.message}`),
+        result.refused.map((entry) => ({
+          id: crypto.randomUUID(),
+          text: `${entry.name}: ${entry.message}`,
+        })),
       )
     } catch (error) {
-      setRefusals([error instanceof Error ? error.message : String(error)])
+      setRefusals([
+        {
+          id: crypto.randomUUID(),
+          text: error instanceof Error ? error.message : String(error),
+        },
+      ])
     } finally {
       setBusy(false)
       setReads((count) => count + 1)
@@ -141,9 +149,9 @@ export function AssetsTab({
       </div>
       {refusals.length > 0 ? (
         <ul role="alert" className="mx-3 text-destructive">
-          {refusals.map((line) => (
-            <li key={line} className="leading-[1.45]">
-              {line}
+          {refusals.map((refusal) => (
+            <li key={refusal.id} className="leading-[1.45]">
+              {refusal.text}
             </li>
           ))}
         </ul>

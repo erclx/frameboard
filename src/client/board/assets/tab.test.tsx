@@ -207,6 +207,28 @@ describe('AssetsTab', () => {
       )
     })
 
+    it('lists two refused files with one name as two lines', async () => {
+      const refused = {
+        name: 'page.html',
+        code: 'asset-type-refused',
+        message: 'not an accepted type.',
+      }
+      const upload = async (): Promise<AssetAddResult> => ({
+        added: [],
+        refused: [refused, refused],
+      })
+      render(<AssetsTab project="studio" load={listing([])} upload={upload} />)
+      const zone = (await screen.findByText('assets/ · 0 files')).closest(
+        '[aria-busy]',
+      )!
+
+      drag('drop', zone, dropOf(new File(['<p>'], 'page.html')))
+
+      expect(
+        await screen.findAllByText('page.html: not an accepted type.'),
+      ).toHaveLength(2)
+    })
+
     it('shows the error of a drop the server refused and stays usable', async () => {
       const upload = async (): Promise<AssetAddResult> => {
         throw new Error('A drop may carry 64 MiB at most. Nothing was written.')
