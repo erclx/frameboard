@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { basename, dirname } from 'node:path'
 
 import { withLocks } from '@/server/board/json-record'
+import { FRAME_EXTENSION } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 
 import {
@@ -104,7 +105,7 @@ export class History {
           if (!(await holds(change, was))) {
             throw new FrameboardError(
               'undo-overtaken',
-              'An agent changed this since, so it was left as it is.',
+              `An agent changed ${nameOf(change)} after your edit, so that step was dropped.`,
               { change: change.kind },
             )
           }
@@ -131,4 +132,12 @@ export class History {
     this.#turn = run.catch(() => {})
     return run
   }
+}
+
+/** What a refusal names as overtaken, being a frame, a page, or the page order. */
+function nameOf(change: Change): string {
+  if (change.kind === 'entry') return change.frame
+  if (change.kind === 'pages') return 'the page order'
+  const path = change.kind === 'moved' ? change.to : change.path
+  return basename(path, FRAME_EXTENSION)
 }

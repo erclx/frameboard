@@ -117,6 +117,7 @@ describe('History', () => {
 
     await expect(history.undo()).rejects.toMatchObject({
       code: 'undo-overtaken',
+      message: expect.stringContaining('changed hero after your edit'),
     })
     expect(history.counts()).toEqual({ undo: 0, redo: 0 })
     expect(heroX()).toBe(80)
