@@ -218,7 +218,8 @@ function insert(order: string[], name: string, index: number): string[] {
   return [...order.slice(0, at), name, ...order.slice(at)]
 }
 
-function isCopied(name: string): boolean {
+/** Whether a copy of a page or project folder takes the file or folder `name`. */
+export function isCopied(name: string): boolean {
   return (
     !NOT_COPIED.has(name) &&
     !name.endsWith(LOCK_SUFFIX) &&
