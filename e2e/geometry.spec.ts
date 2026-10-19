@@ -1,5 +1,7 @@
+import { execFile } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
@@ -10,6 +12,8 @@ import {
 import { type BoardServer, serveBoard } from './support/board-server'
 
 const MOBILE = '[data-frame="studio/home/mobile"]'
+const CLI = resolve('dist/cli.js')
+const run = promisify(execFile)
 
 async function center(locator: Locator): Promise<{ x: number; y: number }> {
   const box = await locator.boundingBox()
@@ -129,5 +133,61 @@ test.describe('frame geometry by hand', () => {
 
     expect(layout().frames.mobile).toEqual(locked.frames.mobile)
     expect(await mobile.boundingBox()).toEqual(before)
+  })
+
+  test('Cmd+Z puts a dragged frame back at once', async ({ page }) => {
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const mobile = page.locator(MOBILE)
+    const before = await mobile.boundingBox()
+    const from = await center(mobile)
+    await drag(page, from, { x: from.x + 120, y: from.y + 60 })
+    await page.mouse.up()
+    await expect.poll(() => layout().frames.mobile?.x).not.toBe(1520)
+    await expect(
+      page.getByRole('button', { name: 'Undo' }),
+    ).not.toHaveAttribute('aria-disabled')
+
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+
+    await expect
+      .poll(() => layout().frames.mobile)
+      .toMatchObject({
+        x: 1520,
+        y: 0,
+      })
+    // The undone box draws well inside the 2 s a landed box would otherwise stay pending.
+    await expect
+      .poll(async () => (await mobile.boundingBox())?.x, { timeout: 1000 })
+      .toBe(before?.x)
+  })
+
+  test("an agent's later move refuses the undo of a hand move", async ({
+    page,
+  }) => {
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const from = await center(page.locator(MOBILE))
+    await drag(page, from, { x: from.x + 120, y: from.y + 60 })
+    await page.mouse.up()
+    await expect.poll(() => layout().frames.mobile?.x).not.toBe(1520)
+
+    await run('node', [
+      CLI,
+      'frame',
+      'move',
+      'studio/home/mobile',
+      '--x',
+      '3000',
+      '--root',
+      board.root,
+    ])
+    await expect(
+      page.getByRole('button', { name: 'Undo' }),
+    ).not.toHaveAttribute('aria-disabled')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+
+    await expect(page.getByText('Undo skipped')).toBeVisible()
+    expect(layout().frames.mobile).toMatchObject({ x: 3000 })
   })
 })
