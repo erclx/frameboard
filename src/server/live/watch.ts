@@ -1,4 +1,4 @@
-import { relative, sep } from 'node:path'
+import { join, relative, sep } from 'node:path'
 
 import { watch } from 'chokidar'
 
@@ -7,7 +7,7 @@ import {
   FRAME_EXTENSION,
   LAYOUT_FILE,
 } from '@/server/board/scan'
-import { TOKEN_FILE } from '@/shared/board-files'
+import { CLAIMS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import type { ListResult } from '@/shared/records/list'
 
 const NOTES_FILE = 'notes.json'
@@ -54,6 +54,7 @@ export async function watchBoard(
     }
   })
 
+  const runFolder = join(root, RUN_FOLDER)
   const outside = files.filter((file) => relative(root, file).startsWith('..'))
   const watchers = [
     watch(root, {
@@ -68,7 +69,8 @@ export async function watchBoard(
   await Promise.all(
     watchers.map((watcher) => {
       watcher.on('all', (_event, path) => {
-        if (warm) batcher.add(path)
+        // `.run/` itself is watched only to reach its claims file.
+        if (warm && path !== runFolder) batcher.add(path)
       })
       return new Promise<void>((resolve) => watcher.once('ready', resolve))
     }),
@@ -126,10 +128,15 @@ export function createBatcher(flush: (paths: string[]) => void): Batcher {
   }
 }
 
-/** Skips `.run/`, any dot-named segment, and the lock and temp files writers leave behind. */
+/**
+ * Skips any dot-named segment, and the lock and temp files writers leave
+ * behind. `.run/` is skipped but for its claims file, so a claim reaches the
+ * board while the address, the key, and captures stay out.
+ */
 function isIgnored(root: string, path: string): boolean {
   const inside = relative(root, path)
-  if (inside === '') return false
+  if (inside === '' || inside === RUN_FOLDER) return false
+  if (inside === join(RUN_FOLDER, CLAIMS_FILE)) return false
   const parts = inside.split(sep)
   const name = parts.at(-1) ?? ''
   return (

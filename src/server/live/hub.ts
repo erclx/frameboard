@@ -9,6 +9,7 @@ import {
   type ServerMessage,
 } from '@/shared/live-messages'
 import type { Finding } from '@/shared/records/check'
+import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
@@ -45,6 +46,8 @@ export interface HubOptions {
   delivery?: Delivery
   /** The undo history's counts, sent to a board client after its access. */
   history?: () => { undo: number; redo: number }
+  /** The live claims, sent to a board client after its history. */
+  claims?: () => Promise<Claim[]>
   /** Told the id a board tab said hello with once its socket closes. */
   closeTab?: (tab: string) => void
 }
@@ -65,6 +68,7 @@ export function createHub({
   notes,
   delivery,
   history,
+  claims,
   closeTab,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
@@ -116,6 +120,7 @@ export function createHub({
           send(socket, { type: 'board', data: board })
           send(socket, { type: 'access', write: writer })
           if (history) send(socket, { type: 'history', ...history() })
+          if (claims) send(socket, { type: 'claims', claims: await claims() })
           if (notes) {
             for (const [page, list] of Object.entries(await notes())) {
               send(socket, { type: 'notes', page, notes: list })

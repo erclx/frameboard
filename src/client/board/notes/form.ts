@@ -1,8 +1,19 @@
 import { BoardWriteError } from '@/client/live/write'
 import type { Listener } from '@/shared/records/notes'
 
-/** The session a picker starts on: the only listener, else none until the developer picks. */
-export function defaultSession(listeners: readonly Listener[]): string {
+/**
+ * The session a picker starts on: the session holding the frame's claim
+ * while it listens, else the only listener, else none until the developer
+ * picks. A holder that stopped listening is never picked, since it would
+ * never see the note.
+ */
+export function defaultSession(
+  listeners: readonly Listener[],
+  holder?: string,
+): string {
+  if (holder && listeners.some((listener) => listener.session === holder)) {
+    return holder
+  }
   return listeners.length === 1 ? (listeners[0]?.session ?? '') : ''
 }
 

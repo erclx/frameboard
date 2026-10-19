@@ -29,9 +29,7 @@ import {
   type CommonOptions,
   type ProgramContext,
 } from '../program'
-
-/** The variable Claude Code sets to the session a command runs in. */
-export const SESSION_ENV = 'CLAUDE_CODE_SESSION_ID'
+import { SESSION_ENV } from '../session'
 
 /** A note as `notes` lists it, with where it sits and the element it still points at. */
 export interface ListedNote extends Note {

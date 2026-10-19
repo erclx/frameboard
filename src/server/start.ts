@@ -15,6 +15,7 @@ import { createWarmBrowser, createWarmRenderer } from './capture/render'
 import { checkRendered } from './checks/browser/rendered'
 import { readConfig } from './checks/frame'
 import { boardPath } from './checks/frame-source'
+import { createClaimsPush } from './claims/push'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
 import {
@@ -184,7 +185,12 @@ async function listen({
     notes: () => inTurn(() => boardView(root)),
     delivery,
     history: () => history.counts(),
+    claims: () => inTurn(() => claims.read()),
     closeTab: selection.closeTab,
+  })
+  const claims = createClaimsPush(root, {
+    broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
+    inTurn,
   })
   // One browser serves the PNG route and the checker, each on its own queue,
   // launched by the startup sweep.
@@ -276,18 +282,23 @@ async function listen({
     findings.update(board, 'all')
     rendered.queue(board, [])
   })
+  // A claims file left by an earlier server arms the expiry from what it holds.
+  void claims.push()
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
-  watcher.onBatch(
-    (paths) =>
-      void inTurn(() =>
-        pushBatch(root, tokens ?? null, paths, {
-          hub,
-          findings,
-          rendered,
-          delivery,
-        }),
-      ),
-  )
+  watcher.onBatch((paths) => {
+    // A claim or a renewal sends the claims alone, never a rescan or a check.
+    const rest = paths.filter((path) => path !== claims.path)
+    if (rest.length < paths.length) void claims.push()
+    if (rest.length === 0) return
+    void inTurn(() =>
+      pushBatch(root, tokens ?? null, rest, {
+        hub,
+        findings,
+        rendered,
+        delivery,
+      }),
+    )
+  })
 
   return {
     hostname: HOSTNAME,
@@ -300,6 +311,7 @@ async function listen({
     boardUrl,
     close: async () => {
       rendered.close()
+      claims.close()
       await Promise.all([
         watcher.close(),
         hub.close(),

@@ -8,6 +8,7 @@ import {
   type LiveStore,
   receiveAccess,
   receiveBoard,
+  receiveClaims,
   receiveDisconnect,
   receiveFindings,
   receiveHistory,
@@ -64,6 +65,8 @@ export function connectLive(
         receiveListeners(store, message.listeners)
       } else if (message.type === 'history') {
         receiveHistory(store, { undo: message.undo, redo: message.redo })
+      } else if (message.type === 'claims') {
+        receiveClaims(store, message.claims)
       } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {

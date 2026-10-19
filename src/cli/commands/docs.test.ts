@@ -69,6 +69,7 @@ describe('docs', () => {
       'notes reply',
       'notes done',
       'inbox',
+      'editing',
       'capture',
       'inspect',
       'docs',

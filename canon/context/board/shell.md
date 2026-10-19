@@ -55,6 +55,16 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 - An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost, and hides in Play and once done
 - The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
 
+### `src/client/board/claims/`
+
+Owns how a claimed frame shows, apart from `frame.tsx` since the tag, the header initials, and a later waiting card change together.
+
+- A claimed frame, read from the live store's `claims` slice by frame ref, draws a dashed `--claim` outline at screen width whatever the zoom
+- Its label turns `--claim` with the agent's initial, its tag, and `editing · <elapsed>`, before any findings count
+- The outline and tag fade on one 2.4s cycle only when motion is allowed, and Play hides both
+- The inspector header shows one initial per listening session, solid while it holds a claim, pale while it only listens, and none for a holder not listening
+- The layers row of a claimed frame carries a ringed `--claim` dot after its name
+
 ### `src/client/board/left-panel/`
 
 Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
@@ -118,6 +128,16 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 
 `selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
+
+### `src/server/claims/`
+
+Owns the claims record and its expiry, apart from `notes/` and `board/` since the two change together.
+
+- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`
+- A renewal keeps `claimedAt` and moves only `expiresAt`
+- A batch naming the claims file sends `claims` alone, with no rescan or browser check
+- A timer armed at start and on every change rebroadcasts at the soonest expiry
+- A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
 
 ### `src/server/access/`
 

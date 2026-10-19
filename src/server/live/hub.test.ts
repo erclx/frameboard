@@ -191,6 +191,46 @@ describe('createHub', () => {
     await withFindings.close()
   })
 
+  it('sends the live claims right after the history counts', async () => {
+    const claims = [
+      {
+        frame: 'studio/home/hero',
+        session: 'sess-a',
+        agent: 'claude',
+        tag: 'claude · studio',
+        claimedAt: '2026-10-19T10:00:00.000Z',
+        expiresAt: '2026-10-19T10:05:00.000Z',
+      },
+    ]
+    const withClaims = createHub({
+      tabs,
+      port: () => port,
+      access,
+      snapshot: async () => SNAPSHOT,
+      history: () => ({ undo: 0, redo: 0 }),
+      claims: async () => claims,
+    })
+    server.removeAllListeners('upgrade')
+    server.on('upgrade', (request, socket, head) =>
+      withClaims.handleUpgrade(request, socket, head),
+    )
+    const socket = connect()
+    const received: ServerMessage[] = []
+    socket.on('message', (data) => received.push(JSON.parse(String(data))))
+
+    await helloAsBoard(socket)
+
+    await expect
+      .poll(() => received)
+      .toEqual([
+        { type: 'board', data: SNAPSHOT },
+        { type: 'access', write: false },
+        { type: 'history', undo: 0, redo: 0 },
+        { type: 'claims', claims },
+      ])
+    await withClaims.close()
+  })
+
   it('sends the history counts right after the access message', async () => {
     const withHistory = createHub({
       tabs,

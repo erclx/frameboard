@@ -191,7 +191,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(5)
+    await expect.poll(() => messages.length).toBe(6)
     hello = messages
     messages = []
   })
@@ -203,18 +203,20 @@ describe('startServer live socket', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board, whether it may write, the history, the listeners, and then every frame checked on hello', () => {
+  it('sends the board, whether it may write, the history, the claims, the listeners, and then every frame checked on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
       'board',
       'access',
       'history',
+      'claims',
       'listeners',
       'findings',
     ])
     expect(hello[1]).toEqual({ type: 'access', write: false })
     expect(hello[2]).toEqual({ type: 'history', undo: 0, redo: 0 })
-    expect(hello[3]).toEqual({ type: 'listeners', listeners: [] })
-    expect(hello[4]).toMatchObject({
+    expect(hello[3]).toEqual({ type: 'claims', claims: [] })
+    expect(hello[4]).toEqual({ type: 'listeners', listeners: [] })
+    expect(hello[5]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
   })
@@ -266,6 +268,62 @@ describe('startServer live socket', () => {
           { text: 'Tightened', from: 'agent', thread: 'n_0000000a' },
         ],
       })
+  })
+
+  it('pushes a claim the CLI writes to the board alone, with no rescan', async () => {
+    await cli(['editing', 'studio/home/hero', '--session', 'sess-a'], {
+      cwd: board.root,
+    })
+
+    await expect
+      .poll(() => messages.at(-1), { timeout: 5000 })
+      .toMatchObject({
+        type: 'claims',
+        claims: [{ frame: 'studio/home/hero', session: 'sess-a' }],
+      })
+    expect(messages.map((message) => message.type)).toEqual(['claims'])
+  })
+
+  it('pushes the claims again once one expires, with no write', async () => {
+    const soon = new Date(Date.now() + 300).toISOString()
+    writeFileSync(
+      join(board.root, '.run/claims.json'),
+      JSON.stringify({
+        version: 1,
+        claims: [
+          {
+            frame: 'studio/home/hero',
+            session: 'sess-a',
+            agent: 'claude',
+            tag: 'claude · studio',
+            claimedAt: new Date().toISOString(),
+            expiresAt: soon,
+          },
+        ],
+      }),
+    )
+    await expect
+      .poll(() => messages.at(-1), { timeout: 5000 })
+      .toMatchObject({ type: 'claims', claims: [{ expiresAt: soon }] })
+
+    await expect
+      .poll(() => messages.at(-1), { timeout: 5000 })
+      .toEqual({ type: 'claims', claims: [] })
+  })
+
+  it('pushes no claims for a claims file that does not parse', async () => {
+    await cli(['editing', 'studio/home/hero', '--session', 'sess-a'], {
+      cwd: board.root,
+    })
+    await expect
+      .poll(() => messages.at(-1)?.type, { timeout: 5000 })
+      .toBe('claims')
+
+    writeFileSync(join(board.root, '.run/claims.json'), '{ not json')
+
+    await expect
+      .poll(() => messages.at(-1), { timeout: 5000 })
+      .toEqual({ type: 'claims', claims: [] })
   })
 
   it('counts the connected board as an open tab that cannot write', () => {

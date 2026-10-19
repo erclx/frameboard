@@ -11,6 +11,8 @@ export const TOKEN_FILE = 'tokens.css'
 /** Generated files beside the board, ignored by git through their own `.gitignore`. */
 export const RUN_FOLDER = '.run'
 export const ADDRESS_FILE = 'address.json'
+/** The frames agents hold while they rewrite them, written by `editing`. */
+export const CLAIMS_FILE = 'claims.json'
 
 /** Where a repository or a working folder keeps its board when no marker says otherwise. */
 export const DEFAULT_BOARD_FOLDER = '.frameboard'

@@ -211,6 +211,7 @@ function FrameRow({
 }: FrameRowProps) {
   const row = useRef<HTMLLIElement>(null)
   const renaming = useRenamingFrame('layers') === frame.ref
+  const claim = useLive((state) => state.claims[frame.ref])
   const edge = useReorderRow(row, {
     list: LIST,
     index,
@@ -287,6 +288,13 @@ function FrameRow({
               <span className="min-w-0 flex-1 truncate">{frame.name}</span>
             </button>
           )}
+          {claim ? (
+            <span
+              role="img"
+              aria-label={`${claim.tag} is editing`}
+              className="ml-auto size-[7px] shrink-0 rounded-full bg-claim shadow-[0_0_0_3px_color-mix(in_srgb,var(--claim)_25%,transparent)]"
+            />
+          ) : null}
           <button
             type="button"
             aria-label={`${frame.hidden ? 'Show' : 'Hide'} ${frame.name}`}
