@@ -11,7 +11,7 @@ import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser } from './capture/browser'
-import { createWarmRenderer } from './capture/render'
+import { createWarmBrowser, createWarmRenderer } from './capture/render'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
 import { type BoardFindings, createBoardFindings } from './live/findings'
@@ -173,9 +173,12 @@ async function listen({
     closeTab: selection.closeTab,
   })
   // The board pays the browser launch once, on its first PNG.
-  const renderer = createWarmRenderer({
+  const browser = createWarmBrowser(() =>
+    launchCaptureBrowser({ purpose: 'Copy frame as PNG' }),
+  )
+  const renderFrame = createWarmRenderer({
     baseUrl: () => `http://${HOSTNAME}:${bound}`,
-    launch: () => launchCaptureBrowser({ purpose: 'Copy frame as PNG' }),
+    browser,
   })
   const app = createApp({
     clientDir,
@@ -187,7 +190,7 @@ async function listen({
     delivery,
     history,
     selection,
-    renderFrame: renderer.render,
+    renderFrame,
     actions: {
       access,
       // A running server's tabs have long since reconnected, so it waits for none.
@@ -240,7 +243,7 @@ async function listen({
       await Promise.all([
         watcher.close(),
         hub.close(),
-        renderer.close(),
+        browser.close(),
         emptyTrash(root),
       ])
       await new Promise<void>((done, fail) => {
