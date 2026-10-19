@@ -127,6 +127,22 @@ describe('receiveChanges', () => {
     expect(store.getState().unseen).toEqual({})
   })
 
+  it('drops a replayed older change once its newer one was seen', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+    receiveChanges(store, [change('studio/home/hero', 'h2')])
+    markSeen(store, 'studio/home/hero')
+    const reloaded = createUnseenStore(storage)
+
+    receiveChanges(reloaded, [
+      change('studio/home/hero', 'h1'),
+      change('studio/home/hero', 'h2'),
+    ])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
   it('marks a seen frame again on a newer change', () => {
     const store = createUnseenStore(memoryStorage())
     receiveChanges(store, [change('studio/home/hero', 'h1')])

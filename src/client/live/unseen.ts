@@ -47,9 +47,11 @@ export function receiveChanges(
 ): void {
   const { unseen, seen } = store.getState()
   const next = { ...unseen }
+  // Changes arrive oldest first, so a seen one also clears an older one the
+  // same replay marked before it.
   for (const change of changes) {
-    if (seen[change.frame] === change.hash) continue
-    next[change.frame] = change
+    if (seen[change.frame] === change.hash) delete next[change.frame]
+    else next[change.frame] = change
   }
   store.setState({ unseen: next })
 }
