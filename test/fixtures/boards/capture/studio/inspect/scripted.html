@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>scripted</title>
+  </head>
+  <body>
+    <p>First</p>
+    <p id="last">Last</p>
+    <script>
+      document.body.insertBefore(
+        document.createElement('div'),
+        document.getElementById('last'),
+      )
+    </script>
+  </body>
+</html>

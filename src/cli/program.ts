@@ -10,6 +10,7 @@ import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
 import { registerFrame } from './commands/frame'
+import { registerInspect } from './commands/inspect'
 import { registerList } from './commands/list'
 import { registerPage } from './commands/page'
 import { registerProject } from './commands/project'
@@ -153,6 +154,7 @@ export function createProgram(context: ProgramContext): Command {
   registerEdit(program, context)
   registerCheck(program, context)
   registerCapture(program, { ...context, facesDir })
+  registerInspect(program, { ...context, facesDir })
   registerDocs(program, context)
 
   return program
