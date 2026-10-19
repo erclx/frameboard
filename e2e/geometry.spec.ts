@@ -109,10 +109,6 @@ test.describe('frame geometry by hand', () => {
       join(board.root, 'studio/home/layout.json'),
       JSON.stringify(locked),
     )
-    const bytes = readFileSync(
-      join(board.root, 'studio/home/layout.json'),
-      'utf8',
-    )
     server = await serveBoard(board.root)
     await openAsWriter(page, server)
     const mobile = page.locator(MOBILE)
@@ -124,11 +120,14 @@ test.describe('frame geometry by hand', () => {
     await page.mouse.up()
 
     await expect(mobile).toHaveAttribute('data-selected', 'true')
-    // Nothing is sent, so a short window stands in for the write that never comes.
-    await page.waitForTimeout(500)
-    expect(
-      readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
-    ).toBe(bytes)
+    // A later write that does land bounds the wait, since a move the locked
+    // drag wrongly sent would have reached the server ahead of this nudge.
+    const hero = await center(page.locator('[data-frame="studio/home/hero"]'))
+    await page.mouse.click(hero.x, hero.y)
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(() => layout().frames.hero?.x).toBe(1)
+
+    expect(layout().frames.mobile).toEqual(locked.frames.mobile)
     expect(await mobile.boundingBox()).toEqual(before)
   })
 })

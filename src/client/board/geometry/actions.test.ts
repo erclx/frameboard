@@ -29,15 +29,19 @@ function setup(frames = [A, B, C, LOCKED]) {
   const live = createLiveStore()
   live.setState({ canWrite: true })
   const writes: Write[] = []
+  /** The page each write named, in order. */
+  const pages: string[] = []
+  const view = { page: PAGE }
   const actions = geometryActions({
-    page: () => PAGE,
+    page: () => view.page,
     frames: () => frames,
     selection,
     mode,
     live,
     hold: () => {},
-    write: async (_page, boxes, expected) => {
+    write: async (page, boxes, expected) => {
       writes.push({ boxes, expected })
+      pages.push(page)
       return true
     },
   })
@@ -46,7 +50,7 @@ function setup(frames = [A, B, C, LOCKED]) {
     if (!found) throw new Error(`no action ${id}`)
     return found
   }
-  return { selection, mode, live, writes, action }
+  return { selection, mode, live, writes, pages, view, action }
 }
 
 describe('geometryActions', () => {
@@ -114,6 +118,41 @@ describe('geometryActions', () => {
           expected: { [A.ref]: A.box },
         },
       ])
+    })
+
+    it('writes the open run before a frame added to the selection nudges', () => {
+      const { selection, writes, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      action('frame.nudgeRight').run()
+      select(selection, PAGE, [A.ref, B.ref])
+      action('frame.nudgeRight').run()
+      vi.advanceTimersByTime(NUDGE_REST_MS)
+
+      expect(writes).toEqual([
+        {
+          boxes: { [A.ref]: { ...A.box, x: 1 } },
+          expected: { [A.ref]: A.box },
+        },
+        {
+          boxes: {
+            [A.ref]: { ...A.box, x: 1 },
+            [B.ref]: { ...B.box, x: 301 },
+          },
+          expected: { [A.ref]: A.box, [B.ref]: B.box },
+        },
+      ])
+    })
+
+    it('names the page the run started on when the page changes before it rests', () => {
+      const { selection, pages, view, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      action('frame.nudgeRight').run()
+      view.page = 'studio/pricing'
+      vi.advanceTimersByTime(NUDGE_REST_MS)
+
+      expect(pages).toEqual([PAGE])
     })
 
     it('resizes on Cmd with an arrow, never under 1 px', () => {

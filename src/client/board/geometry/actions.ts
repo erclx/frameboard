@@ -132,12 +132,29 @@ export function geometryActions(context: GeometryContext): Action[] {
     )
   }
 
-  let run: { started: Record<string, Box>; boxes: Record<string, Box> } | null =
-    null
+  // A run holds its own page and frames, so the write it sends names what it
+  // started from even when the selection or the page changes before it rests.
+  let run: {
+    page: string
+    refs: readonly string[]
+    started: Record<string, Box>
+    boxes: Record<string, Box>
+  } | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
+  const flush = () => {
+    clearTimeout(timer)
+    const done = run
+    run = null
+    if (done) void context.write(done.page, done.boxes, done.started)
+  }
   const step = (change: (box: Box) => Box) => {
     const frames = chosen()
-    if (!run) run = { started: boxesOf(frames), boxes: boxesOf(frames) }
+    const page = context.page()
+    const refs = frames.map((frame) => frame.ref)
+    if (run && (run.page !== page || !sameRefs(run.refs, refs))) flush()
+    if (!run) {
+      run = { page, refs, started: boxesOf(frames), boxes: boxesOf(frames) }
+    }
     const { boxes } = run
     for (const frame of frames) {
       const box = boxes[frame.ref] ?? frame.box
@@ -145,11 +162,7 @@ export function geometryActions(context: GeometryContext): Action[] {
     }
     context.hold(boxes)
     clearTimeout(timer)
-    timer = setTimeout(() => {
-      const done = run
-      run = null
-      if (done) void context.write(context.page(), done.boxes, done.started)
-    }, NUDGE_REST_MS)
+    timer = setTimeout(flush, NUDGE_REST_MS)
   }
   const arrange = (
     arranged: (boxes: Record<string, Box>) => Record<string, Box>,
@@ -281,6 +294,10 @@ export function useGeometryActions(
       unregister()
     }
   }, [])
+}
+
+function sameRefs(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((ref) => b.includes(ref))
 }
 
 function boxesOf(frames: readonly FrameRecord[]): Record<string, Box> {

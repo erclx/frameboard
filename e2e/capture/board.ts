@@ -302,6 +302,8 @@ export const BOARD_CASES: CaptureCase[] = [
         theme,
         route: '/p/webapp/home',
         excludeViewports: STATE_ONLY,
+        // Carries the overlay, the `N frames` section, and Arrange into the evidence comparison.
+        evidence: true,
         mask: [AVATAR],
         setup: themed(
           onCanvas({ select: ['webapp/home/hero', 'webapp/home/about'] }),
