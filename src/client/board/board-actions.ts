@@ -1,3 +1,13 @@
+import {
+  Copy,
+  Maximize,
+  PanelLeft,
+  Pencil,
+  Play,
+  ScanSearch,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import { useEffect } from 'react'
 
 import {
@@ -94,6 +104,7 @@ function boardActions(): Action[] {
       id: 'mode.edit',
       label: 'Edit',
       group: 'mode',
+      command: { label: 'Switch to Edit', icon: Pencil },
       run: () => set({ mode: 'edit' }),
       checked: () => read().mode === 'edit',
     },
@@ -101,6 +112,7 @@ function boardActions(): Action[] {
       id: 'mode.play',
       label: 'Play',
       group: 'mode',
+      command: { label: 'Switch to Play', icon: Play },
       run: () => set({ mode: 'play' }),
       checked: () => read().mode === 'play',
     },
@@ -122,6 +134,7 @@ function boardActions(): Action[] {
       id: 'view.hideUi',
       label: 'Hide UI',
       group: 'view',
+      command: { label: 'Hide UI', icon: PanelLeft },
       keys: ['$mod+Backslash'],
       run: () => set({ hideUi: !read().hideUi }),
       checked: () => read().hideUi,
@@ -129,18 +142,21 @@ function boardActions(): Action[] {
     zoom({
       id: 'view.zoomIn',
       label: 'Zoom in',
+      command: { label: 'Zoom in', icon: ZoomIn },
       keys: ['$mod+Equal'],
       run: () => canvasView.zoomBy(ZOOM_STEP),
     }),
     zoom({
       id: 'view.zoomOut',
       label: 'Zoom out',
+      command: { label: 'Zoom out', icon: ZoomOut },
       keys: ['$mod+Minus'],
       run: () => canvasView.zoomBy(1 / ZOOM_STEP),
     }),
     zoom({
       id: 'view.zoomToFit',
       label: 'Zoom to fit',
+      command: { label: 'Zoom to fit', icon: Maximize },
       keys: ['Shift+Digit1'],
       run: canvasView.fit,
     }),
@@ -148,6 +164,7 @@ function boardActions(): Action[] {
       id: 'view.zoomToSelection',
       label: 'Zoom to selection',
       group: 'view',
+      command: { label: 'Zoom to selection', icon: ScanSearch },
       keys: ['Shift+Digit2'],
       enabled: onCanvas((count) => count > 0),
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
@@ -175,6 +192,7 @@ function boardActions(): Action[] {
       id: 'frame.copyPng',
       label: 'Copy as PNG',
       group: 'frame',
+      command: { label: 'Copy as PNG', icon: Copy },
       keys: ['$mod+Shift+KeyC'],
       enabled: onCanvas((count) => count === 1),
       run: () => {

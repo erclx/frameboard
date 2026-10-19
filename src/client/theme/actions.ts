@@ -1,3 +1,5 @@
+import { SunMoon } from 'lucide-react'
+
 import {
   type Action,
   refreshActions,
@@ -32,6 +34,7 @@ export function registerThemeActions(
       id: 'theme.toggle',
       label: 'Theme',
       group: 'view',
+      command: { label: 'Toggle theme', icon: SunMoon },
       run: () => toggleTheme(store),
     },
     ...CHOICES.map(({ choice, label }) => ({

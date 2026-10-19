@@ -63,11 +63,7 @@ export function AvatarMenu({ name, align = 'start' }: AvatarMenuProps) {
             <DropdownMenuSeparator />
           </>
         ) : null}
-        <ActionMenuItem
-          action={shortcuts}
-          label="Keyboard shortcuts"
-          keys={['?']}
-        />
+        <ActionMenuItem action={shortcuts} label="Keyboard shortcuts" />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger
             disabled={themes.length === 0}

@@ -50,10 +50,40 @@ function setup(frames = [A, B, C, LOCKED]) {
     if (!found) throw new Error(`no action ${id}`)
     return found
   }
-  return { selection, mode, live, writes, pages, view, action }
+  return { selection, mode, live, writes, pages, view, action, actions }
 }
 
 describe('geometryActions', () => {
+  describe('command', () => {
+    const NAMED = [
+      'selection.all',
+      'arrange.alignLeft',
+      'arrange.alignCenter',
+      'arrange.alignRight',
+      'arrange.alignTop',
+      'arrange.alignMiddle',
+      'arrange.alignBottom',
+      'arrange.distributeHorizontal',
+      'arrange.distributeVertical',
+    ]
+
+    it('lists select all and the arranges in the palette', () => {
+      const { action } = setup()
+
+      expect(NAMED.filter((id) => !action(id).command)).toEqual([])
+    })
+
+    it('leaves the keys a person never runs by name out of the palette', () => {
+      const { actions } = setup()
+
+      const listed = actions
+        .filter((action) => action.command && !NAMED.includes(action.id))
+        .map((action) => action.id)
+
+      expect(listed).toEqual([])
+    })
+  })
+
   beforeEach(() => {
     vi.useFakeTimers()
   })

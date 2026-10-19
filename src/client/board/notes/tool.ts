@@ -1,3 +1,4 @@
+import { MessageSquare } from 'lucide-react'
 import { useEffect } from 'react'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
@@ -41,6 +42,7 @@ export function useNoteTool(): void {
         id: 'tool.note',
         label: 'Note',
         group: 'tool',
+        command: { label: 'Add a note', icon: MessageSquare },
         keys: ['n'],
         enabled: canWrite,
         run: () => modeStore.setState({ tool: 'note', mode: 'edit' }),
