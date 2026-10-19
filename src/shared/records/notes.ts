@@ -41,6 +41,12 @@ export const noteSchema = z.looseObject({
 
 export type Note = z.infer<typeof noteSchema>
 
+/** A note as the board draws it, with the element its anchor still points at. */
+export interface BoardNote extends Note {
+  /** The element index while the frame file hashes as pinned, else null for the frame. */
+  element: number | null
+}
+
 /** `<project>/<page>/notes.json`. */
 export const notesFileSchema = z.looseObject({
   version: z.literal(1),

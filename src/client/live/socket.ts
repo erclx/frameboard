@@ -48,7 +48,7 @@ export function connectLive(
       else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
-      } else onShow?.(message.ref)
+      } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {
       store.setState({ connected: false, canWrite: false })

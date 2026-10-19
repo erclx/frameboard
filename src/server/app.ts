@@ -5,9 +5,11 @@ import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
+import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { servedFrames } from './routes/look'
+import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
@@ -54,6 +56,8 @@ export interface AppOptions {
   facesDir: string
   /** The `--tokens` sheet standing in for the board's `tokens.css`, when given. */
   tokens?: string
+  /** The listener registry a note write offers its queue to. */
+  delivery?: Delivery
 }
 
 export function createApp({
@@ -65,6 +69,7 @@ export function createApp({
   renderFrame,
   facesDir,
   tokens,
+  delivery,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -82,6 +87,7 @@ export function createApp({
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions, frames.look))
+  app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', pngRoutes(root, renderFrame))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))

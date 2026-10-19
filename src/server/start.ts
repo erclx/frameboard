@@ -1,6 +1,7 @@
 import { EventEmitter, once } from 'node:events'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { relative, sep } from 'node:path'
 
 import { serve } from '@hono/node-server'
 
@@ -8,13 +9,22 @@ import { type Access } from './access/guard'
 import { cookieName, loadBoardKey } from './access/key'
 import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
-import { scanBoard } from './board/scan'
+import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser } from './capture/browser'
 import { createWarmRenderer } from './capture/render'
 import { type BoardFindings, createBoardFindings } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
+import { createDelivery, type Delivery } from './notes/delivery'
+import {
+  boardView,
+  markDelivered,
+  NOTES_FILE,
+  notesPath,
+  pageView,
+  queuedFor,
+} from './notes/store'
 
 // Loopback only: the board serves the operator's own files, so it stays off the LAN.
 const HOSTNAME = '127.0.0.1'
@@ -135,12 +145,21 @@ async function listen({
     return run
   }
   const findings = createBoardFindings(root, tokens ?? null)
+  const delivery = createDelivery({
+    pending: (session) => queuedFor(root, session),
+    markDelivered: (id, session) =>
+      markDelivered(root, id, session, new Date()),
+    onListeners: (listeners) => hub.broadcast({ type: 'listeners', listeners }),
+    now: () => new Date(),
+  })
   const hub = createHub({
     tabs,
     port: boundPort,
     access,
     snapshot: () => inTurn(() => scanBoard(root)),
     findings: () => inTurn(async () => findings.all()),
+    notes: () => inTurn(() => boardView(root)),
+    delivery,
   })
   // The board pays the browser launch once, on its first PNG.
   const renderer = createWarmRenderer({
@@ -154,6 +173,7 @@ async function listen({
     root,
     port: boundPort,
     tickets,
+    delivery,
     renderFrame: renderer.render,
     actions: {
       access,
@@ -189,7 +209,9 @@ async function listen({
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
   watcher.onBatch(
     (paths) =>
-      void inTurn(() => pushBatch(root, tokens ?? null, paths, hub, findings)),
+      void inTurn(() =>
+        pushBatch(root, tokens ?? null, paths, hub, findings, delivery),
+      ),
   )
 
   return {
@@ -214,7 +236,9 @@ async function listen({
 
 /**
  * One rescan per batch: the whole board to every tab, then the frames to
- * reload, then the findings of every frame the batch rechecked.
+ * reload, then the findings of every frame the batch rechecked, then the
+ * notes of every page whose notes or frames it touched, whose queue it
+ * offers to delivery.
  */
 async function pushBatch(
   root: string,
@@ -222,6 +246,7 @@ async function pushBatch(
   paths: string[],
   hub: LiveHub,
   findings: BoardFindings,
+  delivery: Delivery,
 ): Promise<void> {
   let board
   try {
@@ -237,4 +262,48 @@ async function pushBatch(
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
   }
+  await pushNotes(root, paths, hub, delivery)
+}
+
+/**
+ * A notes write changes its page's notes, and a frame write can lose an
+ * element note its anchor, so both reread the page. A frame write on a page
+ * holding no notes sends nothing.
+ */
+async function pushNotes(
+  root: string,
+  paths: string[],
+  hub: LiveHub,
+  delivery: Delivery,
+): Promise<void> {
+  const pages = new Map<
+    string,
+    { project: string; page: string; notes: boolean }
+  >()
+  for (const path of paths) {
+    const parts = relative(root, path).split(sep)
+    const [project, page, file] = parts
+    if (parts.length !== 3 || !project || !page || !file) continue
+    const notes = file === NOTES_FILE
+    if (!notes && !file.endsWith(FRAME_EXTENSION)) continue
+    const key = `${project}/${page}`
+    pages.set(key, {
+      project,
+      page,
+      notes: notes || (pages.get(key)?.notes ?? false),
+    })
+  }
+  let touchedNotes = false
+  for (const [key, { project, page, notes }] of pages) {
+    const list = await pageView(root, {
+      project,
+      page,
+      path: notesPath(root, project, page),
+    })
+    if (notes || list.length > 0) {
+      hub.broadcast({ type: 'notes', page: key, notes: list })
+    }
+    touchedNotes ||= notes
+  }
+  if (touchedNotes) await delivery.offer()
 }

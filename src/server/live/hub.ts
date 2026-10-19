@@ -10,9 +10,11 @@ import {
 } from '@/shared/live-messages'
 import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
+import type { BoardNote } from '@/shared/records/notes'
 
 import { type Access, isWriter } from '../access/guard'
 import { isBoardHost } from '../app'
+import type { Delivery, Follower } from '../notes/delivery'
 import type { BoardTabs } from '../start'
 
 export interface LiveHub {
@@ -37,12 +39,18 @@ export interface HubOptions {
   snapshot: () => Promise<ListResult>
   /** Every frame's check findings, sent on a hello after the board. */
   findings?: () => Promise<Record<string, Finding[]>>
+  /** Every page's notes by page ref, sent to a board client after its access. */
+  notes?: () => Promise<Record<string, BoardNote[]>>
+  /** The listener registry an inbox client registers with. */
+  delivery?: Delivery
 }
 
 /**
  * The live socket every board tab holds. A client opens with a hello naming
  * its role, and only a `board` client counts as an open tab and receives the
- * board's messages.
+ * board's messages. An `inbox` client is a session's follower, kept apart so
+ * it never counts as a tab, and taken only from a socket upgraded with the
+ * address token as a bearer, since a browser page must never register one.
  */
 export function createHub({
   tabs,
@@ -50,13 +58,38 @@ export function createHub({
   access,
   snapshot,
   findings,
+  notes,
+  delivery,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Map<WebSocket, boolean>()
+  const inboxes = new Map<WebSocket, Follower>()
 
   server.on('connection', (socket, request) => {
     socket.on('message', (data) => {
-      if (boards.has(socket) || !isBoardHello(String(data))) return
+      const message = parse(String(data))
+      const inbox = inboxes.get(socket)
+      if (inbox) {
+        if (message?.type === 'ack') void delivery?.ack(inbox, message.id)
+        return
+      }
+      if (boards.has(socket) || message?.type !== 'hello') return
+      if (message.role === 'inbox') {
+        const bearer = isWriter(
+          { authorization: request.headers.authorization },
+          access,
+        )
+        if (!bearer || !delivery || !message.session) {
+          socket.close(1008, 'An inbox needs the address token as a bearer.')
+          return
+        }
+        const follower: Follower = {
+          send: (delivered) => send(socket, { type: 'note', ...delivered }),
+        }
+        inboxes.set(socket, follower)
+        delivery.register(follower, message.session, message.tag)
+        return
+      }
       const writer = isWriter(
         {
           authorization: request.headers.authorization,
@@ -71,6 +104,17 @@ export function createHub({
         .then(async (board) => {
           send(socket, { type: 'board', data: board })
           send(socket, { type: 'access', write: writer })
+          if (notes) {
+            for (const [page, list] of Object.entries(await notes())) {
+              send(socket, { type: 'notes', page, notes: list })
+            }
+          }
+          if (delivery) {
+            send(socket, {
+              type: 'listeners',
+              listeners: delivery.listeners(),
+            })
+          }
           if (findings) {
             send(socket, { type: 'findings', findings: await findings() })
           }
@@ -78,6 +122,11 @@ export function createHub({
         .catch(() => {})
     })
     socket.on('close', () => {
+      const inbox = inboxes.get(socket)
+      if (inbox) {
+        inboxes.delete(socket)
+        delivery?.unregister(inbox)
+      }
       const writer = boards.get(socket)
       if (writer !== undefined) {
         boards.delete(socket)
@@ -123,12 +172,14 @@ function accepts(request: IncomingMessage, port: number): boolean {
   }
 }
 
-function isBoardHello(text: string): boolean {
+function parse(text: string): ClientMessage | null {
   try {
-    const message = JSON.parse(text) as Partial<ClientMessage>
-    return message.type === 'hello' && message.role === 'board'
+    const message = JSON.parse(text) as unknown
+    return typeof message === 'object' && message !== null
+      ? (message as ClientMessage)
+      : null
   } catch {
-    return false
+    return null
   }
 }
 

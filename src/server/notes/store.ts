@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { FrameboardError } from '@/shared/errors'
 import {
+  type BoardNote,
   type Note,
   type NoteAnchor,
   type NotesFile,
@@ -11,6 +12,9 @@ import {
 
 import { readRecord, type RecordSpec, updateRecord } from '../board/json-record'
 import { listPageFolders, listProjects } from '../board/scan'
+import { resolveAnchors } from './anchor'
+import type { NoteDelivery } from './delivery'
+import { noteLine } from './line'
 
 export const NOTES_FILE = 'notes.json'
 
@@ -213,4 +217,97 @@ export function threadOf(file: NotesFile, rootId: string): Note[] {
   return file.notes.filter(
     (note) => note.id === rootId || note.thread === rootId,
   )
+}
+
+/** A page's notes as the board draws them, an unreadable file reading as none. */
+export async function pageView(
+  root: string,
+  place: PageNotes,
+): Promise<BoardNote[]> {
+  let file: NotesFile
+  try {
+    file = await readNotes(place.path)
+  } catch (error) {
+    // The board still renders the page's frames, and `notes` reports the file.
+    if (error instanceof FrameboardError) return []
+    throw error
+  }
+  const elements = await resolveAnchors(
+    join(root, place.project, place.page),
+    file.notes,
+  )
+  return file.notes.map((note) => ({
+    ...note,
+    element: elements[note.id] ?? null,
+  }))
+}
+
+/** Every page holding notes, by `<project>/<page>` ref, as the board draws them. */
+export async function boardView(
+  root: string,
+): Promise<Record<string, BoardNote[]>> {
+  const pages = await Promise.all(
+    (await listPageNotes(root)).map(
+      async (place) =>
+        [
+          `${place.project}/${place.page}`,
+          await pageView(root, place),
+        ] as const,
+    ),
+  )
+  return Object.fromEntries(pages.filter(([, notes]) => notes.length > 0))
+}
+
+/**
+ * The root notes queued to a session, read from disk, each with the line its
+ * follower prints, carrying the thread's newest developer message.
+ */
+export async function queuedFor(
+  root: string,
+  session: string,
+): Promise<NoteDelivery[]> {
+  const deliveries: NoteDelivery[] = []
+  for (const place of await listPageNotes(root)) {
+    const notes = await pageView(root, place)
+    for (const note of notes) {
+      if (note.thread !== null || note.state !== 'queued') continue
+      if (note.to !== session) continue
+      const ref = `${place.project}/${place.page}/${note.frame}`
+      const newest = notes
+        .filter(
+          (each) =>
+            (each.id === note.id || each.thread === note.id) &&
+            each.from === 'developer',
+        )
+        .at(-1)
+      const { element, ...stored } = note
+      deliveries.push({
+        note: stored,
+        ref,
+        line: noteLine({
+          id: note.id,
+          ref,
+          element,
+          text: (newest ?? note).text,
+        }),
+      })
+    }
+  }
+  return deliveries
+}
+
+/** Marks a root note delivered, while it is still queued to that session. */
+export async function markDelivered(
+  root: string,
+  id: string,
+  session: string,
+  now: Date,
+): Promise<void> {
+  const found = await findNote(root, id)
+  await updateNotes(found.path, (file) => {
+    const note = file.notes.find((each) => each.id === id)
+    return note?.state === 'queued' && note.to === session
+      ? setState(file, id, 'delivered', now)
+      : file
+  })
 }
