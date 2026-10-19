@@ -36,3 +36,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 - Read a frame again before changing it, since the developer may have edited it by hand since your last write.
 - Change one property the developer touched through `frameboard edit`, passing the frame file's SHA-256 as `--hash`. A file that changed since you read it is refused rather than overwritten, so read it again and redo the edit.
 - Rewrite a whole frame only when the change reshapes it, and keep every value the developer set by hand.
+
+## Answer the developer's notes
+
+A line beginning `frameboard note` is a request the developer sent you from the board, so act on it as if they had typed it. Read the whole thread with `frameboard notes --json` when the line was cut short, answer in the note with `frameboard notes reply <id> "<text>"` saying what you changed, and close it with `frameboard notes done <id>` once the request is met.

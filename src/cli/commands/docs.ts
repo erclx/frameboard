@@ -63,8 +63,11 @@ export function registerDocs(program: Command, context: ProgramContext): void {
 export function describeVerbs(program: Command, prefix = ''): VerbDoc[] {
   return program.commands.flatMap((command) => {
     const name = `${prefix}${command.name()}`
-    if (command.commands.length > 0) {
-      return describeVerbs(command, `${name} `)
+    const verbs = describeVerbs(command, `${name} `)
+    // A group made through addVerb takes flags and runs on its own, as notes
+    // does, where a plain group takes none and only holds its verbs.
+    if (command.commands.length > 0 && command.options.length === 0) {
+      return verbs
     }
     return [
       {
@@ -85,6 +88,7 @@ export function describeVerbs(program: Command, prefix = ''): VerbDoc[] {
           ...(option.argChoices ? { choices: option.argChoices } : {}),
         })),
       },
+      ...verbs,
     ]
   })
 }

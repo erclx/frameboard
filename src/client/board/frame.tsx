@@ -42,6 +42,12 @@ export const Frame = memo(function Frame({
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
   const theme = useFrameTheme(frame.ref)
+  // Read on each load rather than bound to the effect, so a newer record
+  // arriving before the reload stamps the file the iframe then shows.
+  const modifiedAt = useRef(frame.modifiedAt)
+  useEffect(() => {
+    modifiedAt.current = frame.modifiedAt
+  }, [frame.modifiedAt])
   // The theme is read when the iframe mounts or reloads, never on a theme
   // change, so a switch rewrites the frame's root below rather than
   // reloading it and restarting its animation and video.
@@ -62,6 +68,18 @@ export const Frame = memo(function Frame({
     element.addEventListener('load', write)
     return () => element.removeEventListener('load', write)
   }, [theme, live])
+
+  // A note's element pick reads which file the iframe rendered, so a pick
+  // made after an agent rewrote the frame but before it reloaded is refused.
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element) return
+    const stamp = () => {
+      element.dataset.renderedAt = modifiedAt.current
+    }
+    element.addEventListener('load', stamp)
+    return () => element.removeEventListener('load', stamp)
+  }, [live])
 
   useEffect(() => {
     const element = iframe.current

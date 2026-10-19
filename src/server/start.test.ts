@@ -14,6 +14,7 @@ import WebSocket from 'ws'
 
 import type { ServerMessage } from '@/shared/live-messages'
 
+import { cli } from '../../test/support/cli'
 import {
   copyFixtureBoard,
   type FixtureBoard,
@@ -182,7 +183,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(3)
+    await expect.poll(() => messages.length).toBe(4)
     hello = messages
     messages = []
   })
@@ -194,16 +195,67 @@ describe('startServer live socket', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board, whether it may write, and then every frame checked on hello', () => {
+  it('sends the board, whether it may write, the listeners, and then every frame checked on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
       'board',
       'access',
+      'listeners',
       'findings',
     ])
     expect(hello[1]).toEqual({ type: 'access', write: false })
-    expect(hello[2]).toMatchObject({
+    expect(hello[2]).toEqual({ type: 'listeners', listeners: [] })
+    expect(hello[3]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
+  })
+
+  it('pushes a reply the CLI writes to the board as its page notes', async () => {
+    writeFileSync(
+      join(board.root, 'studio/home/notes.json'),
+      JSON.stringify({
+        version: 1,
+        notes: [
+          {
+            id: 'n_0000000a',
+            number: 1,
+            frame: 'hero',
+            anchor: null,
+            text: 'Tighten the header',
+            from: 'developer',
+            author: null,
+            session: null,
+            to: null,
+            state: 'open',
+            thread: null,
+            createdAt: '2026-10-19T10:00:00.000Z',
+            updatedAt: '2026-10-19T10:00:00.000Z',
+          },
+        ],
+      }),
+    )
+    await expect
+      .poll(() => messages.some((message) => message.type === 'notes'), {
+        timeout: 5000,
+      })
+      .toBe(true)
+    messages = []
+
+    await cli(['notes', 'reply', 'n_0000000a', 'Tightened'], {
+      cwd: board.root,
+    })
+
+    await expect
+      .poll(() => messages.find((message) => message.type === 'notes'), {
+        timeout: 5000,
+      })
+      .toMatchObject({
+        type: 'notes',
+        page: 'studio/home',
+        notes: [
+          { id: 'n_0000000a' },
+          { text: 'Tightened', from: 'agent', thread: 'n_0000000a' },
+        ],
+      })
   })
 
   it('counts the connected board as an open tab that cannot write', () => {

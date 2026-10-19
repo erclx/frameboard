@@ -32,14 +32,24 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 
+### `src/cli/inbox/`
+
+Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a long-lived loop rather than a verb. The program reads flags positionally, so `notes` keeps its flags apart from `reply` and `done`.
+
+- It upgrades the live socket with the address token as a bearer, and the hub takes an `inbox` hello from no other socket, the board's cookie included, so a browser page never registers as a listener
+- It waits quietly for a board and a server and retries every 500 ms like a board tab, printing nothing until a note arrives
+- It sends `claude · ` and the project folder's name as its tag, and the server shows a session id's first 6 characters instead when two listeners share one
+- It acks a note only after printing it, so one killed between the two prints it again on its next start, and acking first would lose it instead
+- `notes`, `notes reply`, and `notes done` write `notes.json` with no server, and `inbox` defaults `--session` to `CLAUDE_CODE_SESSION_ID`
+
 ### `plugins/frameboard/`
 
-Owns the `frameboard` skill, the check hook, and the inbox monitor.
+Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hook and the monitor share.
 
 - The skill holds judgment and carries no verb table or rule list, so it cannot drift from the installed tool, and `docs` holds the facts
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest
 - The monitor runs `inbox --follow`, and Claude Code hands each line to the session as an event, so a sent note is acted on at once with no MCP server
-- The board sends a note to the session holding the frame's claim, else the only listening session, else it asks
+- The board sends a note to the only listening session, else to the one the developer picks, and the claim holder goes first once `v04.0` writes the session id into its claim
 - A claim is cooperative: another live session's claim is refused as occupied, it expires after five minutes unless renewed, and the file hash still guards a hand edit
 
 ## Gotchas

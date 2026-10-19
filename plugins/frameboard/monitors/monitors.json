@@ -1,0 +1,8 @@
+[
+  {
+    "name": "board-inbox",
+    "command": "\"${CLAUDE_PLUGIN_ROOT}\"/monitors/inbox.sh",
+    "description": "Notes the developer sends this session from the Frameboard board",
+    "when": "always"
+  }
+]

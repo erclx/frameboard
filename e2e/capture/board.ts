@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 
 import type { Page } from '@playwright/test'
+import WebSocket from 'ws'
 
 import type { CaptureCase } from './types'
 
@@ -205,6 +206,65 @@ async function asWriter(page: Page): Promise<void> {
   await page.goto(data.url)
 }
 
+/**
+ * Holds one inbox follower open while the capture page is, as a listening
+ * session would, so the composer counts it.
+ */
+async function listening(page: Page): Promise<void> {
+  const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
+  const { token } = JSON.parse(
+    readFileSync('test/fixtures/boards/basic/.run/address.json', 'utf8'),
+  ) as { token: string }
+  const socket = new WebSocket(`${base.replace(/^http/, 'ws')}/api/live`, {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  await new Promise((resolve) => socket.once('open', resolve))
+  socket.send(
+    JSON.stringify({
+      type: 'hello',
+      role: 'inbox',
+      session: '4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13',
+      tag: 'claude · frameboard',
+    }),
+  )
+  // An open socket would hold the capture run open after its browser closes.
+  page.once('close', () => socket.close())
+}
+
+/**
+ * Picks the Note tool and clicks the hero frame once the board has drawn it,
+ * opening the composer for a new note on it.
+ */
+async function noteOnHero(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const click = () => {
+      const tool = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Note"]:not([aria-disabled])',
+      )
+      const hero = document.querySelector('[data-frame="webapp/home/hero"]')
+      const hit = document.querySelector('[data-hit-layer]')
+      if (!tool || !hero || !hit) {
+        if (--left > 0) requestAnimationFrame(click)
+        else console.error('No Note tool or hero frame to note on')
+        return
+      }
+      tool.click()
+      const box = hero.getBoundingClientRect()
+      requestAnimationFrame(() =>
+        hit.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            clientX: box.left + box.width * 0.6,
+            clientY: box.top + box.height * 0.5,
+          }),
+        ),
+      )
+    }
+    document.addEventListener('DOMContentLoaded', click)
+  }, PRESS_FRAMES)
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -338,6 +398,33 @@ export const BOARD_CASES: CaptureCase[] = [
             }),
           ),
         ),
+      },
+      {
+        section: 'note-thread',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(pressOnLoad('^Note 2 on hero$')),
+      },
+      {
+        section: 'note-composer',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, noteOnHero)),
+      },
+      {
+        section: 'note-composer-listening',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, listening, noteOnHero)),
       },
     ]
   }),

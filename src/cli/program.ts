@@ -10,8 +10,10 @@ import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
 import { registerFrame } from './commands/frame'
+import { registerInbox } from './commands/inbox'
 import { registerInspect } from './commands/inspect'
 import { registerList } from './commands/list'
+import { registerNotes } from './commands/notes'
 import { registerPage } from './commands/page'
 import { registerProject } from './commands/project'
 import { registerServe } from './commands/serve'
@@ -135,6 +137,9 @@ export function createProgram(context: ProgramContext): Command {
       'A local design board that coding agents draw on as plain HTML files',
     )
     .exitOverride()
+    // A group with flags of its own, as notes has, keeps them from its verbs
+    // only when every parent stops reading flags at the verb's name.
+    .enablePositionalOptions()
     .configureOutput({
       writeOut: io.stdout,
       writeErr: (text) => (json ? undefined : io.stderr(text)),
@@ -153,6 +158,8 @@ export function createProgram(context: ProgramContext): Command {
   registerFrame(program, { ...context, facesDir })
   registerEdit(program, context)
   registerCheck(program, context)
+  registerNotes(program, context)
+  registerInbox(program, context)
   registerCapture(program, { ...context, facesDir })
   registerInspect(program, { ...context, facesDir })
   registerDocs(program, context)

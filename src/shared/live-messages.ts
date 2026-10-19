@@ -1,19 +1,33 @@
 import type { Finding } from './records/check'
 import type { ListResult } from './records/list'
+import type { BoardNote, Listener, Note } from './records/notes'
 
 /** The socket path on the board's server. */
 export const LIVE_PATH = '/api/live'
 
 /**
  * What a client sends first on every open. Only `board` clients count as
- * open board tabs, so another kind of listener can share the socket later.
+ * open board tabs. An `inbox` client is a session's follower, taken only on
+ * an upgrade carrying the address token as a bearer, never in the body.
  */
-export interface HelloMessage {
-  type: 'hello'
-  role: 'board'
+export type HelloMessage =
+  | { type: 'hello'; role: 'board' }
+  | {
+      type: 'hello'
+      role: 'inbox'
+      /** The session the follower prints notes for. */
+      session: string
+      /** What the board shows for it. */
+      tag: string
+    }
+
+/** A follower printed the note with this id. */
+export interface AckMessage {
+  type: 'ack'
+  id: string
 }
 
-export type ClientMessage = HelloMessage
+export type ClientMessage = HelloMessage | AckMessage
 
 /** Messages the server sends, as types alone so the client bundle takes no schema library. */
 export type ServerMessage =
@@ -30,3 +44,12 @@ export type ServerMessage =
   | { type: 'findings'; findings: Record<string, Finding[]> }
   /** Whether this tab may write, sent after each hello's board. */
   | { type: 'access'; write: boolean }
+  /**
+   * One page's notes by its `<project>/<page>` ref: every page holding notes
+   * after hello, and after each batch the pages it touched.
+   */
+  | { type: 'notes'; page: string; notes: BoardNote[] }
+  /** The sessions following their inbox, on hello and on every change. */
+  | { type: 'listeners'; listeners: Listener[] }
+  /** A queued note, to its session's follower alone, with the line it prints. */
+  | { type: 'note'; note: Note; ref: string; line: string }

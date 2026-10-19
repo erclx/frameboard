@@ -11,6 +11,7 @@ import {
   LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/server/board/scan'
+import { NOTES_FILE } from '@/server/notes/store'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { FACES } from '@/shared/faces'
 import {
@@ -33,6 +34,7 @@ export function contentFormat() {
       `A project is any folder in the board whose name does not open with a dot. Its ${PROJECT_FILE} lists page names in display order, and pages it does not list follow by name.`,
       `A page is any folder in a project except ${ASSETS_FOLDER}/ and dot-named ones. Its ${LAYOUT_FILE} holds each frame's box, stacking order, and flags.`,
       `A frame is any *${FRAME_EXTENSION} file directly in a page, named by its stem.`,
+      `A page's notes sit in its ${NOTES_FILE}, never in a frame. A note pins to a frame or to one element by index and the frame file's hash, and reads at the frame once the file changes. Read them with notes, answer with notes reply, and close them with notes done.`,
       `serve in a folder with no board creates ${DEFAULT_BOARD_FOLDER}/ with project ${START_PROJECT} and empty page ${START_PAGE}, and records its address in ${RUN_FOLDER}/${ADDRESS_FILE}.`,
       `Dot-named folders, *${LOCK_SUFFIX} files, and *${TEMP_SUFFIX} files belong to Frameboard and are never content.`,
     ],

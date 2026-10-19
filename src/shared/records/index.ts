@@ -12,6 +12,7 @@ import {
   pageRecordSchema,
   projectRecordSchema,
 } from './list'
+import { listenerSchema, notesFileSchema } from './notes'
 import { tokenTableSchema } from './tokens'
 
 /** Every record by name, the one place a later row registers a record for `docs`. */
@@ -30,4 +31,6 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   fit: fitResultSchema,
   inspect: inspectResultSchema,
   tokens: tokenTableSchema,
+  notes: notesFileSchema,
+  listener: listenerSchema,
 }

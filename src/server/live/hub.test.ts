@@ -8,11 +8,13 @@ import type { ServerMessage } from '@/shared/live-messages'
 import type { ListResult } from '@/shared/records/list'
 
 import type { Access } from '../access/guard'
+import { createDelivery, type Delivery } from '../notes/delivery'
 import { BoardTabs } from '../start'
 import { createHub, type LiveHub } from './hub'
 
 const SNAPSHOT: ListResult = { root: '/board', projects: [] }
 const KEY = 'b'.repeat(64)
+const TOKEN = 'a'.repeat(64)
 const COOKIE = 'frameboard-key-111111111111'
 
 describe('createHub', () => {
@@ -56,11 +58,18 @@ describe('createHub', () => {
     path = '/api/live',
     origin,
     cookie,
-  }: { path?: string; origin?: string; cookie?: string } = {}): WebSocket {
+    bearer,
+  }: {
+    path?: string
+    origin?: string
+    cookie?: string
+    bearer?: string
+  } = {}): WebSocket {
     const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`, {
       headers: {
         ...(origin ? { origin } : {}),
         ...(cookie ? { cookie } : {}),
+        ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
       },
     })
     sockets.push(socket)
@@ -174,7 +183,7 @@ describe('createHub', () => {
   it('counts a hello of another role or a message that is not one as no tab', async () => {
     const socket = connect()
     await new Promise((resolve) => socket.once('open', resolve))
-    socket.send(JSON.stringify({ type: 'hello', role: 'inbox' }))
+    socket.send(JSON.stringify({ type: 'hello', role: 'other' }))
     socket.send('not json')
     // Messages are handled in order, so once the board hello's snapshot
     // arrives the two before it have been read.
@@ -219,5 +228,177 @@ describe('createHub', () => {
     )
 
     expect(board.type).toBe('board')
+  })
+
+  describe('inbox', () => {
+    let delivery: Delivery
+    let inboxHub: LiveHub
+    let inboxServer: Server
+    let inboxPort: number
+
+    beforeEach(async () => {
+      delivery = createDelivery({
+        pending: async (session) => [
+          {
+            note: {
+              id: 'n_00000001',
+              number: 1,
+              frame: 'hero',
+              anchor: null,
+              text: 'x',
+              from: 'developer',
+              author: null,
+              session: null,
+              to: session,
+              state: 'queued',
+              thread: null,
+              createdAt: '2026-10-19T10:00:00.000Z',
+              updatedAt: '2026-10-19T10:00:00.000Z',
+            },
+            ref: 'studio/home/hero',
+            line: 'frameboard note n_00000001',
+          },
+        ],
+        markDelivered: async () => {},
+        onListeners: (listeners) =>
+          inboxHub.broadcast({ type: 'listeners', listeners }),
+        now: () => new Date('2026-10-19T10:00:00.000Z'),
+      })
+      inboxServer = createServer()
+      inboxHub = createHub({
+        tabs,
+        port: () => inboxPort,
+        access: { ...access, token: () => TOKEN },
+        snapshot: async () => SNAPSHOT,
+        notes: async () => ({ 'studio/home': [] }),
+        delivery,
+      })
+      inboxServer.on('upgrade', (request, socket, head) =>
+        inboxHub.handleUpgrade(request, socket, head),
+      )
+      await new Promise<void>((resolve) =>
+        inboxServer.listen(0, '127.0.0.1', resolve),
+      )
+      inboxPort = (inboxServer.address() as AddressInfo).port
+    })
+
+    afterEach(async () => {
+      for (const socket of sockets) socket.terminate()
+      await inboxHub.close()
+      await new Promise((resolve) => inboxServer.close(resolve))
+    })
+
+    function connectInbox(headers: Record<string, string>): WebSocket {
+      const socket = new WebSocket(`ws://127.0.0.1:${inboxPort}/api/live`, {
+        headers,
+      })
+      sockets.push(socket)
+      return socket
+    }
+
+    async function helloAsInbox(socket: WebSocket): Promise<void> {
+      await new Promise((resolve) => socket.once('open', resolve))
+      socket.send(
+        JSON.stringify({
+          type: 'hello',
+          role: 'inbox',
+          session: 'sess-1',
+          tag: 'claude · app',
+        }),
+      )
+    }
+
+    it('sends a queued note to an inbox upgraded with the bearer', async () => {
+      const socket = connectInbox({ authorization: `Bearer ${TOKEN}` })
+      const received = nextMessage(socket)
+
+      await helloAsInbox(socket)
+
+      expect(await received).toMatchObject({
+        type: 'note',
+        ref: 'studio/home/hero',
+        line: 'frameboard note n_00000001',
+      })
+    })
+
+    it('never counts an inbox as a board tab', async () => {
+      const socket = connectInbox({ authorization: `Bearer ${TOKEN}` })
+      const received = nextMessage(socket)
+      await helloAsInbox(socket)
+      await received
+
+      expect(tabs.count).toBe(0)
+    })
+
+    it('closes an inbox hello with no bearer', async () => {
+      const socket = connectInbox({})
+      const closed = new Promise((resolve) => socket.once('close', resolve))
+
+      await helloAsInbox(socket)
+
+      expect(await closed).toBe(1008)
+      expect(delivery.listeners()).toEqual([])
+    })
+
+    it("closes an inbox hello carrying the board's cookie and origin alone", async () => {
+      const socket = connectInbox({
+        origin: `http://127.0.0.1:${inboxPort}`,
+        cookie: `${COOKIE}=${KEY}`,
+      })
+      const closed = new Promise((resolve) => socket.once('close', resolve))
+
+      await helloAsInbox(socket)
+
+      expect(await closed).toBe(1008)
+    })
+
+    it('sends a board client the notes and listeners after its access', async () => {
+      const socket = connectInbox({})
+      await new Promise((resolve) => socket.once('open', resolve))
+      const received: ServerMessage[] = []
+      const four = new Promise<void>((resolve) =>
+        socket.on('message', (data) => {
+          received.push(JSON.parse(String(data)))
+          if (received.length === 4) resolve()
+        }),
+      )
+
+      socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+      await four
+
+      expect(received.slice(1).map((message) => message.type)).toEqual([
+        'access',
+        'notes',
+        'listeners',
+      ])
+    })
+
+    it('tells a board client a session started listening', async () => {
+      const board = connectInbox({})
+      await new Promise((resolve) => board.once('open', resolve))
+      const listening = new Promise<ServerMessage>((resolve) =>
+        board.on('message', (data) => {
+          const message = JSON.parse(String(data)) as ServerMessage
+          if (message.type === 'listeners' && message.listeners.length > 0) {
+            resolve(message)
+          }
+        }),
+      )
+      board.send(JSON.stringify({ type: 'hello', role: 'board' }))
+      await expect.poll(() => tabs.count).toBe(1)
+
+      await helloAsInbox(connectInbox({ authorization: `Bearer ${TOKEN}` }))
+
+      expect(await listening).toEqual({
+        type: 'listeners',
+        listeners: [
+          {
+            session: 'sess-1',
+            tag: 'claude · app',
+            since: '2026-10-19T10:00:00.000Z',
+          },
+        ],
+      })
+    })
   })
 })
