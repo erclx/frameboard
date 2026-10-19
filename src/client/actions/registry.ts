@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import { defaultKeybindingsHandlerIgnore, tinykeys } from 'tinykeys'
 import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
@@ -22,6 +23,12 @@ export interface Action {
   run: () => void
   /** Gates its button and its key alike, absent meaning always. */
   enabled?: () => boolean
+  /**
+   * Lists the action in the command palette under this label and icon, which
+   * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
+   * enabled actions carrying it, so a key a person never runs by name omits it.
+   */
+  command?: { label: string; icon?: LucideIcon }
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
   checked?: () => boolean
 }
