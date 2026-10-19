@@ -16,6 +16,12 @@ import {
   receiveReload,
 } from './store'
 
+/**
+ * This tab's id, which its hello and its selection reports carry, so the
+ * server forgets a report once the tab that made it closes.
+ */
+export const TAB_ID = crypto.randomUUID()
+
 /** How long a closed socket waits before trying again. */
 const RECONNECT_MS = 500
 
@@ -41,7 +47,7 @@ export function connectLive(
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
     socket = new WebSocket(`${scheme}://${location.host}${LIVE_PATH}`)
     socket.addEventListener('open', () => {
-      const hello: HelloMessage = { type: 'hello', role: 'board' }
+      const hello: HelloMessage = { type: 'hello', role: 'board', tab: TAB_ID }
       socket?.send(JSON.stringify(hello))
       store.setState({ connected: true })
     })
