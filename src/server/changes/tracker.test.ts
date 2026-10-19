@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { scanBoard } from '../board/scan'
+import { contentHash } from '../edit/address'
 import type { Step } from '../history/stack'
 import { createChangeTracker } from './tracker'
 
@@ -26,8 +27,12 @@ function claimOn(frame: string): Claim {
   }
 }
 
-function stepOn(frames: string[], page: Step['page'] = null): Step {
-  return { id: 1, changes: [], page, frames }
+function stepOn(
+  frames: string[],
+  page: Step['page'] = null,
+  changes: Step['changes'] = [],
+): Step {
+  return { id: 1, changes, page, frames }
 }
 
 describe('createChangeTracker', () => {
@@ -110,18 +115,82 @@ describe('createChangeTracker', () => {
     expect(changes).toEqual([])
   })
 
-  it('withdraws a held change the history then tells it was its own', async () => {
+  it('withdraws a held change the history then tells it wrote', async () => {
+    const before = readFileSync(at('webapp/home/hero.html'))
     writeFileSync(
       at('webapp/home/hero.html'),
       hero().replace('>hero</h1>', '>Hi</h1>'),
     )
     const held = await batch(['webapp/home/hero.html'])
 
-    await tracker.own(stepOn(['webapp/home/hero']))
+    await tracker.own(
+      stepOn(['webapp/home/hero'], null, [
+        {
+          kind: 'content',
+          path: at('webapp/home/hero.html'),
+          ref: 'webapp/home/hero',
+          before,
+          after: readFileSync(at('webapp/home/hero.html')),
+          hashes: {
+            before: contentHash(before),
+            after: contentHash(readFileSync(at('webapp/home/hero.html'))),
+          },
+        },
+      ]),
+    )
 
     expect(held).toHaveLength(1)
     expect(tracker.settle(held)).toEqual([])
     expect(tracker.log()).toEqual([])
+  })
+
+  it('keeps a held change when the step only moved its frame', async () => {
+    writeFileSync(
+      at('webapp/home/hero.html'),
+      hero().replace('>hero</h1>', '>Hi</h1>'),
+    )
+    const held = await batch(['webapp/home/hero.html'])
+
+    await tracker.own(
+      stepOn(['webapp/home/hero'], null, [
+        {
+          kind: 'entry',
+          layout: at('webapp/home/layout.json'),
+          frame: 'hero',
+          before: undefined,
+          after: undefined,
+        },
+      ]),
+    )
+
+    expect(tracker.settle(held).map((change) => change.frame)).toEqual([
+      'webapp/home/hero',
+    ])
+  })
+
+  it('keeps a held change when a page step names its page', async () => {
+    writeFileSync(
+      at('webapp/home/hero.html'),
+      hero().replace('>hero</h1>', '>Hi</h1>'),
+    )
+    const held = await batch(['webapp/home/hero.html'])
+    cpSync(at('webapp/home'), at('webapp/home-copy'), { recursive: true })
+
+    await tracker.own(
+      stepOn([], { before: 'webapp/home', after: 'webapp/home-copy' }, [
+        {
+          kind: 'path',
+          path: at('webapp/home-copy'),
+          present: 'after',
+          hash: 'h',
+          slot: at('.trash/1'),
+        },
+      ]),
+    )
+
+    expect(tracker.settle(held).map((change) => change.frame)).toEqual([
+      'webapp/home/hero',
+    ])
   })
 
   it('logs a held change nothing withdrew once it settles', async () => {

@@ -106,10 +106,16 @@ export function createChangeTracker(
           hold(ref, join(root, ...ref.split('/')) + FRAME_EXTENSION),
         ),
       )
-      // A write slower than the batch window reached `update` first.
+      // A write slower than the batch window reached `update` first. Only a
+      // step that wrote the frame's file claims it, since one that moved the
+      // frame or named its page leaves the agent's bytes in place.
+      const written = writtenPaths(step)
       for (const [id, change] of pending) {
+        const file = join(root, ...change.frame.split('/')) + FRAME_EXTENSION
         if (
-          refs.has(change.frame) &&
+          written.some(
+            (path) => file === path || file.startsWith(path + sep),
+          ) &&
           held.get(change.frame)?.hash === change.hash
         ) {
           pending.delete(id)
@@ -175,6 +181,16 @@ export function createChangeTracker(
 
     log: () => [...changes],
   }
+}
+
+/** The files and folders a step wrote, being every rewrite, creation, removal, and move. */
+function writtenPaths(step: Step): string[] {
+  return step.changes.flatMap((change) => {
+    if (change.kind === 'content' || change.kind === 'path')
+      return [change.path]
+    if (change.kind === 'moved') return [change.from, change.to]
+    return []
+  })
 }
 
 function framesOf(board: ListResult): { ref: string; path: string }[] {
