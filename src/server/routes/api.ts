@@ -10,7 +10,7 @@ import { type Access, requireWriter } from '../access/guard'
 export interface BoardActions {
   /** Who may call the write routes. */
   access: Access
-  /** Opens a browser tab when no board tab is connected, resolving whether it did. */
+  /** Opens a browser tab when no writing board tab is connected, resolving whether it did. */
   open: () => Promise<boolean>
   /** Tells every board tab to show a frame, returning how many were told. */
   show: (ref: string) => number

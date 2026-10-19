@@ -111,10 +111,7 @@ describe('createHub', () => {
 
     it.each([
       ['no cookie', {}],
-      [
-        'a wrong key',
-        { cookie: `${COOKIE}=${'c'.repeat(64)}`, origin: undefined },
-      ],
+      ['a wrong key', { cookie: `${COOKIE}=${'c'.repeat(64)}` }],
     ])('tells a tab with %s it may only read', async (_case, extra) => {
       const socket = connect({ origin: own(), ...extra })
 
