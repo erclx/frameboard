@@ -101,6 +101,8 @@ export function InspectorPanel() {
   )
 }
 
+const SHADOW = '--shadow'
+
 /** The project's color tokens and its `--shadow*` tokens, empty until the table reads. */
 function useProjectTokens(frame: string): {
   colors: TokenRow[]
@@ -109,8 +111,11 @@ function useProjectTokens(frame: string): {
   const table = useTokenTable(frame.split('/')[0] ?? '')
   const tokens = table?.tokens ?? []
   return {
-    colors: tokens.filter((row) => row.group === 'color'),
-    shadows: tokens.filter((row) => row.name.startsWith('--shadow')),
+    // A shadow's value holds a color, so the table groups it with them.
+    colors: tokens.filter(
+      (row) => row.group === 'color' && !row.name.startsWith(SHADOW),
+    ),
+    shadows: tokens.filter((row) => row.name.startsWith(SHADOW)),
   }
 }
 

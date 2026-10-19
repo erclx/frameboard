@@ -65,7 +65,7 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
         onChange={(event) => setDraft(event.currentTarget.value)}
         onBlur={commit}
         onKeyDown={onKeyDown}
-        className="min-h-11 rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"
+        className="min-h-11 resize-none rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"
       />
     </section>
   )
