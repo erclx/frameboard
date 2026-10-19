@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { constants, copyFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import {
@@ -12,6 +13,7 @@ import { nextFreeName } from '@/shared/names'
 import type { LayoutFile } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
+import type { Journal, JournalOptions } from './journal'
 import { readRecord, withLocks, writeRecord } from './json-record'
 import {
   assertValidName,
@@ -54,41 +56,48 @@ export type FrameFlag = 'hidden' | 'locked'
 export async function addFrame(
   root: string,
   ref: string,
-  options: RefOptions & SizeOptions & PositionOptions,
+  options: RefOptions & SizeOptions & PositionOptions & JournalOptions,
 ): Promise<FrameRecord> {
+  const { journal } = options
   const frame = await resolveFrameRef(root, ref, {
     ...options,
     allowMissing: true,
   })
   const size = sizeOf(options)
   const page = pageDir(frame)
-  await withLayouts([page], async (layouts) => {
-    const layout = layoutAt(layouts, page)
-    const exists = existsSync(frame.path)
-    if (exists && layout.hasEntry(frame.name)) {
-      throw new FrameboardError(
-        'name-taken',
-        `${frame.project}/${frame.page}/${frame.name} is already a placed frame.`,
-        { ref: refOf(frame) },
-      )
-    }
-    const names = exists ? layout.names : [...layout.names, frame.name].sort()
-    const computed = placeFrames(layout.file.frames, names).get(frame.name)
-    if (!computed) throw new Error(`No placement computed for ${frame.name}.`)
-    if (!exists)
-      await writeFile(frame.path, skeleton(frame.name), { flag: 'wx' })
-    layout.names = names
-    layout.set(frame.name, {
-      ...computed,
-      box: {
-        ...computed.box,
-        ...size,
-        x: options.x ?? computed.box.x,
-        y: options.y ?? computed.box.y,
-      },
-    })
-    layout.renumber()
-  })
+  await withLayouts(
+    [page],
+    async (layouts) => {
+      const layout = layoutAt(layouts, page)
+      const exists = existsSync(frame.path)
+      if (exists && layout.hasEntry(frame.name)) {
+        throw new FrameboardError(
+          'name-taken',
+          `${frame.project}/${frame.page}/${frame.name} is already a placed frame.`,
+          { ref: refOf(frame) },
+        )
+      }
+      const names = exists ? layout.names : [...layout.names, frame.name].sort()
+      const computed = placeFrames(layout.file.frames, names).get(frame.name)
+      if (!computed) throw new Error(`No placement computed for ${frame.name}.`)
+      if (!exists) {
+        await writeFile(frame.path, skeleton(frame.name), { flag: 'wx' })
+        await journal?.created(frame.path)
+      }
+      layout.names = names
+      layout.set(frame.name, {
+        ...computed,
+        box: {
+          ...computed.box,
+          ...size,
+          x: options.x ?? computed.box.x,
+          y: options.y ?? computed.box.y,
+        },
+      })
+      layout.renumber()
+    },
+    journal,
+  )
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 
@@ -99,38 +108,45 @@ export async function addFrame(
 export async function duplicateFrame(
   root: string,
   ref: string,
-  { to, name, ...options }: RefOptions & { to?: string; name?: string },
+  {
+    to,
+    name,
+    journal,
+    ...options
+  }: RefOptions & JournalOptions & { to?: string; name?: string },
 ): Promise<FrameRecord> {
   const source = await resolveFrameRef(root, ref, options)
   const target = to ? await resolvePageRef(root, to, options) : undefined
   const from = pageDir(source)
   const into = target?.path ?? from
-  const copy = await withLayouts([from, into], async (layouts) => {
-    const sourceLayout = layoutAt(layouts, from)
-    const targetLayout = layoutAt(layouts, into)
-    const copyName = freeFrameName(targetLayout.names, source.name, name)
-    const placement = sourceLayout.placement(source.name)
-    const box =
-      into === from
-        ? {
-            ...placement.box,
-            x: placement.box.x + placement.box.width + FRAME_GAP,
-          }
-        : placement.box
-    await copyFile(
-      source.path,
-      join(into, `${copyName}${FRAME_EXTENSION}`),
-      constants.COPYFILE_EXCL,
-    )
-    targetLayout.names = [...targetLayout.names, copyName].sort()
-    targetLayout.set(copyName, {
-      ...placement,
-      box,
-      order: targetLayout.topOrder(),
-    })
-    targetLayout.renumber()
-    return copyName
-  })
+  const copy = await withLayouts(
+    [from, into],
+    async (layouts) => {
+      const sourceLayout = layoutAt(layouts, from)
+      const targetLayout = layoutAt(layouts, into)
+      const copyName = freeFrameName(targetLayout.names, source.name, name)
+      const placement = sourceLayout.placement(source.name)
+      const box =
+        into === from
+          ? {
+              ...placement.box,
+              x: placement.box.x + placement.box.width + FRAME_GAP,
+            }
+          : placement.box
+      const copyPath = join(into, `${copyName}${FRAME_EXTENSION}`)
+      await copyFile(source.path, copyPath, constants.COPYFILE_EXCL)
+      await journal?.created(copyPath)
+      targetLayout.names = [...targetLayout.names, copyName].sort()
+      targetLayout.set(copyName, {
+        ...placement,
+        box,
+        order: targetLayout.topOrder(),
+      })
+      targetLayout.renumber()
+      return copyName
+    },
+    journal,
+  )
   const page = target ?? source
   return frameRecord(root, page.project, page.page, copy)
 }
@@ -148,52 +164,61 @@ export async function moveFrame(
     name,
     x,
     y,
+    journal,
     ...options
-  }: RefOptions & PositionOptions & { to?: string; name?: string },
+  }: RefOptions &
+    PositionOptions &
+    JournalOptions & { to?: string; name?: string },
 ): Promise<FrameRecord> {
   const source = await resolveFrameRef(root, ref, options)
   const target = to ? await resolvePageRef(root, to, options) : undefined
   const from = pageDir(source)
   const into = target?.path ?? from
-  const moved = await withLayouts([from, into], async (layouts) => {
-    const sourceLayout = layoutAt(layouts, from)
-    const targetLayout = layoutAt(layouts, into)
-    const placement = sourceLayout.placement(source.name)
-    const box = {
-      ...placement.box,
-      x: x ?? placement.box.x,
-      y: y ?? placement.box.y,
-    }
+  const moved = await withLayouts(
+    [from, into],
+    async (layouts) => {
+      const sourceLayout = layoutAt(layouts, from)
+      const targetLayout = layoutAt(layouts, into)
+      const placement = sourceLayout.placement(source.name)
+      const box = {
+        ...placement.box,
+        x: x ?? placement.box.x,
+        y: y ?? placement.box.y,
+      }
 
-    const samePage = into === from
-    const others = samePage
-      ? targetLayout.names.filter((frame) => frame !== source.name)
-      : targetLayout.names
-    const movedName =
-      samePage && name === undefined
-        ? source.name
-        : freeFrameName(others, source.name, name)
+      const samePage = into === from
+      const others = samePage
+        ? targetLayout.names.filter((frame) => frame !== source.name)
+        : targetLayout.names
+      const movedName =
+        samePage && name === undefined
+          ? source.name
+          : freeFrameName(others, source.name, name)
 
-    if (samePage && movedName === source.name) {
-      sourceLayout.set(source.name, { ...placement, box })
+      if (samePage && movedName === source.name) {
+        sourceLayout.set(source.name, { ...placement, box })
+        return movedName
+      }
+
+      const movedPath = join(into, `${movedName}${FRAME_EXTENSION}`)
+      if (journal) await journal.moved(source.path, movedPath)
+      else await rename(source.path, movedPath)
+      // The entry travels with the file, so keys a newer writer added survive the move.
+      const carried = sourceLayout.file.frames[source.name]
+      sourceLayout.remove(source.name)
+      sourceLayout.names = sourceLayout.names.filter(
+        (frame) => frame !== source.name,
+      )
+      targetLayout.names = [...others, movedName].sort()
+      const order = samePage ? placement.order : targetLayout.topOrder()
+      if (carried) targetLayout.file.frames[movedName] = { ...carried }
+      targetLayout.set(movedName, { ...placement, box, order })
+      sourceLayout.renumber()
+      targetLayout.renumber()
       return movedName
-    }
-
-    await rename(source.path, join(into, `${movedName}${FRAME_EXTENSION}`))
-    // The entry travels with the file, so keys a newer writer added survive the move.
-    const carried = sourceLayout.file.frames[source.name]
-    sourceLayout.remove(source.name)
-    sourceLayout.names = sourceLayout.names.filter(
-      (frame) => frame !== source.name,
-    )
-    targetLayout.names = [...others, movedName].sort()
-    const order = samePage ? placement.order : targetLayout.topOrder()
-    if (carried) targetLayout.file.frames[movedName] = { ...carried }
-    targetLayout.set(movedName, { ...placement, box, order })
-    sourceLayout.renumber()
-    targetLayout.renumber()
-    return movedName
-  })
+    },
+    journal,
+  )
   const page = target ?? source
   return frameRecord(root, page.project, page.page, moved)
 }
@@ -202,7 +227,7 @@ export async function renameFrame(
   root: string,
   ref: string,
   newName: string,
-  options: RefOptions,
+  options: RefOptions & JournalOptions,
 ): Promise<FrameRecord> {
   return moveFrame(root, ref, { ...options, name: newName })
 }
@@ -210,7 +235,7 @@ export async function renameFrame(
 export async function resizeFrame(
   root: string,
   ref: string,
-  options: RefOptions & SizeOptions,
+  options: RefOptions & SizeOptions & JournalOptions,
 ): Promise<FrameRecord> {
   const size = sizeOf(options)
   if (Object.keys(size).length === 0) {
@@ -238,37 +263,43 @@ export async function setBoxes(
   pageRef: string,
   boxes: Readonly<Record<string, Box>>,
   expected: Readonly<Record<string, Box>>,
-  options: RefOptions,
+  options: RefOptions & JournalOptions,
 ): Promise<FrameRecord[]> {
   const page = await resolvePageRef(root, pageRef, options)
   const names = Object.keys(boxes)
-  await withLayouts([page.path], async (layouts) => {
-    const layout = layoutAt(layouts, page.path)
-    const placements = names.map((name) => {
-      const ref = `${page.project}/${page.name}/${name}`
-      if (!layout.names.includes(name)) {
-        throw new FrameboardError('frame-not-found', `No frame ${ref}.`, {
-          ref,
-        })
+  await withLayouts(
+    [page.path],
+    async (layouts) => {
+      const layout = layoutAt(layouts, page.path)
+      const placements = names.map((name) => {
+        const ref = `${page.project}/${page.name}/${name}`
+        if (!layout.names.includes(name)) {
+          throw new FrameboardError('frame-not-found', `No frame ${ref}.`, {
+            ref,
+          })
+        }
+        const placement = layout.placement(name)
+        if (placement.locked) {
+          throw new FrameboardError('frame-locked', `${ref} is locked.`, {
+            ref,
+          })
+        }
+        const started = expected[name]
+        if (!started || !sameBox(started, placement.box)) {
+          throw new FrameboardError(
+            'stale-layout',
+            `${ref} moved since this edit began, so nothing was written.`,
+            { ref, stored: placement.box, expected: started ?? null },
+          )
+        }
+        return { name, placement, box: boxes[name] }
+      })
+      for (const { name, placement, box } of placements) {
+        if (box) layout.set(name, { ...placement, box: { ...box } })
       }
-      const placement = layout.placement(name)
-      if (placement.locked) {
-        throw new FrameboardError('frame-locked', `${ref} is locked.`, { ref })
-      }
-      const started = expected[name]
-      if (!started || !sameBox(started, placement.box)) {
-        throw new FrameboardError(
-          'stale-layout',
-          `${ref} moved since this edit began, so nothing was written.`,
-          { ref, stored: placement.box, expected: started ?? null },
-        )
-      }
-      return { name, placement, box: boxes[name] }
-    })
-    for (const { name, placement, box } of placements) {
-      if (box) layout.set(name, { ...placement, box: { ...box } })
-    }
-  })
+    },
+    options.journal,
+  )
   const frames = await frameRecords(root, page.project, page.name)
   return frames.filter((frame) => names.includes(frame.name))
 }
@@ -283,19 +314,23 @@ function sameBox(a: Box, b: Box): boolean {
 export async function orderFrame(
   root: string,
   ref: string,
-  { index, ...options }: RefOptions & { index: number },
+  { index, ...options }: RefOptions & JournalOptions & { index: number },
 ): Promise<FrameRecord> {
   const frame = await resolveFrameRef(root, ref, options)
   const page = pageDir(frame)
-  await withLayouts([page], async (layouts) => {
-    const layout = layoutAt(layouts, page)
-    const stack = layout.stack().filter((name) => name !== frame.name)
-    const at = Math.max(0, Math.min(index, stack.length))
-    stack.splice(at, 0, frame.name)
-    for (const [order, name] of stack.entries()) {
-      layout.set(name, { ...layout.placement(name), order })
-    }
-  })
+  await withLayouts(
+    [page],
+    async (layouts) => {
+      const layout = layoutAt(layouts, page)
+      const stack = layout.stack().filter((name) => name !== frame.name)
+      const at = Math.max(0, Math.min(index, stack.length))
+      stack.splice(at, 0, frame.name)
+      for (const [order, name] of stack.entries()) {
+        layout.set(name, { ...layout.placement(name), order })
+      }
+    },
+    options.journal,
+  )
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 
@@ -303,7 +338,7 @@ export async function setFrameFlag(
   root: string,
   ref: string,
   flag: FrameFlag,
-  { on, ...options }: RefOptions & { on: boolean },
+  { on, ...options }: RefOptions & JournalOptions & { on: boolean },
 ): Promise<FrameRecord> {
   return updatePlacement(root, ref, options, (placement) => ({
     ...placement,
@@ -314,30 +349,40 @@ export async function setFrameFlag(
 export async function deleteFrame(
   root: string,
   ref: string,
-  options: RefOptions,
+  options: RefOptions & JournalOptions,
 ): Promise<{ deleted: string }> {
+  const { journal } = options
   const frame = await resolveFrameRef(root, ref, options)
   const page = pageDir(frame)
-  await withLayouts([page], async (layouts) => {
-    const layout = layoutAt(layouts, page)
-    await rm(frame.path)
-    layout.remove(frame.name)
-  })
+  await withLayouts(
+    [page],
+    async (layouts) => {
+      const layout = layoutAt(layouts, page)
+      if (journal) await journal.removed(frame.path)
+      else await rm(frame.path)
+      layout.remove(frame.name)
+    },
+    journal,
+  )
   return { deleted: refOf(frame) }
 }
 
 async function updatePlacement(
   root: string,
   ref: string,
-  options: RefOptions,
+  options: RefOptions & JournalOptions,
   change: (placement: Placement) => Placement,
 ): Promise<FrameRecord> {
   const frame = await resolveFrameRef(root, ref, options)
   const page = pageDir(frame)
-  await withLayouts([page], async (layouts) => {
-    const layout = layoutAt(layouts, page)
-    layout.set(frame.name, change(layout.placement(frame.name)))
-  })
+  await withLayouts(
+    [page],
+    async (layouts) => {
+      const layout = layoutAt(layouts, page)
+      layout.set(frame.name, change(layout.placement(frame.name)))
+    },
+    options.journal,
+  )
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 
@@ -448,29 +493,52 @@ class PageLayout {
 /**
  * Runs one frame change under the lock of every page it touches, taken in
  * path order. Every layout is read and validated before `run` moves a file,
- * and only the layouts it changed are written.
+ * and only the layouts it changed are written, reporting each entry that
+ * differs to the journal.
  */
 async function withLayouts<T>(
   pages: string[],
   run: (layouts: Map<string, PageLayout>) => Promise<T>,
+  journal?: Journal,
 ): Promise<T> {
   const unique = [...new Set(pages)]
   const paths = unique.map((page) => join(page, LAYOUT_FILE))
   return withLocks(paths, async () => {
     const layouts = new Map<string, PageLayout>()
+    const read = new Map<string, LayoutFile>()
     for (const page of unique) {
-      const file = structuredClone(
-        await readRecord(join(page, LAYOUT_FILE), layoutSpec),
+      const file = await readRecord(join(page, LAYOUT_FILE), layoutSpec)
+      read.set(page, file)
+      layouts.set(
+        page,
+        new PageLayout(structuredClone(file), await listFrames(page)),
       )
-      layouts.set(page, new PageLayout(file, await listFrames(page)))
     }
     const result = await run(layouts)
     for (const [page, layout] of layouts) {
-      if (layout.changed)
-        await writeRecord(join(page, LAYOUT_FILE), layout.file)
+      if (!layout.changed) continue
+      await writeRecord(join(page, LAYOUT_FILE), layout.file)
+      if (journal) reportEntries(journal, page, read.get(page), layout.file)
     }
     return result
   })
+}
+
+function reportEntries(
+  journal: Journal,
+  page: string,
+  before: LayoutFile | undefined,
+  after: LayoutFile,
+): void {
+  const was = before?.frames ?? {}
+  for (const frame of new Set([
+    ...Object.keys(was),
+    ...Object.keys(after.frames),
+  ])) {
+    const from = was[frame]
+    const to = after.frames[frame]
+    if (!isDeepStrictEqual(from, to)) journal.entry(page, frame, from, to)
+  }
 }
 
 function layoutAt(layouts: Map<string, PageLayout>, page: string): PageLayout {

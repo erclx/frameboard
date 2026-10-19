@@ -1,11 +1,13 @@
 import { existsSync } from 'node:fs'
 import { cp, mkdir, rename, rm } from 'node:fs/promises'
 import { basename, join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import { nextFreeName } from '@/shared/names'
 import type { PageRecord } from '@/shared/records/list'
 
+import type { Journal, JournalOptions } from './journal'
 import {
   LOCK_SUFFIX,
   readRecord,
@@ -35,40 +37,53 @@ const NOT_COPIED = new Set(['notes.json'])
 export async function addPage(
   root: string,
   ref: string,
-  { index, ...options }: RefOptions & { index?: number },
+  { index, ...options }: RefOptions & JournalOptions & { index?: number },
 ): Promise<PageRecord> {
   const page = await resolvePageRef(root, ref, {
     ...options,
     allowMissing: true,
   })
   if (existsSync(page.path)) throw taken(page, page.name)
-  const result = await reorder(root, page, async (order) => {
-    await mkdir(page.path)
-    return insert(order, page.name, index ?? order.length)
-  })
+  const result = await reorder(
+    root,
+    page,
+    async (order) => {
+      await mkdir(page.path)
+      await options.journal?.created(page.path)
+      return insert(order, page.name, index ?? order.length)
+    },
+    options.journal,
+  )
   return recordOf(root, page, result)
 }
 
 export async function duplicatePage(
   root: string,
   ref: string,
-  { name, ...options }: RefOptions & { name?: string },
+  { name, ...options }: RefOptions & JournalOptions & { name?: string },
 ): Promise<PageRecord> {
   const source = await resolvePageRef(root, ref, options)
   const projectDir = join(root, source.project)
-  const result = await reorder(root, source, async (order) => {
-    const copy = await freeName(source, projectDir, name, false)
-    await cp(source.path, join(projectDir, copy), {
-      recursive: true,
-      errorOnExist: true,
-      force: false,
-      filter: (path) => isCopied(basename(path)),
-    })
-    return {
-      name: copy,
-      order: insert(order, copy, order.indexOf(source.name) + 1),
-    }
-  })
+  const result = await reorder(
+    root,
+    source,
+    async (order) => {
+      const copy = await freeName(source, projectDir, name, false)
+      const copyPath = join(projectDir, copy)
+      await cp(source.path, copyPath, {
+        recursive: true,
+        errorOnExist: true,
+        force: false,
+        filter: (path) => isCopied(basename(path)),
+      })
+      await options.journal?.created(copyPath)
+      return {
+        name: copy,
+        order: insert(order, copy, order.indexOf(source.name) + 1),
+      }
+    },
+    options.journal,
+  )
   return recordOf(root, source, result)
 }
 
@@ -76,33 +91,44 @@ export async function renamePage(
   root: string,
   ref: string,
   newName: string,
-  options: RefOptions,
+  { journal, ...options }: RefOptions & JournalOptions,
 ): Promise<PageRecord> {
   const page = await resolvePageRef(root, ref, options)
   const projectDir = join(root, page.project)
-  const result = await reorder(root, page, async (order) => {
-    const renamed = await freeName(page, projectDir, newName, true)
-    await rename(page.path, join(projectDir, renamed))
-    return {
-      name: renamed,
-      order: order.map((name) => (name === page.name ? renamed : name)),
-    }
-  })
+  const result = await reorder(
+    root,
+    page,
+    async (order) => {
+      const renamed = await freeName(page, projectDir, newName, true)
+      const renamedPath = join(projectDir, renamed)
+      if (journal) await journal.moved(page.path, renamedPath)
+      else await rename(page.path, renamedPath)
+      return {
+        name: renamed,
+        order: order.map((name) => (name === page.name ? renamed : name)),
+      }
+    },
+    journal,
+  )
   return recordOf(root, page, result)
 }
 
 export async function movePage(
   root: string,
   ref: string,
-  { index, ...options }: RefOptions & { index: number },
+  { index, ...options }: RefOptions & JournalOptions & { index: number },
 ): Promise<PageRecord> {
   const page = await resolvePageRef(root, ref, options)
-  const result = await reorder(root, page, async (order) =>
-    insert(
-      order.filter((name) => name !== page.name),
-      page.name,
-      index,
-    ),
+  const result = await reorder(
+    root,
+    page,
+    async (order) =>
+      insert(
+        order.filter((name) => name !== page.name),
+        page.name,
+        index,
+      ),
+    options.journal,
   )
   return recordOf(root, page, result)
 }
@@ -110,13 +136,19 @@ export async function movePage(
 export async function deletePage(
   root: string,
   ref: string,
-  options: RefOptions,
+  { journal, ...options }: RefOptions & JournalOptions,
 ): Promise<{ deleted: string }> {
   const page = await resolvePageRef(root, ref, options)
-  await reorder(root, page, async (order) => {
-    await rm(page.path, { recursive: true, force: true })
-    return order.filter((name) => name !== page.name)
-  })
+  await reorder(
+    root,
+    page,
+    async (order) => {
+      if (journal) await journal.removed(page.path)
+      else await rm(page.path, { recursive: true, force: true })
+      return order.filter((name) => name !== page.name)
+    },
+    journal,
+  )
   return { deleted: `${page.project}/${page.name}` }
 }
 
@@ -124,7 +156,8 @@ export async function deletePage(
  * Runs one page change under the project file's lock, returning the page's
  * name after it and the order written. The file is read and
  * validated before `change` touches a folder, and written back holding exactly
- * the page folders on disk, in the order `change` returns.
+ * the page folders on disk, in the order `change` returns, which the journal
+ * is told of when it differs from the order the file held.
  */
 async function reorder(
   root: string,
@@ -132,6 +165,7 @@ async function reorder(
   change: (
     order: string[],
   ) => Promise<string[] | { name: string; order: string[] }>,
+  journal?: Journal,
 ): Promise<{ name: string; pages: string[] }> {
   const projectDir = join(root, page.project)
   const path = join(projectDir, PROJECT_FILE)
@@ -144,6 +178,9 @@ async function reorder(
       : changed
     const pages = orderPages(order, await listPageFolders(projectDir))
     await writeRecord(path, { ...file, pages })
+    if (journal && !isDeepStrictEqual(file.pages, pages)) {
+      journal.pages(projectDir, file.pages, pages)
+    }
     return { name, pages }
   })
 }

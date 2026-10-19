@@ -13,6 +13,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { recordingJournal } from '../../../test/support/recording-journal'
 import {
   addFrame,
   deleteFrame,
@@ -450,6 +451,179 @@ describe('frames', () => {
         moveFrame(root, 'home/hero', { cwd: root, x: 5 }),
       ).rejects.toMatchObject({ code: 'layout-invalid', exitCode: 5 })
       expect(file('wrecked/home/layout.json')).toBe('{\n')
+    })
+  })
+
+  describe('with a journal', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+    const heroEntry = { ...HERO, order: 0, hidden: false, locked: false }
+
+    it('move reports the one entry it changed', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await moveFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        x: 40,
+        journal,
+      })
+
+      expect(calls).toEqual([
+        {
+          kind: 'entry',
+          page: 'webapp/home',
+          frame: 'hero',
+          before: heroEntry,
+          after: { ...heroEntry, x: 40 },
+        },
+      ])
+    })
+
+    it('setBoxes reports each box it set', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await setBoxes(
+        board.root,
+        'webapp/home',
+        { hero: { ...HERO, y: 30 } },
+        { hero: HERO },
+        { cwd: board.root, journal },
+      )
+
+      expect(calls).toEqual([
+        {
+          kind: 'entry',
+          page: 'webapp/home',
+          frame: 'hero',
+          before: heroEntry,
+          after: { ...heroEntry, y: 30 },
+        },
+      ])
+    })
+
+    it('setBoxes reports nothing when it refuses', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await expect(
+        setBoxes(
+          board.root,
+          'webapp/home',
+          { hero: { ...HERO, y: 30 } },
+          { hero: { ...HERO, x: 5 } },
+          { cwd: board.root, journal },
+        ),
+      ).rejects.toMatchObject({ code: 'stale-layout' })
+      expect(calls).toEqual([])
+    })
+
+    it('add reports the file it created and the entry it placed', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await addFrame(board.root, 'webapp/settings/new', {
+        cwd: board.root,
+        journal,
+      })
+
+      expect(calls.map((call) => call.kind)).toEqual(['created', 'entry'])
+      expect(calls[0]).toEqual({
+        kind: 'created',
+        path: 'webapp/settings/new.html',
+      })
+      expect(calls[1]).toMatchObject({ frame: 'new', before: undefined })
+    })
+
+    it('rename moves the file through the journal and reports both entries', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await renameFrame(board.root, 'webapp/home/hero', 'banner', {
+        cwd: board.root,
+        journal,
+      })
+
+      expect(calls).toEqual([
+        {
+          kind: 'moved',
+          from: 'webapp/home/hero.html',
+          to: 'webapp/home/banner.html',
+        },
+        {
+          kind: 'entry',
+          page: 'webapp/home',
+          frame: 'hero',
+          before: heroEntry,
+          after: undefined,
+        },
+        {
+          kind: 'entry',
+          page: 'webapp/home',
+          frame: 'banner',
+          before: undefined,
+          after: heroEntry,
+        },
+      ])
+    })
+
+    it('delete takes the file out through the journal', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await deleteFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        journal,
+      })
+
+      expect(calls[0]).toEqual({
+        kind: 'removed',
+        path: 'webapp/home/hero.html',
+      })
+      expect(calls.slice(1)).toContainEqual({
+        kind: 'entry',
+        page: 'webapp/home',
+        frame: 'hero',
+        before: heroEntry,
+        after: undefined,
+      })
+    })
+
+    it('duplicate reports the copy it created', async () => {
+      board = copyFixtureBoard('basic')
+      const { journal, calls } = recordingJournal(board.root)
+
+      await duplicateFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        journal,
+      })
+
+      expect(calls[0]).toEqual({
+        kind: 'created',
+        path: 'webapp/home/hero-2.html',
+      })
+    })
+
+    it('writes the same layout bytes as a write with no journal', async () => {
+      board = copyFixtureBoard('basic')
+      const plain = copyFixtureBoard('basic')
+      try {
+        await moveFrame(plain.root, 'webapp/home/hero', {
+          cwd: plain.root,
+          x: 40,
+        })
+        await moveFrame(board.root, 'webapp/home/hero', {
+          cwd: board.root,
+          x: 40,
+          journal: recordingJournal(board.root).journal,
+        })
+
+        expect(file('webapp/home/layout.json')).toBe(
+          readFileSync(join(plain.root, 'webapp/home/layout.json'), 'utf8'),
+        )
+      } finally {
+        plain.cleanup()
+      }
     })
   })
 })

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { FrameboardError } from '@/shared/errors'
 import type { ProjectRecord } from '@/shared/records/list'
 
+import type { JournalOptions } from './journal'
 import { writeRecord } from './json-record'
 import { assertValidName, matchName, resolveProject } from './refs'
 import { START_PAGE } from './root'
@@ -14,6 +15,7 @@ export async function addProject(
   root: string,
   name: string,
   now: Date = new Date(),
+  { journal }: JournalOptions = {},
 ): Promise<ProjectRecord> {
   assertValidName('project', name)
   await assertFree(root, name)
@@ -23,6 +25,7 @@ export async function addProject(
     pages: [START_PAGE],
     createdAt: now.toISOString(),
   })
+  await journal?.created(join(root, name))
   return scanProject(root, name)
 }
 
@@ -30,20 +33,25 @@ export async function renameProject(
   root: string,
   name: string,
   newName: string,
+  { journal }: JournalOptions = {},
 ): Promise<ProjectRecord> {
   const project = await resolveProject(root, name)
   assertValidName('project', newName)
   await assertFree(root, newName, project.name)
-  await rename(project.path, join(root, newName))
+  const renamed = join(root, newName)
+  if (journal) await journal.moved(project.path, renamed)
+  else await rename(project.path, renamed)
   return scanProject(root, newName)
 }
 
 export async function deleteProject(
   root: string,
   name: string,
+  { journal }: JournalOptions = {},
 ): Promise<{ deleted: string }> {
   const project = await resolveProject(root, name)
-  await rm(project.path, { recursive: true, force: true })
+  if (journal) await journal.removed(project.path)
+  else await rm(project.path, { recursive: true, force: true })
   return { deleted: project.name }
 }
 

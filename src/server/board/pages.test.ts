@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { recordingJournal } from '../../../test/support/recording-journal'
 import {
   addPage,
   deletePage,
@@ -124,6 +125,83 @@ describe('pages', () => {
       expect(await deletePage(board.root, 'webapp/home', { cwd })).toEqual({
         deleted: 'webapp/home',
       })
+      expect(pageOrder()).toEqual(['settings'])
+    })
+  })
+
+  describe('with a journal', () => {
+    it('add reports the folder it created and the new order', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await addPage(board.root, 'webapp/billing', { cwd, journal })
+
+      expect(calls).toEqual([
+        { kind: 'created', path: 'webapp/billing' },
+        {
+          kind: 'pages',
+          project: 'webapp',
+          before: ['settings', 'home'],
+          after: ['settings', 'home', 'billing'],
+        },
+      ])
+    })
+
+    it('duplicate reports the copy, which holds no notes.json', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await duplicatePage(board.root, 'webapp/home', { cwd, journal })
+
+      expect(calls[0]).toEqual({ kind: 'created', path: 'webapp/home-2' })
+      expect(existsSync(join(board.root, 'webapp/home-2/notes.json'))).toBe(
+        false,
+      )
+    })
+
+    it('rename moves the folder through the journal', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await renamePage(board.root, 'webapp/home', 'start', { cwd, journal })
+
+      expect(calls).toEqual([
+        { kind: 'moved', from: 'webapp/home', to: 'webapp/start' },
+        {
+          kind: 'pages',
+          project: 'webapp',
+          before: ['settings', 'home'],
+          after: ['settings', 'start'],
+        },
+      ])
+    })
+
+    it('move reports the order alone', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await movePage(board.root, 'webapp/home', { cwd, index: 0, journal })
+
+      expect(calls).toEqual([
+        {
+          kind: 'pages',
+          project: 'webapp',
+          before: ['settings', 'home'],
+          after: ['home', 'settings'],
+        },
+      ])
+    })
+
+    it('move to its own place reports nothing', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await movePage(board.root, 'webapp/home', { cwd, index: 1, journal })
+
+      expect(calls).toEqual([])
+    })
+
+    it('delete takes the folder out through the journal', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await deletePage(board.root, 'webapp/home', { cwd, journal })
+
+      expect(calls[0]).toEqual({ kind: 'removed', path: 'webapp/home' })
       expect(pageOrder()).toEqual(['settings'])
     })
   })
