@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { readAuthor } from '@/server/author'
 import { setBoxes } from '@/server/board/frames'
 import { scanBoard } from '@/server/board/scan'
+import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
@@ -69,6 +70,7 @@ export function apiRoutes(
   root: string,
   actions: BoardActions,
   look: FrameLook,
+  history?: History,
 ): Hono {
   const app = new Hono()
   const authorized = requireWriter(actions.access)
@@ -137,7 +139,19 @@ export function apiRoutes(
     }
     const { page, boxes, expected } = body.data
     try {
-      const frames = await setBoxes(root, page, boxes, expected, { cwd: root })
+      const journal = history?.journal()
+      const frames = await setBoxes(root, page, boxes, expected, {
+        cwd: root,
+        journal,
+      })
+      if (history && journal) {
+        history.record({
+          id: journal.id,
+          changes: journal.changes,
+          page: null,
+          frames: frames.map((frame) => frame.ref),
+        })
+      }
       return c.json({ ok: true, data: { frames } })
     } catch (error) {
       if (!(error instanceof FrameboardError)) throw error

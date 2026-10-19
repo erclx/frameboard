@@ -170,6 +170,34 @@ describe('createHub', () => {
     await withFindings.close()
   })
 
+  it('sends the history counts right after the access message', async () => {
+    const withHistory = createHub({
+      tabs,
+      port: () => port,
+      access,
+      snapshot: async () => SNAPSHOT,
+      history: () => ({ undo: 2, redo: 1 }),
+    })
+    server.removeAllListeners('upgrade')
+    server.on('upgrade', (request, socket, head) =>
+      withHistory.handleUpgrade(request, socket, head),
+    )
+    const socket = connect()
+    const received: ServerMessage[] = []
+    socket.on('message', (data) => received.push(JSON.parse(String(data))))
+
+    await helloAsBoard(socket)
+
+    await expect
+      .poll(() => received)
+      .toEqual([
+        { type: 'board', data: SNAPSHOT },
+        { type: 'access', write: false },
+        { type: 'history', undo: 2, redo: 1 },
+      ])
+    await withHistory.close()
+  })
+
   it('counts a board client as an open tab until it closes', async () => {
     const socket = connect()
     await helloAsBoard(socket)

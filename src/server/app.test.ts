@@ -8,6 +8,7 @@ import { version } from '@/shared/version'
 
 import { createTickets } from './access/tickets'
 import { createApp } from './app'
+import { History } from './history/stack'
 
 const PORT = 4173
 
@@ -41,6 +42,7 @@ describe('createApp', () => {
         show: () => 0,
       },
       renderFrame: async () => Buffer.alloc(0),
+      history: new History('/board'),
     }).request(url)
   }
 
