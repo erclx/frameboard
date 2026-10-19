@@ -34,6 +34,9 @@ export const EXIT_CODES = {
   'font-missing': 10,
   'fit-unbounded': 10,
   'capture-too-large': 10,
+  // A hand move or resize refused, writing nothing.
+  'frame-locked': 11,
+  'stale-layout': 11,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

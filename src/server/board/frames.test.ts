@@ -21,6 +21,7 @@ import {
   orderFrame,
   renameFrame,
   resizeFrame,
+  setBoxes,
   setFrameFlag,
   skeleton,
 } from './frames'
@@ -299,6 +300,116 @@ describe('frames', () => {
         await deleteFrame(root, 'webapp/home/about', { cwd: root }),
       ).toEqual({ deleted: 'webapp/home/about' })
       expect(Object.keys(layout('webapp/home').frames)).toEqual(['hero'])
+    })
+  })
+
+  describe('setBoxes', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+    const ABOUT = { x: 1520, y: 0, width: 390, height: 844 }
+
+    it('sets several boxes on one page and answers their records', async () => {
+      board = copyFixtureBoard('hand-made')
+      const root = board.root
+
+      const frames = await setBoxes(
+        root,
+        'drafts',
+        {
+          placed: { x: 10, y: 20, width: 400, height: 300 },
+          loose: { x: 900, y: 40, width: 1440, height: 900 },
+        },
+        {
+          placed: { x: 100, y: 50, width: 390, height: 844 },
+          loose: { x: 2090, y: 0, width: 1440, height: 900 },
+        },
+        { cwd: root },
+      )
+
+      expect(layout('sketches/drafts').frames).toMatchObject({
+        placed: { x: 10, y: 20, width: 400, height: 300, order: 3 },
+        loose: { x: 900, y: 40, width: 1440, height: 900 },
+      })
+      expect(frames).toHaveLength(2)
+      expect(frames).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'loose', placed: true }),
+          expect.objectContaining({ name: 'placed', placed: true }),
+        ]),
+      )
+    })
+
+    it('keeps an unknown key on an entry it sets', async () => {
+      board = copyFixtureBoard('basic')
+      const root = board.root
+      const page = layout('webapp/home')
+      page.frames.hero.tint = 'red'
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+
+      await setBoxes(
+        root,
+        'webapp/home',
+        { hero: { ...HERO, x: 64 } },
+        { hero: HERO },
+        { cwd: root },
+      )
+
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        tint: 'red',
+        x: 64,
+      })
+    })
+
+    it('refuses a locked frame and writes nothing', async () => {
+      board = copyFixtureBoard('basic')
+      const root = board.root
+      const bytes = file('webapp/home/layout.json')
+
+      await expect(
+        setBoxes(
+          root,
+          'webapp/home',
+          { hero: { ...HERO, x: 64 }, about: { ...ABOUT, x: 0 } },
+          { hero: HERO, about: ABOUT },
+          { cwd: root },
+        ),
+      ).rejects.toMatchObject({ code: 'frame-locked', exitCode: 11 })
+      expect(file('webapp/home/layout.json')).toBe(bytes)
+    })
+
+    it('refuses a box that changed since the edit began and writes nothing', async () => {
+      board = copyFixtureBoard('basic')
+      const root = board.root
+      await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 5 })
+      const bytes = file('webapp/home/layout.json')
+
+      await expect(
+        setBoxes(
+          root,
+          'webapp/home',
+          { hero: { ...HERO, x: 64 } },
+          { hero: HERO },
+          { cwd: root },
+        ),
+      ).rejects.toMatchObject({
+        code: 'stale-layout',
+        details: { stored: { ...HERO, x: 5 } },
+      })
+      expect(file('webapp/home/layout.json')).toBe(bytes)
+    })
+
+    it('refuses a frame the page does not hold', async () => {
+      board = copyFixtureBoard('basic')
+      const root = board.root
+
+      await expect(
+        setBoxes(
+          root,
+          'webapp/home',
+          { nowhere: HERO },
+          { nowhere: HERO },
+          { cwd: root },
+        ),
+      ).rejects.toMatchObject({ code: 'frame-not-found' })
     })
   })
 

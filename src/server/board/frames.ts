@@ -225,6 +225,60 @@ export async function resizeFrame(
   }))
 }
 
+type Box = FrameRecord['box']
+
+/**
+ * Sets the boxes of several frames on one page under one lock and one write,
+ * the one path a hand move or resize takes. `expected` holds the boxes the
+ * client started from, and a frame whose stored box differs from it refuses
+ * the whole write, so a hand edit never silently undoes an agent's.
+ */
+export async function setBoxes(
+  root: string,
+  pageRef: string,
+  boxes: Readonly<Record<string, Box>>,
+  expected: Readonly<Record<string, Box>>,
+  options: RefOptions,
+): Promise<FrameRecord[]> {
+  const page = await resolvePageRef(root, pageRef, options)
+  const names = Object.keys(boxes)
+  await withLayouts([page.path], async (layouts) => {
+    const layout = layoutAt(layouts, page.path)
+    const placements = names.map((name) => {
+      const ref = `${page.project}/${page.name}/${name}`
+      if (!layout.names.includes(name)) {
+        throw new FrameboardError('frame-not-found', `No frame ${ref}.`, {
+          ref,
+        })
+      }
+      const placement = layout.placement(name)
+      if (placement.locked) {
+        throw new FrameboardError('frame-locked', `${ref} is locked.`, { ref })
+      }
+      const started = expected[name]
+      if (!started || !sameBox(started, placement.box)) {
+        throw new FrameboardError(
+          'stale-layout',
+          `${ref} moved since this edit began, so nothing was written.`,
+          { ref, stored: placement.box, expected: started ?? null },
+        )
+      }
+      return { name, placement, box: boxes[name] }
+    })
+    for (const { name, placement, box } of placements) {
+      if (box) layout.set(name, { ...placement, box: { ...box } })
+    }
+  })
+  const frames = await frameRecords(root, page.project, page.name)
+  return frames.filter((frame) => names.includes(frame.name))
+}
+
+function sameBox(a: Box, b: Box): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  )
+}
+
 /** Moves a frame to `index` in the page's stacking order, 0 at the bottom, clamped. */
 export async function orderFrame(
   root: string,
@@ -460,11 +514,20 @@ async function frameRecord(
   page: string,
   name: string,
 ): Promise<FrameRecord> {
-  const { pages } = await readPageOrder(join(root, project))
-  const record = await scanPage(root, project, page, pages.indexOf(page))
-  const frame = record.frames.find((candidate) => candidate.name === name)
-  if (!frame) throw new Error(`Frame ${name} vanished from ${record.ref}.`)
+  const frame = (await frameRecords(root, project, page)).find(
+    (candidate) => candidate.name === name,
+  )
+  if (!frame) throw new Error(`Frame ${name} vanished from ${project}/${page}.`)
   return frame
+}
+
+async function frameRecords(
+  root: string,
+  project: string,
+  page: string,
+): Promise<FrameRecord[]> {
+  const { pages } = await readPageOrder(join(root, project))
+  return (await scanPage(root, project, page, pages.indexOf(page))).frames
 }
 
 function pageDir(frame: ResolvedRef): string {
