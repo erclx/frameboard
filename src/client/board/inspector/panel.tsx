@@ -7,6 +7,7 @@ import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 import { useAuthor } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
+import { ClaimAvatars } from '../claims/avatars'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { useSelection } from '../selection'
@@ -26,6 +27,8 @@ export function InspectorPanel() {
   const framing = useMode(
     (state) => state.mode === 'edit' && state.tool === 'frame',
   )
+  const listeners = useLive((state) => state.listeners)
+  const claims = useLive((state) => state.claims)
   const page = useSelection((state) => state.page)
   const refs = useSelection((state) => state.frames)
   const shown = useLive((state) =>
@@ -42,7 +45,10 @@ export function InspectorPanel() {
       className="flex h-full min-w-0 flex-col bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-        <AvatarMenu name={name} />
+        <span className="flex items-center">
+          <AvatarMenu name={name} />
+          <ClaimAvatars listeners={listeners} claims={claims} />
+        </span>
         <ZoomControl />
       </div>
       {framing ? (

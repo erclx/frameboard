@@ -51,6 +51,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   )
   const reloads = useLive((state) => state.reloads)
   const findings = useLive((state) => state.findings)
+  const claims = useLive((state) => state.claims)
   const focus = useLive((state) => state.focus)
   const clearFocus = useCallback(() => liveStore.setState({ focus: null }), [])
   const hideUi = useMode((state) => state.hideUi)
@@ -110,6 +111,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
                 page={current}
                 reloads={reloads}
                 findings={findings}
+                claims={claims}
                 focus={focus}
                 onFocused={clearFocus}
               />

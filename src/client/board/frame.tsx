@@ -1,12 +1,15 @@
+import { cn } from 'cn'
 import { Lock, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
+import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { ClaimTag } from './claims/tag'
 import { renderedHash } from './frame-dom'
 import { usePendingBox } from './geometry/write'
 import { useMode } from './mode'
@@ -23,6 +26,8 @@ interface FrameProps {
   version: number
   /** The frame's check findings, marked on its label when there are any. */
   findings?: readonly Finding[]
+  /** The session holding the frame, drawn as a dashed outline and a tag in Edit. */
+  claim?: Claim
 }
 
 /**
@@ -36,6 +41,7 @@ export const Frame = memo(function Frame({
   live,
   version,
   findings,
+  claim,
 }: FrameProps) {
   // A released move holds its place until the board carries it back.
   const { x, y, width, height } = usePendingBox(frame.ref) ?? frame.box
@@ -119,15 +125,26 @@ export const Frame = memo(function Frame({
     }
   }, [playing, live])
 
+  // Play shows the frames as they ship, so a claim draws nothing there.
+  const claimed = claim && !playing ? claim : undefined
+
   return (
     <div
       data-frame={frame.ref}
       data-selected={selected || undefined}
-      className="absolute"
+      data-claimed={claimed ? true : undefined}
+      className={cn(
+        'absolute',
+        claimed &&
+          'outline-[1.5px] outline-offset-3 outline-claim outline-dashed motion-safe:animate-claim-outline',
+      )}
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
       <div
-        className="absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label text-muted-foreground [transform:scale(calc(1/var(--zoom,1)))]"
+        className={cn(
+          'absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label [transform:scale(calc(1/var(--zoom,1)))]',
+          claimed ? 'text-claim' : 'text-muted-foreground',
+        )}
         style={{ maxWidth: `calc(${width}px * var(--zoom, 1))` }}
         title={frame.name}
       >
@@ -140,6 +157,7 @@ export const Frame = memo(function Frame({
           />
         ) : null}
         <span className="truncate">{frame.name}</span>
+        {claimed ? <ClaimTag claim={claimed} /> : null}
         {findings && findings.length > 0 ? (
           <FindingsMark findings={findings} />
         ) : null}

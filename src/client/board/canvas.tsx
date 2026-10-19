@@ -7,6 +7,7 @@ import { TAB_ID } from '@/client/live/socket'
 import { liveStore } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 import type { Finding } from '@/shared/records/check'
+import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
@@ -44,6 +45,8 @@ interface CanvasProps {
   reloads: Readonly<Record<string, number>>
   /** Check findings by frame ref, absent meaning none. */
   findings?: Readonly<Record<string, readonly Finding[]>>
+  /** The live claims by frame ref, absent meaning nobody holds the frame. */
+  claims?: Readonly<Record<string, Claim>>
   /** A frame to bring into view, as `show` asks, once it is on this page. */
   focus?: string | null
   /** Called once the view has started toward `focus`. */
@@ -62,6 +65,7 @@ export function Canvas({
   page,
   reloads,
   findings,
+  claims,
   focus,
   onFocused,
 }: CanvasProps) {
@@ -327,6 +331,7 @@ export function Canvas({
                 live={live?.has(frame.ref) ?? false}
                 version={reloads[frame.ref] ?? 0}
                 findings={findings?.[frame.ref]}
+                claim={claims?.[frame.ref]}
               />
             ))}
             <SelectionOverlay frames={frames} />
