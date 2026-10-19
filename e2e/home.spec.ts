@@ -1,4 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { expect, type Page, test } from '@playwright/test'
+
+import {
+  copyFixtureBoard,
+  type FixtureBoard,
+} from '../test/support/fixture-board'
+import { type BoardServer, serveBoard } from './support/board-server'
+
+const UNDO = 'ControlOrMeta+KeyZ'
 
 test('home page loads', async ({ page }) => {
   await page.goto('/')
@@ -11,4 +22,70 @@ test('reduced motion reaches the page', async ({ page }) => {
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
   expect(isReduced).toBe(true)
+})
+
+test.describe('projects by hand from the home view', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const at = (path: string) => join(board.root, path)
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  /** Opens home through a ticket and waits for New project to light, which needs write access. */
+  async function openAsWriter(page: Page): Promise<void> {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/`)
+    await expect(
+      page.getByRole('button', { name: 'New project' }),
+    ).not.toHaveAttribute('aria-disabled')
+  }
+
+  /** The card of `name` alone, never a copy whose name starts with it. */
+  function card(page: Page, name: string) {
+    return page.getByRole('link', { name: new RegExp(`^${name}(?![-\\w])`) })
+  }
+
+  async function runFromMenu(page: Page, name: string, item: string) {
+    await card(page, name).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: item }).click()
+  }
+
+  test('creates, renames, duplicates, and deletes a project, and undo restores the delete', async ({
+    page,
+  }) => {
+    const asset = readFileSync(at('studio/assets/dot.svg'))
+    await openAsWriter(page)
+
+    await page.getByRole('button', { name: 'New project' }).click()
+    await expect(
+      page.getByRole('textbox', { name: 'Rename project untitled' }),
+    ).toBeFocused()
+    await page.keyboard.type('brand')
+    await page.keyboard.press('Enter')
+    await expect(card(page, 'brand')).toBeVisible()
+    expect(existsSync(at('untitled'))).toBe(false)
+
+    await runFromMenu(page, 'studio', 'Duplicate')
+    await expect(card(page, 'studio-2')).toBeVisible()
+    expect(readFileSync(at('studio-2/assets/dot.svg'))).toEqual(asset)
+
+    await runFromMenu(page, 'studio', 'Delete')
+    await expect(card(page, 'studio')).toHaveCount(0)
+    expect(existsSync(at('studio'))).toBe(false)
+
+    await page.keyboard.press(UNDO)
+
+    await expect(card(page, 'studio')).toBeVisible()
+    expect(readFileSync(at('studio/assets/dot.svg'))).toEqual(asset)
+    await expect(page).toHaveURL(`${server.url}/`)
+  })
 })
