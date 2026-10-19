@@ -55,6 +55,7 @@ Owns the notes record, its anchors, and delivery to a listening session, apart f
 Project files sit beside the pages.
 
 - `assets/` in a project owns images, GIFs, video, SVG, fonts, and stylesheets that any frame may link, and is the one path outside a page a frame may use
+- A drop into `assets/` accepts images, GIF, SVG, video, audio, fonts, stylesheets, and scripts, and refuses HTML and the rest by name. A name is cut to the board's name rule, and one already taken in any letter case takes the first free `-2`, `-3`, so a drop never overwrites a file an agent wrote
 - Lock files, temp files, and dot folders hold generated files, and the watcher and scanner skip them
 - `.run/` holds the address file `serve` writes, with the URL, pid, and token at mode 0600, and ignores itself through its own `.gitignore`
 - `.run/board-key.json` holds the board key at mode 0600 and survives restarts, so a tab's cookie does too. Deleting it and restarting `serve` revokes every board's cookie
