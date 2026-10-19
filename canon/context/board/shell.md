@@ -18,7 +18,7 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 - A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
-- A right click or the menu key on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card. Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
+- A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card. Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
 - Opening a card opens its board, and the board's home button is the one way back and between projects
 
 ### `src/client/actions/`

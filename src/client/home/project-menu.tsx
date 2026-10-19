@@ -1,4 +1,9 @@
-import type { ReactElement, ReactNode } from 'react'
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+  useRef,
+} from 'react'
 
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import {
@@ -29,19 +34,52 @@ interface ProjectMenuProps {
 
 /**
  * The right-click menu of `canon/design/menus/home` on a project's card or
- * row, opened by the pointer or the menu key, its items running the
- * `project.*` actions on the project it opened from.
+ * row, its items running the `project.*` actions on the project it opened
+ * from. The menu key and Shift+F10 open it too, with focus on its first
+ * item, since Chromium on macOS fires no `contextmenu` for Shift+F10.
  */
 export function ProjectMenu({ project, trigger }: ProjectMenuProps) {
   const [open, rename, duplicate, remove] = useActions(IDS)
+  const content = useRef<HTMLDivElement>(null)
+  const openedByKey = useRef(false)
   return (
     <ContextMenu
       onOpenChange={(opened) => {
         if (opened) focusProject(project)
       }}
+      onOpenChangeComplete={(opened) => {
+        if (!opened || !openedByKey.current) return
+        openedByKey.current = false
+        content.current
+          ?.querySelector<HTMLElement>(
+            '[role="menuitem"]:not([aria-disabled="true"])',
+          )
+          ?.focus()
+      }}
     >
-      <ContextMenuTrigger render={trigger} />
-      <ContextMenuContent>
+      <ContextMenuTrigger
+        render={trigger}
+        onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+          const menuKey =
+            event.key === 'ContextMenu' ||
+            (event.key === 'F10' && event.shiftKey)
+          if (!menuKey) return
+          event.preventDefault()
+          openedByKey.current = true
+          // The menu opens where a contextmenu event lands, so this one lands
+          // inside the card, where a right click would.
+          const box = event.currentTarget.getBoundingClientRect()
+          event.currentTarget.dispatchEvent(
+            new MouseEvent('contextmenu', {
+              bubbles: true,
+              cancelable: true,
+              clientX: box.left + box.width / 2,
+              clientY: box.top + box.height / 2,
+            }),
+          )
+        }}
+      />
+      <ContextMenuContent ref={content}>
         <ContextMenuGroup>
           <ContextMenuLabel>Project</ContextMenuLabel>
           <MenuItem action={open} keyHint="↵" keyName="Enter">

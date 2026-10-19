@@ -408,6 +408,28 @@ describe('project actions', () => {
     ])
   })
 
+  it('opens the menu on Shift+F10 with focus on Open', async () => {
+    renderLive(PROJECTS, server().calls)
+
+    screen.getByRole('link', { name: /studio/ }).focus()
+    await userEvent.keyboard('{Shift>}{F10}{/Shift}')
+
+    await waitFor(() =>
+      expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveFocus(),
+    )
+  })
+
+  it('opens the menu on the menu key with focus on Open', async () => {
+    renderLive(PROJECTS, server().calls)
+
+    screen.getByRole('link', { name: /studio/ }).focus()
+    await userEvent.keyboard('{ContextMenu}')
+
+    await waitFor(() =>
+      expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveFocus(),
+    )
+  })
+
   it('returns focus to the card when Esc closes the menu', async () => {
     renderLive(PROJECTS, server().calls)
 
