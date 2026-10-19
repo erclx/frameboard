@@ -1,10 +1,7 @@
-import { basename } from 'node:path'
-
 import type { Command } from 'commander'
 
 import { resolveBoard } from '@/server/board/root'
 import { queuedFor } from '@/server/notes/store'
-import { FrameboardError } from '@/shared/errors'
 
 import { follow } from '../inbox/follow'
 import {
@@ -14,7 +11,7 @@ import {
   type CommonOptions,
   type ProgramContext,
 } from '../program'
-import { SESSION_ENV } from './notes'
+import { DEFAULT_AGENT, SESSION_ENV, sessionOf, tagFor } from '../session'
 
 interface InboxOptions extends CommonOptions {
   session?: string
@@ -38,20 +35,14 @@ export function registerInbox(program: Command, context: ProgramContext): void {
     )
 
   act<InboxOptions>(command, context, async (_args, options) => {
-    const session = options.session ?? process.env[SESSION_ENV]
-    if (!session) {
-      throw new FrameboardError(
-        'session-required',
-        `Pass --session <id>, or run inside Claude Code, which sets ${SESSION_ENV}.`,
-      )
-    }
+    const session = sessionOf(options.session)
 
     if (options.follow) {
       await follow({
         findRoot: () =>
           resolveBoard({ root: options.root, cwd: io.cwd }).catch(() => null),
         session,
-        tag: tagFor(session, io.cwd),
+        tag: tagFor(DEFAULT_AGENT, session, io.cwd),
         print: (note) =>
           io.stdout(
             options.json ? `${JSON.stringify(note)}\n` : `${note.line}\n`,
@@ -70,14 +61,4 @@ export function registerInbox(program: Command, context: ProgramContext): void {
           : queued.map((delivery) => delivery.line).join('\n'),
     }
   })
-}
-
-/**
- * What the board shows for a listener: the agent and its project folder, as
- * the design labels it. Two listeners sharing one read apart by their ids,
- * which the server decides.
- */
-function tagFor(session: string, cwd: string): string {
-  const folder = basename(process.env.CLAUDE_PROJECT_DIR || cwd)
-  return folder ? `claude · ${folder}` : session.slice(0, 6)
 }
