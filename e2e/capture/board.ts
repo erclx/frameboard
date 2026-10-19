@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import WebSocket from 'ws'
 
+import { scanBoard } from '@/server/board/scan'
+
 import type { CaptureCase } from './types'
 
 /**
@@ -299,6 +301,35 @@ async function asWriter(page: Page): Promise<void> {
   })
   const { data } = (await response.json()) as { data: { url: string } }
   await page.goto(data.url)
+}
+
+/**
+ * Waits until the preview server's browser sweep has landed every frame, so
+ * a label's findings pill holds its final count when the board is shot. The
+ * checks route answers once no recheck of the asked frames is pending.
+ */
+async function browserSwept(): Promise<void> {
+  const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
+  const root = 'test/fixtures/boards/basic'
+  const { token } = JSON.parse(
+    readFileSync(`${root}/.run/address.json`, 'utf8'),
+  ) as { token: string }
+  const board = await scanBoard(root)
+  const refs = board.projects.flatMap((project) =>
+    project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
+  )
+  const response = await fetch(`${base}/api/checks`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ refs }),
+    signal: AbortSignal.timeout(120_000),
+  })
+  if (!response.ok) {
+    throw new Error(`The browser sweep did not settle: ${response.status}`)
+  }
 }
 
 /**
@@ -626,7 +657,9 @@ const STATE_ONLY = ['320', '768', '1536']
  * six files. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
  * font, so the board cases also hold the label's check findings mark in both
- * themes, beside the hero taking its colors and faces from the tokens.
+ * themes, beside the hero taking its colors and faces from the tokens. Every
+ * board case waits on the server's browser sweep first, so the mark's count
+ * is settled.
  */
 export const BOARD_CASES: CaptureCase[] = [
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => [
@@ -644,12 +677,12 @@ export const BOARD_CASES: CaptureCase[] = [
       route: '/p/webapp/home',
       evidence: true,
       mask: [AVATAR],
-      setup: chosenTheme(theme),
+      setup: both(browserSwept, chosenTheme(theme)),
     },
   ]),
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => {
     const themed = (setup: (page: Page) => Promise<void>) =>
-      both(chosenTheme(theme), setup)
+      both(browserSwept, chosenTheme(theme), setup)
     return [
       {
         section: 'theme-tab',
