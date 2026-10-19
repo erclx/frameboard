@@ -5,8 +5,7 @@ import {
   type ProjectContext,
   readProjectContext,
 } from '@/server/checks/frame'
-import { TOKEN_FILE } from '@/server/checks/tokens'
-import { PROJECT_FILE } from '@/shared/board-files'
+import { PROJECT_FILE, TOKEN_FILE } from '@/shared/board-files'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 

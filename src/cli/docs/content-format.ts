@@ -1,4 +1,3 @@
-import { ADDRESS_FILE, RUN_FOLDER } from '@/server/address'
 import { LOCK_SUFFIX, TEMP_SUFFIX } from '@/server/board/json-record'
 import {
   DEFAULT_BOARD_FOLDER,
@@ -12,6 +11,7 @@ import {
   LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/server/board/scan'
+import { ADDRESS_FILE, RUN_FOLDER } from '@/shared/board-files'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_GAP,
