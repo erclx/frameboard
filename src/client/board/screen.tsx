@@ -10,6 +10,7 @@ import {
 } from '@/client/components/ui/resizable'
 import { liveStore, useLive } from '@/client/live/store'
 import { boardUrl } from '@/shared/board-urls'
+import type { FrameRecord } from '@/shared/records/list'
 
 import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
@@ -22,9 +23,12 @@ import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
+import { useStructureActions } from './structure/actions'
 
 /** Pixels, since a bare string reads as percent and 300 would mean 300 percent. */
 const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
+
+const NO_FRAMES: readonly FrameRecord[] = []
 
 /** Where the panel widths are remembered between loads. */
 const LAYOUT_ID = 'frameboard.board.panels'
@@ -57,8 +61,10 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     onlySaveAfterUserInteractions: true,
     storage: panelStorage,
   })
+  const current = record?.pages.find((candidate) => candidate.name === page)
   useBoardActions()
   usePageActions(project, page)
+  useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
@@ -67,7 +73,6 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   if (page === undefined && first) {
     return <Redirect to={boardUrl(project, first.name)} replace />
   }
-  const current = record.pages.find((candidate) => candidate.name === page)
 
   return (
     <ResizablePanelGroup

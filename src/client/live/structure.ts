@@ -1,6 +1,10 @@
-import type { PageRecord } from '@/shared/records/list'
+import type { FrameSizePreset } from '@/shared/frame-sizes'
+import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { writeBoard } from './write'
+
+/** A layout flag the board sets by hand, never written into the frame. */
+export type FrameFlag = 'hidden' | 'locked'
 
 /** What an undo or redo answers: the page to show, or null to stay, and the frames it touched. */
 export interface StepAnswer {
@@ -10,7 +14,8 @@ export interface StepAnswer {
 
 /**
  * The board's structure writes, one per route, each body mirroring the CLI
- * verb's flags. A page ref is `<project>/<page>`. `send` stands in for
+ * verb's flags. A page ref is `<project>/<page>` and a frame ref
+ * `<project>/<page>/<frame>`. `send` stands in for
  * `fetch`, as a test's server does.
  */
 export function createStructure(send: typeof fetch = fetch) {
@@ -27,6 +32,24 @@ export function createStructure(send: typeof fetch = fetch) {
       post<PageRecord>('/api/page/move', { ref, index }),
     deletePage: (ref: string) =>
       post<{ deleted: string }>('/api/page/delete', { ref }),
+    addFrame: (ref: string, size: FrameSizePreset, x: number, y: number) =>
+      post<FrameRecord>('/api/frame/add', { ref, size, x, y }),
+    duplicateFrames: (refs: readonly string[]) =>
+      post<FrameRecord[]>('/api/frame/duplicate', { refs }),
+    renameFrame: (ref: string, name: string) =>
+      post<FrameRecord>('/api/frame/rename', { ref, name }),
+    orderFrame: (ref: string, index: number) =>
+      post<FrameRecord>('/api/frame/order', { ref, index }),
+    flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
+      post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
+    deleteFrames: (refs: readonly string[]) =>
+      post<string[]>('/api/frame/delete', { refs }),
+    copyFrames: (refs: readonly string[]) =>
+      post<{ held: number }>('/api/clipboard/copy', { refs }),
+    cutFrames: (refs: readonly string[]) =>
+      post<{ held: number }>('/api/clipboard/cut', { refs }),
+    pasteFrames: (page: string) =>
+      post<FrameRecord[]>('/api/clipboard/paste', { ref: page }),
     undo: () => post<StepAnswer>('/api/undo', {}),
     redo: () => post<StepAnswer>('/api/redo', {}),
   }
