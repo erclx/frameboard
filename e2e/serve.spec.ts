@@ -36,9 +36,10 @@ test.describe('serve and show', () => {
     expect(server.data).toMatchObject({ reused: false, opened: false })
   })
 
-  test('reuses the server and its connected tab rather than opening one', async ({
+  test('reuses the server and its connected writing tab rather than opening one', async ({
     page,
   }) => {
+    await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/studio/home`)
     await expect(page.locator('[data-frame]')).toHaveCount(2)
 
