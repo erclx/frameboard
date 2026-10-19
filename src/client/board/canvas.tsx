@@ -3,12 +3,18 @@ import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { liveStore } from '@/client/live/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
 import { Frame } from './frame'
-import { useMode } from './mode'
+import { useGeometryActions } from './geometry/actions'
+import { attachGestures } from './geometry/gestures'
+import { SelectionOverlay } from './geometry/overlay'
+import { followPending } from './geometry/write'
+import { modeStore, useMode } from './mode'
+import { followSelection, selectionStore } from './selection'
 import { attachCanvas, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
@@ -50,6 +56,7 @@ export function Canvas({
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
+  const hitRef = useRef<HTMLDivElement>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
@@ -60,11 +67,13 @@ export function Canvas({
     () => page.frames.filter((frame) => !frame.hidden),
     [page.frames],
   )
-  // Read by the zoom effect for the first fit alone, so a frame change does not rebind zoom.
+  // Read by the zoom effect for the first fit and by the gestures at each
+  // press, so a frame change rebinds neither.
   const framesRef = useRef(frames)
   useLayoutEffect(() => {
     framesRef.current = frames
   }, [frames])
+  useGeometryActions(page.ref, frames)
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -80,6 +89,19 @@ export function Canvas({
       unknown
     >()
       .scaleExtent(SCALE_EXTENT)
+      // A primary-button drag pans under the Hand tool and in Play alone,
+      // since in Move it selects. The middle button and the wheel always pan.
+      .filter((event: MouseEvent | WheelEvent | TouchEvent) => {
+        if (event.type === 'wheel' || event.type.startsWith('touch')) {
+          return true
+        }
+        const { button, ctrlKey } = event as MouseEvent
+        if (ctrlKey) return false
+        const { mode, tool } = modeStore.getState()
+        return (
+          button === 1 || (button === 0 && (tool === 'hand' || mode === 'play'))
+        )
+      })
       .on('zoom', ({ transform: { x, y, k } }) => {
         clearTimeout(timer)
         layer.style.transform = `translate(${x}px, ${y}px) scale(${k})`
@@ -168,6 +190,17 @@ export function Canvas({
       zoomTo: (scale) => zoomer.scaleTo(selection, scale),
       fit: () =>
         moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport))),
+      fitTo: (boxes) =>
+        moveToRef.current?.(
+          fitView(
+            boxes.map((box) => ({ box })),
+            sizeOf(viewport),
+          ),
+        ),
+      panBy: (dx, dy) => {
+        const k = zoomTransform(viewport).k
+        zoomer.translateBy(selection, -dx / k, -dy / k)
+      },
     })
 
     return () => {
@@ -179,6 +212,34 @@ export function Canvas({
       selection.on('.zoom', null)
     }
   }, [page.ref])
+
+  useEffect(() => {
+    const stopSelection = followSelection(
+      selectionStore,
+      page.ref,
+      liveStore,
+      modeStore,
+    )
+    const stopPending = followPending(liveStore)
+    return () => {
+      stopPending()
+      stopSelection()
+    }
+  }, [page.ref])
+
+  // Play lifts the hit layer, so the gestures bind again each time it returns.
+  useEffect(() => {
+    const viewport = viewportRef.current
+    const layer = layerRef.current
+    const hit = hitRef.current
+    if (!viewport || !layer || !hit) return
+    return attachGestures(hit, {
+      viewport,
+      layer,
+      page: page.ref,
+      frames: () => framesRef.current,
+    })
+  }, [page.ref, playing])
 
   // Waits for the frame to reach this page's record, since a shown frame can
   // arrive a batch ahead of the board that holds it.
@@ -209,9 +270,9 @@ export function Canvas({
         data-layer
         className="absolute top-0 left-0 origin-top-left"
       >
-        {page.layoutError
-          ? null
-          : frames.map((frame) => (
+        {page.layoutError ? null : (
+          <>
+            {frames.map((frame) => (
               <Frame
                 key={frame.ref}
                 frame={frame}
@@ -220,11 +281,16 @@ export function Canvas({
                 findings={findings?.[frame.ref]}
               />
             ))}
+            <SelectionOverlay frames={frames} />
+          </>
+        )}
       </div>
-      {/* Covers every frame in Edit, so a wheel or drag over one pans the
-          canvas rather than reaching its page. Play lifts it, so a click
-          reaches the frame. */}
-      {playing ? null : <div data-hit-layer className="absolute inset-0" />}
+      {/* Covers every frame in Edit, so a press over one reaches the
+          gestures rather than its page. Play lifts it, so a click reaches
+          the frame. */}
+      {playing ? null : (
+        <div ref={hitRef} data-hit-layer className="absolute inset-0" />
+      )}
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (

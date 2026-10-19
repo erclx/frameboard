@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -219,6 +219,108 @@ describe('apiRoutes', () => {
       })
 
       expect(response.status).toBe(401)
+    })
+  })
+
+  describe('POST /api/frames/boxes', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+
+    function layout() {
+      return readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8')
+    }
+
+    it('sets the boxes and answers the frames in the envelope', async () => {
+      const response = await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { frames: [{ name: 'hero', box: { ...HERO, x: 40 } }] },
+      })
+      expect(JSON.parse(layout()).frames.hero).toMatchObject({ x: 40 })
+    })
+
+    it('refuses a request with no token and writes nothing', async () => {
+      const bytes = layout()
+
+      const response = await post(
+        '/api/frames/boxes',
+        {
+          page: 'studio/home',
+          boxes: { hero: { ...HERO, x: 40 } },
+          expected: { hero: HERO },
+        },
+        null,
+      )
+
+      expect(response.status).toBe(401)
+      expect(layout()).toBe(bytes)
+    })
+
+    it.each([
+      ['no expected boxes', { page: 'studio/home', boxes: { hero: HERO } }],
+      [
+        'a fractional position',
+        {
+          page: 'studio/home',
+          boxes: { hero: { ...HERO, x: 0.5 } },
+          expected: { hero: HERO },
+        },
+      ],
+      [
+        'a zero width',
+        {
+          page: 'studio/home',
+          boxes: { hero: { ...HERO, width: 0 } },
+          expected: { hero: HERO },
+        },
+      ],
+    ])('refuses %s as usage', async (_case, body) => {
+      const response = await post('/api/frames/boxes', body)
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'usage' },
+      })
+    })
+
+    it('answers 409 when the stored box moved since the edit began', async () => {
+      const response = await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: { ...HERO, x: 7 } },
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-layout' },
+      })
+    })
+
+    it('answers 423 for a locked frame', async () => {
+      const page = JSON.parse(layout())
+      page.frames.hero.locked = true
+      writeFileSync(
+        join(board.root, 'studio/home/layout.json'),
+        JSON.stringify(page),
+      )
+
+      const response = await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(response.status).toBe(423)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-locked' },
+      })
     })
   })
 

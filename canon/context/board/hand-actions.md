@@ -21,6 +21,14 @@ Owns selection, the keys, and the menus on the canvas.
 - Alt+A, D, W, S align, Alt+H and Alt+V center, and Ctrl+Alt+H and Ctrl+Alt+V distribute, each writing the page's layout alone
 - Cmd+Shift+H hides, Cmd+Shift+L locks, and Cmd+Shift+C copies a frame as a PNG in the theme on screen, rendered by the browser `capture` uses
 
+### `src/client/board/geometry/`
+
+Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom.
+
+- `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
+- `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
+- `write.ts` holds a released box as pending until the server's next board carries it, and sends every hand move or resize through `POST /api/frames/boxes`
+
 ### `src/server/`
 
 Owns the edit history undo reads.
@@ -35,3 +43,4 @@ Owns the edit history undo reads.
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, because that would write `display` into the frame, which is layout
 - A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
+- A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one

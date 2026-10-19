@@ -111,6 +111,6 @@ The favicon files sit beside the app.
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
-- Edit covers the frames with a hit layer so a drag pans, and Play lifts it, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
+- Edit covers the frames with a hit layer so a press reaches the selection gestures rather than a frame's page, and a primary drag pans only under the Hand tool. Play lifts the layer, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
 - `cn` reads the custom `text-body` step as a color and keeps a kit part's `text-sm` beside it, so a kit part takes Tailwind's `text-xs` for the chrome's 12px

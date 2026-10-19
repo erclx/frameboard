@@ -2,11 +2,14 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { Hono } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod'
 
 import { readAuthor } from '@/server/author'
+import { setBoxes } from '@/server/board/frames'
 import { scanBoard } from '@/server/board/scan'
 import { readTokenTable } from '@/server/look/token-table'
+import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
 
 import { type Access, requireWriter } from '../access/guard'
@@ -23,6 +26,39 @@ export interface BoardActions {
 }
 
 const showBodySchema = z.object({ ref: z.string().min(1).max(1024) })
+
+/** More frames than any page holds, so a body cannot grow without bound. */
+const MAX_BOXES = 1000
+
+const boxSchema = z.object({
+  x: z.int(),
+  y: z.int(),
+  width: z.int().min(1),
+  height: z.int().min(1),
+})
+
+const boxesSchema = z
+  .record(z.string().min(1).max(256), boxSchema)
+  .refine((boxes) => Object.keys(boxes).length <= MAX_BOXES)
+
+const boxesBodySchema = z.object({
+  page: z.string().min(1).max(1024),
+  boxes: boxesSchema,
+  expected: boxesSchema,
+})
+
+const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
+  usage: 400,
+  'invalid-name': 400,
+  'project-required': 400,
+  'project-not-found': 404,
+  'page-not-found': 404,
+  'frame-not-found': 404,
+  'stale-layout': 409,
+  'frame-locked': 423,
+  'layout-invalid': 422,
+  'lock-timeout': 503,
+}
 
 /**
  * The board's JSON API, each route answering in the CLI's `{ ok, data }`
@@ -82,6 +118,41 @@ export function apiRoutes(
     }
     const tabs = actions.show(body.data.ref)
     return c.json({ ok: true, data: { ref: body.data.ref, tabs } })
+  })
+
+  app.post('/api/frames/boxes', authorized, async (c) => {
+    const body = boxesBodySchema.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'usage',
+            message:
+              'Send { "page": "<page ref>", "boxes": { <frame>: box }, "expected": { <frame>: box } }.',
+          },
+        },
+        400,
+      )
+    }
+    const { page, boxes, expected } = body.data
+    try {
+      const frames = await setBoxes(root, page, boxes, expected, { cwd: root })
+      return c.json({ ok: true, data: { frames } })
+    } catch (error) {
+      if (!(error instanceof FrameboardError)) throw error
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+          },
+        },
+        STATUS[error.code] ?? 500,
+      )
+    }
   })
 
   return app

@@ -2,7 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 
-import { chromium, type Page } from '@playwright/test'
+import { chromium, expect, type Page } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -31,6 +31,43 @@ interface Surface {
   route: string
   /** Drives the state the reference shows once the route has loaded. */
   act?: (page: Page) => Promise<void>
+  /** Opens the board through a ticket first, so the tab may write, as a move needs. */
+  writer?: boolean
+}
+
+/** The center of a frame on screen. */
+async function frameCenter(
+  page: Page,
+  ref: string,
+): Promise<{ x: number; y: number }> {
+  const box = await page.locator(`[data-frame="${ref}"]`).boundingBox()
+  if (!box) throw new Error(`No ${ref} on screen`)
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
+
+/** A canvas point on screen, through the layer's transform. */
+async function canvasPoint(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<{ x: number; y: number }> {
+  return page.locator('[data-layer]').evaluate(
+    (layer: HTMLElement, point) => {
+      const origin = layer.getBoundingClientRect()
+      const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+      return { x: origin.left + point.x * k, y: origin.top + point.y * k }
+    },
+    { x, y },
+  )
+}
+
+async function clickFrames(page: Page, refs: readonly string[]) {
+  for (const [index, ref] of refs.entries()) {
+    const at = await frameCenter(page, ref)
+    if (index > 0) await page.keyboard.down('Shift')
+    await page.mouse.click(at.x, at.y)
+    if (index > 0) await page.keyboard.up('Shift')
+  }
 }
 
 const SURFACES: Surface[] = [
@@ -60,6 +97,55 @@ const SURFACES: Surface[] = [
     act: (page) => page.getByRole('button', { name: 'Play' }).click(),
   },
   { reference: 'canvas/empty', board: 'empty-page', route: '/p/studio/page-1' },
+  {
+    reference: 'inspector/frame',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    act: async (page) => {
+      await clickFrames(page, ['webapp/home/hero'])
+      await expect(
+        page.getByRole('textbox', { name: 'X position' }),
+      ).toBeEnabled()
+    },
+  },
+  {
+    reference: 'inspector/multi',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    act: (page) => clickFrames(page, ['webapp/home/hero', 'webapp/home/about']),
+  },
+  {
+    reference: 'canvas/marquee',
+    board: 'basic',
+    route: '/p/webapp/home',
+    act: async (page) => {
+      const from = await canvasPoint(page, -60, -80)
+      const to = await canvasPoint(page, 1700, 400)
+      await page.mouse.move(from.x, from.y)
+      await page.mouse.down()
+      await page.mouse.move(to.x, to.y, { steps: 4 })
+    },
+  },
+  {
+    reference: 'canvas/snap',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    // The hero's top lands 3 px below the about frame's and snaps up to it.
+    act: async (page) => {
+      await clickFrames(page, ['webapp/home/hero'])
+      await expect(
+        page.getByRole('textbox', { name: 'X position' }),
+      ).toBeEnabled()
+      const from = await canvasPoint(page, 700, 450)
+      const to = await canvasPoint(page, 660, 453)
+      await page.mouse.move(from.x, from.y)
+      await page.mouse.down()
+      await page.mouse.move(to.x, to.y, { steps: 4 })
+    },
+  },
   {
     reference: 'menus/avatar',
     board: 'basic',
@@ -138,6 +224,7 @@ try {
       }
       const { server } = boards.get(surface.board) ?? {}
       if (!server) throw new Error(`No server for the ${surface.board} board`)
+      if (surface.writer) await page.goto(await server.ticketUrl())
       await page.goto(`${server.url}${surface.route}`)
       await page.waitForLoadState('networkidle')
       if (surface.board === 'empty') {

@@ -71,6 +71,28 @@ function wheel(container: HTMLElement, init: WheelEventInit) {
   )
 }
 
+/** A press on the hit layer, one move, and a release, as a mouse sends them. */
+function drag(
+  container: HTMLElement,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  init: MouseEventInit = {},
+) {
+  const hit = container.querySelector('[data-hit-layer]')
+  const event = (type: string, at: { x: number; y: number }) =>
+    new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: at.x,
+      clientY: at.y,
+      ...init,
+    })
+  hit?.dispatchEvent(event('mousedown', from))
+  window.dispatchEvent(event('mousemove', to))
+  window.dispatchEvent(event('mouseup', to))
+}
+
 describe('Canvas', () => {
   afterEach(() => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
@@ -158,6 +180,49 @@ describe('Canvas', () => {
       'translate(270px, 150px) scale(1)',
     )
     expect(commits).toBe(before)
+  })
+
+  it('pans the layer on a primary drag under the Hand tool', () => {
+    modeStore.setState({ tool: 'hand' })
+    const { container } = renderCanvas(
+      page('studio/hand', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    drag(container, { x: 400, y: 300 }, { x: 430, y: 350 })
+
+    expect(layerOf(container).style.transform).toBe(
+      'translate(330px, 250px) scale(1)',
+    )
+  })
+
+  it('pans the layer on a middle-button drag under the Move tool', () => {
+    const { container } = renderCanvas(
+      page('studio/middle', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    drag(container, { x: 400, y: 300 }, { x: 430, y: 350 }, { button: 1 })
+
+    expect(layerOf(container).style.transform).toBe(
+      'translate(330px, 250px) scale(1)',
+    )
+  })
+
+  it('leaves the view in place on a primary drag over empty canvas in Move', () => {
+    const { container } = renderCanvas(
+      page('studio/marquee', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    drag(container, { x: 780, y: 580 }, { x: 700, y: 500 })
+
+    expect(layerOf(container).style.transform).toBe(
+      'translate(300px, 200px) scale(1)',
+    )
   })
 
   it('zooms on a wheel with ctrlKey, as a pinch sends it', () => {

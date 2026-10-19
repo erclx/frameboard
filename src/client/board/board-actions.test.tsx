@@ -1,0 +1,127 @@
+import { renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { isEnabled, useActions } from '@/client/actions/registry'
+import { liveStore, receiveBoard } from '@/client/live/store'
+import { boardOf, frameOf, pageOf } from '@/test/board'
+
+import { useBoardActions } from './board-actions'
+import type { Box } from './geometry/box'
+import { modeStore } from './mode'
+import { clear, select, selectionStore } from './selection'
+import { attachCanvas } from './view'
+
+const HERO = frameOf('hero', { box: { x: 10, y: 20, width: 300, height: 200 } })
+const ABOUT = frameOf('about', {
+  box: { x: 400, y: 20, width: 300, height: 200 },
+})
+
+const IDS = [
+  'view.pan.left',
+  'view.pan.rightFar',
+  'view.zoomToSelection',
+  'frame.copyPng',
+] as const
+
+function setup() {
+  const pans: [number, number][] = []
+  const fits: (readonly Box[])[] = []
+  const detach = attachCanvas({
+    zoomBy: () => {},
+    zoomTo: () => {},
+    fit: () => {},
+    fitTo: (boxes) => fits.push(boxes),
+    panBy: (dx, dy) => pans.push([dx, dy]),
+  })
+  const { result, unmount } = renderHook(() => {
+    useBoardActions()
+    return useActions(IDS)
+  })
+  const action = (id: (typeof IDS)[number]) => {
+    const found = result.current[IDS.indexOf(id)]
+    if (!found) throw new Error(`no action ${id}`)
+    return found
+  }
+  return {
+    pans,
+    fits,
+    action,
+    done: () => {
+      unmount()
+      detach()
+    },
+  }
+}
+
+describe('useBoardActions', () => {
+  let done = () => {}
+
+  beforeEach(() => {
+    receiveBoard(liveStore, boardOf(pageOf([HERO, ABOUT])))
+  })
+
+  afterEach(() => {
+    done()
+    clear(selectionStore)
+    modeStore.setState({ mode: 'edit' })
+  })
+
+  it('pans by 40 px on an arrow with nothing selected', () => {
+    const board = setup()
+    done = board.done
+
+    board.action('view.pan.left').run()
+
+    expect(board.pans).toEqual([[-40, 0]])
+  })
+
+  it('pans by 200 px on Shift with an arrow', () => {
+    const board = setup()
+    done = board.done
+
+    board.action('view.pan.rightFar').run()
+
+    expect(board.pans).toEqual([[200, 0]])
+  })
+
+  it('leaves the arrows to the nudge while a frame is selected', () => {
+    const board = setup()
+    done = board.done
+
+    select(selectionStore, 'studio/home', [HERO.ref])
+
+    expect(isEnabled(board.action('view.pan.left'))).toBe(false)
+  })
+
+  it('zooms to the boxes of the selected frames', () => {
+    const board = setup()
+    done = board.done
+    select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+
+    board.action('view.zoomToSelection').run()
+
+    expect(board.fits).toEqual([[HERO.box, ABOUT.box]])
+  })
+
+  it('copies a PNG only with exactly one frame selected', () => {
+    const board = setup()
+    done = board.done
+
+    select(selectionStore, 'studio/home', [HERO.ref])
+    const one = isEnabled(board.action('frame.copyPng'))
+    select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+    const two = isEnabled(board.action('frame.copyPng'))
+
+    expect([one, two]).toEqual([true, false])
+  })
+
+  it('zooms to nothing in Play', () => {
+    const board = setup()
+    done = board.done
+    select(selectionStore, 'studio/home', [HERO.ref])
+
+    modeStore.setState({ mode: 'play' })
+
+    expect(isEnabled(board.action('view.zoomToSelection'))).toBe(false)
+  })
+})

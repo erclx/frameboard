@@ -156,6 +156,24 @@ function summarize(name: string, { intervals, longFrames }: Sample) {
   return summary
 }
 
+/** Waits for all fifty frames to mount live and finish loading. */
+async function waitForLiveFrames(page: Page): Promise<void> {
+  await expect(page.locator('[data-layer] iframe')).toHaveCount(FRAME_COUNT, {
+    timeout: 30_000,
+  })
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('iframe')].every(
+            (iframe) => iframe.contentDocument?.readyState === 'complete',
+          ),
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+}
+
 test.describe('fifty live frames', () => {
   let parent: string
   let server: BoardServer
@@ -169,6 +187,58 @@ test.describe('fifty live frames', () => {
   test.afterAll(async () => {
     await server.stop()
     rmSync(parent, { recursive: true, force: true })
+  })
+
+  test('a frame drag within the smoothness bar', async ({ page }, testInfo) => {
+    // A writer's tab, since a tab that may not write never starts a move.
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/perf/grid`)
+    await waitForLiveFrames(page)
+
+    const frame = page.locator('[data-frame="perf/grid/frame-00"]')
+    const box = await frame.boundingBox()
+    if (!box) throw new Error('no frame-00 on the page')
+    const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    const leftOf = () =>
+      frame.evaluate(
+        (el) =>
+          `${(el as HTMLElement).style.left} ${(el as HTMLElement).style.top}`,
+      )
+    const before = await leftOf()
+    // The inspector's fields enable once the server grants this tab writes.
+    await page.mouse.click(from.x, from.y)
+    await expect(
+      page.getByRole('textbox', { name: 'X position' }),
+    ).toBeEnabled()
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await startRecording(page)
+
+    await takeSample(page)
+    let moved = before
+    for (
+      let start = Date.now(), step = 0;
+      Date.now() - start < GESTURE_MS;
+      step += 1
+    ) {
+      const swing = ((step % 120) - 60) * 2
+      await page.mouse.move(from.x + 60 + swing, from.y + swing / 2)
+      await nextFrame(page)
+      if (step === 30) moved = await leftOf()
+    }
+    const dragged = summarize('frame drag', await takeSample(page))
+    await page.mouse.up()
+
+    // The drag moved the frame, so the numbers measure a real move.
+    expect(moved).not.toBe(before)
+    await testInfo.attach('canvas-drag-perf.json', {
+      body: JSON.stringify(dragged, null, 2),
+      contentType: 'application/json',
+    })
+    expect(dragged.frames).toBeGreaterThan(0)
+    expect(dragged.p95).toBeLessThanOrEqual(P95_MAX_MS)
+    expect(dragged.slowShare).toBeLessThanOrEqual(SLOW_SHARE_MAX)
+    expect(dragged.longestLongFrame).toBeLessThanOrEqual(LONG_FRAME_MAX_MS)
   })
 
   test('pan and zoom within the smoothness bar', async ({ page }, testInfo) => {
