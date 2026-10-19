@@ -225,7 +225,7 @@ function readPhaseList(): PhaseList {
 
 function readDeclaredScripts(): Set<string> {
   if (!existsSync('package.json')) {
-    fail("No package.json here. Run 'bun init', then sync the stack again")
+    fail('No package.json here. Sync the stack to write one')
   }
   return new Set(
     Object.keys(asRecord(asRecord(readJson('package.json')).scripts)),
@@ -323,7 +323,7 @@ function checkMarkdownBans(): void {
     case 2:
       pipeOutput(output)
       fail(
-        'Markdown prose carries a banned character, or a relative link resolves to nothing on disk',
+        'Markdown prose carries a banned character, a relative link resolves to nothing on disk, or a gated path breaks a density limit',
       )
       break
     case 3:

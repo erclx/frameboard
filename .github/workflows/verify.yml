@@ -9,6 +9,9 @@ concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   static-checks:
     name: 🔍 Static Checks
