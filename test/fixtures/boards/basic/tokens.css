@@ -1,0 +1,22 @@
+:root {
+  --primary: #4f46e5;
+  --secondary: #0ea5e9;
+  --accent: #f59e0b;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --font-text: Geist, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --space: 16px;
+}
+
+[data-theme='dark'] {
+  --primary: #818cf8;
+  --secondary: #38bdf8;
+  --accent: #fbbf24;
+  --surface: #111827;
+  --text: #f9fafb;
+  --muted: #9ca3af;
+}

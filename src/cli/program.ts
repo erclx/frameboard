@@ -18,6 +18,8 @@ import { registerShow } from './commands/show'
 
 // The bundle lands at dist/cli.js, so the built client sits beside it.
 const CLIENT_DIR = fileURLToPath(new URL('./client', import.meta.url))
+// The build copies the faces every frame imports beside the client.
+const FACES_DIR = fileURLToPath(new URL('./faces', import.meta.url))
 
 export interface CliIo {
   stdout: (text: string) => void
@@ -47,6 +49,7 @@ export interface ProgramContext {
   /** Commander's own error text goes nowhere under `--json`, which prints one envelope instead. */
   json: boolean
   clientDir?: string
+  facesDir?: string
 }
 
 export function parsePort(value: string): number {
@@ -136,18 +139,20 @@ export function createProgram(context: ProgramContext): Command {
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
+  const facesDir = context.facesDir ?? FACES_DIR
   registerServe(program, {
     ...context,
     clientDir: context.clientDir ?? CLIENT_DIR,
+    facesDir,
   })
   registerShow(program, context)
   registerList(program, context)
   registerProject(program, context)
   registerPage(program, context)
-  registerFrame(program, context)
+  registerFrame(program, { ...context, facesDir })
   registerEdit(program, context)
   registerCheck(program, context)
-  registerCapture(program, context)
+  registerCapture(program, { ...context, facesDir })
   registerDocs(program, context)
 
   return program

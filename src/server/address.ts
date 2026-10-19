@@ -2,14 +2,11 @@ import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { ADDRESS_FILE, RUN_FOLDER } from '@/shared/board-files'
 import { type AddressFile, addressFileSchema } from '@/shared/records/address'
 import { version } from '@/shared/version'
 
 import { isAlive, isCode, readRecord, writeRecord } from './board/json-record'
-
-/** Generated files beside the board, ignored by git through their own `.gitignore`. */
-export const RUN_FOLDER = '.run'
-export const ADDRESS_FILE = 'address.json'
 
 /** How long a live server has to answer the health check. */
 const HEALTH_TIMEOUT_MS = 500
@@ -25,12 +22,15 @@ export function newAddress({
   port,
   pid = process.pid,
   now = new Date(),
+  tokens,
 }: {
   root: string
   host: string
   port: number
   pid?: number
   now?: Date
+  /** The `--tokens` sheet, recorded so the hook and `check` read it while this server runs. */
+  tokens?: string
 }): AddressFile {
   return {
     version: 1,
@@ -42,6 +42,7 @@ export function newAddress({
     root,
     startedAt: now.toISOString(),
     frameboard: version,
+    ...(tokens === undefined ? {} : { tokens }),
   }
 }
 

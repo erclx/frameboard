@@ -1,4 +1,3 @@
-import { ADDRESS_FILE, RUN_FOLDER } from '@/server/address'
 import { LOCK_SUFFIX, TEMP_SUFFIX } from '@/server/board/json-record'
 import {
   DEFAULT_BOARD_FOLDER,
@@ -12,6 +11,8 @@ import {
   LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/server/board/scan'
+import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
+import { FACES } from '@/shared/faces'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_GAP,
@@ -22,6 +23,7 @@ import {
   NAME_PATTERN,
   RESERVED_PAGE_NAMES,
 } from '@/shared/names'
+import { LOOK_MARKER } from '@/shared/theme'
 
 /** The content format `docs` prints, built from the constants the verbs run on. */
 export function contentFormat() {
@@ -53,5 +55,12 @@ export function contentFormat() {
       `Moving or resizing a frame writes ${LAYOUT_FILE} alone and never the frame file.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
+    look: [
+      `The board's ${TOKEN_FILE} holds the design tokens every project shares, and a project's own ${TOKEN_FILE} overrides it. serve --tokens <path> stands in for the board's sheet, resolved against the working folder and recorded as tokens in ${RUN_FOLDER}/${ADDRESS_FILE} while that server runs.`,
+      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
+      `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own. A project adds other faces in its ${ASSETS_FOLDER}/ folder.`,
+      "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
+      `A change to a token sheet reloads every frame it reaches.`,
+    ],
   }
 }

@@ -143,6 +143,52 @@ describe('reloadRefs', () => {
       await refsFor('studio/home/hero.html', 'studio/home/styles.css'),
     ).toEqual(['studio/home/hero', 'studio/home/mobile'])
   })
+
+  describe('token sheets', () => {
+    const EVERY_FRAME = [
+      'other/home/card',
+      'studio/home/hero',
+      'studio/home/mobile',
+      'studio/pricing/plans',
+    ]
+
+    beforeEach(() => {
+      mkdirSync(join(board.root, 'other/home'), { recursive: true })
+      writeFileSync(join(board.root, 'other/home/card.html'), '<p>card</p>')
+    })
+
+    it("reloads every frame when the board's token sheet changed", async () => {
+      expect(await refsFor('tokens.css')).toEqual(EVERY_FRAME)
+    })
+
+    it("reloads only the project's frames when its token sheet changed", async () => {
+      expect(await refsFor('other/tokens.css')).toEqual(['other/home/card'])
+    })
+
+    it('reloads every frame when the --tokens sheet outside the board changed', async () => {
+      const tokens = join(board.root, '../brand.css')
+
+      const refs = reloadRefs(
+        board.root,
+        [tokens],
+        await scanBoard(board.root),
+        tokens,
+      )
+
+      expect(refs).toEqual(EVERY_FRAME)
+    })
+
+    it("reloads nothing for the board's own tokens.css while --tokens stands in for it", async () => {
+      const refs = reloadRefs(
+        board.root,
+        [join(board.root, 'tokens.css')],
+        await scanBoard(board.root),
+        join(board.root, '../brand.css'),
+      )
+
+      expect(refs).toEqual([])
+    })
+  })
 })
 
 describe('watchBoard', () => {
@@ -222,5 +268,30 @@ describe('watchBoard', () => {
 
     await expect.poll(() => batches.length, { timeout: SEEN_MS }).toBe(1)
     expect(late).toEqual([])
+  })
+})
+
+describe('watchBoard with a sheet outside the board', () => {
+  let board: FixtureBoard
+  let watcher: BoardWatcher
+
+  afterEach(async () => {
+    await watcher.close()
+    board.cleanup()
+  })
+
+  it('reports a write to the outside sheet in the board batches', async () => {
+    board = copyFixtureBoard('live')
+    const tokens = join(board.root, '../brand.css')
+    writeFileSync(tokens, ':root {}')
+    watcher = await watchBoard(board.root, [tokens])
+    const batches: string[][] = []
+    watcher.onBatch((paths) => batches.push(paths))
+
+    writeFileSync(tokens, ':root { --fg: teal }')
+
+    await expect
+      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .toContain(tokens)
   })
 })

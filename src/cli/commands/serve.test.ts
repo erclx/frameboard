@@ -1,10 +1,12 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -135,6 +137,65 @@ describe('serve', () => {
     expect(ticket).not.toBe('')
     expect(run.stdout).not.toContain(ticket)
     expect(run.stdout).not.toContain(key)
+  })
+
+  describe('--tokens', () => {
+    beforeEach(() => {
+      mkdirSync(join(cwd, 'brand'))
+      writeFileSync(join(cwd, 'brand/tokens.css'), ':root { --fg: teal }')
+    })
+
+    it('resolves a relative sheet against the working folder and records it', async () => {
+      const run = await serve('--no-open', '--tokens', 'brand/tokens.css')
+
+      const sheet = join(cwd, 'brand/tokens.css')
+      expect(run.json().data).toMatchObject({ reused: false, tokens: sheet })
+      expect(
+        JSON.parse(
+          readFileSync(join(cwd, '.frameboard/.run/address.json'), 'utf8'),
+        ),
+      ).toMatchObject({ tokens: sheet })
+    })
+
+    it('refuses a sheet that does not exist and starts nothing', async () => {
+      const run = await serve('--no-open', '--tokens', 'missing.css')
+
+      expect(run.exitCode).toBe(3)
+      expect(run.json()).toMatchObject({
+        ok: false,
+        error: { code: 'tokens-not-found' },
+      })
+      expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+    })
+
+    it('refuses a folder given as the sheet and starts nothing', async () => {
+      const run = await serve('--no-open', '--tokens', 'brand')
+
+      expect(run.exitCode).toBe(3)
+      expect(run.json()).toMatchObject({
+        ok: false,
+        error: { code: 'tokens-not-found' },
+      })
+      expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+    })
+
+    it("reports the running server's sheet on a reuse given another one", async () => {
+      await serve('--no-open', '--tokens', 'brand/tokens.css')
+      writeFileSync(join(cwd, 'other.css'), ':root {}')
+
+      const second = await serve('--no-open', '--tokens', 'other.css')
+
+      expect(second.json().data).toMatchObject({
+        reused: true,
+        tokens: join(cwd, 'brand/tokens.css'),
+      })
+    })
+
+    it('reports no sheet when none was given', async () => {
+      const run = await serve('--no-open')
+
+      expect(run.json().data).toMatchObject({ tokens: null })
+    })
   })
 
   it('removes its address file when stopped', async () => {

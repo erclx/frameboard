@@ -21,7 +21,11 @@ const HOSTNAME = '127.0.0.1'
 
 export interface StartOptions {
   clientDir: string
+  /** The folder holding the faces every frame imports. */
+  facesDir: string
   root: string
+  /** The absolute `--tokens` sheet standing in for the board's `tokens.css`, when given. */
+  tokens?: string
   port: number
   /** Fail on a taken port rather than falling back to one the OS assigns. */
   strictPort?: boolean
@@ -103,7 +107,9 @@ export async function startServer({
 
 async function listen({
   clientDir,
+  facesDir,
   root,
+  tokens,
   port,
   openUrl,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
@@ -128,7 +134,7 @@ async function listen({
     scanning = run.catch(() => {})
     return run
   }
-  const findings = createBoardFindings(root)
+  const findings = createBoardFindings(root, tokens ?? null)
   const hub = createHub({
     tabs,
     port: boundPort,
@@ -143,6 +149,8 @@ async function listen({
   })
   const app = createApp({
     clientDir,
+    facesDir,
+    tokens,
     root,
     port: boundPort,
     tickets,
@@ -178,9 +186,10 @@ async function listen({
 
   // Every frame is checked once at start, ahead of any hello's findings.
   void inTurn(async () => findings.update(await scanBoard(root), 'all'))
-  const watcher = await watchBoard(root)
+  const watcher = await watchBoard(root, tokens ? [tokens] : [])
   watcher.onBatch(
-    (paths) => void inTurn(() => pushBatch(root, paths, hub, findings)),
+    (paths) =>
+      void inTurn(() => pushBatch(root, tokens ?? null, paths, hub, findings)),
   )
 
   return {
@@ -209,6 +218,7 @@ async function listen({
  */
 async function pushBatch(
   root: string,
+  tokens: string | null,
   paths: string[],
   hub: LiveHub,
   findings: BoardFindings,
@@ -221,7 +231,7 @@ async function pushBatch(
     return
   }
   hub.broadcast({ type: 'board', data: board })
-  const refs = reloadRefs(root, paths, board)
+  const refs = reloadRefs(root, paths, board, tokens)
   if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
   const changed = findings.update(board, paths)
   if (Object.keys(changed).length > 0) {

@@ -51,14 +51,19 @@ export function checkFrameIn(
   ]
 }
 
-/** The project's config and token sheets, read once for every frame a call checks. */
+/**
+ * The project's config and token sheets, read once for every frame a call
+ * checks. `boardSheet` is a running server's own `--tokens` sheet, which the
+ * address file names to every other caller.
+ */
 export function readProjectContext(
   root: string,
   project: string,
+  boardSheet?: string | null,
 ): ProjectContext {
   return {
     config: readConfig(root, project),
-    tokens: tokenSheets(root, project),
+    tokens: tokenSheets(root, project, boardSheet),
   }
 }
 

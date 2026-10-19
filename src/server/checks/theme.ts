@@ -117,7 +117,11 @@ function definesTheme(node: Node): boolean {
  * count, and neither does a `url()` whose file name reads as a color.
  */
 export function setsLiteralColor(property: string, value: string): boolean {
-  if (!COLOR_PROPERTIES.test(property)) return false
+  return COLOR_PROPERTIES.test(property) && isLiteralColor(value)
+}
+
+/** Whether a value holds a color of its own, outside any `var()` or `url()`. */
+export function isLiteralColor(value: string): boolean {
   const own = stripFunctions(value, ['var', 'url'])
   return (
     HEX_COLOR.test(own) || COLOR_FUNCTION.test(own) || NAMED_COLOR.test(own)

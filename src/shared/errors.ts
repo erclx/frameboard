@@ -12,6 +12,7 @@ export const EXIT_CODES = {
   'page-not-found': 3,
   'frame-not-found': 3,
   'server-not-running': 3,
+  'tokens-not-found': 3,
   'name-taken': 4,
   'layout-invalid': 5,
   'project-file-invalid': 5,

@@ -19,7 +19,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - `check` exits 8 with `check-findings` and the result in the error's details, so a script branches on the exit alone
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `outside-link`, `network`, and `missing-file`
 - Selector rules read the cascade, being `default-font`, `generic-font`, and `theme`, plus `allowed-fonts` and `uppercase` only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`
-- The cascade matches with css-select and weighs with `@bramus/specificity`, resolves custom properties per element, and reads token sheets ahead of the frame's own
+- The cascade matches with css-select and weighs with `@bramus/specificity`, resolves custom properties per element, and reads token sheets ahead of the frame's own, the board sheet being the `--tokens` sheet the address file records while a server runs
 
 ### `src/cli/`
 
@@ -34,7 +34,7 @@ Owns the hook's entry, bundled to `dist/hook.js` beside the CLI.
 Owns the findings the board holds between watch batches.
 
 - The server sends the whole findings map after the board on hello, then a partial map per batch where an empty list clears a frame
-- A change to a token sheet or a project's `project.json` rechecks every frame it reaches, although neither reloads a frame
+- A change to a token sheet rechecks and reloads every frame it reaches, and a change to a project's `project.json` rechecks them without a reload
 
 ### Other folders
 
@@ -47,5 +47,4 @@ The plugin side of the hook sits outside `src/`.
 - `frame.ts` holds `checkFrame` apart from the runner in `run.ts`, because the runner reads the board scanner and its zod classic import would double the hook's start
 - The browser rules, being clipping, scrollbars, minimum font size, and the viewport confirmation, run in a warm browser on the server and never in the hook
 - The browser comparison in `e2e/checks.spec.ts` never sets `color-scheme` itself, since that flips the default text color around a frame's fixed literal color and reads as two themes
-- A `--tokens` sheet outside the board is invisible to the hook until its path is recorded on disk, so the hook and the label can disagree on a frame leaning on it
 - A project rule kind is added only when a real frame needs it, since a config language that grows ahead of need becomes the design tool Frameboard is not

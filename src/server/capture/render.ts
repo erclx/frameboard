@@ -1,12 +1,8 @@
 import type { Browser, Page } from 'playwright-core'
 
-import { frameUrl } from '@/shared/board-urls'
+import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { assertFontsPresent } from './fonts'
-
-export type Theme = 'light' | 'dark'
-
-export const THEMES: readonly Theme[] = ['light', 'dark']
 
 /** How long a frame has to load before its capture fails. */
 const LOAD_TIMEOUT_MS = 10_000
@@ -44,8 +40,8 @@ export async function openFrame(
   const close = () => context.close()
   try {
     const page = await context.newPage()
-    await page.addInitScript(setThemeOnLoad, theme)
-    await page.goto(new URL(frameUrl(ref), baseUrl).href, {
+    // The frame route's injected script sets the root's theme from the URL.
+    await page.goto(new URL(frameThemeUrl(ref, theme), baseUrl).href, {
       timeout: LOAD_TIMEOUT_MS,
     })
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
@@ -55,14 +51,6 @@ export async function openFrame(
     await close()
     throw error
   }
-}
-
-// The attributes the board sets on a frame's root, set once `<html>` exists.
-function setThemeOnLoad(theme: Theme): void {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.documentElement.dataset.theme = theme
-    document.documentElement.style.colorScheme = theme
-  })
 }
 
 /** Renders a frame to PNG bytes in a theme, as the server's PNG route asks. */

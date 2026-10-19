@@ -5,7 +5,6 @@ import {
   type ProjectContext,
   readProjectContext,
 } from '@/server/checks/frame'
-import { TOKEN_FILE } from '@/server/checks/tokens'
 import { PROJECT_FILE } from '@/shared/board-files'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
@@ -26,8 +25,14 @@ export interface BoardFindings {
   ) => Record<string, Finding[]>
 }
 
-/** The board's check findings, held between batches so a hello needs no check. */
-export function createBoardFindings(root: string): BoardFindings {
+/**
+ * The board's check findings, held between batches so a hello needs no
+ * check. `tokens` is the server's `--tokens` sheet, null for none.
+ */
+export function createBoardFindings(
+  root: string,
+  tokens: string | null = null,
+): BoardFindings {
   const held = new Map<string, Finding[]>()
 
   return {
@@ -38,7 +43,9 @@ export function createBoardFindings(root: string): BoardFindings {
         if (!frames.has(ref)) held.delete(ref)
       }
       const refs =
-        paths === 'all' ? [...frames.keys()] : recheckRefs(root, paths, board)
+        paths === 'all'
+          ? [...frames.keys()]
+          : recheckRefs(root, paths, board, tokens)
       const contexts = new Map<string, ProjectContext>()
       const changed: Record<string, Finding[]> = {}
       for (const ref of refs) {
@@ -46,7 +53,7 @@ export function createBoardFindings(root: string): BoardFindings {
         if (!frame) continue
         let context = contexts.get(frame.project)
         if (!context) {
-          context = readProjectContext(root, frame.project)
+          context = readProjectContext(root, frame.project, tokens)
           contexts.set(frame.project, context)
         }
         const findings = checkOne(root, frame, context)
@@ -61,23 +68,23 @@ export function createBoardFindings(root: string): BoardFindings {
 
 /**
  * The frames a batch changed the findings of: every frame whose rendered
- * inputs changed, plus every frame a token sheet or a project's check config
- * reaches, which the reload rule leaves alone since neither renders by itself.
+ * inputs changed, token sheets among them, plus every frame a project's
+ * check config reaches, which the reload rule leaves alone since it renders
+ * nothing.
  */
 export function recheckRefs(
   root: string,
   paths: string[],
   board: ListResult,
+  tokens: string | null = null,
 ): string[] {
-  const refs = new Set(reloadRefs(root, paths, board))
+  const refs = new Set(reloadRefs(root, paths, board, tokens))
   for (const path of paths) {
     const parts = relative(root, path).split(sep)
     const [first, second] = parts
-    const everyProject = parts.length === 1 && first === TOKEN_FILE
-    const oneProject =
-      parts.length === 2 && (second === TOKEN_FILE || second === PROJECT_FILE)
+    if (parts.length !== 2 || second !== PROJECT_FILE) continue
     for (const project of board.projects) {
-      if (!everyProject && !(oneProject && project.name === first)) continue
+      if (project.name !== first) continue
       for (const page of project.pages) {
         for (const frame of page.frames) refs.add(frame.ref)
       }

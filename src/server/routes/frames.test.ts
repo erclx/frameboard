@@ -1,7 +1,9 @@
-import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { tokenSheetPaths } from '@/server/checks/tokens'
 
 import {
   copyFixtureBoard,
@@ -23,7 +25,9 @@ describe('frameRoutes', () => {
   })
 
   function get(path: string) {
-    return frameRoutes(board.root).request(path)
+    return frameRoutes(board.root, {
+      sheets: (project) => tokenSheetPaths(board.root, project, null),
+    }).request(path)
   }
 
   it('serves a frame file as html that is never cached', async () => {
@@ -56,13 +60,104 @@ describe('frameRoutes', () => {
 
     const response = await get('/frames/studio/home/two%20words.html')
 
-    expect(await response.text()).toBe('<p>two</p>')
+    expect(await response.text()).toMatch(/<\/script><p>two<\/p>$/)
   })
 
   it('answers 404 for a file that does not exist', async () => {
     const response = await get('/frames/studio/home/missing.html')
 
     expect(response.status).toBe(404)
+  })
+
+  describe('the injected look', () => {
+    function frameFile(path: string): string {
+      return readFileSync(join(board.root, path), 'utf8')
+    }
+
+    it("splices the look first into the frame's head and keeps every other byte", async () => {
+      const response = await get('/frames/studio/home/hero.html')
+
+      const served = await response.text()
+      const head = /<style data-frameboard>.*?<\/script>/s.exec(served)?.[0]
+      expect(head).toBeDefined()
+      expect(served.indexOf(head ?? '')).toBe(
+        served.indexOf('<head>') + '<head>'.length,
+      )
+      expect(served.replace(head ?? '', '')).toBe(
+        frameFile('studio/home/hero.html'),
+      )
+    })
+
+    it('imports every face, then the board sheet, then the project sheet', async () => {
+      writeFileSync(join(board.root, 'tokens.css'), ':root { --fg: black }')
+      writeFileSync(
+        join(board.root, 'studio/tokens.css'),
+        ':root { --fg: navy }',
+      )
+
+      const served = await (await get('/frames/studio/home/hero.html')).text()
+
+      expect(importsOf(served)).toEqual([
+        '/frameboard/faces/geist/index.css',
+        '/frameboard/faces/geist-mono/index.css',
+        '/frameboard/faces/caveat/index.css',
+        '/frameboard/tokens.css',
+        '/frames/studio/tokens.css',
+      ])
+    })
+
+    it('imports no token sheet that does not exist', async () => {
+      const served = await (await get('/frames/studio/home/hero.html')).text()
+
+      expect(importsOf(served)).not.toContain('/frameboard/tokens.css')
+      expect(importsOf(served)).not.toContain('/frames/studio/tokens.css')
+    })
+
+    it.each([
+      ['a stylesheet in a page folder', 'studio/home/styles.css'],
+      ['an svg in the assets folder', 'studio/assets/dot.svg'],
+    ])('serves %s byte for byte', async (_case, path) => {
+      const response = await get(`/frames/${path}`)
+
+      expect(await response.text()).toBe(frameFile(path))
+    })
+
+    it('serves an html file in the assets folder byte for byte', async () => {
+      writeFileSync(join(board.root, 'studio/assets/embed.html'), '<p>e</p>')
+
+      const response = await get('/frames/studio/assets/embed.html')
+
+      expect(await response.text()).toBe('<p>e</p>')
+    })
+
+    it("serves the project's token sheet as css", async () => {
+      writeFileSync(
+        join(board.root, 'studio/tokens.css'),
+        ':root { --fg: navy }',
+      )
+
+      const response = await get('/frames/studio/tokens.css')
+
+      expect(response.headers.get('content-type')).toBe(
+        'text/css; charset=utf-8',
+      )
+      expect(await response.text()).toBe(':root { --fg: navy }')
+    })
+
+    it('answers 404 for a project token sheet that does not exist', async () => {
+      const response = await get('/frames/studio/tokens.css')
+
+      expect(response.status).toBe(404)
+    })
+
+    it('serves a frame in a page named tokens', async () => {
+      mkdirSync(join(board.root, 'studio/tokens'))
+      writeFileSync(join(board.root, 'studio/tokens/swatch.html'), '<p>s</p>')
+
+      const response = await get('/frames/studio/tokens/swatch.html')
+
+      expect(await response.text()).toContain('<p>s</p>')
+    })
   })
 
   describe('refusals', () => {
@@ -115,5 +210,22 @@ describe('frameRoutes', () => {
 
       expect(response.status).toBe(404)
     })
+
+    it('refuses a project token sheet that is a symlink out of the project', async () => {
+      symlinkSync(
+        join(board.root, '.run/address.json'),
+        join(board.root, 'studio/tokens.css'),
+      )
+
+      const response = await get('/frames/studio/tokens.css')
+
+      expect(response.status).toBe(404)
+    })
   })
 })
+
+function importsOf(html: string): string[] {
+  return [...html.matchAll(/@import url\("([^"]+)"\)/g)].map(
+    (match) => match[1] ?? '',
+  )
+}

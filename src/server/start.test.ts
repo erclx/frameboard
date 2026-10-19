@@ -41,6 +41,7 @@ describe('startServer', () => {
   async function start(port: number, strictPort?: boolean) {
     const server = await startServer({
       clientDir,
+      facesDir: clientDir,
       root,
       port,
       strictPort,
@@ -97,6 +98,7 @@ describe('startServer access', () => {
   async function start() {
     const server = await startServer({
       clientDir,
+      facesDir: clientDir,
       root,
       port: 0,
       openUrl: () => {},
@@ -170,6 +172,7 @@ describe('startServer live socket', () => {
     board = copyFixtureBoard('live')
     server = await startServer({
       clientDir,
+      facesDir: clientDir,
       root: board.root,
       port: 0,
       openUrl: () => {},

@@ -63,6 +63,7 @@ describe('projects', () => {
       expect(readdirSync(board.root).sort()).toEqual([
         'board.json',
         'marketing',
+        'tokens.css',
         'webapp',
       ])
     })

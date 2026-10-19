@@ -1,10 +1,16 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { readAuthor } from '@/server/author'
 import { scanBoard } from '@/server/board/scan'
+import { readTokenTable } from '@/server/look/token-table'
+import { isValidName } from '@/shared/names'
 
 import { type Access, requireWriter } from '../access/guard'
+import type { FrameLook } from './frames'
 
 /** What the write routes do, handed in by the server that owns the tabs and the socket. */
 export interface BoardActions {
@@ -23,13 +29,37 @@ const showBodySchema = z.object({ ref: z.string().min(1).max(1024) })
  * envelope. The write routes need a writer, being the address file's token or
  * the cookie of a tab `serve` opened, so a page on another origin cannot call them.
  */
-export function apiRoutes(root: string, actions: BoardActions): Hono {
+export function apiRoutes(
+  root: string,
+  actions: BoardActions,
+  look: FrameLook,
+): Hono {
   const app = new Hono()
   const authorized = requireWriter(actions.access)
 
   app.get('/api/board', async (c) =>
     c.json({ ok: true, data: await scanBoard(root) }),
   )
+
+  app.get('/api/projects/:project/tokens', (c) => {
+    const project = c.req.param('project')
+    if (!isValidName(project) || !existsSync(join(root, project))) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'project-not-found',
+            message: `No project named ${project} in this board.`,
+          },
+        },
+        404,
+      )
+    }
+    return c.json({
+      ok: true,
+      data: readTokenTable(root, look.sheets(project)),
+    })
+  })
 
   app.get('/api/author', async (c) =>
     c.json({ ok: true, data: { name: await readAuthor(root) } }),

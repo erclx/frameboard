@@ -12,10 +12,10 @@ import {
   type CapturedImage,
   captureFrameImages,
 } from '@/server/capture/images'
-import { type Theme, THEMES } from '@/server/capture/render'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
 import type { PageRecord } from '@/shared/records/list'
+import { type Theme, THEMES } from '@/shared/theme'
 
 import {
   act,
@@ -34,9 +34,9 @@ type CaptureOptions = CommonOptions & {
 
 export function registerCapture(
   program: Command,
-  context: ProgramContext,
+  context: ProgramContext & { facesDir: string },
 ): void {
-  const { io } = context
+  const { io, facesDir } = context
   const command = addVerb(
     program,
     'capture',
@@ -95,16 +95,19 @@ export function registerCapture(
         }
       }
       const out = await outOf()
-      const images = await withFrameHost(root, 'capture', (browser, baseUrl) =>
-        options.composite
-          ? captureComposite(browser, {
-              baseUrl,
-              page: { ref: page.ref, project: page.project, name: page.name },
-              frames,
-              themes,
-              out,
-            })
-          : captureFrameImages(browser, { baseUrl, frames, themes, out }),
+      const images = await withFrameHost(
+        { root, facesDir },
+        'capture',
+        (browser, baseUrl) =>
+          options.composite
+            ? captureComposite(browser, {
+                baseUrl,
+                page: { ref: page.ref, project: page.project, name: page.name },
+                frames,
+                themes,
+                out,
+              })
+            : captureFrameImages(browser, { baseUrl, frames, themes, out }),
       )
       return {
         data: { images } satisfies CaptureResult,
@@ -114,8 +117,11 @@ export function registerCapture(
 
     const frame = await readFrame(root, ref ?? '', refOptions)
     const out = await outOf()
-    const images = await withFrameHost(root, 'capture', (browser, baseUrl) =>
-      captureFrameImages(browser, { baseUrl, frames: [frame], themes, out }),
+    const images = await withFrameHost(
+      { root, facesDir },
+      'capture',
+      (browser, baseUrl) =>
+        captureFrameImages(browser, { baseUrl, frames: [frame], themes, out }),
     )
     return { data: { images } satisfies CaptureResult, human: describe(images) }
   })

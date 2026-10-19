@@ -18,6 +18,7 @@ import { PlayBanner } from './chrome/play-banner'
 import { Toolbar } from './chrome/toolbar'
 import { InspectorPanel } from './inspector/panel'
 import { LeftPanel } from './left-panel/panel'
+import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
 
 /** Pixels, since a bare string reads as percent and 300 would mean 300 percent. */
@@ -79,7 +80,11 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
             {...PANEL}
             groupResizeBehavior="preserve-pixel-size"
           >
-            <LeftPanel project={record} page={page ?? ''} />
+            <LeftPanel
+              project={record}
+              page={page ?? ''}
+              theme={<ThemeTab project={record.name} />}
+            />
           </ResizablePanel>
           <ResizableHandle aria-label="Resize the left panel" />
         </>

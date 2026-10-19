@@ -17,8 +17,12 @@ export interface BoardServer {
  * Starts the built CLI's `serve` on its own port over `root`, for a spec that
  * writes files and so must not share the committed fixture the default
  * `webServer` serves. Resolves once the one `--json` envelope has printed.
+ * `flags` adds to `serve`'s own, such as `--tokens <path>`.
  */
-export function serveBoard(root: string): Promise<BoardServer> {
+export function serveBoard(
+  root: string,
+  flags: readonly string[] = [],
+): Promise<BoardServer> {
   const child = spawn('node', [
     CLI,
     'serve',
@@ -28,6 +32,7 @@ export function serveBoard(root: string): Promise<BoardServer> {
     '0',
     '--no-open',
     '--json',
+    ...flags,
   ])
   return new Promise((done, fail) => {
     let stdout = ''

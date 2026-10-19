@@ -26,6 +26,7 @@ describe('createApp', () => {
   function request(url: string) {
     return createApp({
       clientDir,
+      facesDir: clientDir,
       root: '/board',
       port: () => PORT,
       tickets: createTickets(),
@@ -67,7 +68,11 @@ describe('createApp', () => {
   it('answers the health check with the board root', async () => {
     const response = await request(`http://127.0.0.1:${PORT}/api/health`)
 
-    expect(await response.json()).toEqual({ version, root: '/board' })
+    expect(await response.json()).toEqual({
+      version,
+      root: '/board',
+      tokens: null,
+    })
   })
 
   describe('host guard', () => {

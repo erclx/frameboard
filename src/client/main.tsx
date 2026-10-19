@@ -10,6 +10,8 @@ import { bindKeys } from './actions/registry'
 import { App } from './app'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
+import { registerThemeActions } from './theme/actions'
+import { connectTheme, themeStore, windowThemeHost } from './theme/store'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('Missing #root element')
@@ -22,6 +24,9 @@ connectLive(liveStore, {
     liveStore.setState({ focus: ref })
   },
 })
+connectTheme(themeStore, windowThemeHost(window))
+// Both the home and the board draw the toggle, so the actions live as long as the app.
+registerThemeActions()
 bindKeys(window)
 createRoot(root).render(
   <StrictMode>

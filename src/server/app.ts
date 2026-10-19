@@ -7,7 +7,7 @@ import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
-import { frameRoutes } from './routes/frames'
+import { servedFrames } from './routes/look'
 import { pngRoutes } from './routes/png'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
@@ -50,6 +50,10 @@ export interface AppOptions {
   tickets: Tickets
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
+  /** The folder holding the faces every frame imports. */
+  facesDir: string
+  /** The `--tokens` sheet standing in for the board's `tokens.css`, when given. */
+  tokens?: string
 }
 
 export function createApp({
@@ -59,20 +63,27 @@ export function createApp({
   actions,
   tickets,
   renderFrame,
+  facesDir,
+  tokens,
 }: AppOptions): Hono {
   const app = new Hono()
+  // The server knows its own sheet, so it never reads the address file for it.
+  const given = tokens ?? null
 
   app.use('*', async (c, next) => {
     await next()
     c.header('x-frameboard-version', version)
   })
   app.use('*', boardHostGuard(port))
-  // A second serve reads the root back to tell this board's server from another.
-  app.get('/api/health', (c) => c.json({ version, root }))
+  const frames = servedFrames(root, { facesDir, tokens: given })
+
+  // A second serve reads the root back to tell this board's server from
+  // another, and the sheet to report the one this server was started with.
+  app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
-  app.route('/', apiRoutes(root, actions))
+  app.route('/', apiRoutes(root, actions, frames.look))
   app.route('/', pngRoutes(root, renderFrame))
-  app.route('/', frameRoutes(root))
+  app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(

@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { readFrame } from '@/server/board/frames'
-import type { RenderFrame, Theme } from '@/server/capture/render'
+import type { RenderFrame } from '@/server/capture/render'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
+import type { Theme } from '@/shared/theme'
 
 const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   usage: 400,

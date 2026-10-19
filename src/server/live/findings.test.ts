@@ -125,6 +125,23 @@ describe('recheckRefs', () => {
     expect(refs.sort()).toEqual(['other/home/hero', 'site/home/hero'])
   })
 
+  it('rechecks every frame when the --tokens sheet changes', async () => {
+    board = writeBoard({
+      'site/home/hero.html': CLEAN,
+      'other/home/hero.html': CLEAN,
+    })
+    const tokens = join(board.root, '../brand.css')
+
+    const refs = recheckRefs(
+      board.root,
+      [tokens],
+      await scanBoard(board.root),
+      tokens,
+    )
+
+    expect(refs.sort()).toEqual(['other/home/hero', 'site/home/hero'])
+  })
+
   it('rechecks nothing for a layout write', async () => {
     board = writeBoard({ 'site/home/hero.html': CLEAN })
 

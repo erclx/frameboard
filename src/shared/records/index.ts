@@ -11,6 +11,7 @@ import {
   pageRecordSchema,
   projectRecordSchema,
 } from './list'
+import { tokenTableSchema } from './tokens'
 
 /** Every record by name, the one place a later row registers a record for `docs`. */
 export const RECORDS: Record<string, z.core.$ZodType> = {
@@ -26,4 +27,5 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   checkResult: checkResultSchema,
   capture: captureResultSchema,
   fit: fitResultSchema,
+  tokens: tokenTableSchema,
 }
