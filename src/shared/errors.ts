@@ -46,6 +46,9 @@ export const EXIT_CODES = {
   // An undo or redo refused, writing nothing.
   'undo-overtaken': 12,
   'nothing-to-undo': 12,
+  // Another live session holds the frame, named in the error's details.
+  'frame-claimed': 4,
+  'claims-invalid': 5,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
