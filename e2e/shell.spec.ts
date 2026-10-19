@@ -75,6 +75,37 @@ test.describe('the board shell', () => {
   })
 })
 
+test.describe('the command palette', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('jumps to a frame on another page, selected and in view', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/home`)
+    await expect(page.locator('[data-frame="studio/home/hero"]')).toBeVisible()
+
+    await page.keyboard.press('ControlOrMeta+k')
+    await page.getByRole('combobox').fill('plans')
+    await page.keyboard.press('Enter')
+
+    const plans = page.locator('[data-frame="studio/pricing/plans"]')
+    await expect(page).toHaveURL(/\/p\/studio\/pricing$/)
+    await expect(plans).toHaveAttribute('data-selected', /.*/)
+    await expect(plans).toBeInViewport({ ratio: 0.9 })
+  })
+})
+
 test.describe('Play', () => {
   let board: FixtureBoard
   let server: BoardServer

@@ -11,6 +11,7 @@ import { App } from './app'
 import { registerHistoryActions } from './history/actions'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
+import { registerPaletteActions } from './palette/actions'
 import { registerThemeActions } from './theme/actions'
 import { connectTheme, themeStore, windowThemeHost } from './theme/store'
 
@@ -29,6 +30,7 @@ connectTheme(themeStore, windowThemeHost(window))
 // Both the home and the board draw the toggle and undo, so the actions live as long as the app.
 registerThemeActions()
 registerHistoryActions()
+registerPaletteActions()
 bindKeys(window)
 createRoot(root).render(
   <StrictMode>

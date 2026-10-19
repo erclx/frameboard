@@ -195,6 +195,7 @@ export function geometryActions(context: GeometryContext): Action[] {
       id: 'selection.all',
       label: 'Select all',
       group: 'selection',
+      command: { label: 'Select all' },
       keys: ['$mod+KeyA'],
       enabled: () => editing() && context.frames().length > 0,
       run: () =>
@@ -247,6 +248,7 @@ export function geometryActions(context: GeometryContext): Action[] {
       id,
       label,
       group: 'arrange',
+      command: { label },
       keys: [key],
       enabled: movable(2),
       run: () => arrange((boxes) => align(boxes, alignment)),
@@ -255,6 +257,7 @@ export function geometryActions(context: GeometryContext): Action[] {
       id,
       label,
       group: 'arrange',
+      command: { label },
       keys: [key],
       enabled: movable(3),
       run: () => arrange((boxes) => distribute(boxes, axis)),

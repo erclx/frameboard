@@ -118,6 +118,21 @@ describe('bindKeys', () => {
     expect(move.runs).toBe(0)
   })
 
+  it('leaves a key pressed inside an open dialog to the dialog', async () => {
+    const move = action('tool.move', { keys: ['v'] })
+    register(move)
+    bind(window)
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.tabIndex = -1
+    document.body.append(dialog)
+    dialog.focus()
+
+    await userEvent.keyboard('v')
+
+    expect(move.runs).toBe(0)
+  })
+
   it('runs a key pressed with no element focused', () => {
     const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
     register(exitPlay)

@@ -122,6 +122,62 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Opens an overlay with its key once the board has drawn, and types `query`
+ * into the palette's search. Like `pressOnLoad`, it waits in an init script,
+ * since `setup` runs before the harness navigates, and it reads the platform
+ * to send the modifier `$mod` means there.
+ */
+function openOverlayOnLoad(
+  overlay: 'commands' | 'shortcuts',
+  query = '',
+): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ kind, text, frames }) => {
+        let left = frames
+        const key = (init: KeyboardEventInit) =>
+          window.dispatchEvent(
+            new KeyboardEvent('keydown', { bubbles: true, ...init }),
+          )
+        const type = () => {
+          const field = document.querySelector<HTMLInputElement>(
+            'input[role="combobox"]',
+          )
+          if (!field) {
+            if (--left > 0) requestAnimationFrame(type)
+            return
+          }
+          const set = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value',
+          )?.set
+          set?.call(field, text)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        const open = () => {
+          if (!document.querySelector('[data-layer] [data-frame]')) {
+            if (--left > 0) requestAnimationFrame(open)
+            else console.error('No canvas to open the overlay over')
+            return
+          }
+          if (kind === 'shortcuts') {
+            key({ key: '?', code: 'Slash', shiftKey: true })
+            return
+          }
+          const mac = /Mac/.test(navigator.platform)
+          key({ key: 'k', code: 'KeyK', metaKey: mac, ctrlKey: !mac })
+          if (text) requestAnimationFrame(type)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(open),
+        )
+      },
+      { kind: overlay, text: query, frames: GESTURE_FRAMES },
+    )
+  }
+}
+
 /** A pointer gesture in canvas pixels, which the init script maps to the screen through the layer's transform. */
 interface CanvasGesture {
   /** Frames clicked in turn before the gesture, Shift held from the second on. */
@@ -602,6 +658,24 @@ export const BOARD_CASES: CaptureCase[] = [
         route: '/p/webapp/home',
         excludeViewports: STATE_ONLY,
         setup: themed(pressOnLoad('from git user.name$|^Account$')),
+      },
+      {
+        section: 'palette',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(openOverlayOnLoad('commands', 'ho')),
+      },
+      {
+        section: 'shortcuts',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(openOverlayOnLoad('shortcuts')),
       },
       {
         section: 'select-one',

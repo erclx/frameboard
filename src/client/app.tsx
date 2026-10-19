@@ -7,6 +7,8 @@ import { Toaster } from './components/ui/toast'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Home } from './home/home'
 import { useLive } from './live/store'
+import { CommandPalette } from './palette/commands'
+import { ShortcutsSheet } from './palette/shortcuts'
 
 /** Every icon at the one stroke weight the references draw. */
 const ICON_STROKE = 1.6
@@ -18,6 +20,8 @@ export function App() {
       <TooltipProvider delay={500}>
         <Toaster>
           <Shell />
+          <CommandPalette />
+          <ShortcutsSheet />
         </Toaster>
       </TooltipProvider>
     </LucideProvider>
