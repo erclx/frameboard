@@ -17,6 +17,19 @@ async function center(locator: Locator): Promise<{ x: number; y: number }> {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 }
 
+/**
+ * Opens the home page through a ticket and waits for the server to grant
+ * this tab writes, which the inspector's fields show by enabling once the
+ * unlocked hero is selected.
+ */
+async function openAsWriter(page: Page, server: BoardServer): Promise<void> {
+  await page.goto(await server.ticketUrl())
+  await page.goto(`${server.url}/p/studio/home`)
+  const hero = await center(page.locator('[data-frame="studio/home/hero"]'))
+  await page.mouse.click(hero.x, hero.y)
+  await expect(page.getByRole('textbox', { name: 'X position' })).toBeEnabled()
+}
+
 async function drag(
   page: Page,
   from: { x: number; y: number },
@@ -47,8 +60,7 @@ test.describe('frame geometry by hand', () => {
 
   test('a drag writes the layout once, on release', async ({ page }) => {
     server = await serveBoard(board.root)
-    await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/studio/home`)
+    await openAsWriter(page, server)
     const mobile = page.locator(MOBILE)
     await expect(mobile).toBeVisible()
     const from = await center(mobile)
@@ -70,8 +82,7 @@ test.describe('frame geometry by hand', () => {
     page,
   }) => {
     server = await serveBoard(board.root)
-    await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/studio/home`)
+    await openAsWriter(page, server)
     await expect(page.locator(MOBILE)).toBeVisible()
     const canvas = await page.locator('[data-canvas]').boundingBox()
     if (!canvas) throw new Error('The canvas has no box on screen')
@@ -103,8 +114,7 @@ test.describe('frame geometry by hand', () => {
       'utf8',
     )
     server = await serveBoard(board.root)
-    await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/studio/home`)
+    await openAsWriter(page, server)
     const mobile = page.locator(MOBILE)
     await expect(mobile).toBeVisible()
     const before = await mobile.boundingBox()
