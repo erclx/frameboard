@@ -5,6 +5,7 @@ import { Command, InvalidArgumentError } from 'commander'
 import { resolveBoard } from '@/server/board/root'
 import { version } from '@/shared/version'
 
+import { registerCapture } from './commands/capture'
 import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
@@ -146,6 +147,7 @@ export function createProgram(context: ProgramContext): Command {
   registerFrame(program, context)
   registerEdit(program, context)
   registerCheck(program, context)
+  registerCapture(program, context)
   registerDocs(program, context)
 
   return program

@@ -63,6 +63,7 @@ describe('docs', () => {
       'frame lock',
       'edit',
       'check',
+      'capture',
       'docs',
     ])
   })

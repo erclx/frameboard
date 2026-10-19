@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "frames": {
+    "hero": { "x": 0, "y": 0, "width": 400, "height": 300, "order": 0, "hidden": false, "locked": false },
+    "geist": { "x": 480, "y": 120, "width": 320, "height": 200, "order": 1, "hidden": false, "locked": false },
+    "hidden": { "x": 0, "y": 400, "width": 200, "height": 200, "order": 2, "hidden": true, "locked": false }
+  }
+}
