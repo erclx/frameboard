@@ -106,7 +106,7 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 
-- `unseen.ts` keeps each frame's latest unseen change, and a changed frame carries a `--claim` dot on its label and layers row, which a live claim stands in for, while page rows and project cards count them
+- `unseen.ts` keeps each frame's latest unseen change, dotted in `--claim` on its label and layers row unless a claim stands in, and counted on page rows and project cards
 - Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
 - Seen state is each frame's last seen hash in `localStorage`, never in the board folder
