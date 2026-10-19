@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "frames": {
+    "ghost": { "x": 0, "y": 0, "width": 200, "height": 200, "order": 0, "hidden": true, "locked": false }
+  }
+}

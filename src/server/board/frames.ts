@@ -444,6 +444,16 @@ function freeFrameName(
   return name
 }
 
+/** The frame a ref names, as `list` shows it. */
+export async function readFrame(
+  root: string,
+  ref: string,
+  options: RefOptions,
+): Promise<FrameRecord> {
+  const frame = await resolveFrameRef(root, ref, options)
+  return frameRecord(root, frame.project, frame.page, frame.name)
+}
+
 async function frameRecord(
   root: string,
   project: string,

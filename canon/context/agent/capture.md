@@ -11,17 +11,20 @@ Owns what an agent sees of a frame without a screen, being PNGs of one frame or 
 
 ## Layout
 
-### `src/server/`
+### `src/server/capture/`
 
-Owns the capture browser and the image writer.
+Owns the capture browser, the frame host, the render, the font check, the image writer, and `fit`, with the flags and record shapes in `frameboard docs`.
 
-- By default each frame of a page gets its own PNG
-- `--composite` gives one image of the page with every frame at its layout position, so an agent compares drafts side by side
-- A frame hidden on the board is left out of the composite
-- `--theme light`, `dark`, or `both` captures the theme asked for, so an agent can check the theme the developer is not looking at
+- `capture` takes one frame or, with `--page`, every visible frame of a page, since a two-part ref reads as either, and `--composite` places them at their layout positions on the theme's `Canvas`
+- The CLI renders through its own loopback host over the frame routes the server mounts, so `capture` and `fit` need no running server
+- A frame opens at its layout size with its root's theme attributes set and `prefers-color-scheme` emulated, and every image renders before any is written
+- Images land under the board's `.run/captures/` by default, as `<project>/<page>/<frame>.<theme>.png` and `<project>/<page>.<theme>.png` for a composite
+- The server keeps one browser warm behind `GET /api/frames/png`, launched on the first request, rendering one frame at a time at scale 2
 
 ## Gotchas
 
-- Capture refuses a frame naming a font it cannot find, and names the family, rather than rendering the browser's default
-- Capture, `inspect`, copy frame as PNG, and the server's layout checks use Playwright's headless shell when present, else the installed Chrome or Edge
-- With neither browser present they refuse with the install command, and nothing downloads unasked
+- Capture refuses `font-missing` when a text element's first family neither loaded as a web face nor is installed, while a stack opening with a generic asks for nothing
+- An installed family is read through DevTools `CSS.getPlatformFontsForNode`, so a CSS name the platform aliases to another face reads as missing
+- Capture uses the pinned headless shell alone, since an installed Chrome or Edge rasterizes text differently, and without it refuses `browser-not-found` with the install command, downloading nothing
+- A composite past 16384 px a side refuses `capture-too-large`, since Chromium's screenshot surface stops there
+- The PNG route takes no token, since it shows only what the frame route serves, and its queue holds a looping caller to one tab

@@ -27,6 +27,12 @@ export const EXIT_CODES = {
   'stale-address': 7,
   // `check` finding anything, with the result in the error's details.
   'check-findings': 8,
+  // No capture browser launched, with the install command in the message.
+  'browser-not-found': 9,
+  // A render that ran and refused what it found, writing nothing.
+  'font-missing': 10,
+  'fit-unbounded': 10,
+  'capture-too-large': 10,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

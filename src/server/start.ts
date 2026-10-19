@@ -9,6 +9,8 @@ import { cookieName, loadBoardKey } from './access/key'
 import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
 import { scanBoard } from './board/scan'
+import { launchCaptureBrowser } from './capture/browser'
+import { createWarmRenderer } from './capture/render'
 import { type BoardFindings, createBoardFindings } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
@@ -134,11 +136,17 @@ async function listen({
     snapshot: () => inTurn(() => scanBoard(root)),
     findings: () => inTurn(async () => findings.all()),
   })
+  // The board pays the browser launch once, on its first PNG.
+  const renderer = createWarmRenderer({
+    baseUrl: () => `http://${HOSTNAME}:${bound}`,
+    launch: () => launchCaptureBrowser({ purpose: 'Copy frame as PNG' }),
+  })
   const app = createApp({
     clientDir,
     root,
     port: boundPort,
     tickets,
+    renderFrame: renderer.render,
     actions: {
       access,
       // A running server's tabs have long since reconnected, so it waits for none.
@@ -185,7 +193,7 @@ async function listen({
     },
     boardUrl,
     close: async () => {
-      await Promise.all([watcher.close(), hub.close()])
+      await Promise.all([watcher.close(), hub.close(), renderer.close()])
       await new Promise<void>((done, fail) => {
         server.close((error) => (error ? fail(error) : done()))
         // A tab's keep-alive connection would hold close open indefinitely.

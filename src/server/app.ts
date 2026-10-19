@@ -1,12 +1,14 @@
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono } from 'hono'
+import { Hono, type MiddlewareHandler } from 'hono'
 
 import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
+import type { RenderFrame } from './capture/render'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { frameRoutes } from './routes/frames'
+import { pngRoutes } from './routes/png'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
@@ -25,6 +27,16 @@ export function isBoardHost(host: string, port: number): boolean {
   return LOOPBACK_NAMES.has(url.hostname) && Number(url.port) === port
 }
 
+/** Refuses any request whose `Host` is not this server's loopback address. */
+export function boardHostGuard(port: () => number): MiddlewareHandler {
+  return async (c, next) => {
+    if (!isBoardHost(new URL(c.req.url).host, port())) {
+      return c.text('Forbidden host', 403)
+    }
+    await next()
+  }
+}
+
 export interface AppOptions {
   /** The built client folder, holding `index.html` and its assets. */
   clientDir: string
@@ -36,6 +48,8 @@ export interface AppOptions {
   actions: BoardActions
   /** The single-use tickets the redeem route trades for the board's cookie. */
   tickets: Tickets
+  /** Renders a frame for `GET /api/frames/png`. */
+  renderFrame: RenderFrame
 }
 
 export function createApp({
@@ -44,6 +58,7 @@ export function createApp({
   port,
   actions,
   tickets,
+  renderFrame,
 }: AppOptions): Hono {
   const app = new Hono()
 
@@ -51,16 +66,12 @@ export function createApp({
     await next()
     c.header('x-frameboard-version', version)
   })
-  app.use('*', async (c, next) => {
-    if (!isBoardHost(new URL(c.req.url).host, port())) {
-      return c.text('Forbidden host', 403)
-    }
-    await next()
-  })
+  app.use('*', boardHostGuard(port))
   // A second serve reads the root back to tell this board's server from another.
   app.get('/api/health', (c) => c.json({ version, root }))
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions))
+  app.route('/', pngRoutes(root, renderFrame))
   app.route('/', frameRoutes(root))
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.

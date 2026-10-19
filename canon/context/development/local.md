@@ -51,12 +51,14 @@ Owns the git hooks.
 Owns the Playwright specs, the helpers under `e2e/support/`, the capture harness `e2e/screenshot.ts`, its cases under `e2e/capture/`, and the committed baseline under `e2e/evidence/`.
 
 - A spec that writes board files serves its own copy of a fixture through `e2e/support/board-server.ts`, since writing into the committed fixture would leak between specs
+- `playwright-core`, the one runtime dependency, is pinned to the version `@playwright/test` resolves, so bump both together
 
 ### `test/`
 
 Owns the fixture boards under `test/fixtures/boards/` and the helpers under `test/support/`, and holds no tests itself, so unit tests, specs, and later rows read one copy.
 
 - `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
+- The `capture` board names only generic families and a Geist face in its `assets/`, so it renders alike on Linux CI and macOS
 
 ## Gotchas
 

@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "frameboard",
+      "dependencies": {
+        "playwright-core": "1.64.1",
+      },
       "devDependencies": {
         "@base-ui/react": "^1.9.0",
         "@bramus/specificity": "^2.4.3",

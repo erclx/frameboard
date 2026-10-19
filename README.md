@@ -30,7 +30,7 @@ A board folder holds projects, a project holds pages, and a page holds frames. E
 
 The `project`, `page`, and `frame` commands manage them on disk, `list` shows the board, and `edit` changes one style, attribute, or text on one element without touching another byte. `show` points the open board at a frame.
 
-`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on each change.
+`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on each change. `capture` writes PNGs of a frame or page in either theme, and `frame fit` sets a frame's height to its content.
 
 The Claude Code plugin in `plugins/frameboard/` runs the checks after each agent write and hands the findings back in the same turn. `frameboard docs` prints every command, flag, record shape, and exit code.
 
@@ -39,6 +39,8 @@ Releases before 1.0 ship the board in stages. Editing by hand in the board arriv
 ## Requirements
 
 Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows support is planned.
+
+`capture` and `frame fit` render in Playwright's headless shell. Without it, they print the command that installs it and download nothing.
 
 ## Links
 

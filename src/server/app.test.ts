@@ -39,6 +39,7 @@ describe('createApp', () => {
         open: async () => false,
         show: () => 0,
       },
+      renderFrame: async () => Buffer.alloc(0),
     }).request(url)
   }
 

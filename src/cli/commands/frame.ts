@@ -7,11 +7,14 @@ import {
   type FrameFlag,
   moveFrame,
   orderFrame,
+  readFrame,
   renameFrame,
   resizeFrame,
   setFrameFlag,
   type SizeOptions,
 } from '@/server/board/frames'
+import { fitFrame } from '@/server/capture/fit'
+import { withFrameHost } from '@/server/capture/host'
 import { FRAME_SIZES } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -125,6 +128,33 @@ export function registerFrame(program: Command, context: ProgramContext): void {
         }),
         'Resized',
       ),
+  )
+
+  act<CommonOptions>(
+    verb(
+      'fit',
+      "Set a frame height to its content's own height, reporting a width too wide for the frame",
+    ),
+    context,
+    async ([ref = ''], options) => {
+      const root = await boardOf(options, io)
+      const refOptions = { project: options.project, cwd: io.cwd }
+      // Resolved ahead of the browser, so a missing frame never reads as a missing browser.
+      const frame = await readFrame(root, ref, refOptions)
+      const result = await withFrameHost(
+        root,
+        'frame fit',
+        (browser, baseUrl) =>
+          fitFrame(browser, { ...refOptions, root, baseUrl, frame }),
+      )
+      const wide = result.tooWide
+        ? `, and its content is ${result.contentWidth} px wide against ${result.frame.box.width}`
+        : ''
+      return {
+        data: result,
+        human: `Fit ${result.frame.ref} to ${result.contentHeight} px${wide}`,
+      }
+    },
   )
 
   act<CommonOptions & { index: number }>(
