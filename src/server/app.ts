@@ -1,5 +1,5 @@
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono } from 'hono'
+import { Hono, type MiddlewareHandler } from 'hono'
 
 import { version } from '@/shared/version'
 
@@ -23,6 +23,16 @@ export function isBoardHost(host: string, port: number): boolean {
     return false
   }
   return LOOPBACK_NAMES.has(url.hostname) && Number(url.port) === port
+}
+
+/** Refuses any request whose `Host` is not this server's loopback address. */
+export function boardHostGuard(port: () => number): MiddlewareHandler {
+  return async (c, next) => {
+    if (!isBoardHost(new URL(c.req.url).host, port())) {
+      return c.text('Forbidden host', 403)
+    }
+    await next()
+  }
 }
 
 export interface AppOptions {
@@ -51,12 +61,7 @@ export function createApp({
     await next()
     c.header('x-frameboard-version', version)
   })
-  app.use('*', async (c, next) => {
-    if (!isBoardHost(new URL(c.req.url).host, port())) {
-      return c.text('Forbidden host', 403)
-    }
-    await next()
-  })
+  app.use('*', boardHostGuard(port))
   // A second serve reads the root back to tell this board's server from another.
   app.get('/api/health', (c) => c.json({ version, root }))
   app.route('/', accessRoutes(actions.access, tickets))
