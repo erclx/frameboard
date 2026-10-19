@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "notes": [
+    {
+      "id": "n_5e1a0b01",
+      "number": 1,
+      "frame": "about",
+      "anchor": null,
+      "text": "Give the about card more room above the fold.",
+      "from": "developer",
+      "author": "Ada Lovelace",
+      "session": null,
+      "to": null,
+      "state": "open",
+      "thread": null,
+      "createdAt": "2026-10-19T16:08:00.000Z",
+      "updatedAt": "2026-10-19T16:08:00.000Z"
+    },
+    {
+      "id": "n_5e1a0b02",
+      "number": 2,
+      "frame": "hero",
+      "anchor": {
+        "index": 5,
+        "hash": "f47533ab9ff7568f0b2100f4d92f9154271df5af7fc6a987a5e32482bd376b6c"
+      },
+      "text": "Make the heading say what the product does, and set it in the display face.",
+      "from": "developer",
+      "author": "Ada Lovelace",
+      "session": null,
+      "to": "4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13",
+      "state": "delivered",
+      "thread": null,
+      "createdAt": "2026-10-19T16:12:00.000Z",
+      "updatedAt": "2026-10-19T16:12:00.000Z"
+    },
+    {
+      "id": "n_5e1a0b03",
+      "number": null,
+      "frame": "hero",
+      "anchor": {
+        "index": 5,
+        "hash": "f47533ab9ff7568f0b2100f4d92f9154271df5af7fc6a987a5e32482bd376b6c"
+      },
+      "text": "Done. The heading reads Draw screens your agent can edit, in the display face.",
+      "from": "agent",
+      "author": null,
+      "session": "4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13",
+      "to": null,
+      "state": "open",
+      "thread": "n_5e1a0b02",
+      "createdAt": "2026-10-19T16:13:00.000Z",
+      "updatedAt": "2026-10-19T16:13:00.000Z"
+    }
+  ]
+}
