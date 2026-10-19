@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { statSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import type { Command } from 'commander'
@@ -58,7 +58,7 @@ export function registerServe(
   act<ServeOptions>(command, context, async (_args, options, self) => {
     const tokens =
       options.tokens === undefined ? undefined : resolve(io.cwd, options.tokens)
-    if (tokens !== undefined && !existsSync(tokens)) {
+    if (tokens !== undefined && !isFile(tokens)) {
       throw new FrameboardError(
         'tokens-not-found',
         `No token sheet at ${tokens}.`,
@@ -143,4 +143,9 @@ export function registerServe(
       human: `Frameboard is serving ${root} on ${address.url}`,
     }
   })
+}
+
+/** True for a file, and false for a folder or a path that does not exist. */
+function isFile(path: string): boolean {
+  return statSync(path, { throwIfNoEntry: false })?.isFile() ?? false
 }

@@ -168,6 +168,17 @@ describe('serve', () => {
       expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
     })
 
+    it('refuses a folder given as the sheet and starts nothing', async () => {
+      const run = await serve('--no-open', '--tokens', 'brand')
+
+      expect(run.exitCode).toBe(3)
+      expect(run.json()).toMatchObject({
+        ok: false,
+        error: { code: 'tokens-not-found' },
+      })
+      expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+    })
+
     it("reports the running server's sheet on a reuse given another one", async () => {
       await serve('--no-open', '--tokens', 'brand/tokens.css')
       writeFileSync(join(cwd, 'other.css'), ':root {}')
