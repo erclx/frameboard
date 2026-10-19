@@ -7,10 +7,14 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { dropPending } from '@/client/board/geometry/write'
+import { shownHash } from '@/client/board/inspector/element/write'
 import {
+  awaitHash,
+  rememberHash,
   selectElement,
   type SelectionStore,
   selectionStore,
+  settleRefused,
 } from '@/client/board/selection'
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
@@ -49,6 +53,9 @@ export function registerHistoryActions({
     dropPending(answer.frames)
     // An undone hand edit leaves the element where it was, so the selection
     // takes the restored hash before the reload would drop it to the frame.
+    for (const [ref, written] of Object.entries(answer.hashes ?? {})) {
+      rememberHash(ref, written)
+    }
     const held = selection.getState()
     const hash = held.element ? answer.hashes?.[held.element.frame] : undefined
     if (held.page && held.element && hash) {
@@ -59,15 +66,25 @@ export function registerHistoryActions({
     navigate(boardUrl(project, page))
   }
   const step = (run: () => Promise<StepAnswer>, title: string) => () => {
-    run().then(follow, (error: unknown) => {
-      // An empty stack is the one refusal with nothing to say, since the key is unlit then.
-      if (
-        error instanceof BoardWriteError &&
-        error.code !== 'nothing-to-undo'
-      ) {
-        notify({ title, description: error.message })
-      }
-    })
+    // An undo can rewrite any frame, whose reload may land before the answer names its hash.
+    const done = awaitHash(null)
+    run().then(
+      (answer) => {
+        done()
+        follow(answer)
+      },
+      (error: unknown) => {
+        done()
+        settleRefused(selection, shownHash)
+        // An empty stack is the one refusal with nothing to say, since the key is unlit then.
+        if (
+          error instanceof BoardWriteError &&
+          error.code !== 'nothing-to-undo'
+        ) {
+          notify({ title, description: error.message })
+        }
+      },
+    )
   }
   const can = (count: 'undo' | 'redo') => () => {
     const { canWrite, history } = store.getState()

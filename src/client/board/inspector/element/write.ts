@@ -2,11 +2,15 @@ import { toast } from '@/client/components/ui/toast'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { EditResult } from '@/shared/records/edit'
 
+import { renderedHash } from '../../frame-dom'
 import {
+  awaitHash,
   type ElementKey,
+  rememberHash,
   selectElement,
   type SelectionStore,
   selectionStore,
+  settleRefused,
 } from '../../selection'
 
 /** One change to the selected element, as `POST /api/frames/edit` takes it. */
@@ -29,8 +33,9 @@ export interface WriteDeps {
  * Writes one change into the element `key` names, made from the hash its
  * frame rendered, so an agent's write in between is refused as stale. The
  * answered hash goes to the selection at once, before the watcher reloads
- * the frame, which would otherwise drop the element to its frame. A refusal
- * raises the toast and answers false, so the field shows the stored value.
+ * the frame, which leaves its hash check to this write until it answers. A
+ * refusal raises the toast and answers false, so the field shows the stored
+ * value.
  */
 export async function writeElement(
   page: string,
@@ -44,6 +49,8 @@ export async function writeElement(
       toast.add({ ...refusal, type: 'warning', timeout: 0 }),
   }: WriteDeps = {},
 ): Promise<boolean> {
+  const done = awaitHash(key.frame)
+  rememberHash(key.frame, key.hash)
   try {
     const answer = await writeBoard<EditResult>(
       '/api/frames/edit',
@@ -51,10 +58,12 @@ export async function writeElement(
       'POST',
       send,
     )
+    rememberHash(key.frame, answer.hash)
     const held = selection.getState().element
     if (held?.frame === key.frame && held.index === key.index) {
       selectElement(selection, page, { ...key, hash: answer.hash })
     }
+    done()
     return true
   } catch (error) {
     notify({
@@ -64,8 +73,18 @@ export async function writeElement(
           ? sentence(error.message)
           : 'The board could not be reached, so nothing was written.',
     })
+    done()
+    settleRefused(selection, shownHash)
     return false
   }
+}
+
+/** The hash of the bytes a frame's live iframe shows, null while none does. */
+export function shownHash(ref: string): string | null {
+  const shown = document.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] iframe`,
+  )?.contentDocument
+  return shown ? renderedHash(shown) : null
 }
 
 /** The writer's detail, which starts lowercase for the CLI's line, as a sentence. */
