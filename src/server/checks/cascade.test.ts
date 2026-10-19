@@ -202,3 +202,88 @@ describe('buildCascade firstFamily', () => {
     ).toBe('A')
   })
 })
+
+/** The declaration of `property` that wins on the element with `id`, and the id it came from. */
+function specifiedOf(
+  html: string,
+  id: string,
+  property: string,
+): { value: string; from: string | undefined } | null {
+  board = writeBoard({ 'site/home/hero.html': html })
+  const source = readFrame({
+    root: board.root,
+    project: 'site',
+    page: 'home',
+    name: 'hero',
+  })
+  const element = source.elements.find(
+    (candidate) => candidate.attribs.id === id,
+  )
+  if (!element) throw new Error(`no element #${id}`)
+  const found = buildCascade(source, [], {
+    properties: new Set(['color', 'background-color', 'background']),
+  }).specified(element, property)
+  return found && { value: found.value, from: found.element.attribs.id }
+}
+
+describe('buildCascade specified', () => {
+  it('answers an inline declaration over a rule', () => {
+    expect(
+      specifiedOf(
+        '<style>p { background-color: red }</style><p id="t" style="background-color: var(--surface)">x</p>',
+        't',
+        'background-color',
+      ),
+    ).toEqual({ value: 'var(--surface)', from: 't' })
+  })
+
+  it('answers a rule’s declaration', () => {
+    expect(
+      specifiedOf(
+        '<style>.card { background-color: #fff }</style><p id="t" class="card">x</p>',
+        't',
+        'background-color',
+      ),
+    ).toEqual({ value: '#fff', from: 't' })
+  })
+
+  it('takes color from the ancestor that sets it', () => {
+    expect(
+      specifiedOf(
+        '<div id="box" style="color: var(--text)"><p id="t">x</p></div>',
+        't',
+        'color',
+      ),
+    ).toEqual({ value: 'var(--text)', from: 'box' })
+  })
+
+  it('never inherits a background', () => {
+    expect(
+      specifiedOf(
+        '<div id="box" style="background-color: red"><p id="t">x</p></div>',
+        't',
+        'background-color',
+      ),
+    ).toBeNull()
+  })
+
+  it('lets an !important rule beat the inline style', () => {
+    expect(
+      specifiedOf(
+        '<style>p { color: blue !important }</style><p id="t" style="color: red">x</p>',
+        't',
+        'color',
+      ),
+    ).toEqual({ value: 'blue', from: 't' })
+  })
+
+  it('reads background-color out of the background shorthand', () => {
+    expect(
+      specifiedOf(
+        '<p id="t" style="background: var(--surface)">x</p>',
+        't',
+        'background-color',
+      ),
+    ).toEqual({ value: 'var(--surface)', from: 't' })
+  })
+})

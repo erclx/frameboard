@@ -6,7 +6,21 @@ import postcss, { type AtRule, type Node, type Rule } from 'postcss'
 import type { FrameSource, Sheet } from './frame-source'
 
 /** The properties the selector rules read, with every custom property. */
-const READ = new Set(['font-family', 'font', 'text-transform'])
+const READ: ReadonlySet<string> = new Set([
+  'font-family',
+  'font',
+  'text-transform',
+])
+
+/** The longhands a shorthand competes for, so `font` sets the family too. */
+const SHORTHANDS: Record<string, readonly string[]> = {
+  font: ['font-family'],
+  background: ['background-color'],
+  border: ['border-color', 'border-width'],
+}
+
+/** The properties an element takes from its parent when no rule sets them. */
+const INHERITED = new Set(['color', 'font-family', 'text-transform'])
 
 /** At-rules whose blocks never style an element. */
 const NOT_STYLING = new Set([
@@ -70,7 +84,7 @@ export interface Cascaded {
   element: Element
   /** True when no author rule set it and the browser's own rule did. */
   userAgent: boolean
-  /** True when it came from the `font` shorthand, whose family is one part of it. */
+  /** True when it came from a shorthand, such as `font`, whose value holds more than the property. */
   shorthand?: boolean
 }
 
@@ -83,6 +97,17 @@ export interface Cascade {
   firstFamily: (element: Element) => string | null
   /** The `text-transform` an element inherits or sets, `none` when unset. */
   textTransform: (element: Element) => string
+  /**
+   * The winning declaration of a property the cascade was built to read, as
+   * written, and the element it came from, which is an ancestor for an
+   * inherited property. Null when no author rule sets it.
+   */
+  specified: (element: Element, property: string) => Cascaded | null
+}
+
+export interface CascadeOptions {
+  /** The properties to read beside every custom property, the checks' own by default. */
+  properties?: ReadonlySet<string>
 }
 
 /**
@@ -92,7 +117,13 @@ export interface Cascade {
  * through `@bramus/specificity`, and takes every rule inside a media query
  * as applying, since a frame renders at one viewport the check cannot see.
  */
-export function buildCascade(source: FrameSource, tokens: Sheet[]): Cascade {
+export function buildCascade(
+  source: FrameSource,
+  tokens: Sheet[],
+  { properties = READ }: CascadeOptions = {},
+): Cascade {
+  const reads = (property: string) =>
+    property.startsWith('--') || properties.has(property.toLowerCase())
   const rules: CompiledRule[] = []
   let order = 0
   for (const sheet of [...tokens, ...source.sheets]) {
@@ -141,18 +172,19 @@ export function buildCascade(source: FrameSource, tokens: Sheet[]): Cascade {
     if (cached) return cached
     const won = new Map<string, Declaration>()
     const consider = (declaration: Declaration) => {
-      // `font` sets the family too, so it competes for that property.
-      const property =
-        declaration.property === 'font' ? 'font-family' : declaration.property
-      const current = won.get(property)
-      if (!current || beats(declaration, current)) {
-        won.set(property, declaration)
+      for (const property of SHORTHANDS[declaration.property] ?? [
+        declaration.property,
+      ]) {
+        const current = won.get(property)
+        if (!current || beats(declaration, current)) {
+          won.set(property, declaration)
+        }
       }
     }
     for (const rule of rules) {
       if (rule.matches(element)) rule.declarations.forEach(consider)
     }
-    inlineDeclarations(element).forEach(consider)
+    inlineDeclarations(element, reads).forEach(consider)
     winners.set(element, won)
     return won
   }
@@ -173,7 +205,7 @@ export function buildCascade(source: FrameSource, tokens: Sheet[]): Cascade {
           value: declaration.value,
           element: current,
           userAgent: false,
-          shorthand: declaration.property === 'font',
+          shorthand: declaration.property !== property,
         }
       }
       if (property === 'font-family' && current.name in USER_AGENT_FAMILIES) {
@@ -250,11 +282,19 @@ export function buildCascade(source: FrameSource, tokens: Sheet[]): Cascade {
         .trim()
         .toLowerCase()
     },
+    specified: (element, property) => {
+      if (INHERITED.has(property)) return inherited(element, property)
+      const declaration = declaredOn(element).get(property)
+      if (!declaration) return null
+      if (CSS_WIDE.has(declaration.value.trim().toLowerCase())) return null
+      return {
+        value: declaration.value,
+        element,
+        userAgent: false,
+        shorthand: declaration.property !== property,
+      }
+    },
   }
-}
-
-function reads(property: string): boolean {
-  return property.startsWith('--') || READ.has(property.toLowerCase())
 }
 
 /** A rule styles elements unless it sits in a non-styling at-rule or inside another rule. */
@@ -325,7 +365,10 @@ function beats(a: Declaration, b: Declaration): boolean {
   return a.order > b.order
 }
 
-function inlineDeclarations(element: Element): Declaration[] {
+function inlineDeclarations(
+  element: Element,
+  reads: (property: string) => boolean,
+): Declaration[] {
   const style = element.attribs.style
   if (!style) return []
   let root
