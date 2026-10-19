@@ -32,7 +32,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "vite build && rolldown -c rolldown.config.ts",
+    "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts",
     "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && vite",
     "preview": "node dist/cli.js serve --root test/fixtures/boards/basic --no-open --port ${PREVIEW_PORT:-4173}",
     "test": "vitest",
@@ -62,7 +62,9 @@
     "@bramus/specificity": "^2.4.3",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
+    "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@hono/node-server": "^2.1.5",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
