@@ -17,7 +17,7 @@ Owns the capture browser, the frame host, the render, the font check, the image 
 
 - `capture` takes one frame or, with `--page`, every visible frame of a page, since a two-part ref reads as either, and `--composite` places them at their layout positions on the theme's `Canvas`
 - The CLI renders through its own loopback host over the frame routes the server mounts, so `capture` and `fit` need no running server
-- A frame opens at its layout size with its root's theme attributes set and `prefers-color-scheme` emulated, and every image renders before any is written
+- A frame opens at its layout size from `frameThemeUrl`, so the frame route's injected script sets its root's theme, with `prefers-color-scheme` emulated, off a host mounting the server's look and frame routes through `servedFrames`, and every image renders before any is written
 - Images land under the board's `.run/captures/` by default, as `<project>/<page>/<frame>.<theme>.png` and `<project>/<page>.<theme>.png` for a composite
 - The server keeps one browser warm behind `GET /api/frames/png`, launched on the first request, rendering one frame at a time at scale 2
 
