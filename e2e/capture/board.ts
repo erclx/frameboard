@@ -5,6 +5,7 @@ import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
 import { claim, release } from '@/server/claims/store'
+import type { FrameChange } from '@/shared/records/changes'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from './types'
@@ -755,6 +756,56 @@ async function hiddenSketch(page: Page): Promise<void> {
   })
 }
 
+/** One change an agent made, as the server's change log carries it. */
+function agentChange(frame: string, at: number): FrameChange {
+  return {
+    id: `c${at}`,
+    frame,
+    at: new Date(Date.UTC(2026, 9, 19, 12, 0, at)).toISOString(),
+    // Names no file the board renders, so no glow plays and the shot holds still.
+    hash: '0'.repeat(64),
+    author: {
+      session: LISTENING_SESSION,
+      agent: 'claude',
+      tag: 'claude · frameboard',
+    },
+    elements: [5, 6],
+    removed: 0,
+    whole: false,
+    created: false,
+  }
+}
+
+/**
+ * Hands the board `changes` as the server's change log on hello, through the
+ * socket, so no frame in the fixture is written. The tab reads as hidden, so
+ * the dwell never marks a frame on screen seen before the shot.
+ */
+function seededChanges(changes: FrameChange[]): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        get: () => 'hidden',
+      })
+    })
+    await page.routeWebSocket('**/api/live', (socket) => {
+      const server = socket.connectToServer()
+      server.onMessage((message) => {
+        const parsed = JSON.parse(String(message)) as { type: string }
+        socket.send(
+          parsed.type === 'changes'
+            ? JSON.stringify({ type: 'changes', changes })
+            : message,
+        )
+      })
+      socket.onMessage((message) => server.send(message))
+    })
+  }
+}
+
+/** The toast once it has slid in. */
+const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
+
 /**
  * Once `ready` matches, which a control lit by write access stands for,
  * fires `event` on the button labelled `label`. Like `pressOnLoad`, it waits
@@ -1094,6 +1145,38 @@ export const BOARD_CASES: CaptureCase[] = [
         mask: [AVATAR, '[data-claim-elapsed]'],
         setup: themed(
           both(listening, claimedHero, readyWhen('[data-claim-tag]')),
+        ),
+      },
+      {
+        section: 'unseen-one',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            seededChanges([agentChange('webapp/home/about', 1)]),
+            readyWhen(TOAST_SHOWN),
+          ),
+        ),
+      },
+      {
+        section: 'unseen-many',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            seededChanges([
+              agentChange('webapp/home/about', 1),
+              agentChange('webapp/home/hero', 2),
+              agentChange('webapp/settings/profile', 3),
+            ]),
+            readyWhen(TOAST_SHOWN),
+          ),
         ),
       },
       {

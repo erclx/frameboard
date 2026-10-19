@@ -16,6 +16,12 @@ import {
   receiveNotes,
   receiveReload,
 } from './store'
+import {
+  pruneUnseen,
+  receiveChanges,
+  type UnseenStore,
+  unseenStore,
+} from './unseen'
 
 /**
  * This tab's id, which its hello and its selection reports carry, so the
@@ -29,6 +35,8 @@ const RECONNECT_MS = 500
 export interface LiveHandlers {
   /** A `show` message, which the router turns into a navigation. */
   onShow?: (ref: string) => void
+  /** Where an agent's changes go, the app's own store unless a test stands in. */
+  unseen?: UnseenStore
 }
 
 /**
@@ -38,7 +46,7 @@ export interface LiveHandlers {
  */
 export function connectLive(
   store: LiveStore,
-  { onShow }: LiveHandlers = {},
+  { onShow, unseen = unseenStore }: LiveHandlers = {},
 ): () => void {
   let socket: WebSocket | undefined
   let retry: ReturnType<typeof setTimeout> | undefined
@@ -54,8 +62,15 @@ export function connectLive(
     })
     socket.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as ServerMessage
-      if (message.type === 'board') receiveBoard(store, message.data)
-      else if (message.type === 'access') receiveAccess(store, message.write)
+      if (message.type === 'board') {
+        receiveBoard(store, message.data)
+        pruneUnseen(unseen, message.data)
+      } else if (message.type === 'changes') {
+        receiveChanges(unseen, message.changes)
+        const { board } = store.getState()
+        // A replayed change can name a frame the board already lost.
+        if (board) pruneUnseen(unseen, board)
+      } else if (message.type === 'access') receiveAccess(store, message.write)
       else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'findings') {
         receiveFindings(store, message.findings)

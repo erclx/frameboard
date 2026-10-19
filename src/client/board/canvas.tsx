@@ -5,11 +5,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { TAB_ID } from '@/client/live/socket'
 import { liveStore } from '@/client/live/store'
+import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
+import { useDwell } from './changes/dwell'
+import { ChangeGlow } from './changes/glow'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
@@ -82,6 +85,7 @@ export function Canvas({
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
   useNoteTool()
+  const unseen = useUnseen((state) => state.unseen)
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )
@@ -303,6 +307,10 @@ export function Canvas({
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
     [frames, settled],
   )
+  // The dwell reads what is on screen each time the cull runs.
+  useDwell(
+    useMemo(() => (settled ? { frames, ...settled } : null), [frames, settled]),
+  )
 
   return (
     <div
@@ -332,10 +340,12 @@ export function Canvas({
                 version={reloads[frame.ref] ?? 0}
                 findings={findings?.[frame.ref]}
                 claim={claims?.[frame.ref]}
+                unseen={frame.ref in unseen}
               />
             ))}
             <SelectionOverlay frames={frames} />
             <ElementOverlay frames={frames} container={layer} />
+            <ChangeGlow frames={frames} container={layer} />
           </>
         )}
       </div>

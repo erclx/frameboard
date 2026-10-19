@@ -153,6 +153,35 @@ describe('Frame', () => {
     expect(getByRole('img', { name: 'Locked' })).toBeInTheDocument()
   })
 
+  it('marks the label of a frame an agent changed', () => {
+    const { getByRole } = render(
+      <Frame frame={frame('checkout')} live={false} version={0} unseen />,
+    )
+
+    expect(getByRole('img', { name: 'Unseen change' })).toBeInTheDocument()
+  })
+
+  it('leaves the unseen mark to the claim while the frame is claimed', () => {
+    const { queryByRole } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        unseen
+        claim={{
+          frame: 'studio/home/checkout',
+          session: 's-1',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }}
+      />,
+    )
+
+    expect(queryByRole('img', { name: 'Unseen change' })).toBeNull()
+  })
+
   it('names the frame above it', () => {
     const { getByTitle } = render(
       <Frame frame={frame('checkout')} live={false} version={0} />,

@@ -231,6 +231,49 @@ describe('createHub', () => {
     await withClaims.close()
   })
 
+  it('sends the change log right after the claims', async () => {
+    const changes = [
+      {
+        id: 'c1',
+        frame: 'studio/home/hero',
+        at: '2026-10-19T10:00:00.000Z',
+        hash: 'abc',
+        author: null,
+        elements: [5],
+        removed: 0,
+        whole: false,
+        created: false,
+      },
+    ]
+    const withChanges = createHub({
+      tabs,
+      port: () => port,
+      access,
+      snapshot: async () => SNAPSHOT,
+      claims: async () => [],
+      changes: async () => changes,
+    })
+    server.removeAllListeners('upgrade')
+    server.on('upgrade', (request, socket, head) =>
+      withChanges.handleUpgrade(request, socket, head),
+    )
+    const socket = connect()
+    const received: ServerMessage[] = []
+    socket.on('message', (data) => received.push(JSON.parse(String(data))))
+
+    await helloAsBoard(socket)
+
+    await expect
+      .poll(() => received)
+      .toEqual([
+        { type: 'board', data: SNAPSHOT },
+        { type: 'access', write: false },
+        { type: 'claims', claims: [] },
+        { type: 'changes', changes },
+      ])
+    await withChanges.close()
+  })
+
   it('sends the history counts right after the access message', async () => {
     const withHistory = createHub({
       tabs,

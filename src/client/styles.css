@@ -18,6 +18,18 @@
   /* A claimed frame's outline and tag breathe together, per agents/claim-pulse. */
   --animate-claim-outline: claim-outline 2.4s ease-in-out infinite;
   --animate-claim-tag: claim-tag 2.4s ease-in-out infinite;
+  /* An agent's change glows for 2s and fades over its last 600ms, per agents/claim-full. */
+  --animate-change-glow: change-glow 2s linear forwards;
+
+  @keyframes change-glow {
+    0%,
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 
   @keyframes claim-outline {
     0%,

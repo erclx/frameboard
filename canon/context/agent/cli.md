@@ -53,7 +53,7 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/re
 - The board sends a note to the session holding the frame's claim while it listens, else to the only listening session, else to the one the developer picks
 - A claim is cooperative. Another live session's claim refuses `frame-claimed`, exit 4, it lapses five minutes after the last `editing`, and the file hash still guards a hand edit
 
-`editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
+`editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. The claim is also what names the agent on the board's change toast. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
 
 ## Gotchas
 

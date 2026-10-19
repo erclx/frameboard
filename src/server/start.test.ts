@@ -191,7 +191,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(6)
+    await expect.poll(() => messages.length).toBe(7)
     hello = messages
     messages = []
   })
@@ -203,20 +203,22 @@ describe('startServer live socket', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board, whether it may write, the history, the claims, the listeners, and then every frame checked on hello', () => {
+  it('sends the board, whether it may write, the history, the claims, the changes, the listeners, and then every frame checked on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
       'board',
       'access',
       'history',
       'claims',
+      'changes',
       'listeners',
       'findings',
     ])
     expect(hello[1]).toEqual({ type: 'access', write: false })
     expect(hello[2]).toEqual({ type: 'history', undo: 0, redo: 0 })
     expect(hello[3]).toEqual({ type: 'claims', claims: [] })
-    expect(hello[4]).toEqual({ type: 'listeners', listeners: [] })
-    expect(hello[5]).toMatchObject({
+    expect(hello[4]).toEqual({ type: 'changes', changes: [] })
+    expect(hello[5]).toEqual({ type: 'listeners', listeners: [] })
+    expect(hello[6]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
   })
@@ -349,19 +351,110 @@ describe('startServer live socket', () => {
       .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
   })
 
-  it('pushes the board, the changed frame, and its findings after a write', async () => {
+  it('pushes the board, the changed frame, its findings, and then the change after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
       .poll(() => messages.map((message) => message.type), {
         timeout: 5000,
       })
-      .toEqual(['board', 'reload', 'findings'])
+      .toEqual(['board', 'reload', 'findings', 'changes'])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
     expect(messages[2]).toMatchObject({
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
+  })
+
+  it("marks a frame written from disk as a change by its claim's agent", async () => {
+    await cli(['editing', 'studio/home/hero', '--session', 'sess-a'], {
+      cwd: board.root,
+    })
+    await expect
+      .poll(() => messages.at(-1)?.type, { timeout: 5000 })
+      .toBe('claims')
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    await expect
+      .poll(() => messages.find((message) => message.type === 'changes'), {
+        timeout: 5000,
+      })
+      .toMatchObject({
+        type: 'changes',
+        changes: [{ frame: 'studio/home/hero', author: { session: 'sess-a' } }],
+      })
+  })
+
+  it('marks nothing for a frame the board itself renamed', async () => {
+    const token = 'c'.repeat(64)
+    server.authorize(token)
+
+    const response = await fetch(
+      `http://127.0.0.1:${server.port}/api/frame/rename`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ref: 'studio/home/hero', name: 'banner' }),
+      },
+    )
+    expect(response.status).toBe(200)
+
+    // An agent write after it is the sentinel: the rename's batch is read
+    // before or with the sentinel's, so its change arrives last and alone.
+    writeFileSync(join(board.root, 'studio/pricing/plans.html'), '<p>new</p>')
+
+    await expect
+      .poll(
+        () =>
+          messages.flatMap((message) =>
+            message.type === 'changes'
+              ? message.changes.map((change) => change.frame)
+              : [],
+          ),
+        { timeout: 5000 },
+      )
+      .toEqual(['studio/pricing/plans'])
+  })
+
+  it('marks nothing for 20 frames the board pasted at once', async () => {
+    const token = 'c'.repeat(64)
+    server.authorize(token)
+    const names = Array.from({ length: 20 }, (_, at) => `card-${at}`)
+    for (const name of names) {
+      writeFileSync(
+        join(board.root, `studio/home/${name}.html`),
+        `<p>${name}</p>`,
+      )
+    }
+    const changed = () =>
+      messages.flatMap((message) =>
+        message.type === 'changes'
+          ? message.changes.map((change) => change.frame)
+          : [],
+      )
+    const post = (path: string, body: unknown) =>
+      fetch(`http://127.0.0.1:${server.port}${path}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+    // The copy reads the files from disk, so it needs no batch to have landed.
+    await post('/api/clipboard/copy', {
+      refs: names.map((name) => `studio/home/${name}`),
+    })
+
+    const pasted = await post('/api/clipboard/paste', { ref: 'studio/pricing' })
+    writeFileSync(join(board.root, 'studio/pricing/plans.html'), '<p>new</p>')
+
+    expect(pasted.status).toBe(200)
+    // The sentinel lands with or after the paste's batch.
+    await expect
+      .poll(changed, { timeout: 5000 })
+      .toContain('studio/pricing/plans')
+    expect(
+      changed().filter((frame) => frame.startsWith('studio/pricing/card-')),
+    ).toEqual([])
   })
 
   it('reloads only the frame saved through a temp file and a rename', async () => {

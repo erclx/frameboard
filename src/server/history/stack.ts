@@ -58,6 +58,8 @@ export class History {
   constructor(
     readonly root: string,
     readonly onChange: (counts: HistoryCounts) => void = () => {},
+    /** Told each step once it is written, by a record, an undo, or a redo. */
+    readonly onWrite: (step: Step) => void = () => {},
   ) {}
 
   counts(): HistoryCounts {
@@ -76,6 +78,7 @@ export class History {
     if (this.#undo.length > HISTORY_CAP) this.#undo.shift()
     this.#redo = []
     this.onChange(this.counts())
+    this.onWrite(step)
   }
 
   undo(): Promise<StepAnswer> {
@@ -126,6 +129,7 @@ export class History {
     }
     onto.push(step)
     this.onChange(this.counts())
+    this.onWrite(step)
     const answer: StepAnswer = {
       page: step.page?.[to] ?? null,
       frames: step.frames,

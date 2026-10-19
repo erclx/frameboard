@@ -5,8 +5,10 @@ import { Link, useLocation } from 'wouter'
 
 import { isEnabled, useActions } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
+import { UnseenCount } from '@/client/components/unseen-count'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
+import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import { boardUrl } from '@/shared/board-urls'
 import type { PageRecord } from '@/shared/records/list'
 
@@ -175,6 +177,7 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
   const { current } = context
   const row = useRef<HTMLLIElement>(null)
   const renaming = useRenamingPage() === page.ref
+  const unseen = useUnseen((state) => unseenUnder(state.unseen, page.ref))
   // A filtered list's positions are not the saved order, so it never reorders.
   const edge = useReorderRow(row, {
     list: LIST,
@@ -234,6 +237,7 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
           <span className="min-w-0 flex-1 truncate" title={page.name}>
             <Highlighted name={page.name} needle={needle} />
           </span>
+          <UnseenCount count={unseen} />
           {page.layoutError ? (
             <TriangleAlert
               role="img"

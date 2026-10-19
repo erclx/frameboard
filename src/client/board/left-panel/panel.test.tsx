@@ -11,6 +11,7 @@ import { registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
+import { unseenStore } from '@/client/live/unseen'
 import type {
   FrameRecord,
   PageRecord,
@@ -126,6 +127,7 @@ afterEach(() => {
   while (cleanups.length > 0) cleanups.pop()?.()
   liveStore.setState({ canWrite: false })
   act(() => {
+    unseenStore.setState({ unseen: {}, cursor: null })
     clear(selectionStore)
     trees.store.setState({ byRef: {} })
   })
@@ -464,6 +466,60 @@ describe('LeftPanel', () => {
       expect(
         screen.getByText('This frame cannot be addressed'),
       ).toBeInTheDocument()
+    })
+  })
+
+  describe('unseen changes', () => {
+    function markUnseen(...refs: string[]): void {
+      unseenStore.setState({
+        unseen: Object.fromEntries(
+          refs.map((ref) => [
+            ref,
+            {
+              id: `c-${ref}`,
+              frame: ref,
+              at: '2026-10-19T12:00:00.000Z',
+              hash: 'h',
+              author: null,
+              elements: [],
+              removed: 0,
+              whole: true,
+              created: false,
+            },
+          ]),
+        ),
+      })
+    }
+
+    it('counts the unseen frames on each page row', () => {
+      markUnseen('studio/home/hero', 'studio/home/about', 'studio/pricing/a')
+
+      renderPanel(THREE())
+
+      const pages = screen.getByRole('navigation', { name: 'Pages' })
+      expect(
+        within(pages)
+          .getAllByRole('img', { name: /unseen/ })
+          .map((count) => count.getAttribute('aria-label')),
+      ).toEqual(['2 unseen changes', '1 unseen change'])
+    })
+
+    it('dots the layers row of a frame an agent changed', () => {
+      markUnseen(HERO)
+
+      renderPanel(project([page('home', [frame('hero'), frame('about')])]))
+
+      const layers = screen.getByRole('region', { name: 'Layers' })
+      expect(
+        within(
+          within(layers).getByRole('listitem', { name: 'hero' }),
+        ).getByRole('img', { name: 'Unseen change' }),
+      ).toBeInTheDocument()
+      expect(
+        within(
+          within(layers).getByRole('listitem', { name: 'about' }),
+        ).queryByRole('img', { name: 'Unseen change' }),
+      ).toBeNull()
     })
   })
 
