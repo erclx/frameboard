@@ -25,6 +25,7 @@ import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { followSelection, selectElement, selectionStore } from './selection'
+import { placeFrame } from './structure/tool'
 import { attachCanvas, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
@@ -75,6 +76,7 @@ export function Canvas({
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
+  const framing = useMode((state) => state.tool === 'frame')
   useNoteTool()
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
@@ -281,8 +283,8 @@ export function Canvas({
 
   const pickInside = (event: MouseEvent) => {
     const viewport = viewportRef.current
-    // Only the Move tool selects, so the Hand and Note tools pick nothing.
-    if (noting || hand || !viewport || !layer) return
+    // Only the Move tool selects, so the Hand, Note, and Frame tools pick nothing.
+    if (noting || hand || framing || !viewport || !layer) return
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
@@ -305,7 +307,7 @@ export function Canvas({
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
         hand && !playing && 'cursor-grab active:cursor-grabbing',
-        noting && !playing && 'cursor-crosshair',
+        (noting || framing) && !playing && 'cursor-crosshair',
       )}
     >
       <div
@@ -340,16 +342,21 @@ export function Canvas({
           ref={hitRef}
           data-hit-layer
           className="absolute inset-0"
-          // A Note click opens the composer and goes no further. Selection
-          // and marquee gestures start on pointerdown, so they bind only
-          // while the Move tool is on and never see a Note press.
+          // A Note click opens the composer and a Frame click places a
+          // frame, and either goes no further. Selection and marquee
+          // gestures start on pointerdown, so they bind only while the Move
+          // tool is on and never see either press.
           onClickCapture={(event) => {
             const viewport = viewportRef.current
-            if (!noting || !viewport || !layer) return
+            if (!(noting || framing) || !viewport || !layer) return
             event.stopPropagation()
             const [x, y] = zoomTransform(viewport).invert(
               pointer(event.nativeEvent, viewport),
             )
+            if (framing) {
+              void placeFrame({ x, y }, { page: page.ref, frames: page.frames })
+              return
+            }
             const pick = pickAt(layer, frames, { x, y })
             if (pick) notesUi.setState({ open: { kind: 'new', pick } })
             else closeNote()
@@ -415,7 +422,7 @@ function EmptyNotice() {
         <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
           F
         </kbd>{' '}
-        and drag on the canvas,
+        and click on the canvas,
         <br />
         or ask your agent to draw one.
       </p>

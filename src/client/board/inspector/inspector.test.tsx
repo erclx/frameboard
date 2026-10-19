@@ -10,7 +10,9 @@ import { liveStore, receiveBoard } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
+import { modeStore } from '../mode'
 import { clear, select, selectionStore } from '../selection'
+import { presetStore } from '../structure/tool'
 import { FrameSection } from './frame-section'
 import { InspectorPanel } from './panel'
 
@@ -43,7 +45,50 @@ describe('InspectorPanel', () => {
   })
 
   afterEach(() => {
-    act(() => clear(selectionStore))
+    act(() => {
+      clear(selectionStore)
+      modeStore.setState({ tool: 'move', mode: 'edit' })
+      presetStore.setState({ preset: 'desktop' })
+    })
+  })
+
+  describe('under the Frame tool', () => {
+    beforeEach(() => {
+      modeStore.setState({ tool: 'frame', mode: 'edit' })
+    })
+
+    it('lists the presets with desktop chosen', () => {
+      renderPanel()
+
+      expect(screen.getByRole('radio', { name: /Desktop/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('radio', { name: /Tablet/ })).toHaveTextContent(
+        '834 × 1194',
+      )
+    })
+
+    it('chooses the preset the next click places', async () => {
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('radio', { name: /Phone/ }))
+
+      expect(presetStore.getState().preset).toBe('phone')
+      expect(screen.getByRole('radio', { name: /Phone/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+    })
+
+    it('shows the presets over a selected frame', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(screen.getAllByRole('radio')).toHaveLength(3)
+      expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
+    })
   })
 
   it('holds the hint while nothing is selected', () => {

@@ -24,6 +24,7 @@ import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
 import { useStructureActions } from './structure/actions'
+import { useFrameTool } from './structure/tool'
 
 /** Pixels, since a bare string reads as percent and 300 would mean 300 percent. */
 const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
@@ -65,6 +66,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useBoardActions()
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
+  useFrameTool()
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
