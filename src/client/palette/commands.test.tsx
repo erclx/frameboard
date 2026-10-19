@@ -144,6 +144,29 @@ describe('CommandPalette', () => {
     expect(await screen.findByRole('option', { name: 'Gated' })).toBeVisible()
   })
 
+  it('leaves out the mode the board is already in', async () => {
+    register(
+      action('mode.edit', 'Edit', {
+        group: 'mode',
+        command: { label: 'Switch to Edit' },
+        checked: () => true,
+      }),
+      action('mode.play', 'Play', {
+        group: 'mode',
+        command: { label: 'Switch to Play' },
+        checked: () => false,
+      }),
+    )
+    render(<CommandPalette />)
+
+    await openPalette()
+
+    expect(screen.queryByRole('option', { name: 'Switch to Edit' })).toBeNull()
+    expect(
+      screen.getByRole('option', { name: 'Switch to Play' }),
+    ).toBeInTheDocument()
+  })
+
   it('prints an action’s key as chips', async () => {
     register(
       action('view.zoomToFit', 'Zoom to fit', {

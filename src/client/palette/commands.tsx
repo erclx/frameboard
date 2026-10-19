@@ -47,7 +47,10 @@ export function CommandPalette() {
 function Palette() {
   const board = useLive((state) => state.board)
   const [, params] = useRoute('/p/:project/:page?')
-  const actions = useCommands()
+  // A mode row naming the mode the board is in would do nothing.
+  const actions = useCommands().filter(
+    (action) => !(action.group === 'mode' && action.checked?.()),
+  )
   const { frames, pages, projects } = board
     ? boardTargets(board, params?.project ?? null)
     : { frames: [], pages: [], projects: [] }
