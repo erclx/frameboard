@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
@@ -136,7 +136,16 @@ function Marker({ number, at, active, label, onOpen }: MarkerProps) {
   )
 }
 
-/** Holds a note card beside its marker at screen size. */
+/** How far a card sits from its marker's center, as the design sets it. */
+const CARD_OFFSET = { x: 21, y: -25 }
+/** The gap a card keeps from the canvas edge it would otherwise cross. */
+const EDGE_GAP = 12
+
+/**
+ * Holds a note card beside its marker at screen size, on the marker's right
+ * as the design sets it, or on its left when the right would run the card
+ * under the inspector, and moved down or up to stay inside the canvas.
+ */
 function Popover({
   at,
   children,
@@ -144,13 +153,45 @@ function Popover({
   at: BoardPoint
   children: React.ReactNode
 }) {
+  const card = useRef<HTMLDivElement>(null)
+  const [shift, setShift] = useState({ flip: false, y: 0 })
+  useLayoutEffect(() => {
+    const element = card.current
+    const canvas = element?.closest('[data-canvas]')
+    if (!element || !canvas) return
+    const bounds = canvas.getBoundingClientRect()
+    const box = element.getBoundingClientRect()
+    const right = shift.flip
+      ? box.right + box.width + 2 * CARD_OFFSET.x
+      : box.right
+    const top = box.top - shift.y
+    const next = {
+      flip: right > bounds.right - EDGE_GAP,
+      y:
+        top < bounds.top + EDGE_GAP
+          ? bounds.top + EDGE_GAP - top
+          : Math.min(0, bounds.bottom - EDGE_GAP - (top + box.height)),
+    }
+    // A shift moves the card it measured, so it settles once one repeats.
+    if (next.flip !== shift.flip || Math.abs(next.y - shift.y) > 0.5) {
+      setShift(next)
+    }
+  }, [at.x, at.y, shift])
   return (
     <div
       className="absolute origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
       style={{ left: at.x, top: at.y }}
     >
-      {/* Where the design sets a card beside its marker's center. */}
-      <div className="absolute top-[-25px] left-[21px]">{children}</div>
+      <div
+        ref={card}
+        className="absolute"
+        style={{
+          top: CARD_OFFSET.y + shift.y,
+          ...(shift.flip ? { right: CARD_OFFSET.x } : { left: CARD_OFFSET.x }),
+        }}
+      >
+        {children}
+      </div>
     </div>
   )
 }
