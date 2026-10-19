@@ -45,6 +45,8 @@ export interface HubOptions {
   delivery?: Delivery
   /** The undo history's counts, sent to a board client after its access. */
   history?: () => { undo: number; redo: number }
+  /** Told the id a board tab said hello with once its socket closes. */
+  closeTab?: (tab: string) => void
 }
 
 /**
@@ -63,10 +65,12 @@ export function createHub({
   notes,
   delivery,
   history,
+  closeTab,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Map<WebSocket, boolean>()
   const inboxes = new Map<WebSocket, Follower>()
+  const tabIds = new Map<WebSocket, string>()
 
   server.on('connection', (socket, request) => {
     socket.on('message', (data) => {
@@ -105,6 +109,7 @@ export function createHub({
         access,
       )
       boards.set(socket, writer)
+      if (typeof message.tab === 'string') tabIds.set(socket, message.tab)
       tabs.open(writer)
       void snapshot()
         .then(async (board) => {
@@ -138,6 +143,11 @@ export function createHub({
       if (writer !== undefined) {
         boards.delete(socket)
         tabs.close(writer)
+      }
+      const tab = tabIds.get(socket)
+      if (tab !== undefined) {
+        tabIds.delete(socket)
+        closeTab?.(tab)
       }
     })
   })

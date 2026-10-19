@@ -6,6 +6,7 @@ import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
 import { captureResultSchema, fitResultSchema } from './capture'
 import { checkResultSchema } from './check'
 import { editResultSchema } from './edit'
+import { elementTreeSchema } from './elements'
 import { inspectResultSchema } from './inspect'
 import {
   frameRecordSchema,
@@ -14,6 +15,7 @@ import {
   projectRecordSchema,
 } from './list'
 import { listenerSchema, notesFileSchema } from './notes'
+import { selectionResultSchema } from './selection'
 import { tokenTableSchema } from './tokens'
 
 /** Every record by name, the one place a later row registers a record for `docs`. */
@@ -36,4 +38,6 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   listener: listenerSchema,
   assetList: assetListSchema,
   assetAdd: assetAddResultSchema,
+  elements: elementTreeSchema,
+  selection: selectionResultSchema,
 }

@@ -141,6 +141,27 @@ describe('createHub', () => {
     })
   })
 
+  it('tells closeTab the id a board tab said hello with once it closes', async () => {
+    const closed: string[] = []
+    await hub.close()
+    hub = createHub({
+      tabs,
+      port: () => port,
+      access,
+      snapshot: async () => SNAPSHOT,
+      closeTab: (tab) => closed.push(tab),
+    })
+    const socket = connect()
+    await new Promise((resolve) => socket.once('open', resolve))
+    const board = nextMessage(socket)
+    socket.send(JSON.stringify({ type: 'hello', role: 'board', tab: 't-1' }))
+    await board
+
+    socket.close()
+
+    await expect.poll(() => closed).toEqual(['t-1'])
+  })
+
   it('sends the findings after the board when the hub holds them', async () => {
     const findings = { 'studio/home/hero': [] }
     const withFindings = createHub({
