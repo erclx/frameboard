@@ -10,6 +10,7 @@ export type FixtureBoardName =
   | 'live'
   | 'cascade'
   | 'capture'
+  | 'checks'
 
 export interface FixtureBoard {
   /** The realpath of the copy, so it compares equal to what the board resolves. */
