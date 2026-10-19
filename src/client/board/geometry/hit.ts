@@ -29,6 +29,25 @@ export function cornerAt(
 }
 
 /**
+ * Whether a canvas point sits within reach of a box's edges, which is where
+ * the selected element's outline and corner marks draw.
+ */
+export function onOutline(box: Box, point: Point, zoom: number): boolean {
+  const reach = HANDLE_REACH / zoom
+  const between = (value: number, start: number, end: number) =>
+    value >= start - reach && value <= end + reach
+  const near = (a: number, b: number) => Math.abs(a - b) <= reach
+  const right = box.x + box.width
+  const bottom = box.y + box.height
+  return (
+    (between(point.x, box.x, right) &&
+      (near(point.y, box.y) || near(point.y, bottom))) ||
+    (between(point.y, box.y, bottom) &&
+      (near(point.x, box.x) || near(point.x, right)))
+  )
+}
+
+/**
  * The topmost shown frame under a canvas point, the strip above it where its
  * label sits counting as the frame. `frames` comes bottom to top, as the
  * board lists a page, and `zoom` sizes the strip, which keeps its screen size.

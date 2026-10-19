@@ -8,7 +8,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
-import { clear, select, selectionStore } from '../selection'
+import { clear, select, selectElement, selectionStore } from '../selection'
 import type { Box } from './box'
 import { attachGestures } from './gestures'
 import { SelectionOverlay } from './overlay'
@@ -41,7 +41,11 @@ interface Write {
  */
 function setup(
   frames: FrameRecord[] = [LEFT, RIGHT, LOCKED],
-  { canWrite = true, onCommit = () => {} } = {},
+  {
+    canWrite = true,
+    onCommit = () => {},
+    elementBox,
+  }: { canWrite?: boolean; onCommit?: () => void; elementBox?: Box } = {},
 ) {
   const mode = createModeStore(1280)
   const writes: Write[] = []
@@ -67,6 +71,18 @@ function setup(
             />
           ))}
           <SelectionOverlay frames={frames} />
+          {elementBox ? (
+            <div
+              data-element-selection
+              className="pointer-events-none absolute"
+              style={{
+                left: elementBox.x,
+                top: elementBox.y,
+                width: elementBox.width,
+                height: elementBox.height,
+              }}
+            />
+          ) : null}
         </div>
         <div data-hit-layer className="absolute inset-0" />
       </div>
@@ -380,6 +396,74 @@ describe('attachGestures', () => {
 
       expect(canvas.part('[data-chip]')).toHaveTextContent('240 × 220')
       canvas.pointer.up(60, 80)
+    })
+  })
+
+  describe('on a selected element', () => {
+    /** An element inside LEFT, outlined at this canvas box. */
+    const ELEMENT_BOX = { x: 150, y: 150, width: 100, height: 50 }
+    const ELEMENT = { frame: LEFT.ref, index: 5, hash: 'a'.repeat(64) }
+
+    function setupWithElement() {
+      const canvas = setup(undefined, { elementBox: ELEMENT_BOX })
+      detach = canvas.detach
+      act(() => selectElement(selectionStore, PAGE, ELEMENT))
+      return canvas
+    }
+
+    it('moves nothing on a drag from the outline and keeps the element', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([200, 150], [240, 190])
+
+      expect(canvas.writes).toEqual([])
+      expect(selectionStore.getState().element).toEqual(ELEMENT)
+    })
+
+    it.each([
+      [150, 150],
+      [250, 150],
+      [150, 200],
+      [250, 200],
+    ] as const)(
+      'moves nothing on a drag from the corner mark at %i, %i',
+      (x, y) => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.drag([x, y], [x + 40, y + 30])
+
+        expect(canvas.writes).toEqual([])
+        expect(selectionStore.getState().element).toEqual(ELEMENT)
+      },
+    )
+
+    it('keeps the element on a click on its outline', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.click(250, 175)
+
+      expect(selectionStore.getState().element).toEqual(ELEMENT)
+    })
+
+    it('selects the frame on a click inside the element away from its outline', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.click(200, 175)
+
+      expect(selectedRefs()).toEqual([LEFT.ref])
+      expect(selectionStore.getState().element).toBeNull()
+    })
+
+    it('moves rather than resizes from a frame corner, whose handle is hidden', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([300, 300], [340, 320])
+
+      expect(canvas.writes[0]?.boxes[LEFT.ref]).toEqual({
+        ...LEFT.box,
+        x: 140,
+        y: 120,
+      })
     })
   })
 })
