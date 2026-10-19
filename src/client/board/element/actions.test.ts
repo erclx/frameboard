@@ -1,11 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import type { Action } from '@/client/actions/registry'
+import {
+  type Action,
+  bindKeys,
+  registerActions,
+} from '@/client/actions/registry'
 import type { ElementTree } from '@/shared/records/elements'
 
 import { createModeStore } from '../mode'
 import { createSelectionStore, select, selectElement } from '../selection'
-import { elementActions } from './actions'
+import { elementActions, focusOnBoard } from './actions'
 
 const PAGE = 'studio/home'
 const HERO = 'studio/home/hero'
@@ -23,7 +27,11 @@ const TREE: ElementTree = {
   ],
 }
 
-function setup({ noteOpen = false, tree = TREE as ElementTree | null } = {}) {
+function setup({
+  noteOpen = false,
+  tree = TREE as ElementTree | null,
+  boardFocused = (): boolean => true,
+} = {}) {
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
   const actions = elementActions({
@@ -32,6 +40,7 @@ function setup({ noteOpen = false, tree = TREE as ElementTree | null } = {}) {
     mode,
     treeOf: () => tree,
     noteOpen: () => noteOpen,
+    boardFocused,
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -40,7 +49,21 @@ function setup({ noteOpen = false, tree = TREE as ElementTree | null } = {}) {
   }
   const at = (index: number) =>
     selectElement(selection, PAGE, { frame: HERO, index, hash: HASH })
-  return { selection, mode, action, at }
+  return { selection, mode, action, at, actions }
+}
+
+const cleanups: (() => void)[] = []
+
+afterEach(() => {
+  while (cleanups.length > 0) cleanups.pop()?.()
+})
+
+/** A focused button outside the canvas, as a layers row or a toolbar button is. */
+function focusedButton(): void {
+  const button = document.createElement('button')
+  document.body.append(button)
+  button.focus()
+  cleanups.push(() => button.remove())
 }
 
 describe('elementActions', () => {
@@ -71,6 +94,15 @@ describe('elementActions', () => {
     it('stands aside at an element with no children', () => {
       const { action, at } = setup()
       at(7)
+
+      expect(action('element.down').enabled?.()).toBe(false)
+    })
+
+    it('stands aside while a panel button holds focus, so Enter presses it', () => {
+      const { selection, action } = setup({ boardFocused: focusOnBoard })
+      select(selection, PAGE, [HERO])
+
+      focusedButton()
 
       expect(action('element.down').enabled?.()).toBe(false)
     })
@@ -119,11 +151,28 @@ describe('elementActions', () => {
       expect(action('element.up').enabled?.()).toBe(false)
     })
 
-    it('stands aside while a note card is open', () => {
-      const { action, at } = setup({ noteOpen: true })
+    it('holds the press while a note card is open, so the selection stays', () => {
+      const { selection, actions, at } = setup({ noteOpen: true })
       at(7)
+      let cleared = false
+      cleanups.push(
+        registerActions(actions),
+        registerActions([
+          {
+            id: 'selection.clear',
+            label: 'Clear selection',
+            group: 'selection',
+            keys: ['Escape'],
+            run: () => (cleared = true),
+          },
+        ]),
+        bindKeys(window),
+      )
 
-      expect(action('element.up').enabled?.()).toBe(false)
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+
+      expect(cleared).toBe(false)
+      expect(selection.getState().element?.index).toBe(7)
     })
 
     it('stands aside in Play', () => {
@@ -158,6 +207,15 @@ describe('elementActions', () => {
     it('stands aside at a frame, so focus moves as usual', () => {
       const { selection, action } = setup()
       select(selection, PAGE, [HERO])
+
+      expect(action('element.next').enabled?.()).toBe(false)
+    })
+
+    it('stands aside while a panel button holds focus, so Tab moves focus', () => {
+      const { action, at } = setup({ boardFocused: focusOnBoard })
+      at(7)
+
+      focusedButton()
 
       expect(action('element.next').enabled?.()).toBe(false)
     })

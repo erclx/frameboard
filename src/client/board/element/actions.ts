@@ -29,6 +29,22 @@ export interface ElementContext {
   treeOf: (ref: string) => ElementTree | null
   /** True while a note card is open, which takes Esc first. */
   noteOpen: () => boolean
+  /** True while focus sits on the canvas or nowhere, so a focused control keeps Tab and Enter. */
+  boardFocused: () => boolean
+}
+
+/**
+ * Whether focus sits on the page itself or inside the canvas. A click on the
+ * canvas's hit layer, which takes no focus, leaves it on the body, while a
+ * panel row or a toolbar button keeps it until it moves on.
+ */
+export function focusOnBoard(): boolean {
+  const focused = document.activeElement
+  return (
+    !focused ||
+    focused === document.body ||
+    focused.closest('[data-canvas]') !== null
+  )
 }
 
 /**
@@ -87,37 +103,55 @@ export function elementActions(context: ElementContext): Action[] {
     (tree: ElementTree['elements'], at: number | null) =>
       at === null ? undefined : step(tree, at)
 
+  /** Enter and Tab also move focus or press a control, so they walk only while focus sits on the board. */
+  const onBoard = (walk: ReturnType<typeof go>) => ({
+    enabled: () => context.boardFocused() && walk.enabled(),
+    run: walk.run,
+  })
   const escape = go(fromElement(up))
+  const elementSelected = () => {
+    const { page, element } = selection.getState()
+    return (
+      mode.getState().mode === 'edit' &&
+      page === context.page() &&
+      Boolean(element)
+    )
+  }
   return [
     {
       id: 'element.down',
       label: 'Select child',
       group: 'selection',
       keys: ['Enter'],
-      ...go(down),
+      ...onBoard(go(down)),
     },
     {
       id: 'element.up',
       label: 'Select parent',
       group: 'selection',
       keys: ['Escape'],
-      // An open note card closes on Esc first, so one press does one thing.
-      enabled: () => !context.noteOpen() && escape.enabled(),
-      run: escape.run,
+      // With a note card open, the card's own listener closes it and this
+      // row holds the press, so the selection clear behind it never runs
+      // on the same Esc.
+      enabled: () =>
+        elementSelected() && (context.noteOpen() || escape.enabled()),
+      run: () => {
+        if (!context.noteOpen()) escape.run()
+      },
     },
     {
       id: 'element.next',
       label: 'Select next sibling',
       group: 'selection',
       keys: ['Tab'],
-      ...go(fromElement((tree, at) => sibling(tree, at, 1))),
+      ...onBoard(go(fromElement((tree, at) => sibling(tree, at, 1)))),
     },
     {
       id: 'element.previous',
       label: 'Select previous sibling',
       group: 'selection',
       keys: ['Shift+Tab'],
-      ...go(fromElement((tree, at) => sibling(tree, at, -1))),
+      ...onBoard(go(fromElement((tree, at) => sibling(tree, at, -1)))),
     },
   ]
 }
@@ -132,6 +166,7 @@ export function useElementActions(page: string): void {
         mode: modeStore,
         treeOf,
         noteOpen: () => notesUi.getState().open !== null,
+        boardFocused: focusOnBoard,
       }),
     )
     // The keys walk the one selected frame's tree, so it is fetched once
