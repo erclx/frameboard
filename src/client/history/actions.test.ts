@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { isEnabled, useActions } from '@/client/actions/registry'
+import { isEnabled, useActions, useCommands } from '@/client/actions/registry'
 import { holdBoxes, withPending } from '@/client/board/geometry/write'
 import {
   createLiveStore,
@@ -84,6 +84,16 @@ describe('registerHistoryActions', () => {
     const { result } = renderHook(() => useActions(['edit.undo']))
 
     expect(result.current[0] && isEnabled(result.current[0])).toBe(false)
+  })
+
+  it('lists Undo and Redo in the command palette while they are lit', () => {
+    register(writableWith(1, 1))
+
+    const { result } = renderHook(() => useCommands())
+
+    expect(result.current.map((action) => action.id)).toEqual(
+      expect.arrayContaining(['edit.undo', 'edit.redo']),
+    )
   })
 
   it('binds Undo to Cmd+Z and Redo to Cmd+Shift+Z', () => {

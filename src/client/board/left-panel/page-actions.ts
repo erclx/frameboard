@@ -1,3 +1,4 @@
+import { Copy, FilePlus, PencilLine, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -129,6 +130,7 @@ export function usePageActions(
         id: 'page.new',
         label: 'Add page',
         group: 'page',
+        command: { label: 'Add page', icon: FilePlus },
         enabled: writable,
         run: () => {
           const names = pages().map((candidate) => candidate.name)
@@ -148,6 +150,7 @@ export function usePageActions(
         id: 'page.duplicate',
         label: 'Duplicate page',
         group: 'page',
+        command: { label: 'Duplicate page', icon: Copy },
         enabled: onPage,
         run: () => {
           const at = current()
@@ -161,6 +164,7 @@ export function usePageActions(
         id: 'page.rename',
         label: 'Rename page',
         group: 'page',
+        command: { label: 'Rename page', icon: PencilLine },
         enabled: onPage,
         run: () => {
           const at = current()
@@ -171,6 +175,7 @@ export function usePageActions(
         id: 'page.delete',
         label: 'Delete page',
         group: 'page',
+        command: { label: 'Delete page', icon: Trash2 },
         enabled: onPage,
         run: () => {
           const at = current()

@@ -1,3 +1,4 @@
+import { Redo2, Undo2 } from 'lucide-react'
 import { navigate as browserNavigate } from 'wouter/use-browser-location'
 
 import {
@@ -61,6 +62,7 @@ export function registerHistoryActions({
       keys: ['$mod+KeyZ'],
       run: step(calls.undo, 'Undo skipped'),
       enabled: can('undo'),
+      command: { label: 'Undo', icon: Undo2 },
     },
     {
       id: 'edit.redo',
@@ -69,6 +71,7 @@ export function registerHistoryActions({
       keys: ['$mod+Shift+KeyZ'],
       run: step(calls.redo, 'Redo skipped'),
       enabled: can('redo'),
+      command: { label: 'Redo', icon: Redo2 },
     },
   ]
   const unregister = registerActions(actions)
