@@ -6,6 +6,11 @@ import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
 
+import {
+  copyFixtureBoard,
+  type FixtureBoard,
+} from '../test/support/fixture-board'
+
 const CLI = resolve('dist/cli.js')
 const ROOT = resolve('test/fixtures/boards/capture')
 const run = promisify(execFile)
@@ -249,5 +254,80 @@ test.describe('capture', () => {
     expect(exitCode).toBe(10)
     expect(envelope.error?.code).toBe('font-missing')
     expect(existsSync(join(out, 'studio'))).toBe(false)
+  })
+})
+
+test.describe('frame fit', () => {
+  let board: FixtureBoard
+
+  test.beforeEach(() => {
+    board = copyFixtureBoard('capture')
+  })
+
+  test.afterEach(() => {
+    board.cleanup()
+  })
+
+  function layout(): Record<string, Record<string, unknown>> {
+    return JSON.parse(
+      readFileSync(join(board.root, 'studio/fit/layout.json'), 'utf8'),
+    ).frames
+  }
+
+  test('fit: sets a frame to its 900 px of fixed content', async () => {
+    const { exitCode, envelope } = await frameboard(
+      ['frame', 'fit', 'fit/tall'],
+      board.root,
+    )
+
+    expect(exitCode).toBe(0)
+    expect(envelope.data).toMatchObject({
+      contentHeight: 900,
+      tooWide: false,
+      frame: { box: { width: 400, height: 900 } },
+    })
+    expect(layout().tall).toMatchObject({ width: 400, height: 900 })
+  })
+
+  test('fit: refuses a 100vh frame with fit-unbounded and leaves its layout alone', async () => {
+    const before = readFileSync(
+      join(board.root, 'studio/fit/layout.json'),
+      'utf8',
+    )
+
+    const { exitCode, envelope } = await frameboard(
+      ['frame', 'fit', 'fit/viewport'],
+      board.root,
+    )
+
+    expect(exitCode).toBe(10)
+    expect(envelope.error?.code).toBe('fit-unbounded')
+    expect(
+      readFileSync(join(board.root, 'studio/fit/layout.json'), 'utf8'),
+    ).toBe(before)
+  })
+
+  test('fit: reports content wider than its frame and keeps the width', async () => {
+    const { envelope } = await frameboard(
+      ['frame', 'fit', 'fit/wide'],
+      board.root,
+    )
+
+    expect(envelope.data).toMatchObject({
+      contentHeight: 200,
+      contentWidth: 600,
+      tooWide: true,
+      frame: { box: { width: 400, height: 200 } },
+    })
+  })
+
+  test('fit: persists a box for a frame with no layout entry', async () => {
+    const { exitCode } = await frameboard(
+      ['frame', 'fit', 'fit/unplaced'],
+      board.root,
+    )
+
+    expect(exitCode).toBe(0)
+    expect(layout().unplaced).toMatchObject({ height: 500 })
   })
 })

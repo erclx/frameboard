@@ -56,6 +56,7 @@ describe('docs', () => {
       'frame duplicate',
       'frame move',
       'frame resize',
+      'frame fit',
       'frame order',
       'frame rename',
       'frame delete',

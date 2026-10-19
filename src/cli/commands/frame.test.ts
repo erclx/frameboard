@@ -42,6 +42,15 @@ describe('frame', () => {
     expect(frameRecordSchema.safeParse(result.json().data).success).toBe(true)
   })
 
+  it('fit refuses frame-not-found, exit 3, ahead of launching a browser', async () => {
+    const run = on('basic')
+
+    const result = await run('frame', 'fit', 'webapp/home/missing')
+
+    expect(result.exitCode).toBe(3)
+    expect(result.json().error?.code).toBe('frame-not-found')
+  })
+
   it('lock --off clears the flag', async () => {
     const run = on('basic')
 

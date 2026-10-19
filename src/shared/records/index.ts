@@ -2,7 +2,7 @@ import type { z } from 'zod'
 
 import { addressFileSchema } from './address'
 import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
-import { captureResultSchema } from './capture'
+import { captureResultSchema, fitResultSchema } from './capture'
 import { checkResultSchema } from './check'
 import { editResultSchema } from './edit'
 import {
@@ -25,4 +25,5 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   edit: editResultSchema,
   checkResult: checkResultSchema,
   capture: captureResultSchema,
+  fit: fitResultSchema,
 }
