@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'wouter'
 
@@ -54,7 +55,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                   <ProjectName
                     project={project}
                     calls={calls}
-                    className="truncate text-panel"
+                    type="text-panel"
                   />
                   <Edited project={project} now={now} prefix="Edited " />
                 </span>
@@ -84,7 +85,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                   <ProjectName
                     project={project}
                     calls={calls}
-                    className="truncate font-medium"
+                    type="font-medium"
                   />
                   {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
                   <span className="hidden truncate sm:block">
@@ -152,30 +153,40 @@ const CARD_KEYS: Readonly<Record<string, string>> = {
 interface ProjectNameProps {
   project: ProjectRecord
   calls: Structure | undefined
-  className: string
+  /** The name's type, which the rename field takes too. */
+  type: string
 }
 
-/** The project's name, or the field renaming it with the reason its last name was refused. */
-function ProjectName({ project, calls, className }: ProjectNameProps) {
+/**
+ * The project's name, or the field renaming it with the reason its last name
+ * was refused. The field sits in the name's own line box, so the card or row
+ * keeps its height while it is open.
+ */
+function ProjectName({ project, calls, type }: ProjectNameProps) {
   const renaming = useRenamingProject(project.name)
   if (!renaming) {
     return (
-      <span className={className} title={project.name}>
+      <span className={cn('truncate', type)} title={project.name}>
         {project.name}
       </span>
     )
   }
   return (
-    <span className="flex min-w-0 flex-col gap-1 pl-1.5">
-      <RenameField
-        key={renaming.attempt}
-        name={renaming.draft}
-        label={`Rename project ${project.name}`}
-        onCommit={(name) => void renameProject(project.name, name, calls)}
-        onCancel={stopProjectRename}
-      />
+    <span className={cn('flex min-w-0 flex-col', type)}>
+      <span className="flex h-lh items-center pl-1.5">
+        <RenameField
+          key={renaming.attempt}
+          name={renaming.draft}
+          label={`Rename project ${project.name}`}
+          onCommit={(name) => void renameProject(project.name, name, calls)}
+          onCancel={stopProjectRename}
+        />
+      </span>
       {renaming.refusal ? (
-        <span role="alert" className="text-label font-normal text-destructive">
+        <span
+          role="alert"
+          className="mt-1 text-label font-normal text-destructive"
+        >
           {renaming.refusal}
         </span>
       ) : null}
