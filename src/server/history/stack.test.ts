@@ -11,7 +11,7 @@ import { moveFrame } from '../board/frames'
 import { addPage, movePage, renamePage } from '../board/pages'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
-import { History, HISTORY_CAP, type HistoryCounts } from './stack'
+import { History, HISTORY_CAP, type HistoryCounts, type Step } from './stack'
 
 describe('History', () => {
   let board: FixtureBoard
@@ -229,6 +229,54 @@ describe('History', () => {
     for (let x = 1; x <= HISTORY_CAP + 1; x++) await moveHero(x)
 
     expect(history.counts().undo).toBe(HISTORY_CAP)
+  })
+
+  describe('onWrite', () => {
+    let wrote: Step[]
+
+    beforeEach(() => {
+      wrote = []
+      history = new History(board.root, undefined, (step) => wrote.push(step))
+    })
+
+    it('tells the step a record pushed', async () => {
+      await moveHero(40)
+
+      expect(wrote.map((step) => step.frames)).toEqual([['webapp/home/hero']])
+    })
+
+    it('tells the step an undo and a redo wrote', async () => {
+      await renameHome('start')
+      wrote = []
+
+      await history.undo()
+      await history.redo()
+
+      expect(wrote.map((step) => step.page)).toEqual([
+        { before: 'webapp/home', after: 'webapp/start' },
+        { before: 'webapp/home', after: 'webapp/start' },
+      ])
+    })
+
+    it('tells nothing for a step that recorded nothing', () => {
+      history.record({ id: 1, changes: [], page: null, frames: ['x/y/z'] })
+
+      expect(wrote).toEqual([])
+    })
+
+    it('tells nothing for an undo an agent overtook', async () => {
+      await moveHero(40)
+      wrote = []
+      await moveFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        x: 80,
+      })
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(wrote).toEqual([])
+    })
   })
 
   it('runs quick undos in order', async () => {
