@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -98,7 +99,9 @@ describe('address', () => {
     })
 
     it('reads a live pid serving another board as stale', async () => {
-      const running = await serveBoard('/another/board')
+      const other = join(root, 'another-board')
+      mkdirSync(other)
+      const running = await serveBoard(other)
       await writeAddress(
         root,
         newAddress({ root, host: '127.0.0.1', port: running.port }),

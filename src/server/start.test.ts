@@ -1,4 +1,11 @@
-import { mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -15,10 +22,12 @@ import { BoardTabs, type RunningServer, startServer } from './start'
 
 describe('startServer', () => {
   let clientDir: string
+  let root: string
   let servers: RunningServer[]
 
   beforeEach(() => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'frameboard-root-')))
     writeFileSync(join(clientDir, 'index.html'), '<title>Frameboard</title>')
     servers = []
   })
@@ -26,12 +35,13 @@ describe('startServer', () => {
   afterEach(async () => {
     await Promise.all(servers.map((server) => server.close()))
     rmSync(clientDir, { recursive: true, force: true })
+    rmSync(root, { recursive: true, force: true })
   })
 
   async function start(port: number, strictPort?: boolean) {
     const server = await startServer({
       clientDir,
-      root: '/board',
+      root,
       port,
       strictPort,
       openUrl: () => {},
@@ -67,6 +77,86 @@ describe('startServer', () => {
   })
 })
 
+describe('startServer access', () => {
+  let clientDir: string
+  let root: string
+  let servers: RunningServer[]
+
+  beforeEach(() => {
+    clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'frameboard-root-')))
+    servers = []
+  })
+
+  afterEach(async () => {
+    await Promise.all(servers.map((server) => server.close()))
+    rmSync(clientDir, { recursive: true, force: true })
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  async function start() {
+    const server = await startServer({
+      clientDir,
+      root,
+      port: 0,
+      openUrl: () => {},
+    })
+    servers.push(server)
+    return server
+  }
+
+  const keyFile = () => readFileSync(join(root, '.run/board-key.json'), 'utf8')
+
+  it('keeps the same key across a restart over one root', async () => {
+    const first = await start()
+    const written = keyFile()
+    await first.close()
+    servers.length = 0
+
+    await start()
+
+    expect(keyFile()).toBe(written)
+  })
+
+  it('hands out a redeem URL that sets the cookie once', async () => {
+    const server = await start()
+
+    const url = server.boardUrl()
+    const first = await fetch(url, { redirect: 'manual' })
+    const again = await fetch(url, { redirect: 'manual' })
+
+    expect(url).toMatch(
+      new RegExp(
+        `^http://127\\.0\\.0\\.1:${server.port}/api/access/redeem\\?ticket=[0-9a-f]{32}$`,
+      ),
+    )
+    expect(first.status).toBe(303)
+    expect(first.headers.get('set-cookie')).toContain(JSON.parse(keyFile()).key)
+    expect(again.status).toBe(303)
+    expect(again.headers.get('set-cookie')).toBeNull()
+  })
+
+  it('lets the cookie from a redeem write when it sends the board origin', async () => {
+    const server = await start()
+    const redeemed = await fetch(server.boardUrl(), { redirect: 'manual' })
+    const cookie =
+      (redeemed.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+    const origin = `http://127.0.0.1:${server.port}`
+    const show = (headers: Record<string, string>) =>
+      fetch(`${origin}/api/show`, {
+        method: 'POST',
+        headers: { cookie, ...headers },
+        body: JSON.stringify({ ref: 'studio/home/hero' }),
+      })
+
+    expect((await show({ origin })).status).toBe(200)
+    expect((await show({})).status).toBe(401)
+    expect(
+      (await show({ origin: `http://127.0.0.1:${server.port + 1}` })).status,
+    ).toBe(401)
+  })
+})
+
 describe('startServer live socket', () => {
   let clientDir: string
   let board: FixtureBoard
@@ -89,7 +179,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(2)
+    await expect.poll(() => messages.length).toBe(3)
     hello = messages
     messages = []
   })
@@ -101,15 +191,21 @@ describe('startServer live socket', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board and then every frame checked on hello', () => {
-    expect(hello.map((message) => message.type)).toEqual(['board', 'findings'])
-    expect(hello[1]).toMatchObject({
+  it('sends the board, whether it may write, and then every frame checked on hello', () => {
+    expect(hello.map((message) => message.type)).toEqual([
+      'board',
+      'access',
+      'findings',
+    ])
+    expect(hello[1]).toEqual({ type: 'access', write: false })
+    expect(hello[2]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
   })
 
-  it('counts the connected board as an open tab', async () => {
-    expect(await server.tabs.waitForOne(1000)).toBe(true)
+  it('counts the connected board as an open tab that cannot write', () => {
+    expect(server.tabs.count).toBe(1)
+    expect(server.tabs.writers).toBe(0)
   })
 
   it('sends a frame the show route names to the board tab', async () => {
@@ -172,16 +268,33 @@ describe('startServer live socket', () => {
 })
 
 describe('BoardTabs', () => {
-  it('resolves true when a tab connects within the wait', async () => {
+  it('resolves true when a writing tab connects within the wait', async () => {
     const tabs = new BoardTabs()
 
-    const waiting = tabs.waitForOne(1000)
-    tabs.open()
+    const waiting = tabs.waitForWriter(1000)
+    tabs.open(true)
 
     expect(await waiting).toBe(true)
   })
 
-  it('resolves false when no tab connects within the wait', async () => {
-    expect(await new BoardTabs().waitForOne(10)).toBe(false)
+  it('resolves false when only a reader connects within the wait', async () => {
+    const tabs = new BoardTabs()
+
+    const waiting = tabs.waitForWriter(10)
+    tabs.open(false)
+
+    expect(await waiting).toBe(false)
+  })
+
+  it('counts a writer apart from a reader and drops each on close', () => {
+    const tabs = new BoardTabs()
+    tabs.open(true)
+    tabs.open(false)
+
+    expect([tabs.count, tabs.writers]).toEqual([2, 1])
+
+    tabs.close(true)
+    tabs.close(false)
+    expect([tabs.count, tabs.writers]).toEqual([0, 0])
   })
 })

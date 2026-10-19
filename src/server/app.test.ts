@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { version } from '@/shared/version'
 
+import { createTickets } from './access/tickets'
 import { createApp } from './app'
 
 const PORT = 4173
@@ -27,7 +28,17 @@ describe('createApp', () => {
       clientDir,
       root: '/board',
       port: () => PORT,
-      actions: { token: () => null, open: async () => false, show: () => 0 },
+      tickets: createTickets(),
+      actions: {
+        access: {
+          token: () => null,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        open: async () => false,
+        show: () => 0,
+      },
     }).request(url)
   }
 
@@ -72,6 +83,10 @@ describe('createApp', () => {
       [
         'a foreign host asking for a frame',
         `http://evil.test:${PORT}/frames/p/page/a.html`,
+      ],
+      [
+        'a foreign host redeeming a ticket',
+        `http://evil.test:${PORT}/api/access/redeem?ticket=t`,
       ],
     ])('refuses %s before any route runs', async (_case, url) => {
       const response = await request(url)
