@@ -50,7 +50,40 @@ vi.mock('@/server/capture/images', () => ({
         height: frame.box.height,
       })),
     ),
+  captureComposite: async (
+    _browser: unknown,
+    {
+      page,
+      themes,
+      out,
+    }: {
+      page: { ref: string; project: string; name: string }
+      themes: string[]
+      out: string
+    },
+  ) =>
+    themes.map((theme) => ({
+      ref: page.ref,
+      theme,
+      path: join(out, page.project, `${page.name}.${theme}.png`),
+      width: 1,
+      height: 1,
+    })),
 }))
+
+const PAGE = {
+  'studio/home/hero.html': '<p>Hello</p>',
+  'studio/home/about.html': '<p>About</p>',
+  'studio/home/secret.html': '<p>Hidden</p>',
+  'studio/home/layout.json': JSON.stringify({
+    version: 1,
+    frames: {
+      hero: { x: 0, y: 0, width: 400, height: 300, order: 0 },
+      about: { x: 480, y: 0, width: 400, height: 300, order: 1 },
+      secret: { x: 0, y: 400, width: 400, height: 300, order: 2, hidden: true },
+    },
+  }),
+}
 
 const HERO = {
   'studio/home/hero.html': '<p>Hello</p>',
@@ -126,6 +159,106 @@ describe('capture', () => {
     board = writeBoard(HERO)
 
     const run = await capture(['home/hero', '--theme', 'sepia'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json().error?.code).toBe('usage')
+  })
+
+  it('captures every visible frame of a page with --page, leaving hidden ones out', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture(['--page', 'home', '--theme', 'light'])
+
+    expect(run.exitCode).toBe(0)
+    expect(
+      captureResultSchema
+        .parse(run.json().data)
+        .images.map((image) => image.ref),
+    ).toEqual(['studio/home/hero', 'studio/home/about'])
+  })
+
+  it('reads a two-part --page as a project and page', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture(['--page', 'studio/home', '--theme', 'light'])
+
+    expect(run.exitCode).toBe(0)
+  })
+
+  it('writes one composite per theme with --composite', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture([
+      '--page',
+      'home',
+      '--composite',
+      '--out',
+      'shots',
+    ])
+
+    expect(run.json().data).toEqual({
+      images: [
+        expect.objectContaining({
+          ref: 'studio/home',
+          theme: 'light',
+          path: join(board.root, 'shots/studio/home.light.png'),
+        }),
+        expect.objectContaining({
+          ref: 'studio/home',
+          theme: 'dark',
+          path: join(board.root, 'shots/studio/home.dark.png'),
+        }),
+      ],
+    })
+  })
+
+  it('captures nothing from a page holding only hidden frames', async () => {
+    board = writeBoard({
+      'studio/home/secret.html': '<p>Hidden</p>',
+      'studio/home/layout.json': JSON.stringify({
+        version: 1,
+        frames: {
+          secret: {
+            x: 0,
+            y: 0,
+            width: 400,
+            height: 300,
+            order: 0,
+            hidden: true,
+          },
+        },
+      }),
+    })
+
+    const run = await capture(['--page', 'home', '--composite'])
+
+    expect(run.exitCode).toBe(0)
+    expect(run.json().data).toEqual({ images: [] })
+    expect(existsSync(join(board.root, '.run'))).toBe(false)
+  })
+
+  it('refuses a frame ref and --page together as usage', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture(['home/hero', '--page', 'home'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json().error?.code).toBe('usage')
+  })
+
+  it('refuses neither a frame ref nor --page as usage', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture([])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json().error?.code).toBe('usage')
+  })
+
+  it('refuses --composite with no --page as usage', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture(['home/hero', '--composite'])
 
     expect(run.exitCode).toBe(2)
     expect(run.json().error?.code).toBe('usage')
