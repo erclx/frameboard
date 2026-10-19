@@ -161,21 +161,25 @@ interface FindingsMarkProps {
 }
 
 /**
- * The count of a frame's check findings beside its name. It never shrinks,
- * so a narrow frame truncates the name and keeps the count. The hue sits on
- * the icon alone, since the note color is too light for text on the light
- * canvas, and the count reads in the text color.
+ * The count of a frame's check findings beside its name, as a pill tinted in
+ * the destructive hue when any finding is an error and the note hue when all
+ * are warnings. It never shrinks, so a narrow frame truncates the name and
+ * keeps the count.
  */
 function FindingsMark({ findings }: FindingsMarkProps) {
   const count = findings.length
+  const severity = findings.some((finding) => finding.severity === 'error')
+    ? 'error'
+    : 'warning'
   return (
     <span
       role="img"
       aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
       title={findings.map((finding) => finding.message).join('\n')}
-      className="flex shrink-0 items-center gap-0.5 text-foreground"
+      data-severity={severity}
+      className="flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
     >
-      <TriangleAlert aria-hidden className="size-3 text-note" />
+      <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
       {count}
     </span>
   )

@@ -65,8 +65,9 @@ async function measure(
 
 // Both readings take the furthest bottom edge of any box, flow or out of flow,
 // since `scrollHeight` never reads below the viewport and the root's own box
-// leaves out absolutely positioned content.
-function readContentSize(): Reading {
+// leaves out absolutely positioned content. It runs in the page, so it
+// carries everything it reads.
+export function readContentSize(): Reading {
   const root = document.documentElement
   let bottom = root.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {

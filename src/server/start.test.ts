@@ -21,6 +21,11 @@ import {
 } from '../../test/support/fixture-board'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
+// The server's browser sweep refuses at once, so no spec here starts Chromium.
+async function noBrowser(): Promise<never> {
+  throw new Error('No browser in this spec.')
+}
+
 describe('startServer', () => {
   let clientDir: string
   let root: string
@@ -47,6 +52,7 @@ describe('startServer', () => {
       port,
       strictPort,
       openUrl: () => {},
+      launch: noBrowser,
     })
     servers.push(server)
     return server
@@ -103,6 +109,7 @@ describe('startServer access', () => {
       root,
       port: 0,
       openUrl: () => {},
+      launch: noBrowser,
     })
     servers.push(server)
     return server
@@ -177,6 +184,7 @@ describe('startServer live socket', () => {
       root: board.root,
       port: 0,
       openUrl: () => {},
+      launch: noBrowser,
     })
     messages = []
     socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)

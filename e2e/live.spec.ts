@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
 
+import { cli } from '../test/support/cli'
 import {
   copyFixtureBoard,
   type FixtureBoard,
@@ -148,5 +149,26 @@ test.describe('the live board', () => {
     await expect(
       hero.getByRole('img', { name: '1 check finding' }),
     ).toBeVisible()
+  })
+
+  test('marks a frame resized so its content clips, and clears it on a fit', async ({
+    page,
+  }) => {
+    // Its two static findings are what it carries before the resize.
+    const mobile = page.locator('[data-frame="studio/home/mobile"]')
+    const before = mobile.getByRole('img', { name: '2 check findings' })
+    await expect(before).toBeVisible()
+    await expect(before).not.toHaveAttribute('title', /px tall/)
+
+    // A resize writes layout.json alone, so the browser checker reads the box.
+    await cli(['frame', 'resize', 'home/mobile', '--height', '20', '--json'], {
+      cwd: board.root,
+    })
+    const clipped = mobile.getByRole('img', { name: '3 check findings' })
+    await expect(clipped).toBeVisible()
+    await expect(clipped).toHaveAttribute('title', /px tall in its 20 px/)
+
+    await cli(['frame', 'fit', 'home/mobile', '--json'], { cwd: board.root })
+    await expect(before).toBeVisible()
   })
 })

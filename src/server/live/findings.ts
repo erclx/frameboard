@@ -23,24 +23,53 @@ export interface BoardFindings {
     board: ListResult,
     paths: string[] | 'all',
   ) => Record<string, Finding[]>
+  /**
+   * Holds a frame's browser findings beside its static ones, returning the
+   * frame's merged list as a partial map. A frame whose static findings have
+   * not landed yet, as one the watcher has not batched, is held and sent
+   * nothing until they do.
+   */
+  setRendered: (ref: string, findings: Finding[]) => Record<string, Finding[]>
+  /** The browser findings held for each of `refs`, an unchecked one as empty. */
+  rendered: (refs: string[]) => Record<string, Finding[]>
 }
 
 /**
  * The board's check findings, held between batches so a hello needs no
- * check. `tokens` is the server's `--tokens` sheet, null for none.
+ * check. Each frame's list is its static findings followed by the browser
+ * findings the server's warm checker last landed for it. `tokens` is the
+ * server's `--tokens` sheet, null for none.
  */
 export function createBoardFindings(
   root: string,
   tokens: string | null = null,
 ): BoardFindings {
   const held = new Map<string, Finding[]>()
+  const browser = new Map<string, Finding[]>()
+  const merged = (ref: string, own: Finding[]) => [
+    ...own,
+    ...(browser.get(ref) ?? []),
+  ]
 
   return {
-    all: () => Object.fromEntries(held),
+    all: () =>
+      Object.fromEntries(
+        [...held].map(([ref, own]) => [ref, merged(ref, own)]),
+      ),
+    setRendered: (ref, findings) => {
+      browser.set(ref, findings)
+      const own = held.get(ref)
+      return own ? { [ref]: merged(ref, own) } : {}
+    },
+    rendered: (refs) =>
+      Object.fromEntries(refs.map((ref) => [ref, browser.get(ref) ?? []])),
     update: (board, paths) => {
       const frames = framesOf(board)
-      for (const ref of held.keys()) {
-        if (!frames.has(ref)) held.delete(ref)
+      for (const ref of [...held.keys(), ...browser.keys()]) {
+        if (!frames.has(ref)) {
+          held.delete(ref)
+          browser.delete(ref)
+        }
       }
       const refs =
         paths === 'all'
@@ -59,7 +88,7 @@ export function createBoardFindings(
         const findings = checkOne(root, frame, context)
         if (findings === null) continue
         held.set(ref, findings)
-        changed[ref] = findings
+        changed[ref] = merged(ref, findings)
       }
       return changed
     },

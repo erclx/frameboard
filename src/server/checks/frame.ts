@@ -70,9 +70,10 @@ export function readProjectContext(
 /**
  * The project's `checks` config, read by hand rather than through the
  * project record's schema, which the hook cannot afford to load. A file that
- * does not read, or a key of the wrong type, leaves that rule off.
+ * does not read, or a key of the wrong type, leaves that rule off. The
+ * server's browser checker reads it too, for `minFontSize`.
  */
-function readConfig(root: string, project: string): ProjectChecks {
+export function readConfig(root: string, project: string): ProjectChecks {
   let parsed: unknown
   try {
     parsed = JSON.parse(readFileSync(join(root, project, PROJECT_FILE), 'utf8'))
@@ -90,6 +91,9 @@ function readConfig(root: string, project: string): ProjectChecks {
   }
   if (typeof checks.noUppercase === 'boolean') {
     config.noUppercase = checks.noUppercase
+  }
+  if (typeof checks.minFontSize === 'number' && checks.minFontSize > 0) {
+    config.minFontSize = checks.minFontSize
   }
   return config
 }

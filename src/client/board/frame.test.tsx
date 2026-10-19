@@ -27,10 +27,13 @@ function frame(name: string): FrameRecord {
   }
 }
 
-function finding(message: string): Finding {
+function finding(
+  message: string,
+  severity: Finding['severity'] = 'error',
+): Finding {
   return {
     rule: 'theme',
-    severity: 'error',
+    severity,
     frame: 'studio/home/a',
     path: 'studio/home/a.html',
     message,
@@ -159,6 +162,69 @@ describe('Frame', () => {
     const mark = getByRole('img', { name: '2 check findings' })
     expect(mark).toHaveTextContent('2')
     expect(mark).toHaveAttribute('title', 'One theme alone.\nDefault font.')
+  })
+
+  it('marks the pill error when any finding is an error', () => {
+    const { getByRole } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={[
+          finding('Sized off the viewport.', 'warning'),
+          finding('Cut off.'),
+        ]}
+      />,
+    )
+
+    expect(getByRole('img')).toHaveAttribute('data-severity', 'error')
+  })
+
+  it('marks the pill warning when every finding is a warning', () => {
+    const { getByRole } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={[finding('Sized off the viewport.', 'warning')]}
+      />,
+    )
+
+    expect(getByRole('img')).toHaveAttribute('data-severity', 'warning')
+  })
+
+  it('tints an error pill in the destructive hue and a warning pill in the note hue', () => {
+    const { getAllByRole } = render(
+      <>
+        <Frame
+          frame={frame('a')}
+          live={false}
+          version={0}
+          findings={[finding('Cut off.')]}
+        />
+        <Frame
+          frame={frame('b')}
+          live={false}
+          version={0}
+          findings={[finding('Sized off the viewport.', 'warning')]}
+        />
+      </>,
+    )
+    const hue = (element: HTMLElement) =>
+      getComputedStyle(element).getPropertyValue('--h').trim()
+
+    const [error, warning] = getAllByRole('img')
+
+    expect(error && hue(error)).toBe(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--destructive')
+        .trim(),
+    )
+    expect(warning && hue(warning)).toBe(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--note')
+        .trim(),
+    )
   })
 
   it('marks nothing for a frame with no findings', () => {

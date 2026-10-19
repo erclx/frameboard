@@ -10,8 +10,10 @@ import { readFrame } from '@/server/checks/frame-source'
 import { readThemeColors } from '@/server/checks/theme'
 import { tokenSheets } from '@/server/checks/tokens'
 import { frameUrl } from '@/shared/board-urls'
+import { checkResultSchema } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { cli } from '../test/support/cli'
 import {
   copyFixtureBoard,
   type FixtureBoard,
@@ -160,6 +162,56 @@ test.describe('the static font and theme rules against the browser', () => {
         frame.page === 'themes' && light.colors === dark.colors,
       )
     }
+  })
+})
+
+/** Each browser rule's fixture page, the rule its fail frame breaks alone. */
+const BROWSER_PAGES = ['clipped', 'scrollbar', 'viewport', 'min-font-size']
+
+test.describe('the browser rules on a running board', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeAll(async () => {
+    board = copyFixtureBoard('checks')
+    server = await serveBoard(board.root)
+    // check answers once the server's startup sweep has landed every frame,
+    // so no label count changes under an assertion.
+    await cli(['check', '--json'], { cwd: board.root })
+  })
+
+  test.afterAll(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  for (const rule of BROWSER_PAGES) {
+    test(`marks the ${rule} fail frame alone`, async ({ page }) => {
+      await page.goto(`${server.url}/p/rules/${rule}`)
+      const fail = page.locator(`[data-frame="rules/${rule}/fail"]`)
+      const pass = page.locator(`[data-frame="rules/${rule}/pass"]`)
+      await expect(fail).toBeVisible()
+      await expect(pass).toBeVisible()
+
+      await expect(
+        fail.getByRole('img', { name: '1 check finding' }),
+      ).toBeVisible()
+      await expect(pass.getByRole('img')).toHaveCount(0)
+    })
+  }
+
+  test('returns the same rule ids from check while the server runs', async () => {
+    const run = await cli(['check', '--json'], { cwd: board.root })
+    const result = checkResultSchema.parse(run.json().error?.details)
+    const browserRules = new Set(BROWSER_PAGES)
+
+    expect(result.browser).toEqual({ ran: true })
+    expect(
+      result.findings
+        .filter((finding) => browserRules.has(finding.rule))
+        .map((finding) => `${finding.frame} ${finding.rule}`)
+        .sort(),
+    ).toEqual(BROWSER_PAGES.map((rule) => `rules/${rule}/fail ${rule}`).sort())
   })
 })
 

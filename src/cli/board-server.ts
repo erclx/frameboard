@@ -6,21 +6,28 @@ const REQUEST_TIMEOUT_MS = 500
 
 /**
  * Posts to a running board server's write route with the address file's
- * token, resolving the `data` of its envelope.
+ * token, resolving the `data` of its envelope. `timeoutMs` lengthens the
+ * wait for a route that does real work first, such as the browser checks.
  */
 export function postToBoard(
   address: AddressFile,
   path: string,
   body: unknown,
+  { timeoutMs = REQUEST_TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): Promise<unknown> {
-  return requestBoard(address, path, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${address.token}`,
-      'content-type': 'application/json',
+  return requestBoard(
+    address,
+    path,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${address.token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  })
+    timeoutMs,
+  )
 }
 
 /** Reads a running board server's route, resolving the `data` of its envelope. */
@@ -35,12 +42,13 @@ async function requestBoard(
   address: AddressFile,
   path: string,
   init: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<unknown> {
   let response: Response
   try {
     response = await fetch(`${address.url}${path}`, {
       ...init,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     })
   } catch (error) {
     throw new FrameboardError(

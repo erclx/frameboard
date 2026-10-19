@@ -11,6 +11,7 @@ import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
+import { type BrowserChecks, checkRoutes } from './routes/checks'
 import { elementsRoutes } from './routes/elements'
 import { historyRoutes } from './routes/history'
 import { servedFrames } from './routes/look'
@@ -68,6 +69,8 @@ export interface AppOptions {
   history: History
   /** What the writing tab last selected, which `GET /api/selection` answers. */
   selection: SelectionHolder
+  /** The warm checker `POST /api/checks` reads, absent where nothing runs one. */
+  checks?: BrowserChecks
 }
 
 export function createApp({
@@ -82,6 +85,7 @@ export function createApp({
   delivery,
   history,
   selection,
+  checks,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -105,6 +109,7 @@ export function createApp({
   app.route('/', assetsRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection))
   app.route('/', pngRoutes(root, renderFrame))
+  if (checks) app.route('/', checkRoutes(actions.access, checks))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.

@@ -1,8 +1,11 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { checkFrame } from './frame'
+import { checkFrame, readProjectContext } from './frame'
 import { checkPage, checkProject, RULES } from './run'
 
 // The checks only read, so the committed fixture serves every test as is.
@@ -29,7 +32,7 @@ describe('checkProject', () => {
   it('checks every frame on every page', async () => {
     const { checked } = await checkProject(ROOT, 'rules')
 
-    expect(checked).toBe(22)
+    expect(checked).toBe(30)
   })
 
   it('reports each fail frame for its own rule and nothing else', async () => {
@@ -87,6 +90,41 @@ describe('checkFrame', () => {
     expect(
       checkFrame({ root: ROOT, project: 'rules', page: 'theme', name: 'pass' }),
     ).toEqual({ checked: 1, findings: [] })
+  })
+})
+
+describe('readProjectContext', () => {
+  let root: string
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'frameboard-context-'))
+    mkdirSync(join(root, 'app'))
+  })
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  function writeChecks(checks: unknown): void {
+    writeFileSync(
+      join(root, 'app', 'project.json'),
+      JSON.stringify({ version: 1, pages: [], checks }),
+    )
+  }
+
+  it('reads a positive minimum font size', () => {
+    writeChecks({ minFontSize: 12 })
+
+    expect(readProjectContext(root, 'app').config).toEqual({ minFontSize: 12 })
+  })
+
+  it.each([
+    ['zero', 0],
+    ['a string', '12'],
+  ])('leaves the minimum font size off for %s', (_, minFontSize) => {
+    writeChecks({ minFontSize })
+
+    expect(readProjectContext(root, 'app').config).toEqual({})
   })
 })
 

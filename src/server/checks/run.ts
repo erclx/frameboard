@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { listFrames, listPageFolders } from '@/server/board/scan'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
+import { FONT_SIZE_RULES } from './browser/font-size'
+import { LAYOUT_RULES } from './browser/layout'
 import { FONT_RULES } from './fonts'
 import { checkFrameIn, type ProjectContext, readProjectContext } from './frame'
 import { LINK_RULES } from './links'
@@ -19,6 +21,8 @@ export const RULES: RuleDoc[] = [
   ...FONT_RULES,
   ...THEME_RULES,
   ...UPPERCASE_RULES,
+  ...LAYOUT_RULES,
+  ...FONT_SIZE_RULES,
 ]
 
 /** Checks every frame on one page. */

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "frames": {
+    "pass": { "x": 0, "y": 0, "width": 400, "height": 200, "order": 0 },
+    "fail": { "x": 480, "y": 0, "width": 400, "height": 200, "order": 1 }
+  }
+}

@@ -1,9 +1,13 @@
+import type { AddressInfo } from 'node:net'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import { serve, type ServerType } from '@hono/node-server'
+import { Hono } from 'hono'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { checkResultSchema } from '@/shared/records/check'
+import { newAddress, writeAddress } from '@/server/address'
+import { checkResultSchema, type Finding } from '@/shared/records/check'
 
 import { cli } from '../../../test/support/cli'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
@@ -12,6 +16,8 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 const ROOT = fileURLToPath(
   new URL('../../../test/fixtures/boards/checks/', import.meta.url),
 ).replace(/\/$/, '')
+
+const NO_SERVER = { ran: false, reason: 'server-not-running' }
 
 function check(args: string[], cwd = ROOT) {
   return cli(['check', ...args, '--json'], { cwd })
@@ -22,7 +28,10 @@ describe('check', () => {
     const run = await check(['theme/pass'])
 
     expect(run.exitCode).toBe(0)
-    expect(run.json()).toEqual({ ok: true, data: { checked: 1, findings: [] } })
+    expect(run.json()).toEqual({
+      ok: true,
+      data: { checked: 1, findings: [], browser: NO_SERVER },
+    })
   })
 
   it('fails check-findings, exit 8, with the result in the details', async () => {
@@ -39,13 +48,21 @@ describe('check', () => {
   it('takes a project-qualified frame ref', async () => {
     const run = await check(['rules/theme/pass'])
 
-    expect(run.json().data).toEqual({ checked: 1, findings: [] })
+    expect(run.json().data).toEqual({
+      checked: 1,
+      findings: [],
+      browser: NO_SERVER,
+    })
   })
 
   it('takes a path to the frame file against the working folder', async () => {
     const run = await check(['pass.html'], join(ROOT, 'rules/theme'))
 
-    expect(run.json().data).toEqual({ checked: 1, findings: [] })
+    expect(run.json().data).toEqual({
+      checked: 1,
+      findings: [],
+      browser: NO_SERVER,
+    })
   })
 
   it('checks a whole page from a page ref', async () => {
@@ -82,7 +99,7 @@ describe('check', () => {
   it('checks the whole project with no target', async () => {
     const run = await check([])
 
-    expect(run.json().error?.details).toMatchObject({ checked: 22 })
+    expect(run.json().error?.details).toMatchObject({ checked: 30 })
   })
 
   it('fails frame-not-found, exit 3, on a ref that names nothing', async () => {
@@ -97,5 +114,109 @@ describe('check', () => {
 
     expect(run.exitCode).toBe(8)
     expect(run.stderr).toContain('rules/theme/fail.html:9:9  theme  ')
+  })
+
+  it('closes the human output saying the browser rules did not run', async () => {
+    const run = await cli(['check', 'theme/pass'], { cwd: ROOT })
+
+    expect(run.stdout).toContain(
+      'Browser rules did not run, since no board server is running.',
+    )
+  })
+})
+
+describe('check with a board server running', () => {
+  const CLEAN = '<style>body { font-family: Geist }</style><p>Hello</p>'
+  let board: TempBoard
+  let server: ServerType
+  let asked: unknown[]
+
+  afterEach(async () => {
+    await new Promise((resolve) => server.close(resolve))
+    board.cleanup()
+  })
+
+  /** A server for the board answering `/api/checks` with `answer`. */
+  async function serveStub(answer: {
+    findings: Finding[]
+    browser: { ran: boolean; reason?: string }
+  }) {
+    board = writeBoard({
+      'site/home/hero.html': CLEAN,
+      'site/home/about.html': CLEAN,
+    })
+    asked = []
+    const app = new Hono()
+    app.get('/api/health', (c) => c.json({ root: board.root }))
+    app.post('/api/checks', async (c) => {
+      asked.push(await c.req.json())
+      return c.json({ ok: true, data: answer })
+    })
+    const port = await new Promise<number>((resolve) => {
+      server = serve(
+        { fetch: app.fetch, hostname: '127.0.0.1', port: 0 },
+        (info: AddressInfo) => resolve(info.port),
+      )
+    })
+    await writeAddress(
+      board.root,
+      newAddress({ root: board.root, host: '127.0.0.1', port }),
+    )
+  }
+
+  function finding(rule: string, severity: Finding['severity']): Finding {
+    return {
+      rule,
+      severity,
+      frame: 'site/home/hero',
+      path: 'site/home/hero.html',
+      message: `site/home/hero breaks ${rule}.`,
+      location: null,
+    }
+  }
+
+  it('posts the refs it checked and appends the server findings', async () => {
+    await serveStub({
+      findings: [finding('clipped', 'error')],
+      browser: { ran: true },
+    })
+
+    const run = await check(['home'], board.root)
+
+    expect(asked).toEqual([{ refs: ['site/home/about', 'site/home/hero'] }])
+    expect(run.exitCode).toBe(8)
+    expect(run.json().error?.details).toEqual({
+      checked: 2,
+      findings: [finding('clipped', 'error')],
+      browser: { ran: true },
+    })
+  })
+
+  it('exits 0 on warnings alone', async () => {
+    await serveStub({
+      findings: [finding('viewport', 'warning')],
+      browser: { ran: true },
+    })
+
+    const run = await check(['home/hero'], board.root)
+
+    expect(run.exitCode).toBe(0)
+    expect(run.json().data).toMatchObject({
+      findings: [{ rule: 'viewport', severity: 'warning' }],
+    })
+  })
+
+  it('keeps the static result when the server has no browser', async () => {
+    await serveStub({
+      findings: [],
+      browser: { ran: false, reason: 'browser-not-found' },
+    })
+
+    const run = await cli(['check', 'home/hero'], { cwd: board.root })
+
+    expect(run.exitCode).toBe(0)
+    expect(run.stdout).toContain(
+      "could not launch Playwright's headless shell. Install it with npx playwright-core@",
+    )
   })
 })
