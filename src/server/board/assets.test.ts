@@ -56,6 +56,18 @@ describe('assets', () => {
       ])
     })
 
+    it('sorts by path ignoring letter case', async () => {
+      put('demo.mp4')
+      put('Inter.woff2')
+      put('hero.png')
+
+      expect((await listAssets(project)).map((file) => file.path)).toEqual([
+        'demo.mp4',
+        'hero.png',
+        'Inter.woff2',
+      ])
+    })
+
     it('skips dot-named paths, lock files, and temp files', async () => {
       put('keep.png')
       put('.DS_Store')

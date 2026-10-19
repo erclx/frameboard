@@ -39,7 +39,13 @@ export async function listAssets(projectDir: string): Promise<AssetFile[]> {
   }
   const files: AssetFile[] = []
   await walk(folder, '', real, files)
-  return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+  return files.sort((a, b) => byPath(a.path, b.path))
+}
+
+/** Case-insensitive, so `Inter.woff2` sorts among the h and j files, with the exact path breaking a tie. */
+function byPath(a: string, b: string): number {
+  const folded = a.toLowerCase().localeCompare(b.toLowerCase())
+  return folded !== 0 ? folded : a < b ? -1 : a > b ? 1 : 0
 }
 
 async function walk(
