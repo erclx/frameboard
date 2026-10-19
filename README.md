@@ -30,6 +30,8 @@ A board folder holds projects, a project holds pages, and a page holds frames. E
 
 The `project`, `page`, and `frame` commands manage them on disk, `list` shows the board, and `edit` changes one style, attribute, or text on one element without touching another byte. `show` points the open board at a frame.
 
+On the board, Cmd-click or double-click selects an element inside a frame, Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements. `selection` prints what the developer picked, with the element's index and hash ready for `edit`.
+
 Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides, or through `serve --tokens <path>` for a sheet another tool manages. The server puts the sheets and three faces, Geist, Geist Mono, and Caveat, ahead of each frame's own styles as it serves the frame, and the file on disk stays as written. One toggle switches the board and every frame between light and dark.
 
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any finding. The board runs the same rules on each change. `capture` writes PNGs of a frame or page in either theme, `frame fit` sets a frame's height to its content, and `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type.
