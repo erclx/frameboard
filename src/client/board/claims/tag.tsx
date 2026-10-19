@@ -24,7 +24,7 @@ export function ClaimTag({ claim }: { claim: Claim }) {
         {initialOf(claim.agent)}
       </span>
       {tag}
-      <span className="font-normal text-muted-foreground">
+      <span data-claim-elapsed className="font-normal text-muted-foreground">
         editing · {elapsed(claim.claimedAt, now)}
       </span>
     </span>

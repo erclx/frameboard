@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
+import { claim, release } from '@/server/claims/store'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from './types'
@@ -350,12 +351,38 @@ async function listening(page: Page): Promise<void> {
     JSON.stringify({
       type: 'hello',
       role: 'inbox',
-      session: '4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13',
+      session: LISTENING_SESSION,
       tag: 'claude · frameboard',
     }),
   )
   // An open socket would hold the capture run open after its browser closes.
   page.once('close', () => socket.close())
+}
+
+/** The session `listening` registers, which the claimed-frame case's claim names. */
+const LISTENING_SESSION = '4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13'
+
+/**
+ * Claims the hero frame for the listening session, held 40 seconds already,
+ * and releases it once the capture page closes so no later case shows it.
+ * It writes through the claims store with a fixed tag, since the CLI's tag
+ * names the folder the run happens in.
+ */
+async function claimedHero(page: Page): Promise<void> {
+  const root = 'test/fixtures/boards/basic'
+  await claim(
+    root,
+    {
+      frame: 'webapp/home/hero',
+      session: LISTENING_SESSION,
+      agent: 'claude',
+      tag: 'claude · frameboard',
+    },
+    new Date(Date.now() - 40_000),
+  )
+  page.once('close', () => {
+    void release(root, LISTENING_SESSION, undefined, new Date())
+  })
 }
 
 /**
@@ -975,6 +1002,17 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, listening, noteOnHero)),
+      },
+      {
+        section: 'claimed-frame',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR, '[data-claim-elapsed]'],
+        setup: themed(
+          both(listening, claimedHero, readyWhen('[data-claim-tag]')),
+        ),
       },
       {
         section: 'pages-search',
