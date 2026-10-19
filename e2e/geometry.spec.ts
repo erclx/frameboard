@@ -1,0 +1,124 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { expect, type Locator, type Page, test } from '@playwright/test'
+
+import {
+  copyFixtureBoard,
+  type FixtureBoard,
+} from '../test/support/fixture-board'
+import { type BoardServer, serveBoard } from './support/board-server'
+
+const MOBILE = '[data-frame="studio/home/mobile"]'
+
+async function center(locator: Locator): Promise<{ x: number; y: number }> {
+  const box = await locator.boundingBox()
+  if (!box) throw new Error('The element has no box on screen')
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
+
+async function drag(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): Promise<void> {
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(to.x, to.y, { steps: 8 })
+}
+
+test.describe('frame geometry by hand', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const layout = () =>
+    JSON.parse(
+      readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+    ) as { frames: Record<string, Record<string, unknown>> }
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('a drag writes the layout once, on release', async ({ page }) => {
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+    const mobile = page.locator(MOBILE)
+    await expect(mobile).toBeVisible()
+    const from = await center(mobile)
+
+    await drag(page, from, { x: from.x + 120, y: from.y + 60 })
+    const during = layout().frames.mobile
+    await page.mouse.up()
+
+    expect(during).toMatchObject({ x: 1520, y: 0 })
+    await expect.poll(() => layout().frames.mobile?.x).not.toBe(1520)
+    expect(layout().frames.mobile).toMatchObject({
+      width: 390,
+      height: 844,
+    })
+    await expect(mobile).toHaveAttribute('data-selected', 'true')
+  })
+
+  test('a marquee selects two frames and Alt+S aligns their bottoms', async ({
+    page,
+  }) => {
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+    await expect(page.locator(MOBILE)).toBeVisible()
+    const canvas = await page.locator('[data-canvas]').boundingBox()
+    if (!canvas) throw new Error('The canvas has no box on screen')
+
+    await drag(
+      page,
+      { x: canvas.x + 8, y: canvas.y + 8 },
+      { x: canvas.x + canvas.width - 8, y: canvas.y + canvas.height - 120 },
+    )
+    await page.mouse.up()
+    await expect(page.locator('[data-frame][data-selected]')).toHaveCount(2)
+    await expect(page.getByRole('heading', { name: '2 frames' })).toBeVisible()
+    await page.keyboard.press('Alt+KeyS')
+
+    // The hero is 900 tall and the phone 844, so the phone drops by 56.
+    await expect.poll(() => layout().frames.mobile?.y).toBe(56)
+    expect(layout().frames.hero).toMatchObject({ y: 0 })
+  })
+
+  test('a locked frame selects and never moves', async ({ page }) => {
+    const locked = layout()
+    locked.frames.mobile = { ...locked.frames.mobile, locked: true }
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify(locked),
+    )
+    const bytes = readFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      'utf8',
+    )
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+    const mobile = page.locator(MOBILE)
+    await expect(mobile).toBeVisible()
+    const before = await mobile.boundingBox()
+    const from = await center(mobile)
+
+    await drag(page, from, { x: from.x + 120, y: from.y + 60 })
+    await page.mouse.up()
+
+    await expect(mobile).toHaveAttribute('data-selected', 'true')
+    // Nothing is sent, so a short window stands in for the write that never comes.
+    await page.waitForTimeout(500)
+    expect(
+      readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+    ).toBe(bytes)
+    expect(await mobile.boundingBox()).toEqual(before)
+  })
+})
