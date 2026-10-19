@@ -79,7 +79,7 @@ test.describe('editing a selected element by hand', () => {
 
     // Cmd+Z in a field undoes its typing, so the board's undo takes focus off it.
     await opacity.blur()
-    await page.keyboard.press('Meta+KeyZ')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
     await expect.poll(read).toBe(original)
     await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible()
 
@@ -93,16 +93,16 @@ test.describe('editing a selected element by hand', () => {
 
     const text = page.getByRole('textbox', { name: 'Text' })
     await text.fill('Welcome')
-    await text.press('Meta+Enter')
+    await text.press('ControlOrMeta+Enter')
     await expect.poll(read).toContain('>Welcome</h1>')
     expect(changedLines(original, read())).toHaveLength(1)
 
     await text.blur()
-    await page.keyboard.press('Meta+KeyZ')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
     await expect.poll(read).not.toContain('>Welcome</h1>')
-    await page.keyboard.press('Meta+KeyZ')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
     await expect.poll(read).not.toContain('box-shadow')
-    await page.keyboard.press('Meta+KeyZ')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
     await expect.poll(read).toBe(original)
   })
 
