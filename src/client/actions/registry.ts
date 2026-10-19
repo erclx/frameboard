@@ -78,6 +78,30 @@ export function useActions(ids: readonly string[]): (Action | undefined)[] {
   ).slice(1) as (Action | undefined)[]
 }
 
+/** The first action registered under each id, for code running one outside a render. */
+export function findAction(id: string): Action | undefined {
+  return registry.getState().actions.find((action) => action.id === id)
+}
+
+/**
+ * What the command palette lists: each enabled action carrying `command`,
+ * the first registered under an id, in registration order.
+ */
+export function useCommands(): Action[] {
+  return useStore(
+    registry,
+    useShallow((state) => {
+      const seen = new Set<string>()
+      const listed = state.actions.filter((action) => {
+        if (!action.command || seen.has(action.id)) return false
+        seen.add(action.id)
+        return isEnabled(action)
+      })
+      return [state.version, ...listed]
+    }),
+  ).slice(1) as Action[]
+}
+
 /** Every action in a group, in registration order. */
 export function useActionGroup(group: string): Action[] {
   return useStore(
@@ -94,7 +118,7 @@ export function useActionGroup(group: string): Action[] {
  * registrations, and returns the function that unbinds them. `only` limits
  * it to the bindings named, as a frame's window in Play takes Esc alone.
  * A press runs the first registered action carrying that key whose
- * `enabled` is true, and no key fires while focus sits in a field.
+ * `enabled` is true, and no key fires while focus sits in a field or a dialog.
  */
 export function bindKeys(
   target: Window | Element,
@@ -139,13 +163,17 @@ function press(key: string, event: KeyboardEvent): void {
 
 /**
  * tinykeys skips fields by tag, and `isContentEditable` adds the children of
- * an editable root. Its own check calls `matches` on the target, which a
- * press aimed at a document or window lacks, so those pass through.
+ * an editable root. A press inside an open dialog is skipped too, so the
+ * Esc that closes the shortcuts sheet never clears the selection or leaves
+ * Play. Its own check calls `matches` on the target, which a press aimed at a
+ * document or window lacks, so those pass through.
  */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null
   if (typeof target?.matches !== 'function') return false
   return (
-    defaultKeybindingsHandlerIgnore(event) || target.isContentEditable === true
+    defaultKeybindingsHandlerIgnore(event) ||
+    target.isContentEditable === true ||
+    target.closest?.('[role="dialog"]') != null
   )
 }
