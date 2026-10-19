@@ -15,6 +15,8 @@ import type { FrameRecord } from '@/shared/records/list'
 import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
 import { Canvas } from './canvas'
+import { useChangeActions } from './changes/actions'
+import { ChangesToast } from './changes/toast'
 import { HiddenPills } from './chrome/hidden-pills'
 import { PlayBanner } from './chrome/play-banner'
 import { Toolbar } from './chrome/toolbar'
@@ -68,6 +70,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
+  useChangeActions()
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
@@ -116,6 +119,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
                 onFocused={clearFocus}
               />
               <Toolbar />
+              <ChangesToast />
             </>
           ) : (
             <Missing

@@ -11,6 +11,8 @@ import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
+import { useDwell } from './changes/dwell'
+import { ChangeGlow } from './changes/glow'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
@@ -305,6 +307,10 @@ export function Canvas({
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
     [frames, settled],
   )
+  // The dwell reads what is on screen each time the cull runs.
+  useDwell(
+    useMemo(() => (settled ? { frames, ...settled } : null), [frames, settled]),
+  )
 
   return (
     <div
@@ -339,6 +345,7 @@ export function Canvas({
             ))}
             <SelectionOverlay frames={frames} />
             <ElementOverlay frames={frames} container={layer} />
+            <ChangeGlow frames={frames} container={layer} />
           </>
         )}
       </div>
