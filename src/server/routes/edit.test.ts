@@ -171,4 +171,18 @@ describe('editRoutes', () => {
 
     expect(history.counts().undo).toBe(0)
   })
+
+  it('records nothing for an edit that leaves the bytes as they were', async () => {
+    const original = read()
+
+    await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'attribute', name: 'data-name', value: 'Headline' },
+    })
+
+    expect(read()).toBe(original)
+    expect(history.counts().undo).toBe(0)
+  })
 })

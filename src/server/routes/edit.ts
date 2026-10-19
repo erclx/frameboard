@@ -67,7 +67,8 @@ export function editRoutes(
     const after = readFileSync(frame.path)
     // A write landing between the rename and this read would make the after
     // side another session's bytes, which an undo must never write back.
-    if (contentHash(after) === result.hash) {
+    // An edit that leaves the bytes as they were records nothing to undo.
+    if (contentHash(after) === result.hash && !after.equals(before)) {
       const journal = history.journal()
       journal.content(frame.path, ref, before, after)
       history.record({

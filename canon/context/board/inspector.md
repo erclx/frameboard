@@ -18,7 +18,7 @@ Owns the inspector panel. A control joins it only when the developer's edit beat
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key
 - **Element:** name, opacity, radius, and typography size, weight, and alignment, plus the element's text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
 - **Fill:** color through the browser's color input with the project's tokens offered first, and fill opacity. On an element holding text alone it is the text color, as in Figma.
-- **Stroke and shadow:** the border color through the same token-first row, and one of the project's shadow tokens or none. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
+- **Stroke and shadow:** the border color through the same token-first row, and one of the project's shadow tokens or none, which writes `box-shadow: none` so a rule's shadow goes too. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 - **Selection colors:** the colors the frame, the frames, or the element's subtree use, with token names, and a flag on raw values, read-only
 
 The Frame section stays above an element's sections and hides its name row while an element is selected.

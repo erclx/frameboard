@@ -26,7 +26,9 @@ interface ShadowSectionProps {
 
 /**
  * Shadow: a menu of the project's shadow tokens and None, writing
- * `box-shadow: var(--token)`, or dropping the declaration for None.
+ * `box-shadow: var(--token)`, or `box-shadow: none` for None, which also
+ * covers a shadow a stylesheet rule sets. None writes nothing while no
+ * shadow is set.
  */
 export function ShadowSection({
   boxShadow,
@@ -83,7 +85,12 @@ export function ShadowSection({
             </DropdownMenuItem>
           ))}
           {shadows.length > 0 ? <DropdownMenuSeparator /> : null}
-          <DropdownMenuItem className={MENU_ROW} onClick={() => set('')}>
+          <DropdownMenuItem
+            className={MENU_ROW}
+            onClick={() => {
+              if (!none) set('none')
+            }}
+          >
             None
           </DropdownMenuItem>
         </ChromeMenuContent>

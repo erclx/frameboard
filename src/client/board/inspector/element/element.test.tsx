@@ -431,7 +431,7 @@ describe('ShadowSection', () => {
     ])
   })
 
-  it('drops the declaration for None', async () => {
+  it('writes none for None, which also covers a shadow a rule sets', async () => {
     const { changes, write } = recorder()
     render(
       <ShadowSection
@@ -447,8 +447,26 @@ describe('ShadowSection', () => {
     await userEvent.click(await screen.findByRole('menuitem', { name: 'None' }))
 
     expect(changes).toEqual([
-      { kind: 'style', property: 'box-shadow', value: '' },
+      { kind: 'style', property: 'box-shadow', value: 'none' },
     ])
+  })
+
+  it('writes nothing for None while no shadow is set', async () => {
+    const { changes, write } = recorder()
+    render(
+      <ShadowSection
+        boxShadow={null}
+        shadows={[SHADOW]}
+        theme="light"
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Shadow' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'None' }))
+
+    expect(changes).toEqual([])
   })
 })
 
