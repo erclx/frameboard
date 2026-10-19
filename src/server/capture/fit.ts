@@ -63,13 +63,17 @@ async function measure(
   }
 }
 
-// `scrollHeight` never reads below the viewport, so content shorter than the
-// viewport is read off the root's own box instead.
+// Both readings take the furthest bottom edge of any box, flow or out of flow,
+// since `scrollHeight` never reads below the viewport and the root's own box
+// leaves out absolutely positioned content.
 function readContentSize(): Reading {
   const root = document.documentElement
-  const height =
-    root.scrollHeight > window.innerHeight
-      ? root.scrollHeight
-      : Math.ceil(root.getBoundingClientRect().height)
-  return { height: Math.max(1, height), width: root.scrollWidth }
+  let bottom = root.getBoundingClientRect().bottom
+  for (const element of document.querySelectorAll('body *')) {
+    bottom = Math.max(bottom, element.getBoundingClientRect().bottom)
+  }
+  return {
+    height: Math.max(1, Math.ceil(bottom + window.scrollY)),
+    width: root.scrollWidth,
+  }
 }

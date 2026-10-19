@@ -331,6 +331,16 @@ test.describe('frame fit', () => {
     expect(exitCode).toBe(0)
     expect(layout().unplaced).toMatchObject({ height: 500 })
   })
+
+  test('fit: counts absolutely positioned content below the flow', async () => {
+    const { exitCode, envelope } = await frameboard(
+      ['frame', 'fit', 'fit/absolute'],
+      board.root,
+    )
+
+    expect(exitCode).toBe(0)
+    expect(envelope.data).toMatchObject({ contentHeight: 600 })
+  })
 })
 
 test.describe('the PNG route', () => {
