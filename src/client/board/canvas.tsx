@@ -12,9 +12,9 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
-import { pickElement } from './element/pick'
+import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
-import { treeOf } from './element/tree'
+import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
@@ -71,6 +71,7 @@ export function Canvas({
   // The markers read the live frames, so they render again once the layer exists.
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
+  const picks = useRef(0)
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
@@ -283,8 +284,13 @@ export function Canvas({
     // Only the Move tool selects, so the Hand and Note tools pick nothing.
     if (noting || hand || !viewport || !layer) return
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
-    const element = pickElement(layer, frames, { x, y }, treeOf)
-    if (element) selectElement(selectionStore, page.ref, element)
+    // A pick waiting on its frame's tree yields to any click made after it.
+    const turn = ++picks.current
+    void pickElementRead(layer, frames, { x, y }, readTree).then((element) => {
+      if (element && turn === picks.current) {
+        selectElement(selectionStore, page.ref, element)
+      }
+    })
   }
 
   const live = useMemo(

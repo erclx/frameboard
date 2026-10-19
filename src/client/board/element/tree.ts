@@ -20,6 +20,8 @@ export interface Trees {
   store: StoreApi<TreesState>
   /** Fetches a frame's tree unless one fetched at this reload count is held or on its way. */
   request: (ref: string, version: number) => void
+  /** Requests a frame's tree and resolves it once it is held, or null when the server refused it. */
+  read: (ref: string, version: number) => Promise<ElementTree | null>
 }
 
 /**
@@ -39,26 +41,39 @@ export function createTrees(
       byRef: { ...state.byRef, [ref]: { ...entry, version } },
     }))
   }
-  return {
-    store,
-    request: (ref, version) => {
-      const held = store.getState().byRef[ref]
-      if (held && held.version >= version) return
-      put(ref, { status: 'loading' }, version)
-      load(ref).then(
-        (tree) => put(ref, { status: 'ready', tree }, version),
-        (error: unknown) =>
-          put(
-            ref,
-            {
-              status: 'refused',
-              message: error instanceof Error ? error.message : String(error),
-            },
-            version,
-          ),
-      )
-    },
+  const request = (ref: string, version: number) => {
+    const held = store.getState().byRef[ref]
+    if (held && held.version >= version) return
+    put(ref, { status: 'loading' }, version)
+    load(ref).then(
+      (tree) => put(ref, { status: 'ready', tree }, version),
+      (error: unknown) =>
+        put(
+          ref,
+          {
+            status: 'refused',
+            message: error instanceof Error ? error.message : String(error),
+          },
+          version,
+        ),
+    )
   }
+  const read = (ref: string, version: number) => {
+    request(ref, version)
+    return new Promise<ElementTree | null>((resolve) => {
+      const settled = () => {
+        const entry = store.getState().byRef[ref]
+        if (!entry || entry.status === 'loading') return false
+        resolve(entry.status === 'ready' ? entry.tree : null)
+        return true
+      }
+      if (settled()) return
+      const stop = store.subscribe(() => {
+        if (settled()) stop()
+      })
+    })
+  }
+  return { store, request, read }
 }
 
 /** Reads a tree from the board's server, throwing the refusal's message. */
@@ -101,4 +116,9 @@ export function useElementTree(ref: string | null): TreeEntry | null {
 /** Asks for a frame's tree at its current reload count, outside React. */
 export function requestTree(ref: string): void {
   trees.request(ref, liveStore.getState().reloads[ref] ?? 0)
+}
+
+/** Reads a frame's tree at its current reload count, waiting for it when it has not arrived. */
+export function readTree(ref: string): Promise<ElementTree | null> {
+  return trees.read(ref, liveStore.getState().reloads[ref] ?? 0)
 }

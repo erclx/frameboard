@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ElementTree } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
-import { pickElement } from './pick'
+import { pickElement, pickElementRead } from './pick'
 
 const HASH = 'c'.repeat(64)
 const HERO = frameOf('hero', {
@@ -118,6 +118,50 @@ describe('pickElement', () => {
       [HERO],
       { x: HERO.box.x + 10, y: HERO.box.y + 10 },
       () => TREE,
+    )
+
+    expect(key).toBeNull()
+  })
+
+  it("answers null while the frame's tree is not held", async () => {
+    const container = await mount(1)
+
+    const key = pickElement(
+      container,
+      [HERO],
+      { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
+      () => null,
+    )
+
+    expect(key).toBeNull()
+  })
+})
+
+describe('pickElementRead', () => {
+  it('waits for the tree and passes over an element a script inserted ahead of the rest', async () => {
+    const container = await mount(1)
+    const frameDocument = container.querySelector('iframe')?.contentDocument
+    const main = frameDocument?.querySelector('main')
+    main?.prepend(frameDocument?.createElement('p') ?? '')
+
+    const key = await pickElementRead(
+      container,
+      [HERO],
+      { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
+      async () => TREE,
+    )
+
+    expect(key).toEqual({ frame: HERO.ref, index: 3, hash: HASH })
+  })
+
+  it('answers null when the server refuses the tree', async () => {
+    const container = await mount(1)
+
+    const key = await pickElementRead(
+      container,
+      [HERO],
+      { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
+      async () => null,
     )
 
     expect(key).toBeNull()

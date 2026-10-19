@@ -45,6 +45,25 @@ describe('createTrees', () => {
   })
 })
 
+describe('read', () => {
+  it('resolves the tree once it arrives', async () => {
+    const { trees, loads } = deferred()
+    const read = trees.read(HERO, 0)
+
+    loads[0]?.resolve(treeAt('a'))
+
+    await expect(read).resolves.toEqual(treeAt('a'))
+  })
+
+  it('resolves null when the server refuses the tree', async () => {
+    const trees = createTrees(async () => {
+      throw new Error('builds a tbody')
+    })
+
+    await expect(trees.read(HERO, 0)).resolves.toBeNull()
+  })
+})
+
 describe('fetchTree', () => {
   it("throws the server's refusal message", async () => {
     const send: typeof fetch = async () =>
