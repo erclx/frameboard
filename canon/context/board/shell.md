@@ -69,7 +69,7 @@ Owns how a claimed frame shows, apart from `frame.tsx` since the tag, the header
 
 ### `src/client/board/changes/`
 
-Owns the change toast with Show and Next on `]`, the 2 second glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds with the tab visible, never on a timer alone.
+Owns the change toast with Show and Next on `]`, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
 
 ### `src/client/board/left-panel/`
 
@@ -105,11 +105,9 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, registered for the who
 Owns the socket and the store every screen reads, and how an agent's changes show.
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
-
-- `unseen.ts` keeps each frame's latest unseen change, dotted in `--claim` on its label and layers row unless a claim stands in, and counted on page rows and project cards
+- `unseen.ts` keeps each frame's latest unseen change, dotted on its label and layers row and counted on pages and projects, with each frame's seen hash in `localStorage`
 - Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
-- Seen state is each frame's last seen hash in `localStorage`, never in the board folder
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
 ### `src/client/`
@@ -143,10 +141,6 @@ Owns the claims record and its expiry, apart from `notes/` and `board/` since th
 - A batch naming the claims file sends `claims` alone, with no rescan or browser check
 - A timer armed at start and on every change rebroadcasts at the soonest expiry
 - A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
-
-### `src/server/changes/`
-
-Owns what counts as an agent's change, telling it from the board's own writes, which `History`'s `onWrite` rereads, and diffing its elements. Its log lives in memory, so a change written while no server ran is never marked.
 
 ### `src/server/access/`
 
