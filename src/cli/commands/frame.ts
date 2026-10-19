@@ -33,8 +33,11 @@ const ANY_INTEGER = parseInteger(Number.MIN_SAFE_INTEGER)
 
 type FrameOptions = CommonOptions & SizeOptions & { x?: number; y?: number }
 
-export function registerFrame(program: Command, context: ProgramContext): void {
-  const { io } = context
+export function registerFrame(
+  program: Command,
+  context: ProgramContext & { facesDir: string },
+): void {
+  const { io, facesDir } = context
   const frame = program.command('frame').description('Manage frames')
   const verb = (name: string, description: string) =>
     addVerb(frame, name, description, { project: true }).argument(
@@ -142,7 +145,7 @@ export function registerFrame(program: Command, context: ProgramContext): void {
       // Resolved ahead of the browser, so a missing frame never reads as a missing browser.
       const frame = await readFrame(root, ref, refOptions)
       const result = await withFrameHost(
-        root,
+        { root, facesDir },
         'frame fit',
         (browser, baseUrl) =>
           fitFrame(browser, { ...refOptions, root, baseUrl, frame }),

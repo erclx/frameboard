@@ -5,8 +5,9 @@ import type { Browser } from 'playwright-core'
 
 import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord } from '@/shared/records/list'
+import type { Theme } from '@/shared/theme'
 
-import { openFrame, type Theme } from './render'
+import { openFrame } from './render'
 
 export interface CapturedImage {
   ref: string

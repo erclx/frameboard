@@ -139,19 +139,20 @@ export function createProgram(context: ProgramContext): Command {
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
+  const facesDir = context.facesDir ?? FACES_DIR
   registerServe(program, {
     ...context,
     clientDir: context.clientDir ?? CLIENT_DIR,
-    facesDir: context.facesDir ?? FACES_DIR,
+    facesDir,
   })
   registerShow(program, context)
   registerList(program, context)
   registerProject(program, context)
   registerPage(program, context)
-  registerFrame(program, context)
+  registerFrame(program, { ...context, facesDir })
   registerEdit(program, context)
   registerCheck(program, context)
-  registerCapture(program, context)
+  registerCapture(program, { ...context, facesDir })
   registerDocs(program, context)
 
   return program

@@ -3,9 +3,15 @@ import { extname, join, sep } from 'node:path'
 
 import { Hono } from 'hono'
 
+import { boardSheetPath, tokenSheetPaths } from '@/server/checks/tokens'
 import { FACES_URL } from '@/shared/faces'
 
-import { BOARD_SHEET_URL, decodeSegments } from './frames'
+import {
+  BOARD_SHEET_URL,
+  decodeSegments,
+  type FrameLook,
+  frameRoutes,
+} from './frames'
 
 const CONTENT_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -17,6 +23,35 @@ export interface LookOptions {
   facesDir: string
   /** The board's token sheet, read per request since it can appear after start. */
   boardSheet: () => string | null
+}
+
+export interface ServedFrames {
+  /** A project's token sheets, as the frame route imports them. */
+  look: FrameLook
+  /** The look routes and the frame routes, in the order a server mounts them. */
+  routes: Hono
+}
+
+/**
+ * The look routes and the frame routes over `root`, so the board server and
+ * the capture host serve a frame the same way. `tokens` is a known
+ * `--tokens` sheet, null for none, or absent to read the one a running
+ * server recorded in the address file on each request.
+ */
+export function servedFrames(
+  root: string,
+  { facesDir, tokens }: { facesDir: string; tokens?: string | null },
+): ServedFrames {
+  const look: FrameLook = {
+    sheets: (project) => tokenSheetPaths(root, project, tokens),
+  }
+  const routes = new Hono()
+  routes.route(
+    '/',
+    lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, tokens) }),
+  )
+  routes.route('/', frameRoutes(root, look))
+  return { look, routes }
 }
 
 /**

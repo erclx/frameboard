@@ -5,11 +5,9 @@ import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
-import { boardSheetPath, tokenSheetPaths } from './checks/tokens'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
-import { frameRoutes } from './routes/frames'
-import { lookRoutes } from './routes/look'
+import { servedFrames } from './routes/look'
 import { pngRoutes } from './routes/png'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
@@ -77,21 +75,15 @@ export function createApp({
     c.header('x-frameboard-version', version)
   })
   app.use('*', boardHostGuard(port))
-  const look = {
-    sheets: (project: string) => tokenSheetPaths(root, project, given),
-  }
+  const frames = servedFrames(root, { facesDir, tokens: given })
 
   // A second serve reads the root back to tell this board's server from
   // another, and the sheet to report the one this server was started with.
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
-  app.route('/', apiRoutes(root, actions, look))
+  app.route('/', apiRoutes(root, actions, frames.look))
   app.route('/', pngRoutes(root, renderFrame))
-  app.route(
-    '/',
-    lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, given) }),
-  )
-  app.route('/', frameRoutes(root, look))
+  app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(
