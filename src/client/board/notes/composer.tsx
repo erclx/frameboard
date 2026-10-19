@@ -20,15 +20,18 @@ interface ComposerProps {
  */
 export function Composer({ pick, onClose }: ComposerProps) {
   const listeners = useLive((state) => state.listeners)
+  const holder = useLive((state) => state.claims[pick.frame.ref]?.session)
   const canWrite = useLive((state) => state.canWrite)
   const [text, setText] = useState('')
-  const [session, setSession] = useState(() => defaultSession(listeners))
+  const [session, setSession] = useState(() =>
+    defaultSession(listeners, holder),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // A listener leaving takes the pick with it, and a sole one arriving is picked.
   const picked = listeners.some((listener) => listener.session === session)
     ? session
-    : defaultSession(listeners)
+    : defaultSession(listeners, holder)
 
   const save = async (to: string | null) => {
     if (text.trim() === '') {

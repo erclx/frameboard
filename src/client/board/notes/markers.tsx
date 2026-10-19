@@ -90,7 +90,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
       ) : null}
       {thread && threadAt ? (
         <Popover at={threadAt}>
-          <Thread notes={thread} onClose={closeNote} />
+          <Thread notes={thread} page={page} onClose={closeNote} />
         </Popover>
       ) : null}
     </>

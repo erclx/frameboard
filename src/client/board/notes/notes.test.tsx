@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
+import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 
@@ -23,6 +24,17 @@ const PICK: NotePick = {
 
 function listener(session: string, tag = `claude · ${session}`): Listener {
   return { session, tag, since: '2026-10-19T10:00:00.000Z' }
+}
+
+function claimBy(session: string): Claim {
+  return {
+    frame: 'studio/home/hero',
+    session,
+    agent: 'codex',
+    tag: 'codex · frameboard',
+    claimedAt: '2026-10-19T10:00:00.000Z',
+    expiresAt: '2026-10-19T10:05:00.000Z',
+  }
 }
 
 function note(fields: Partial<BoardNote> & Pick<BoardNote, 'id'>): BoardNote {
@@ -64,7 +76,12 @@ function live(state: Partial<ReturnType<typeof liveStore.getState>>): void {
 
 afterEach(() => {
   act(() => {
-    liveStore.setState({ canWrite: false, listeners: [], notes: {} })
+    liveStore.setState({
+      canWrite: false,
+      listeners: [],
+      notes: {},
+      claims: {},
+    })
     modeStore.setState({ mode: 'edit', tool: 'move' })
   })
 })
@@ -86,6 +103,34 @@ describe('Composer', () => {
     render(<Composer pick={PICK} onClose={() => {}} />)
 
     expect(screen.getByText('1 listening')).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'Send to' }),
+    ).toHaveDisplayValue('claude · frameboard')
+  })
+
+  it('picks the listening session holding the frame claim among several', () => {
+    live({
+      canWrite: true,
+      listeners: [listener('a'), listener('b', 'codex · frameboard')],
+      claims: { 'studio/home/hero': claimBy('b') },
+    })
+
+    render(<Composer pick={PICK} onClose={() => {}} />)
+
+    expect(
+      screen.getByRole('combobox', { name: 'Send to' }),
+    ).toHaveDisplayValue('codex · frameboard')
+  })
+
+  it('falls back to the only listener when the claim holder is not listening', () => {
+    live({
+      canWrite: true,
+      listeners: [listener('a', 'claude · frameboard')],
+      claims: { 'studio/home/hero': claimBy('b') },
+    })
+
+    render(<Composer pick={PICK} onClose={() => {}} />)
+
     expect(
       screen.getByRole('combobox', { name: 'Send to' }),
     ).toHaveDisplayValue('claude · frameboard')
@@ -143,6 +188,20 @@ describe('Thread', () => {
       text: 'Done. The third chip reads --accent now.',
     }),
   ]
+
+  it('hands the thread to the listening session holding the frame claim', () => {
+    live({
+      canWrite: true,
+      listeners: [listener('a'), listener('b', 'codex · frameboard')],
+      claims: { 'studio/home/hero': claimBy('b') },
+    })
+
+    render(<Thread notes={thread} page="studio/home" onClose={() => {}} />)
+
+    expect(
+      screen.getByRole('combobox', { name: 'Send to' }),
+    ).toHaveDisplayValue('codex · frameboard')
+  })
 
   it("shows the developer's and the agent's messages in order", () => {
     render(<Thread notes={thread} onClose={() => {}} />)

@@ -13,6 +13,8 @@ import { SessionPicker } from './session-picker'
 interface ThreadProps {
   /** The root note and its replies, root first. */
   notes: readonly BoardNote[]
+  /** The page's `<project>/<page>` ref, which finds the claim on the note's frame. */
+  page?: string
   onClose: () => void
 }
 
@@ -22,18 +24,23 @@ interface ThreadProps {
  * thread, hands the thread to the picked session with Send, or closes it
  * with Done.
  */
-export function Thread({ notes, onClose }: ThreadProps) {
+export function Thread({ notes, page, onClose }: ThreadProps) {
   const listeners = useLive((state) => state.listeners)
+  const holder = useLive((state) =>
+    page ? state.claims[`${page}/${notes[0]?.frame}`]?.session : undefined,
+  )
   const canWrite = useLive((state) => state.canWrite)
   const [text, setText] = useState('')
-  const [session, setSession] = useState(() => defaultSession(listeners))
+  const [session, setSession] = useState(() =>
+    defaultSession(listeners, holder),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const root = notes[0]
   if (!root) return null
   const picked = listeners.some((listener) => listener.session === session)
     ? session
-    : defaultSession(listeners)
+    : defaultSession(listeners, holder)
 
   const run = async (write: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
