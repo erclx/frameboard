@@ -222,6 +222,7 @@ describe('Frame theme', () => {
     const root = iframe.contentDocument?.documentElement
     expect(root?.getAttribute('data-theme')).toBe('dark')
     expect(root?.style.colorScheme).toBe('dark')
+    expect(root?.classList.contains('dark')).toBe(true)
     expect(iframe.style.colorScheme).toBe('dark')
     expect(iframe.getAttribute('src')).toBe(src)
     expect(loads).toBe(0)

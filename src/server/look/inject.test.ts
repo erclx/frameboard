@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
+import { JSDOM } from 'jsdom'
 import { type DefaultTreeAdapterMap, parse } from 'parse5'
 import { describe, expect, it } from 'vitest'
 
@@ -128,6 +129,37 @@ describe('injectHead', () => {
 
     expect(document.mode).toBe('no-quirks')
     expect(firstHeadChild(document)).toBe('style')
+  })
+})
+
+describe('the injected theme script', () => {
+  function load(query: string) {
+    return new JSDOM(`<!doctype html><head>${frameHead([])}</head><p>x</p>`, {
+      url: `http://127.0.0.1/frames/site/home/hero.html${query}`,
+      runScripts: 'dangerously',
+    }).window.document
+  }
+
+  it('shows the root in the theme the query names, with its class', () => {
+    const root = load('?theme=dark').documentElement
+
+    expect(root.getAttribute('data-theme')).toBe('dark')
+    expect(root.style.colorScheme).toBe('dark')
+    expect([...root.classList]).toEqual(['dark'])
+  })
+
+  it('leaves the root alone for a query naming no theme', () => {
+    const root = load('?theme=sepia').documentElement
+
+    expect(root.hasAttribute('data-theme')).toBe(false)
+    expect(root.classList.length).toBe(0)
+  })
+
+  it('removes itself, leaving the stylesheet the one injected element', () => {
+    const document = load('?theme=light')
+
+    expect(document.querySelectorAll('[data-frameboard]')).toHaveLength(1)
+    expect(document.querySelector('[data-frameboard]')?.tagName).toBe('STYLE')
   })
 })
 

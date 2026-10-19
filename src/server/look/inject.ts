@@ -1,6 +1,6 @@
 import { type DefaultTreeAdapterMap, parse } from 'parse5'
 
-import { LOOK_MARKER, THEME_QUERY } from '@/shared/theme'
+import { LOOK_MARKER, setFrameTheme, THEME_QUERY } from '@/shared/theme'
 
 type ChildNode = DefaultTreeAdapterMap['childNode']
 type Element = DefaultTreeAdapterMap['element']
@@ -8,11 +8,11 @@ type Element = DefaultTreeAdapterMap['element']
 const BOM = [0xef, 0xbb, 0xbf]
 
 /**
- * Sets `data-theme` and `color-scheme` on the frame's root from the theme the
- * frame was served with, then removes itself, so the one injected element a
- * live frame keeps is the stylesheet.
+ * Shows the frame's root in the theme the frame was served with, through the
+ * same `setFrameTheme` the board calls on a theme change, then removes
+ * itself, so the one injected element a live frame keeps is the stylesheet.
  */
-const THEME_SCRIPT = `(function(){var s=document.currentScript,t=new URLSearchParams(location.search).get('${THEME_QUERY}');if(t==='light'||t==='dark'){var r=document.documentElement;r.setAttribute('data-theme',t);r.style.colorScheme=t}s.remove()})()`
+const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme.toString()})(document.documentElement,t);s.remove()})(document.currentScript,new URLSearchParams(location.search).get(${JSON.stringify(THEME_QUERY)}))`
 
 /**
  * What the frame route puts first in a frame's `head`: one marked stylesheet

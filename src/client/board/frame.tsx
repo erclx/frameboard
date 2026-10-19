@@ -5,7 +5,7 @@ import { bindKeys } from '@/client/actions/registry'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl } from '@/shared/theme'
+import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
 import { useMode } from './mode'
 
@@ -52,9 +52,7 @@ export const Frame = memo(function Frame({
     if (!live || !element) return
     const write = () => {
       const root = element.contentDocument?.documentElement
-      if (!root) return
-      root.setAttribute('data-theme', theme)
-      root.style.colorScheme = theme
+      if (root) setFrameTheme(root, theme)
     }
     write()
     element.addEventListener('load', write)
