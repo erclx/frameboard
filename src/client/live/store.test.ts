@@ -5,6 +5,7 @@ import type { ListResult } from '@/shared/records/list'
 
 import {
   createLiveStore,
+  receiveAccess,
   receiveBoard,
   receiveFindings,
   receiveReload,
@@ -68,6 +69,19 @@ describe('receiveBoard', () => {
     receiveBoard(store, boardWith('hero'))
 
     expect(store.getState().reloads).toEqual({ 'studio/home/hero': 1 })
+  })
+})
+
+describe('receiveAccess', () => {
+  it('starts read-only and follows the server answer', () => {
+    const store = createLiveStore()
+    expect(store.getState().canWrite).toBe(false)
+
+    receiveAccess(store, true)
+    expect(store.getState().canWrite).toBe(true)
+
+    receiveAccess(store, false)
+    expect(store.getState().canWrite).toBe(false)
   })
 })
 
