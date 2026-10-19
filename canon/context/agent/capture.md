@@ -24,7 +24,7 @@ Owns the capture browser, the frame host, the render, the font check, the image 
 
 ## Gotchas
 
-- Capture refuses `font-missing` when a text element's first family neither loaded as a web face nor is installed, while a stack opening with a generic asks for nothing
+- Capture refuses `font-missing` when a text element's first family neither loaded as a web face nor is installed, while a stack opening with a generic or with the browser's own default, which an unstyled frame computes to, asks for nothing. The default is probed in the page, so an explicit "Times New Roman" is skipped too
 - An installed family is read through DevTools `CSS.getPlatformFontsForNode`, so a CSS name the platform aliases to another face reads as missing
 - Capture uses the pinned headless shell alone, since an installed Chrome or Edge rasterizes text differently, and without it refuses `browser-not-found` with the install command, downloading nothing
 - A composite past 16384 px a side refuses `capture-too-large`, since Chromium's screenshot surface stops there

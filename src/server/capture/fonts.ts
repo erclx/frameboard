@@ -48,15 +48,31 @@ export function parseFontFamilies(fontFamily: string): string[] {
 
 /**
  * The family a text element asks for, being the first in its stack, or null
- * when that one is generic. Later families are fallbacks the author chose,
- * so they are never looked for.
+ * when that one is generic or is the browser's own default. Later families
+ * are fallbacks the author chose, so they are never looked for.
+ *
+ * The default is what a frame declaring no font computes to, such as "Times
+ * New Roman" in the Linux headless shell, where it is not installed. A frame
+ * naming that family on purpose is skipped too, since a computed style cannot
+ * tell the two apart.
  */
-export function requestedFamily(fontFamily: string): string | null {
+export function requestedFamily(
+  fontFamily: string,
+  defaultFamily: string,
+): string | null {
   const [first] = parseFontFamilies(fontFamily)
   if (first === undefined || GENERIC_FAMILIES.has(first.toLowerCase())) {
     return null
   }
+  const [browserDefault] = parseFontFamilies(defaultFamily)
+  if (first.toLowerCase() === browserDefault?.toLowerCase()) return null
   return first
+}
+
+interface TextRead {
+  elements: TextElement[]
+  /** The computed `font-family` of an unstyled document in this browser. */
+  defaultFamily: string
 }
 
 interface TextElement {
@@ -76,10 +92,10 @@ export async function assertFontsPresent(
   page: Page,
   ref: string,
 ): Promise<void> {
-  const elements = await page.evaluate(readTextElements)
+  const { elements, defaultFamily } = await page.evaluate(readTextElements)
   const firstUse = new Map<string, TextElement>()
   for (const element of elements) {
-    const family = requestedFamily(element.fontFamily)
+    const family = requestedFamily(element.fontFamily, defaultFamily)
     if (family === null) continue
     const key = family.toLowerCase()
     if (!firstUse.has(key)) firstUse.set(key, element)
@@ -98,7 +114,7 @@ export async function assertFontsPresent(
   )
   for (const [key, element] of unloaded) {
     if (platform.get(element.domIndex)?.has(key)) continue
-    const family = requestedFamily(element.fontFamily) ?? key
+    const family = requestedFamily(element.fontFamily, defaultFamily) ?? key
     throw new FrameboardError(
       'font-missing',
       `${ref} asks for the font ${family}, first at element ${element.index}, and it neither loads nor is installed. Load it from the project's assets/ or name an installed family.`,
@@ -108,7 +124,7 @@ export async function assertFontsPresent(
 }
 
 // Runs in the page, so it carries everything it reads.
-function readTextElements(): TextElement[] {
+function readTextElements(): TextRead {
   const notText = new Set([
     'HTML',
     'HEAD',
@@ -118,6 +134,15 @@ function readTextElements(): TextElement[] {
     'NOSCRIPT',
     'TEMPLATE',
   ])
+  // An unstyled document reads the browser's own default, which the frame's
+  // styles cannot reach. The probe is gone before the elements are counted.
+  const probe = document.createElement('iframe')
+  document.documentElement.append(probe)
+  const defaultFamily = probe.contentDocument
+    ? getComputedStyle(probe.contentDocument.documentElement).fontFamily
+    : ''
+  probe.remove()
+
   const found: TextElement[] = []
   let index = 0
   const all = document.querySelectorAll('*')
@@ -138,7 +163,7 @@ function readTextElements(): TextElement[] {
       fontFamily: getComputedStyle(element).fontFamily,
     })
   }
-  return found
+  return { elements: found, defaultFamily }
 }
 
 function loadedFamilies(): string[] {

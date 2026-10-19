@@ -2,6 +2,7 @@
   "version": 1,
   "frames": {
     "plain": { "x": 0, "y": 0, "width": 400, "height": 300, "order": 0, "hidden": false, "locked": false },
-    "brand": { "x": 480, "y": 0, "width": 400, "height": 300, "order": 1, "hidden": false, "locked": false }
+    "brand": { "x": 480, "y": 0, "width": 400, "height": 300, "order": 1, "hidden": false, "locked": false },
+    "unstyled": { "x": 960, "y": 0, "width": 400, "height": 300, "order": 2, "hidden": false, "locked": false }
   }
 }

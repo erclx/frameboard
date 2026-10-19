@@ -169,6 +169,17 @@ test.describe('capture', () => {
     expect(exitCode).toBe(0)
   })
 
+  test('font: captures a frame declaring no font', async () => {
+    const { exitCode } = await frameboard([
+      'capture',
+      'fonts/unstyled',
+      '--out',
+      out,
+    ])
+
+    expect(exitCode).toBe(0)
+  })
+
   test('page: writes one PNG per visible frame, leaving the hidden one out', async () => {
     const { exitCode, envelope } = await frameboard([
       'capture',
