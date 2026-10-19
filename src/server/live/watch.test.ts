@@ -268,6 +268,47 @@ describe('watchBoard', { timeout: SEEN_MS + 2000 }, () => {
     expect(batches.flat().filter((path) => ignored.includes(path))).toEqual([])
   })
 
+  it('reports a write to the claims file in the run folder', async () => {
+    mkdirSync(join(board.root, '.run'), { recursive: true })
+    const claims = join(board.root, '.run/claims.json')
+
+    await expect
+      .poll(
+        () => {
+          writeFileSync(claims, '{ "version": 1, "claims": [] }')
+          return batches.flat()
+        },
+        { timeout: SEEN_MS },
+      )
+      .toContain(claims)
+  })
+
+  it('ignores the rest of the run folder beside the claims file', async () => {
+    mkdirSync(join(board.root, '.run/captures'), { recursive: true })
+    writeFileSync(join(board.root, '.run/claims.json'), '{}')
+    await expect
+      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .toContain(join(board.root, '.run/claims.json'))
+    batches = []
+
+    writeFileSync(join(board.root, '.run/address.json'), '{}')
+    writeFileSync(join(board.root, '.run/.gitignore'), '*')
+    writeFileSync(join(board.root, '.run/captures/hero.png'), 'x')
+    writeFileSync(join(board.root, '.run/claims.json.lock'), 'x')
+    const sentinel = join(board.root, 'studio/home/sentinel.txt')
+
+    await expect
+      .poll(
+        () => {
+          writeFileSync(sentinel, 'x')
+          return batches.flat()
+        },
+        { timeout: SEEN_MS },
+      )
+      .toContain(sentinel)
+    expect(new Set(batches.flat())).toEqual(new Set([sentinel]))
+  })
+
   it('keeps reporting to later listeners when one throws', async () => {
     const after: string[][] = []
     watcher.onBatch(() => {

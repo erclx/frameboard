@@ -1,4 +1,5 @@
 import type { Finding } from './records/check'
+import type { Claim } from './records/claims'
 import type { ListResult } from './records/list'
 import type { BoardNote, Listener, Note } from './records/notes'
 
@@ -60,3 +61,5 @@ export type ServerMessage =
   | { type: 'note'; note: Note; ref: string; line: string }
   /** How many steps the board can undo and redo, after each hello's access and every change. */
   | { type: 'history'; undo: number; redo: number }
+  /** The live claims, after each hello's history, on every change, and as one expires. */
+  | { type: 'claims'; claims: Claim[] }
