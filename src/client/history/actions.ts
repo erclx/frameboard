@@ -14,6 +14,7 @@ import {
   selectElement,
   type SelectionStore,
   selectionStore,
+  settleLanded,
   settleRefused,
 } from '@/client/board/selection'
 import { toast } from '@/client/components/ui/toast'
@@ -72,6 +73,7 @@ export function registerHistoryActions({
       (answer) => {
         done()
         follow(answer)
+        settleLanded(selection, shownHash)
       },
       (error: unknown) => {
         done()

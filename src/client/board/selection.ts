@@ -189,6 +189,29 @@ export function settleRefused(
     select(store, page, [element.frame])
 }
 
+/**
+ * The hash check a frame skipped while a write was in flight, run once the
+ * write landed. The frame may lag on bytes the board's own writes left it
+ * at, whose later reload is still to come, so those keep the element. Any
+ * other bytes are another writer's, whose reload landed inside the window,
+ * so the element drops to the frame as the frame's own check would have.
+ */
+export function settleLanded(
+  store: SelectionStore,
+  shown: (ref: string) => string | null,
+): void {
+  const { page, element } = store.getState()
+  if (!page || !element || awaitingHash(element.frame)) return
+  const hash = shown(element.frame)
+  if (
+    hash !== null &&
+    hash !== element.hash &&
+    !awaitingHash(element.frame, hash)
+  ) {
+    select(store, page, [element.frame])
+  }
+}
+
 /** The board's one selection, which this row writes and later rows read and extend. */
 export const selectionStore = createSelectionStore()
 

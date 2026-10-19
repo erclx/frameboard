@@ -10,6 +10,7 @@ import {
   selectElement,
   type SelectionStore,
   selectionStore,
+  settleLanded,
   settleRefused,
 } from '../../selection'
 
@@ -50,6 +51,7 @@ export async function writeElement(
   }: WriteDeps = {},
 ): Promise<boolean> {
   const done = awaitHash(key.frame)
+  // The frame still shows these bytes when the answer lands, its reload to come.
   rememberHash(key.frame, key.hash)
   try {
     const answer = await writeBoard<EditResult>(
@@ -64,6 +66,7 @@ export async function writeElement(
       selectElement(selection, page, { ...key, hash: answer.hash })
     }
     done()
+    settleLanded(selection, shownHash)
     return true
   } catch (error) {
     notify({

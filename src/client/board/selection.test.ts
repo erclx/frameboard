@@ -15,6 +15,7 @@ import {
   select,
   selectElement,
   type SelectionStore,
+  settleLanded,
   settleRefused,
   toggle,
 } from './selection'
@@ -289,6 +290,41 @@ describe('settleRefused', () => {
     selectElement(store, 'studio/home', KEY)
 
     settleRefused(store, () => null)
+
+    expect(store.getState().element).toEqual(KEY)
+  })
+})
+
+describe('settleLanded', () => {
+  const KEY = { frame: 'studio/home/landed', index: 3, hash: 'a'.repeat(64) }
+
+  it('drops the element once its frame shows bytes another writer left', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleLanded(store, () => 'b'.repeat(64))
+
+    expect(store.getState()).toMatchObject({
+      frames: [KEY.frame],
+      element: null,
+    })
+  })
+
+  it('keeps the element while its frame lags on bytes the board wrote', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+    rememberHash(KEY.frame, 'c'.repeat(64))
+
+    settleLanded(store, () => 'c'.repeat(64))
+
+    expect(store.getState().element).toEqual(KEY)
+  })
+
+  it('keeps the element once its frame shows the bytes it names', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleLanded(store, () => KEY.hash)
 
     expect(store.getState().element).toEqual(KEY)
   })
