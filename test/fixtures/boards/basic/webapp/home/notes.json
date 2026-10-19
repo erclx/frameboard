@@ -22,7 +22,7 @@
       "frame": "hero",
       "anchor": {
         "index": 5,
-        "hash": "f47533ab9ff7568f0b2100f4d92f9154271df5af7fc6a987a5e32482bd376b6c"
+        "hash": "1e06b944f1061d1b09b2651ab3d4bdcae11b8cfd12e58a706860c9050a954184"
       },
       "text": "Make the heading say what the product does, and set it in the display face.",
       "from": "developer",
@@ -40,7 +40,7 @@
       "frame": "hero",
       "anchor": {
         "index": 5,
-        "hash": "f47533ab9ff7568f0b2100f4d92f9154271df5af7fc6a987a5e32482bd376b6c"
+        "hash": "1e06b944f1061d1b09b2651ab3d4bdcae11b8cfd12e58a706860c9050a954184"
       },
       "text": "Done. The heading reads Draw screens your agent can edit, in the display face.",
       "from": "agent",
