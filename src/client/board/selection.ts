@@ -7,13 +7,26 @@ import type { ListResult } from '@/shared/records/list'
 import type { ModeStore } from './mode'
 
 /**
+ * One element inside a selected frame, in the edit address's terms: its
+ * file index and the hash of the bytes the frame rendered when it was picked.
+ */
+export interface ElementKey {
+  /** The frame ref, always the one selected frame. */
+  frame: string
+  index: number
+  hash: string
+}
+
+/**
  * The frames selected on one page, by ref. Later rows extend it with
- * optional keys, such as an element, and keep `frames` as it is.
+ * optional keys and keep `frames` as it is.
  */
 export interface SelectionState {
   /** The page the frames sit on, null with nothing selected. */
   page: string | null
   frames: readonly string[]
+  /** An element inside the one selected frame, absent or null when the frame itself is selected. */
+  element?: ElementKey | null
 }
 
 export type SelectionStore = StoreApi<SelectionState>
@@ -28,7 +41,16 @@ export function select(
   page: string,
   frames: readonly string[],
 ): void {
-  store.setState({ page, frames: [...new Set(frames)] })
+  store.setState({ page, frames: [...new Set(frames)], element: null })
+}
+
+/** Selects one element, and with it its frame alone, on `page`. */
+export function selectElement(
+  store: SelectionStore,
+  page: string,
+  element: ElementKey,
+): void {
+  store.setState({ page, frames: [element.frame], element })
 }
 
 /** Adds a frame to the selection or takes it out, starting over on another page. */
@@ -41,13 +63,17 @@ export function toggle(store: SelectionStore, page: string, ref: string): void {
   const next = frames.includes(ref)
     ? frames.filter((frame) => frame !== ref)
     : [...frames, ref]
-  store.setState({ page: next.length === 0 ? null : page, frames: next })
+  store.setState({
+    page: next.length === 0 ? null : page,
+    frames: next,
+    element: null,
+  })
 }
 
 export function clear(store: SelectionStore): void {
-  const { page, frames } = store.getState()
-  if (page === null && frames.length === 0) return
-  store.setState({ page: null, frames: [] })
+  const { page, frames, element } = store.getState()
+  if (page === null && frames.length === 0 && !element) return
+  store.setState({ page: null, frames: [], element: null })
 }
 
 /**
@@ -67,7 +93,7 @@ export function pruneSelection(store: SelectionStore, board: ListResult): void {
   const kept = frames.filter((frame) => shown.has(frame))
   if (kept.length === frames.length) return
   if (kept.length === 0) clear(store)
-  else store.setState({ frames: kept })
+  else store.setState({ frames: kept, element: null })
 }
 
 /**

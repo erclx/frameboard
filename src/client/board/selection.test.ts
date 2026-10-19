@@ -10,6 +10,8 @@ import {
   followSelection,
   pruneSelection,
   select,
+  selectElement,
+  type SelectionStore,
   toggle,
 } from './selection'
 
@@ -23,7 +25,65 @@ describe('select', () => {
 
     select(store, 'studio/home', [ABOUT])
 
-    expect(store.getState()).toEqual({ page: 'studio/home', frames: [ABOUT] })
+    expect(store.getState()).toEqual({
+      page: 'studio/home',
+      frames: [ABOUT],
+      element: null,
+    })
+  })
+})
+
+const HEADLINE = { frame: HERO, index: 6, hash: 'a'.repeat(64) }
+
+describe('selectElement', () => {
+  it('selects the element and its frame alone', () => {
+    const store = createSelectionStore()
+    select(store, 'studio/home', [HERO, ABOUT])
+
+    selectElement(store, 'studio/home', HEADLINE)
+
+    expect(store.getState()).toEqual({
+      page: 'studio/home',
+      frames: [HERO],
+      element: HEADLINE,
+    })
+  })
+
+  it.each([
+    ['select', (store: SelectionStore) => select(store, 'studio/home', [HERO])],
+    ['toggle', (store: SelectionStore) => toggle(store, 'studio/home', ABOUT)],
+    ['clear', (store: SelectionStore) => clear(store)],
+  ])('is reset by %s', (_case, act) => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', HEADLINE)
+
+    act(store)
+
+    expect(store.getState().element).toBeNull()
+  })
+
+  it.each([
+    ['leaves the board', boardOf(pageOf([frameOf('about')]))],
+    [
+      'is hidden',
+      boardOf(pageOf([frameOf('hero', { hidden: true }), frameOf('about')])),
+    ],
+  ])('is pruned when its frame %s', (_case, board) => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', HEADLINE)
+
+    pruneSelection(store, board)
+
+    expect(store.getState()).toEqual({ page: null, frames: [], element: null })
+  })
+
+  it('stays when the next board still shows its frame', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', HEADLINE)
+
+    pruneSelection(store, boardOf(pageOf([frameOf('hero')])))
+
+    expect(store.getState().element).toEqual(HEADLINE)
   })
 })
 
@@ -43,7 +103,7 @@ describe('toggle', () => {
 
     toggle(store, 'studio/home', HERO)
 
-    expect(store.getState()).toEqual({ page: null, frames: [] })
+    expect(store.getState()).toEqual({ page: null, frames: [], element: null })
   })
 
   it('starts over on a frame from another page', () => {
@@ -55,6 +115,7 @@ describe('toggle', () => {
     expect(store.getState()).toEqual({
       page: 'studio/pricing',
       frames: ['studio/pricing/plans'],
+      element: null,
     })
   })
 })
@@ -66,7 +127,7 @@ describe('clear', () => {
 
     clear(store)
 
-    expect(store.getState()).toEqual({ page: null, frames: [] })
+    expect(store.getState()).toEqual({ page: null, frames: [], element: null })
   })
 })
 
@@ -98,7 +159,7 @@ describe('pruneSelection', () => {
 
     pruneSelection(store, boardOf(pageOf([frameOf('hero')], 'pricing')))
 
-    expect(store.getState()).toEqual({ page: null, frames: [] })
+    expect(store.getState()).toEqual({ page: null, frames: [], element: null })
   })
 })
 
