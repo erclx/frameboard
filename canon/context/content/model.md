@@ -35,6 +35,8 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 Owns the edit writer, which parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span.
 
 - An element is addressed by its index in `querySelectorAll('*')` order plus the SHA-256 hex of the file's raw bytes, and every reader shares that address, a reader of a live frame skipping the `data-frameboard` elements the server splices into `head`
+- The injected style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from, beside the `data-rendered-at` stamp the note pin still reads
+- An element is named by its `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else its tag, and `elementTree` in `elements.ts` answers that name and the parent of each element under `body`
 - An edit against a hash the file no longer has is refused as stale, so a hand edit never lands on an element an agent has since moved
 - Serializing the tree and Bun's `HTMLRewriter` were dropped, because the first rewrites the file's formatting and the second is missing on Node
 - The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
