@@ -563,6 +563,8 @@ function readyWhen(selector: string): (page: Page) => Promise<void> {
       { target: selector, frames: ROW_FRAMES },
     )
   }
+}
+
 /**
  * Selects the hero frame and double-clicks its headline once the frame has
  * loaded, so the capture shows the element outline, its size chip, and the

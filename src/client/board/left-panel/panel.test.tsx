@@ -375,6 +375,9 @@ describe('LeftPanel', () => {
           .getByRole('separator', { name: 'Resize the pages list' })
           .getAttribute('aria-valuenow'),
       ).toBe(moved)
+    })
+  })
+
   describe('element rows', () => {
     it("lists a frame's elements once its row opens", async () => {
       heroTree()
