@@ -1,10 +1,11 @@
 import { TriangleAlert } from 'lucide-react'
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
-import { frameUrl } from '@/shared/board-urls'
+import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
+import { frameThemeUrl } from '@/shared/theme'
 
 import { useMode } from './mode'
 
@@ -36,6 +37,29 @@ export const Frame = memo(function Frame({
   const { x, y, width, height } = frame.box
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
+  const theme = useFrameTheme(frame.ref)
+  // The theme is read when the iframe mounts or reloads, never on a theme
+  // change, so a switch rewrites the frame's root below rather than
+  // reloading it and restarting its animation and video.
+  const src = useMemo(
+    () =>
+      live ? frameThemeUrl(frame.ref, frameTheme(frame.ref), version) : null,
+    [frame.ref, version, live],
+  )
+
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element) return
+    const write = () => {
+      const root = element.contentDocument?.documentElement
+      if (!root) return
+      root.setAttribute('data-theme', theme)
+      root.style.colorScheme = theme
+    }
+    write()
+    element.addEventListener('load', write)
+    return () => element.removeEventListener('load', write)
+  }, [theme, live])
 
   useEffect(() => {
     const element = iframe.current
@@ -75,7 +99,10 @@ export const Frame = memo(function Frame({
         <iframe
           ref={iframe}
           title={frame.name}
-          src={`${frameUrl(frame.ref)}?v=${version}`}
+          src={src ?? undefined}
+          // The iframe's canvas follows its element's scheme, so a flipped
+          // frame with no background of its own paints its own theme's color.
+          style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
         />
       ) : (

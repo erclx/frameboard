@@ -4,6 +4,7 @@ import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { registerActions } from '@/client/actions/registry'
+import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -113,7 +114,7 @@ describe('Frame', () => {
     const { container } = render(<Pair a={2} b={0} />)
 
     expect(iframeOf(container, 'a').getAttribute('src')).toBe(
-      '/frames/studio/home/a.html?v=2',
+      '/frames/studio/home/a.html?theme=light&v=2',
     )
   })
 
@@ -123,9 +124,9 @@ describe('Frame', () => {
 
     rerender(<Pair a={1} b={0} />)
 
-    expect(iframeOf(container, 'a').getAttribute('src')).toMatch(/\?v=1$/)
+    expect(iframeOf(container, 'a').getAttribute('src')).toMatch(/&v=1$/)
     expect(iframeOf(container, 'b')).toBe(untouched)
-    expect(untouched.getAttribute('src')).toMatch(/\?v=0$/)
+    expect(untouched.getAttribute('src')).toMatch(/&v=0$/)
   })
 
   it('draws a placeholder rather than a page when not live', () => {
@@ -196,3 +197,67 @@ describe('Frame', () => {
     )
   })
 })
+
+describe('Frame theme', () => {
+  afterEach(() => {
+    act(() =>
+      themeStore.setState({
+        choice: 'system',
+        system: 'light',
+        flipped: new Set(),
+      }),
+    )
+  })
+
+  it("writes a theme change into the frame's root with no reload", async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const src = iframe.getAttribute('src')
+    let loads = 0
+    iframe.addEventListener('load', () => (loads += 1))
+
+    act(() => chooseTheme('dark'))
+
+    const root = iframe.contentDocument?.documentElement
+    expect(root?.getAttribute('data-theme')).toBe('dark')
+    expect(root?.style.colorScheme).toBe('dark')
+    expect(iframe.style.colorScheme).toBe('dark')
+    expect(iframe.getAttribute('src')).toBe(src)
+    expect(loads).toBe(0)
+  })
+
+  it('serves a frame that reloads after a theme change in the new theme', () => {
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    act(() => chooseTheme('dark'))
+
+    rerender(<Frame frame={frame('a')} live version={1} />)
+
+    expect(iframeOf(container, 'a').getAttribute('src')).toBe(
+      '/frames/studio/home/a.html?theme=dark&v=1',
+    )
+  })
+
+  it('shows a flipped frame in the opposite theme and leaves the others', async () => {
+    act(() => chooseTheme('dark'))
+    const { container } = render(<Pair a={0} b={0} />)
+    await Promise.all([
+      loaded(iframeOf(container, 'a')),
+      loaded(iframeOf(container, 'b')),
+    ])
+
+    act(() => flipFrame('studio/home/a'))
+
+    expect(themeOfRoot(iframeOf(container, 'a'))).toBe('light')
+    expect(iframeOf(container, 'a').style.colorScheme).toBe('light')
+    expect(themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
+  })
+})
+
+function themeOfRoot(iframe: HTMLIFrameElement): string | null {
+  return (
+    iframe.contentDocument?.documentElement.getAttribute('data-theme') ?? null
+  )
+}
