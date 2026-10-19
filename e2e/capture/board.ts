@@ -3,16 +3,47 @@ import type { Page } from '@playwright/test'
 import type { CaptureCase } from './types'
 
 /**
- * No toggle sets the chrome's `.dark` class yet, so a dark case adds it to the
- * root itself. An init script runs before the parser has created `<html>`, so
- * the class waits for the document to be parsed.
+ * Saves a theme choice before the board loads, as `theme.light` and
+ * `theme.dark` save it, so the board starts in that theme whatever the
+ * capture browser's own scheme is.
  */
-async function darkChrome(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    document.addEventListener('DOMContentLoaded', () => {
-      document.documentElement.classList.add('dark')
-    })
-  })
+function chosenTheme(theme: 'light' | 'dark'): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript((choice) => {
+      localStorage.setItem('frameboard.theme', choice)
+    }, theme)
+  }
+}
+
+/** Answers the Theme tab's read with no sheets, since the preview board always has one. */
+async function noTokens(page: Page): Promise<void> {
+  await page.route('**/api/projects/*/tokens', (route) =>
+    route.fulfill({ json: { ok: true, data: { sheets: [], tokens: [] } } }),
+  )
+}
+
+/** How many frames the Theme tab waits for its trigger, about ten seconds. */
+const TAB_FRAMES = 600
+
+/**
+ * Opens the left panel's Theme tab once the board has drawn it. A tab is
+ * found by its role, since the toolbar's theme button shares the name.
+ */
+async function themeTab(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const open = () => {
+      const tab = [...document.querySelectorAll('[role="tab"]')].find(
+        (candidate) =>
+          candidate.textContent?.trim() === 'Theme' &&
+          !candidate.hasAttribute('data-disabled'),
+      )
+      if (tab instanceof HTMLElement) tab.click()
+      else if (--left > 0) requestAnimationFrame(open)
+      else console.error('No Theme tab to open')
+    }
+    document.addEventListener('DOMContentLoaded', open)
+  }, TAB_FRAMES)
 }
 
 /** How many frames the press waits for its control, about ten seconds, before giving up. */
@@ -65,46 +96,51 @@ const STATE_ONLY = ['320', '768', '1536']
 
 /**
  * The home view and one board page of the preview's `basic` fixture, then the
- * board under Hide UI, in Play, and with the avatar menu open. The "Edited"
- * times count back from each file's checkout time, so they are masked. Every
- * `basic` frame sets no font, so the board cases also hold the label's check
- * findings mark in both themes.
+ * board under Hide UI, in Play, with the avatar menu open, and with the Theme
+ * tab open, with tokens and with none. The "Edited" times count back from
+ * each file's checkout time, so they are masked. The `about` frame sets no
+ * font, so the board cases also hold the label's check findings mark in both
+ * themes, beside the hero taking its colors and faces from the tokens.
  */
 export const BOARD_CASES: CaptureCase[] = [
-  {
-    section: 'home',
-    theme: 'light',
-    route: '/',
-    evidence: true,
-    mask: ['[data-edited]'],
-  },
-  {
-    section: 'home',
-    theme: 'dark',
-    route: '/',
-    evidence: true,
-    mask: ['[data-edited]'],
-    setup: darkChrome,
-  },
-  {
-    section: 'board',
-    theme: 'light',
-    route: '/p/webapp/home',
-    evidence: true,
-    mask: [AVATAR],
-  },
-  {
-    section: 'board',
-    theme: 'dark',
-    route: '/p/webapp/home',
-    evidence: true,
-    mask: [AVATAR],
-    setup: darkChrome,
-  },
+  ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => [
+    {
+      section: 'home',
+      theme,
+      route: '/',
+      evidence: true,
+      mask: ['[data-edited]'],
+      setup: chosenTheme(theme),
+    },
+    {
+      section: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      mask: [AVATAR],
+      setup: chosenTheme(theme),
+    },
+  ]),
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => {
     const themed = (setup: (page: Page) => Promise<void>) =>
-      theme === 'dark' ? both(darkChrome, setup) : setup
+      both(chosenTheme(theme), setup)
     return [
+      {
+        section: 'theme-tab',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(themeTab),
+      },
+      {
+        section: 'theme-tab-empty',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(noTokens, themeTab)),
+      },
       {
         section: 'hide-ui',
         theme,
