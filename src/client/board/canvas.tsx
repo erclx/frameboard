@@ -9,6 +9,7 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
 import { Frame } from './frame'
+import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
@@ -66,11 +67,13 @@ export function Canvas({
     () => page.frames.filter((frame) => !frame.hidden),
     [page.frames],
   )
-  // Read by the zoom effect for the first fit alone, so a frame change does not rebind zoom.
+  // Read by the zoom effect for the first fit and by the gestures at each
+  // press, so a frame change rebinds neither.
   const framesRef = useRef(frames)
   useLayoutEffect(() => {
     framesRef.current = frames
   }, [frames])
+  useGeometryActions(page.ref, frames)
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current

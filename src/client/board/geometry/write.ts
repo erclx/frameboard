@@ -57,6 +57,17 @@ function drawn(
 }
 
 /**
+ * Draws boxes a run of edits has not sent yet, such as nudges waiting for
+ * the keys to rest. The `writeBoxes` that follows owns them from then on.
+ */
+export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
+  setPending(Object.keys(boxes), (ref) => {
+    const box = boxes[ref]
+    return box && { box }
+  })
+}
+
+/**
  * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
  * the edit started from. The new boxes draw at once, and a refusal drops
  * them so the board shows the stored ones. Resolves whether the write landed.
