@@ -77,21 +77,21 @@ export function createApp({
     c.header('x-frameboard-version', version)
   })
   app.use('*', boardHostGuard(port))
-  // A second serve reads the root back to tell this board's server from another.
-  app.get('/api/health', (c) => c.json({ version, root }))
+  const look = {
+    sheets: (project: string) => tokenSheetPaths(root, project, given),
+  }
+
+  // A second serve reads the root back to tell this board's server from
+  // another, and the sheet to report the one this server was started with.
+  app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
-  app.route('/', apiRoutes(root, actions))
+  app.route('/', apiRoutes(root, actions, look))
   app.route('/', pngRoutes(root, renderFrame))
   app.route(
     '/',
     lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, given) }),
   )
-  app.route(
-    '/',
-    frameRoutes(root, {
-      sheets: (project) => tokenSheetPaths(root, project, given),
-    }),
-  )
+  app.route('/', frameRoutes(root, look))
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(

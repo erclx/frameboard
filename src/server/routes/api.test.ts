@@ -1,4 +1,9 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { tokenSheetPaths } from '@/server/checks/tokens'
 
 import {
   copyFixtureBoard,
@@ -28,23 +33,29 @@ describe('apiRoutes', () => {
   })
 
   function routes(actions: Partial<BoardActions> = {}) {
-    return apiRoutes(board.root, {
-      access: {
-        token: () => TOKEN,
-        key: KEY,
-        cookieName: COOKIE,
-        isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
+    return apiRoutes(
+      board.root,
+      {
+        access: {
+          token: () => TOKEN,
+          key: KEY,
+          cookieName: COOKIE,
+          isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
+        },
+        open: async () => {
+          opens += 1
+          return true
+        },
+        show: (ref) => {
+          shown.push(ref)
+          return 1
+        },
+        ...actions,
       },
-      open: async () => {
-        opens += 1
-        return true
+      {
+        sheets: (project) => tokenSheetPaths(board.root, project, null),
       },
-      show: (ref) => {
-        shown.push(ref)
-        return 1
-      },
-      ...actions,
-    })
+    )
   }
 
   function post(path: string, body: unknown, token: string | null = TOKEN) {
@@ -67,6 +78,55 @@ describe('apiRoutes', () => {
       expect(
         body.data.projects[0].pages.map((page: { name: string }) => page.name),
       ).toEqual(['home', 'pricing'])
+    })
+  })
+
+  describe('GET /api/projects/:project/tokens', () => {
+    it("answers the project's token table in the envelope", async () => {
+      writeFileSync(
+        join(board.root, 'tokens.css'),
+        ':root { --fg: #111111 } .dark { --fg: #eeeeee }',
+      )
+
+      const response = await routes().request('/api/projects/studio/tokens')
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: {
+          sheets: [{ path: 'tokens.css', kind: 'board', error: null }],
+          tokens: [
+            {
+              name: '--fg',
+              group: 'color',
+              light: '#111111',
+              dark: '#eeeeee',
+              sheet: 'tokens.css',
+            },
+          ],
+        },
+      })
+    })
+
+    it('names a sheet that fails to parse rather than answering an empty table', async () => {
+      writeFileSync(join(board.root, 'tokens.css'), ':root { --fg: #111')
+
+      const response = await routes().request('/api/projects/studio/tokens')
+
+      const body = await response.json()
+      expect(body.data.sheets[0].error).toMatch(/Unclosed block/)
+    })
+
+    it.each([
+      ['a project that does not exist', '/api/projects/nowhere/tokens'],
+      ['a name the board refuses', '/api/projects/.run/tokens'],
+    ])('answers project-not-found for %s', async (_case, path) => {
+      const response = await routes().request(path)
+
+      expect(response.status).toBe(404)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'project-not-found' },
+      })
     })
   })
 
