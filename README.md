@@ -40,7 +40,7 @@ Releases before 1.0 ship the board in stages. Editing by hand in the board arriv
 
 Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows support is planned.
 
-`capture` and `frame fit` render in Playwright's headless shell, else an installed Chrome or Edge. With none of the three, they print the command that installs the shell and download nothing.
+`capture` and `frame fit` render in Playwright's headless shell. Without it, they print the command that installs it and download nothing.
 
 ## Links
 
