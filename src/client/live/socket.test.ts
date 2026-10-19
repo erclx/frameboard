@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { connectLive } from './socket'
 import { createLiveStore } from './store'
+import { createUnseenStore } from './unseen'
 
 /** A socket the test drives by hand, standing in for the server's end. */
 class FakeSocket extends EventTarget {
@@ -63,6 +64,33 @@ describe('connectLive access', () => {
 
     socket?.dispatchEvent(new Event('close'))
     expect(store.getState().history).toEqual({ undo: 0, redo: 0 })
+    stop()
+  })
+
+  it('hands each change to the unseen store', () => {
+    const unseen = createUnseenStore(null)
+    const stop = connectLive(createLiveStore(), { unseen })
+    const socket = FakeSocket.instances[0]
+    socket?.dispatchEvent(new Event('open'))
+
+    socket?.receive({
+      type: 'changes',
+      changes: [
+        {
+          id: 'c1',
+          frame: 'studio/home/hero',
+          at: '2026-10-19T12:00:00.000Z',
+          hash: 'h1',
+          author: null,
+          elements: [],
+          removed: 0,
+          whole: true,
+          created: true,
+        },
+      ],
+    })
+
+    expect(Object.keys(unseen.getState().unseen)).toEqual(['studio/home/hero'])
     stop()
   })
 })
