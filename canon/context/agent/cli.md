@@ -46,6 +46,6 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor.
 
 - The inbox monitor starts with `when: "always"`, because with `on-skill-invoke` it never started in the spike
 - Claude Code runs plugin monitors only in interactive sessions and not on Bedrock, Google Cloud, or Foundry, where a sent note waits as a pinned one
-- `fit` sets height only, and a frame whose content is too wide is reported, leaving the widening to the agent
+- `frame fit` sets height only, reports too-wide content, and refuses `fit-unbounded` for content sized off the viewport, such as `min-height: 100vh`, writing nothing
 - The hook runs the installed check directly, preferring Bun and never a package runner, which costs about ten times the check on every write
 - `--no-open` opens nothing on either `serve` path, which is how tests, `preview`, and capture run, so a test never launches a browser on the developer's screen
