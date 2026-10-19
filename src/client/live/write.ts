@@ -17,7 +17,7 @@ type Envelope<T> =
 
 /**
  * The one way the board changes anything on the server: a same-origin JSON
- * request that carries the tab's cookie and no token. Resolves the envelope's
+ * request, or a `FormData` upload, that carries the tab's cookie and no token. Resolves the envelope's
  * `data` and throws a `BoardWriteError` on an error one. A 401 also marks the
  * tab read-only, since its cookie no longer opens the server it reached.
  */
@@ -27,11 +27,17 @@ export async function writeBoard<T = unknown>(
   method = 'POST',
   send: typeof fetch = fetch,
 ): Promise<T> {
-  const response = await send(path, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  // A form goes as given, so the browser writes the multipart boundary itself.
+  const response = await send(
+    path,
+    body instanceof FormData
+      ? { method, body }
+      : {
+          method,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+  )
   if (response.status === 401) liveStore.setState({ canWrite: false })
   const envelope = (await response
     .json()
