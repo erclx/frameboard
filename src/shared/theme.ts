@@ -18,6 +18,10 @@ export function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
 }
 
+export function oppositeTheme(theme: Theme): Theme {
+  return theme === 'dark' ? 'light' : 'dark'
+}
+
 /**
  * Where a frame is served in one theme, with `version` naming the reload so
  * a changed file loads fresh.

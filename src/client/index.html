@@ -7,6 +7,22 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script>
+      // Sets the chrome's theme before the first paint, as the theme store
+      // does once the app loads, so a dark board never paints light first.
+      var saved = null
+      try {
+        saved = localStorage.getItem('frameboard.theme')
+      } catch (error) {
+        // A browser refusing storage starts from the system theme.
+      }
+      document.documentElement.classList.toggle(
+        'dark',
+        saved === 'dark' ||
+          (saved !== 'light' &&
+            matchMedia('(prefers-color-scheme: dark)').matches),
+      )
+    </script>
   </head>
   <body>
     <div id="root"></div>
