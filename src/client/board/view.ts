@@ -1,3 +1,5 @@
+import type { Box } from './geometry/box'
+
 /** What the mounted canvas does for a caller holding no `d3-zoom` handle. */
 export interface CanvasControls {
   /** Scales about the viewport's center. */
@@ -6,6 +8,10 @@ export interface CanvasControls {
   zoomTo: (scale: number) => void
   /** Travels to the view showing every frame on the page. */
   fit: () => void
+  /** Travels to the view showing these boxes, as zoom to fit shows the page. */
+  fitTo: (boxes: readonly Box[]) => void
+  /** Moves the view by a screen offset, so a positive `dx` brings in what lies to the right. */
+  panBy: (dx: number, dy: number) => void
 }
 
 type Listener = () => void
@@ -18,8 +24,7 @@ const attachListeners = new Set<Listener>()
 /**
  * The canvas view controller. The zoom label and the zoom actions go through
  * it rather than through the canvas or `d3-zoom`, so a gesture's zoom reaches
- * the label with no React render, and later rows add zoom to selection and
- * arrow pan here.
+ * the label with no React render.
  */
 export const canvasView = {
   zoom: (): number => zoom,
@@ -33,6 +38,8 @@ export const canvasView = {
   zoomBy: (factor: number): void => controls?.zoomBy(factor),
   zoomTo: (scale: number): void => controls?.zoomTo(scale),
   fit: (): void => controls?.fit(),
+  fitTo: (boxes: readonly Box[]): void => controls?.fitTo(boxes),
+  panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
 }
 
 /** Called by the canvas on mount, returning the function its unmount calls. */

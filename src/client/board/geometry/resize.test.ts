@@ -1,6 +1,34 @@
 import { describe, expect, it } from 'vitest'
 
-import { resizeBox } from './resize'
+import { resizeBox, scaleBoxes } from './resize'
+
+describe('scaleBoxes', () => {
+  it('keeps each box its share of the bounds', () => {
+    const scaled = scaleBoxes(
+      {
+        a: { x: 0, y: 0, width: 100, height: 100 },
+        b: { x: 200, y: 0, width: 200, height: 100 },
+      },
+      { x: 0, y: 0, width: 400, height: 100 },
+      { x: 0, y: 0, width: 200, height: 200 },
+    )
+
+    expect(scaled).toEqual({
+      a: { x: 0, y: 0, width: 50, height: 200 },
+      b: { x: 100, y: 0, width: 100, height: 200 },
+    })
+  })
+
+  it('never shrinks a box under 1 px', () => {
+    const scaled = scaleBoxes(
+      { a: { x: 0, y: 0, width: 1, height: 1 } },
+      { x: 0, y: 0, width: 400, height: 400 },
+      { x: 0, y: 0, width: 4, height: 4 },
+    )
+
+    expect(scaled.a).toEqual({ x: 0, y: 0, width: 1, height: 1 })
+  })
+})
 
 const START = { x: 100, y: 100, width: 200, height: 100 }
 

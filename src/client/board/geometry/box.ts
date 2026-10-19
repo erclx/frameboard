@@ -8,6 +8,12 @@ export interface Point {
   y: number
 }
 
+export function sameBox(a: Box, b: Box): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  )
+}
+
 /** The smallest box holding every box given, null for none. */
 export function boundsOf(boxes: readonly Box[]): Box | null {
   if (boxes.length === 0) return null

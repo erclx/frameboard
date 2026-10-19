@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { frameAt, framesIn } from './hit'
+import { cornerAt, frameAt, framesIn } from './hit'
 
 const BACK = frameOf('back', {
   box: { x: 0, y: 0, width: 400, height: 300 },
@@ -41,6 +41,27 @@ describe('frameAt', () => {
 
   it('never hits a hidden frame', () => {
     expect(frameAt([BACK, HIDDEN], { x: 700, y: 700 }, 1)).toBeNull()
+  })
+})
+
+describe('cornerAt', () => {
+  const BOUNDS = { x: 100, y: 100, width: 200, height: 100 }
+
+  it.each([
+    [{ x: 104, y: 97 }, 'nw'],
+    [{ x: 300, y: 100 }, 'ne'],
+    [{ x: 95, y: 205 }, 'sw'],
+    [{ x: 302, y: 199 }, 'se'],
+  ] as const)('takes the handle in reach of %o', (point, corner) => {
+    expect(cornerAt(BOUNDS, point, 1)).toBe(corner)
+  })
+
+  it('answers nothing along an edge away from the corners', () => {
+    expect(cornerAt(BOUNDS, { x: 200, y: 100 }, 1)).toBeNull()
+  })
+
+  it('keeps the reach its screen size when zoomed out', () => {
+    expect(cornerAt(BOUNDS, { x: 120, y: 80 }, 0.25)).toBe('nw')
   })
 })
 

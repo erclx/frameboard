@@ -1,5 +1,35 @@
 import type { Box } from './box'
 
+/**
+ * Fits several boxes to a resized selection, each keeping its place and size
+ * as a share of the bounds it started in, in whole pixels and at least 1 px.
+ */
+export function scaleBoxes(
+  boxes: Readonly<Record<string, Box>>,
+  from: Box,
+  to: Box,
+): Record<string, Box> {
+  const sx = to.width / from.width
+  const sy = to.height / from.height
+  return Object.fromEntries(
+    Object.entries(boxes).map(([ref, box]) => {
+      const left = Math.round(to.x + (box.x - from.x) * sx)
+      const top = Math.round(to.y + (box.y - from.y) * sy)
+      const right = Math.round(to.x + (box.x + box.width - from.x) * sx)
+      const bottom = Math.round(to.y + (box.y + box.height - from.y) * sy)
+      return [
+        ref,
+        {
+          x: left,
+          y: top,
+          width: Math.max(1, right - left),
+          height: Math.max(1, bottom - top),
+        },
+      ]
+    }),
+  )
+}
+
 /** A corner handle, named by the compass, which a resize drags while the opposite one stays put. */
 export type Corner = 'nw' | 'ne' | 'sw' | 'se'
 

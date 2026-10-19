@@ -7,7 +7,9 @@ import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { usePendingBox } from './geometry/write'
 import { useMode } from './mode'
+import { useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
@@ -34,7 +36,9 @@ export const Frame = memo(function Frame({
   version,
   findings,
 }: FrameProps) {
-  const { x, y, width, height } = frame.box
+  // A released move holds its place until the board carries it back.
+  const { x, y, width, height } = usePendingBox(frame.ref) ?? frame.box
+  const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
   const theme = useFrameTheme(frame.ref)
@@ -80,6 +84,7 @@ export const Frame = memo(function Frame({
   return (
     <div
       data-frame={frame.ref}
+      data-selected={selected || undefined}
       className="absolute"
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
