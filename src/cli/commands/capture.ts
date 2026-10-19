@@ -3,7 +3,8 @@ import { join, resolve } from 'node:path'
 import { type Command, Option } from 'commander'
 
 import { ensureRunFolder } from '@/server/address'
-import { resolveFrameRef, resolvePageRef } from '@/server/board/refs'
+import { readFrame } from '@/server/board/frames'
+import { resolvePageRef } from '@/server/board/refs'
 import { readPageOrder, scanPage } from '@/server/board/scan'
 import { withFrameHost } from '@/server/capture/host'
 import {
@@ -14,7 +15,7 @@ import {
 import { type Theme, THEMES } from '@/server/capture/render'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
-import type { FrameRecord, PageRecord } from '@/shared/records/list'
+import type { PageRecord } from '@/shared/records/list'
 
 import {
   act,
@@ -111,7 +112,7 @@ export function registerCapture(
       }
     }
 
-    const frame = await frameOf(root, ref ?? '', refOptions)
+    const frame = await readFrame(root, ref ?? '', refOptions)
     const out = await outOf()
     const images = await withFrameHost(root, 'capture', (browser, baseUrl) =>
       captureFrameImages(browser, { baseUrl, frames: [frame], themes, out }),
@@ -133,21 +134,6 @@ async function pageOf(
     resolved.page,
     pages.indexOf(resolved.page),
   )
-}
-
-async function frameOf(
-  root: string,
-  ref: string,
-  options: { project?: string; cwd: string },
-): Promise<FrameRecord> {
-  const resolved = await resolveFrameRef(root, ref, options)
-  const page = await scanPage(root, resolved.project, resolved.page, 0)
-  const frame = page.frames.find(
-    (candidate) => candidate.name === resolved.name,
-  )
-  if (!frame)
-    throw new Error(`Frame ${resolved.name} vanished from ${page.ref}.`)
-  return frame
 }
 
 function describe(images: CapturedImage[]): string {
