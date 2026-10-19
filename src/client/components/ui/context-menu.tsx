@@ -78,7 +78,7 @@ function ContextMenuLabel({
       data-slot="context-menu-label"
       data-inset={inset}
       className={cn(
-        'px-2 pt-1.5 pb-1 text-label text-faint data-inset:pl-7',
+        'px-2 pt-1.5 pb-1 text-[11px] font-semibold text-faint data-inset:pl-7',
         className,
       )}
       {...props}
@@ -243,7 +243,7 @@ function ContextMenuShortcut({
     <kbd
       data-slot="context-menu-shortcut"
       className={cn(
-        'ml-auto grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-[5px] font-sans text-label font-normal text-muted-foreground',
+        'ml-auto grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-[5px] font-sans text-[11px] font-normal text-muted-foreground',
         className,
       )}
       {...props}
