@@ -7,9 +7,10 @@ import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { renderedHash } from './frame-dom'
 import { usePendingBox } from './geometry/write'
 import { useMode } from './mode'
-import { useSelection } from './selection'
+import { select, selectionStore, useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
@@ -80,6 +81,25 @@ export const Frame = memo(function Frame({
     element.addEventListener('load', stamp)
     return () => element.removeEventListener('load', stamp)
   }, [live])
+
+  // An element selected in this frame stays only while the frame shows the
+  // bytes its index was read from. Any other write may have shifted every
+  // index, so the selection drops to the frame rather than outline whatever
+  // element took the old one.
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element) return
+    const check = () => {
+      const { page, element: selected } = selectionStore.getState()
+      const document = element.contentDocument
+      if (selected?.frame !== frame.ref || !page || !document) return
+      if (renderedHash(document) !== selected.hash) {
+        select(selectionStore, page, [frame.ref])
+      }
+    }
+    element.addEventListener('load', check)
+    return () => element.removeEventListener('load', check)
+  }, [live, frame.ref])
 
   useEffect(() => {
     const element = iframe.current

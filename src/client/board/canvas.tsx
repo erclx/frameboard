@@ -3,11 +3,18 @@ import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { TAB_ID } from '@/client/live/socket'
 import { liveStore } from '@/client/live/store'
+import { writeBoard } from '@/client/live/write'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { mountedRefs, type Size, type View } from './cull'
+import { useElementActions } from './element/actions'
+import { ElementOverlay } from './element/overlay'
+import { pickElementRead } from './element/pick'
+import { followReports } from './element/report'
+import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
@@ -17,7 +24,7 @@ import { modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
-import { followSelection, selectionStore } from './selection'
+import { followSelection, selectElement, selectionStore } from './selection'
 import { attachCanvas, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
@@ -64,6 +71,7 @@ export function Canvas({
   // The markers read the live frames, so they render again once the layer exists.
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
+  const picks = useRef(0)
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
@@ -81,6 +89,8 @@ export function Canvas({
   useLayoutEffect(() => {
     framesRef.current = frames
   }, [frames])
+  // Ahead of the geometry keys, so Esc goes up from an element before it clears.
+  useElementActions(page.ref)
   useGeometryActions(page.ref, frames)
 
   useLayoutEffect(() => {
@@ -232,7 +242,14 @@ export function Canvas({
       modeStore,
     )
     const stopPending = followPending(liveStore)
+    const stopReports = followReports(
+      selectionStore,
+      liveStore,
+      TAB_ID,
+      (report) => writeBoard('/api/selection', report),
+    )
     return () => {
+      stopReports()
       stopPending()
       stopSelection()
     }
@@ -261,6 +278,20 @@ export function Canvas({
     moveToRef.current(fitView([frame], sizeOf(viewport)))
     onFocused?.()
   }, [focus, frames, onFocused])
+
+  const pickInside = (event: MouseEvent) => {
+    const viewport = viewportRef.current
+    // Only the Move tool selects, so the Hand and Note tools pick nothing.
+    if (noting || hand || !viewport || !layer) return
+    const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+    // A pick waiting on its frame's tree yields to any click made after it.
+    const turn = ++picks.current
+    void pickElementRead(layer, frames, { x, y }, readTree).then((element) => {
+      if (element && turn === picks.current) {
+        selectElement(selectionStore, page.ref, element)
+      }
+    })
+  }
 
   const live = useMemo(
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
@@ -297,6 +328,7 @@ export function Canvas({
               />
             ))}
             <SelectionOverlay frames={frames} />
+            <ElementOverlay frames={frames} container={layer} />
           </>
         )}
       </div>
@@ -322,6 +354,12 @@ export function Canvas({
             if (pick) notesUi.setState({ open: { kind: 'new', pick } })
             else closeNote()
           }}
+          // The gestures select the frame on pointerup and the click follows,
+          // so a Cmd-click or a double-click picks inside the frame just selected.
+          onClick={(event) => {
+            if (event.metaKey) pickInside(event.nativeEvent)
+          }}
+          onDoubleClick={(event) => pickInside(event.nativeEvent)}
         />
       )}
       <div

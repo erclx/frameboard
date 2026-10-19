@@ -11,7 +11,12 @@ export const LIVE_PATH = '/api/live'
  * an upgrade carrying the address token as a bearer, never in the body.
  */
 export type HelloMessage =
-  | { type: 'hello'; role: 'board' }
+  | {
+      type: 'hello'
+      role: 'board'
+      /** The tab's own id, which its selection report carries, so the socket closing forgets it. */
+      tab?: string
+    }
   | {
       type: 'hello'
       role: 'inbox'

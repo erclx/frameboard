@@ -44,7 +44,7 @@ describe('startFrameHost', () => {
 
     expect(response.status).toBe(200)
     expect(await response.text()).toMatch(
-      /^<style data-frameboard>.*<\/script><p>Hello<\/p>$/s,
+      /^<style data-frameboard[^>]*>.*<\/script><p>Hello<\/p>$/s,
     )
   })
 

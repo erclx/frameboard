@@ -17,6 +17,8 @@ import type {
   ProjectRecord,
 } from '@/shared/records/list'
 
+import { trees } from '../element/tree'
+import { clear, selectElement, selectionStore } from '../selection'
 import { LeftPanel } from './panel'
 
 function frame(name: string, extra: Partial<FrameRecord> = {}): FrameRecord {
@@ -123,7 +125,53 @@ beforeEach(() => {
 afterEach(() => {
   while (cleanups.length > 0) cleanups.pop()?.()
   liveStore.setState({ canWrite: false })
+  act(() => {
+    clear(selectionStore)
+    trees.store.setState({ byRef: {} })
+  })
 })
+
+const HERO = 'studio/home/hero'
+const HASH = 'a'.repeat(64)
+
+/** Holds hero's tree as the server would answer it: a card holding a headline, then a footer. */
+function heroTree(): void {
+  trees.store.setState({
+    byRef: {
+      [HERO]: {
+        status: 'ready',
+        version: 0,
+        tree: {
+          ref: HERO,
+          hash: HASH,
+          elements: [
+            {
+              index: 6,
+              parent: null,
+              tag: 'div',
+              name: 'Card',
+              textOnly: false,
+            },
+            {
+              index: 7,
+              parent: 6,
+              tag: 'h1',
+              name: 'Headline',
+              textOnly: true,
+            },
+            {
+              index: 8,
+              parent: null,
+              tag: 'footer',
+              name: 'footer',
+              textOnly: false,
+            },
+          ],
+        },
+      },
+    },
+  })
+}
 
 describe('LeftPanel', () => {
   it('opens on the Design tab with Theme waiting on its body', () => {
@@ -327,6 +375,95 @@ describe('LeftPanel', () => {
           .getByRole('separator', { name: 'Resize the pages list' })
           .getAttribute('aria-valuenow'),
       ).toBe(moved)
+    })
+  })
+
+  describe('element rows', () => {
+    it("lists a frame's elements once its row opens", async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      const rows = within(
+        screen.getByRole('list', { name: 'Elements of hero' }),
+      )
+      expect(
+        rows.getAllByRole('listitem').map((row) => row.textContent),
+      ).toEqual(['Card', 'footer'])
+    })
+
+    it('selects the element a row names', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'footer' }))
+
+      expect(selectionStore.getState()).toEqual({
+        page: 'studio/home',
+        frames: [HERO],
+        element: { frame: HERO, index: 8, hash: HASH },
+      })
+    })
+
+    it('opens the frame and the rows above an element selected elsewhere', () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO,
+          index: 7,
+          hash: HASH,
+        }),
+      )
+
+      expect(screen.getByRole('button', { name: 'Headline' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+
+    it('closes every row from the collapse-all button', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO,
+          index: 7,
+          hash: HASH,
+        }),
+      )
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Collapse all layers' }),
+      )
+
+      expect(
+        screen.queryByRole('list', { name: 'Elements of hero' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('says a frame the server refused cannot be addressed', async () => {
+      trees.store.setState({
+        byRef: {
+          [HERO]: { status: 'refused', version: 0, message: 'builds a tbody' },
+        },
+      })
+      renderPanel(project([page('home', [frame('hero')])]))
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      expect(
+        screen.getByText('This frame cannot be addressed'),
+      ).toBeInTheDocument()
     })
   })
 })

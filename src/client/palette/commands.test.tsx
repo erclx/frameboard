@@ -208,7 +208,7 @@ describe('CommandPalette', () => {
 
     expect([location.pathname, selectionStore.getState()]).toEqual([
       '/p/studio/swatches',
-      { page: 'studio/swatches', frames: [OTHER_PAGE.ref] },
+      { page: 'studio/swatches', frames: [OTHER_PAGE.ref], element: null },
     ])
   })
 

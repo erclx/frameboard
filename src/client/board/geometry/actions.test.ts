@@ -124,7 +124,7 @@ describe('geometryActions', () => {
 
     action('selection.all').run()
 
-    expect(selection.getState()).toEqual({
+    expect(selection.getState()).toMatchObject({
       page: PAGE,
       frames: [A.ref, B.ref, C.ref, LOCKED.ref],
     })

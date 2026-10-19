@@ -6,10 +6,12 @@ import { version } from '@/shared/version'
 import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
 import type { History } from './history/stack'
+import type { SelectionHolder } from './live/selection'
 import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
+import { elementsRoutes } from './routes/elements'
 import { historyRoutes } from './routes/history'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
@@ -64,6 +66,8 @@ export interface AppOptions {
   delivery?: Delivery
   /** The undo history the board's structure and box writes record into. */
   history: History
+  /** What the writing tab last selected, which `GET /api/selection` answers. */
+  selection: SelectionHolder
 }
 
 export function createApp({
@@ -77,6 +81,7 @@ export function createApp({
   tokens,
   delivery,
   history,
+  selection,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -98,6 +103,7 @@ export function createApp({
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', assetsRoutes(root, actions.access))
+  app.route('/', elementsRoutes(root, actions.access, selection))
   app.route('/', pngRoutes(root, renderFrame))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))

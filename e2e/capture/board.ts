@@ -565,6 +565,46 @@ function readyWhen(selector: string): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Selects the hero frame and double-clicks its headline once the frame has
+ * loaded, so the capture shows the element outline, its size chip, and the
+ * layers rows opened down to it.
+ */
+async function headlineOnHero(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const pick = () => {
+      const hero = document.querySelector('[data-frame="webapp/home/hero"]')
+      const iframe = hero?.querySelector('iframe')
+      // A frame names the file it shows only once its load has stamped it.
+      const heading = iframe?.dataset.renderedAt
+        ? iframe.contentDocument?.querySelector('h1')
+        : null
+      const hit = document.querySelector('[data-hit-layer]')
+      const layer = document.querySelector<HTMLElement>('[data-layer]')
+      if (!hero || !heading || !hit || !layer) {
+        if (--left > 0) requestAnimationFrame(pick)
+        else console.error('No hero headline to select')
+        return
+      }
+      const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+      const frame = hero.getBoundingClientRect()
+      const inner = heading.getBoundingClientRect()
+      const at = {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: frame.left + (inner.left + inner.width / 2) * k,
+        clientY: frame.top + (inner.top + inner.height / 2) * k,
+      }
+      hit.dispatchEvent(new MouseEvent('mousedown', at))
+      window.dispatchEvent(new MouseEvent('mouseup', at))
+      hit.dispatchEvent(new MouseEvent('dblclick', at))
+    }
+    document.addEventListener('DOMContentLoaded', pick)
+  }, PRESS_FRAMES)
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -724,6 +764,28 @@ export const BOARD_CASES: CaptureCase[] = [
               awaitWrite: true,
               hold: { from: [700, 450], to: [660, 453] },
             }),
+          ),
+        ),
+      },
+      {
+        section: 'element-select',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(headlineOnHero),
+      },
+      {
+        section: 'layers-expanded',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero'] }),
+            pressOnLoad('^Show the elements of hero$'),
           ),
         ),
       },

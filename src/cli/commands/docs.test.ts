@@ -43,6 +43,7 @@ describe('docs', () => {
     expect(verbs.map((verb) => verb.name)).toEqual([
       'serve',
       'show',
+      'selection',
       'list',
       'project add',
       'project rename',

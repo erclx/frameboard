@@ -8,10 +8,12 @@ import { usePendingFrames } from './write'
 
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
-/** Above every frame, whose z-index is its stacking order. */
-const OVERLAY_Z = 1_000_000
+const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
 
-const CHIP =
+/** Above every frame, whose z-index is its stacking order. */
+export const OVERLAY_Z = 1_000_000
+
+export const CHIP =
   'absolute top-full left-1/2 origin-top-left rounded-[4px] bg-primary px-1.5 py-0.5 text-[10px] leading-[14px] whitespace-nowrap text-primary-foreground tabular-nums [transform:scale(calc(1/var(--zoom,1)))_translate(-50%,6px)]'
 
 interface OverlayProps {
@@ -29,6 +31,7 @@ interface OverlayProps {
  */
 export function SelectionOverlay({ frames }: OverlayProps) {
   const selected = useSelection((state) => state.frames)
+  const inside = useSelection((state) => Boolean(state.element))
   const shown = usePendingFrames(
     frames.filter((frame) => selected.includes(frame.ref)),
   )
@@ -39,7 +42,9 @@ export function SelectionOverlay({ frames }: OverlayProps) {
       className="pointer-events-none absolute top-0 left-0"
       style={{ zIndex: OVERLAY_Z }}
     >
-      {bounds ? <Selection frames={shown} bounds={bounds} /> : null}
+      {bounds ? (
+        <Selection frames={shown} bounds={bounds} inside={inside} />
+      ) : null}
       <div data-marquee-hits />
       <div
         data-marquee
@@ -52,19 +57,32 @@ export function SelectionOverlay({ frames }: OverlayProps) {
   )
 }
 
+/**
+ * The frame selection. With an element selected inside it, the frame keeps a
+ * dashed outline alone, as the parent of what is selected, and the element
+ * overlay draws the handles and chip.
+ */
 function Selection({
   frames,
   bounds,
+  inside,
 }: {
   frames: readonly FrameRecord[]
   bounds: Box
+  inside: boolean
 }) {
   const several = frames.length > 1
   return (
     <div
       data-selection
+      data-inside={inside || undefined}
       className="absolute"
-      style={{ ...place(bounds), outline: OUTLINE }}
+      style={{
+        ...place(bounds),
+        ...(inside
+          ? { outline: PARENT_OUTLINE, outlineOffset: screen(1) }
+          : { outline: OUTLINE }),
+      }}
     >
       {several
         ? frames.map((frame) => (
@@ -76,7 +94,7 @@ function Selection({
             />
           ))
         : null}
-      <div data-handles>
+      <div data-handles hidden={inside}>
         {CORNERS.map((corner) => (
           <span
             key={corner}
@@ -92,7 +110,7 @@ function Selection({
           />
         ))}
       </div>
-      <span data-chip className={CHIP}>
+      <span data-chip hidden={inside} className={CHIP}>
         {several ? `${frames.length} frames` : sizeLabel(bounds)}
       </span>
       <span data-move-chip hidden className={CHIP} />

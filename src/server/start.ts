@@ -17,6 +17,7 @@ import { emptyTrash } from './history/trash'
 import { type BoardFindings, createBoardFindings } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
+import { createSelectionHolder } from './live/selection'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
 import { createDelivery, type Delivery } from './notes/delivery'
 import {
@@ -159,6 +160,7 @@ async function listen({
   const history = new History(root, (counts) =>
     hub.broadcast({ type: 'history', ...counts }),
   )
+  const selection = createSelectionHolder(() => tabs.writers)
   const hub = createHub({
     tabs,
     port: boundPort,
@@ -168,6 +170,7 @@ async function listen({
     notes: () => inTurn(() => boardView(root)),
     delivery,
     history: () => history.counts(),
+    closeTab: selection.closeTab,
   })
   // The board pays the browser launch once, on its first PNG.
   const renderer = createWarmRenderer({
@@ -183,6 +186,7 @@ async function listen({
     tickets,
     delivery,
     history,
+    selection,
     renderFrame: renderer.render,
     actions: {
       access,

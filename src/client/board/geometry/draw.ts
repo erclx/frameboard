@@ -102,13 +102,18 @@ export function drawGuides(
   )
 }
 
-/** Puts the drawn selection back to what React drew once a gesture ends. */
+/**
+ * Puts the drawn selection back to what React drew once a gesture ends. A
+ * frame drawn as the parent of a selected element keeps its handles and
+ * size hidden, since React marks it and never redraws an unchanged prop.
+ */
 export function drawRest(overlay: HTMLElement): void {
   const selection = part(overlay, '[data-selection]')
   if (selection) {
+    const inside = selection.hasAttribute('data-inside')
     selection.style.transform = ''
-    hide(selection, '[data-handles]', false)
-    hide(selection, '[data-chip]', false)
+    hide(selection, '[data-handles]', inside)
+    hide(selection, '[data-chip]', inside)
     hide(selection, '[data-move-chip]', true)
   }
   drawMarquee(overlay, null, [])

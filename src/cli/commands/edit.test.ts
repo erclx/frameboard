@@ -40,7 +40,9 @@ describe('edit', () => {
     const result = await run('--index', HEADING, '--style', 'color=red')
 
     const written = readFileSync(frame, 'utf8')
-    expect(written).toContain('<h1 style="color: red">hero</h1>')
+    expect(written).toContain(
+      '<h1 data-name="Headline" style="color: red">hero</h1>',
+    )
     expect(result.exitCode).toBe(0)
     expect(result.json()).toEqual({
       ok: true,
@@ -56,13 +58,17 @@ describe('edit', () => {
   it('should replace the text of an element', async () => {
     await run('--index', HEADING, '--text', 'Ship it')
 
-    expect(readFileSync(frame, 'utf8')).toContain('<h1>Ship it</h1>')
+    expect(readFileSync(frame, 'utf8')).toContain(
+      '<h1 data-name="Headline">Ship it</h1>',
+    )
   })
 
   it('should set an attribute whose value holds an equals sign', async () => {
     await run('--index', HEADING, '--attr', 'title=a=b')
 
-    expect(readFileSync(frame, 'utf8')).toContain('<h1 title="a=b">hero</h1>')
+    expect(readFileSync(frame, 'utf8')).toContain(
+      '<h1 data-name="Headline" title="a=b">hero</h1>',
+    )
   })
 
   it('should take a path to the frame file', async () => {
@@ -72,7 +78,9 @@ describe('edit', () => {
     )
 
     expect(result.exitCode).toBe(0)
-    expect(readFileSync(frame, 'utf8')).toContain('<h1>Path</h1>')
+    expect(readFileSync(frame, 'utf8')).toContain(
+      '<h1 data-name="Headline">Path</h1>',
+    )
   })
 
   it('should write when the given hash matches the file', async () => {

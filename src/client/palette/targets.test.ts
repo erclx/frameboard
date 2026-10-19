@@ -108,7 +108,7 @@ describe('jumps', () => {
       zoomsAfter: zooms,
     }).toEqual({
       path: '/p/studio/plans',
-      selection: { page: 'studio/plans', frames: [PRICING.ref] },
+      selection: { page: 'studio/plans', frames: [PRICING.ref], element: null },
       zoomsBefore: 0,
       zoomsAfter: 1,
     })

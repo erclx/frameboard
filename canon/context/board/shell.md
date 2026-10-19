@@ -104,13 +104,15 @@ Owns the app shell and the controls around the canvas.
 
 ### `src/server/live/`
 
-Owns the board folder's watcher, the socket hub, and the decision to open a tab.
+Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports.
 
 - A frame's own `.html`, or a temp file it is saved through such as `hero.html.swap`, reloads that frame, and any other page-folder file reloads the page
 - A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - The server checks every frame at start and rechecks each batch's frames
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
+
+`selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
 
 ### `src/server/access/`
 
@@ -129,6 +131,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface.
 - `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in the field `files`, behind `requireWriter` and a 64 MiB body limit that answers 413
 - `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
 - `structure.ts` answers `POST /api/<noun>/<verb>`, each body mirroring the CLI verb's flags and recording one step, and `history.ts` answers `POST /api/undo` and `/api/redo`, both sharing `envelope.ts` for their refusals
+- `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
 ### Other folders
 
