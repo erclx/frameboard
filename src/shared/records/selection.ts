@@ -2,6 +2,25 @@ import { z } from 'zod'
 
 const hashSchema = z.string().regex(/^[0-9a-f]{64}$/)
 
+/** More frames than any page holds, so a report cannot grow without bound. */
+const MAX_FRAMES = 1000
+
+const refSchema = z.string().min(1).max(1024)
+
+/** What a writing board tab posts to `/api/selection` each time its selection changes. */
+export const selectionReportSchema = z.object({
+  /** The id the tab said hello with, so its socket closing forgets the report. */
+  tab: z.string().min(1).max(128),
+  /** The page ref, `<project>/<page>`, null with nothing selected. */
+  page: refSchema.nullable(),
+  frames: z.array(refSchema).max(MAX_FRAMES),
+  element: z
+    .object({ ref: refSchema, index: z.int().min(0), hash: hashSchema })
+    .nullable(),
+})
+
+export type SelectionReport = z.infer<typeof selectionReportSchema>
+
 /** The selected element, in the address `edit --index --hash` takes. */
 export const selectedElementSchema = z.object({
   /** The frame ref, `<project>/<page>/<frame>`. */

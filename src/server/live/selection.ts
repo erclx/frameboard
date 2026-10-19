@@ -1,10 +1,7 @@
+import type { SelectionReport } from '@/shared/records/selection'
+
 /** What a board tab reports it has selected, in refs and the element's address. */
-export interface ReportedSelection {
-  /** The page ref, `<project>/<page>`, null with nothing selected. */
-  page: string | null
-  frames: readonly string[]
-  element: { ref: string; index: number; hash: string } | null
-}
+export type ReportedSelection = Omit<SelectionReport, 'tab'>
 
 export interface SelectionHolder {
   /** Keeps a writing tab's report, replacing whatever any tab reported before. */

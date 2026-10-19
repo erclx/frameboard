@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises'
 
 import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
-import { z } from 'zod'
 
 import { resolveFrameRef } from '@/server/board/refs'
 import { contentHash } from '@/server/edit/address'
@@ -10,9 +9,11 @@ import { elementTree } from '@/server/edit/elements'
 import type { SelectionHolder } from '@/server/live/selection'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { ElementTree } from '@/shared/records/elements'
-import type {
-  SelectedElement,
-  SelectionResult,
+import {
+  type SelectedElement,
+  type SelectionReport,
+  selectionReportSchema,
+  type SelectionResult,
 } from '@/shared/records/selection'
 
 import { type Access, requireWriter } from '../access/guard'
@@ -25,25 +26,6 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'frame-not-found': 404,
   'address-mismatch': 422,
 }
-
-/** More frames than any page holds, so a report cannot grow without bound. */
-const MAX_FRAMES = 1000
-
-const refSchema = z.string().min(1).max(1024)
-
-const reportSchema = z.object({
-  /** The id the tab said hello with, so its socket closing forgets the report. */
-  tab: z.string().min(1).max(128),
-  page: refSchema.nullable(),
-  frames: z.array(refSchema).max(MAX_FRAMES),
-  element: z
-    .object({
-      ref: refSchema,
-      index: z.int().min(0),
-      hash: z.string().regex(/^[0-9a-f]{64}$/),
-    })
-    .nullable(),
-})
 
 /**
  * A frame's element tree, read from the file rather than a live iframe so a
@@ -78,7 +60,7 @@ export function elementsRoutes(
    * changed past the hash the tab read, since the index may now name another.
    */
   const named = async (
-    element: NonNullable<z.infer<typeof reportSchema>['element']>,
+    element: NonNullable<SelectionReport['element']>,
   ): Promise<SelectedElement | null> => {
     const tree = await readTree(element.ref)
     const row = tree.elements.find(({ index }) => index === element.index)
@@ -111,7 +93,9 @@ export function elementsRoutes(
   })
 
   app.post('/api/selection', async (c) => {
-    const parsed = reportSchema.safeParse(await c.req.json().catch(() => null))
+    const parsed = selectionReportSchema.safeParse(
+      await c.req.json().catch(() => null),
+    )
     if (!parsed.success) {
       throw new FrameboardError(
         'usage',
