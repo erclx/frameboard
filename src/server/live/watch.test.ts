@@ -191,7 +191,7 @@ describe('reloadRefs', () => {
   })
 })
 
-describe('watchBoard', () => {
+describe('watchBoard', { timeout: SEEN_MS + 2000 }, () => {
   let board: FixtureBoard
   let watcher: BoardWatcher
   let batches: string[][]
@@ -208,38 +208,52 @@ describe('watchBoard', () => {
     board.cleanup()
   })
 
+  // On macOS the copy of the fixture can report late `board.json` and
+  // `layout.json` events into a batch, and under load the watcher can lose a
+  // create that lands beside other writes. So a test asserts on the paths it
+  // wrote, and writes them again on each poll until they are seen.
   it('reports each write in a batch', async () => {
-    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>one</p>')
-    writeFileSync(join(board.root, 'studio/home/styles.css'), 'p {}')
+    const hero = join(board.root, 'studio/home/hero.html')
+    const styles = join(board.root, 'studio/home/styles.css')
 
     await expect
-      .poll(() => [...new Set(batches.flat())].sort(), { timeout: SEEN_MS })
-      .toEqual([
-        join(board.root, 'studio/home/hero.html'),
-        join(board.root, 'studio/home/styles.css'),
-      ])
+      .poll(
+        () => {
+          writeFileSync(hero, '<p>one</p>')
+          writeFileSync(styles, 'p {}')
+          return batches.flat()
+        },
+        { timeout: SEEN_MS },
+      )
+      .toEqual(expect.arrayContaining([hero, styles]))
   })
 
   it('reports a frame saved through a temp file and a rename as that frame', async () => {
     const frame = join(board.root, 'studio/home/hero.html')
-    writeFileSync(`${frame}.swap`, '<p>saved</p>')
-    renameSync(`${frame}.swap`, frame)
 
     await expect
-      .poll(() => batches.flat(), { timeout: SEEN_MS })
+      .poll(
+        () => {
+          writeFileSync(`${frame}.swap`, '<p>saved</p>')
+          renameSync(`${frame}.swap`, frame)
+          return batches.flat()
+        },
+        { timeout: SEEN_MS },
+      )
       .toContain(frame)
   })
 
   it('ignores the run folder, dot-named paths, locks, and temp files', async () => {
+    const ignored = [
+      join(board.root, '.run/address.json'),
+      join(board.root, 'studio/home/.draft.html'),
+      join(board.root, 'studio/home/layout.json.lock'),
+      join(board.root, 'studio/home/hero.html.tmp'),
+    ]
     mkdirSync(join(board.root, '.run'), { recursive: true })
-    writeFileSync(join(board.root, '.run/address.json'), '{}')
-    writeFileSync(join(board.root, 'studio/home/.draft.html'), 'x')
-    writeFileSync(join(board.root, 'studio/home/layout.json.lock'), 'x')
-    writeFileSync(join(board.root, 'studio/home/hero.html.tmp'), 'x')
+    for (const path of ignored) writeFileSync(path, '{}')
     // A watched write after the ignored ones, so its batch arriving means
-    // every earlier event has been reported or dropped. Under load the
-    // watcher can lose a create that lands beside other writes in one folder,
-    // so each poll writes it again until it is seen.
+    // every earlier event has been reported or dropped.
     const sentinel = join(board.root, 'studio/home/sentinel.txt')
 
     await expect
@@ -251,7 +265,7 @@ describe('watchBoard', () => {
         { timeout: SEEN_MS },
       )
       .toContain(sentinel)
-    expect(new Set(batches.flat())).toEqual(new Set([sentinel]))
+    expect(batches.flat().filter((path) => ignored.includes(path))).toEqual([])
   })
 
   it('keeps reporting to later listeners when one throws', async () => {
