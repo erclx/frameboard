@@ -12,6 +12,7 @@ import { registerEdit } from './commands/edit'
 import { registerFrame } from './commands/frame'
 import { registerInspect } from './commands/inspect'
 import { registerList } from './commands/list'
+import { registerNotes } from './commands/notes'
 import { registerPage } from './commands/page'
 import { registerProject } from './commands/project'
 import { registerServe } from './commands/serve'
@@ -153,6 +154,7 @@ export function createProgram(context: ProgramContext): Command {
   registerFrame(program, { ...context, facesDir })
   registerEdit(program, context)
   registerCheck(program, context)
+  registerNotes(program, context)
   registerCapture(program, { ...context, facesDir })
   registerInspect(program, { ...context, facesDir })
   registerDocs(program, context)
