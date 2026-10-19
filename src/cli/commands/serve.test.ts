@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
 } from 'node:fs'
@@ -12,6 +13,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
 
 import { cli } from '../../../test/support/cli'
+
+const REDEEM_URL =
+  /^http:\/\/127\.0\.0\.1:\d+\/api\/access\/redeem\?ticket=[0-9a-f]{32}$/
 
 describe('serve', () => {
   let cwd: string
@@ -71,18 +75,28 @@ describe('serve', () => {
     const second = await serve()
 
     expect(second.json().data).toMatchObject({ reused: true, opened: true })
-    expect(first.opened).toEqual([(first.json().data as { url: string }).url])
+    expect(first.opened).toEqual([expect.stringMatching(REDEEM_URL)])
     expect(second.opened).toEqual([])
   })
 
-  it('opens nothing through a reused server with a board tab connected', async () => {
-    const first = await serve('--no-open')
-    const url = (first.json().data as { url: string }).url
-    const tab = new WebSocket(`${url.replace('http', 'ws')}/api/live`)
+  async function connectTab(url: string, headers: Record<string, string>) {
+    const tab = new WebSocket(`${url.replace('http', 'ws')}/api/live`, {
+      headers,
+    })
     await new Promise((resolve) => tab.once('open', resolve))
     const snapshot = new Promise((resolve) => tab.once('message', resolve))
     tab.send(JSON.stringify({ type: 'hello', role: 'board' }))
     await snapshot
+    return tab
+  }
+
+  it('opens nothing through a reused server with a writing tab connected', async () => {
+    const first = await serve('--no-open')
+    const url = (first.json().data as { url: string }).url
+    const { token } = JSON.parse(
+      readFileSync(join(cwd, '.frameboard/.run/address.json'), 'utf8'),
+    )
+    const tab = await connectTab(url, { authorization: `Bearer ${token}` })
 
     const second = await serve()
     tab.terminate()
@@ -91,11 +105,36 @@ describe('serve', () => {
     expect(first.opened).toEqual([])
   })
 
+  it('opens a tab through a reused server when only a reader is connected', async () => {
+    const first = await serve('--no-open')
+    const url = (first.json().data as { url: string }).url
+    const tab = await connectTab(url, {})
+
+    const second = await serve()
+    tab.terminate()
+
+    expect(second.json().data).toMatchObject({ reused: true, opened: true })
+    expect(first.opened).toEqual([expect.stringMatching(REDEEM_URL)])
+  })
+
   it('opens the board when no tab reconnects within the wait', async () => {
     const run = await serve()
 
     expect(run.json().data).toMatchObject({ opened: true })
-    expect(run.opened).toEqual([(run.json().data as { url: string }).url])
+    expect(run.opened).toEqual([expect.stringMatching(REDEEM_URL)])
+  })
+
+  it('keeps the ticket and the key out of the envelope', async () => {
+    const run = await serve()
+    const { key } = JSON.parse(
+      readFileSync(join(cwd, '.frameboard/.run/board-key.json'), 'utf8'),
+    )
+    const [opened] = run.opened
+    const ticket = new URL(opened ?? '').searchParams.get('ticket') ?? ''
+
+    expect(ticket).not.toBe('')
+    expect(run.stdout).not.toContain(ticket)
+    expect(run.stdout).not.toContain(key)
   })
 
   it('removes its address file when stopped', async () => {
