@@ -29,8 +29,6 @@ interface Surface {
   reference: string
   board: BoardName
   route: string
-  /** Redeems the board's ticket first, for a surface that differs between a writing tab and a read-only one. */
-  writer?: boolean
   /** Drives the state the reference shows once the route has loaded. */
   act?: (page: Page) => Promise<void>
   /** Opens the board through a ticket first, so the tab may write, as a move needs. */
