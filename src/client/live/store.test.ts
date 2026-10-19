@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
+import type { BoardNote } from '@/shared/records/notes'
 
 import {
   createLiveStore,
   receiveAccess,
   receiveBoard,
+  receiveDisconnect,
   receiveFindings,
+  receiveListeners,
+  receiveNotes,
   receiveReload,
 } from './store'
 
@@ -134,5 +138,69 @@ describe('receiveFindings', () => {
     receiveBoard(store, boardWith('hero'))
 
     expect(Object.keys(store.getState().findings)).toEqual(['studio/home/hero'])
+  })
+})
+
+function boardNote(id: string): BoardNote {
+  return {
+    id,
+    number: 1,
+    frame: 'hero',
+    anchor: null,
+    text: 'Tighten the header',
+    from: 'developer',
+    author: null,
+    session: null,
+    to: null,
+    state: 'open',
+    thread: null,
+    createdAt: '2026-10-19T10:00:00.000Z',
+    updatedAt: '2026-10-19T10:00:00.000Z',
+    element: null,
+  }
+}
+
+describe('receiveNotes', () => {
+  it("replaces one page's notes and keeps the others", () => {
+    const store = createLiveStore()
+    receiveNotes(store, 'studio/home', [boardNote('n_1')])
+    receiveNotes(store, 'studio/pricing', [boardNote('n_2')])
+
+    receiveNotes(store, 'studio/home', [])
+
+    expect(store.getState().notes).toEqual({
+      'studio/home': [],
+      'studio/pricing': [boardNote('n_2')],
+    })
+  })
+
+  it('drops the notes of a page the board no longer holds', () => {
+    const store = createLiveStore()
+    receiveNotes(store, 'studio/home', [boardNote('n_1')])
+    receiveNotes(store, 'studio/gone', [boardNote('n_2')])
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(Object.keys(store.getState().notes)).toEqual(['studio/home'])
+  })
+})
+
+describe('receiveDisconnect', () => {
+  it('clears the notes and the listeners until the next hello', () => {
+    const store = createLiveStore()
+    receiveNotes(store, 'studio/home', [boardNote('n_1')])
+    receiveListeners(store, [
+      { session: 's', tag: 'claude · app', since: '2026-10-19T10:00:00.000Z' },
+    ])
+    receiveAccess(store, true)
+
+    receiveDisconnect(store)
+
+    expect(store.getState()).toMatchObject({
+      notes: {},
+      listeners: [],
+      canWrite: false,
+      connected: false,
+    })
   })
 })

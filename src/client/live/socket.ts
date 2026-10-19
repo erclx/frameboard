@@ -8,7 +8,10 @@ import {
   type LiveStore,
   receiveAccess,
   receiveBoard,
+  receiveDisconnect,
   receiveFindings,
+  receiveListeners,
+  receiveNotes,
   receiveReload,
 } from './store'
 
@@ -48,10 +51,14 @@ export function connectLive(
       else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
+      } else if (message.type === 'notes') {
+        receiveNotes(store, message.page, message.notes)
+      } else if (message.type === 'listeners') {
+        receiveListeners(store, message.listeners)
       } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {
-      store.setState({ connected: false, canWrite: false })
+      receiveDisconnect(store)
       if (!stopped) retry = setTimeout(open, RECONNECT_MS)
     })
   }
