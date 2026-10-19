@@ -135,8 +135,9 @@ export const Frame = memo(function Frame({
       data-claimed={claimed ? true : undefined}
       className={cn(
         'absolute',
+        // Sized against the zoom, so the outline keeps its screen width as the label does.
         claimed &&
-          'outline-[1.5px] outline-offset-3 outline-claim outline-dashed motion-safe:animate-claim-outline',
+          'outline-[length:calc(1.5px/var(--zoom,1))] outline-offset-[calc(3px/var(--zoom,1))] outline-claim outline-dashed motion-safe:animate-claim-outline',
       )}
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
