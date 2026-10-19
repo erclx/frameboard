@@ -50,6 +50,7 @@ Owns the edit history undo reads, in `src/server/history/`.
 - Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout entry, one page order, one rename, or one path with its content hash, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it
+- A hand edit inside a frame is one content change holding the whole file before and after, so its undo restores the file only while nothing else wrote it since, and answers the hash it left the frame at so the element stays selected
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent has since changed is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history
