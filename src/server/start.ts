@@ -10,13 +10,24 @@ import { cookieName, loadBoardKey } from './access/key'
 import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
-import { launchCaptureBrowser } from './capture/browser'
+import { launchCaptureBrowser, type Launcher } from './capture/browser'
 import { createWarmBrowser, createWarmRenderer } from './capture/render'
+import { checkRendered } from './checks/browser/rendered'
+import { readConfig } from './checks/frame'
+import { boardPath } from './checks/frame-source'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
-import { type BoardFindings, createBoardFindings } from './live/findings'
+import {
+  type BoardFindings,
+  createBoardFindings,
+  recheckRefs,
+} from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
+import {
+  createRenderedFindings,
+  type RenderedFindings,
+} from './live/rendered-findings'
 import { createSelectionHolder } from './live/selection'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
 import { createDelivery, type Delivery } from './notes/delivery'
@@ -44,6 +55,8 @@ export interface StartOptions {
   strictPort?: boolean
   /** Opens a browser tab, for a second `serve` asking this one to open the board. */
   openUrl: (url: string) => void
+  /** Launches the warm browser, the headless shell unless a test stands in. */
+  launch?: Launcher
 }
 
 /**
@@ -125,6 +138,7 @@ async function listen({
   tokens,
   port,
   openUrl,
+  launch,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   const tickets = createTickets()
@@ -172,13 +186,35 @@ async function listen({
     history: () => history.counts(),
     closeTab: selection.closeTab,
   })
-  // The board pays the browser launch once, on its first PNG.
+  // One browser serves the PNG route and the checker, each on its own queue,
+  // launched by the startup sweep.
   const browser = createWarmBrowser(() =>
-    launchCaptureBrowser({ purpose: 'Copy frame as PNG' }),
+    launchCaptureBrowser({
+      purpose: 'Board PNGs and browser checks',
+      launch,
+    }),
   )
-  const renderFrame = createWarmRenderer({
-    baseUrl: () => `http://${HOSTNAME}:${bound}`,
-    browser,
+  const baseUrl = () => `http://${HOSTNAME}:${bound}`
+  const renderFrame = createWarmRenderer({ baseUrl, browser })
+  const rendered = createRenderedFindings({
+    check: async (frame) =>
+      checkRendered(await browser.get(), {
+        baseUrl: baseUrl(),
+        frame: {
+          ref: frame.ref,
+          path: boardPath(root, frame.path),
+          box: { width: frame.box.width, height: frame.box.height },
+        },
+        config: readConfig(root, frame.project),
+      }),
+    onResult: (ref, list) => {
+      const before = findings.rendered([ref])[ref]
+      if (JSON.stringify(before) === JSON.stringify(list)) return
+      const changed = findings.setRendered(ref, list)
+      if (Object.keys(changed).length > 0) {
+        hub.broadcast({ type: 'findings', findings: changed })
+      }
+    },
   })
   const app = createApp({
     clientDir,
@@ -220,13 +256,23 @@ async function listen({
   })
   server.on('upgrade', hub.handleUpgrade)
 
-  // Every frame is checked once at start, ahead of any hello's findings.
-  void inTurn(async () => findings.update(await scanBoard(root), 'all'))
+  // Every frame is checked once at start, ahead of any hello's findings, and
+  // queued for the browser sweep, whose findings follow as they land.
+  void inTurn(async () => {
+    const board = await scanBoard(root)
+    findings.update(board, 'all')
+    rendered.queue(board, [])
+  })
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
   watcher.onBatch(
     (paths) =>
       void inTurn(() =>
-        pushBatch(root, tokens ?? null, paths, hub, findings, delivery),
+        pushBatch(root, tokens ?? null, paths, {
+          hub,
+          findings,
+          rendered,
+          delivery,
+        }),
       ),
   )
 
@@ -240,6 +286,7 @@ async function listen({
     },
     boardUrl,
     close: async () => {
+      rendered.close()
       await Promise.all([
         watcher.close(),
         hub.close(),
@@ -257,17 +304,25 @@ async function listen({
 
 /**
  * One rescan per batch: the whole board to every tab, then the frames to
- * reload, then the findings of every frame the batch rechecked, then the
- * notes of every page whose notes or frames it touched, whose queue it
- * offers to delivery.
+ * reload, then the findings of every frame the batch rechecked, queueing the
+ * same frames for the browser checker, then the notes of every page whose
+ * notes or frames it touched, whose queue it offers to delivery.
  */
 async function pushBatch(
   root: string,
   tokens: string | null,
   paths: string[],
-  hub: LiveHub,
-  findings: BoardFindings,
-  delivery: Delivery,
+  {
+    hub,
+    findings,
+    rendered,
+    delivery,
+  }: {
+    hub: LiveHub
+    findings: BoardFindings
+    rendered: RenderedFindings
+    delivery: Delivery
+  },
 ): Promise<void> {
   let board
   try {
@@ -283,6 +338,7 @@ async function pushBatch(
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
   }
+  rendered.queue(board, recheckRefs(root, paths, board, tokens))
   await pushNotes(root, paths, hub, delivery)
 }
 
