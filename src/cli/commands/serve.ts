@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import type { Command } from 'commander'
 
 import {
@@ -9,6 +12,7 @@ import {
 import { startBoard } from '@/server/board/root'
 import { openBoard } from '@/server/live/open-board'
 import { startServer } from '@/server/start'
+import { FrameboardError } from '@/shared/errors'
 
 import { postToBoard } from '../board-server'
 import {
@@ -26,6 +30,7 @@ const RECONNECT_WAIT_MS = 1000
 interface ServeOptions extends CommonOptions {
   port: number
   open: boolean
+  tokens?: string
 }
 
 export function registerServe(
@@ -45,8 +50,21 @@ export function registerServe(
       DEFAULT_PORT,
     )
     .option('--no-open', 'leave the browser alone')
+    .option(
+      '--tokens <path>',
+      "a token sheet another tool manages, standing in for the board's tokens.css",
+    )
 
   act<ServeOptions>(command, context, async (_args, options, self) => {
+    const tokens =
+      options.tokens === undefined ? undefined : resolve(io.cwd, options.tokens)
+    if (tokens !== undefined && !existsSync(tokens)) {
+      throw new FrameboardError(
+        'tokens-not-found',
+        `No token sheet at ${tokens}.`,
+        { tokens },
+      )
+    }
     const { root, created } = await startBoard({
       root: options.root,
       cwd: io.cwd,
@@ -69,6 +87,9 @@ export function registerServe(
           pid: live.pid,
           root,
           reused: true,
+          // The running server keeps the sheet it started with, so a different
+          // --tokens shows here as a mismatch rather than a second server.
+          tokens: live.tokens ?? null,
           created,
           opened,
         },
@@ -80,6 +101,7 @@ export function registerServe(
       clientDir,
       facesDir,
       root,
+      tokens,
       port: options.port,
       strictPort: self.getOptionValueSource('port') !== 'default',
       openUrl: io.openUrl,
@@ -88,6 +110,7 @@ export function registerServe(
       root,
       host: server.hostname,
       port: server.port,
+      tokens,
     })
     await writeAddress(root, address)
     server.authorize(address.token)
@@ -113,6 +136,7 @@ export function registerServe(
         pid: address.pid,
         root,
         reused: false,
+        tokens: tokens ?? null,
         created,
         opened,
       },

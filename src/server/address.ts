@@ -22,12 +22,15 @@ export function newAddress({
   port,
   pid = process.pid,
   now = new Date(),
+  tokens,
 }: {
   root: string
   host: string
   port: number
   pid?: number
   now?: Date
+  /** The `--tokens` sheet, recorded so the hook and `check` read it while this server runs. */
+  tokens?: string
 }): AddressFile {
   return {
     version: 1,
@@ -39,6 +42,7 @@ export function newAddress({
     root,
     startedAt: now.toISOString(),
     frameboard: version,
+    ...(tokens === undefined ? {} : { tokens }),
   }
 }
 

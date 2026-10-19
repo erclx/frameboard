@@ -10,6 +10,8 @@ export const addressFileSchema = z.looseObject({
   root: z.string(),
   startedAt: z.iso.datetime(),
   frameboard: z.string(),
+  /** The absolute `--tokens` sheet standing in for the board's, absent when none was given. */
+  tokens: z.string().optional(),
 })
 
 export type AddressFile = z.infer<typeof addressFileSchema>
