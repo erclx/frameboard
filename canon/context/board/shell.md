@@ -47,9 +47,12 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being its header with the way home and Hide UI, then the Design and Theme tabs.
+Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
 
-- Design holds a pages list with a search and a layers tree that hides and locks frames, then Assets with dropped files, and Theme holds the project's tokens read-only
+- Design holds a pages list with a search and a layers tree that hides and locks frames, and Theme holds the project's tokens read-only
+- Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, the name, and a `<type> · <size>` line, and a tile click copies `../assets/<name>` with each segment encoded
+- A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
+- Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
 ### `src/client/board/chrome/`
 
@@ -106,6 +109,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface.
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
 - Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing
+- `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in the field `files`, behind `requireWriter` and a 64 MiB body limit that answers 413
 - `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
 
 ### Other folders

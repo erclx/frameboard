@@ -25,28 +25,67 @@ async function noTokens(page: Page): Promise<void> {
   )
 }
 
-/** How many frames the Theme tab waits for its trigger, about ten seconds. */
+/** How many frames a left panel tab waits for its trigger, about ten seconds. */
 const TAB_FRAMES = 600
 
 /**
- * Opens the left panel's Theme tab once the board has drawn it. A tab is
- * found by its role, since the toolbar's theme button shares the name.
+ * Opens the left panel's tab named `name` once the board has drawn it. A tab
+ * is found by its role, since the toolbar's theme button shares the name.
  */
-async function themeTab(page: Page): Promise<void> {
-  await page.addInitScript((frames) => {
-    let left = frames
-    const open = () => {
-      const tab = [...document.querySelectorAll('[role="tab"]')].find(
-        (candidate) =>
-          candidate.textContent?.trim() === 'Theme' &&
-          !candidate.hasAttribute('data-disabled'),
-      )
-      if (tab instanceof HTMLElement) tab.click()
-      else if (--left > 0) requestAnimationFrame(open)
-      else console.error('No Theme tab to open')
-    }
-    document.addEventListener('DOMContentLoaded', open)
-  }, TAB_FRAMES)
+function leftTab(name: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ label, frames }) => {
+        let left = frames
+        const open = () => {
+          const tab = [...document.querySelectorAll('[role="tab"]')].find(
+            (candidate) =>
+              candidate.textContent?.trim() === label &&
+              !candidate.hasAttribute('data-disabled'),
+          )
+          if (tab instanceof HTMLElement) tab.click()
+          else if (--left > 0) requestAnimationFrame(open)
+          else console.error(`No ${label} tab to open`)
+        }
+        document.addEventListener('DOMContentLoaded', open)
+      },
+      { label: name, frames: TAB_FRAMES },
+    )
+  }
+}
+
+const themeTab = leftTab('Theme')
+
+/** The reference's six files, for a preview board whose `assets/` holds none. */
+const REFERENCE_ASSETS = [
+  { path: 'hero.png', kind: 'image', size: 1_200_000 },
+  { path: 'loader.gif', kind: 'gif', size: 240_000 },
+  { path: 'logo.svg', kind: 'svg', size: 2_000 },
+  { path: 'Inter.woff2', kind: 'font', size: 98_000 },
+  { path: 'demo.mp4', kind: 'video', size: 4_100_000 },
+  { path: 'shared.css', kind: 'stylesheet', size: 3_000 },
+]
+
+function gradient(from: string, to: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="72"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="120" height="72" fill="url(#g)"/></svg>`
+}
+
+/**
+ * Answers the Assets tab's read with the reference's files and draws their
+ * thumbnails as gradients, so no binary joins the `basic` fixture.
+ */
+async function referenceAssets(page: Page): Promise<void> {
+  await page.route('**/api/projects/*/assets', (route) =>
+    route.fulfill({ json: { ok: true, data: { files: REFERENCE_ASSETS } } }),
+  )
+  await page.route('**/frames/*/assets/*', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: route.request().url().endsWith('hero.png')
+        ? gradient('#6d5bd0', '#e07a5f')
+        : gradient('#1d2a4a', '#3b2a5c'),
+    }),
+  )
 }
 
 /** How many frames the press waits for its control, about ten seconds, before giving up. */
@@ -282,7 +321,8 @@ const STATE_ONLY = ['320', '768', '1536']
 /**
  * The home view and one board page of the preview's `basic` fixture, then the
  * board under Hide UI, in Play, with the avatar menu open, and with the Theme
- * tab open, with tokens and with none. The "Edited" times count back from
+ * tab open, with tokens and with none, and the Assets tab with the reference's
+ * six files. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
  * font, so the board cases also hold the label's check findings mark in both
  * themes, beside the hero taking its colors and faces from the tokens.
@@ -325,6 +365,15 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(noTokens, themeTab)),
+      },
+      {
+        section: 'assets-tab',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(referenceAssets, leftTab('Assets'))),
       },
       {
         section: 'hide-ui',

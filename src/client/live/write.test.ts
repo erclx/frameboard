@@ -32,6 +32,21 @@ describe('writeBoard', () => {
     expect(liveStore.getState().canWrite).toBe(true)
   })
 
+  it('sends a FormData body as given with no content-type header', async () => {
+    const form = new FormData()
+    form.append('files', new File(['x'], 'a.png'))
+    let init: RequestInit | undefined
+    const send: typeof fetch = async (_path, sent) => {
+      init = sent
+      return Response.json({ ok: true, data: null })
+    }
+
+    await writeBoard('/api/projects/p/assets', form, 'POST', send)
+
+    expect(init?.body).toBe(form)
+    expect(init?.headers).toBeUndefined()
+  })
+
   it('uses the method it is given', async () => {
     let method = ''
     const send: typeof fetch = async (_path, init) => {

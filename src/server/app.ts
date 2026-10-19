@@ -8,6 +8,7 @@ import type { RenderFrame } from './capture/render'
 import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
+import { assetsRoutes } from './routes/assets'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
@@ -88,6 +89,7 @@ export function createApp({
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions, frames.look))
   app.route('/', notesRoutes(root, actions.access, delivery))
+  app.route('/', assetsRoutes(root, actions.access))
   app.route('/', pngRoutes(root, renderFrame))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))

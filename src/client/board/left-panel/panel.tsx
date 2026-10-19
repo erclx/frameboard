@@ -21,6 +21,8 @@ interface LeftPanelProps {
   page: string
   /** The Theme tab's body, absent until the theme row supplies it, which leaves the tab disabled. */
   theme?: ReactNode
+  /** The Assets tab's body, absent until supplied, which leaves the tab disabled. */
+  assets?: ReactNode
 }
 
 const TAB =
@@ -28,10 +30,10 @@ const TAB =
 
 /**
  * The left panel of `canon/design/toolbar/floating`: the header with the
- * way home, the project name, and Hide UI, then the Design and Theme tabs,
- * Design holding the pages and the page's layers.
+ * way home, the project name, and Hide UI, then the Design, Theme, and Assets
+ * tabs, Design holding the pages and the page's layers.
  */
-export function LeftPanel({ project, page, theme }: LeftPanelProps) {
+export function LeftPanel({ project, page, theme, assets }: LeftPanelProps) {
   const [hideUi] = useActions(['view.hideUi'])
   const frames =
     project.pages.find((candidate) => candidate.name === page)?.frames ?? []
@@ -71,6 +73,9 @@ export function LeftPanel({ project, page, theme }: LeftPanelProps) {
           <TabsTrigger value="theme" disabled={!theme} className={TAB}>
             Theme
           </TabsTrigger>
+          <TabsTrigger value="assets" disabled={!assets} className={TAB}>
+            Assets
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="design" className="flex min-h-0 flex-col text-xs">
           <PagesList pages={project.pages} current={page} />
@@ -79,6 +84,9 @@ export function LeftPanel({ project, page, theme }: LeftPanelProps) {
         </TabsContent>
         <TabsContent value="theme" className="min-h-0 text-xs">
           {theme}
+        </TabsContent>
+        <TabsContent value="assets" className="min-h-0 text-xs">
+          {assets}
         </TabsContent>
       </Tabs>
     </aside>

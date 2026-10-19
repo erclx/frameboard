@@ -40,6 +40,9 @@ export const EXIT_CODES = {
   // A hand move or resize refused, writing nothing.
   'frame-locked': 11,
   'stale-layout': 11,
+  // A drop into `assets/` that left a file out, or went over the body limit.
+  'asset-type-refused': 2,
+  'asset-too-large': 2,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
