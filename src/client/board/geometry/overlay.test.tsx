@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { clear, select, selectionStore } from '../selection'
+import { clear, select, selectElement, selectionStore } from '../selection'
+import { drawRest } from './draw'
 import { SelectionOverlay } from './overlay'
 
 const PAGE = 'studio/home'
@@ -43,6 +44,41 @@ describe('SelectionOverlay', () => {
     expect(container.querySelector('[data-chip]')).toHaveTextContent(
       '640 × 188',
     )
+  })
+
+  it('draws the parent of a selected element dashed, with no handles or size', () => {
+    act(() =>
+      selectElement(selectionStore, PAGE, {
+        frame: LEFT.ref,
+        index: 4,
+        hash: 'a'.repeat(64),
+      }),
+    )
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    expect(
+      container.querySelector<HTMLElement>('[data-selection]')?.style.outline,
+    ).toContain('dashed')
+    expect(container.querySelector('[data-handles]')).not.toBeVisible()
+    expect(container.querySelector('[data-chip]')).not.toBeVisible()
+  })
+
+  it('keeps the handles hidden on a selected element once a drag of its frame ends', () => {
+    act(() =>
+      selectElement(selectionStore, PAGE, {
+        frame: LEFT.ref,
+        index: 4,
+        hash: 'a'.repeat(64),
+      }),
+    )
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+    const overlay = container.querySelector<HTMLElement>('[data-overlay]')
+
+    if (overlay) drawRest(overlay)
+
+    expect(container.querySelector('[data-handles]')).not.toBeVisible()
+    expect(container.querySelector('[data-chip]')).not.toBeVisible()
   })
 
   it('bounds several frames, outlines each, and counts them', () => {

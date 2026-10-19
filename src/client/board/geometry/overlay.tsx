@@ -75,6 +75,7 @@ function Selection({
   return (
     <div
       data-selection
+      data-inside={inside || undefined}
       className="absolute"
       style={{
         ...place(bounds),
