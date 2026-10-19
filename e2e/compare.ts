@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -29,6 +29,8 @@ interface Surface {
   reference: string
   board: BoardName
   route: string
+  /** Redeems the board's ticket first, for a surface that differs between a writing tab and a read-only one. */
+  writer?: boolean
   /** Drives the state the reference shows once the route has loaded. */
   act?: (page: Page) => Promise<void>
   /** Opens the board through a ticket first, so the tab may write, as a move needs. */
@@ -158,6 +160,23 @@ const SURFACES: Surface[] = [
       await page.getByRole('menu').waitFor()
     },
   },
+  {
+    reference: 'tabs/assets',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    act: async (page) => {
+      // The files on disk hold no pixels, so the thumbnails draw as the reference's gradients.
+      await page.route('**/frames/*/assets/*', (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="72"><rect width="120" height="72" fill="#6d5bd0"/></svg>`,
+        }),
+      )
+      await page.getByRole('tab', { name: 'Assets' }).click()
+      await page.getByRole('button', { name: /Copy path of hero.png/ }).hover()
+    },
+  },
   { reference: 'home/grid', board: 'basic', route: '/' },
   {
     reference: 'home/list',
@@ -174,6 +193,16 @@ const CREATED: Record<string, string> = {
   webapp: '2026-10-14T09:00:00.000Z',
 }
 
+/** The files the Assets tab reference lists, by size, so each tile reads as drawn. */
+const ASSET_SIZES: Record<string, number> = {
+  'hero.png': 1_200_000,
+  'loader.gif': 240_000,
+  'logo.svg': 2_000,
+  'Inter.woff2': 98_000,
+  'demo.mp4': 4_100_000,
+  'shared.css': 3_000,
+}
+
 function makeBoard(name: BoardName): FixtureBoard | TempBoard {
   if (name === 'basic') {
     const board = copyFixtureBoard('basic')
@@ -181,6 +210,11 @@ function makeBoard(name: BoardName): FixtureBoard | TempBoard {
       const file = path.join(board.root, project, 'project.json')
       const record = JSON.parse(readFileSync(file, 'utf8')) as object
       writeFileSync(file, JSON.stringify({ ...record, createdAt }))
+    }
+    const assets = path.join(board.root, 'webapp', 'assets')
+    mkdirSync(assets)
+    for (const [file, size] of Object.entries(ASSET_SIZES)) {
+      writeFileSync(path.join(assets, file), Buffer.alloc(size))
     }
     return board
   }
