@@ -4,11 +4,14 @@ import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { resolveFrameRef } from '@/server/board/refs'
+import { readFrame } from '@/server/checks/frame-source'
+import { tokenSheets } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
 import { elementTree } from '@/server/edit/elements'
 import type { SelectionHolder } from '@/server/live/selection'
+import { frameStyles } from '@/server/look/colors'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
-import type { ElementTree } from '@/shared/records/elements'
+import type { ElementTree, FrameStyles } from '@/shared/records/elements'
 import {
   type SelectedElement,
   type SelectionReport,
@@ -32,11 +35,14 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
  * culled frame lists the indices `edit` addresses, and the selection the
  * writing tab last reported, which `POST /api/selection` takes behind
  * `requireWriter` and `GET /api/selection` answers as the `selection` record.
+ * `GET /api/frames/styles` answers a frame's or an element's colors from the
+ * static cascade over `tokens`, the server's `--tokens` sheet when it has one.
  */
 export function elementsRoutes(
   root: string,
   access: Access,
   selection: SelectionHolder,
+  tokens: string | null = null,
 ): Hono {
   const app = new Hono()
   app.post('/api/selection', requireWriter(access))
@@ -74,6 +80,29 @@ export function elementsRoutes(
       throw new FrameboardError('usage', 'Name the frame as ?ref=.')
     }
     return c.json({ ok: true, data: await readTree(ref) })
+  })
+
+  app.get('/api/frames/styles', async (c) => {
+    const ref = c.req.query('ref')
+    if (!ref) {
+      throw new FrameboardError('usage', 'Name the frame as ?ref=.')
+    }
+    const indexParam = c.req.query('index')
+    const index = indexParam === undefined ? undefined : Number(indexParam)
+    if (index !== undefined && !(Number.isInteger(index) && index >= 0)) {
+      throw new FrameboardError('usage', 'Give ?index= as a whole number.')
+    }
+    const frame = await resolveFrameRef(root, ref, { cwd: root })
+    const source = readFrame(frame)
+    if (index !== undefined && !source.elements[index]) {
+      throw new FrameboardError('usage', `The frame holds no element ${index}.`)
+    }
+    const data: FrameStyles = {
+      ref: source.ref,
+      hash: contentHash(source.html),
+      ...frameStyles(source, tokenSheets(root, frame.project, tokens), index),
+    }
+    return c.json({ ok: true, data })
   })
 
   app.get('/api/selection', async (c) => {

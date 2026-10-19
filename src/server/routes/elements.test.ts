@@ -113,6 +113,42 @@ describe('elementsRoutes', () => {
     })
   })
 
+  describe('GET /api/frames/styles', () => {
+    it("answers the element's colors from the linked sheet with the file's hash", async () => {
+      const response = await routes.request(
+        `/api/frames/styles?ref=${encodeURIComponent(HERO)}&index=6`,
+      )
+
+      const { data } = await response.json()
+      expect(data.hash).toBe(heroHash())
+      expect(data.element.color).toEqual({
+        value: 'rgb(20, 90, 60)',
+        token: null,
+        percent: 100,
+      })
+    })
+
+    it('answers the frame’s colors with no element for no index', async () => {
+      const response = await routes.request(
+        `/api/frames/styles?ref=${encodeURIComponent(HERO)}`,
+      )
+
+      const { data } = await response.json()
+      expect(data.element).toBeNull()
+      expect(
+        data.colors.map((color: { value: string }) => color.value),
+      ).toEqual(['rgb(250, 247, 240)', 'rgb(20, 90, 60)'])
+    })
+
+    it('refuses an index the frame holds no element at', async () => {
+      const response = await routes.request(
+        `/api/frames/styles?ref=${encodeURIComponent(HERO)}&index=99`,
+      )
+
+      expect(response.status).toBe(400)
+    })
+  })
+
   describe('selection', () => {
     it('answers nothing selected before any tab reports', async () => {
       expect(await selection()).toEqual({

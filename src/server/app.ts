@@ -108,7 +108,7 @@ export function createApp({
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', assetsRoutes(root, actions.access))
-  app.route('/', elementsRoutes(root, actions.access, selection))
+  app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', editRoutes(root, actions.access, history))
   app.route('/', pngRoutes(root, renderFrame))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
