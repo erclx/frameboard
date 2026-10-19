@@ -26,6 +26,7 @@ export function RenameField({
   const done = useRef(false)
 
   useEffect(() => {
+    input.current?.focus()
     input.current?.select()
   }, [])
 
