@@ -65,6 +65,7 @@ describe('docs', () => {
       'edit',
       'check',
       'capture',
+      'inspect',
       'docs',
     ])
   })

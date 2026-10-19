@@ -5,6 +5,7 @@ import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
 import { captureResultSchema, fitResultSchema } from './capture'
 import { checkResultSchema } from './check'
 import { editResultSchema } from './edit'
+import { inspectResultSchema } from './inspect'
 import {
   frameRecordSchema,
   listResultSchema,
@@ -27,5 +28,6 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   checkResult: checkResultSchema,
   capture: captureResultSchema,
   fit: fitResultSchema,
+  inspect: inspectResultSchema,
   tokens: tokenTableSchema,
 }
