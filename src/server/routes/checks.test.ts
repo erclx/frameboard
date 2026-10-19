@@ -28,15 +28,20 @@ function fakeChecks(
   unavailable: 'browser-not-found' | null = null,
 ) {
   const asked: string[][] = []
+  const steps: string[] = []
   const checks: BrowserChecks = {
+    refresh: async () => {
+      steps.push('refresh')
+    },
     settle: async (refs) => {
+      steps.push('settle')
       asked.push(refs)
     },
     rendered: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, held[ref] ?? []])),
     unavailable: () => unavailable,
   }
-  return { checks, asked }
+  return { checks, asked, steps }
 }
 
 function post(
@@ -64,6 +69,14 @@ describe('POST /api/checks', () => {
       ok: true,
       data: { findings: [CLIPPED], browser: { ran: true } },
     })
+  })
+
+  it('rescans the board before it waits, so an unbatched write is queued', async () => {
+    const { checks, steps } = fakeChecks({})
+
+    await post(checks, { refs: ['site/home/hero'] })
+
+    expect(steps).toEqual(['refresh', 'settle'])
   })
 
   it('answers browser-not-found when the warm browser does not launch', async () => {

@@ -46,14 +46,14 @@ Owns the findings the board holds between watch batches, and the warm checker th
 - The server sends the whole findings map after the board on hello, then a partial map per batch where an empty list clears a frame
 - Each frame's list is its static findings followed by the browser findings last landed for it, so the client keeps one list per ref
 - A change to a token sheet rechecks and reloads every frame it reaches, and a change to a project's `project.json` rechecks them without a reload
-- `rendered-findings.ts` queues browser rechecks one at a time on the PNG route's warm browser but its own queue, sweeping every frame once at start. A batch queues the frames `recheckRefs` names plus every frame whose box changed, since a resize writes `layout.json` alone
-- A frame queued again before its result lands drops that result, so a label never shows findings from an older file
+- `rendered-findings.ts` queues browser rechecks one at a time on the PNG route's warm browser but its own queue, sweeping every frame once at start. A batch queues the frames `recheckRefs` names plus every frame whose box or file time changed, since a resize writes `layout.json` alone
+- A frame queued again before its result lands drops that result, and a failed recheck lands an empty list, so a label never shows findings from an older file. The first recheck after a browser launches queues every frame again
 
 ### `src/server/routes/checks.ts`
 
 Owns `POST /api/checks`, behind the write token, which `check` calls with the refs it read.
 
-- It waits until no recheck of those frames is pending, then answers the held browser findings and `browser: { ran: true }`
+- It rescans the board first, queueing a write the watcher has not batched yet, then waits until no recheck of those frames is pending and answers the held browser findings and `browser: { ran: true }`
 - A browser that does not launch answers `browser: { ran: false, reason: 'browser-not-found' }` with no findings
 - `check` with no live server, or one that does not answer in 120 seconds, sets `browser.reason` to `server-not-running` and closes its human output on a line saying so
 

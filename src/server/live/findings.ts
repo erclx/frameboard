@@ -25,8 +25,9 @@ export interface BoardFindings {
   ) => Record<string, Finding[]>
   /**
    * Holds a frame's browser findings beside its static ones, returning the
-   * frame's merged list as a partial map, or an empty map for a ref the board
-   * no longer holds.
+   * frame's merged list as a partial map. A frame whose static findings have
+   * not landed yet, as one the watcher has not batched, is held and sent
+   * nothing until they do.
    */
   setRendered: (ref: string, findings: Finding[]) => Record<string, Finding[]>
   /** The browser findings held for each of `refs`, an unchecked one as empty. */
@@ -56,16 +57,15 @@ export function createBoardFindings(
         [...held].map(([ref, own]) => [ref, merged(ref, own)]),
       ),
     setRendered: (ref, findings) => {
-      const own = held.get(ref)
-      if (!own) return {}
       browser.set(ref, findings)
-      return { [ref]: merged(ref, own) }
+      const own = held.get(ref)
+      return own ? { [ref]: merged(ref, own) } : {}
     },
     rendered: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, browser.get(ref) ?? []])),
     update: (board, paths) => {
       const frames = framesOf(board)
-      for (const ref of held.keys()) {
+      for (const ref of [...held.keys(), ...browser.keys()]) {
         if (!frames.has(ref)) {
           held.delete(ref)
           browser.delete(ref)

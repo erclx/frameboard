@@ -22,7 +22,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 1. Place it with `frameboard frame add <page>/<frame> --json`, choosing a phone, tablet, or desktop size when the screen calls for one. The verb writes a skeleton file when none exists.
 2. Write the frame's file at the path the envelope returns. Keep everything it loads inside its own page folder, or in the project's `assets/` folder when two pages share a file.
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
-4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done. A finding exits 8 with every finding in the error's details, each naming its rule, file, line, and column.
+4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done. An error finding exits 8 with every finding in the error's details, each naming its rule, file, line, and column. Warnings alone exit 0 and sit in the envelope's `data.findings`, so read them there.
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone and only a running server adds clipping, scrollbars, viewport sizing, and minimum font size. The result's `browser.ran` says whether those rules ran.
 6. Run `frameboard show <page>/<frame>` so the developer's board turns to the frame you drew.
 

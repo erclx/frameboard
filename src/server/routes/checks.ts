@@ -7,6 +7,11 @@ import { type Access, requireWriter } from '../access/guard'
 
 /** What the route reads off the server's warm checker and its held findings. */
 export interface BrowserChecks {
+  /**
+   * Rescans the board and queues every frame whose file or box changed, so a
+   * write the watcher has not batched yet is checked before the route answers.
+   */
+  refresh: () => Promise<void>
   /** Resolves once no recheck of any of `refs` is queued or running. */
   settle: (refs: string[]) => Promise<void>
   /** The browser findings held for each of `refs`. */
@@ -21,8 +26,8 @@ const bodySchema = z.object({
 
 /**
  * `POST /api/checks` with `{ refs }`, behind `requireWriter`, which `check`
- * calls for the browser findings a static run cannot reach. It waits until
- * no recheck of those frames is pending, then answers the findings the
+ * calls for the browser findings a static run cannot reach. It rescans the
+ * board, waits until no recheck of those frames is pending, then answers the findings the
  * server holds for them, or `browser.ran: false` with `browser-not-found`
  * when the warm browser does not launch.
  */
@@ -45,6 +50,7 @@ export function checkRoutes(access: Access, checks: BrowserChecks): Hono {
       )
     }
     const { refs } = body.data
+    await checks.refresh()
     await checks.settle(refs)
     const reason = checks.unavailable()
     const browser: BrowserRun =

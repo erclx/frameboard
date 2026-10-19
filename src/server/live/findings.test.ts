@@ -117,14 +117,33 @@ describe('browser findings', () => {
     expect(rulesOf(changed)).toEqual({ 'site/home/hero': ['clipped'] })
   })
 
-  it('holds nothing for a frame the board no longer holds', async () => {
+  it('holds a frame checked ahead of its static findings and sends it with them', async () => {
     board = writeBoard({ 'site/home/hero.html': CLEAN })
     const findings = createBoardFindings(board.root)
 
-    const changed = findings.setRendered('site/home/hero', [CLIPPED])
+    const early = findings.setRendered('site/home/hero', [CLIPPED])
+    const changed = findings.update(await scanBoard(board.root), 'all')
 
-    expect(changed).toEqual({})
-    expect(findings.all()).toEqual({})
+    expect(early).toEqual({})
+    expect(rulesOf(changed)).toEqual({ 'site/home/hero': ['clipped'] })
+  })
+
+  it('drops the browser findings of a frame the board no longer holds', async () => {
+    board = writeBoard({
+      'site/home/hero.html': CLEAN,
+      'site/home/about.html': CLEAN,
+    })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setRendered('site/home/about', [CLIPPED])
+    const about = join(board.root, 'site/home/about.html')
+    rmSync(about)
+
+    findings.update(await scanBoard(board.root), [about])
+
+    expect(findings.rendered(['site/home/about'])).toEqual({
+      'site/home/about': [],
+    })
   })
 
   it('answers the held browser findings, an unchecked frame as empty', async () => {

@@ -228,6 +228,14 @@ async function listen({
     selection,
     renderFrame,
     checks: {
+      refresh: () =>
+        inTurn(async () => {
+          try {
+            rendered.queue(await scanBoard(root), [])
+          } catch {
+            // A board folder mid-removal does not scan, and the batch catches up.
+          }
+        }),
       settle: rendered.settle,
       rendered: findings.rendered,
       unavailable: rendered.unavailable,
