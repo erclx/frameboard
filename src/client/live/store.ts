@@ -2,6 +2,7 @@ import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import type { Finding } from '@/shared/records/check'
+import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 
@@ -23,6 +24,8 @@ export interface LiveState {
   listeners: readonly Listener[]
   /** How many steps the server can undo and redo, zero until its `history` message. */
   history: { undo: number; redo: number }
+  /** The live claims by frame ref, absent meaning nobody holds the frame. */
+  claims: Readonly<Record<string, Claim>>
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -38,12 +41,13 @@ export function createLiveStore(): LiveStore {
     notes: {},
     listeners: [],
     history: { undo: 0, redo: 0 },
+    claims: {},
   }))
 }
 
 /**
- * Replaces the board, dropping the counters and findings of frames it no
- * longer holds and the notes of pages it no longer holds.
+ * Replaces the board, dropping the counters, findings, and claims of frames
+ * it no longer holds and the notes of pages it no longer holds.
  */
 export function receiveBoard(store: LiveStore, board: ListResult): void {
   const pages = board.projects.flatMap((project) => project.pages)
@@ -53,12 +57,13 @@ export function receiveBoard(store: LiveStore, board: ListResult): void {
   const pageRefs = new Set(pages.map((page) => page.ref))
   const held = <T>(byRef: Readonly<Record<string, T>>, keep: Set<string>) =>
     Object.fromEntries(Object.entries(byRef).filter(([ref]) => keep.has(ref)))
-  const { reloads, findings, notes } = store.getState()
+  const { reloads, findings, notes, claims } = store.getState()
   store.setState({
     board,
     reloads: held(reloads, refs),
     findings: held(findings, refs),
     notes: held(notes, pageRefs),
+    claims: held(claims, refs),
   })
 }
 
@@ -87,9 +92,19 @@ export function receiveHistory(
   store.setState({ history })
 }
 
+/** Replaces the live claims, keyed by the frame each holds. */
+export function receiveClaims(
+  store: LiveStore,
+  claims: readonly Claim[],
+): void {
+  store.setState({
+    claims: Object.fromEntries(claims.map((claim) => [claim.frame, claim])),
+  })
+}
+
 /**
- * Marks the socket closed. Writing, the listeners, the notes, and the
- * history counts all wait on the next hello, which sends them afresh, so a
+ * Marks the socket closed. Writing, the listeners, the notes, the claims, and
+ * the history counts all wait on the next hello, which sends them afresh, so a
  * page whose notes went while the socket was down shows none rather than
  * stale ones, and Undo never offers a step a restarted server forgot.
  */
@@ -100,6 +115,7 @@ export function receiveDisconnect(store: LiveStore): void {
     notes: {},
     listeners: [],
     history: { undo: 0, redo: 0 },
+    claims: {},
   })
 }
 

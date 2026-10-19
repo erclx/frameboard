@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Finding } from '@/shared/records/check'
+import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
@@ -8,6 +9,7 @@ import {
   createLiveStore,
   receiveAccess,
   receiveBoard,
+  receiveClaims,
   receiveDisconnect,
   receiveFindings,
   receiveHistory,
@@ -223,5 +225,62 @@ describe('receiveHistory', () => {
     receiveHistory(store, { undo: 2, redo: 0 })
 
     expect(store.getState().history).toEqual({ undo: 2, redo: 0 })
+  })
+})
+
+function claimOn(frame: string, session = 'sess-a'): Claim {
+  return {
+    frame,
+    session,
+    agent: 'claude',
+    tag: 'claude · studio',
+    claimedAt: '2026-10-19T10:00:00.000Z',
+    expiresAt: '2026-10-19T10:05:00.000Z',
+  }
+}
+
+describe('receiveClaims', () => {
+  it('keys each claim by the frame it holds', () => {
+    const store = createLiveStore()
+
+    receiveClaims(store, [claimOn('studio/home/hero')])
+
+    expect(store.getState().claims).toEqual({
+      'studio/home/hero': claimOn('studio/home/hero'),
+    })
+  })
+
+  it('replaces every claim, so one released or expired clears', () => {
+    const store = createLiveStore()
+    receiveClaims(store, [
+      claimOn('studio/home/hero'),
+      claimOn('studio/home/about'),
+    ])
+
+    receiveClaims(store, [claimOn('studio/home/about')])
+
+    expect(Object.keys(store.getState().claims)).toEqual(['studio/home/about'])
+  })
+
+  it('drops the claim of a frame the board no longer holds', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    receiveClaims(store, [
+      claimOn('studio/home/hero'),
+      claimOn('studio/home/about'),
+    ])
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(Object.keys(store.getState().claims)).toEqual(['studio/home/hero'])
+  })
+
+  it('clears the claims on disconnect until the next hello', () => {
+    const store = createLiveStore()
+    receiveClaims(store, [claimOn('studio/home/hero')])
+
+    receiveDisconnect(store)
+
+    expect(store.getState().claims).toEqual({})
   })
 })
