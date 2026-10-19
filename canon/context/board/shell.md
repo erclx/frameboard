@@ -67,6 +67,10 @@ Owns how a claimed frame shows, apart from `frame.tsx` since the tag, the header
 - The inspector header shows one initial per listening session, solid while it holds a claim, pale while it only listens, and none for a holder not listening
 - The layers row of a claimed frame carries a ringed `--claim` dot after its name
 
+### `src/client/board/changes/`
+
+Owns the change toast with Show and Next on `]`, the 2 second glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds with the tab visible, never on a timer alone.
+
 ### `src/client/board/left-panel/`
 
 Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
@@ -102,11 +106,10 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 
-- A frame an agent changed carries a purple dot on its label and layers row until selected or on screen a moment, never cleared by a timer
-- Page rows and the project card count the unseen frames, the update toast offers Show and Next, and `]` steps through the changes
+- `unseen.ts` keeps each frame's latest unseen change, and a changed frame carries a `--claim` dot on its label and layers row, which a live claim stands in for, while page rows and project cards count them
 - Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
-- Seen state lives in the browser, never in the board folder
+- Seen state is each frame's last seen hash in `localStorage`, never in the board folder
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
 ### `src/client/`
@@ -140,6 +143,10 @@ Owns the claims record and its expiry, apart from `notes/` and `board/` since th
 - A batch naming the claims file sends `claims` alone, with no rescan or browser check
 - A timer armed at start and on every change rebroadcasts at the soonest expiry
 - A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
+
+### `src/server/changes/`
+
+Owns what counts as an agent's change, telling it from the board's own writes, which `History`'s `onWrite` rereads, and diffing its elements. Its log lives in memory, so a change written while no server ran is never marked.
 
 ### `src/server/access/`
 

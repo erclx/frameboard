@@ -51,7 +51,7 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/re
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest
 - The monitor runs `inbox --follow`, and Claude Code hands each line to the session as an event, so a sent note is acted on at once with no MCP server
 - The board sends a note to the session holding the frame's claim while it listens, else to the only listening session, else to the one the developer picks
-- A claim is cooperative. Another live session's claim refuses `frame-claimed`, exit 4, it lapses five minutes after the last `editing`, and the file hash still guards a hand edit
+- A claim is cooperative. Another live session's claim refuses `frame-claimed`, exit 4, it lapses five minutes after the last `editing`, and the file hash still guards a hand edit, and the claim is what names the agent on the board's change toast
 
 `editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
 
