@@ -10,6 +10,8 @@ export interface LiveState {
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
   connected: boolean
+  /** Whether this tab may write, false until the server's `access` answer and again whenever the socket drops. */
+  canWrite: boolean
   /** The frame `show` last named, until its page's canvas brings it into view. */
   focus: string | null
   /** Check findings by frame ref, absent meaning none reported yet. */
@@ -23,6 +25,7 @@ export function createLiveStore(): LiveStore {
     board: null,
     reloads: {},
     connected: false,
+    canWrite: false,
     focus: null,
     findings: {},
   }))
@@ -47,6 +50,11 @@ export function receiveFindings(
   findings: Readonly<Record<string, readonly Finding[]>>,
 ): void {
   store.setState({ findings: { ...store.getState().findings, ...findings } })
+}
+
+/** Records the server's answer on whether this tab may write. */
+export function receiveAccess(store: LiveStore, write: boolean): void {
+  store.setState({ canWrite: write })
 }
 
 /** Bumps each frame's counter, which reloads its iframe alone. */

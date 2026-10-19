@@ -28,3 +28,5 @@ export type ServerMessage =
    * batch's `board` the frames it rechecked, where an empty list clears one.
    */
   | { type: 'findings'; findings: Record<string, Finding[]> }
+  /** Whether this tab may write, sent after each hello's board. */
+  | { type: 'access'; write: boolean }

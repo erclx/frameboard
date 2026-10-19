@@ -11,6 +11,7 @@ import {
 import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 
+import { type Access, isWriter } from '../access/guard'
 import { isBoardHost } from '../app'
 import type { BoardTabs } from '../start'
 
@@ -30,6 +31,8 @@ export interface HubOptions {
   /** Told of every board client that opens and closes, which is what `serve` waits on. */
   tabs: BoardTabs
   port: () => number
+  /** Decides from the upgrade request whether a tab may write. */
+  access: Access
   /** The board as it stands, sent to a board client on its hello. */
   snapshot: () => Promise<ListResult>
   /** Every frame's check findings, sent on a hello after the board. */
@@ -44,20 +47,30 @@ export interface HubOptions {
 export function createHub({
   tabs,
   port,
+  access,
   snapshot,
   findings,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
-  const boards = new Set<WebSocket>()
+  const boards = new Map<WebSocket, boolean>()
 
-  server.on('connection', (socket) => {
+  server.on('connection', (socket, request) => {
     socket.on('message', (data) => {
       if (boards.has(socket) || !isBoardHello(String(data))) return
-      boards.add(socket)
-      tabs.open()
+      const writer = isWriter(
+        {
+          authorization: request.headers.authorization,
+          cookie: request.headers.cookie,
+          origin: request.headers.origin,
+        },
+        access,
+      )
+      boards.set(socket, writer)
+      tabs.open(writer)
       void snapshot()
         .then(async (board) => {
           send(socket, { type: 'board', data: board })
+          send(socket, { type: 'access', write: writer })
           if (findings) {
             send(socket, { type: 'findings', findings: await findings() })
           }
@@ -65,7 +78,11 @@ export function createHub({
         .catch(() => {})
     })
     socket.on('close', () => {
-      if (boards.delete(socket)) tabs.close()
+      const writer = boards.get(socket)
+      if (writer !== undefined) {
+        boards.delete(socket)
+        tabs.close(writer)
+      }
     })
   })
 
@@ -80,7 +97,7 @@ export function createHub({
       )
     },
     broadcast: (message) => {
-      for (const socket of boards) send(socket, message)
+      for (const socket of boards.keys()) send(socket, message)
     },
     close: () => {
       for (const socket of server.clients) socket.terminate()

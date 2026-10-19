@@ -20,7 +20,7 @@ import {
 } from '../program'
 
 const DEFAULT_PORT = 4173
-/** How long a fresh server waits for a board tab left open by its predecessor to reconnect. */
+/** How long a fresh server waits for a writing board tab left open by its predecessor to reconnect. */
 const RECONNECT_WAIT_MS = 1000
 
 interface ServeOptions extends CommonOptions {
@@ -100,7 +100,7 @@ export function registerServe(
       options.open &&
       (await openBoard({
         tabs: server.tabs,
-        url: address.url,
+        url: server.boardUrl,
         open: io.openUrl,
         graceMs: RECONNECT_WAIT_MS,
       }))

@@ -45,14 +45,20 @@ export function newAddress({
   }
 }
 
+/** Makes `.run/` with the `.gitignore` that keeps everything in it out of git, returning its path. */
+export async function ensureRunFolder(root: string): Promise<string> {
+  const folder = join(root, RUN_FOLDER)
+  await mkdir(folder, { recursive: true })
+  await writeFile(join(folder, '.gitignore'), '*\n')
+  return folder
+}
+
 /** Writes the address file mode 0600, since it holds the token. */
 export async function writeAddress(
   root: string,
   address: AddressFile,
 ): Promise<void> {
-  const folder = join(root, RUN_FOLDER)
-  await mkdir(folder, { recursive: true })
-  await writeFile(join(folder, '.gitignore'), '*\n')
+  await ensureRunFolder(root)
   await writeRecord(addressPath(root), address, { mode: 0o600 })
 }
 

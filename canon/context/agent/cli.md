@@ -26,7 +26,8 @@ Owns the program and the conventions every verb shares, with `index.ts` bundled 
 Owns one module per verb group, with flags and JSON shapes in `frameboard docs`. `selection`, `notes`, `inspect`, `check`, and `capture` report, `edit` sets one property on one element leaving every other byte alone, and `editing` claims frames.
 
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing
-- A fresh `serve` waits up to one second for an old tab to reconnect, and opens one only when none is connected, so `opened` is true exactly when this call opened one
+- A fresh `serve` waits up to one second for an old writing tab to reconnect, and opens one only when no writing tab is connected, so `opened` is true exactly when this call opened one
+- The tab `serve` opens carries a single-use redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
 - `show` points every open board tab at a frame and exits 3 with `server-not-running` rather than start a server
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file

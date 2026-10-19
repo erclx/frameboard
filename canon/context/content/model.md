@@ -47,6 +47,7 @@ Project files sit beside the pages.
 - `assets/` in a project owns images, GIFs, video, SVG, fonts, and stylesheets that any frame may link, and is the one path outside a page a frame may use
 - Lock files, temp files, and dot folders hold generated files, and the watcher and scanner skip them
 - `.run/` holds the address file `serve` writes, with the URL, pid, and token at mode 0600, and ignores itself through its own `.gitignore`
+- `.run/board-key.json` holds the board key at mode 0600 and survives restarts, so a tab's cookie does too. Deleting it and restarting `serve` revokes every board's cookie
 
 ## Gotchas
 

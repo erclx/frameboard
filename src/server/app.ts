@@ -3,6 +3,8 @@ import { Hono } from 'hono'
 
 import { version } from '@/shared/version'
 
+import type { Tickets } from './access/tickets'
+import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { frameRoutes } from './routes/frames'
 
@@ -32,6 +34,8 @@ export interface AppOptions {
   port: () => number
   /** What the API's write routes do. */
   actions: BoardActions
+  /** The single-use tickets the redeem route trades for the board's cookie. */
+  tickets: Tickets
 }
 
 export function createApp({
@@ -39,6 +43,7 @@ export function createApp({
   root,
   port,
   actions,
+  tickets,
 }: AppOptions): Hono {
   const app = new Hono()
 
@@ -54,6 +59,7 @@ export function createApp({
   })
   // A second serve reads the root back to tell this board's server from another.
   app.get('/api/health', (c) => c.json({ version, root }))
+  app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions))
   app.route('/', frameRoutes(root))
   app.use('*', serveStatic({ root: clientDir }))

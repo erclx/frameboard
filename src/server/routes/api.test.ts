@@ -7,6 +7,10 @@ import {
 import { apiRoutes, type BoardActions } from './api'
 
 const TOKEN = 'a'.repeat(64)
+const KEY = 'b'.repeat(64)
+const COOKIE = 'frameboard-key-111111111111'
+const PORT = 4173
+const OWN = `http://127.0.0.1:${PORT}`
 
 describe('apiRoutes', () => {
   let board: FixtureBoard
@@ -25,7 +29,12 @@ describe('apiRoutes', () => {
 
   function routes(actions: Partial<BoardActions> = {}) {
     return apiRoutes(board.root, {
-      token: () => TOKEN,
+      access: {
+        token: () => TOKEN,
+        key: KEY,
+        cookieName: COOKIE,
+        isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
+      },
       open: async () => {
         opens += 1
         return true
@@ -110,15 +119,44 @@ describe('apiRoutes', () => {
       expect(shown).toEqual([])
     })
 
-    it('refuses every token until the address file records one', async () => {
-      const response = await routes({ token: () => null }).request(
-        '/api/show',
-        {
-          method: 'POST',
-          headers: { authorization: `Bearer ${TOKEN}` },
-          body: '{"ref":"studio/home/hero"}',
+    it('lets a tab with the board cookie and origin show a frame', async () => {
+      const response = await routes().request('/api/show', {
+        method: 'POST',
+        headers: { cookie: `${COOKIE}=${KEY}`, origin: OWN },
+        body: '{"ref":"studio/home/hero"}',
+      })
+
+      expect(response.status).toBe(200)
+      expect(shown).toEqual(['studio/home/hero'])
+    })
+
+    it('refuses the board cookie sent from another local port', async () => {
+      const response = await routes().request('/api/show', {
+        method: 'POST',
+        headers: {
+          cookie: `${COOKIE}=${KEY}`,
+          origin: 'http://127.0.0.1:9999',
         },
-      )
+        body: '{"ref":"studio/home/hero"}',
+      })
+
+      expect(response.status).toBe(401)
+      expect(shown).toEqual([])
+    })
+
+    it('refuses every token until the address file records one', async () => {
+      const response = await routes({
+        access: {
+          token: () => null,
+          key: KEY,
+          cookieName: COOKIE,
+          isOwnOrigin: () => false,
+        },
+      }).request('/api/show', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${TOKEN}` },
+        body: '{"ref":"studio/home/hero"}',
+      })
 
       expect(response.status).toBe(401)
     })

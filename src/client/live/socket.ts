@@ -6,6 +6,7 @@ import {
 
 import {
   type LiveStore,
+  receiveAccess,
   receiveBoard,
   receiveFindings,
   receiveReload,
@@ -43,13 +44,14 @@ export function connectLive(
     socket.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as ServerMessage
       if (message.type === 'board') receiveBoard(store, message.data)
+      else if (message.type === 'access') receiveAccess(store, message.write)
       else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
       } else onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {
-      store.setState({ connected: false })
+      store.setState({ connected: false, canWrite: false })
       if (!stopped) retry = setTimeout(open, RECONNECT_MS)
     })
   }
