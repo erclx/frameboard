@@ -11,6 +11,8 @@ export type BoardFile = z.infer<typeof boardFileSchema>
 export const projectChecksSchema = z.looseObject({
   allowedFonts: z.array(z.string()).optional(),
   noUppercase: z.boolean().optional(),
+  /** The smallest text size in pixels the `min-font-size` rule allows. */
+  minFontSize: z.number().positive().optional(),
 })
 
 export type ProjectChecks = z.infer<typeof projectChecksSchema>

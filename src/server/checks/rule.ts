@@ -3,14 +3,17 @@ import type { Finding, FindingLocation } from '@/shared/records/check'
 /** What `docs` prints about a rule, declared beside the rule itself. */
 export interface RuleDoc {
   id: string
-  /** `exact` when the bytes settle it, `selector` when it reads the cascade. */
-  tier: 'exact' | 'selector'
+  /**
+   * `exact` when the bytes settle it, `selector` when it reads the cascade,
+   * `browser` when it reads a rendered page on the server.
+   */
+  tier: 'exact' | 'selector' | 'browser'
   /** The `checks` key in `project.json` that turns it on, absent for a built-in rule. */
   configKey?: string
   description: string
 }
 
-/** A finding at `error`, the severity every rule in this tier reports. */
+/** A finding at `error` unless the rule asks for `warning`. */
 export function finding(
   rule: string,
   fields: {
@@ -18,11 +21,12 @@ export function finding(
     path: string
     message: string
     location?: FindingLocation | null
+    severity?: Finding['severity']
   },
 ): Finding {
   return {
     rule,
-    severity: 'error',
+    severity: fields.severity ?? 'error',
     frame: fields.frame,
     path: fields.path,
     message: fields.message,

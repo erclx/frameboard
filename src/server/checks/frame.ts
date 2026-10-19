@@ -91,6 +91,9 @@ function readConfig(root: string, project: string): ProjectChecks {
   if (typeof checks.noUppercase === 'boolean') {
     config.noUppercase = checks.noUppercase
   }
+  if (typeof checks.minFontSize === 'number' && checks.minFontSize > 0) {
+    config.minFontSize = checks.minFontSize
+  }
   return config
 }
 

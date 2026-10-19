@@ -30,10 +30,22 @@ export const findingSchema = z.object({
 
 export type Finding = z.infer<typeof findingSchema>
 
+/**
+ * Whether the browser rules ran, so a reader can tell no browser findings
+ * from none looked for. `reason` names why they did not.
+ */
+export const browserRunSchema = z.object({
+  ran: z.boolean(),
+  reason: z.optional(z.enum(['server-not-running', 'browser-not-found'])),
+})
+
+export type BrowserRun = z.infer<typeof browserRunSchema>
+
 /** What `check` returns: how many frames it read and every finding among them. */
 export const checkResultSchema = z.object({
   checked: z.int().check(z.minimum(0)),
   findings: z.array(findingSchema),
+  browser: z.optional(browserRunSchema),
 })
 
 export type CheckResult = z.infer<typeof checkResultSchema>
