@@ -23,9 +23,19 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 
 Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
 
-- An action is `{ id, label, group, keys?, run, enabled?, checked? }`, a row registers its own and removes them on unmount, and a row needing a field adds it as optional
+- An action is `{ id, label, group, keys?, run, enabled?, checked?, command? }`, a row registers its own and removes them on unmount, and a row needing a field adds it as optional
+- `command` is the label and icon the palette shows, and the palette lists only enabled actions carrying it, so a row opts each action in and a key nobody runs by name stays out
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
+
+### `src/client/palette/`
+
+Owns the two overlays that list the registry, being Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both routes.
+
+- The palette shows Frames with their page, Pages, Actions with their key chips, and Projects, and the home view lists Projects and app-level actions alone
+- A frame row sets the selection on its page, navigates, and runs `view.zoomToSelection` once the new page's canvas attaches, and a hidden frame has no row since the next board would prune it from the selection
+- `palette.open` and `help.shortcuts` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
+- The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text
 
 ### `src/client/board/`
 
@@ -126,4 +136,5 @@ The favicon files sit beside the app.
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
 - Edit covers the frames with a hit layer so a press reaches the selection gestures rather than a frame's page, and a primary drag pans only under the Hand tool. Play lifts the layer, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
+- `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
 - `cn` reads the custom `text-body` step as a color and keeps a kit part's `text-sm` beside it, so a kit part takes Tailwind's `text-xs` for the chrome's 12px

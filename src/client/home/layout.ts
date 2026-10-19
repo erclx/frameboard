@@ -1,3 +1,4 @@
+import { LayoutGrid, List } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { refreshActions, registerActions } from '@/client/actions/registry'
@@ -29,6 +30,7 @@ export function useHomeLayout(): HomeLayout {
         id: 'home.layoutGrid',
         label: 'Grid',
         group: 'home',
+        command: { label: 'Show projects as a grid', icon: LayoutGrid },
         run: () => choose('grid'),
         checked: () => current.current === 'grid',
       },
@@ -36,6 +38,7 @@ export function useHomeLayout(): HomeLayout {
         id: 'home.layoutList',
         label: 'List',
         group: 'home',
+        command: { label: 'Show projects as a list', icon: List },
         run: () => choose('list'),
         checked: () => current.current === 'list',
       },

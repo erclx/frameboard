@@ -10,6 +10,7 @@ import { bindKeys } from './actions/registry'
 import { App } from './app'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
+import { registerPaletteActions } from './palette/actions'
 import { registerThemeActions } from './theme/actions'
 import { connectTheme, themeStore, windowThemeHost } from './theme/store'
 
@@ -27,6 +28,7 @@ connectLive(liveStore, {
 connectTheme(themeStore, windowThemeHost(window))
 // Both the home and the board draw the toggle, so the actions live as long as the app.
 registerThemeActions()
+registerPaletteActions()
 bindKeys(window)
 createRoot(root).render(
   <StrictMode>

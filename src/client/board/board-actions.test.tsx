@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { isEnabled, useActions } from '@/client/actions/registry'
+import { findAction, isEnabled, useActions } from '@/client/actions/registry'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
@@ -123,5 +123,46 @@ describe('useBoardActions', () => {
     modeStore.setState({ mode: 'play' })
 
     expect(isEnabled(board.action('view.zoomToSelection'))).toBe(false)
+  })
+})
+
+describe('command', () => {
+  const NAMED = [
+    'view.zoomToFit',
+    'view.zoomToSelection',
+    'view.zoomIn',
+    'view.zoomOut',
+    'view.hideUi',
+    'frame.copyPng',
+    'mode.play',
+    'mode.edit',
+  ]
+  const UNNAMED = [
+    'tool.move',
+    'tool.hand',
+    'mode.exitPlay',
+    'view.pan.left',
+    'view.pan.rightFar',
+    'view.zoom50',
+    'view.zoom100',
+    'view.zoom200',
+  ]
+
+  it('lists what a person runs by name in the palette and nothing else', () => {
+    const { unmount } = renderHook(() => useBoardActions())
+
+    const listed = (ids: string[]) =>
+      ids.filter((id) => findAction(id)?.command !== undefined)
+    expect([listed(NAMED), listed(UNNAMED)]).toEqual([NAMED, []])
+    unmount()
+  })
+
+  it('renames the mode switches for the palette', () => {
+    const { unmount } = renderHook(() => useBoardActions())
+
+    expect(
+      ['mode.play', 'mode.edit'].map((id) => findAction(id)?.command?.label),
+    ).toEqual(['Switch to Play', 'Switch to Edit'])
+    unmount()
   })
 })

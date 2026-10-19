@@ -159,6 +159,25 @@ const SURFACES: Surface[] = [
     },
   },
   {
+    reference: 'palette/commands',
+    board: 'basic',
+    route: '/p/webapp/home',
+    act: async (page) => {
+      await page.keyboard.press('ControlOrMeta+k')
+      await page.getByRole('combobox').fill('ho')
+      await page.getByRole('option').first().waitFor()
+    },
+  },
+  {
+    reference: 'palette/shortcuts',
+    board: 'basic',
+    route: '/p/webapp/home',
+    act: async (page) => {
+      await page.keyboard.press('Shift+?')
+      await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).waitFor()
+    },
+  },
+  {
     reference: 'tabs/assets',
     board: 'basic',
     route: '/p/webapp/home',
