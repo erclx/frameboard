@@ -7,6 +7,10 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     root: import.meta.dirname,
+    // The base config's `strictPort: true` suits dev and preview, which must
+    // fail loud on a taken port, but it reaches vitest's browser server too,
+    // so parallel runs fail with "Port 63315 is already in use". Let it hop.
+    server: { strictPort: false },
     test: {
       projects: [
         {
