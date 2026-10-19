@@ -6,31 +6,16 @@
 # installed check rather than shipping one, so the rules always match the
 # frameboard the project runs.
 #
-# The check is run directly, never through a package runner, which costs
-# about ten times the check on every write. Every path exits 0, since the
-# write stands whatever a hook does and a failure would only print an error
-# the agent cannot act on.
+# Every path exits 0, since the write stands whatever a hook does and a
+# failure would only print an error the agent cannot act on.
 
-hook_entry() {
-  local candidate bin
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
-    candidate="$CLAUDE_PROJECT_DIR/node_modules/frameboard/dist/hook.js"
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  fi
-  # A global install puts `frameboard` on PATH as a link to dist/cli.js, and
-  # the hook entry sits beside it.
-  bin=$(command -v frameboard 2>/dev/null) || return 1
-  bin=$(realpath "$bin" 2>/dev/null) || return 1
-  candidate="$(dirname "$bin")/hook.js"
-  [[ -f "$candidate" ]] || return 1
-  printf '%s\n' "$candidate"
-}
+# shellcheck source=SCRIPTDIR/../lib/resolve.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/resolve.sh"
 
-entry=$(hook_entry) || exit 0
-runtime=$(command -v bun 2>/dev/null || command -v node 2>/dev/null) || exit 0
+dist=$(frameboard_dist) || exit 0
+entry="$dist/hook.js"
+[[ -f "$entry" ]] || exit 0
+runtime=$(frameboard_runtime) || exit 0
 
 "$runtime" "$entry" || true
 exit 0
