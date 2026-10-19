@@ -1,14 +1,21 @@
 import { House, PanelLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { type LayoutStorage, useDefaultLayout } from 'react-resizable-panels'
 import { Link } from 'wouter'
 
 import { useActions } from '@/client/actions/registry'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/client/components/ui/resizable'
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/client/components/ui/tabs'
+import type { Structure } from '@/client/live/structure'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
@@ -23,7 +30,19 @@ interface LeftPanelProps {
   theme?: ReactNode
   /** The Assets tab's body, absent until supplied, which leaves the tab disabled. */
   assets?: ReactNode
+  /** Where the divider between pages and layers remembers its place, the browser's storage when absent. */
+  storage?: LayoutStorage
+  /** The server calls the pages list writes through, the board's own when absent. */
+  calls?: Structure
 }
+
+/** Where the pages list's height is remembered between loads. */
+const SPLIT_ID = 'frameboard.board.pages'
+
+/** Pixels. A row is 26 tall under a 29 heading, and the list starts at eight rows at most. */
+const ROW_HEIGHT = 26
+const PAGES_MIN = 64
+const PAGES_MAX_DEFAULT = 29 + 8 * ROW_HEIGHT
 
 const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
@@ -33,8 +52,24 @@ const TAB =
  * way home, the project name, and Hide UI, then the Design, Theme, and Assets
  * tabs, Design holding the pages and the page's layers.
  */
-export function LeftPanel({ project, page, theme, assets }: LeftPanelProps) {
+export function LeftPanel({
+  project,
+  page,
+  theme,
+  assets,
+  storage,
+  calls,
+}: LeftPanelProps) {
   const [hideUi] = useActions(['view.hideUi'])
+  const split = useDefaultLayout({
+    id: SPLIT_ID,
+    onlySaveAfterUserInteractions: true,
+    storage,
+  })
+  const pagesHeight = Math.min(
+    Math.max(29 + project.pages.length * ROW_HEIGHT + 4, PAGES_MIN),
+    PAGES_MAX_DEFAULT,
+  )
   const frames =
     project.pages.find((candidate) => candidate.name === page)?.frames ?? []
   return (
@@ -78,9 +113,32 @@ export function LeftPanel({ project, page, theme, assets }: LeftPanelProps) {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="design" className="flex min-h-0 flex-col text-xs">
-          <PagesList pages={project.pages} current={page} />
-          <hr className="my-1.5 border-sidebar-border" />
-          <LayersList frames={frames} />
+          <ResizablePanelGroup
+            id={SPLIT_ID}
+            orientation="vertical"
+            defaultLayout={split.defaultLayout}
+            onLayoutChanged={split.onLayoutChanged}
+          >
+            <ResizablePanel
+              id="pages"
+              defaultSize={pagesHeight}
+              minSize={PAGES_MIN}
+            >
+              <PagesList pages={project.pages} current={page} calls={calls} />
+            </ResizablePanel>
+            <ResizableHandle
+              aria-label="Resize the pages list"
+              className="group cursor-row-resize aria-[orientation=horizontal]:h-[9px] border-t border-sidebar-border bg-transparent after:hidden focus-visible:ring-0 data-[separator=active]:border-t-2 data-[separator=active]:border-primary data-[separator=focus]:border-t-2 data-[separator=focus]:border-primary"
+            >
+              <span
+                aria-hidden
+                className="h-[3px] w-7 rounded-[2px] bg-faint group-data-[separator=active]:bg-primary group-data-[separator=focus]:bg-primary"
+              />
+            </ResizableHandle>
+            <ResizablePanel id="layers" minSize={PAGES_MIN}>
+              <LayersList frames={frames} />
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </TabsContent>
         <TabsContent value="theme" className="min-h-0 text-xs">
           {theme}

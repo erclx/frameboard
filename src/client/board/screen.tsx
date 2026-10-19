@@ -18,6 +18,7 @@ import { HiddenPills } from './chrome/hidden-pills'
 import { PlayBanner } from './chrome/play-banner'
 import { Toolbar } from './chrome/toolbar'
 import { InspectorPanel } from './inspector/panel'
+import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
@@ -57,6 +58,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     storage: panelStorage,
   })
   useBoardActions()
+  usePageActions(project, page)
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />
@@ -86,6 +88,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               page={page ?? ''}
               theme={<ThemeTab project={record.name} />}
               assets={<AssetsTab project={record.name} />}
+              storage={panelStorage}
             />
           </ResizablePanel>
           <ResizableHandle aria-label="Resize the left panel" />
