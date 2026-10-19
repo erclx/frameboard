@@ -1,3 +1,4 @@
+import type { FrameChange } from './records/changes'
 import type { Finding } from './records/check'
 import type { Claim } from './records/claims'
 import type { ListResult } from './records/list'
@@ -63,3 +64,8 @@ export type ServerMessage =
   | { type: 'history'; undo: number; redo: number }
   /** The live claims, after each hello's history, on every change, and as one expires. */
   | { type: 'claims'; claims: Claim[] }
+  /**
+   * Frames an agent changed: the server's recent log after each hello's
+   * claims, and after each batch's `reload` the changes it carried.
+   */
+  | { type: 'changes'; changes: FrameChange[] }
