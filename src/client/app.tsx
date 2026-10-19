@@ -3,6 +3,7 @@ import { Link, Route, Switch } from 'wouter'
 
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
+import { Toaster } from './components/ui/toast'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Home } from './home/home'
 import { useLive } from './live/store'
@@ -15,7 +16,9 @@ export function App() {
   return (
     <LucideProvider strokeWidth={ICON_STROKE}>
       <TooltipProvider delay={500}>
-        <Shell />
+        <Toaster>
+          <Shell />
+        </Toaster>
       </TooltipProvider>
     </LucideProvider>
   )

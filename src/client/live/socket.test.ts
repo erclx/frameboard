@@ -51,4 +51,18 @@ describe('connectLive access', () => {
     expect(store.getState().canWrite).toBe(false)
     stop()
   })
+
+  it('follows the history message and zeroes it when the socket drops', () => {
+    const store = createLiveStore()
+    const stop = connectLive(store)
+    const socket = FakeSocket.instances[0]
+    socket?.dispatchEvent(new Event('open'))
+
+    socket?.receive({ type: 'history', undo: 2, redo: 1 })
+    expect(store.getState().history).toEqual({ undo: 2, redo: 1 })
+
+    socket?.dispatchEvent(new Event('close'))
+    expect(store.getState().history).toEqual({ undo: 0, redo: 0 })
+    stop()
+  })
 })

@@ -10,6 +10,7 @@ import {
   receiveBoard,
   receiveDisconnect,
   receiveFindings,
+  receiveHistory,
   receiveListeners,
   receiveNotes,
   receiveReload,
@@ -55,6 +56,8 @@ export function connectLive(
         receiveNotes(store, message.page, message.notes)
       } else if (message.type === 'listeners') {
         receiveListeners(store, message.listeners)
+      } else if (message.type === 'history') {
+        receiveHistory(store, { undo: message.undo, redo: message.redo })
       } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {

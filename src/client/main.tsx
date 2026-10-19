@@ -8,6 +8,7 @@ import { boardUrl } from '@/shared/board-urls'
 
 import { bindKeys } from './actions/registry'
 import { App } from './app'
+import { registerHistoryActions } from './history/actions'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
 import { registerThemeActions } from './theme/actions'
@@ -25,8 +26,9 @@ connectLive(liveStore, {
   },
 })
 connectTheme(themeStore, windowThemeHost(window))
-// Both the home and the board draw the toggle, so the actions live as long as the app.
+// Both the home and the board draw the toggle and undo, so the actions live as long as the app.
 registerThemeActions()
+registerHistoryActions()
 bindKeys(window)
 createRoot(root).render(
   <StrictMode>
