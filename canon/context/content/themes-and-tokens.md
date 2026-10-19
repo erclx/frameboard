@@ -11,23 +11,36 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 ## Layout
 
-### `src/server/`
+### `src/server/look/`
 
-Owns token resolution, injection, and font serving.
+Owns the head spliced into a served frame and the Theme tab's token table.
 
-- A board folder's `tokens.css` is the default and a project's own overrides it, with `--tokens <path>` pointing at a sheet another tool manages
-- Both are injected first in every frame's `head`, so a frame's own stylesheet still wins
-- A text face, a mono face, and a hand-drawn face are served into every frame, so a frame renders the same on the board and in a capture, and a project adds faces in its `assets/`
+- The frame route splices one `<style data-frameboard>` first in `head`, importing the faces, then the board sheet, then the project sheet, so a frame's own stylesheet still wins
+- The splice lands after a stated `head` start tag, else a stated `html` start tag, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
+- A self-removing script beside the style sets `data-theme` and `color-scheme` on the root from the `?theme=` query, so the one element a live frame keeps is the style
+- The token table reads each sheet with postcss into one row per custom property, light and dark, grouped as Color, Radius, Font, and Other
 
-### `src/client/`
+### `src/server/routes/`
 
-Owns the theme toggle and the per-frame override.
+Owns the URLs a frame imports from.
 
-- The chrome follows the system theme until the developer toggles it, and the choice persists
-- Frames follow the chrome, and a switch on a frame's label flips that frame alone until reload
-- The board sets `data-theme` and `color-scheme` on each frame's root, and `check` reports a frame defining only one theme
+- `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied from `@fontsource-variable` into `dist/faces/` at build with each license, and renamed from the package's `Geist Variable` to the plain family a frame names
+- `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`, and `/frames/<project>/tokens.css` serves the project's, so its relative `url(assets/...)` resolves
+- `GET /api/projects/<project>/tokens` answers the token table, naming a sheet that fails to parse rather than answering an empty table
+
+### `src/client/theme/`
+
+Owns the board-wide theme.
+
+- The chrome follows the system theme until the developer picks one through the toolbar, the home header, or the avatar menu's System, Light, and Dark, and the choice persists under `frameboard.theme`
+- An inline script in `index.html` sets `.dark` before the first paint, so a dark board never paints light first
+- `flipFrame(ref)` flips one frame to the opposite theme until reload, and nothing draws a control for it until the frame menu lands
+- A theme change writes `data-theme` and `color-scheme` into each frame's document and onto its iframe, and never changes the iframe's `src`, so no frame reloads and no animation restarts
 
 ## Gotchas
 
+- `serve --tokens <path>` resolves against the working folder and lands in the address file as `tokens`, so the hook and `check` read the same sheet while that server runs, and a second `serve` reports the running server's sheet beside `reused: true`
+- A change to the board sheet, the `--tokens` sheet, or a project's sheet reloads and rechecks every frame it reaches, and a `--tokens` sheet outside the board gets a watch of its own feeding the same batches
 - With no token sheet at all, frames render unstyled and the Theme tab says where tokens would go
 - Never paste a token sheet into a frame, since the injected copy follows the project and a pasted one stops following it
+- Canon's own frames name Noto Sans Mono and Excalifont, which no package ships, so they fall back until a project adds the face to its `assets/`

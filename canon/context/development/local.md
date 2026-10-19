@@ -66,4 +66,4 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
-- A capture case that sets the chrome's `.dark` class from an init script waits for `DOMContentLoaded`, since the script runs before `<html>` exists and the frame silently comes out light
+- A capture case picks its theme by saving `frameboard.theme` from an init script, since the board reads the choice before its first paint and a class added by hand is overwritten
