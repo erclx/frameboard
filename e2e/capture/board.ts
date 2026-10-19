@@ -304,6 +304,211 @@ async function noteOnHero(page: Page): Promise<void> {
   }, PRESS_FRAMES)
 }
 
+/** How many frames a pages list step waits for its row, about ten seconds. */
+const ROW_FRAMES = 600
+
+/**
+ * Opens the pages search and types `query` into it once the list has drawn,
+ * as a person typing would, so the list filters and marks the match.
+ */
+function searchPages(query: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ text, frames }) => {
+        let left = frames
+        const type = () => {
+          const field = document.querySelector<HTMLInputElement>(
+            'input[aria-label="Search pages"]',
+          )
+          if (!field) {
+            if (--left > 0) requestAnimationFrame(type)
+            return
+          }
+          const set = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value',
+          )?.set
+          set?.call(field, text)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        const run = () => {
+          const button = document.querySelector<HTMLButtonElement>(
+            'button[aria-label="Search pages"]',
+          )
+          if (!button) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error('No pages search to open')
+            return
+          }
+          button.click()
+          requestAnimationFrame(type)
+        }
+        document.addEventListener('DOMContentLoaded', run)
+      },
+      { text: query, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/**
+ * Waits for the add button to light, which it does once the server grants
+ * writes, then opens the rename field on the home row, or holds a drag of it
+ * over the top of the settings row, never dropped.
+ */
+function onPagesList(act: 'rename' | 'drag'): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ act, frames }) => {
+        let left = frames
+        const row = (name: string) =>
+          [
+            ...document.querySelectorAll<HTMLAnchorElement>(
+              'nav[aria-labelledby="pages-heading"] a',
+            ),
+          ].find((link) => link.textContent === name)
+        const run = () => {
+          const add = document.querySelector(
+            'button[aria-label="Add page"]:not([aria-disabled])',
+          )
+          const home = row('home')
+          const settings = row('settings')
+          if (!add || !home || !settings) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error('The pages list never granted writes')
+            return
+          }
+          if (act === 'rename') {
+            home.dispatchEvent(
+              new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+            )
+            return
+          }
+          const from = home.getBoundingClientRect()
+          const over = settings.getBoundingClientRect()
+          const dataTransfer = new DataTransfer()
+          const at = (box: DOMRect, y: number) => ({
+            bubbles: true,
+            cancelable: true,
+            clientX: box.left + 20,
+            clientY: y,
+            dataTransfer,
+          })
+          home.parentElement?.dispatchEvent(
+            new DragEvent('dragstart', at(from, from.top + 8)),
+          )
+          requestAnimationFrame(() => {
+            settings.dispatchEvent(
+              new DragEvent('dragenter', at(over, over.top + 4)),
+            )
+            settings.dispatchEvent(
+              new DragEvent('dragover', at(over, over.top + 4)),
+            )
+          })
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { act, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/**
+ * Shows the server holding one step to undo, answers the undo with the
+ * refusal an agent's later write causes, and presses Undo once it lights.
+ * The step is faked, since a real one would rewrite the committed fixture.
+ */
+async function refusedUndo(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as { type: string }
+      socket.send(
+        parsed.type === 'history'
+          ? JSON.stringify({ type: 'history', undo: 1, redo: 0 })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+  await page.route('**/api/undo', (route) =>
+    route.fulfill({
+      status: 409,
+      json: {
+        ok: false,
+        error: {
+          code: 'undo-overtaken',
+          message:
+            'An agent changed about after your edit, so that step was dropped.',
+        },
+      },
+    }),
+  )
+  await page.addInitScript((frames) => {
+    let left = frames
+    const press = () => {
+      const undo = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Undo"]:not([aria-disabled])',
+      )
+      if (undo) undo.click()
+      else if (--left > 0) requestAnimationFrame(press)
+      else console.error('Undo never lit')
+    }
+    document.addEventListener('DOMContentLoaded', press)
+  }, ROW_FRAMES)
+}
+
+/** A one-pixel GIF, the body the ready gate's image answers with. */
+const PIXEL = Buffer.from(
+  'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  'base64',
+)
+
+/**
+ * Holds the shot until `selector` has drawn. The harness waits on the load
+ * event and on every image completing, so a hidden image the page adds is
+ * answered only once the state a setup drove has drawn and two frames have
+ * painted it, which a state reached after a fetch needs to shoot alike twice.
+ */
+function readyWhen(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    let ready: () => void = () => {}
+    const drawn = new Promise<void>((resolve) => (ready = resolve))
+    await page.exposeFunction('captureReady', () => ready())
+    await page.route('**/capture-ready.gif', async (route) => {
+      await drawn
+      await route.fulfill({ contentType: 'image/gif', body: PIXEL })
+    })
+    await page.addInitScript(
+      ({ target, frames }) => {
+        let left = frames
+        const wait = () => {
+          if (document.querySelector(target)) {
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() =>
+                (
+                  window as unknown as { captureReady: () => void }
+                ).captureReady(),
+              ),
+            )
+          } else if (--left > 0) requestAnimationFrame(wait)
+          else console.error(`${target} never drew`)
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+          const image = document.createElement('img')
+          image.src = '/capture-ready.gif'
+          image.alt = ''
+          image.hidden = true
+          document.body.append(image)
+          requestAnimationFrame(wait)
+        })
+      },
+      { target: selector, frames: ROW_FRAMES },
+    )
+  }
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -474,6 +679,60 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, listening, noteOnHero)),
+      },
+      {
+        section: 'pages-search',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(searchPages('ho'), readyWhen('nav mark'))),
+      },
+      {
+        section: 'pages-rename',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            onPagesList('rename'),
+            readyWhen('input[aria-label="Rename page home"]'),
+          ),
+        ),
+      },
+      {
+        section: 'pages-drag',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            onPagesList('drag'),
+            readyWhen('nav li > span[aria-hidden]'),
+          ),
+        ),
+      },
+      {
+        section: 'undo-refused',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            refusedUndo,
+            readyWhen('[data-slot="toast"]:not([data-starting-style])'),
+          ),
+        ),
       },
     ]
   }),
