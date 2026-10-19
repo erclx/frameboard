@@ -3,7 +3,7 @@ import { cn } from 'cn'
 import type { Claim } from '@/shared/records/claims'
 import type { Listener } from '@/shared/records/notes'
 
-import { initialOf } from './label'
+import { agentOf, initialOf } from './label'
 
 interface ClaimAvatarsProps {
   listeners: readonly Listener[]
@@ -17,7 +17,9 @@ interface ClaimAvatarsProps {
  */
 export function ClaimAvatars({ listeners, claims }: ClaimAvatarsProps) {
   if (listeners.length === 0) return null
-  const holding = new Set(Object.values(claims).map((claim) => claim.session))
+  const holding = new Map(
+    Object.values(claims).map((claim) => [claim.session, claim.agent]),
+  )
   return (
     <span className="ml-1 flex items-center">
       {listeners.map((listener, index) => {
@@ -37,7 +39,7 @@ export function ClaimAvatars({ listeners, claims }: ClaimAvatarsProps) {
                 : 'bg-[color-mix(in_srgb,var(--claim)_55%,var(--sidebar))]',
             )}
           >
-            {initialOf(listener.tag)}
+            {initialOf(holding.get(listener.session) ?? agentOf(listener.tag))}
           </span>
         )
       })}

@@ -86,6 +86,44 @@ describe('the claim tag on a frame label', () => {
     )
   })
 
+  it('keeps the outline 3px outside the frame on screen at any zoom', () => {
+    const { container } = render(
+      <div style={{ transform: 'scale(2)', ['--zoom' as string]: 2 }}>
+        <Frame
+          frame={frameOf('hero')}
+          live={false}
+          version={0}
+          claim={claimBy('s')}
+        />
+      </div>,
+    )
+    const frame = container
+      .querySelector('[data-frame]')
+      ?.getBoundingClientRect()
+    const outline = container
+      .querySelector('[data-claim-outline]')
+      ?.getBoundingClientRect()
+
+    expect(outline?.left).toBeCloseTo((frame?.left ?? 0) - 3, 1)
+    expect(outline?.width).toBeCloseTo((frame?.width ?? 0) + 6, 1)
+  })
+
+  it('draws the outline 1.5px wide on screen at any zoom', () => {
+    const { container } = render(
+      <div style={{ transform: 'scale(2)', ['--zoom' as string]: 2 }}>
+        <Frame
+          frame={frameOf('hero')}
+          live={false}
+          version={0}
+          claim={claimBy('s')}
+        />
+      </div>,
+    )
+    const rect = container.querySelector('[data-claim-outline] rect')
+
+    expect(rect && getComputedStyle(rect).strokeWidth).toBe('0.75px')
+  })
+
   it('draws no outline and no tag in Play', () => {
     act(() => modeStore.setState({ mode: 'play' }))
 
@@ -101,6 +139,7 @@ describe('the claim tag on a frame label', () => {
     expect(container.querySelector('[data-frame]')).not.toHaveAttribute(
       'data-claimed',
     )
+    expect(container.querySelector('[data-claim-outline]')).toBeNull()
     expect(container.querySelector('[data-claim-tag]')).toBeNull()
   })
 
@@ -153,6 +192,21 @@ describe('ClaimAvatars', () => {
     )
 
     expect(screen.getByRole('img').textContent).toBe('C')
+  })
+
+  it('reads the agent of each listener when the server swapped two shared tags for session ids', () => {
+    render(
+      <ClaimAvatars
+        listeners={[listener('sess-a', 'sess-a'), listener('sess-b', 'sess-b')]}
+        claims={{
+          'studio/home/hero': { ...claimBy('sess-a'), agent: 'gemini' },
+        }}
+      />,
+    )
+
+    expect(
+      screen.getAllByRole('img').map((avatar) => avatar.textContent),
+    ).toEqual(['G', 'C'])
   })
 
   it('leaves off a claim holder that is not listening', () => {

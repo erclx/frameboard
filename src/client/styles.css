@@ -22,10 +22,10 @@
   @keyframes claim-outline {
     0%,
     100% {
-      outline-color: var(--claim);
+      stroke: var(--claim);
     }
     50% {
-      outline-color: color-mix(in srgb, var(--claim) 35%, transparent);
+      stroke: color-mix(in srgb, var(--claim) 35%, transparent);
     }
   }
 

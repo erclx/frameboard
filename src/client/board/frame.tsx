@@ -133,12 +133,7 @@ export const Frame = memo(function Frame({
       data-frame={frame.ref}
       data-selected={selected || undefined}
       data-claimed={claimed ? true : undefined}
-      className={cn(
-        'absolute',
-        // Sized against the zoom, so the outline keeps its screen width as the label does.
-        claimed &&
-          'outline-[length:calc(1.5px/var(--zoom,1))] outline-offset-[calc(3px/var(--zoom,1))] outline-claim outline-dashed motion-safe:animate-claim-outline',
-      )}
+      className="absolute"
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
       <div
@@ -179,9 +174,33 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {claimed ? <ClaimOutline /> : null}
     </div>
   )
 })
+
+/**
+ * The claimed frame's dashed outline, 1.5px wide and 3px outside it on
+ * screen at any zoom.
+ */
+function ClaimOutline() {
+  return (
+    <svg
+      aria-hidden
+      data-claim-outline
+      className="pointer-events-none absolute -inset-[calc(3px/var(--zoom,1))] size-[calc(100%+6px/var(--zoom,1))] overflow-visible"
+    >
+      <rect
+        width="100%"
+        height="100%"
+        fill="none"
+        // Sized against the zoom like the label. A stroke takes a fractional
+        // width where a CSS outline snaps to whole pixels before the zoom.
+        className="stroke-claim [stroke-width:calc(1.5px/var(--zoom,1))] [stroke-dasharray:calc(4.5px/var(--zoom,1))_calc(3px/var(--zoom,1))] motion-safe:animate-claim-outline"
+      />
+    </svg>
+  )
+}
 
 interface FindingsMarkProps {
   findings: readonly Finding[]
