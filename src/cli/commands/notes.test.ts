@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -105,6 +106,26 @@ describe('notes', () => {
       from: 'agent',
       session: 'sess-1',
       thread: 'n_0000000a',
+    })
+  })
+
+  it('reply takes --json and --root from outside the board', async () => {
+    const result = await cli(
+      [
+        'notes',
+        'reply',
+        'n_0000000a',
+        'From afar',
+        '--root',
+        board.root,
+        '--json',
+      ],
+      { cwd: tmpdir() },
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toMatchObject({
+      note: { text: 'From afar', thread: 'n_0000000a' },
     })
   })
 

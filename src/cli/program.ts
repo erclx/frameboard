@@ -137,6 +137,9 @@ export function createProgram(context: ProgramContext): Command {
       'A local design board that coding agents draw on as plain HTML files',
     )
     .exitOverride()
+    // A group with flags of its own, as notes has, keeps them from its verbs
+    // only when every parent stops reading flags at the verb's name.
+    .enablePositionalOptions()
     .configureOutput({
       writeOut: io.stdout,
       writeErr: (text) => (json ? undefined : io.stderr(text)),
