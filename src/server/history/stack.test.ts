@@ -9,6 +9,8 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame } from '../board/frames'
 import { addPage, movePage, renamePage } from '../board/pages'
+import { contentHash } from '../edit/address'
+import { editFrameFile } from '../edit/frame-file'
 import { History, HISTORY_CAP, type HistoryCounts } from './stack'
 
 describe('History', () => {
@@ -70,6 +72,56 @@ describe('History', () => {
     expect(answer).toEqual({ page: 'webapp/home', frames: [] })
     expect(existsSync(at('webapp/home'))).toBe(true)
     expect(pageOrder()).toEqual(['settings', 'home'])
+  })
+
+  async function editHeadline(text: string): Promise<void> {
+    const path = at('webapp/home/hero.html')
+    const before = readFileSync(path)
+    const edited = editFrameFile(
+      path,
+      { index: 5 },
+      { kind: 'text', value: text },
+    )
+    if (!edited.ok) throw new Error(edited.detail)
+    const journal = history.journal()
+    journal.content(path, 'webapp/home/hero', before, readFileSync(path))
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: ['webapp/home/hero'],
+    })
+  }
+
+  it('answers the hash an undone hand edit left its frame at', async () => {
+    const original = contentHash(readFileSync(at('webapp/home/hero.html')))
+    await editHeadline('Welcome')
+
+    const answer = await history.undo()
+
+    expect(answer.hashes).toEqual({ 'webapp/home/hero': original })
+  })
+
+  it('answers the edited hash on redo', async () => {
+    await editHeadline('Welcome')
+    const edited = contentHash(readFileSync(at('webapp/home/hero.html')))
+    await history.undo()
+
+    const answer = await history.redo()
+
+    expect(answer.hashes).toEqual({ 'webapp/home/hero': edited })
+  })
+
+  it('refuses an undo of a hand edit once an agent wrote the frame', async () => {
+    await editHeadline('Welcome')
+    writeFileSync(at('webapp/home/hero.html'), '<p>agent</p>')
+
+    await expect(history.undo()).rejects.toMatchObject({
+      code: 'undo-overtaken',
+    })
+    expect(readFileSync(at('webapp/home/hero.html'), 'utf8')).toBe(
+      '<p>agent</p>',
+    )
   })
 
   it('redoes an undone step', async () => {

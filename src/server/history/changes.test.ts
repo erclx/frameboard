@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
+import { editFrameFile } from '../edit/frame-file'
 import { type Change, holds, restore, StepJournal } from './changes'
 
 describe('changes', () => {
@@ -150,6 +151,66 @@ describe('changes', () => {
       writeFileSync(at('webapp/home/hero.html'), '<p>changed</p>')
 
       await expect(holds(first(), 'before')).resolves.toBe(false)
+    })
+  })
+
+  describe('content', () => {
+    const HERO = 'webapp/home/hero.html'
+
+    /** Sets the headline's text by hand, as the edit route does, and journals the file's two states. */
+    function editHeadline(text: string): void {
+      const before = readFileSync(at(HERO))
+      const edited = editFrameFile(
+        at(HERO),
+        { index: 5 },
+        { kind: 'text', value: text },
+      )
+      if (!edited.ok) throw new Error(edited.detail)
+      journal.content(
+        at(HERO),
+        'webapp/home/hero',
+        before,
+        readFileSync(at(HERO)),
+      )
+    }
+
+    it('undoes a hand edit byte for byte', async () => {
+      const original = read(HERO)
+      editHeadline('Welcome')
+
+      await restore(first(), 'before')
+
+      expect(read(HERO)).toBe(original)
+    })
+
+    it('holds while nothing else wrote the frame', async () => {
+      editHeadline('Welcome')
+
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('fails once an agent wrote the frame', async () => {
+      editHeadline('Welcome')
+      writeFileSync(at(HERO), read(HERO).replace('Caption', 'Byline'))
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('fails once the frame was removed', async () => {
+      editHeadline('Welcome')
+      rmSync(at(HERO))
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('redoes the edit after an undo', async () => {
+      editHeadline('Welcome')
+      const edited = read(HERO)
+      await restore(first(), 'before')
+
+      await restore(first(), 'after')
+
+      expect(read(HERO)).toBe(edited)
     })
   })
 })
