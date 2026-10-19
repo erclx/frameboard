@@ -104,6 +104,16 @@ export async function inspectFrame(
   }
 
   const rendered = renderedOnly(live)
+  if (
+    index !== undefined &&
+    !rendered.some((element) => element.index === index)
+  ) {
+    throw new FrameboardError(
+      'invalid-address',
+      `${frame.ref} element ${index} is <${live[index]?.tag}> and has no layout box, so inspect reports nothing for it`,
+      { ref: frame.ref, index },
+    )
+  }
   return {
     ref: frame.ref,
     theme,

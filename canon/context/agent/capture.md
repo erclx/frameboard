@@ -28,7 +28,7 @@ Owns the capture browser, the frame host, the render, the font check, the image 
 - An installed family is read through DevTools `CSS.getPlatformFontsForNode`, so a CSS name the platform aliases to another face reads as missing
 - Capture uses the pinned headless shell alone, since an installed Chrome or Edge rasterizes text differently, and without it refuses `browser-not-found` with the install command, downloading nothing
 - A composite past 16384 px a side refuses `capture-too-large`, since Chromium's screenshot surface stops there
-- Inspect refuses `address-mismatch` when the live tag order leaves the file's, as a script-built frame does, and `stale-address` when the file changed during the load, printing nothing either way
+- Inspect refuses `invalid-address` for an `--index` that names an element with no layout box, and `address-mismatch` when the live tag order leaves the file's, as a script-built frame does, and `stale-address` when the file changed during the load, printing nothing either way
 - Inspect reports `editable: false` for a frame where the browser builds an element the file does not state, such as a `tr` with no `tbody`, since `edit` refuses every index there
 - Element counting lives in three places that cannot share code, being `readTextElements`, inspect's reader, and the client pick, so a change to `LOOK_MARKER` moves all three
 - The PNG route takes no token, since it shows only what the frame route serves, and its queue holds a looping caller to one tab

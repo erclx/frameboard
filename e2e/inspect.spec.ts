@@ -139,7 +139,7 @@ test.describe('inspect', () => {
       code: 'address-mismatch',
       details: {
         ref: 'studio/inspect/scripted',
-        index: 6,
+        index: 7,
         live: 'div',
         file: 'p',
       },
@@ -157,6 +157,21 @@ test.describe('inspect', () => {
     const result = await inspect(['inspect/basic', '--index', '11'])
 
     expect(result.elements.map((element) => element.tag)).toEqual(['footer'])
+  })
+
+  test('refuses --index on an element with no layout box', async () => {
+    const { exitCode, envelope } = await frameboard([
+      'inspect',
+      'inspect/basic',
+      '--index',
+      '10',
+    ])
+
+    expect(exitCode).toBe(7)
+    expect(envelope.error).toMatchObject({
+      code: 'invalid-address',
+      details: { index: 10 },
+    })
   })
 
   test('refuses font-missing for a face the frame asks for and cannot load', async () => {
