@@ -33,6 +33,7 @@ Each row files its frames under a folder named for the surface. A frame is cited
 | Element inspector             | `inspector`     | `10-inspector/inspector-text`                                                                                                             |
 | Frame selection               | `inspector`     | `10-inspector/frame-selected` as `frame`, `10-inspector/multi-select` as `multi`                                                          |
 | Marquee, snapping, and labels | `canvas`        | `11-selection/marquee`, `11-selection/picked-snap-magenta` as `snap`, `11-selection/frame-labels` as `labels`                             |
+| Check findings                | `canvas`        | `check-findings-2/arm-2a` as `findings`                                                                                                   |
 | Agent claim                   | `agents`        | `13-agents/picked-claim-full`, `13-agents/picked-claim-pulse`                                                                             |
 | Notes                         | `notes`         | `13-agents/note-place` as `place`, `13-agents/note-thread` as `thread`                                                                    |
 | Unseen changes and Follow     | `agents`        | `13-agents/unseen-one`, `13-agents/unseen-many`                                                                                           |
@@ -76,6 +77,7 @@ Each row files its frames under a folder named for the surface. A frame is cited
 | `canvas/marquee`         | 1440x900  | `marquee-dark.html`, `marquee-dark.png`, `marquee-light.html`, `marquee-light.png`                 |
 | `canvas/snap`            | 1440x900  | `snap-dark.html`, `snap-dark.png`, `snap-light.html`, `snap-light.png`                             |
 | `canvas/labels`          | 1440x900  | `labels-dark.html`, `labels-dark.png`, `labels-light.html`, `labels-light.png`                     |
+| `canvas/findings`        | 1440x900  | `findings-dark.html`, `findings-dark.png`, `findings-light.html`, `findings-light.png`             |
 | `agents/claim-full`      | 1440x900  | `claim-full-dark.html`, `claim-full-dark.png`, `claim-full-light.html`, `claim-full-light.png`     |
 | `agents/claim-pulse`     | 1440x900  | `claim-pulse-dark.html`, `claim-pulse-dark.png`, `claim-pulse-light.html`, `claim-pulse-light.png` |
 | `notes/place`            | 1440x900  | `place-dark.html`, `place-dark.png`, `place-light.html`, `place-light.png`                         |

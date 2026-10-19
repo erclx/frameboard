@@ -27,7 +27,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 | agent      | `--claim`            | an agent's dashed outline and session tag             |
 | note       | `--note`             | note pins and anything flagged for a look             |
 | guide      | `--guide`            | snapping guides and gap tags while a frame drags      |
-| delete     | `--destructive`      | Delete and nothing else                               |
+| delete     | `--destructive`      | Delete, and error findings                            |
 | done       | `--success`          | a finished action's toast                             |
 
 ## Typography
