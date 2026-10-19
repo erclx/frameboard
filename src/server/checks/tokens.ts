@@ -23,14 +23,22 @@ export interface TokenSheetPaths {
 export function tokenSheetPaths(
   root: string,
   project: string,
-  tokens: string | null = recordedTokens(root),
+  tokens?: string | null,
 ): TokenSheetPaths {
-  const board = tokens ?? join(root, TOKEN_FILE)
   const own = join(root, project, TOKEN_FILE)
   return {
-    board: existsSync(board) ? board : null,
+    board: boardSheetPath(root, tokens),
     project: existsSync(own) ? own : null,
   }
+}
+
+/** The board's token sheet alone, resolved the way `tokenSheetPaths` resolves it. */
+export function boardSheetPath(
+  root: string,
+  tokens: string | null = recordedTokens(root),
+): string | null {
+  const board = tokens ?? join(root, TOKEN_FILE)
+  return existsSync(board) ? board : null
 }
 
 /** The `--tokens` path the board's running server recorded, or null. */

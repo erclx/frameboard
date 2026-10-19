@@ -31,7 +31,10 @@ export function frameHead(sheets: readonly string[]): string {
  * else after the doctype, else at the start past any BOM. Every byte of the
  * file stays as it was around the splice.
  */
-export function injectHead(bytes: Uint8Array, head: string): Uint8Array {
+export function injectHead(
+  bytes: Uint8Array,
+  head: string,
+): Uint8Array<ArrayBuffer> {
   const offset = headOffset(bytes)
   const inserted = new TextEncoder().encode(head)
   const out = new Uint8Array(bytes.length + inserted.length)

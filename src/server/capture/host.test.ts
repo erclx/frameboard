@@ -30,14 +30,16 @@ describe('startFrameHost', () => {
     board.cleanup()
   })
 
-  it("serves a frame file's bytes on loopback", async () => {
+  it('serves a frame on loopback with the look spliced ahead of its bytes', async () => {
     board = writeBoard({ 'studio/home/hero.html': '<p>Hello</p>' })
     host = await startFrameHost(board.root)
 
     const response = await fetch(`${host.url}/frames/studio/home/hero.html`)
 
     expect(response.status).toBe(200)
-    expect(await response.text()).toBe('<p>Hello</p>')
+    expect(await response.text()).toMatch(
+      /^<style data-frameboard>.*<\/script><p>Hello<\/p>$/s,
+    )
   })
 
   it('refuses a Host other than its own loopback address', async () => {

@@ -21,6 +21,8 @@ const HOSTNAME = '127.0.0.1'
 
 export interface StartOptions {
   clientDir: string
+  /** The folder holding the faces every frame imports. */
+  facesDir: string
   root: string
   port: number
   /** Fail on a taken port rather than falling back to one the OS assigns. */
@@ -103,6 +105,7 @@ export async function startServer({
 
 async function listen({
   clientDir,
+  facesDir,
   root,
   port,
   openUrl,
@@ -143,6 +146,7 @@ async function listen({
   })
   const app = createApp({
     clientDir,
+    facesDir,
     root,
     port: boundPort,
     tickets,

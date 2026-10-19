@@ -6,6 +6,7 @@ import { Hono } from 'hono'
 import type { Browser } from 'playwright-core'
 
 import { boardHostGuard } from '@/server/app'
+import { tokenSheetPaths } from '@/server/checks/tokens'
 import { frameRoutes } from '@/server/routes/frames'
 
 import { launchCaptureBrowser } from './browser'
@@ -30,7 +31,12 @@ export async function startFrameHost(root: string): Promise<FrameHost> {
     '*',
     boardHostGuard(() => bound),
   )
-  app.route('/', frameRoutes(root))
+  app.route(
+    '/',
+    frameRoutes(root, {
+      sheets: (project) => tokenSheetPaths(root, project),
+    }),
+  )
 
   const server = await new Promise<Server>((resolve, reject) => {
     const created = serve(

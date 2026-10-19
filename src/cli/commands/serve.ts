@@ -30,9 +30,9 @@ interface ServeOptions extends CommonOptions {
 
 export function registerServe(
   program: Command,
-  context: ProgramContext & { clientDir: string },
+  context: ProgramContext & { clientDir: string; facesDir: string },
 ): void {
-  const { io, clientDir } = context
+  const { io, clientDir, facesDir } = context
   const command = addVerb(
     program,
     'serve',
@@ -78,6 +78,7 @@ export function registerServe(
 
     const server = await startServer({
       clientDir,
+      facesDir,
       root,
       port: options.port,
       strictPort: self.getOptionValueSource('port') !== 'default',

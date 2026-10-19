@@ -26,6 +26,7 @@ describe('createApp', () => {
   function request(url: string) {
     return createApp({
       clientDir,
+      facesDir: clientDir,
       root: '/board',
       port: () => PORT,
       tickets: createTickets(),

@@ -4,8 +4,21 @@ import { extname, join, sep } from 'node:path'
 import { Hono } from 'hono'
 
 import { ASSETS_FOLDER, LAYOUT_FILE } from '@/server/board/scan'
+import type { TokenSheetPaths } from '@/server/checks/tokens'
+import { frameHead, injectHead } from '@/server/look/inject'
+import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
+import { FACES, faceSheetUrl } from '@/shared/faces'
 
 const NOTES_FILE = 'notes.json'
+
+/** Where the look route serves the board's token sheet, whichever file stands in for it. */
+export const BOARD_SHEET_URL = '/frameboard/tokens.css'
+
+/** How a served frame gets its look from outside itself. */
+export interface FrameLook {
+  /** A project's token sheets, read per request so a sheet made later is imported. */
+  sheets: (project: string) => TokenSheetPaths
+}
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -34,13 +47,19 @@ const CONTENT_TYPES: Record<string, string> = {
 
 /**
  * Serves `/frames/<project>/<page>/<file>` and `/frames/<project>/assets/<path>`
- * from the board, so a frame's relative links resolve with no rewriting. It is
- * a handler of its own rather than static serving over the root, since it
- * reads the developer's files and has to refuse everything else: board
- * records, dot-named paths, and any path whose realpath leaves its project.
- * Every refusal answers 404, so nothing tells a caller what exists.
+ * from the board, so a frame's relative links resolve with no rewriting, and
+ * `/frames/<project>/tokens.css`, so a project sheet's relative links resolve
+ * the same way. It is a handler of its own rather than static serving over
+ * the root, since it reads the developer's files and has to refuse
+ * everything else: board records, dot-named paths, and any path whose
+ * realpath leaves its project. Every refusal answers 404, so nothing tells a
+ * caller what exists.
+ *
+ * A frame served from a page gets the faces and the token sheets spliced
+ * first into its `head`, in the response alone, and every other file is
+ * served byte for byte.
  */
-export function frameRoutes(root: string): Hono {
+export function frameRoutes(root: string, look: FrameLook): Hono {
   const app = new Hono()
 
   app.get('/frames/*', async (c) => {
@@ -50,7 +69,17 @@ export function frameRoutes(root: string): Hono {
     const file = parts && (await resolveFile(root, parts))
     if (!file) return c.notFound()
 
-    return c.body(new Uint8Array(await readFile(file)), 200, {
+    const [project = '', page = ''] = parts
+    const bytes = new Uint8Array(await readFile(file))
+    const isFrame =
+      page !== ASSETS_FOLDER &&
+      parts.length === 3 &&
+      extname(file).toLowerCase() === FRAME_EXTENSION
+    const body = isFrame
+      ? injectHead(bytes, frameHead(sheetUrls(project, look.sheets(project))))
+      : bytes
+
+    return c.body(body, 200, {
       'Content-Type':
         CONTENT_TYPES[extname(file).toLowerCase()] ??
         'application/octet-stream',
@@ -61,7 +90,18 @@ export function frameRoutes(root: string): Hono {
   return app
 }
 
-function decodeSegments(segments: string[]): string[] | null {
+/** The sheets a frame imports, being every face, then the board's tokens, then the project's. */
+function sheetUrls(project: string, sheets: TokenSheetPaths): string[] {
+  return [
+    ...FACES.map(faceSheetUrl),
+    ...(sheets.board ? [BOARD_SHEET_URL] : []),
+    ...(sheets.project
+      ? [`/frames/${encodeURIComponent(project)}/${TOKEN_FILE}`]
+      : []),
+  ]
+}
+
+export function decodeSegments(segments: string[]): string[] | null {
   const decoded: string[] = []
   for (const segment of segments) {
     let name: string
@@ -83,8 +123,10 @@ async function resolveFile(
   root: string,
   [project, page, ...rest]: string[],
 ): Promise<string | null> {
-  if (!project || !page || rest.length === 0) return null
-  const inPage = page !== ASSETS_FOLDER
+  if (!project || !page) return null
+  const projectSheet = rest.length === 0 && page === TOKEN_FILE
+  if (rest.length === 0 && !projectSheet) return null
+  const inPage = page !== ASSETS_FOLDER && !projectSheet
   if (inPage && (rest.length > 1 || isRecord(rest[0] ?? ''))) return null
 
   try {

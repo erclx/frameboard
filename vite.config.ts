@@ -32,6 +32,7 @@ export default defineConfig({
         headers: { origin: boardServer },
       },
       '/frames': { target: boardServer, changeOrigin: true },
+      '/frameboard': { target: boardServer, changeOrigin: true },
     },
   },
   preview: {
