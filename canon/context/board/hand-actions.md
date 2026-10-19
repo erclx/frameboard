@@ -23,7 +23,7 @@ Owns selection, the keys, and the menus on the canvas.
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection.
 
-An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index.
+An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
 ### `src/client/board/structure/`
 
@@ -50,6 +50,7 @@ Owns the edit history undo reads, in `src/server/history/`.
 - Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout entry, one page order, one rename, or one path with its content hash, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it
+- A hand edit inside a frame is one content change holding the whole file before and after, so its undo restores the file only while nothing else wrote it since, and answers the hash it left the frame at so the element stays selected
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent has since changed is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history
@@ -61,4 +62,5 @@ Owns the edit history undo reads, in `src/server/history/`.
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, because that would write `display` into the frame, which is layout
 - A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
+- A press on a selected element's outline or corner marks does nothing, and the frame's corners take no resize while an element is selected, since their handles are hidden then
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one

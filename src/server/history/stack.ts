@@ -33,6 +33,8 @@ export interface StepAnswer {
   /** The page to show now, or null to stay where the board is. */
   page: string | null
   frames: string[]
+  /** Each hand-edited frame's content hash as the step left it, by ref, so the board keeps an element selected. */
+  hashes?: Record<string, string>
 }
 
 export interface HistoryCounts {
@@ -124,7 +126,16 @@ export class History {
     }
     onto.push(step)
     this.onChange(this.counts())
-    return { page: step.page?.[to] ?? null, frames: step.frames }
+    const answer: StepAnswer = {
+      page: step.page?.[to] ?? null,
+      frames: step.frames,
+    }
+    const hashes = Object.fromEntries(
+      step.changes.flatMap((change) =>
+        change.kind === 'content' ? [[change.ref, change.hashes[to]]] : [],
+      ),
+    )
+    return Object.keys(hashes).length > 0 ? { ...answer, hashes } : answer
   }
 
   #inTurn<T>(task: () => Promise<T>): Promise<T> {

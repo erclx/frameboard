@@ -124,6 +124,94 @@ export function followSelection(
   }
 }
 
+/** Writes in flight that will answer a frame's new hash, by frame ref, or under null for any frame. */
+const awaiting = new Map<string | null, number>()
+
+/**
+ * Marks a write in flight whose answer names the hash a frame now holds, a
+ * hand edit for one frame or an undo for any, and returns the function that
+ * ends it. A frame's reload can land before that answer, showing bytes the
+ * selection's hash does not name yet, so while one is in flight the frame
+ * leaves its hash check to the write.
+ */
+export function awaitHash(ref: string | null): () => void {
+  awaiting.set(ref, (awaiting.get(ref) ?? 0) + 1)
+  let done = false
+  return () => {
+    if (done) return
+    done = true
+    awaiting.set(ref, (awaiting.get(ref) ?? 1) - 1)
+  }
+}
+
+/** The hashes of bytes the board's own writes left each frame at, newest last. */
+const written = new Map<string, string[]>()
+
+/** How many of a frame's own hashes are kept, past which the oldest is forgotten. */
+const WRITTEN_CAP = 100
+
+/** Notes bytes a write of the board's own left a frame at, so a late reload of them keeps the element. */
+export function rememberHash(ref: string, hash: string): void {
+  const held = (written.get(ref) ?? []).filter((known) => known !== hash)
+  written.set(ref, [...held, hash].slice(-WRITTEN_CAP))
+}
+
+/**
+ * Whether a frame showing `hash` may keep its selected element, though the
+ * selection names other bytes: a write in flight will answer the frame's
+ * hash, or the frame shows bytes one of the board's own writes left it at,
+ * whose reload lagged a later write and is followed by that one's.
+ */
+export function awaitingHash(ref: string, hash?: string | null): boolean {
+  if ((awaiting.get(ref) ?? 0) > 0 || (awaiting.get(null) ?? 0) > 0) {
+    return true
+  }
+  return hash != null && (written.get(ref)?.includes(hash) ?? false)
+}
+
+/**
+ * The hash check a frame skipped while a write was in flight, run once the
+ * write was refused. The refusal means the file holds bytes other than the
+ * ones the selection names, so a frame already showing other bytes drops the
+ * element to the frame, as its own check would have. A frame still showing
+ * them has that reload to come, which runs its own check. A write that
+ * landed needs none, since the frame's last reload shows the bytes it
+ * answered, however many of the board's own writes it lags meanwhile.
+ */
+export function settleRefused(
+  store: SelectionStore,
+  shown: (ref: string) => string | null,
+): void {
+  const { page, element } = store.getState()
+  if (!page || !element || awaitingHash(element.frame)) return
+  const hash = shown(element.frame)
+  if (hash !== null && hash !== element.hash)
+    select(store, page, [element.frame])
+}
+
+/**
+ * The hash check a frame skipped while a write was in flight, run once the
+ * write landed. The frame may lag on bytes the board's own writes left it
+ * at, whose later reload is still to come, so those keep the element. Any
+ * other bytes are another writer's, whose reload landed inside the window,
+ * so the element drops to the frame as the frame's own check would have.
+ */
+export function settleLanded(
+  store: SelectionStore,
+  shown: (ref: string) => string | null,
+): void {
+  const { page, element } = store.getState()
+  if (!page || !element || awaitingHash(element.frame)) return
+  const hash = shown(element.frame)
+  if (
+    hash !== null &&
+    hash !== element.hash &&
+    !awaitingHash(element.frame, hash)
+  ) {
+    select(store, page, [element.frame])
+  }
+}
+
 /** The board's one selection, which this row writes and later rows read and extend. */
 export const selectionStore = createSelectionStore()
 

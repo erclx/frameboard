@@ -13,7 +13,7 @@ import { ClaimTag } from './claims/tag'
 import { renderedHash } from './frame-dom'
 import { usePendingBox } from './geometry/write'
 import { useMode } from './mode'
-import { select, selectionStore, useSelection } from './selection'
+import { awaitingHash, select, selectionStore, useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
@@ -91,7 +91,9 @@ export const Frame = memo(function Frame({
   // An element selected in this frame stays only while the frame shows the
   // bytes its index was read from. Any other write may have shifted every
   // index, so the selection drops to the frame rather than outline whatever
-  // element took the old one.
+  // element took the old one. Bytes the board's own writes left the frame at
+  // are kept, as is any reload while such a write is in flight, since the
+  // reload of the bytes the selection names is still to come.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
@@ -99,9 +101,9 @@ export const Frame = memo(function Frame({
       const { page, element: selected } = selectionStore.getState()
       const document = element.contentDocument
       if (selected?.frame !== frame.ref || !page || !document) return
-      if (renderedHash(document) !== selected.hash) {
-        select(selectionStore, page, [frame.ref])
-      }
+      const shown = renderedHash(document)
+      if (shown === selected.hash || awaitingHash(frame.ref, shown)) return
+      select(selectionStore, page, [frame.ref])
     }
     element.addEventListener('load', check)
     return () => element.removeEventListener('load', check)

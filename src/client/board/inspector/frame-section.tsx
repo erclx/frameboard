@@ -29,6 +29,8 @@ interface FrameSectionProps {
   frames: readonly FrameRecord[]
   /** The page they sit on, which the write names. */
   page: string
+  /** False while an element inside the frame is selected, which hides the name row as `inspector/text` draws it. */
+  named?: boolean
   write?: typeof writeBoxes
   /** The server calls a rename makes, the board's own when absent. */
   calls?: Structure
@@ -43,6 +45,7 @@ interface FrameSectionProps {
 export function FrameSection({
   frames,
   page,
+  named = true,
   write = writeBoxes,
   calls,
 }: FrameSectionProps) {
@@ -73,7 +76,7 @@ export function FrameSection({
       <h2 id="inspector-frame" className="mb-2 text-xs font-semibold">
         {several ? `${frames.length} frames` : 'Frame'}
       </h2>
-      {several ? null : renaming === frame.ref ? (
+      {several || !named ? null : renaming === frame.ref ? (
         <div className="mb-1.5 flex h-[26px] items-center pl-1.5">
           <RenameField
             name={frame.name}

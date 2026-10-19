@@ -10,6 +10,8 @@ export type FrameFlag = 'hidden' | 'locked'
 export interface StepAnswer {
   page: string | null
   frames: string[]
+  /** Each hand-edited frame's content hash as the step left it, by ref. */
+  hashes?: Record<string, string>
 }
 
 /**

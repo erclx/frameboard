@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { cornerAt, frameAt, framesIn } from './hit'
+import { cornerAt, frameAt, framesIn, onOutline } from './hit'
 
 const BACK = frameOf('back', {
   box: { x: 0, y: 0, width: 400, height: 300 },
@@ -62,6 +62,32 @@ describe('cornerAt', () => {
 
   it('keeps the reach its screen size when zoomed out', () => {
     expect(cornerAt(BOUNDS, { x: 120, y: 80 }, 0.25)).toBe('nw')
+  })
+})
+
+describe('onOutline', () => {
+  const BOX = { x: 100, y: 100, width: 200, height: 100 }
+
+  it.each([
+    [{ x: 200, y: 97 }, 'the top edge'],
+    [{ x: 304, y: 150 }, 'the right edge'],
+    [{ x: 200, y: 203 }, 'the bottom edge'],
+    [{ x: 96, y: 150 }, 'the left edge'],
+    [{ x: 95, y: 95 }, 'a corner mark'],
+  ] as const)('answers true at %o, on %s', (point, _edge) => {
+    expect(onOutline(BOX, point, 1)).toBe(true)
+  })
+
+  it('answers false inside the box away from its edges', () => {
+    expect(onOutline(BOX, { x: 200, y: 150 }, 1)).toBe(false)
+  })
+
+  it('answers false beside an edge past the box’s ends', () => {
+    expect(onOutline(BOX, { x: 400, y: 100 }, 1)).toBe(false)
+  })
+
+  it('keeps the reach its screen size when zoomed out', () => {
+    expect(onOutline(BOX, { x: 200, y: 80 }, 0.25)).toBe(true)
   })
 })
 

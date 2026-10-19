@@ -5,13 +5,18 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { createModeStore } from './mode'
 import {
+  awaitHash,
+  awaitingHash,
   clear,
   createSelectionStore,
   followSelection,
   pruneSelection,
+  rememberHash,
   select,
   selectElement,
   type SelectionStore,
+  settleLanded,
+  settleRefused,
   toggle,
 } from './selection'
 
@@ -212,5 +217,115 @@ describe('followSelection', () => {
 
     expect(store.getState().frames).toEqual([ABOUT])
     stop()
+  })
+})
+
+describe('awaitHash', () => {
+  it('holds one frame’s check while its write is in flight', () => {
+    const done = awaitHash(HERO)
+
+    expect([awaitingHash(HERO), awaitingHash(ABOUT)]).toEqual([true, false])
+    done()
+    expect(awaitingHash(HERO)).toBe(false)
+  })
+
+  it('holds every frame’s check for a write that may answer any', () => {
+    const done = awaitHash(null)
+
+    expect([awaitingHash(HERO), awaitingHash(ABOUT)]).toEqual([true, true])
+    done()
+    expect(awaitingHash(ABOUT)).toBe(false)
+  })
+
+  it('ends a hold once however often its end is called', () => {
+    const first = awaitHash(HERO)
+    const second = awaitHash(HERO)
+
+    first()
+    first()
+
+    expect(awaitingHash(HERO)).toBe(true)
+    second()
+    expect(awaitingHash(HERO)).toBe(false)
+  })
+})
+
+describe('awaitingHash for bytes the board wrote', () => {
+  it('keeps a frame showing bytes one of its own writes left it at', () => {
+    rememberHash('studio/home/kept', 'd'.repeat(64))
+
+    expect(awaitingHash('studio/home/kept', 'd'.repeat(64))).toBe(true)
+  })
+
+  it('drops a frame showing bytes no write of its own left', () => {
+    rememberHash('studio/home/kept', 'd'.repeat(64))
+
+    expect(awaitingHash('studio/home/kept', 'e'.repeat(64))).toBe(false)
+  })
+})
+
+describe('settleRefused', () => {
+  const KEY = { frame: HERO, index: 3, hash: 'a'.repeat(64) }
+
+  it('drops the element once its frame shows other bytes', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleRefused(store, () => 'b'.repeat(64))
+
+    expect(store.getState()).toMatchObject({ frames: [HERO], element: null })
+  })
+
+  it('keeps the element while its frame still shows the bytes it names', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleRefused(store, () => KEY.hash)
+
+    expect(store.getState().element).toEqual(KEY)
+  })
+
+  it('keeps the element while no live frame shows it', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleRefused(store, () => null)
+
+    expect(store.getState().element).toEqual(KEY)
+  })
+})
+
+describe('settleLanded', () => {
+  const KEY = { frame: 'studio/home/landed', index: 3, hash: 'a'.repeat(64) }
+
+  it('drops the element once its frame shows bytes another writer left', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleLanded(store, () => 'b'.repeat(64))
+
+    expect(store.getState()).toMatchObject({
+      frames: [KEY.frame],
+      element: null,
+    })
+  })
+
+  it('keeps the element while its frame lags on bytes the board wrote', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+    rememberHash(KEY.frame, 'c'.repeat(64))
+
+    settleLanded(store, () => 'c'.repeat(64))
+
+    expect(store.getState().element).toEqual(KEY)
+  })
+
+  it('keeps the element once its frame shows the bytes it names', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', KEY)
+
+    settleLanded(store, () => KEY.hash)
+
+    expect(store.getState().element).toEqual(KEY)
   })
 })

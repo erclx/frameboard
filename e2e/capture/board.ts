@@ -98,8 +98,8 @@ const PRESS_FRAMES = 600
 /**
  * Presses the control named `label` once the board has drawn it. The harness
  * runs `setup` before it navigates, so the press waits in an init script for
- * the app to render the control. A button is named by its `aria-label`, or
- * by its text where it has none, as Edit and Play are.
+ * the app to render the control and enable it. A button is named by its
+ * `aria-label`, or by its text where it has none, as Edit and Play are.
  */
 function pressOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -109,6 +109,7 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
         const press = () => {
           const control = [...document.querySelectorAll('button')].find(
             (button) =>
+              !button.disabled &&
               (
                 button.getAttribute('aria-label') ??
                 button.textContent?.trim() ??
@@ -760,7 +761,9 @@ const STATE_ONLY = ['320', '768', '1536']
 
 /**
  * The home view and one board page of the preview's `basic` fixture, then the
- * board under Hide UI, in Play, with the avatar menu open, and with the Theme
+ * board under Hide UI, in Play, with the avatar menu open, the element
+ * inspector for the hero's headline with its token menu open, the hero's
+ * Selection colors, and with the Theme
  * tab open, with tokens and with none, and the Assets tab with the reference's
  * six files. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
@@ -1050,6 +1053,53 @@ export const BOARD_CASES: CaptureCase[] = [
             asWriter,
             onPagesList('drag'),
             readyWhen('nav li > span[aria-hidden]'),
+          ),
+        ),
+      },
+      {
+        section: 'element-inspector',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // Every element section of `inspector/text` for the hero's headline,
+        // once its styles have answered and Selection colors has drawn.
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            readyWhen('#inspector-selection-colors ~ ul li'),
+          ),
+        ),
+      },
+      {
+        section: 'frame-colors',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen('#inspector-selection-colors ~ ul li'),
+          ),
+        ),
+      },
+      {
+        section: 'token-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            pressOnLoad('^Fill token$'),
+            readyWhen('[data-slot="dropdown-menu-content"]'),
           ),
         ),
       },

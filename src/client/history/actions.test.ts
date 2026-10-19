@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isEnabled, useActions, useCommands } from '@/client/actions/registry'
 import { holdBoxes, withPending } from '@/client/board/geometry/write'
 import {
+  createSelectionStore,
+  select,
+  selectElement,
+} from '@/client/board/selection'
+import {
   createLiveStore,
   type LiveStore,
   receiveAccess,
@@ -193,5 +198,73 @@ describe('registerHistoryActions', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith('/p/studio/home'),
     )
+  })
+
+  it('keeps the selected element through an undo of its hand edit', async () => {
+    const selection = createSelectionStore()
+    const element = { frame: HERO.ref, index: 5, hash: 'a'.repeat(64) }
+    selectElement(selection, 'studio/home', element)
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+
+    await vi.waitFor(() =>
+      expect(selection.getState().element).toEqual({
+        ...element,
+        hash: 'b'.repeat(64),
+      }),
+    )
+  })
+
+  it('leaves the selection as it is for an undo answering no hashes', async () => {
+    const selection = createSelectionStore()
+    const element = { frame: HERO.ref, index: 5, hash: 'a'.repeat(64) }
+    selectElement(selection, 'studio/home', element)
+    holdBoxes({ [HERO.ref]: { ...HERO.box, x: 400 } })
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      calls: {
+        undo: async () => ({ page: null, frames: [HERO.ref] }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+    // The pending box drops as the answer is followed.
+    await vi.waitFor(() => expect(withPending([HERO])[0]?.box.x).toBe(0))
+
+    expect(selection.getState().element).toEqual(element)
+  })
+
+  it('selects nothing when no element was selected', async () => {
+    const selection = createSelectionStore()
+    select(selection, 'studio/home', [HERO.ref])
+    holdBoxes({ [HERO.ref]: { ...HERO.box, x: 400 } })
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+    await vi.waitFor(() => expect(withPending([HERO])[0]?.box.x).toBe(0))
+
+    expect(selection.getState().element).toBeNull()
   })
 })

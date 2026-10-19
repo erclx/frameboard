@@ -1,5 +1,12 @@
 import { createHash } from 'node:crypto'
-import { readdir, readFile, rename, stat } from 'node:fs/promises'
+import {
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
@@ -18,6 +25,8 @@ import {
   PROJECT_FILE,
   projectSpec,
 } from '@/server/board/scan'
+import { contentHash } from '@/server/edit/address'
+import { FRAME_EXTENSION } from '@/shared/board-files'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { LayoutEntry } from '@/shared/records/board'
 
@@ -49,6 +58,19 @@ export type Change =
    * there, and the trash slot it waits in on the other.
    */
   | { kind: 'path'; path: string; present: Side; hash: string; slot: string }
+  /**
+   * A frame file a hand edit rewrote, held whole on both sides with each
+   * side's content hash, so an undo restores it only while nothing else
+   * wrote it since. `ref` names the frame an undo answers the hash for.
+   */
+  | {
+      kind: 'content'
+      path: string
+      ref: string
+      before: Buffer
+      after: Buffer
+      hashes: Record<Side, string>
+    }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -102,8 +124,15 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         ? (await exists(change.path)) &&
             (await hashPath(change.path)) === change.hash
         : !(await exists(change.path)) && (await exists(change.slot))
+    case 'content':
+      return (
+        (await exists(change.path)) &&
+        contentHash(await readFile(change.path)) === change.hashes[side]
+      )
   }
 }
+
+const OTHER: Record<Side, Side> = { before: 'after', after: 'before' }
 
 /** Writes `side` of a change back, under the record's lock, once `holds` read the other side. */
 export async function restore(change: Change, side: Side): Promise<void> {
@@ -132,7 +161,36 @@ export async function restore(change: Change, side: Side): Promise<void> {
     case 'path':
       if (change.present === side) await rename(change.slot, change.path)
       else await takeOut(change.path, change.slot)
+      return
+    case 'content':
+      await rewrite(change, side)
   }
+}
+
+/**
+ * Writes `side` of a frame's bytes through a temporary file and a rename,
+ * reading the file again just before the rename so an agent's write landing
+ * since `holds` read it is refused rather than overwritten, as a hand edit is.
+ */
+async function rewrite(
+  change: Extract<Change, { kind: 'content' }>,
+  side: Side,
+): Promise<void> {
+  // A leading dot keeps the temporary file from reading as a frame.
+  const temp = join(
+    dirname(change.path),
+    `.${basename(change.path)}.${process.pid}.tmp`,
+  )
+  await writeFile(temp, change[side])
+  if (contentHash(await readFile(change.path)) !== change.hashes[OTHER[side]]) {
+    await rm(temp, { force: true })
+    throw new FrameboardError(
+      'undo-overtaken',
+      `An agent changed ${basename(change.path, FRAME_EXTENSION)} after your edit, so that step was dropped.`,
+      { change: change.kind },
+    )
+  }
+  await rename(temp, change.path)
 }
 
 /**
@@ -165,6 +223,18 @@ export class StepJournal implements Journal {
   async moved(from: string, to: string): Promise<void> {
     await rename(from, to)
     this.changes.push({ kind: 'moved', from, to })
+  }
+
+  /** A frame file a hand edit rewrote from `before` to `after`, which this journal does not write. */
+  content(path: string, ref: string, before: Buffer, after: Buffer): void {
+    this.changes.push({
+      kind: 'content',
+      path,
+      ref,
+      before,
+      after,
+      hashes: { before: contentHash(before), after: contentHash(after) },
+    })
   }
 
   async created(path: string): Promise<void> {
