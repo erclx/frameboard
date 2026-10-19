@@ -123,6 +123,16 @@ describe('History', () => {
     expect(heroX()).toBe(80)
   })
 
+  it('drops a step whose layout an agent left unreadable', async () => {
+    await moveHero(40)
+    writeFileSync(at('webapp/home/layout.json'), '{ not json')
+
+    await expect(history.undo()).rejects.toMatchObject({
+      code: 'undo-overtaken',
+    })
+    expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+  })
+
   it('checks the whole step before writing any of it', async () => {
     await renameHome('start')
     // The order still holds, but the old name is taken, so neither is written.

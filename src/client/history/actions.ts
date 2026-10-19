@@ -45,7 +45,11 @@ export function registerHistoryActions({
   }
   const step = (run: () => Promise<StepAnswer>, title: string) => () => {
     run().then(follow, (error: unknown) => {
-      if (error instanceof BoardWriteError && error.code === 'undo-overtaken') {
+      // An empty stack is the one refusal with nothing to say, since the key is unlit then.
+      if (
+        error instanceof BoardWriteError &&
+        error.code !== 'nothing-to-undo'
+      ) {
         notify({ title, description: error.message })
       }
     })

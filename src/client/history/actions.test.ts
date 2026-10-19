@@ -133,6 +133,31 @@ describe('registerHistoryActions', () => {
     )
   })
 
+  it('raises a toast for a refusal other than an overtaken step', async () => {
+    const notify = vi.fn()
+    const { undo } = register(writableWith(1, 0), {
+      notify,
+      calls: {
+        undo: async () => {
+          throw new BoardWriteError(
+            'lock-timeout',
+            'Another writer held the layout for more than 2000 ms.',
+          )
+        },
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+
+    await vi.waitFor(() =>
+      expect(notify).toHaveBeenCalledWith({
+        title: 'Undo skipped',
+        description: 'Another writer held the layout for more than 2000 ms.',
+      }),
+    )
+  })
+
   it('drops the pending box of a frame an undo moved back', async () => {
     holdBoxes({ [HERO.ref]: { ...HERO.box, x: 400 } })
     let answered: () => void = () => {}

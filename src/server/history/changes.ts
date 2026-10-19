@@ -18,6 +18,7 @@ import {
   PROJECT_FILE,
   projectSpec,
 } from '@/server/board/scan'
+import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { LayoutEntry } from '@/shared/records/board'
 
 import { takeOut, trashSlot } from './trash'
@@ -58,9 +59,27 @@ export function lockPaths(change: Change): string[] {
 
 /**
  * Whether the board still stands as `side` of the change left it, read
- * under the record's lock. A change that no longer holds was overtaken.
+ * under the record's lock. A change that no longer holds was overtaken, and
+ * so was one whose record an agent left unreadable, since writing it back
+ * would overwrite that file and keeping the step would block every older one.
  */
 export async function holds(change: Change, side: Side): Promise<boolean> {
+  try {
+    return await reads(change, side)
+  } catch (error) {
+    if (error instanceof FrameboardError && UNREADABLE.has(error.code)) {
+      return false
+    }
+    throw error
+  }
+}
+
+const UNREADABLE = new Set<ErrorCode>([
+  'layout-invalid',
+  'project-file-invalid',
+])
+
+async function reads(change: Change, side: Side): Promise<boolean> {
   switch (change.kind) {
     case 'entry': {
       const file = await readRecord(change.layout, layoutSpec)
