@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/erclx/frameboard/compare/v0.2.0...v0.3.0) (2026-10-19)
+
+
+### Features
+
+* **board:** select and walk elements inside a frame, and report them ([#37](https://github.com/erclx/frameboard/issues/37)) ([cd9ee7a](https://github.com/erclx/frameboard/commit/cd9ee7a68ce4f1daf83ddecc720d904c00bff7d3))
+* **board:** undo hand changes and add, rename, reorder, delete pages ([#38](https://github.com/erclx/frameboard/issues/38)) ([998c525](https://github.com/erclx/frameboard/commit/998c525c279b692154257b3bcb382fb58e2f21df))
+* **checks:** report clipping, scrollbars, viewport, and font size ([#40](https://github.com/erclx/frameboard/issues/40)) ([7d2f9a1](https://github.com/erclx/frameboard/commit/7d2f9a1cceea42bf6c1e23d8c46e40c42ddb1d4e))
+* **palette:** add the command palette and keyboard shortcuts sheet ([#35](https://github.com/erclx/frameboard/issues/35)) ([7d73284](https://github.com/erclx/frameboard/commit/7d732843599a28a06994b248214482cb7688dec3))
+
+
+### Bug Fixes
+
+* **test:** repair the canvas perf and watch tests ([#34](https://github.com/erclx/frameboard/issues/34)) ([00021ab](https://github.com/erclx/frameboard/commit/00021abb616195c465defe518bc33fae1d4a7d21))
+
 ## [0.2.0](https://github.com/erclx/frameboard/compare/v0.1.0...v0.2.0) (2026-10-19)
 
 
