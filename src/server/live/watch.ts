@@ -7,6 +7,7 @@ import {
   FRAME_EXTENSION,
   LAYOUT_FILE,
 } from '@/server/board/scan'
+import { TOKEN_FILE } from '@/shared/board-files'
 import type { ListResult } from '@/shared/records/list'
 
 const NOTES_FILE = 'notes.json'
@@ -32,9 +33,14 @@ export interface BoardWatcher {
 /**
  * Watches the board folder and reports changes in batches, so a burst of
  * writes from one agent turn costs one rescan. Resolves once the watch is
- * warm, so a write after it is always seen.
+ * warm, so a write after it is always seen. Each of `files` outside the
+ * board, such as a `--tokens` sheet, is watched too and lands in the same
+ * batches.
  */
-export async function watchBoard(root: string): Promise<BoardWatcher> {
+export async function watchBoard(
+  root: string,
+  files: readonly string[] = [],
+): Promise<BoardWatcher> {
   const listeners = new Set<BatchListener>()
   const batcher = createBatcher((paths) => {
     for (const listener of listeners) {
@@ -48,15 +54,25 @@ export async function watchBoard(root: string): Promise<BoardWatcher> {
     }
   })
 
-  const watcher = watch(root, {
-    ignoreInitial: true,
-    ignored: (path) => isIgnored(root, path),
-  })
+  const outside = files.filter((file) => relative(root, file).startsWith('..'))
+  const watchers = [
+    watch(root, {
+      ignoreInitial: true,
+      ignored: (path) => isIgnored(root, path),
+    }),
+    ...(outside.length > 0
+      ? [watch([...outside], { ignoreInitial: true })]
+      : []),
+  ]
   let warm = false
-  watcher.on('all', (_event, path) => {
-    if (warm) batcher.add(path)
-  })
-  await new Promise<void>((resolve) => watcher.once('ready', resolve))
+  await Promise.all(
+    watchers.map((watcher) => {
+      watcher.on('all', (_event, path) => {
+        if (warm) batcher.add(path)
+      })
+      return new Promise<void>((resolve) => watcher.once('ready', resolve))
+    }),
+  )
   await new Promise((resolve) => setTimeout(resolve, WARM_UP_MS))
   warm = true
 
@@ -68,7 +84,7 @@ export async function watchBoard(root: string): Promise<BoardWatcher> {
     close: async () => {
       batcher.cancel()
       listeners.clear()
-      await watcher.close()
+      await Promise.all(watchers.map((watcher) => watcher.close()))
     },
   }
 }
@@ -126,18 +142,30 @@ function isIgnored(root: string, path: string): boolean {
 /**
  * The frames a batch changed what they render: a frame's own file, or a temp
  * file it is saved through, reloads that frame, any other file in a page folder reloads the page's frames since
- * any of them may link it, and an asset reloads the whole project. A layout or
- * notes file reloads nothing, since moving a frame must not restart it.
+ * any of them may link it, and an asset or the project's token sheet reloads
+ * the whole project. The board's token sheet, or the `tokens` sheet standing
+ * in for it, reloads every frame. A layout or notes file reloads nothing,
+ * since moving a frame must not restart it.
  * Only frames in `board` are named, in board order.
  */
 export function reloadRefs(
   root: string,
   paths: string[],
   board: ListResult,
+  tokens: string | null = null,
 ): string[] {
   const refs = new Set<string>()
+  let everyFrame = false
   for (const path of paths) {
     const [project, folder, ...rest] = relative(root, path).split(sep)
+    if (path === tokens || (project === TOKEN_FILE && !folder && !tokens)) {
+      everyFrame = true
+      continue
+    }
+    if (project && folder === TOKEN_FILE && rest.length === 0) {
+      refs.add(`${project}/*`)
+      continue
+    }
     if (!project || !folder || rest.length === 0) continue
     if (folder === ASSETS_FOLDER) {
       refs.add(`${project}/*`)
@@ -158,6 +186,7 @@ export function reloadRefs(
     for (const page of project.pages) {
       for (const frame of page.frames) {
         if (
+          everyFrame ||
           refs.has(frame.ref) ||
           refs.has(`${page.ref}/*`) ||
           refs.has(`${project.name}/*`)
