@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -159,5 +159,151 @@ test.describe('page structure by hand, and its undo', () => {
       'true',
     )
     expect(pageOrder()).toEqual(['home', 'pricing'])
+  })
+
+  test.describe('frames', () => {
+    const layout = (page = 'studio/home') =>
+      (
+        JSON.parse(readFileSync(at(`${page}/layout.json`), 'utf8')) as {
+          frames: Record<
+            string,
+            {
+              x: number
+              y: number
+              width: number
+              height: number
+              order: number
+              hidden?: boolean
+              locked?: boolean
+            }
+          >
+        }
+      ).frames
+
+    function layers(page: Page) {
+      return page.getByRole('region', { name: 'Layers' })
+    }
+
+    function layerRow(page: Page, name: string) {
+      return layers(page).getByRole('button', {
+        name: `Select ${name}`,
+        exact: true,
+      })
+    }
+
+    test('hides, locks, renames, and restacks from the layers list, undoing each on disk', async ({
+      page,
+    }) => {
+      const hero = layout().hero
+      await openAsWriter(page)
+
+      await layers(page)
+        .getByRole('button', { name: 'Hide hero', exact: true })
+        .click()
+      await expect.poll(() => layout().hero?.hidden).toBe(true)
+      await undo(page)
+      await expect.poll(() => layout().hero).toEqual(hero)
+
+      await layers(page)
+        .getByRole('button', { name: 'Lock hero', exact: true })
+        .click()
+      await expect.poll(() => layout().hero?.locked).toBe(true)
+      await expect(page.getByRole('img', { name: 'Locked' })).toBeVisible()
+      await undo(page)
+      await expect.poll(() => layout().hero).toEqual(hero)
+
+      await layerRow(page, 'hero').dblclick()
+      await page.keyboard.type('banner')
+      await page.keyboard.press('Enter')
+      await expect
+        .poll(() => existsSync(at('studio/home/banner.html')))
+        .toBe(true)
+      await undo(page)
+      await expect
+        .poll(() => existsSync(at('studio/home/hero.html')))
+        .toBe(true)
+
+      // The list shows the top of the stack first, so hero, at the bottom, sits last.
+      const top = layerRow(page, 'mobile')
+      const box = await top.boundingBox()
+      if (!box) throw new Error('The mobile row has no box on screen')
+      await layerRow(page, 'hero').dragTo(top, {
+        targetPosition: { x: box.width / 2, y: 2 },
+      })
+      await expect.poll(() => layout().hero?.order).toBe(1)
+      await undo(page)
+      await expect.poll(() => layout().hero?.order).toBe(0)
+    })
+
+    test('adds a tablet frame where the Frame tool clicks, and undo takes it away', async ({
+      page,
+    }) => {
+      await openAsWriter(page)
+
+      await page.keyboard.press('f')
+      await page.getByRole('radio', { name: /Tablet/ }).click()
+      await page
+        .locator('[data-hit-layer]')
+        .click({ position: { x: 40, y: 40 } })
+
+      await expect
+        .poll(() => layout().frame)
+        .toMatchObject({
+          width: 834,
+          height: 1194,
+        })
+      await expect(layerRow(page, 'frame')).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Move', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true')
+
+      await undo(page)
+
+      await expect
+        .poll(() => existsSync(at('studio/home/frame.html')))
+        .toBe(false)
+    })
+
+    test("cuts a frame and pastes it into another project's page, undoing both", async ({
+      page,
+    }) => {
+      const hero = readFileSync(at('studio/home/hero.html'))
+      mkdirSync(at('other/start'), { recursive: true })
+      writeFileSync(
+        at('other/project.json'),
+        '{"version":1,"pages":["start"]}\n',
+      )
+      writeFileSync(
+        at('other/start/layout.json'),
+        '{"version":1,"frames":{}}\n',
+      )
+      await openAsWriter(page)
+
+      await layerRow(page, 'hero').click()
+      await page.keyboard.press('ControlOrMeta+KeyX')
+      await expect
+        .poll(() => existsSync(at('studio/home/hero.html')))
+        .toBe(false)
+
+      await page.getByRole('link', { name: 'Home', exact: true }).click()
+      await page.getByRole('link', { name: /other/ }).click()
+      await expect(page).toHaveURL(/\/p\/other\/start$/)
+      await page.keyboard.press('ControlOrMeta+KeyV')
+
+      await expect
+        .poll(() => existsSync(at('other/start/hero.html')))
+        .toBe(true)
+      expect(readFileSync(at('other/start/hero.html'))).toEqual(hero)
+
+      await undo(page)
+      await expect
+        .poll(() => existsSync(at('other/start/hero.html')))
+        .toBe(false)
+      await undo(page)
+      await expect
+        .poll(() => existsSync(at('studio/home/hero.html')))
+        .toBe(true)
+      expect(readFileSync(at('studio/home/hero.html'))).toEqual(hero)
+    })
   })
 })
