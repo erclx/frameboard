@@ -351,16 +351,16 @@ describe('startServer live socket', () => {
       .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
   })
 
-  it('pushes the board, the changed frame, the change, and its findings after a write', async () => {
+  it('pushes the board, the changed frame, its findings, and then the change after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
       .poll(() => messages.map((message) => message.type), {
         timeout: 5000,
       })
-      .toEqual(['board', 'reload', 'changes', 'findings'])
+      .toEqual(['board', 'reload', 'findings', 'changes'])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
-    expect(messages[3]).toMatchObject({
+    expect(messages[2]).toMatchObject({
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
@@ -433,23 +433,28 @@ describe('startServer live socket', () => {
           ? message.changes.map((change) => change.frame)
           : [],
       )
-    await expect.poll(() => changed().length, { timeout: 5000 }).toBe(20)
-    messages = []
     const post = (path: string, body: unknown) =>
       fetch(`http://127.0.0.1:${server.port}${path}`, {
         method: 'POST',
         headers: { authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       })
+    // The copy reads the files from disk, so it needs no batch to have landed.
     await post('/api/clipboard/copy', {
       refs: names.map((name) => `studio/home/${name}`),
     })
 
     const pasted = await post('/api/clipboard/paste', { ref: 'studio/pricing' })
-    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+    writeFileSync(join(board.root, 'studio/pricing/plans.html'), '<p>new</p>')
 
     expect(pasted.status).toBe(200)
-    await expect.poll(changed, { timeout: 5000 }).toEqual(['studio/home/hero'])
+    // The sentinel lands with or after the paste's batch.
+    await expect
+      .poll(changed, { timeout: 5000 })
+      .toContain('studio/pricing/plans')
+    expect(
+      changed().filter((frame) => frame.startsWith('studio/pricing/card-')),
+    ).toEqual([])
   })
 
   it('reloads only the frame saved through a temp file and a rename', async () => {

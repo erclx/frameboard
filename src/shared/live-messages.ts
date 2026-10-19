@@ -66,6 +66,7 @@ export type ServerMessage =
   | { type: 'claims'; claims: Claim[] }
   /**
    * Frames an agent changed: the server's recent log after each hello's
-   * claims, and after each batch's `reload` the changes it carried.
+   * claims, and each batch's changes once the grace for the board's own
+   * writes has passed.
    */
   | { type: 'changes'; changes: FrameChange[] }

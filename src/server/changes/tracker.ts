@@ -23,15 +23,20 @@ const DEPARTED_BATCHES = 4
 export interface ChangeTracker {
   /** Holds every frame's source as the start scan found it. */
   prime: (board: ListResult) => Promise<void>
-  /** Rereads the frames a board write left, so its batch reads as nothing new. */
+  /**
+   * Rereads the frames a board write left, so its batch reads as nothing
+   * new, and withdraws a held change the write's batch reached it with first.
+   */
   own: (step: Step) => Promise<void>
-  /** The changes one watch batch carried, appended to the log. */
+  /** The changes one watch batch carried, held until `settle`. */
   update: (
     board: ListResult,
     paths: string[],
     claims: Claim[],
   ) => Promise<FrameChange[]>
-  /** The recent changes, oldest first. */
+  /** Logs the held changes `own` has not withdrawn since, and answers them. */
+  settle: (changes: readonly FrameChange[]) => FrameChange[]
+  /** The recent settled changes, oldest first. */
   log: () => FrameChange[]
 }
 
@@ -55,6 +60,8 @@ export function createChangeTracker(
   /** Hashes of frames that left the board, with the batch they left in. */
   const departed = new Map<string, number>()
   const changes: FrameChange[] = []
+  /** Changes a batch found that `own` may still withdraw, by id. */
+  const pending = new Map<string, FrameChange>()
   let batches = 0
   let nextId = 1
 
@@ -99,6 +106,15 @@ export function createChangeTracker(
           hold(ref, join(root, ...ref.split('/')) + FRAME_EXTENSION),
         ),
       )
+      // A write slower than the batch window reached `update` first.
+      for (const [id, change] of pending) {
+        if (
+          refs.has(change.frame) &&
+          held.get(change.frame)?.hash === change.hash
+        ) {
+          pending.delete(id)
+        }
+      }
     },
 
     update: async (board, paths, claims) => {
@@ -146,9 +162,15 @@ export function createChangeTracker(
           created: !before,
         })
       }
-      changes.push(...found)
-      if (changes.length > LOG_CAP) changes.splice(0, changes.length - LOG_CAP)
+      for (const change of found) pending.set(change.id, change)
       return found
+    },
+
+    settle: (held) => {
+      const kept = held.filter((change) => pending.delete(change.id))
+      changes.push(...kept)
+      if (changes.length > LOG_CAP) changes.splice(0, changes.length - LOG_CAP)
+      return kept
     },
 
     log: () => [...changes],

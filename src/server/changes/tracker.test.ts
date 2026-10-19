@@ -110,6 +110,33 @@ describe('createChangeTracker', () => {
     expect(changes).toEqual([])
   })
 
+  it('withdraws a held change the history then tells it was its own', async () => {
+    writeFileSync(
+      at('webapp/home/hero.html'),
+      hero().replace('>hero</h1>', '>Hi</h1>'),
+    )
+    const held = await batch(['webapp/home/hero.html'])
+
+    await tracker.own(stepOn(['webapp/home/hero']))
+
+    expect(held).toHaveLength(1)
+    expect(tracker.settle(held)).toEqual([])
+    expect(tracker.log()).toEqual([])
+  })
+
+  it('logs a held change nothing withdrew once it settles', async () => {
+    writeFileSync(
+      at('webapp/home/hero.html'),
+      hero().replace('>hero</h1>', '>Hi</h1>'),
+    )
+    const held = await batch(['webapp/home/hero.html'])
+
+    const settled = tracker.settle(held)
+
+    expect(settled.map((change) => change.frame)).toEqual(['webapp/home/hero'])
+    expect(tracker.log()).toEqual(settled)
+  })
+
   it('marks nothing for a page renamed on disk', async () => {
     renameSync(at('webapp/home'), at('webapp/start'))
 
@@ -182,11 +209,11 @@ describe('createChangeTracker', () => {
     expect(change?.whole).toBe(true)
   })
 
-  it('keeps every change in the log in the order it landed', async () => {
+  it('keeps every settled change in the log in the order it landed', async () => {
     writeFileSync(at('webapp/home/hero.html'), '<p>one</p>')
-    await batch(['webapp/home/hero.html'])
+    tracker.settle(await batch(['webapp/home/hero.html']))
     writeFileSync(at('webapp/home/about.html'), '<p>two</p>')
-    await batch(['webapp/home/about.html'])
+    tracker.settle(await batch(['webapp/home/about.html']))
 
     expect(tracker.log().map((change) => change.frame)).toEqual([
       'webapp/home/hero',

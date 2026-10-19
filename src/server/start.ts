@@ -5,6 +5,8 @@ import { relative, sep } from 'node:path'
 
 import { serve } from '@hono/node-server'
 
+import type { FrameChange } from '@/shared/records/changes'
+
 import { type Access } from './access/guard'
 import { cookieName, loadBoardKey } from './access/key'
 import { createTickets } from './access/tickets'
@@ -44,6 +46,14 @@ import {
 
 // Loopback only: the board serves the operator's own files, so it stays off the LAN.
 const HOSTNAME = '127.0.0.1'
+
+/**
+ * How long a batch's changes wait before the board hears of them, so a hand
+ * write of many frames, whose first files can reach a batch at its 250 ms
+ * ceiling before the history records the step, is withdrawn as the board's
+ * own rather than marked.
+ */
+const OWN_GRACE_MS = 1000
 
 export interface StartOptions {
   clientDir: string
@@ -174,6 +184,17 @@ async function listen({
   // The history lives in memory, so a trash a previous server left holds nothing it can undo.
   await emptyTrash(root)
   const tracker = createChangeTracker(root)
+  const settling = new Set<ReturnType<typeof setTimeout>>()
+  const settleLater = (held: FrameChange[]) => {
+    const timer = setTimeout(() => {
+      settling.delete(timer)
+      void inTurn(async () => {
+        const changes = tracker.settle(held)
+        if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
+      })
+    }, OWN_GRACE_MS)
+    settling.add(timer)
+  }
   // The board's own write rereads its frames in turn, so its batch reads as nothing new.
   const history = new History(
     root,
@@ -305,6 +326,7 @@ async function listen({
         delivery,
         tracker,
         claims,
+        settleLater,
       }),
     )
   })
@@ -321,6 +343,7 @@ async function listen({
     close: async () => {
       rendered.close()
       claims.close()
+      for (const timer of settling) clearTimeout(timer)
       await Promise.all([
         watcher.close(),
         hub.close(),
@@ -338,9 +361,10 @@ async function listen({
 
 /**
  * One rescan per batch: the whole board to every tab, then the frames to
- * reload, then the frames an agent changed, then the findings of every frame the batch rechecked, queueing the
+ * reload, then the findings of every frame the batch rechecked, queueing the
  * same frames for the browser checker, then the notes of every page whose
- * notes or frames it touched, whose queue it offers to delivery.
+ * notes or frames it touched, whose queue it offers to delivery. The frames
+ * an agent changed wait out the grace before the board hears of them.
  */
 async function pushBatch(
   root: string,
@@ -353,6 +377,7 @@ async function pushBatch(
     delivery,
     tracker,
     claims,
+    settleLater,
   }: {
     hub: LiveHub
     findings: BoardFindings
@@ -360,6 +385,8 @@ async function pushBatch(
     delivery: Delivery
     tracker: ChangeTracker
     claims: ClaimsPush
+    /** Broadcasts the changes `own` has not withdrawn once the grace passes. */
+    settleLater: (held: FrameChange[]) => void
   },
 ): Promise<void> {
   let board
@@ -372,8 +399,8 @@ async function pushBatch(
   hub.broadcast({ type: 'board', data: board })
   const refs = reloadRefs(root, paths, board, tokens)
   if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
-  const changes = await tracker.update(board, paths, await claims.read())
-  if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
+  const held = await tracker.update(board, paths, await claims.read())
+  if (held.length > 0) settleLater(held)
   const changed = findings.update(board, paths)
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
