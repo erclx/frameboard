@@ -531,6 +531,56 @@ function onPagesList(act: 'rename' | 'drag'): (page: Page) => Promise<void> {
 }
 
 /**
+ * Waits for New project to light, which it does once the server grants
+ * writes, then opens the `webapp` card's menu with a right click over the
+ * card's well, clear of the masked edited time, or opens its name for
+ * renaming with F2.
+ */
+function onHomeCard(act: 'menu' | 'rename'): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ act, frames }) => {
+        let left = frames
+        const run = () => {
+          const add = document.querySelector(
+            'button[aria-label="New project"]:not([aria-disabled])',
+          )
+          const card = [
+            ...document.querySelectorAll<HTMLAnchorElement>('main li a'),
+          ].find((link) => link.textContent?.startsWith('webapp'))
+          if (!add || !card) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error('The home view never granted writes')
+            return
+          }
+          if (act === 'rename') {
+            card.focus()
+            card.dispatchEvent(
+              new KeyboardEvent('keydown', { key: 'F2', bubbles: true }),
+            )
+            return
+          }
+          const box = card.getBoundingClientRect()
+          card.dispatchEvent(
+            new MouseEvent('contextmenu', {
+              bubbles: true,
+              cancelable: true,
+              button: 2,
+              clientX: box.left + box.width * 0.53,
+              clientY: box.top + 30,
+            }),
+          )
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { act, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/**
  * Shows the server holding one step to undo, answers the undo with the
  * refusal an agent's later write causes, and presses Undo once it lights.
  * The step is faked, since a real one would rewrite the committed fixture.
@@ -760,8 +810,9 @@ const AVATAR = '[data-avatar]'
 const STATE_ONLY = ['320', '768', '1536']
 
 /**
- * The home view and one board page of the preview's `basic` fixture, then the
- * board under Hide UI, in Play, with the avatar menu open, the element
+ * The home view and one board page of the preview's `basic` fixture, the
+ * home view with a card's menu open and with a card's name being renamed,
+ * then the board under Hide UI, in Play, with the avatar menu open, the element
  * inspector for the hero's headline with its token menu open, the hero's
  * Selection colors, and with the Theme
  * tab open, with tokens and with none, and the Assets tab with the reference's
@@ -781,6 +832,34 @@ export const BOARD_CASES: CaptureCase[] = [
       evidence: true,
       mask: ['[data-edited]'],
       setup: chosenTheme(theme),
+    },
+    {
+      section: 'home-menu',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        onHomeCard('menu'),
+        readyWhen('[data-slot="context-menu-content"]'),
+      ),
+    },
+    {
+      section: 'home-rename',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        onHomeCard('rename'),
+        readyWhen('input[aria-label="Rename project webapp"]'),
+      ),
     },
     {
       section: 'board',

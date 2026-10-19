@@ -1,23 +1,32 @@
 import { useState } from 'react'
 
+import type { Structure } from '@/client/live/structure'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { EmptyHome } from './empty'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
+import { useProjectActions } from './project-actions'
 import { Projects } from './projects'
 
+interface HomeProps {
+  projects: readonly ProjectRecord[]
+  /** Stands in for the server's structure routes, as a test's server does. */
+  calls?: Structure
+}
+
 /** The home view under its header, counting "last edited" back from when it opened. */
-export function Home({ projects }: { projects: readonly ProjectRecord[] }) {
+export function Home({ projects, calls }: HomeProps) {
   const [now] = useState(Date.now)
   const layout = useHomeLayout()
+  useProjectActions(calls)
   return (
     <div className="flex min-h-full flex-col text-body">
       <HomeHeader hasProjects={projects.length > 0} />
       {projects.length === 0 ? (
         <EmptyHome />
       ) : (
-        <Projects projects={projects} layout={layout} now={now} />
+        <Projects projects={projects} layout={layout} now={now} calls={calls} />
       )}
     </div>
   )

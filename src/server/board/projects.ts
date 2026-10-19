@@ -1,14 +1,22 @@
-import { mkdir, rename, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { cp, mkdir, rename, rm } from 'node:fs/promises'
+import { basename, join } from 'node:path'
 
 import { FrameboardError } from '@/shared/errors'
+import { nextFreeName } from '@/shared/names'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import type { JournalOptions } from './journal'
-import { writeRecord } from './json-record'
+import { readRecord, writeRecord } from './json-record'
+import { isCopied } from './pages'
 import { assertValidName, matchName, resolveProject } from './refs'
 import { START_PAGE } from './root'
-import { listProjects, PROJECT_FILE, scanProject } from './scan'
+import {
+  emptyProject,
+  listProjects,
+  PROJECT_FILE,
+  projectSpec,
+  scanProject,
+} from './scan'
 
 /** A new project holding one empty page. */
 export async function addProject(
@@ -42,6 +50,37 @@ export async function renameProject(
   if (journal) await journal.moved(project.path, renamed)
   else await rename(project.path, renamed)
   return scanProject(root, newName)
+}
+
+/**
+ * A copy of the project under the next free name, without its notes, and
+ * stamped as made `now`.
+ */
+export async function duplicateProject(
+  root: string,
+  name: string,
+  now: Date = new Date(),
+  { journal }: JournalOptions = {},
+): Promise<ProjectRecord> {
+  const source = await resolveProject(root, name)
+  const file = await readRecord(join(source.path, PROJECT_FILE), {
+    ...projectSpec,
+    empty: emptyProject,
+  })
+  const copy = nextFreeName(source.name, await listProjects(root))
+  const copyPath = join(root, copy)
+  await cp(source.path, copyPath, {
+    recursive: true,
+    errorOnExist: true,
+    force: false,
+    filter: (path) => isCopied(basename(path)),
+  })
+  await writeRecord(join(copyPath, PROJECT_FILE), {
+    ...file,
+    createdAt: now.toISOString(),
+  })
+  await journal?.created(copyPath)
+  return scanProject(root, copy)
 }
 
 export async function deleteProject(

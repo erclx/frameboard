@@ -17,6 +17,8 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 
 - A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
+- New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
+- A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card. Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
 - Opening a card opens its board, and the board's home button is the one way back and between projects
 
 ### `src/client/actions/`
@@ -173,4 +175,4 @@ The favicon files sit beside the app.
 - Edit covers the frames with a hit layer so a press reaches the selection gestures rather than a frame's page, and a primary drag pans only under the Hand tool. Play lifts the layer, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
 - `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
-- `cn` reads the custom `text-body` step as a color and keeps a kit part's `text-sm` beside it, so a kit part takes Tailwind's `text-xs` for the chrome's 12px
+- `cn` reads the custom `text-body` and `text-label` steps as colors, so it keeps a kit part's `text-sm` beside one and drops one set before a color. A kit part takes `text-xs` for 12px and `text-[11px]` for 11px

@@ -8,7 +8,12 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { recordingJournal } from '../../../test/support/recording-journal'
-import { addProject, deleteProject, renameProject } from './projects'
+import {
+  addProject,
+  deleteProject,
+  duplicateProject,
+  renameProject,
+} from './projects'
 
 describe('projects', () => {
   let board: FixtureBoard
@@ -97,6 +102,74 @@ describe('projects', () => {
     })
   })
 
+  describe('duplicateProject', () => {
+    it('copies the pages under the next free name, leaving notes behind', async () => {
+      const project = await duplicateProject(board.root, 'webapp')
+
+      expect(project.pages.map((page) => page.ref)).toEqual([
+        'webapp-2/settings',
+        'webapp-2/home',
+      ])
+      expect(existsSync(join(board.root, 'webapp-2/home/hero.html'))).toBe(true)
+      expect(existsSync(join(board.root, 'webapp-2/home/notes.json'))).toBe(
+        false,
+      )
+      expect(existsSync(join(board.root, 'webapp/home/notes.json'))).toBe(true)
+    })
+
+    it('stamps the copy with its own createdAt', async () => {
+      await duplicateProject(
+        board.root,
+        'webapp',
+        new Date('2026-10-19T08:00:00.000Z'),
+      )
+
+      expect(
+        JSON.parse(
+          readFileSync(join(board.root, 'webapp-2', 'project.json'), 'utf8'),
+        ),
+      ).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+        createdAt: '2026-10-19T08:00:00.000Z',
+      })
+    })
+
+    it('takes the next free name past an earlier copy', async () => {
+      await duplicateProject(board.root, 'webapp')
+
+      const project = await duplicateProject(board.root, 'webapp')
+
+      expect(project.name).toBe('webapp-3')
+    })
+
+    it('fails not-found on a project the board lacks', async () => {
+      await expect(duplicateProject(board.root, 'brand')).rejects.toMatchObject(
+        { code: 'project-not-found' },
+      )
+    })
+  })
+
+  describe('duplicateProject with assets', () => {
+    let live: FixtureBoard
+
+    beforeEach(() => {
+      live = copyFixtureBoard('live')
+    })
+
+    afterEach(() => {
+      live.cleanup()
+    })
+
+    it('keeps the project assets byte for byte', async () => {
+      await duplicateProject(live.root, 'studio')
+
+      expect(readFileSync(join(live.root, 'studio-2/assets/dot.svg'))).toEqual(
+        readFileSync(join(live.root, 'studio/assets/dot.svg')),
+      )
+    })
+  })
+
   describe('with a journal', () => {
     it('add reports the project folder it created', async () => {
       const { journal, calls } = recordingJournal(board.root)
@@ -120,6 +193,14 @@ describe('projects', () => {
       await deleteProject(board.root, 'webapp', { journal })
 
       expect(calls).toEqual([{ kind: 'removed', path: 'webapp' }])
+    })
+
+    it('duplicate reports the copy it created', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await duplicateProject(board.root, 'webapp', new Date(), { journal })
+
+      expect(calls).toEqual([{ kind: 'created', path: 'webapp-2' }])
     })
   })
 })
