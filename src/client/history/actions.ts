@@ -7,6 +7,11 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { dropPending } from '@/client/board/geometry/write'
+import {
+  selectElement,
+  type SelectionStore,
+  selectionStore,
+} from '@/client/board/selection'
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type StepAnswer, structure } from '@/client/live/structure'
@@ -18,6 +23,7 @@ export interface HistoryDeps {
   /** The undo and redo calls, which the server answers. */
   calls?: Pick<typeof structure, 'undo' | 'redo'>
   navigate?: (to: string) => void
+  selection?: SelectionStore
   /** Shows a refusal, the kit's toast by default. */
   notify?: (refusal: { title: string; description: string }) => void
 }
@@ -26,19 +32,28 @@ export interface HistoryDeps {
  * Registers `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, which the
  * toolbar draws, each lit while the tab may write and the server holds a
  * step. A step that renamed, added, or removed a page answers the page to
- * show, which the board follows, and a refused step raises a toast. Returns
+ * show, which the board follows, a hand edit answers its frame's hash, which
+ * keeps the selected element, and a refused step raises a toast. Returns
  * the function that removes them.
  */
 export function registerHistoryActions({
   store = liveStore,
   calls = structure,
   navigate = browserNavigate,
+  selection = selectionStore,
   notify = (refusal) =>
     // A refusal is the only record that the step was dropped, so it stays until dismissed.
     toast.add({ ...refusal, type: 'warning', timeout: 0 }),
 }: HistoryDeps = {}): () => void {
   const follow = (answer: StepAnswer) => {
     dropPending(answer.frames)
+    // An undone hand edit leaves the element where it was, so the selection
+    // takes the restored hash before the reload would drop it to the frame.
+    const held = selection.getState()
+    const hash = held.element ? answer.hashes?.[held.element.frame] : undefined
+    if (held.page && held.element && hash) {
+      selectElement(selection, held.page, { ...held.element, hash })
+    }
     if (answer.page === null) return
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
