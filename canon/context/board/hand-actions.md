@@ -23,7 +23,7 @@ Owns selection, the keys, and the menus on the canvas.
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection.
 
-An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index.
+An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
 ### `src/client/board/structure/`
 
@@ -62,4 +62,5 @@ Owns the edit history undo reads, in `src/server/history/`.
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, because that would write `display` into the frame, which is layout
 - A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
+- A press on a selected element's outline or corner marks does nothing, and the frame's corners take no resize while an element is selected, since their handles are hidden then
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one
