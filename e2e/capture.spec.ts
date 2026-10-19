@@ -10,6 +10,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../test/support/fixture-board'
+import { serveBoard } from './support/board-server'
 
 const CLI = resolve('dist/cli.js')
 const ROOT = resolve('test/fixtures/boards/capture')
@@ -329,5 +330,41 @@ test.describe('frame fit', () => {
 
     expect(exitCode).toBe(0)
     expect(layout().unplaced).toMatchObject({ height: 500 })
+  })
+})
+
+test.describe('the PNG route', () => {
+  let board: FixtureBoard
+
+  test.beforeEach(() => {
+    board = copyFixtureBoard('capture')
+  })
+
+  test.afterEach(() => {
+    board.cleanup()
+  })
+
+  test('route: answers a PNG at twice the frame box, and 422 for a missing font', async () => {
+    const server = await serveBoard(board.root)
+    try {
+      const image = await fetch(
+        `${server.url}/api/frames/png?ref=home/hero&theme=dark`,
+      )
+      const bytes = Buffer.from(await image.arrayBuffer())
+      const refused = await fetch(
+        `${server.url}/api/frames/png?ref=fonts/brand&theme=light`,
+      )
+
+      expect(image.status).toBe(200)
+      expect(image.headers.get('content-type')).toBe('image/png')
+      // A PNG's IHDR chunk holds its width and height at bytes 16 and 20.
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        800, 600,
+      ])
+      expect(refused.status).toBe(422)
+      expect((await refused.json()).error.code).toBe('font-missing')
+    } finally {
+      await server.stop()
+    }
   })
 })

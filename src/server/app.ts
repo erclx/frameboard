@@ -4,9 +4,11 @@ import { Hono, type MiddlewareHandler } from 'hono'
 import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
+import type { RenderFrame } from './capture/render'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { frameRoutes } from './routes/frames'
+import { pngRoutes } from './routes/png'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
@@ -46,6 +48,8 @@ export interface AppOptions {
   actions: BoardActions
   /** The single-use tickets the redeem route trades for the board's cookie. */
   tickets: Tickets
+  /** Renders a frame for `GET /api/frames/png`. */
+  renderFrame: RenderFrame
 }
 
 export function createApp({
@@ -54,6 +58,7 @@ export function createApp({
   port,
   actions,
   tickets,
+  renderFrame,
 }: AppOptions): Hono {
   const app = new Hono()
 
@@ -66,6 +71,7 @@ export function createApp({
   app.get('/api/health', (c) => c.json({ version, root }))
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions))
+  app.route('/', pngRoutes(root, renderFrame))
   app.route('/', frameRoutes(root))
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.

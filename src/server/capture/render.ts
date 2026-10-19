@@ -64,3 +64,76 @@ function setThemeOnLoad(theme: Theme): void {
     document.documentElement.style.colorScheme = theme
   })
 }
+
+/** Renders a frame to PNG bytes in a theme, as the server's PNG route asks. */
+export type RenderFrame = (
+  frame: { ref: string; box: { width: number; height: number } },
+  theme: Theme,
+) => Promise<Buffer>
+
+export interface WarmRenderer {
+  render: RenderFrame
+  /** Closes the browser, including one still launching, so no Chromium outlives the server. */
+  close: () => Promise<void>
+}
+
+/**
+ * One browser kept warm for a server, launched on the first render and
+ * reused after, rendering one frame at a time at twice its size. A launch
+ * that fails is not kept, so a browser installed later is found on the next
+ * render.
+ */
+export function createWarmRenderer({
+  baseUrl,
+  launch,
+}: {
+  /** Read per render, since the server's port is known only once listening. */
+  baseUrl: () => string
+  launch: () => Promise<Browser>
+}): WarmRenderer {
+  let browser: Promise<Browser> | null = null
+  let closed = false
+  // Renders run in turn, so a frame calling the route in a loop costs one tab.
+  let queue: Promise<unknown> = Promise.resolve()
+
+  const warm = (): Promise<Browser> => {
+    browser ??= launch().catch((error: unknown) => {
+      browser = null
+      throw error
+    })
+    return browser
+  }
+
+  const render: RenderFrame = (frame, theme) => {
+    const run = queue.then(async () => {
+      if (closed) throw new Error('The board server is closing.')
+      const opened = await openFrame(await warm(), {
+        baseUrl: baseUrl(),
+        ref: frame.ref,
+        box: frame.box,
+        theme,
+        scale: 2,
+      })
+      try {
+        return await opened.page.screenshot({
+          animations: 'disabled',
+          caret: 'hide',
+        })
+      } finally {
+        await opened.close()
+      }
+    })
+    queue = run.catch(() => {})
+    return run
+  }
+
+  return {
+    render,
+    close: async () => {
+      closed = true
+      const launched = browser
+      browser = null
+      await launched?.then((open) => open.close()).catch(() => {})
+    },
+  }
+}
