@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { Listener, Note } from '@/shared/records/notes'
 
@@ -195,5 +195,33 @@ describe('delivery', () => {
       [{ session: 'sess', tag: 'a', since: NOW.toISOString() }],
       [],
     ])
+  })
+
+  it('does not resend a note acked while a flush was reading the file', async () => {
+    const reads: ((queued: NoteDelivery[]) => void)[] = []
+    const delivered = new Set<string>()
+    const delivery = createDelivery({
+      pending: () => new Promise((resolve) => reads.push(resolve)),
+      markDelivered: async (id) => {
+        delivered.add(id)
+      },
+      onListeners: () => {},
+      now: () => NOW,
+    })
+    const queued = [{ note: rootNote('n_1', 'sess'), ref: 'r', line: 'n_1' }]
+    const inbox = follower()
+    delivery.register(inbox, 'sess', 'a')
+    await vi.waitFor(() => expect(reads).toHaveLength(1))
+    reads[0]?.(queued)
+    await vi.waitFor(() => expect(inbox.printed).toEqual(['n_1']))
+    const offered = delivery.offer()
+    await vi.waitFor(() => expect(reads).toHaveLength(2))
+
+    const acked = delivery.ack(inbox, 'n_1')
+    reads[1]?.(queued)
+    await Promise.all([offered, acked])
+
+    expect(inbox.printed).toEqual(['n_1'])
+    expect(delivered).toEqual(new Set(['n_1']))
   })
 })
