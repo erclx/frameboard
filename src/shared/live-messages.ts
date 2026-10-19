@@ -53,3 +53,5 @@ export type ServerMessage =
   | { type: 'listeners'; listeners: Listener[] }
   /** A queued note, to its session's follower alone, with the line it prints. */
   | { type: 'note'; note: Note; ref: string; line: string }
+  /** How many steps the board can undo and redo, after each hello's access and every change. */
+  | { type: 'history'; undo: number; redo: number }

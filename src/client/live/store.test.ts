@@ -10,6 +10,7 @@ import {
   receiveBoard,
   receiveDisconnect,
   receiveFindings,
+  receiveHistory,
   receiveListeners,
   receiveNotes,
   receiveReload,
@@ -202,5 +203,25 @@ describe('receiveDisconnect', () => {
       canWrite: false,
       connected: false,
     })
+  })
+
+  it('zeroes the history counts so Undo never stays lit', () => {
+    const store = createLiveStore()
+    receiveHistory(store, { undo: 3, redo: 1 })
+
+    receiveDisconnect(store)
+
+    expect(store.getState().history).toEqual({ undo: 0, redo: 0 })
+  })
+})
+
+describe('receiveHistory', () => {
+  it('starts at zero and follows the server counts', () => {
+    const store = createLiveStore()
+    expect(store.getState().history).toEqual({ undo: 0, redo: 0 })
+
+    receiveHistory(store, { undo: 2, redo: 0 })
+
+    expect(store.getState().history).toEqual({ undo: 2, redo: 0 })
   })
 })

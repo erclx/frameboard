@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { recordingJournal } from '../../../test/support/recording-journal'
 import { addProject, deleteProject, renameProject } from './projects'
 
 describe('projects', () => {
@@ -93,6 +94,32 @@ describe('projects', () => {
         deleted: 'marketing',
       })
       expect(existsSync(join(board.root, 'marketing'))).toBe(false)
+    })
+  })
+
+  describe('with a journal', () => {
+    it('add reports the project folder it created', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await addProject(board.root, 'brand', new Date(), { journal })
+
+      expect(calls).toEqual([{ kind: 'created', path: 'brand' }])
+    })
+
+    it('rename moves the folder through the journal', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await renameProject(board.root, 'webapp', 'site', { journal })
+
+      expect(calls).toEqual([{ kind: 'moved', from: 'webapp', to: 'site' }])
+    })
+
+    it('delete takes the folder out through the journal', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await deleteProject(board.root, 'webapp', { journal })
+
+      expect(calls).toEqual([{ kind: 'removed', path: 'webapp' }])
     })
   })
 })

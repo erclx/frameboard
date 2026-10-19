@@ -38,7 +38,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 
 The Claude Code plugin in `plugins/frameboard/` runs the checks after each agent write and hands the findings back in the same turn. Its monitor runs `inbox --follow` for the session, so a sent note reaches the agent at once. `frameboard docs` prints every command, flag, record shape, and exit code.
 
-Releases before 1.0 ship the board in stages. Editing by hand in the board arrives in a later 0.x release.
+In the board you move and resize frames, add, rename, reorder, delete, and search pages, and undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
 
 ## Requirements
 

@@ -9,6 +9,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { History } from '../history/stack'
 import { apiRoutes, type BoardActions } from './api'
 
 const TOKEN = 'a'.repeat(64)
@@ -21,11 +22,13 @@ describe('apiRoutes', () => {
   let board: FixtureBoard
   let shown: string[]
   let opens: number
+  let history: History
 
   beforeEach(() => {
     board = copyFixtureBoard('live')
     shown = []
     opens = 0
+    history = new History(board.root)
   })
 
   afterEach(() => {
@@ -55,6 +58,7 @@ describe('apiRoutes', () => {
       {
         sheets: (project) => tokenSheetPaths(board.root, project, null),
       },
+      history,
     )
   }
 
@@ -300,6 +304,48 @@ describe('apiRoutes', () => {
         ok: false,
         error: { code: 'stale-layout' },
       })
+    })
+
+    it('records one step a later undo reverts', async () => {
+      await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(history.counts()).toEqual({ undo: 1, redo: 0 })
+      expect(await history.undo()).toEqual({
+        page: null,
+        frames: ['studio/home/hero'],
+      })
+      expect(JSON.parse(layout()).frames.hero).toMatchObject({ x: 0 })
+    })
+
+    it('records nothing when it refuses a stale layout', async () => {
+      await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: { ...HERO, x: 7 } },
+      })
+
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('records nothing when it refuses a locked frame', async () => {
+      const page = JSON.parse(layout())
+      page.frames.hero.locked = true
+      writeFileSync(
+        join(board.root, 'studio/home/layout.json'),
+        JSON.stringify(page),
+      )
+
+      await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
     })
 
     it('answers 423 for a locked frame', async () => {

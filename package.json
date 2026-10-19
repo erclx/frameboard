@@ -58,6 +58,8 @@
     "readme-screenshot": "PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) && export PREVIEW_PORT && bash scripts/readme-screenshot.sh"
   },
   "devDependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "4.0.0",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "3.0.0",
     "@base-ui/react": "^1.9.0",
     "@bramus/specificity": "^2.4.3",
     "@commitlint/cli": "^21.2.3",

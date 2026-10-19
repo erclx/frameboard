@@ -59,7 +59,8 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 
 Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
 
-- Design holds a pages list with a search and a layers tree that hides and locks frames, and Theme holds the project's tokens read-only
+- Design holds a pages list with a search and a layers tree that hides and locks frames, split by a divider that remembers its height, and Theme holds the project's tokens read-only
+- A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged to a new place through `reorder.ts`, and `page-actions.ts` registers the `page.*` actions
 - Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, the name, and a `<type> · <size>` line, and a tile click copies `../assets/<name>` with each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
@@ -74,9 +75,15 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 
 Owns the right panel, under a header of the avatar and the zoom level.
 
+### `src/client/history/`
+
+Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, registered for the whole app since the home view undoes too, lit from the server's `history` counts and following the page an undo brings back.
+
 ### `src/client/live/`
 
 Owns the socket and the store every screen reads, and how an agent's changes show.
+
+- `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 
 - A frame an agent changed carries a purple dot on its label and layers row until selected or on screen a moment, never cleared by a timer
 - Page rows and the project card count the unseen frames, the update toast offers Show and Next, and `]` steps through the changes
@@ -121,6 +128,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface.
 - Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing
 - `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in the field `files`, behind `requireWriter` and a 64 MiB body limit that answers 413
 - `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
+- `structure.ts` answers `POST /api/<noun>/<verb>`, each body mirroring the CLI verb's flags and recording one step, and `history.ts` answers `POST /api/undo` and `/api/redo`, both sharing `envelope.ts` for their refusals
 
 ### Other folders
 

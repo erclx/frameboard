@@ -107,6 +107,15 @@ export async function writeBoxes(
   return true
 }
 
+/**
+ * Drops the pending boxes of the frames named, which an undo or redo just
+ * rewrote, so a frame draws the box the server holds rather than the one
+ * its hand edit left pending.
+ */
+export function dropPending(refs: readonly string[]): void {
+  setPending(refs, () => undefined)
+}
+
 /** Drops each pending box a board the server sends already carries, returning the function that stops. */
 export function followPending(live: LiveStore): () => void {
   return live.subscribe((state, previous) => {

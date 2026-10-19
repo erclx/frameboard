@@ -12,6 +12,8 @@ import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser } from './capture/browser'
 import { createWarmRenderer } from './capture/render'
+import { History } from './history/stack'
+import { emptyTrash } from './history/trash'
 import { type BoardFindings, createBoardFindings } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
 import { openBoard } from './live/open-board'
@@ -152,6 +154,11 @@ async function listen({
     onListeners: (listeners) => hub.broadcast({ type: 'listeners', listeners }),
     now: () => new Date(),
   })
+  // The history lives in memory, so a trash a previous server left holds nothing it can undo.
+  await emptyTrash(root)
+  const history = new History(root, (counts) =>
+    hub.broadcast({ type: 'history', ...counts }),
+  )
   const hub = createHub({
     tabs,
     port: boundPort,
@@ -160,6 +167,7 @@ async function listen({
     findings: () => inTurn(async () => findings.all()),
     notes: () => inTurn(() => boardView(root)),
     delivery,
+    history: () => history.counts(),
   })
   // The board pays the browser launch once, on its first PNG.
   const renderer = createWarmRenderer({
@@ -174,6 +182,7 @@ async function listen({
     port: boundPort,
     tickets,
     delivery,
+    history,
     renderFrame: renderer.render,
     actions: {
       access,
@@ -224,7 +233,12 @@ async function listen({
     },
     boardUrl,
     close: async () => {
-      await Promise.all([watcher.close(), hub.close(), renderer.close()])
+      await Promise.all([
+        watcher.close(),
+        hub.close(),
+        renderer.close(),
+        emptyTrash(root),
+      ])
       await new Promise<void>((done, fail) => {
         server.close((error) => (error ? fail(error) : done()))
         // A tab's keep-alive connection would hold close open indefinitely.

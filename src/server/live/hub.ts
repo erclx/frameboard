@@ -43,6 +43,8 @@ export interface HubOptions {
   notes?: () => Promise<Record<string, BoardNote[]>>
   /** The listener registry an inbox client registers with. */
   delivery?: Delivery
+  /** The undo history's counts, sent to a board client after its access. */
+  history?: () => { undo: number; redo: number }
 }
 
 /**
@@ -60,6 +62,7 @@ export function createHub({
   findings,
   notes,
   delivery,
+  history,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Map<WebSocket, boolean>()
@@ -107,6 +110,7 @@ export function createHub({
         .then(async (board) => {
           send(socket, { type: 'board', data: board })
           send(socket, { type: 'access', write: writer })
+          if (history) send(socket, { type: 'history', ...history() })
           if (notes) {
             for (const [page, list] of Object.entries(await notes())) {
               send(socket, { type: 'notes', page, notes: list })

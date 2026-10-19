@@ -183,7 +183,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(4)
+    await expect.poll(() => messages.length).toBe(5)
     hello = messages
     messages = []
   })
@@ -195,16 +195,18 @@ describe('startServer live socket', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board, whether it may write, the listeners, and then every frame checked on hello', () => {
+  it('sends the board, whether it may write, the history, the listeners, and then every frame checked on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
       'board',
       'access',
+      'history',
       'listeners',
       'findings',
     ])
     expect(hello[1]).toEqual({ type: 'access', write: false })
-    expect(hello[2]).toEqual({ type: 'listeners', listeners: [] })
-    expect(hello[3]).toMatchObject({
+    expect(hello[2]).toEqual({ type: 'history', undo: 0, redo: 0 })
+    expect(hello[3]).toEqual({ type: 'listeners', listeners: [] })
+    expect(hello[4]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
   })

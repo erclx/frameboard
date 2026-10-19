@@ -5,13 +5,16 @@ import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
+import type { History } from './history/stack'
 import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
+import { historyRoutes } from './routes/history'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
+import { structureRoutes } from './routes/structure'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
@@ -59,6 +62,8 @@ export interface AppOptions {
   tokens?: string
   /** The listener registry a note write offers its queue to. */
   delivery?: Delivery
+  /** The undo history the board's structure and box writes record into. */
+  history: History
 }
 
 export function createApp({
@@ -71,6 +76,7 @@ export function createApp({
   facesDir,
   tokens,
   delivery,
+  history,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -87,7 +93,9 @@ export function createApp({
   // another, and the sheet to report the one this server was started with.
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
-  app.route('/', apiRoutes(root, actions, frames.look))
+  app.route('/', apiRoutes(root, actions, frames.look, history))
+  app.route('/', structureRoutes(root, actions.access, history))
+  app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', assetsRoutes(root, actions.access))
   app.route('/', pngRoutes(root, renderFrame))

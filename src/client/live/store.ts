@@ -21,6 +21,8 @@ export interface LiveState {
   notes: Readonly<Record<string, readonly BoardNote[]>>
   /** The sessions following their inbox, which a note can be sent to. */
   listeners: readonly Listener[]
+  /** How many steps the server can undo and redo, zero until its `history` message. */
+  history: { undo: number; redo: number }
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -35,6 +37,7 @@ export function createLiveStore(): LiveStore {
     findings: {},
     notes: {},
     listeners: [],
+    history: { undo: 0, redo: 0 },
   }))
 }
 
@@ -76,10 +79,19 @@ export function receiveListeners(
   store.setState({ listeners })
 }
 
+/** Replaces the undo and redo counts. */
+export function receiveHistory(
+  store: LiveStore,
+  history: { undo: number; redo: number },
+): void {
+  store.setState({ history })
+}
+
 /**
- * Marks the socket closed. Writing, the listeners, and the notes all wait on
- * the next hello, which sends them afresh, so a page whose notes went while
- * the socket was down shows none rather than stale ones.
+ * Marks the socket closed. Writing, the listeners, the notes, and the
+ * history counts all wait on the next hello, which sends them afresh, so a
+ * page whose notes went while the socket was down shows none rather than
+ * stale ones, and Undo never offers a step a restarted server forgot.
  */
 export function receiveDisconnect(store: LiveStore): void {
   store.setState({
@@ -87,6 +99,7 @@ export function receiveDisconnect(store: LiveStore): void {
     canWrite: false,
     notes: {},
     listeners: [],
+    history: { undo: 0, redo: 0 },
   })
 }
 

@@ -43,6 +43,9 @@ export const EXIT_CODES = {
   // A drop into `assets/` that left a file out, or went over the body limit.
   'asset-type-refused': 2,
   'asset-too-large': 2,
+  // An undo or redo refused, writing nothing.
+  'undo-overtaken': 12,
+  'nothing-to-undo': 12,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
