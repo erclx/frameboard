@@ -1,25 +1,43 @@
 import { cn } from 'cn'
 import { type LucideIcon, Monitor, Smartphone, Tablet } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
+import { useFrameTheme } from '@/client/theme/store'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import type { StyleValue } from '@/shared/records/elements'
+import type { FrameRecord } from '@/shared/records/list'
+import type { TokenRow } from '@/shared/records/tokens'
 
 import { useAuthor } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
+import { useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
-import { useSelection } from '../selection'
+import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
+import { useTokenTable } from '../tokens'
 import { ArrangeSection } from './arrange-section'
+import { FillSection } from './element/fill'
+import { LayerSection } from './element/layer'
+import { ShadowSection } from './element/shadow'
+import { StrokeSection } from './element/stroke'
+import { fetchStyles, useFrameStyles, useLiveElement } from './element/styles'
+import { TextSection } from './element/text'
+import { TypographySection } from './element/typography'
+import { type ElementChange, writeElement } from './element/write'
 import { FrameSection } from './frame-section'
+import { SelectionColors } from './selection-colors'
 
 /**
  * The right panel: the header of the avatar and the zoom level, over the
- * Frame tool's presets while that tool is on, else the Frame section for
- * one selected frame, or the `N frames` section and Arrange for several,
- * and a hint while nothing is selected.
+ * Frame tool's presets while that tool is on, else the Frame section for one
+ * selected frame, or the `N frames` section and
+ * Arrange for several, each with the colors they use, and a hint while
+ * nothing is selected. An element selected inside the frame adds its
+ * sections under Frame, whose name row it hides.
  */
 export function InspectorPanel() {
   const name = useAuthor() ?? null
@@ -31,6 +49,7 @@ export function InspectorPanel() {
   const claims = useLive((state) => state.claims)
   const page = useSelection((state) => state.page)
   const refs = useSelection((state) => state.frames)
+  const element = useSelection((state) => state.element ?? null)
   const shown = useLive((state) =>
     state.board?.projects
       .flatMap((project) => project.pages)
@@ -39,10 +58,11 @@ export function InspectorPanel() {
   const frames = usePendingFrames(
     shown?.frames.filter((frame) => refs.includes(frame.ref)) ?? [],
   )
+  const inFrame = element && frames.length === 1 ? element : null
   return (
     <aside
       aria-label="Inspector"
-      className="flex h-full min-w-0 flex-col bg-sidebar text-body text-sidebar-foreground"
+      className="flex h-full min-w-0 flex-col overflow-y-auto bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
         <span className="flex items-center">
@@ -55,8 +75,13 @@ export function InspectorPanel() {
         <PresetSection />
       ) : page && frames.length > 0 ? (
         <>
-          <FrameSection page={page} frames={frames} />
+          <FrameSection page={page} frames={frames} named={!inFrame} />
           {frames.length > 1 ? <ArrangeSection /> : null}
+          {inFrame ? (
+            <ElementSections page={page} element={inFrame} />
+          ) : (
+            <FramesColors frames={frames} />
+          )}
         </>
       ) : (
         <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
@@ -73,6 +98,153 @@ export function InspectorPanel() {
         </div>
       )}
     </aside>
+  )
+}
+
+/** The project's color tokens and its `--shadow*` tokens, empty until the table reads. */
+function useProjectTokens(frame: string): {
+  colors: TokenRow[]
+  shadows: TokenRow[]
+} {
+  const table = useTokenTable(frame.split('/')[0] ?? '')
+  const tokens = table?.tokens ?? []
+  return {
+    colors: tokens.filter((row) => row.group === 'color'),
+    shadows: tokens.filter((row) => row.name.startsWith('--shadow')),
+  }
+}
+
+interface ElementSectionsProps {
+  page: string
+  element: ElementKey
+}
+
+/**
+ * The selected element's sections in the order `inspector/text` draws them,
+ * read from the live element and from the frame's static cascade, each
+ * control disabled while the tab may not write. Nothing draws until the
+ * frame's live page shows the element, which a placeholder never does.
+ */
+function ElementSections({ page, element }: ElementSectionsProps) {
+  const canWrite = useLive((state) => state.canWrite)
+  const theme = useFrameTheme(element.frame)
+  const live = useLiveElement(element)
+  const styles = useFrameStyles(element.frame, element.index, element.hash)
+  const tree = useElementTree(element.frame)
+  const { colors, shadows } = useProjectTokens(element.frame)
+  const row =
+    tree?.status === 'ready'
+      ? tree.tree.elements.find(({ index }) => index === element.index)
+      : undefined
+
+  if (!live) {
+    return (
+      <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+        The element’s details show once its frame is on screen.
+      </p>
+    )
+  }
+  const disabled = !canWrite
+  const write = (change: ElementChange) => writeElement(page, element, change)
+  const own = styles?.element
+  return (
+    <>
+      <LayerSection
+        name={row?.name ?? ''}
+        opacity={live.opacity}
+        radius={live.radius}
+        disabled={disabled}
+        write={write}
+      />
+      {live.holdsText ? (
+        <TypographySection
+          fontSize={live.fontSize}
+          fontWeight={live.fontWeight}
+          textAlign={live.textAlign}
+          disabled={disabled}
+          write={write}
+        />
+      ) : null}
+      <FillSection
+        textOnly={live.textOnly}
+        color={own?.color ?? null}
+        backgroundColor={own?.backgroundColor ?? null}
+        tokens={colors}
+        theme={theme}
+        disabled={disabled}
+        write={write}
+      />
+      {live.textOnly ? (
+        <TextSection text={live.text} disabled={disabled} write={write} />
+      ) : null}
+      <StrokeSection
+        bordered={live.bordered}
+        borderColor={own?.borderColor ?? null}
+        tokens={colors}
+        theme={theme}
+        disabled={disabled}
+        write={write}
+      />
+      <ShadowSection
+        boxShadow={own?.boxShadow ?? null}
+        shadows={shadows}
+        theme={theme}
+        disabled={disabled}
+        write={write}
+      />
+      <SelectionColors
+        colors={styles?.colors ?? []}
+        tokens={colors}
+        theme={theme}
+      />
+    </>
+  )
+}
+
+/**
+ * Selection colors for one frame or several, merged across them once each,
+ * read again whenever one of them reloads.
+ */
+function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
+  const [first] = frames
+  const theme = useFrameTheme(first?.ref ?? '')
+  const { colors: tokens } = useProjectTokens(first?.ref ?? '')
+  const refs = frames.map((frame) => frame.ref).join('\n')
+  const version = useLive((state) =>
+    refs
+      .split('\n')
+      .map((ref) => state.reloads[ref] ?? 0)
+      .join(':'),
+  )
+  const [held, setHeld] = useState<{
+    refs: string
+    colors: StyleValue[]
+  } | null>(null)
+
+  useEffect(() => {
+    let current = true
+    void Promise.all(
+      refs.split('\n').map((ref) => fetchStyles(ref).catch(() => null)),
+    ).then((answers) => {
+      if (!current) return
+      const merged = new Map<string, StyleValue>()
+      for (const color of answers.flatMap((answer) => answer?.colors ?? [])) {
+        const key = `${color.token ?? color.value.toLowerCase()}:${color.percent}`
+        if (!merged.has(key)) merged.set(key, color)
+      }
+      setHeld({ refs, colors: [...merged.values()] })
+    })
+    return () => {
+      current = false
+    }
+  }, [refs, version])
+
+  return (
+    <SelectionColors
+      colors={held?.refs === refs ? held.colors : []}
+      tokens={tokens}
+      theme={theme}
+    />
   )
 }
 
