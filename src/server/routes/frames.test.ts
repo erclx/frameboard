@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { tokenSheetPaths } from '@/server/checks/tokens'
+import { contentHash } from '@/server/edit/address'
 
 import {
   copyFixtureBoard,
@@ -78,13 +79,29 @@ describe('frameRoutes', () => {
       const response = await get('/frames/studio/home/hero.html')
 
       const served = await response.text()
-      const head = /<style data-frameboard>.*?<\/script>/s.exec(served)?.[0]
+      const head = /<style data-frameboard[^>]*>.*?<\/script>/s.exec(
+        served,
+      )?.[0]
       expect(head).toBeDefined()
       expect(served.indexOf(head ?? '')).toBe(
         served.indexOf('<head>') + '<head>'.length,
       )
       expect(served.replace(head ?? '', '')).toBe(
         frameFile('studio/home/hero.html'),
+      )
+    })
+
+    it.each([
+      ['the file as it is', ''],
+      ['a file opening with a BOM', '\uFEFF'],
+    ])('stamps the content hash of %s', async (_case, prefix) => {
+      const path = join(board.root, 'studio/home/hero.html')
+      writeFileSync(path, prefix + frameFile('studio/home/hero.html'))
+
+      const served = await (await get('/frames/studio/home/hero.html')).text()
+
+      expect(/data-hash="([0-9a-f]{64})"/.exec(served)?.[1]).toBe(
+        contentHash(readFileSync(path)),
       )
     })
 

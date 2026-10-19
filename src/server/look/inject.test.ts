@@ -11,6 +11,7 @@ type Document = DefaultTreeAdapterMap['document']
 type Element = DefaultTreeAdapterMap['element']
 
 const HEAD = '<style data-frameboard></style>'
+const HASH = 'a'.repeat(64)
 
 function inject(html: string): string {
   return new TextDecoder().decode(
@@ -134,10 +135,13 @@ describe('injectHead', () => {
 
 describe('the injected theme script', () => {
   function load(query: string) {
-    return new JSDOM(`<!doctype html><head>${frameHead([])}</head><p>x</p>`, {
-      url: `http://127.0.0.1/frames/site/home/hero.html${query}`,
-      runScripts: 'dangerously',
-    }).window.document
+    return new JSDOM(
+      `<!doctype html><head>${frameHead([], HASH)}</head><p>x</p>`,
+      {
+        url: `http://127.0.0.1/frames/site/home/hero.html${query}`,
+        runScripts: 'dangerously',
+      },
+    ).window.document
   }
 
   it('shows the root in the theme the query names, with its class', () => {
@@ -165,11 +169,26 @@ describe('the injected theme script', () => {
 
 describe('frameHead', () => {
   it('imports the sheets in the order given, ahead of the theme script', () => {
-    const head = frameHead(['/a.css', '/b.css'])
+    const head = frameHead(['/a.css', '/b.css'], HASH)
 
     expect(head).toMatch(
-      /^<style data-frameboard>@import url\("\/a\.css"\);@import url\("\/b\.css"\);<\/style><script data-frameboard>/,
+      /^<style data-frameboard data-hash="[0-9a-f]{64}">@import url\("\/a\.css"\);@import url\("\/b\.css"\);<\/style><script data-frameboard>/,
     )
+  })
+})
+
+describe('the rendered hash', () => {
+  it('stamps the hash it is given on the stylesheet, which the theme script leaves', () => {
+    const document = new JSDOM(
+      `<!doctype html><head>${frameHead([], HASH)}</head><p>x</p>`,
+      { runScripts: 'dangerously' },
+    ).window.document
+
+    expect(
+      document
+        .querySelector('style[data-frameboard]')
+        ?.getAttribute('data-hash'),
+    ).toBe(HASH)
   })
 })
 

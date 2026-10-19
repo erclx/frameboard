@@ -1,6 +1,11 @@
 import { type DefaultTreeAdapterMap, parse } from 'parse5'
 
-import { LOOK_MARKER, setFrameTheme, THEME_QUERY } from '@/shared/theme'
+import {
+  LOOK_MARKER,
+  RENDERED_HASH,
+  setFrameTheme,
+  THEME_QUERY,
+} from '@/shared/theme'
 
 type ChildNode = DefaultTreeAdapterMap['childNode']
 type Element = DefaultTreeAdapterMap['element']
@@ -18,11 +23,13 @@ const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme
  * What the frame route puts first in a frame's `head`: one marked stylesheet
  * importing `sheets` in the order given, so a later sheet overrides an
  * earlier one and the frame's own sheets override them all, then the theme
- * script.
+ * script. The stylesheet carries `hash`, the content hash of the bytes
+ * served, as its one other attribute, since a further injected element
+ * would shift every live index that forgets to skip it.
  */
-export function frameHead(sheets: readonly string[]): string {
+export function frameHead(sheets: readonly string[], hash: string): string {
   const imports = sheets.map((url) => `@import url(${JSON.stringify(url)});`)
-  return `<style ${LOOK_MARKER}>${imports.join('')}</style><script ${LOOK_MARKER}>${THEME_SCRIPT}</script>`
+  return `<style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}">${imports.join('')}</style><script ${LOOK_MARKER}>${THEME_SCRIPT}</script>`
 }
 
 /**

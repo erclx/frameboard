@@ -14,6 +14,12 @@ export const THEME_QUERY = 'theme'
  */
 export const LOOK_MARKER = 'data-frameboard'
 
+/**
+ * The attribute on the injected style holding the SHA-256 hex of the bytes
+ * the route served, so a live frame names the exact file an edit addresses.
+ */
+export const RENDERED_HASH = 'data-hash'
+
 export function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
 }

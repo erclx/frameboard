@@ -1,4 +1,4 @@
-import { LOOK_MARKER } from '@/shared/theme'
+import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 
 /**
  * A live frame's elements in `querySelectorAll('*')` order, skipping the ones
@@ -23,4 +23,16 @@ export function elementIndex(
 /** The element at a file index in a live frame, or null when the frame holds none there. */
 export function elementAt(document: Document, index: number): Element | null {
   return frameElements(document)[index] ?? null
+}
+
+/**
+ * The content hash of the file a live frame rendered, read off the stamp the
+ * frame route put on its injected style, or null for a document with none.
+ */
+export function renderedHash(document: Document): string | null {
+  return (
+    document
+      .querySelector(`style[${LOOK_MARKER}]`)
+      ?.getAttribute(RENDERED_HASH) ?? null
+  )
 }

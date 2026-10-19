@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 
 import { ASSETS_FOLDER, LAYOUT_FILE } from '@/server/board/scan'
 import type { TokenSheetPaths } from '@/server/checks/tokens'
+import { contentHash } from '@/server/edit/address'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
@@ -76,7 +77,13 @@ export function frameRoutes(root: string, look: FrameLook): Hono {
       parts.length === 3 &&
       extname(file).toLowerCase() === FRAME_EXTENSION
     const body = isFrame
-      ? injectHead(bytes, frameHead(sheetUrls(project, look.sheets(project))))
+      ? injectHead(
+          bytes,
+          frameHead(
+            sheetUrls(project, look.sheets(project)),
+            contentHash(bytes),
+          ),
+        )
       : bytes
 
     return c.body(body, 200, {
