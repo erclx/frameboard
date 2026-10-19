@@ -1,5 +1,9 @@
 import type { FrameSizePreset } from '@/shared/frame-sizes'
-import type { FrameRecord, PageRecord } from '@/shared/records/list'
+import type {
+  FrameRecord,
+  PageRecord,
+  ProjectRecord,
+} from '@/shared/records/list'
 
 import { writeBoard } from './write'
 
@@ -16,7 +20,7 @@ export interface StepAnswer {
 
 /**
  * The board's structure writes, one per route, each body mirroring the CLI
- * verb's flags. A page ref is `<project>/<page>` and a frame ref
+ * verb's flags. A project ref is its name, a page ref `<project>/<page>`, and a frame ref
  * `<project>/<page>/<frame>`. `send` stands in for
  * `fetch`, as a test's server does.
  */
@@ -24,6 +28,14 @@ export function createStructure(send: typeof fetch = fetch) {
   const post = <T>(path: string, body: unknown) =>
     writeBoard<T>(path, body, 'POST', send)
   return {
+    addProject: (name?: string) =>
+      post<ProjectRecord>('/api/project/add', { name }),
+    renameProject: (ref: string, name: string) =>
+      post<ProjectRecord>('/api/project/rename', { ref, name }),
+    duplicateProject: (ref: string) =>
+      post<ProjectRecord>('/api/project/duplicate', { ref }),
+    deleteProject: (ref: string) =>
+      post<{ deleted: string }>('/api/project/delete', { ref }),
     addPage: (ref: string, index?: number) =>
       post<PageRecord>('/api/page/add', { ref, index }),
     duplicatePage: (ref: string) =>

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -326,6 +326,106 @@ describe('structureRoutes', () => {
 
       expect(response.status).toBe(401)
       expect(existsSync(frameFile('hero'))).toBe(true)
+    })
+  })
+
+  describe('project routes', () => {
+    it('adds the next free untitled project on each call', async () => {
+      const first = await post('/api/project/add', {})
+      const second = await post('/api/project/add', {})
+
+      expect(await first.json()).toMatchObject({
+        ok: true,
+        data: { name: 'untitled' },
+      })
+      expect(await second.json()).toMatchObject({
+        ok: true,
+        data: { name: 'untitled-2' },
+      })
+      expect(history.counts()).toEqual({ undo: 2, redo: 0 })
+    })
+
+    it('adds a project by name and undoes it away, staying on home', async () => {
+      await post('/api/project/add', { name: 'brand' })
+
+      const answer = await history.undo()
+
+      expect(answer.page).toBeNull()
+      expect(existsSync(join(board.root, 'brand'))).toBe(false)
+    })
+
+    it('renames a project and undoes it back on disk', async () => {
+      const response = await post('/api/project/rename', {
+        ref: 'studio',
+        name: 'atelier',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { name: 'atelier' },
+      })
+
+      await history.undo()
+
+      expect(existsSync(join(board.root, 'studio/home/hero.html'))).toBe(true)
+      expect(existsSync(join(board.root, 'atelier'))).toBe(false)
+    })
+
+    it('renames a project to its own name in another case', async () => {
+      const response = await post('/api/project/rename', {
+        ref: 'studio',
+        name: 'Studio',
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { name: 'Studio' },
+      })
+    })
+
+    it('duplicates a project and undoes the copy away', async () => {
+      const response = await post('/api/project/duplicate', { ref: 'studio' })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { name: 'studio-2' },
+      })
+
+      await history.undo()
+
+      expect(existsSync(join(board.root, 'studio-2'))).toBe(false)
+    })
+
+    it('deletes a project and undoes it back with its assets byte for byte', async () => {
+      const asset = readFileSync(join(board.root, 'studio/assets/dot.svg'))
+
+      const response = await post('/api/project/delete', { ref: 'studio' })
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { deleted: 'studio' },
+      })
+      expect(existsSync(join(board.root, 'studio'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(join(board.root, 'studio/assets/dot.svg'))).toEqual(
+        asset,
+      )
+    })
+
+    it('refuses to undo a delete once another project took the name', async () => {
+      await post('/api/project/delete', { ref: 'studio' })
+      mkdirSync(join(board.root, 'studio/agent-page'), { recursive: true })
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(existsSync(join(board.root, 'studio/agent-page'))).toBe(true)
+      expect(existsSync(join(board.root, 'studio/home'))).toBe(false)
+    })
+
+    it('refuses a project write with no writer', async () => {
+      const response = await post('/api/project/delete', { ref: 'studio' }, {})
+
+      expect(response.status).toBe(401)
+      expect(existsSync(join(board.root, 'studio'))).toBe(true)
     })
   })
 })

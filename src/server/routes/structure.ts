@@ -20,11 +20,18 @@ import {
   renamePage,
 } from '@/server/board/pages'
 import { type HeldFrame, holdFrames, pasteFrames } from '@/server/board/paste'
+import {
+  addProject,
+  deleteProject,
+  duplicateProject,
+  renameProject,
+} from '@/server/board/projects'
 import { resolvePageRef } from '@/server/board/refs'
-import { readPageOrder } from '@/server/board/scan'
+import { listProjects, readPageOrder } from '@/server/board/scan'
 import type { History, Step } from '@/server/history/stack'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import { nextFreeName } from '@/shared/names'
 
 import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal, parseBody } from './envelope'
@@ -55,6 +62,11 @@ const frameFlagSchema = z.object({
   flag: z.enum(['hidden', 'locked']),
   on: z.boolean(),
 })
+const projectAddSchema = z.object({ name: name.optional() })
+const projectSchema = z.object({ ref })
+
+/** What New project names a project when the developer has not named it yet. */
+const UNTITLED = 'untitled'
 
 /**
  * The board's structure writes, each behind `requireWriter`, its body
@@ -72,6 +84,7 @@ export function structureRoutes(
   app.use('/api/page/*', requireWriter(access))
   app.use('/api/frame/*', requireWriter(access))
   app.use('/api/clipboard/*', requireWriter(access))
+  app.use('/api/project/*', requireWriter(access))
   const cwd = root
 
   /** Runs one verb with a fresh journal and records what it reported. */
@@ -302,6 +315,47 @@ export function structureRoutes(
       (pasted) => onFrames(pasted.map((frame) => frame.ref)),
     )
     return c.json({ ok: true, data: frames })
+  })
+
+  /** A project write leaves the board on home, so it follows no page or frame. */
+  const onHome = async () => ({ page: null, frames: [] })
+
+  app.post('/api/project/add', async (c) => {
+    const body = await parseBody(c.req.raw, projectAddSchema)
+    const projectName =
+      body.name ?? nextFreeName(UNTITLED, await listProjects(root))
+    const project = await recorded(
+      (journal) => addProject(root, projectName, new Date(), { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: project })
+  })
+
+  app.post('/api/project/rename', async (c) => {
+    const body = await parseBody(c.req.raw, renameSchema)
+    const project = await recorded(
+      (journal) => renameProject(root, body.ref, body.name, { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: project })
+  })
+
+  app.post('/api/project/duplicate', async (c) => {
+    const body = await parseBody(c.req.raw, projectSchema)
+    const project = await recorded(
+      (journal) => duplicateProject(root, body.ref, new Date(), { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: project })
+  })
+
+  app.post('/api/project/delete', async (c) => {
+    const body = await parseBody(c.req.raw, projectSchema)
+    const result = await recorded(
+      (journal) => deleteProject(root, body.ref, { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: result })
   })
 
   app.onError(answerRefusal)
