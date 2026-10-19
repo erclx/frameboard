@@ -466,4 +466,161 @@ describe('LeftPanel', () => {
       ).toBeInTheDocument()
     })
   })
+
+  describe('frame rows', () => {
+    /** Three frames as the server sends them, bottom of the stack first. */
+    const STACK = () =>
+      project([
+        page('home', [
+          frame('back', { order: 0 }),
+          frame('middle', { order: 1 }),
+          frame('front', { order: 2 }),
+        ]),
+      ])
+
+    it('lists the top of the stack first', () => {
+      renderPanel(STACK())
+
+      expect(
+        within(screen.getByRole('region', { name: 'Layers' }))
+          .getAllByRole('button', { name: /^Select / })
+          .map((row) => row.textContent),
+      ).toEqual(['front', 'middle', 'back'])
+    })
+
+    it('selects a frame from its row, and Shift-click adds another', async () => {
+      const user = userEvent.setup()
+      renderPanel(STACK())
+
+      await user.click(screen.getByRole('button', { name: 'Select front' }))
+      await user.keyboard('{Shift>}')
+      await user.click(screen.getByRole('button', { name: 'Select back' }))
+      await user.keyboard('{/Shift}')
+
+      expect(selectionStore.getState()).toMatchObject({
+        page: 'studio/home',
+        frames: ['studio/home/front', 'studio/home/back'],
+      })
+    })
+
+    it('selects a locked frame from its row', async () => {
+      renderPanel(project([page('home', [frame('hero', { locked: true })])]))
+
+      await userEvent.click(screen.getByRole('button', { name: 'Select hero' }))
+
+      expect(selectionStore.getState().frames).toEqual([HERO])
+    })
+
+    it('leaves a hidden frame unselected', async () => {
+      renderPanel(project([page('home', [frame('hero', { hidden: true })])]))
+
+      await userEvent.click(screen.getByRole('button', { name: 'Select hero' }))
+
+      expect(selectionStore.getState().frames).toEqual([])
+    })
+
+    it('renames a frame on a double-click', async () => {
+      const { sent, calls } = server(frame('banner'))
+      renderPanel(project([page('home', [frame('hero')])]), 'home', undefined, {
+        calls,
+      })
+
+      await userEvent.dblClick(
+        screen.getByRole('button', { name: 'Select hero' }),
+      )
+      await userEvent.keyboard('banner{Enter}')
+
+      expect(sent).toEqual([
+        { path: '/api/frame/rename', body: { ref: HERO, name: 'banner' } },
+      ])
+    })
+
+    it('hides a frame from its eye and locks one from its lock', async () => {
+      const { sent, calls } = server([])
+      renderPanel(project([page('home', [frame('hero')])]), 'home', undefined, {
+        calls,
+      })
+
+      await userEvent.click(screen.getByRole('button', { name: 'Hide hero' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Lock hero' }))
+
+      expect(sent).toEqual([
+        {
+          path: '/api/frame/flag',
+          body: { refs: [HERO], flag: 'hidden', on: true },
+        },
+        {
+          path: '/api/frame/flag',
+          body: { refs: [HERO], flag: 'locked', on: true },
+        },
+      ])
+    })
+
+    it('shows a hidden frame again from its eye', async () => {
+      const { sent, calls } = server([])
+      renderPanel(
+        project([page('home', [frame('hero', { hidden: true })])]),
+        'home',
+        undefined,
+        { calls },
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show hero' }))
+
+      expect(sent[0]?.body).toEqual({ refs: [HERO], flag: 'hidden', on: false })
+    })
+
+    it('restacks a row dropped above the top one to the top of the stack', async () => {
+      const { sent, calls } = server(frame('back'))
+      renderPanel(STACK(), 'home', undefined, { calls })
+      const row = (name: string) =>
+        screen.getByRole('listitem', { name }) as HTMLElement
+
+      await dragOnto(row('back'), row('front'), 'top')
+
+      expect(sent).toEqual([
+        {
+          path: '/api/frame/order',
+          body: { ref: 'studio/home/back', index: 2 },
+        },
+      ])
+    })
+  })
 })
+
+const nextFrame = () =>
+  new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+
+/** Drags one row onto an edge of another through the native events the drag library listens to. */
+async function dragOnto(
+  source: HTMLElement,
+  target: HTMLElement,
+  edge: 'top' | 'bottom',
+): Promise<void> {
+  const dataTransfer = new DataTransfer()
+  const from = source.getBoundingClientRect()
+  const to = target.getBoundingClientRect()
+  const at = {
+    clientX: to.left + to.width / 2,
+    clientY: edge === 'top' ? to.top + 2 : to.bottom - 2,
+  }
+  const fire = (element: HTMLElement, type: string, point: object) =>
+    element.dispatchEvent(
+      new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+        ...point,
+      }),
+    )
+  fire(source, 'dragstart', {
+    clientX: from.left + 4,
+    clientY: from.top + 4,
+  })
+  await nextFrame()
+  fire(target, 'dragenter', at)
+  fire(target, 'dragover', at)
+  await nextFrame()
+  fire(target, 'drop', at)
+  await nextFrame()
+}

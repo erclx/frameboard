@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { type Action, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
+import { createStructure } from '@/client/live/structure'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
@@ -113,6 +114,27 @@ describe('InspectorPanel', () => {
       '188',
     ])
     expect(screen.queryByRole('heading', { name: 'Arrange' })).toBeNull()
+  })
+
+  it('renames the frame from its name and keeps it selected', async () => {
+    const sent: unknown[] = []
+    const calls = createStructure(async (_path, init) => {
+      sent.push(JSON.parse(String(init?.body)))
+      return Response.json({
+        ok: true,
+        data: { ...SWATCHES, ref: 'studio/home/palette', name: 'palette' },
+      })
+    })
+    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+    render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Rename frame Color swatches' }),
+    )
+    await userEvent.keyboard('palette{Enter}')
+
+    expect(sent).toEqual([{ ref: SWATCHES.ref, name: 'palette' }])
+    expect(selectionStore.getState().frames).toEqual(['studio/home/palette'])
   })
 
   it('reads Mixed where several frames differ, and adds Arrange', () => {

@@ -141,6 +141,18 @@ describe('Frame', () => {
     expect(container.querySelector('[data-placeholder]')).not.toBeNull()
   })
 
+  it('marks a locked frame on its label', () => {
+    const { getByRole } = render(
+      <Frame
+        frame={{ ...frame('checkout'), locked: true }}
+        live={false}
+        version={0}
+      />,
+    )
+
+    expect(getByRole('img', { name: 'Locked' })).toBeInTheDocument()
+  })
+
   it('names the frame above it', () => {
     const { getByTitle } = render(
       <Frame frame={frame('checkout')} live={false} version={0} />,

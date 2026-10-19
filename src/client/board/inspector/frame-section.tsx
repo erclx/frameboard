@@ -1,11 +1,14 @@
 import { type KeyboardEvent, useState } from 'react'
 
+import { RenameField } from '@/client/components/rename-field'
 import { Input } from '@/client/components/ui/input'
 import { useLive } from '@/client/live/store'
+import type { Structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
 import type { Box } from '../geometry/box'
 import { writeBoxes } from '../geometry/write'
+import { renameFrame } from '../structure/actions'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -22,11 +25,13 @@ interface FrameSectionProps {
   /** The page they sit on, which the write names. */
   page: string
   write?: typeof writeBoxes
+  /** The server calls a rename makes, the board's own when absent. */
+  calls?: Structure
 }
 
 /**
- * The selection's place and size. One frame shows its name, read only until
- * rename ships, and several show `N frames` with `Mixed` where their values
+ * The selection's place and size. One frame shows its name, which a click
+ * renames in place, and several show `N frames` with `Mixed` where their values
  * differ. A field commits on Enter or blur through the same write the
  * gestures use, setting that value on every selected frame.
  */
@@ -34,8 +39,10 @@ export function FrameSection({
   frames,
   page,
   write = writeBoxes,
+  calls,
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [frame] = frames
   if (!frame) return null
   const several = frames.length > 1
@@ -61,10 +68,28 @@ export function FrameSection({
       <h2 id="inspector-frame" className="mb-2 text-xs font-semibold">
         {several ? `${frames.length} frames` : 'Frame'}
       </h2>
-      {several ? null : (
-        <p className="mb-1.5 flex h-[26px] items-center truncate rounded-md bg-input px-2 text-xs">
+      {several ? null : renaming === frame.ref ? (
+        <div className="mb-1.5 flex h-[26px] items-center pl-1.5">
+          <RenameField
+            name={frame.name}
+            label={`Rename frame ${frame.name}`}
+            onCommit={(name) => {
+              setRenaming(null)
+              void renameFrame(frame, name, calls)
+            }}
+            onCancel={() => setRenaming(null)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Rename frame ${frame.name}`}
+          disabled={!canWrite}
+          onClick={() => setRenaming(frame.ref)}
+          className="mb-1.5 block h-[26px] w-full truncate rounded-md bg-input px-2 text-left text-xs outline-none hover:ring-1 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring/50 disabled:hover:ring-0"
+        >
           {frame.name}
-        </p>
+        </button>
       )}
       <div className="grid grid-cols-2 gap-1.5">
         {FIELDS.map(({ key, letter, label }) => (

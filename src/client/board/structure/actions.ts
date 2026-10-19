@@ -51,6 +51,32 @@ export function stopFrameRename(): void {
   renamingStore.setState({ ref: null })
 }
 
+/**
+ * Renames a frame through the server, carrying the selection over to the
+ * new ref when the frame was selected, so the rename never drops it.
+ */
+export async function renameFrame(
+  frame: FrameRecord,
+  name: string,
+  calls: Structure = structure,
+  selection: SelectionStore = selectionStore,
+): Promise<void> {
+  // Read before the call, since the board the rename sends can prune the old ref first.
+  const { page, frames } = selection.getState()
+  try {
+    const renamed = await calls.renameFrame(frame.ref, name)
+    if (page !== null && frames.includes(frame.ref)) {
+      select(
+        selection,
+        page,
+        frames.map((ref) => (ref === frame.ref ? renamed.ref : ref)),
+      )
+    }
+  } catch (error) {
+    reportRefusal(`Couldn't rename ${frame.name}`)(error)
+  }
+}
+
 export interface StructureContext {
   /** The page the canvas shows. */
   page: () => string

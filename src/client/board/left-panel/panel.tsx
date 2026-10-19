@@ -136,7 +136,7 @@ export function LeftPanel({
               />
             </ResizableHandle>
             <ResizablePanel id="layers" minSize={PAGES_MIN}>
-              <LayersList frames={frames} />
+              <LayersList frames={frames} calls={calls} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </TabsContent>
