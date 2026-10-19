@@ -18,7 +18,8 @@ export function UnseenCount({
       role="img"
       aria-label={`${count} unseen ${count === 1 ? 'change' : 'changes'}`}
       data-unseen-count
-      className={cn('shrink-0 text-label text-claim', className)}
+      // `cn` reads `text-label` as a color and drops it beside `text-claim`, so the step is spelled out.
+      className={cn('shrink-0 text-[11px] font-semibold text-claim', className)}
     >
       {count}
     </span>

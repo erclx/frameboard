@@ -162,6 +162,18 @@ describe('Projects', () => {
     ).toBeInTheDocument()
   })
 
+  it('draws the count at 11px and 600 weight, as the page rows do', () => {
+    markUnseen('studio/landing/hero')
+
+    renderProjects('grid')
+
+    const count = getComputedStyle(
+      screen.getByRole('img', { name: '1 unseen change' }),
+    )
+    expect(count.fontSize).toBe('11px')
+    expect(count.fontWeight).toBe('600')
+  })
+
   it("counts a row's unseen frames in its name cell", () => {
     markUnseen('studio/landing/hero')
 
