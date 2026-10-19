@@ -38,6 +38,8 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 
 Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board. The agent answers in the note's thread through `notes reply` and closes it with `notes done`, and the notes stay in each page's `notes.json`.
 
+An agent runs `editing` on a frame before rewriting it. The board then outlines the frame and tags it with the agent and how long it has held it, and a second session that tries to claim it is told it is taken. A claim lapses five minutes after the agent last ran `editing`, and a note sent from a claimed frame goes to the session holding it.
+
 The Claude Code plugin in `plugins/frameboard/` runs the static checks after each agent write and hands the findings back in the same turn. Its monitor runs `inbox --follow` for the session, so a sent note reaches the agent at once. `frameboard docs` prints every command, flag, record shape, and exit code.
 
 In the board you move and resize frames, add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool. The layers panel selects, renames, restacks, hides, and locks frames, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects. Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
