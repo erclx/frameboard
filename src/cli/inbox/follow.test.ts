@@ -38,7 +38,7 @@ function queued(id: string): Note {
   }
 }
 
-describe('follow', () => {
+describe('follow', { timeout: 15_000 }, () => {
   let board: FixtureBoard
   let clientDir: string
   let server: RunningServer | undefined

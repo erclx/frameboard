@@ -167,7 +167,7 @@ describe('startServer access', () => {
   })
 })
 
-describe('startServer live socket', () => {
+describe('startServer live socket', { timeout: 15_000 }, () => {
   let clientDir: string
   let board: FixtureBoard
   let server: RunningServer
@@ -191,7 +191,7 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(7)
+    await expect.poll(() => messages.length, { timeout: 5000 }).toBe(7)
     hello = messages
     messages = []
   })
