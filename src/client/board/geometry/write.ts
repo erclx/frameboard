@@ -5,6 +5,7 @@ import type { LiveStore } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
+import { whenFree } from '../claims/waiting'
 import { type Box, sameBox } from './box'
 
 /**
@@ -68,8 +69,17 @@ export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
 }
 
 /**
+ * The box each frame's waiting edit started from, by ref. A gesture on a
+ * waiting frame starts from its pending box, which the file does not hold,
+ * so the edit replacing the waiting one sends this box as `expected`.
+ */
+const waitingFrom = new Map<string, { box: Box; owner: object }>()
+
+/**
  * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
- * the edit started from. The new boxes draw at once, and a refusal drops
+ * the edit started from. The new boxes draw at once and hold while another
+ * session holds a frame, the edit waiting until the claim drops and a newer
+ * edit of the same frame replacing it. A refusal or a cancelled wait drops
  * them so the board shows the stored ones. Resolves whether the write landed.
  */
 export async function writeBoxes(
@@ -92,19 +102,64 @@ export async function writeBoxes(
       () => undefined,
     )
   }
+  const started: Record<string, Box> = { ...expected }
+  for (const ref of refs) {
+    const from = waitingFrom.get(ref)?.box
+    if (from) started[ref] = from
+  }
+  const owner = {}
+  const hold = () => {
+    for (const ref of refs) {
+      const box = started[ref]
+      if (box) waitingFrom.set(ref, { box, owner })
+    }
+  }
+  const release = () => {
+    for (const ref of refs) {
+      if (waitingFrom.get(ref)?.owner === owner) waitingFrom.delete(ref)
+    }
+  }
+  hold()
   try {
-    await writeBoard(
-      '/api/frames/boxes',
-      { page, boxes: byName(boxes), expected: byName(expected) },
-      'POST',
-      send,
+    await whenFree(
+      refs,
+      labelOf(boxes, started),
+      async () => {
+        release()
+        try {
+          return await writeBoard(
+            '/api/frames/boxes',
+            { page, boxes: byName(boxes), expected: byName(started) },
+            'POST',
+            send,
+          )
+        } catch (error) {
+          // A claim refusal waits again, and an edit replacing it starts from here too.
+          hold()
+          throw error
+        }
+      },
+      { replace: 'boxes' },
     )
   } catch {
+    release()
     drop()
     return false
   }
   setTimeout(drop, LANDED_MS)
   return true
+}
+
+/** A box edit reads as a move unless a frame's size changed. */
+function labelOf(
+  boxes: Readonly<Record<string, Box>>,
+  started: Readonly<Record<string, Box>>,
+): 'move' | 'resize' {
+  const resized = Object.entries(boxes).some(([ref, box]) => {
+    const from = started[ref]
+    return from && (from.width !== box.width || from.height !== box.height)
+  })
+  return resized ? 'resize' : 'move'
 }
 
 /**
