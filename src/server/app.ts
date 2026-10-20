@@ -5,6 +5,7 @@ import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
+import type { ThumbnailStore } from './capture/thumbnails'
 import type { History } from './history/stack'
 import type { SelectionHolder } from './live/selection'
 import type { Delivery } from './notes/delivery'
@@ -20,6 +21,7 @@ import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
 import { structureRoutes } from './routes/structure'
+import { thumbnailRoutes } from './routes/thumbnails'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
@@ -73,6 +75,8 @@ export interface AppOptions {
   selection: SelectionHolder
   /** The warm checker `POST /api/checks` reads, absent where nothing runs one. */
   checks?: BrowserChecks
+  /** The home view's captures `GET /api/thumbnails` reads, absent where nothing renders them. */
+  thumbnails?: ThumbnailStore
 }
 
 export function createApp({
@@ -88,6 +92,7 @@ export function createApp({
   history,
   selection,
   checks,
+  thumbnails,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -114,6 +119,7 @@ export function createApp({
   app.route('/', editRoutes(root, actions.access, history))
   app.route('/', pngRoutes(root, renderFrame))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
+  if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
