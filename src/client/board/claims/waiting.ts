@@ -86,15 +86,24 @@ export function useWaiting(): readonly WaitingEdit[] {
 export function afterClaims(
   refs: readonly string[],
   label: EditLabel,
-  { live = liveStore, replace }: WaitOptions = {},
+  options: WaitOptions = {},
 ): Promise<void> {
+  return waitIfHeld(refs, label, options) ?? Promise.resolve()
+}
+
+/** `afterClaims`, answering null rather than a resolved promise when nothing is held, so a send can start in the same turn. */
+function waitIfHeld(
+  refs: readonly string[],
+  label: EditLabel,
+  { live = liveStore, replace }: WaitOptions,
+): Promise<void> | null {
   if (replace) dropReplaced(refs, replace)
   const holding = () =>
     Object.values(live.getState().claims).filter((claim) =>
       refs.some((ref) => claimCovers(ref, claim.frame)),
     )
   const held = holding()
-  if (held.length === 0) return Promise.resolve()
+  if (held.length === 0) return null
   return wait({
     label,
     refs,
@@ -159,7 +168,8 @@ export async function whenFree<T>(
   send: () => Promise<T>,
   options: WaitOptions = {},
 ): Promise<T> {
-  await afterClaims(refs, label, options)
+  const held = waitIfHeld(refs, label, options)
+  if (held) await held
   for (;;) {
     try {
       return await send()
