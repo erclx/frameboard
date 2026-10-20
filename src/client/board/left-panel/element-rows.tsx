@@ -10,6 +10,7 @@ import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { useElementTree } from '../element/tree'
+import { ElementRowMenu } from '../menus/layers'
 import { selectElement, selectionStore } from '../selection'
 
 /** How far each level of nesting moves a row in, past the frame row's own 8 px. */
@@ -66,61 +67,74 @@ export function ElementRows({
         const isSelected = element.index === selected
         const Icon = element.textOnly ? Type : RectangleHorizontal
         return (
-          <li
+          <ElementRowMenu
             key={element.index}
-            className={cn(
-              'flex h-[26px] items-center gap-1.5 pr-2 text-foreground',
-              isSelected
-                ? 'bg-primary/26'
-                : frameSelected
-                  ? 'bg-primary/13'
-                  : selected !== null
-                    ? 'bg-primary/7'
-                    : 'hover:bg-accent',
-            )}
-            style={{ paddingLeft: FRAME_INSET + depth * INDENT }}
-          >
-            {parents.has(element.index) ? (
-              <button
-                type="button"
-                aria-label={`${open ? 'Hide' : 'Show'} what ${element.name} holds`}
-                aria-expanded={open}
-                onClick={() => toggle(element.index)}
-                className="grid w-2.5 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                {open ? (
-                  <ChevronDown aria-hidden className="size-2.5" />
-                ) : (
-                  <ChevronRight aria-hidden className="size-2.5" />
-                )}
-              </button>
-            ) : (
-              <span aria-hidden className="w-2.5 shrink-0" />
-            )}
-            <button
-              type="button"
-              aria-current={isSelected ? 'true' : undefined}
-              onClick={() =>
-                selectElement(selectionStore, page, {
-                  frame: frame.ref,
-                  index: element.index,
-                  hash: tree.hash,
-                })
-              }
-              className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
-            >
-              <Icon
-                aria-hidden
+            page={page}
+            element={{
+              frame: frame.ref,
+              index: element.index,
+              hash: tree.hash,
+            }}
+            trigger={
+              <li
                 className={cn(
-                  'size-[13px] shrink-0',
-                  isSelected ? 'text-primary' : 'text-muted-foreground',
+                  'flex h-[26px] items-center gap-1.5 pr-2 text-foreground',
+                  isSelected
+                    ? 'bg-primary/26'
+                    : frameSelected
+                      ? 'bg-primary/13'
+                      : selected !== null
+                        ? 'bg-primary/7'
+                        : 'hover:bg-accent',
                 )}
-              />
-              <span className="min-w-0 flex-1 truncate" title={element.name}>
-                {element.name}
-              </span>
-            </button>
-          </li>
+                style={{ paddingLeft: FRAME_INSET + depth * INDENT }}
+              >
+                {parents.has(element.index) ? (
+                  <button
+                    type="button"
+                    aria-label={`${open ? 'Hide' : 'Show'} what ${element.name} holds`}
+                    aria-expanded={open}
+                    onClick={() => toggle(element.index)}
+                    className="grid w-2.5 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {open ? (
+                      <ChevronDown aria-hidden className="size-2.5" />
+                    ) : (
+                      <ChevronRight aria-hidden className="size-2.5" />
+                    )}
+                  </button>
+                ) : (
+                  <span aria-hidden className="w-2.5 shrink-0" />
+                )}
+                <button
+                  type="button"
+                  aria-current={isSelected ? 'true' : undefined}
+                  onClick={() =>
+                    selectElement(selectionStore, page, {
+                      frame: frame.ref,
+                      index: element.index,
+                      hash: tree.hash,
+                    })
+                  }
+                  className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                >
+                  <Icon
+                    aria-hidden
+                    className={cn(
+                      'size-[13px] shrink-0',
+                      isSelected ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                  />
+                  <span
+                    className="min-w-0 flex-1 truncate"
+                    title={element.name}
+                  >
+                    {element.name}
+                  </span>
+                </button>
+              </li>
+            }
+          />
         )
       })}
     </ul>

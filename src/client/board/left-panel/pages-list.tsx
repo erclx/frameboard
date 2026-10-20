@@ -13,6 +13,7 @@ import { boardUrl } from '@/shared/board-urls'
 import type { PageRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
+import { PageMenu } from '../menus/page'
 import { DropLine } from './drop-line'
 import {
   deletePage,
@@ -211,43 +212,52 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
           />
         </div>
       ) : (
-        <Link
-          href={boardUrl(page.project, page.name)}
-          aria-current={page.name === current ? 'page' : undefined}
-          draggable={false}
-          onDoubleClick={() => {
-            if (canWrite) startRename(page.ref)
+        <PageMenu
+          onOpen={() => {
+            if (page.name !== current) {
+              context.navigate(boardUrl(page.project, page.name))
+            }
           }}
-          onKeyDown={(event) => {
-            if (!canWrite) return
-            if (event.key === 'F2') startRename(page.ref)
-            else if (event.key === 'Delete' || event.key === 'Backspace') {
-              void deletePage(page, pages, context)
-            } else return
-            event.preventDefault()
-            // Delete here means the page, so the board's frame delete never hears it.
-            event.stopPropagation()
-          }}
-          className={cn(
-            ROW,
-            'outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset aria-[current=page]:bg-accent',
-          )}
-        >
-          {icon}
-          <span className="min-w-0 flex-1 truncate" title={page.name}>
-            <Highlighted name={page.name} needle={needle} />
-          </span>
-          <UnseenCount count={unseen} />
-          {page.layoutError ? (
-            <TriangleAlert
-              role="img"
-              aria-label="Layout does not read"
-              className="size-3.5 shrink-0 text-note"
+          trigger={
+            <Link
+              href={boardUrl(page.project, page.name)}
+              aria-current={page.name === current ? 'page' : undefined}
+              draggable={false}
+              onDoubleClick={() => {
+                if (canWrite) startRename(page.ref)
+              }}
+              onKeyDown={(event) => {
+                if (!canWrite) return
+                if (event.key === 'F2') startRename(page.ref)
+                else if (event.key === 'Delete' || event.key === 'Backspace') {
+                  void deletePage(page, pages, context)
+                } else return
+                event.preventDefault()
+                // Delete here means the page, so the board's frame delete never hears it.
+                event.stopPropagation()
+              }}
+              className={cn(
+                ROW,
+                'outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset aria-[current=page]:bg-accent',
+              )}
             >
-              <title>Layout does not read</title>
-            </TriangleAlert>
-          ) : null}
-        </Link>
+              {icon}
+              <span className="min-w-0 flex-1 truncate" title={page.name}>
+                <Highlighted name={page.name} needle={needle} />
+              </span>
+              <UnseenCount count={unseen} />
+              {page.layoutError ? (
+                <TriangleAlert
+                  role="img"
+                  aria-label="Layout does not read"
+                  className="size-3.5 shrink-0 text-note"
+                >
+                  <title>Layout does not read</title>
+                </TriangleAlert>
+              ) : null}
+            </Link>
+          }
+        />
       )}
     </li>
   )

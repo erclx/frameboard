@@ -31,6 +31,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { UnseenDot } from '../changes/dot'
 import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
+import { FrameRowMenu } from '../menus/layers'
 import { modeStore } from '../mode'
 import {
   type ElementKey,
@@ -251,93 +252,99 @@ function FrameRow({
       <DropLine edge={edge} />
       {/* Clips the frame's band of rows to one rounded shape, leaving the drop line outside it. */}
       <div className="flex flex-col overflow-hidden rounded-md">
-        <div
-          className={cn(
-            'group flex h-[26px] items-center gap-1.5 pr-1 pl-2 text-foreground',
-            frame.hidden && 'text-faint',
-            tint ?? 'hover:bg-accent',
-          )}
-        >
-          {chevron}
-          {renaming ? (
-            <>
-              {icon}
-              <RenameField
-                name={frame.name}
-                label={`Rename frame ${frame.name}`}
-                onCommit={(name) => {
-                  stopFrameRename()
-                  void renameFrame(frame, name, calls)
-                }}
-                onCancel={stopFrameRename}
-              />
-            </>
-          ) : (
-            <button
-              type="button"
-              aria-label={`Select ${frame.name}`}
-              onClick={choose}
-              onDoubleClick={() => {
-                if (canWrite) startFrameRename(frame.ref, 'layers')
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== 'F2' || !canWrite) return
-                event.preventDefault()
-                startFrameRename(frame.ref, 'layers')
-              }}
-              className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+        <FrameRowMenu
+          frame={frame}
+          page={pageOf(frame)}
+          trigger={
+            <div
+              className={cn(
+                'group flex h-[26px] items-center gap-1.5 pr-1 pl-2 text-foreground',
+                frame.hidden && 'text-faint',
+                tint ?? 'hover:bg-accent',
+              )}
             >
-              {icon}
-              <span className="min-w-0 flex-1 truncate">{frame.name}</span>
-            </button>
-          )}
-          {claim ? (
-            <span
-              role="img"
-              aria-label={`${claim.tag} is editing`}
-              className="ml-auto size-[7px] shrink-0 rounded-full bg-claim shadow-[0_0_0_3px_color-mix(in_srgb,var(--claim)_25%,transparent)]"
-            />
-          ) : unseen ? (
-            <UnseenDot />
-          ) : null}
-          <button
-            type="button"
-            aria-label={`${frame.hidden ? 'Show' : 'Hide'} ${frame.name}`}
-            aria-pressed={frame.hidden}
-            disabled={!canWrite}
-            onClick={() => void flag('hidden', !frame.hidden)}
-            className={cn(
-              ROW_BUTTON,
-              frame.hidden
-                ? 'text-faint'
-                : cn('text-muted-foreground', ON_HOVER),
-            )}
-          >
-            {frame.hidden ? (
-              <EyeOff aria-hidden className="size-[13px]" />
-            ) : (
-              <Eye aria-hidden className="size-[13px]" />
-            )}
-          </button>
-          <button
-            type="button"
-            aria-label={`${frame.locked ? 'Unlock' : 'Lock'} ${frame.name}`}
-            aria-pressed={frame.locked}
-            disabled={!canWrite}
-            onClick={() => void flag('locked', !frame.locked)}
-            className={cn(
-              ROW_BUTTON,
-              'text-muted-foreground',
-              !frame.locked && ON_HOVER,
-            )}
-          >
-            {frame.locked ? (
-              <Lock aria-hidden className="size-[13px]" />
-            ) : (
-              <LockOpen aria-hidden className="size-[13px]" />
-            )}
-          </button>
-        </div>
+              {chevron}
+              {renaming ? (
+                <>
+                  {icon}
+                  <RenameField
+                    name={frame.name}
+                    label={`Rename frame ${frame.name}`}
+                    onCommit={(name) => {
+                      stopFrameRename()
+                      void renameFrame(frame, name, calls)
+                    }}
+                    onCancel={stopFrameRename}
+                  />
+                </>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Select ${frame.name}`}
+                  onClick={choose}
+                  onDoubleClick={() => {
+                    if (canWrite) startFrameRename(frame.ref, 'layers')
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'F2' || !canWrite) return
+                    event.preventDefault()
+                    startFrameRename(frame.ref, 'layers')
+                  }}
+                  className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+                >
+                  {icon}
+                  <span className="min-w-0 flex-1 truncate">{frame.name}</span>
+                </button>
+              )}
+              {claim ? (
+                <span
+                  role="img"
+                  aria-label={`${claim.tag} is editing`}
+                  className="ml-auto size-[7px] shrink-0 rounded-full bg-claim shadow-[0_0_0_3px_color-mix(in_srgb,var(--claim)_25%,transparent)]"
+                />
+              ) : unseen ? (
+                <UnseenDot />
+              ) : null}
+              <button
+                type="button"
+                aria-label={`${frame.hidden ? 'Show' : 'Hide'} ${frame.name}`}
+                aria-pressed={frame.hidden}
+                disabled={!canWrite}
+                onClick={() => void flag('hidden', !frame.hidden)}
+                className={cn(
+                  ROW_BUTTON,
+                  frame.hidden
+                    ? 'text-faint'
+                    : cn('text-muted-foreground', ON_HOVER),
+                )}
+              >
+                {frame.hidden ? (
+                  <EyeOff aria-hidden className="size-[13px]" />
+                ) : (
+                  <Eye aria-hidden className="size-[13px]" />
+                )}
+              </button>
+              <button
+                type="button"
+                aria-label={`${frame.locked ? 'Unlock' : 'Lock'} ${frame.name}`}
+                aria-pressed={frame.locked}
+                disabled={!canWrite}
+                onClick={() => void flag('locked', !frame.locked)}
+                className={cn(
+                  ROW_BUTTON,
+                  'text-muted-foreground',
+                  !frame.locked && ON_HOVER,
+                )}
+              >
+                {frame.locked ? (
+                  <Lock aria-hidden className="size-[13px]" />
+                ) : (
+                  <LockOpen aria-hidden className="size-[13px]" />
+                )}
+              </button>
+            </div>
+          }
+        />
         {children}
       </div>
     </li>

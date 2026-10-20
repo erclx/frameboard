@@ -104,7 +104,7 @@ export function CanvasMenu({
       />
       <ContextMenuContent className={target ? WIDTH[target.kind] : undefined}>
         {target?.kind === 'frame' ? <FrameItems /> : null}
-        {target?.kind === 'element' ? <ElementItems /> : null}
+        {target?.kind === 'element' ? <ElementItems noteable /> : null}
         {target?.kind === 'canvas' ? <CanvasItems /> : null}
       </ContextMenuContent>
     </ContextMenu>
@@ -151,7 +151,11 @@ const ELEMENT_IDS = [
   'frame.copyPng',
 ] as const
 
-function ElementItems() {
+/**
+ * The Element menu's items. A menu opened off the canvas, as a layers row's,
+ * leaves out Add a note here, which needs the point the canvas was clicked at.
+ */
+export function ElementItems({ noteable }: { noteable: boolean }) {
   const [note, noteTool, parent, zoom, copyPng] = useActions(ELEMENT_IDS)
   const element = useSelection((state) => state.element ?? null)
   const tree = element ? treeOf(element.frame) : null
@@ -161,9 +165,11 @@ function ElementItems() {
   return (
     <ContextMenuGroup>
       <MenuTitle>Element</MenuTitle>
-      <MenuRow action={note} binding={noteTool?.keys?.[0]}>
-        Add a note here
-      </MenuRow>
+      {noteable ? (
+        <MenuRow action={note} binding={noteTool?.keys?.[0]}>
+          Add a note here
+        </MenuRow>
+      ) : null}
       <MenuRow action={parent}>
         {atTop ? 'Select frame' : 'Select parent'}
       </MenuRow>
