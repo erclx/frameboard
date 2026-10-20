@@ -314,7 +314,9 @@ function Status({ answer, project, shown, filter, onShowAll }: StatusProps) {
   if (shown === 0 && filter !== 'all') {
     return (
       <p className={cn(line, 'text-muted-foreground')}>
-        No {NOUNS[filter]} matches.{' '}
+        {truncated
+          ? `The first ${hits.length} matches hold no ${NOUNS[filter]}. Type more to narrow them.`
+          : `No ${NOUNS[filter]} matches.`}{' '}
         <button
           type="button"
           onClick={onShowAll}

@@ -167,6 +167,17 @@ describe('FindPanel', () => {
     expect(screen.getAllByRole('option')).toHaveLength(1)
   })
 
+  it('says a chip with none in a capped list may hold more past the cut', async () => {
+    renderFind({ hits: [hit('text', 'home')], truncated: true })
+    const user = await search('started')
+
+    await user.click(screen.getByRole('button', { name: 'Frames' }))
+
+    expect(
+      screen.getByText(/The first 1 matches hold no frame/),
+    ).toBeInTheDocument()
+  })
+
   it('says the list is cut when the search capped its hits', async () => {
     renderFind({ truncated: true })
 
