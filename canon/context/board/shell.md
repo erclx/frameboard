@@ -7,7 +7,7 @@ description: Home view, panels, toolbar, canvas, notes, Edit and Play, agent cha
 
 ## Overview
 
-Owns the browser app around the frames, being the home view, the board's panels, toolbar, and canvas, notes, the command palette, and how an agent's changes and claims show. Its look, colors, and type belong to `canon/DESIGN.md`.
+Owns the browser app around the frames, being the home view, the board's panels, toolbar, and canvas, notes, the command palette, and how an agent's changes and claims show. Its look, colors, and type belong to `canon/DESIGN.md`. The server folders behind it are in `canon/context/board/server.md`.
 
 ## Layout
 
@@ -130,47 +130,6 @@ Owns the app shell and the controls around the canvas.
 - Hide UI, through Cmd+\ or a button, hides both panels and keeps the project name, toolbar, avatar, and zoom level
 - Cmd+K jumps to any project, page, or frame and runs board actions such as new page, theme toggle, and zoom, while inspector edits stay in the inspector
 
-### `src/server/live/`
-
-Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports.
-
-- A frame's own `.html`, or a temp file it is saved through such as `hero.html.swap`, reloads that frame, and any other page-folder file reloads the page
-- A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing
-- Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
-- The server checks every frame at start and rechecks each batch's frames
-- `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
-
-`selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
-
-### `src/server/claims/`
-
-Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together.
-
-- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`
-- A renewal keeps `claimedAt` and moves only `expiresAt`
-- A batch naming the claims file sends `claims` alone, with no rescan or browser check
-- A timer armed at start and on every change rebroadcasts at the soonest expiry
-- A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
-
-### `src/server/access/`
-
-Owns who may write, apart from the route modules.
-
-- `key.ts` loads the board key from `.run/board-key.json`, `tickets.ts` mints single-use tickets valid for two minutes, and `guard.ts` holds `isWriter` and `requireWriter`
-- A writer is the address file's token as a bearer, or the board's cookie carrying the key sent with the board's own `Origin`, and the live socket's upgrade asks the same rule
-- A route that changes the board folder or drives an agent mounts `requireWriter`, and a GET that only reads takes no guard
-
-### `src/server/routes/`
-
-Owns the HTTP route modules `app.ts` mounts, one per surface.
-
-- `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
-- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing
-- `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in the field `files`, behind `requireWriter` and a 64 MiB body limit that answers 413
-- `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
-- `structure.ts` answers `POST /api/<noun>/<verb>`, each body mirroring the CLI verb's flags and recording one step, and `history.ts` answers `POST /api/undo` and `/api/redo`, both sharing `envelope.ts` for their refusals
-- `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
-
 ### Other folders
 
 The favicon files sit beside the app.
@@ -180,8 +139,6 @@ The favicon files sit beside the app.
 ## Gotchas
 
 - A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
-- A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
-- The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
 - Edit covers the frames with a hit layer so a press reaches the selection gestures rather than a frame's page, and a primary drag pans only under the Hand tool. Play lifts the layer, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
