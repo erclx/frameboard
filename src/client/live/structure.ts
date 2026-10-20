@@ -1,3 +1,4 @@
+import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import type { FrameSizePreset } from '@/shared/frame-sizes'
 import type {
   FrameRecord,
@@ -23,10 +24,20 @@ export interface StepAnswer {
  * verb's flags. A project ref is its name, a page ref `<project>/<page>`, and a frame ref
  * `<project>/<page>/<frame>`. `send` stands in for
  * `fetch`, as a test's server does.
+ *
+ * A rename, delete, or cut of a page or frame another session holds waits
+ * until the claim drops. A project rename or delete is refused instead,
+ * since the home view has no frame to show a waiting card beside.
  */
 export function createStructure(send: typeof fetch = fetch) {
   const post = <T>(path: string, body: unknown) =>
     writeBoard<T>(path, body, 'POST', send)
+  const held = <T>(
+    refs: readonly string[],
+    label: EditLabel,
+    path: string,
+    body: unknown,
+  ) => whenFree(refs, label, () => post<T>(path, body))
   return {
     addProject: (name?: string) =>
       post<ProjectRecord>('/api/project/add', { name }),
@@ -41,27 +52,27 @@ export function createStructure(send: typeof fetch = fetch) {
     duplicatePage: (ref: string) =>
       post<PageRecord>('/api/page/duplicate', { ref }),
     renamePage: (ref: string, name: string) =>
-      post<PageRecord>('/api/page/rename', { ref, name }),
+      held<PageRecord>([ref], 'rename', '/api/page/rename', { ref, name }),
     movePage: (ref: string, index: number) =>
       post<PageRecord>('/api/page/move', { ref, index }),
     deletePage: (ref: string) =>
-      post<{ deleted: string }>('/api/page/delete', { ref }),
+      held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
     addFrame: (ref: string, size: FrameSizePreset, x: number, y: number) =>
       post<FrameRecord>('/api/frame/add', { ref, size, x, y }),
     duplicateFrames: (refs: readonly string[]) =>
       post<FrameRecord[]>('/api/frame/duplicate', { refs }),
     renameFrame: (ref: string, name: string) =>
-      post<FrameRecord>('/api/frame/rename', { ref, name }),
+      held<FrameRecord>([ref], 'rename', '/api/frame/rename', { ref, name }),
     orderFrame: (ref: string, index: number) =>
       post<FrameRecord>('/api/frame/order', { ref, index }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
       post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
     deleteFrames: (refs: readonly string[]) =>
-      post<string[]>('/api/frame/delete', { refs }),
+      held<string[]>(refs, 'delete', '/api/frame/delete', { refs }),
     copyFrames: (refs: readonly string[]) =>
       post<{ held: number }>('/api/clipboard/copy', { refs }),
     cutFrames: (refs: readonly string[]) =>
-      post<{ held: number }>('/api/clipboard/cut', { refs }),
+      held<{ held: number }>(refs, 'cut', '/api/clipboard/cut', { refs }),
     pasteFrames: (page: string) =>
       post<FrameRecord[]>('/api/clipboard/paste', { ref: page }),
     undo: () => post<StepAnswer>('/api/undo', {}),
