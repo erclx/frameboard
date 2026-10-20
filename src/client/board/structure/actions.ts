@@ -12,11 +12,13 @@ import { useEffect, useRef } from 'react'
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import { keyLabel } from '@/client/actions/keys'
 import {
   type Action,
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
@@ -137,7 +139,17 @@ export function structureActions(context: StructureContext): Action[] {
     )
   const named = (frames: readonly FrameRecord[]) =>
     frames.length === 1 ? (frames[0]?.name ?? '') : `${frames.length} frames`
-  const hold = (held: { held: number }) => clipboard.setState(held)
+  /** Nothing on the canvas shows a copy or a cut, so each toasts once the server holds it. */
+  const hold =
+    (verb: string, frames: readonly FrameRecord[]) =>
+    (held: { held: number }) => {
+      clipboard.setState(held)
+      toast.add({
+        title: `${verb} ${named(frames)}`,
+        description: `Paste with ${keyLabel('$mod+KeyV')} on any page.`,
+        type: 'success',
+      })
+    }
 
   return [
     {
@@ -233,7 +245,10 @@ export function structureActions(context: StructureContext): Action[] {
         const frames = chosen()
         calls
           .copyFrames(refs())
-          .then(hold, reportRefusal(`Couldn't copy ${named(frames)}`))
+          .then(
+            hold('Copied', frames),
+            reportRefusal(`Couldn't copy ${named(frames)}`),
+          )
       },
     },
     {
@@ -247,7 +262,10 @@ export function structureActions(context: StructureContext): Action[] {
         const frames = chosen()
         calls
           .cutFrames(refs())
-          .then(hold, reportRefusal(`Couldn't cut ${named(frames)}`))
+          .then(
+            hold('Cut', frames),
+            reportRefusal(`Couldn't cut ${named(frames)}`),
+          )
       },
     },
     {

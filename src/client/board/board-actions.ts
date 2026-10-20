@@ -15,12 +15,14 @@ import {
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { frameTheme } from '@/client/theme/store'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { copyFrameImage } from './copy-image'
 import { withPending } from './geometry/write'
+import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { selectionStore } from './selection'
 import { canvasView } from './view'
@@ -198,8 +200,17 @@ function boardActions(): Action[] {
       run: () => {
         const [frame] = selectedFrames()
         if (!frame) return
-        // The board says nothing on either outcome until the kit has a toast.
-        copyFrameImage(frame.ref, frameTheme(frame.ref)).catch(() => {})
+        const theme = frameTheme(frame.ref)
+        // Nothing on the canvas shows a copy, so its outcome toasts.
+        copyFrameImage(frame.ref, theme).then(
+          () =>
+            toast.add({
+              title: `Copied ${frame.name}`,
+              description: `PNG on the clipboard, in the ${theme} theme.`,
+              type: 'success',
+            }),
+          reportRefusal(`Couldn't copy ${frame.name}`),
+        )
       },
     },
     zoom({

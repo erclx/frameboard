@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { Action } from '@/client/actions/registry'
+import { Toaster } from '@/client/components/ui/toast'
 import { createLiveStore } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
@@ -235,5 +238,55 @@ describe('structureActions', () => {
 
     expect(sent).toEqual([['pasteFrames', PAGE]])
     expect(selection.getState().frames).toEqual(copies.map((copy) => copy.ref))
+  })
+
+  describe('toasts', () => {
+    afterEach(cleanup)
+
+    it('names the one frame a copy holds', async () => {
+      render(createElement(Toaster))
+      const { selection, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      action('frame.copy').run()
+
+      expect(await screen.findByText('Copied a')).toBeVisible()
+    })
+
+    it('counts the frames a cut holds', async () => {
+      render(createElement(Toaster))
+      const { selection, action } = setup()
+      select(selection, PAGE, [A.ref, B.ref])
+
+      action('frame.cut').run()
+
+      expect(await screen.findByText('Cut 2 frames')).toBeVisible()
+    })
+
+    it('raises the refusal alone when the server refuses a copy', async () => {
+      render(createElement(Toaster))
+      const selection = createSelectionStore()
+      const live = createLiveStore()
+      live.setState({ canWrite: true })
+      const copy = structureActions({
+        page: () => PAGE,
+        frames: () => [A],
+        selection,
+        mode: createModeStore(1280),
+        live,
+        clipboard: createClipboardStore(),
+        calls: {
+          copyFrames: async () => {
+            throw new Error('The board has no frame a.')
+          },
+        } as unknown as Structure,
+      }).find((candidate) => candidate.id === 'frame.copy')
+      select(selection, PAGE, [A.ref])
+
+      copy?.run()
+
+      expect(await screen.findByText("Couldn't copy a")).toBeVisible()
+      expect(screen.queryByText('Copied a')).toBeNull()
+    })
   })
 })

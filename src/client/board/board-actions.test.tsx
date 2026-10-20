@@ -1,7 +1,8 @@
-import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { render, renderHook, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { findAction, isEnabled, useActions } from '@/client/actions/registry'
+import { Toaster } from '@/client/components/ui/toast'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
@@ -119,6 +120,50 @@ describe('useBoardActions', () => {
     const two = isEnabled(board.action('frame.copyPng'))
 
     expect([one, two]).toEqual([true, false])
+  })
+
+  describe('copying a frame as a PNG', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('raises a success toast naming the frame and the theme shown', async () => {
+      // No board serves the image here, so the pending value refuses unread.
+      vi.spyOn(navigator.clipboard, 'write').mockImplementation(
+        async (items) => {
+          await items[0]?.getType('image/png').catch(() => null)
+        },
+      )
+      render(<Toaster />)
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      board.action('frame.copyPng').run()
+
+      expect(await screen.findByText('Copied hero')).toBeVisible()
+      expect(
+        screen.getByText('PNG on the clipboard, in the light theme.'),
+      ).toBeVisible()
+    })
+
+    it('raises an error toast when the clipboard refuses the write', async () => {
+      vi.spyOn(navigator.clipboard, 'write').mockImplementation(
+        async (items) => {
+          await items[0]?.getType('image/png').catch(() => null)
+          throw new Error('Write permission denied.')
+        },
+      )
+      render(<Toaster />)
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      board.action('frame.copyPng').run()
+
+      expect(await screen.findByText("Couldn't copy hero")).toBeVisible()
+      expect(screen.queryByText('Copied hero')).toBeNull()
+    })
   })
 
   it('zooms to nothing in Play', () => {
