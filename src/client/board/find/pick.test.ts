@@ -80,6 +80,30 @@ describe('pickHit', () => {
     })
   })
 
+  it('selects the frame alone when its live iframe shows other bytes than the hit read', () => {
+    cleanups.push(attachCanvas(CANVAS))
+
+    pickHit('studio', hit(), selectionStore, () => 'b'.repeat(64))
+
+    expect(selectionStore.getState()).toEqual({
+      page: 'studio/onboarding',
+      frames: ['studio/onboarding/welcome'],
+      element: null,
+    })
+  })
+
+  it('selects the element when the live iframe shows the bytes the hit read', () => {
+    cleanups.push(attachCanvas(CANVAS))
+
+    pickHit('studio', hit(), selectionStore, () => HASH)
+
+    expect(selectionStore.getState().element).toEqual({
+      frame: 'studio/onboarding/welcome',
+      index: 5,
+      hash: HASH,
+    })
+  })
+
   it('selects a frame hit’s frame alone', () => {
     cleanups.push(attachCanvas(CANVAS))
 
