@@ -5,11 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
-import { liveStore, receiveBoard } from '@/client/live/store'
+import { liveStore, receiveBoard, receiveClaims } from '@/client/live/store'
 import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
+import { dropWaiting } from '../../claims/waiting'
 import {
   clear,
   createSelectionStore,
@@ -595,6 +596,155 @@ describe('writeElement', () => {
       },
     ])
     expect(selection.getState().element).toEqual(KEY)
+  })
+
+  describe('on a frame another session holds', () => {
+    const OPACITY: ElementChange = {
+      kind: 'style',
+      property: 'opacity',
+      value: '0.5',
+    }
+    const RADIUS: ElementChange = {
+      kind: 'style',
+      property: 'border-radius',
+      value: '8px',
+    }
+    let sent: { hash: string; change: ElementChange }[]
+    /** Answers each edit with the next hash, as the frame's bytes change. */
+    const server: typeof fetch = async (_path, init) => {
+      const body = JSON.parse(String(init?.body))
+      sent.push({ hash: body.hash, change: body.change })
+      return Response.json({
+        ok: true,
+        data: {
+          ref: KEY.frame,
+          index: 5,
+          hash: String(sent.length).repeat(64),
+        },
+      })
+    }
+
+    beforeEach(() => {
+      sent = []
+      liveStore.setState({ connected: true })
+      receiveClaims(liveStore, [
+        {
+          frame: KEY.frame,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · visual-style',
+          claimedAt: '2026-10-19T10:00:00.000Z',
+          expiresAt: '2099-10-19T10:05:00.000Z',
+        },
+      ])
+    })
+
+    afterEach(() => {
+      dropWaiting()
+      receiveClaims(liveStore, [])
+    })
+
+    it('waits, then sends once the claim is released', async () => {
+      const selection = createSelectionStore()
+      selectElement(selection, 'studio/home', KEY)
+
+      const written = writeElement('studio/home', KEY, OPACITY, {
+        selection,
+        send: server,
+        notify: () => {},
+      })
+      await Promise.resolve()
+      expect(sent).toEqual([])
+
+      receiveClaims(liveStore, [])
+
+      expect(await written).toBe(true)
+      expect(sent).toEqual([{ hash: KEY.hash, change: OPACITY }])
+    })
+
+    it('sends two waiting edits in order, the second from the hash the first left', async () => {
+      const selection = createSelectionStore()
+      selectElement(selection, 'studio/home', KEY)
+      const deps = { selection, send: server, notify: () => {} }
+
+      const first = writeElement('studio/home', KEY, OPACITY, deps)
+      const second = writeElement('studio/home', KEY, RADIUS, deps)
+      receiveClaims(liveStore, [])
+
+      expect(await Promise.all([first, second])).toEqual([true, true])
+      expect(sent).toEqual([
+        { hash: KEY.hash, change: OPACITY },
+        { hash: '1'.repeat(64), change: RADIUS },
+      ])
+    })
+
+    it('answers false with the stale toast when the agent wrote the frame meanwhile', async () => {
+      const selection = createSelectionStore()
+      selectElement(selection, 'studio/home', KEY)
+      const told: { title: string; description: string }[] = []
+
+      const written = writeElement('studio/home', KEY, OPACITY, {
+        selection,
+        send: answering(409, {
+          ok: false,
+          error: {
+            code: 'stale-address',
+            message:
+              'hero.html changed after this edit was made, so nothing was written',
+          },
+        }),
+        notify: (refusal) => told.push(refusal),
+      })
+      receiveClaims(liveStore, [])
+
+      expect(await written).toBe(false)
+      expect(told).toEqual([
+        {
+          title: 'Edit not saved',
+          description:
+            'Hero.html changed after this edit was made, so nothing was written.',
+        },
+      ])
+    })
+
+    it('drops the edits queued behind a refused one without sending them', async () => {
+      const selection = createSelectionStore()
+      selectElement(selection, 'studio/home', KEY)
+      let calls = 0
+      const refusing: typeof fetch = async () => {
+        calls += 1
+        return Response.json(
+          {
+            ok: false,
+            error: { code: 'stale-address', message: 'hero.html changed' },
+          },
+          { status: 409 },
+        )
+      }
+      const deps = { selection, send: refusing, notify: () => {} }
+
+      const first = writeElement('studio/home', KEY, OPACITY, deps)
+      const second = writeElement('studio/home', KEY, RADIUS, deps)
+      receiveClaims(liveStore, [])
+
+      expect(await Promise.all([first, second])).toEqual([false, false])
+      expect(calls).toBe(1)
+    })
+
+    it('answers false and raises nothing when the wait is cancelled', async () => {
+      const told: unknown[] = []
+
+      const written = writeElement('studio/home', KEY, OPACITY, {
+        selection: createSelectionStore(),
+        send: server,
+        notify: (refusal) => told.push(refusal),
+      })
+      dropWaiting()
+
+      expect(await written).toBe(false)
+      expect(told).toEqual([])
+      expect(sent).toEqual([])
+    })
   })
 })
 

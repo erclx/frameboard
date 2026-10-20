@@ -193,6 +193,8 @@ interface CanvasGesture {
   awaitWrite?: boolean
   /** A press at `from` dragged to `to` and held there, never released. */
   hold?: { from: [number, number]; to: [number, number] }
+  /** Releases the `hold` press at `to`, so the move is sent. */
+  drop?: boolean
 }
 
 /** How many frames a gesture waits for the canvas to draw, about ten seconds. */
@@ -258,6 +260,7 @@ function onCanvas(gesture: CanvasGesture): (page: Page) => Promise<void> {
             y: (from.y + to.y) / 2,
           })
           send('mousemove', to)
+          if (gesture.drop) send('mouseup', to)
         }
         const writable = () => {
           const field = document.querySelector<HTMLInputElement>(
@@ -1160,6 +1163,30 @@ export const BOARD_CASES: CaptureCase[] = [
         mask: [AVATAR, '[data-claim-elapsed]'],
         setup: themed(
           both(listening, claimedHero, readyWhen('[data-claim-tag]')),
+        ),
+      },
+      {
+        section: 'claimed-frame-waiting',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR, '[data-claim-elapsed]', '[data-waiting-elapsed]'],
+        // A move of the claimed hero, dropped and waiting on its card. The
+        // claim is released as the page closes, which takes the wait with it.
+        setup: themed(
+          both(
+            asWriter,
+            listening,
+            claimedHero,
+            onCanvas({
+              select: ['webapp/home/hero'],
+              awaitWrite: true,
+              hold: { from: [700, 450], to: [760, 490] },
+              drop: true,
+            }),
+            readyWhen('[data-waiting-card]'),
+          ),
         ),
       },
       {

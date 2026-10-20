@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { claim, release } from '../claims/store'
 import { History } from '../history/stack'
 import { structureRoutes } from './structure'
 
@@ -427,5 +428,110 @@ describe('structureRoutes', () => {
       expect(response.status).toBe(401)
       expect(existsSync(join(board.root, 'studio'))).toBe(true)
     })
+  })
+
+  describe('claimed frames', () => {
+    beforeEach(async () => {
+      await claim(
+        board.root,
+        {
+          frame: 'studio/home/hero',
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+        },
+        new Date(),
+      )
+    })
+
+    it.each([
+      [
+        'a page rename',
+        '/api/page/rename',
+        { ref: 'studio/home', name: 'start' },
+      ],
+      ['a page delete', '/api/page/delete', { ref: 'studio/home' }],
+      [
+        'a frame rename',
+        '/api/frame/rename',
+        { ref: 'studio/home/hero', name: 'banner' },
+      ],
+      [
+        'a delete naming it among others',
+        '/api/frame/delete',
+        { refs: ['studio/home/mobile', 'studio/home/hero'] },
+      ],
+      ['a cut', '/api/clipboard/cut', { refs: ['studio/home/hero'] }],
+      [
+        'a project rename',
+        '/api/project/rename',
+        { ref: 'studio', name: 'site' },
+      ],
+      ['a project delete', '/api/project/delete', { ref: 'studio' }],
+    ])(
+      'refuses %s with frame-claimed and writes nothing',
+      async (_, path, body) => {
+        const response = await post(path, body)
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: {
+            code: 'frame-claimed',
+            details: { frame: 'studio/home/hero', tag: 'claude · studio' },
+          },
+        })
+        expect(existsSync(join(board.root, 'studio/home/hero.html'))).toBe(true)
+        expect(existsSync(join(board.root, 'studio/home/mobile.html'))).toBe(
+          true,
+        )
+        expect(history.counts().undo).toBe(0)
+      },
+    )
+
+    it('holds nothing to paste after a refused cut', async () => {
+      await post('/api/clipboard/cut', { refs: ['studio/home/hero'] })
+
+      const response = await post('/api/clipboard/paste', {
+        ref: 'studio/pricing',
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('lets the same write through once the claim is released', async () => {
+      await release(board.root, 'sess-a', undefined, new Date())
+
+      const response = await post('/api/frame/rename', {
+        ref: 'studio/home/hero',
+        name: 'banner',
+      })
+
+      expect(response.status).toBe(200)
+      expect(existsSync(join(board.root, 'studio/home/banner.html'))).toBe(true)
+    })
+
+    it.each([
+      [
+        'a frame duplicate',
+        '/api/frame/duplicate',
+        { refs: ['studio/home/hero'] },
+      ],
+      [
+        'a frame flag',
+        '/api/frame/flag',
+        { refs: ['studio/home/hero'], flag: 'hidden', on: true },
+      ],
+      ['a page move', '/api/page/move', { ref: 'studio/home', index: 1 }],
+      ['a page duplicate', '/api/page/duplicate', { ref: 'studio/home' }],
+      ['a project duplicate', '/api/project/duplicate', { ref: 'studio' }],
+    ])(
+      'lets %s through, since it leaves the claimed frame alone',
+      async (_, path, body) => {
+        const response = await post(path, body)
+
+        expect(response.status).toBe(200)
+      },
+    )
   })
 })

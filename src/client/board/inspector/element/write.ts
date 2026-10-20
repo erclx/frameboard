@@ -2,6 +2,7 @@ import { toast } from '@/client/components/ui/toast'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { EditResult } from '@/shared/records/edit'
 
+import { WaitDropped, whenFree } from '../../claims/waiting'
 import { renderedHash } from '../../frame-dom'
 import {
   awaitHash,
@@ -30,6 +31,12 @@ export interface WriteDeps {
   notify?: (refusal: { title: string; description: string }) => void
 }
 
+/** The hashes an element edit went from and to, null when it was not written. */
+type Landed = { from: readonly string[]; to: string } | null
+
+/** Each frame's latest element edit, which the next edit of that frame goes behind. */
+const queues = new Map<string, Promise<Landed>>()
+
 /**
  * Writes one change into the element `key` names, made from the hash its
  * frame rendered, so an agent's write in between is refused as stale. The
@@ -37,8 +44,28 @@ export interface WriteDeps {
  * the frame, which leaves its hash check to this write until it answers. A
  * refusal raises the toast and answers false, so the field shows the stored
  * value.
+ *
+ * Edits of one frame go in order. While another session holds the frame an
+ * edit waits, and one made from the hash an earlier waiting edit started
+ * from is sent from the hash that one answered, so neither is lost nor sent
+ * on bytes the file no longer holds. A refusal drops the edits behind it.
  */
-export async function writeElement(
+export function writeElement(
+  page: string,
+  key: ElementKey,
+  change: ElementChange,
+  deps: WriteDeps = {},
+): Promise<boolean> {
+  const turn = editInTurn(queues.get(key.frame), page, key, change, deps)
+  queues.set(key.frame, turn)
+  return turn.then((landed) => {
+    if (queues.get(key.frame) === turn) queues.delete(key.frame)
+    return landed !== null
+  })
+}
+
+async function editInTurn(
+  prior: Promise<Landed> | undefined,
   page: string,
   key: ElementKey,
   change: ElementChange,
@@ -48,18 +75,35 @@ export async function writeElement(
     notify = (refusal) =>
       // The refusal is the only record that the edit was dropped, so it stays until dismissed.
       toast.add({ ...refusal, type: 'warning', timeout: 0 }),
-  }: WriteDeps = {},
-): Promise<boolean> {
-  const done = awaitHash(key.frame)
-  // The frame still shows these bytes when the answer lands, its reload to come.
-  rememberHash(key.frame, key.hash)
+  }: WriteDeps,
+): Promise<Landed> {
+  const before = prior ? await prior : undefined
+  // The refused edit's toast speaks for the ones queued behind it.
+  if (before === null) {
+    settleRefused(selection, shownHash)
+    return null
+  }
+  const follows = before !== undefined && before.from.includes(key.hash)
+  const hash = follows ? before.to : key.hash
+  let done = () => {}
   try {
-    const answer = await writeBoard<EditResult>(
-      '/api/frames/edit',
-      { ref: key.frame, index: key.index, hash: key.hash, change },
-      'POST',
-      send,
-    )
+    const answer = await whenFree([key.frame], 'edit', async () => {
+      // Held from the send, so a wait of minutes never skips the frame's hash check.
+      done = awaitHash(key.frame)
+      // The frame still shows these bytes when the answer lands, its reload to come.
+      rememberHash(key.frame, hash)
+      try {
+        return await writeBoard<EditResult>(
+          '/api/frames/edit',
+          { ref: key.frame, index: key.index, hash, change },
+          'POST',
+          send,
+        )
+      } catch (error) {
+        done()
+        throw error
+      }
+    })
     rememberHash(key.frame, answer.hash)
     const held = selection.getState().element
     if (held?.frame === key.frame && held.index === key.index) {
@@ -67,18 +111,23 @@ export async function writeElement(
     }
     done()
     settleLanded(selection, shownHash)
-    return true
+    return {
+      from: follows ? [...before.from, hash] : [key.hash],
+      to: answer.hash,
+    }
   } catch (error) {
-    notify({
-      title: 'Edit not saved',
-      description:
-        error instanceof BoardWriteError
-          ? sentence(error.message)
-          : 'The board could not be reached, so nothing was written.',
-    })
+    if (!(error instanceof WaitDropped)) {
+      notify({
+        title: 'Edit not saved',
+        description:
+          error instanceof BoardWriteError
+            ? sentence(error.message)
+            : 'The board could not be reached, so nothing was written.',
+      })
+    }
     done()
     settleRefused(selection, shownHash)
-    return false
+    return null
   }
 }
 

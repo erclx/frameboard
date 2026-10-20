@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { resolveFrameRef } from '@/server/board/refs'
+import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
 import { editFrameFile } from '@/server/edit/frame-file'
 import type { History } from '@/server/history/stack'
@@ -45,6 +46,7 @@ export function editRoutes(
     const body = await parseBody(c.req.raw, editSchema)
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
+    await refuseClaimed(root, [ref], new Date())
     const before = readFileSync(frame.path)
     const result = editFrameFile(
       frame.path,

@@ -5,6 +5,7 @@ import type { LiveStore } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
+import { whenFree } from '../claims/waiting'
 import { type Box, sameBox } from './box'
 
 /**
@@ -67,19 +68,51 @@ export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
   })
 }
 
+/** A waiting box edit, being every box it will send. */
+interface WaitingBoxes {
+  boxes: Readonly<Record<string, Box>>
+}
+
+/**
+ * The box each frame's waiting edit started from, by ref, and that edit. A
+ * gesture on a waiting frame starts from its pending box, which the file does
+ * not hold, so the edit replacing the waiting one sends this box as
+ * `expected`, and carries the waiting edit's other frames along with it.
+ */
+const waitingFrom = new Map<string, { box: Box; owner: WaitingBoxes }>()
+
 /**
  * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
- * the edit started from. The new boxes draw at once, and a refusal drops
- * them so the board shows the stored ones. Resolves whether the write landed.
+ * the edit started from. The new boxes draw at once and hold while another
+ * session holds a frame, the edit waiting until the claim drops and a newer
+ * edit of the same frame replacing it, the newer one taking up the older's
+ * other frames. A refusal or a cancelled wait drops them so the board shows
+ * the stored ones. Resolves whether the write landed.
  */
 export async function writeBoxes(
   page: string,
-  boxes: Readonly<Record<string, Box>>,
+  asked: Readonly<Record<string, Box>>,
   expected: Readonly<Record<string, Box>>,
   send: typeof fetch = fetch,
 ): Promise<boolean> {
+  if (Object.keys(asked).length === 0) return true
+  const boxes: Record<string, Box> = { ...asked }
+  const started: Record<string, Box> = { ...expected }
+  for (const ref of Object.keys(asked)) {
+    const waiting = waitingFrom.get(ref)
+    if (!waiting) continue
+    for (const [other, box] of Object.entries(waiting.owner.boxes)) {
+      if (other in boxes) continue
+      boxes[other] = box
+      const from = waitingFrom.get(other)?.box
+      if (from) started[other] = from
+    }
+  }
+  for (const ref of Object.keys(boxes)) {
+    const from = waitingFrom.get(ref)?.box
+    if (from) started[ref] = from
+  }
   const refs = Object.keys(boxes)
-  if (refs.length === 0) return true
   const sent = new Map(
     Object.entries(boxes).map(([ref, box]) => [ref, { box }]),
   )
@@ -92,19 +125,59 @@ export async function writeBoxes(
       () => undefined,
     )
   }
+  const owner: WaitingBoxes = { boxes }
+  const hold = () => {
+    for (const ref of refs) {
+      const box = started[ref]
+      if (box) waitingFrom.set(ref, { box, owner })
+    }
+  }
+  const release = () => {
+    for (const ref of refs) {
+      if (waitingFrom.get(ref)?.owner === owner) waitingFrom.delete(ref)
+    }
+  }
+  hold()
   try {
-    await writeBoard(
-      '/api/frames/boxes',
-      { page, boxes: byName(boxes), expected: byName(expected) },
-      'POST',
-      send,
+    await whenFree(
+      refs,
+      labelOf(boxes, started),
+      async () => {
+        release()
+        try {
+          return await writeBoard(
+            '/api/frames/boxes',
+            { page, boxes: byName(boxes), expected: byName(started) },
+            'POST',
+            send,
+          )
+        } catch (error) {
+          // A claim refusal waits again, and an edit replacing it starts from here too.
+          hold()
+          throw error
+        }
+      },
+      { replace: 'boxes' },
     )
   } catch {
+    release()
     drop()
     return false
   }
   setTimeout(drop, LANDED_MS)
   return true
+}
+
+/** A box edit reads as a move unless a frame's size changed. */
+function labelOf(
+  boxes: Readonly<Record<string, Box>>,
+  started: Readonly<Record<string, Box>>,
+): 'move' | 'resize' {
+  const resized = Object.entries(boxes).some(([ref, box]) => {
+    const from = started[ref]
+    return from && (from.width !== box.width || from.height !== box.height)
+  })
+  return resized ? 'resize' : 'move'
 }
 
 /**

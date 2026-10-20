@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { claim, release } from '../claims/store'
 import { contentHash } from '../edit/address'
 import { History } from '../history/stack'
 import { editRoutes } from './edit'
@@ -68,6 +69,48 @@ describe('editRoutes', () => {
 
     expect(response.status).toBe(401)
     expect(read()).toBe(original)
+  })
+
+  describe('a frame another session holds', () => {
+    const holder = {
+      frame: HERO,
+      session: 'sess-a',
+      agent: 'claude',
+      tag: 'claude · webapp',
+    }
+    const opacity = () => ({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'style', property: 'opacity', value: '0.5' },
+    })
+
+    beforeEach(async () => {
+      await claim(board.root, holder, new Date())
+    })
+
+    it('refuses the edit as frame-claimed, writing and recording nothing', async () => {
+      const original = read()
+
+      const response = await post(opacity())
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed', details: { frame: HERO } },
+      })
+      expect(read()).toBe(original)
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('writes the edit once the claim is released', async () => {
+      await release(board.root, holder.session, undefined, new Date())
+
+      const response = await post(opacity())
+
+      expect(response.status).toBe(200)
+      expect(read()).toContain('style="opacity: 0.5"')
+    })
   })
 
   it('writes one declaration into the element’s style', async () => {

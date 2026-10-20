@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { basename, dirname } from 'node:path'
+import { basename, dirname, isAbsolute, relative, sep } from 'node:path'
 
 import { withLocks } from '@/server/board/json-record'
 import { FRAME_EXTENSION } from '@/shared/board-files'
@@ -36,6 +36,11 @@ export interface StepAnswer {
   /** Each hand-edited frame's content hash as the step left it, by ref, so the board keeps an element selected. */
   hashes?: Record<string, string>
 }
+
+/** Checks the refs a step would write before it is taken, throwing to keep it. */
+export type Gate = (refs: string[]) => Promise<void>
+
+const OPEN: Gate = async () => {}
 
 export interface HistoryCounts {
   undo: number
@@ -81,23 +86,67 @@ export class History {
     this.onWrite(step)
   }
 
-  undo(): Promise<StepAnswer> {
-    return this.#inTurn(() => this.#move(this.#undo, this.#redo, 'before'))
+  /**
+   * The refs the top undo or redo step would write, without popping it, so a
+   * route can refuse a claimed frame before the step is taken. These are the
+   * step's frames, and the page or project folder and frame file each move
+   * or removal names, since a page or project step names no frames.
+   */
+  peek(side: 'undo' | 'redo'): string[] {
+    const step = (side === 'undo' ? this.#undo : this.#redo).at(-1)
+    if (!step) return []
+    const paths = step.changes.flatMap((change) => {
+      if (change.kind === 'moved') return [change.from, change.to]
+      if (change.kind === 'path') return [change.path]
+      return []
+    })
+    const refs = paths.flatMap((path) => {
+      const inBoard = relative(this.root, path)
+      if (inBoard === '' || inBoard.startsWith('..') || isAbsolute(inBoard)) {
+        return []
+      }
+      const ref = inBoard.split(sep).join('/')
+      return [
+        ref.endsWith(FRAME_EXTENSION)
+          ? ref.slice(0, -FRAME_EXTENSION.length)
+          : ref,
+      ]
+    })
+    return [...new Set([...step.frames, ...refs])]
   }
 
-  redo(): Promise<StepAnswer> {
-    return this.#inTurn(() => this.#move(this.#redo, this.#undo, 'after'))
+  /**
+   * Undoes the top step. `gate` reads what `peek` names of that step in turn,
+   * before it is taken, so a refusal it throws leaves the step on its stack
+   * and a quick second undo never checks one step and takes another.
+   */
+  undo(gate: Gate = OPEN): Promise<StepAnswer> {
+    return this.#inTurn(() =>
+      this.#move(this.#undo, this.#redo, 'before', gate),
+    )
+  }
+
+  /** Redoes the top step, gated as `undo` is. */
+  redo(gate: Gate = OPEN): Promise<StepAnswer> {
+    return this.#inTurn(() => this.#move(this.#redo, this.#undo, 'after', gate))
   }
 
   /** Takes the top step of `from`, writes `to` side of it, and pushes it onto `onto`. */
-  async #move(from: Step[], onto: Step[], to: Side): Promise<StepAnswer> {
-    const step = from.pop()
-    if (!step) {
-      throw new FrameboardError(
+  async #move(
+    from: Step[],
+    onto: Step[],
+    to: Side,
+    gate: Gate,
+  ): Promise<StepAnswer> {
+    const empty = () =>
+      new FrameboardError(
         'nothing-to-undo',
         `There is nothing to ${to === 'before' ? 'undo' : 'redo'}.`,
       )
-    }
+    if (from.length === 0) throw empty()
+    await gate(this.peek(from === this.#undo ? 'undo' : 'redo'))
+    const step = from.pop()
+    if (!step) throw empty()
     const was: Side = to === 'before' ? 'after' : 'before'
     // A record inside a folder an agent removed has no folder to lock in, and
     // its change cannot hold, so the check refuses it unlocked.

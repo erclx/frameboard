@@ -14,6 +14,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'frame-not-found': 404,
   'name-taken': 409,
   'stale-layout': 409,
+  'frame-claimed': 409,
   'undo-overtaken': 409,
   'nothing-to-undo': 409,
   'frame-locked': 423,

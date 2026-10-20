@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createLiveStore, liveStore, receiveBoard } from '@/client/live/store'
+import {
+  createLiveStore,
+  liveStore,
+  receiveBoard,
+  receiveClaims,
+} from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
+import { dropWaiting } from '../claims/waiting'
 import { followPending, withPending, writeBoxes } from './write'
 
 const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 390, height: 844 } })
@@ -102,5 +108,141 @@ describe('writeBoxes', () => {
 
     expect(landed).toBe(false)
     expect(drawnBox()).toEqual(HERO.box)
+  })
+
+  describe('on a frame another session holds', () => {
+    const RESIZED = { x: 40, y: 0, width: 500, height: 844 }
+    let bodies: unknown[]
+    const send: typeof fetch = async (_path, init) => {
+      bodies.push(JSON.parse(String(init?.body)))
+      return Response.json({ ok: true, data: { frames: [] } })
+    }
+
+    beforeEach(() => {
+      bodies = []
+      liveStore.setState({ connected: true })
+      receiveClaims(liveStore, [
+        {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · visual-style',
+          claimedAt: '2026-10-19T10:00:00.000Z',
+          expiresAt: '2099-10-19T10:05:00.000Z',
+        },
+      ])
+    })
+
+    afterEach(() => {
+      dropWaiting()
+      receiveClaims(liveStore, [])
+    })
+
+    it('keeps the new box on screen and sends nothing while the claim holds', async () => {
+      const written = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED },
+        { [HERO.ref]: HERO.box },
+        send,
+      )
+      await Promise.resolve()
+
+      expect(drawnBox()).toEqual(MOVED)
+      expect(bodies).toEqual([])
+      dropWaiting()
+      await written
+    })
+
+    it('sends once the claim drops, with the box the edit started from', async () => {
+      const written = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED },
+        { [HERO.ref]: HERO.box },
+        send,
+      )
+
+      receiveClaims(liveStore, [])
+
+      expect(await written).toBe(true)
+      expect(bodies).toEqual([
+        {
+          page: 'studio/home',
+          boxes: { hero: MOVED },
+          expected: { hero: HERO.box },
+        },
+      ])
+    })
+
+    it('sends only the newer of two waiting edits, with the older one’s starting box', async () => {
+      const older = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED },
+        { [HERO.ref]: HERO.box },
+        send,
+      )
+      // The resize starts from the move's box, which only the board draws.
+      const newer = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: RESIZED },
+        { [HERO.ref]: MOVED },
+        send,
+      )
+
+      expect(await older).toBe(false)
+      receiveClaims(liveStore, [])
+      expect(await newer).toBe(true)
+      expect(bodies).toEqual([
+        {
+          page: 'studio/home',
+          boxes: { hero: RESIZED },
+          expected: { hero: HERO.box },
+        },
+      ])
+    })
+
+    it('carries a waiting arrange’s other frame into a newer nudge of one of them', async () => {
+      const ABOUT = 'studio/home/about'
+      const aboutBox = { x: 1520, y: 0, width: 390, height: 844 }
+      const aboutArranged = { ...aboutBox, y: 56 }
+      const older = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED, [ABOUT]: aboutArranged },
+        { [HERO.ref]: HERO.box, [ABOUT]: aboutBox },
+        send,
+      )
+      // The nudge starts from the arranged box the board draws for the about frame.
+      const newer = writeBoxes(
+        'studio/home',
+        { [ABOUT]: { ...aboutArranged, x: 1530 } },
+        { [ABOUT]: aboutArranged },
+        send,
+      )
+
+      expect(await older).toBe(false)
+      receiveClaims(liveStore, [])
+      expect(await newer).toBe(true)
+      expect(bodies).toEqual([
+        {
+          page: 'studio/home',
+          boxes: { about: { ...aboutArranged, x: 1530 }, hero: MOVED },
+          expected: { about: aboutBox, hero: HERO.box },
+        },
+      ])
+    })
+
+    it('drops the new box and sends nothing when the wait is cancelled', async () => {
+      const written = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED },
+        { [HERO.ref]: HERO.box },
+        send,
+      )
+
+      dropWaiting()
+
+      expect(await written).toBe(false)
+      expect(drawnBox()).toEqual(HERO.box)
+      expect(bodies).toEqual([])
+    })
   })
 })

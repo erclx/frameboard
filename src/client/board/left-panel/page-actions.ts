@@ -9,6 +9,7 @@ import {
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { WaitDropped } from '@/client/board/claims/waiting'
 import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
@@ -36,6 +37,8 @@ export function stopRename(): void {
 /** Shows a refused structure write, which writes nothing, as an error toast. */
 export function reportRefusal(title: string) {
   return (error: unknown) => {
+    // The developer cancelled the wait themselves, so there is nothing to report.
+    if (error instanceof WaitDropped) return
     toast.add({
       title,
       description: error instanceof Error ? error.message : String(error),

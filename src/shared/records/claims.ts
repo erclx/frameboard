@@ -18,6 +18,15 @@ export const claimSchema = z.looseObject({
 
 export type Claim = z.infer<typeof claimSchema>
 
+/**
+ * Whether a write naming `ref` reaches the frame a claim holds, being the
+ * frame itself, its page, or its project, so a page ref never matches a
+ * sibling page whose name only starts the same.
+ */
+export function claimCovers(ref: string, frame: string): boolean {
+  return frame === ref || frame.startsWith(`${ref}/`)
+}
+
 /** `.run/claims.json`. */
 export const claimsFileSchema = z.looseObject({
   version: z.literal(1),

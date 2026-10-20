@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
-
 import type { Claim } from '@/shared/records/claims'
 
 import { elapsed, initialOf } from './label'
+import { useNow } from './use-now'
 
 /**
  * The claim on a frame's label: the agent's initial, its tag with the agent
@@ -29,14 +28,4 @@ export function ClaimTag({ claim }: { claim: Claim }) {
       </span>
     </span>
   )
-}
-
-/** The current time, moving each second while the caller is mounted. */
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-  return now
 }

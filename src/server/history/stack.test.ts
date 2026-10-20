@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame } from '../board/frames'
 import { addPage, movePage, renamePage } from '../board/pages'
+import { renameProject } from '../board/projects'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
 import { History, HISTORY_CAP, type HistoryCounts, type Step } from './stack'
@@ -276,6 +277,56 @@ describe('History', () => {
         code: 'undo-overtaken',
       })
       expect(wrote).toEqual([])
+    })
+  })
+
+  describe('peek', () => {
+    it('names the frames of the top undo step', async () => {
+      await moveHero(40)
+
+      expect(history.peek('undo')).toEqual(['webapp/home/hero'])
+    })
+
+    it('names the page a rename moved, on both sides', async () => {
+      await renameHome('start')
+
+      expect(history.peek('undo')).toEqual(
+        expect.arrayContaining(['webapp/home', 'webapp/start']),
+      )
+    })
+
+    it('names the project a project rename moved, on both sides', async () => {
+      const journal = history.journal()
+      await renameProject(board.root, 'webapp', 'site', { journal })
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: [],
+      })
+
+      expect(history.peek('undo')).toEqual(
+        expect.arrayContaining(['webapp', 'site']),
+      )
+    })
+
+    it('names the top redo step once it is undone', async () => {
+      await moveHero(40)
+      await history.undo()
+
+      expect(history.peek('redo')).toEqual(['webapp/home/hero'])
+    })
+
+    it('names nothing on an empty stack', () => {
+      expect(history.peek('undo')).toEqual([])
+    })
+
+    it('leaves both stacks as they were', async () => {
+      await moveHero(40)
+
+      history.peek('undo')
+
+      expect(history.counts()).toEqual({ undo: 1, redo: 0 })
     })
   })
 
