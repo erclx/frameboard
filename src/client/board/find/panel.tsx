@@ -182,7 +182,8 @@ export function FindPanel({
         aria-label="Matches"
         aria-busy={answer.status === 'ready' && answer.updating}
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto pb-1',
+          // Shrinks to its rows, so the status and the hint sit under the last one.
+          'min-h-0 overflow-y-auto pb-1',
           answer.status === 'ready' && answer.updating && 'opacity-60',
         )}
       >
