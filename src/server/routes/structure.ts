@@ -26,8 +26,9 @@ import {
   duplicateProject,
   renameProject,
 } from '@/server/board/projects'
-import { resolvePageRef } from '@/server/board/refs'
+import { resolvePageRef, resolveProject } from '@/server/board/refs'
 import { listProjects, readPageOrder } from '@/server/board/scan'
+import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
@@ -102,6 +103,22 @@ export function structureRoutes(
     return result
   }
 
+  /**
+   * Refuses a write that would rename, move, or remove a frame another
+   * session holds, before anything is written. Writes that leave every
+   * existing frame file and box alone, being an add, a duplicate, a flag, a
+   * copy, a paste, and a move of a page or frame in its order, go at once.
+   */
+  const refuseHeld = (refs: string[]) => refuseClaimed(root, refs, new Date())
+
+  /** `refuseHeld` for frames as the body names them, read back to their canonical refs. */
+  const refuseHeldFrames = async (frames: string[]) => {
+    const records = await Promise.all(
+      frames.map((frame) => readFrame(root, frame, { cwd })),
+    )
+    await refuseHeld(records.map((record) => record.ref))
+  }
+
   const orderOf = async (project: string) =>
     (await readPageOrder(join(root, project))).pages
 
@@ -142,6 +159,7 @@ export function structureRoutes(
   app.post('/api/page/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
     const source = await resolvePageRef(root, body.ref, { cwd })
+    await refuseHeld([`${source.project}/${source.name}`])
     const page = await recorded(
       (journal) => renamePage(root, body.ref, body.name, { cwd, journal }),
       async (renamed) => ({
@@ -168,6 +186,7 @@ export function structureRoutes(
   app.post('/api/page/delete', async (c) => {
     const body = await parseBody(c.req.raw, deleteSchema)
     const source = await resolvePageRef(root, body.ref, { cwd })
+    await refuseHeld([`${source.project}/${source.name}`])
     const order = await orderOf(source.project)
     const at = order.indexOf(source.name)
     const beside = order[at + 1] ?? order[at - 1]
@@ -239,6 +258,7 @@ export function structureRoutes(
 
   app.post('/api/frame/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
+    await refuseHeldFrames([body.ref])
     const frame = await recorded(
       (journal) => renameFrame(root, body.ref, body.name, { cwd, journal }),
       (renamed) => onFrames([renamed.ref]),
@@ -270,6 +290,7 @@ export function structureRoutes(
   app.post('/api/frame/delete', async (c) => {
     const body = await parseBody(c.req.raw, framesSchema)
     await refuseLocked(body.refs)
+    await refuseHeldFrames(body.refs)
     const deleted = await eachFrame(
       body.refs,
       (frame, journal) => deleteFrame(root, frame, { cwd, journal }),
@@ -294,6 +315,7 @@ export function structureRoutes(
   app.post('/api/clipboard/cut', async (c) => {
     const body = await parseBody(c.req.raw, framesSchema)
     await refuseLocked(body.refs)
+    await refuseHeldFrames(body.refs)
     const held = await holdFrames(root, body.refs, { cwd })
     await eachFrame(
       body.refs,
@@ -333,6 +355,7 @@ export function structureRoutes(
 
   app.post('/api/project/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
+    await refuseHeld([(await resolveProject(root, body.ref)).name])
     const project = await recorded(
       (journal) => renameProject(root, body.ref, body.name, { journal }),
       onHome,
@@ -351,6 +374,7 @@ export function structureRoutes(
 
   app.post('/api/project/delete', async (c) => {
     const body = await parseBody(c.req.raw, projectSchema)
+    await refuseHeld([(await resolveProject(root, body.ref)).name])
     const result = await recorded(
       (journal) => deleteProject(root, body.ref, { journal }),
       onHome,
