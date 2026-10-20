@@ -8,6 +8,13 @@ import type { Browser } from 'playwright-core'
 export const SHELL_HOOK_TIMEOUT_MS = 30_000
 
 /**
+ * The budget for each test that renders in the shell. One takes 250 to 540 ms
+ * alone, and a machine running several test processes stretches that past
+ * vitest's 5 s default.
+ */
+export const SHELL_TEST_TIMEOUT_MS = 15_000
+
+/**
  * Playwright's headless shell, or null where it is not installed, as on the
  * unit test job in CI. A spec reading a rendered page skips on null. A launch
  * that fails with the shell installed throws, so it fails the file.
