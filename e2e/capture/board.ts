@@ -369,27 +369,31 @@ async function listening(page: Page): Promise<void> {
 const LISTENING_SESSION = '4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13'
 
 /**
- * Claims the hero frame for the listening session, held 40 seconds already,
- * and releases it once the capture page closes so no later case shows it.
- * It writes through the claims store with a fixed tag, since the CLI's tag
+ * Claims `frame` for the listening session, held 40 seconds already, and
+ * releases it once the capture page closes so no later case shows it. It
+ * writes through the claims store with a fixed tag, since the CLI's tag
  * names the folder the run happens in.
  */
-async function claimedHero(page: Page): Promise<void> {
-  const root = 'test/fixtures/boards/basic'
-  await claim(
-    root,
-    {
-      frame: 'webapp/home/hero',
-      session: LISTENING_SESSION,
-      agent: 'claude',
-      tag: 'claude · frameboard',
-    },
-    new Date(Date.now() - 40_000),
-  )
-  page.once('close', () => {
-    void release(root, LISTENING_SESSION, undefined, new Date())
-  })
+function claimed(frame: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    const root = 'test/fixtures/boards/basic'
+    await claim(
+      root,
+      {
+        frame,
+        session: LISTENING_SESSION,
+        agent: 'claude',
+        tag: 'claude · frameboard',
+      },
+      new Date(Date.now() - 40_000),
+    )
+    page.once('close', () => {
+      void release(root, LISTENING_SESSION, undefined, new Date())
+    })
+  }
 }
+
+const claimedHero = claimed('webapp/home/hero')
 
 /**
  * Picks the Note tool and clicks the hero frame once the board has drawn it,
@@ -473,10 +477,13 @@ function searchPages(query: string): (page: Page) => Promise<void> {
 
 /**
  * Waits for the add button to light, which it does once the server grants
- * writes, then opens the rename field on the home row, or holds a drag of it
- * over the top of the settings row, never dropped.
+ * writes, then opens the rename field on the home row, holds a drag of it
+ * over the top of the settings row, never dropped, or renames the settings
+ * row to `account`, which waits while one of its frames is claimed.
  */
-function onPagesList(act: 'rename' | 'drag'): (page: Page) => Promise<void> {
+function onPagesList(
+  act: 'rename' | 'drag' | 'rename-settings',
+): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
       ({ act, frames }) => {
@@ -502,6 +509,25 @@ function onPagesList(act: 'rename' | 'drag'): (page: Page) => Promise<void> {
             home.dispatchEvent(
               new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
             )
+            return
+          }
+          if (act === 'rename-settings') {
+            settings.dispatchEvent(
+              new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+            )
+            requestAnimationFrame(() => {
+              const field = document.querySelector<HTMLInputElement>(
+                'input[aria-label="Rename page settings"]',
+              )
+              if (!field) {
+                console.error('The settings row never opened its rename field')
+                return
+              }
+              field.value = 'account'
+              field.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+              )
+            })
             return
           }
           const from = home.getBoundingClientRect()
@@ -1186,6 +1212,25 @@ export const BOARD_CASES: CaptureCase[] = [
               drop: true,
             }),
             readyWhen('[data-waiting-card]'),
+          ),
+        ),
+      },
+      {
+        section: 'claimed-frame-docked',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR, '[data-waiting-elapsed]'],
+        // A rename of the settings page, waiting on its claimed profile frame,
+        // which this page does not show, so its card docks above the toolbar.
+        setup: themed(
+          both(
+            asWriter,
+            listening,
+            claimed('webapp/settings/profile'),
+            onPagesList('rename-settings'),
+            readyWhen('[data-waiting-dock]'),
           ),
         ),
       },
