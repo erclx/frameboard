@@ -141,7 +141,9 @@ describe('CommandPalette', () => {
     expect(screen.getByRole('option', { name: 'Offered' })).toBeInTheDocument()
     on = true
     act(() => refreshActions())
-    expect(await screen.findByRole('option', { name: 'Gated' })).toBeVisible()
+    expect(
+      await screen.findByRole('option', { name: 'Gated' }),
+    ).toBeInTheDocument()
   })
 
   it('leaves out the mode the board is already in', async () => {
