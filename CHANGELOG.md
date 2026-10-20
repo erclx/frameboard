@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.0](https://github.com/erclx/frameboard/compare/v0.4.0...v0.5.0) (2026-10-20)
+
+
+### Features
+
+* **claims:** hold a hand edit on a claimed frame until the claim ends ([#51](https://github.com/erclx/frameboard/issues/51)) ([10c10da](https://github.com/erclx/frameboard/commit/10c10dae9dfac694b09d11244545cb1bf3cac3b6))
+* **find:** find frames, elements, and copy across a project on Cmd+F ([#50](https://github.com/erclx/frameboard/issues/50)) ([15bf41e](https://github.com/erclx/frameboard/commit/15bf41e3e6b9f8c03980ac7bdec1216251dac2eb))
+
+
+### Bug Fixes
+
+* **claims:** dock waiting cards above the toolbar's row ([#57](https://github.com/erclx/frameboard/issues/57)) ([ecf21c4](https://github.com/erclx/frameboard/commit/ecf21c4c3cb95e40462b7c8cf978ae5548b75363))
+* **fit:** skip content a cropping ancestor hides when sizing a frame ([#53](https://github.com/erclx/frameboard/issues/53)) ([e51149c](https://github.com/erclx/frameboard/commit/e51149c1a3dcec87766106e2d600f12afbccd281))
+* **palette:** stop the enabled-action test racing the dialog fade ([#54](https://github.com/erclx/frameboard/issues/54)) ([e5d9b00](https://github.com/erclx/frameboard/commit/e5d9b00a80bc0fd095a4c959afe5c6e54e67325c))
+* **test:** give browser tests budgets for a loaded machine ([#56](https://github.com/erclx/frameboard/issues/56)) ([1eecf92](https://github.com/erclx/frameboard/commit/1eecf921b6be980e01e9ddb0934baec5739ae745))
+
 ## [0.4.0](https://github.com/erclx/frameboard/compare/v0.3.0...v0.4.0) (2026-10-19)
 
 
