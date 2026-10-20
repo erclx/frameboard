@@ -228,7 +228,7 @@ async function listen({
     }),
   )
   const baseUrl = () => `http://${HOSTNAME}:${bound}`
-  const renderFrame = createWarmRenderer({ baseUrl, browser })
+  const renderFrame = createWarmRenderer({ baseUrl, browser, scale: 2 })
   const rendered = createRenderedFindings({
     check: async (frame) =>
       checkRendered(await browser.get(), {

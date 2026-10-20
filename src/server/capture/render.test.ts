@@ -9,6 +9,7 @@ import {
   launchShellOrNull,
   requireShell,
   SHELL_HOOK_TIMEOUT_MS,
+  SHELL_TEST_TIMEOUT_MS,
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
@@ -41,6 +42,7 @@ describe('createWarmBrowser', () => {
     const render = createWarmRenderer({
       baseUrl: () => 'http://127.0.0.1:1',
       browser: warm,
+      scale: 2,
     })
 
     await Promise.allSettled([render(FRAME, 'light'), warm.get()])
@@ -87,6 +89,7 @@ describe('createWarmBrowser', () => {
     const render = createWarmRenderer({
       baseUrl: () => 'http://127.0.0.1:1',
       browser: warm,
+      scale: 2,
     })
 
     await warm.close()
@@ -96,6 +99,10 @@ describe('createWarmBrowser', () => {
 })
 
 const shell = await launchShellOrNull()
+
+afterAll(async () => {
+  await shell?.close()
+}, SHELL_HOOK_TIMEOUT_MS)
 
 describe.skipIf(shell === null)('openFrame', () => {
   const ref = 'studio/home/hero'
@@ -120,7 +127,6 @@ describe.skipIf(shell === null)('openFrame', () => {
 
   afterAll(async () => {
     await host.close()
-    await browser.close()
     board.cleanup()
     rmSync(faces, { recursive: true, force: true })
   }, SHELL_HOOK_TIMEOUT_MS)
@@ -150,3 +156,43 @@ describe.skipIf(shell === null)('openFrame', () => {
     expect(text).toBe('Hello')
   })
 })
+
+describe.skipIf(shell === null)(
+  'createWarmRenderer',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let host: FrameHost
+    let board: TempBoard
+    let faces: string
+
+    beforeAll(async () => {
+      faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
+      board = writeBoard({ 'studio/home/hero.html': '<p>Hello</p>' })
+      host = await startFrameHost({ root: board.root, facesDir: faces })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterAll(async () => {
+      await host.close()
+      board.cleanup()
+      rmSync(faces, { recursive: true, force: true })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    it('answers a PNG at the scale it was made with', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 0.5,
+      })
+
+      const bytes = await render(
+        { ref: 'studio/home/hero', box: { width: 200, height: 100 } },
+        'light',
+      )
+
+      // A PNG's IHDR chunk holds its width and height at bytes 16 and 20.
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        100, 50,
+      ])
+    })
+  },
+)

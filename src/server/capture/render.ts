@@ -103,17 +103,20 @@ export function createWarmBrowser(launch: () => Promise<Browser>): WarmBrowser {
 }
 
 /**
- * Renders on a server's warm browser one frame at a time at twice its size.
- * The queue is the renderer's own, so a PNG never waits behind another
- * consumer of the browser.
+ * Renders on a server's warm browser one frame at a time at `scale`. The
+ * queue is the renderer's own, so a PNG never waits behind another consumer
+ * of the browser, such as a thumbnail.
  */
 export function createWarmRenderer({
   baseUrl,
   browser,
+  scale,
 }: {
   /** Read per render, since the server's port is known only once listening. */
   baseUrl: () => string
   browser: WarmBrowser
+  /** Device pixels per CSS pixel: 2 for the PNG route, 0.5 for a thumbnail. */
+  scale: number
 }): RenderFrame {
   // Renders run in turn, so a frame calling the route in a loop costs one tab.
   let queue: Promise<unknown> = Promise.resolve()
@@ -125,7 +128,7 @@ export function createWarmRenderer({
         ref: frame.ref,
         box: frame.box,
         theme,
-        scale: 2,
+        scale,
       })
       try {
         return await opened.page.screenshot({
