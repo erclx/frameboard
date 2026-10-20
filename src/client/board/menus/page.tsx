@@ -1,6 +1,7 @@
 import { type ReactElement, useRef } from 'react'
 
 import { useActions } from '@/client/actions/registry'
+import { useKeyboardOpen } from '@/client/components/menu-keyboard'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +11,6 @@ import {
 } from '@/client/components/ui/context-menu'
 
 import { DeleteRow, MenuRow, MenuTitle } from './items'
-import { useKeyboardOpen } from './keyboard'
 
 const IDS = [
   'page.rename',

@@ -1,6 +1,7 @@
 import { type ReactElement, useRef } from 'react'
 
 import { type Action, useActions } from '@/client/actions/registry'
+import { useKeyboardOpen } from '@/client/components/menu-keyboard'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -22,7 +23,6 @@ import {
 import { startFrameRename } from '../structure/actions'
 import { ElementItems } from './canvas'
 import { DeleteRow, MenuRow, MenuTitle } from './items'
-import { useKeyboardOpen } from './keyboard'
 
 const FRAME_IDS = [
   'view.zoomToSelection',
