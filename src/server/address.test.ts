@@ -8,6 +8,8 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -109,6 +111,26 @@ describe('address', () => {
       )
 
       expect(await findLiveServer(root)).toBeNull()
+    })
+
+    it('waits out a live server slow to answer its health check', async () => {
+      const slow = createServer((_request, response) => {
+        setTimeout(() => {
+          response.setHeader('content-type', 'application/json')
+          response.end(JSON.stringify({ root }))
+        }, 1000)
+      })
+      await new Promise<void>((resolve) => slow.listen(0, '127.0.0.1', resolve))
+      const { port } = slow.address() as AddressInfo
+      const address = newAddress({ root, host: '127.0.0.1', port })
+      await writeAddress(root, address)
+
+      try {
+        expect(await findLiveServer(root)).toEqual(address)
+      } finally {
+        slow.closeAllConnections()
+        await new Promise((resolve) => slow.close(resolve))
+      }
     })
 
     it('reads a missing file as no server', async () => {
