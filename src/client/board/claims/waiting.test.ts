@@ -165,6 +165,21 @@ describe('afterClaims', () => {
     await expect(newer).resolves.toBeUndefined()
   })
 
+  it('keeps an older edit on more frames than the newer one names', async () => {
+    const older = afterClaims([HERO, 'studio/home/about'], 'move', {
+      live,
+      replace: 'boxes',
+    })
+
+    const newer = afterClaims([HERO], 'move', { live, replace: 'boxes' })
+    receiveClaims(live, [])
+
+    await expect(Promise.all([older, newer])).resolves.toEqual([
+      undefined,
+      undefined,
+    ])
+  })
+
   it('keeps both edits of a kind that does not replace', async () => {
     const first = afterClaims([HERO], 'edit', { live })
     const second = afterClaims([HERO], 'edit', { live })

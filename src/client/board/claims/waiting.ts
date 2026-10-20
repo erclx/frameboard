@@ -228,11 +228,12 @@ function wait({
   })
 }
 
+/** Drops each waiting edit of the kind that the newer edit's refs cover whole, so no frame of it is lost. */
 function dropReplaced(refs: readonly string[], replace: string): void {
   for (const waiter of [...waiters]) {
     if (
       waiter.replace === replace &&
-      waiter.refs.some((ref) => refs.includes(ref))
+      waiter.refs.every((ref) => refs.includes(ref))
     ) {
       finish(waiter, new WaitDropped('replaced'))
     }

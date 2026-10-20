@@ -200,6 +200,36 @@ describe('writeBoxes', () => {
       ])
     })
 
+    it('carries a waiting arrange’s other frame into a newer nudge of one of them', async () => {
+      const ABOUT = 'studio/home/about'
+      const aboutBox = { x: 1520, y: 0, width: 390, height: 844 }
+      const aboutArranged = { ...aboutBox, y: 56 }
+      const older = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED, [ABOUT]: aboutArranged },
+        { [HERO.ref]: HERO.box, [ABOUT]: aboutBox },
+        send,
+      )
+      // The nudge starts from the arranged box the board draws for the about frame.
+      const newer = writeBoxes(
+        'studio/home',
+        { [ABOUT]: { ...aboutArranged, x: 1530 } },
+        { [ABOUT]: aboutArranged },
+        send,
+      )
+
+      expect(await older).toBe(false)
+      receiveClaims(liveStore, [])
+      expect(await newer).toBe(true)
+      expect(bodies).toEqual([
+        {
+          page: 'studio/home',
+          boxes: { about: { ...aboutArranged, x: 1530 }, hero: MOVED },
+          expected: { about: aboutBox, hero: HERO.box },
+        },
+      ])
+    })
+
     it('drops the new box and sends nothing when the wait is cancelled', async () => {
       const written = writeBoxes(
         'studio/home',
