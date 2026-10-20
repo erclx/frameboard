@@ -78,7 +78,9 @@ export function WaitingCards({ page, frames }: WaitingCardsProps) {
 /**
  * The cards of waits on frames this page does not show, such as a rename of
  * another page in the list, docked at the canvas's bottom left outside the
- * scaled layer.
+ * scaled layer. The dock sits clear of the toolbar's row, being its 16px
+ * inset, its 44px pill, and an 8px gap, so no column width brings the two
+ * together.
  */
 export function WaitingDock({ frames }: { frames: readonly FrameRecord[] }) {
   const edits = useWaiting()
@@ -90,7 +92,7 @@ export function WaitingDock({ frames }: { frames: readonly FrameRecord[] }) {
   return (
     <div
       data-waiting-dock
-      className="absolute bottom-4 left-4 flex flex-col gap-2"
+      className="absolute bottom-[4.25rem] left-4 flex flex-col gap-2"
       style={{ zIndex: OVERLAY_Z + 1 }}
     >
       {docked.map(([ref, card]) => (

@@ -110,6 +110,66 @@ test.describe('a frame an agent claims', () => {
   })
 })
 
+for (const colorScheme of ['light', 'dark'] as const) {
+  test.describe(`the waiting dock at 1280 wide, ${colorScheme}`, () => {
+    let board: FixtureBoard
+    let server: BoardServer
+
+    test.use({ colorScheme, viewport: { width: 1280, height: 800 } })
+
+    test.beforeEach(async () => {
+      board = copyFixtureBoard('live')
+      server = await serveBoard(board.root)
+    })
+
+    test.afterEach(async () => {
+      await server.stop()
+      board.cleanup()
+    })
+
+    test('docks above the toolbar and leaves every tool uncovered', async ({
+      page,
+    }) => {
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/studio/home`)
+      await expect(
+        page.getByRole('button', { name: 'Add page' }),
+      ).not.toHaveAttribute('aria-disabled')
+      await run('node', [
+        CLI,
+        'editing',
+        'studio/pricing/plans',
+        '--session',
+        'sess-a',
+        '--root',
+        board.root,
+        '--json',
+      ])
+
+      // A rename of another page waits on its claimed frame, which this page
+      // does not show. F2 starts it without the click that would open the page.
+      const pricing = page
+        .getByRole('navigation', { name: 'Pages' })
+        .getByRole('link', { name: 'pricing', exact: true })
+      await pricing.focus()
+      await pricing.press('F2')
+      await page.keyboard.type('prices')
+      await page.keyboard.press('Enter')
+
+      const dock = page.locator('[data-waiting-dock]')
+      await expect(dock.getByRole('status')).toBeVisible()
+      const toolbar = page.getByRole('toolbar', { name: 'Tools' })
+      const [docked, tools] = await Promise.all([
+        dock.boundingBox(),
+        toolbar.boundingBox(),
+      ])
+      if (!docked || !tools) throw new Error('The dock or toolbar has no box')
+      // The card is pointer-events-none, so a hit test sees through it and only the boxes can tell.
+      expect(docked.y + docked.height).toBeLessThanOrEqual(tools.y)
+    })
+  })
+}
+
 test.describe('an element edit on a claimed frame', () => {
   let board: FixtureBoard
   let server: BoardServer
