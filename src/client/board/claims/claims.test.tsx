@@ -1,6 +1,7 @@
 import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore, receiveClaims } from '@/client/live/store'
@@ -8,6 +9,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { Listener } from '@/shared/records/notes'
 import { frameOf } from '@/test/board'
 
+import { followStore, stopFollow } from '../changes/follow'
 import { Frame } from '../frame'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
@@ -173,6 +175,10 @@ describe('elapsed', () => {
 })
 
 describe('ClaimAvatars', () => {
+  afterEach(() => {
+    act(() => stopFollow())
+  })
+
   it('draws a listening session holding a claim solid and one only listening pale', () => {
     render(
       <ClaimAvatars
@@ -185,10 +191,10 @@ describe('ClaimAvatars', () => {
     )
 
     expect(
-      screen.getByRole('img', { name: 'claude · visual-style, editing' }),
+      screen.getByRole('button', { name: 'claude · visual-style, editing' }),
     ).toHaveAttribute('data-editing')
     expect(
-      screen.getByRole('img', { name: 'codex · visual-style, listening' }),
+      screen.getByRole('button', { name: 'codex · visual-style, listening' }),
     ).not.toHaveAttribute('data-editing')
   })
 
@@ -200,7 +206,7 @@ describe('ClaimAvatars', () => {
       />,
     )
 
-    expect(screen.getByRole('img').textContent).toBe('C')
+    expect(screen.getByRole('button').textContent).toBe('C')
   })
 
   it('reads the agent of each listener when the server swapped two shared tags for session ids', () => {
@@ -214,7 +220,7 @@ describe('ClaimAvatars', () => {
     )
 
     expect(
-      screen.getAllByRole('img').map((avatar) => avatar.textContent),
+      screen.getAllByRole('button').map((avatar) => avatar.textContent),
     ).toEqual(['G', 'C'])
   })
 
@@ -226,7 +232,44 @@ describe('ClaimAvatars', () => {
       />,
     )
 
-    expect(screen.getAllByRole('img')).toHaveLength(1)
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+  })
+
+  it('draws the Following chip in place of an initial once clicked', async () => {
+    render(
+      <ClaimAvatars
+        listeners={[listener('sess-b', 'codex · visual-style')]}
+        claims={{}}
+      />,
+    )
+    const avatar = screen.getByRole('button', {
+      name: 'codex · visual-style, listening',
+    })
+
+    await userEvent.click(avatar)
+
+    expect(avatar).toHaveAttribute('aria-pressed', 'true')
+    expect(avatar).toHaveTextContent('Following')
+    expect(followStore.getState().session).toBe('sess-b')
+  })
+
+  it('stops following on a second click', async () => {
+    render(
+      <ClaimAvatars
+        listeners={[listener('sess-b', 'codex · visual-style')]}
+        claims={{}}
+      />,
+    )
+    const avatar = screen.getByRole('button', {
+      name: 'codex · visual-style, listening',
+    })
+    await userEvent.click(avatar)
+
+    await userEvent.click(avatar)
+
+    expect(avatar).toHaveAttribute('aria-pressed', 'false')
+    expect(avatar).not.toHaveTextContent('Following')
+    expect(followStore.getState().session).toBeNull()
   })
 })
 
