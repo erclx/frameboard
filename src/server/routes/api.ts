@@ -7,7 +7,9 @@ import { z } from 'zod'
 
 import { readAuthor } from '@/server/author'
 import { setBoxes } from '@/server/board/frames'
+import { resolvePageRef } from '@/server/board/refs'
 import { scanBoard } from '@/server/board/scan'
+import { refuseClaimed } from '@/server/claims/gate'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
@@ -56,6 +58,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'page-not-found': 404,
   'frame-not-found': 404,
   'stale-layout': 409,
+  'frame-claimed': 409,
   'frame-locked': 423,
   'layout-invalid': 422,
   'lock-timeout': 503,
@@ -139,6 +142,14 @@ export function apiRoutes(
     }
     const { page, boxes, expected } = body.data
     try {
+      const target = await resolvePageRef(root, page, { cwd: root })
+      await refuseClaimed(
+        root,
+        Object.keys(boxes).map(
+          (name) => `${target.project}/${target.name}/${name}`,
+        ),
+        new Date(),
+      )
       const journal = history?.journal()
       const frames = await setBoxes(root, page, boxes, expected, {
         cwd: root,

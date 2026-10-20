@@ -9,10 +9,17 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { claim, release } from '../claims/store'
 import { History } from '../history/stack'
 import { apiRoutes, type BoardActions } from './api'
 
 const TOKEN = 'a'.repeat(64)
+const HOLDER = {
+  frame: 'studio/home/hero',
+  session: 'sess-a',
+  agent: 'claude',
+  tag: 'claude · studio',
+}
 const KEY = 'b'.repeat(64)
 const COOKIE = 'frameboard-key-111111111111'
 const PORT = 4173
@@ -329,6 +336,42 @@ describe('apiRoutes', () => {
       })
 
       expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('refuses a frame another session holds, writing and recording nothing', async () => {
+      await claim(board.root, HOLDER, new Date())
+      const bytes = layout()
+
+      const response = await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: {
+          code: 'frame-claimed',
+          details: { frame: 'studio/home/hero' },
+        },
+      })
+      expect(layout()).toBe(bytes)
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('sets the boxes once the claim is released', async () => {
+      await claim(board.root, HOLDER, new Date())
+      await release(board.root, HOLDER.session, undefined, new Date())
+
+      const response = await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+      })
+
+      expect(response.status).toBe(200)
+      expect(JSON.parse(layout()).frames.hero).toMatchObject({ x: 40 })
     })
 
     it('records nothing when it refuses a locked frame', async () => {
