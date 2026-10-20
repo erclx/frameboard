@@ -6,6 +6,7 @@ import {
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import { dropPending } from '@/client/board/geometry/write'
 import { shownHash } from '@/client/board/inspector/element/write'
 import {
@@ -66,28 +67,42 @@ export function registerHistoryActions({
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
   }
-  const step = (run: () => Promise<StepAnswer>, title: string) => () => {
-    // An undo can rewrite any frame, whose reload may land before the answer names its hash.
-    const done = awaitHash(null)
-    run().then(
-      (answer) => {
-        done()
-        follow(answer)
-        settleLanded(selection, shownHash)
-      },
-      (error: unknown) => {
-        done()
-        settleRefused(selection, shownHash)
-        // An empty stack is the one refusal with nothing to say, since the key is unlit then.
-        if (
-          error instanceof BoardWriteError &&
-          error.code !== 'nothing-to-undo'
-        ) {
-          notify({ title, description: error.message })
-        }
-      },
-    )
-  }
+  // The board cannot name a step's frames before the server answers, so a
+  // step waits only once refused as claimed, until that claim drops.
+  const step =
+    (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
+      let done = () => {}
+      whenFree(
+        [],
+        label,
+        () => {
+          // An undo can rewrite any frame, whose reload may land before the answer names its hash.
+          done = awaitHash(null)
+          return run().catch((error: unknown) => {
+            done()
+            throw error
+          })
+        },
+        { live: store },
+      ).then(
+        (answer) => {
+          done()
+          follow(answer)
+          settleLanded(selection, shownHash)
+        },
+        (error: unknown) => {
+          done()
+          settleRefused(selection, shownHash)
+          // An empty stack is the one refusal with nothing to say, since the key is unlit then.
+          if (
+            error instanceof BoardWriteError &&
+            error.code !== 'nothing-to-undo'
+          ) {
+            notify({ title, description: error.message })
+          }
+        },
+      )
+    }
   const can = (count: 'undo' | 'redo') => () => {
     const { canWrite, history } = store.getState()
     return canWrite && history[count] > 0
@@ -98,7 +113,7 @@ export function registerHistoryActions({
       label: 'Undo',
       group: 'edit',
       keys: ['$mod+KeyZ'],
-      run: step(calls.undo, 'Undo skipped'),
+      run: step(calls.undo, 'Undo skipped', 'undo'),
       enabled: can('undo'),
       command: { label: 'Undo', icon: Undo2 },
     },
@@ -107,7 +122,7 @@ export function registerHistoryActions({
       label: 'Redo',
       group: 'edit',
       keys: ['$mod+Shift+KeyZ'],
-      run: step(calls.redo, 'Redo skipped'),
+      run: step(calls.redo, 'Redo skipped', 'redo'),
       enabled: can('redo'),
       command: { label: 'Redo', icon: Redo2 },
     },

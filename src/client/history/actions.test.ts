@@ -3,6 +3,7 @@ import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { isEnabled, useActions, useCommands } from '@/client/actions/registry'
+import { dropWaiting } from '@/client/board/claims/waiting'
 import { holdBoxes, withPending } from '@/client/board/geometry/write'
 import {
   createSelectionStore,
@@ -13,6 +14,7 @@ import {
   createLiveStore,
   type LiveStore,
   receiveAccess,
+  receiveClaims,
   receiveHistory,
 } from '@/client/live/store'
 import type { StepAnswer } from '@/client/live/structure'
@@ -161,6 +163,78 @@ describe('registerHistoryActions', () => {
         description: 'Another writer held the layout for more than 2000 ms.',
       }),
     )
+  })
+
+  describe('a step naming a frame another session holds', () => {
+    const CLAIM = {
+      frame: HERO.ref,
+      session: 'sess-a',
+      agent: 'claude',
+      tag: 'claude · visual-style',
+      claimedAt: '2026-10-19T10:00:00.000Z',
+      expiresAt: '2099-10-19T10:05:00.000Z',
+    }
+    const refusal = () =>
+      new BoardWriteError('frame-claimed', 'claude is editing hero.', CLAIM)
+
+    afterEach(() => {
+      dropWaiting()
+    })
+
+    it('waits on a frame-claimed refusal, then undoes once the claim drops', async () => {
+      const store = writableWith(1, 0)
+      store.setState({ connected: true })
+      const notify = vi.fn()
+      const undoCall = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockRejectedValueOnce(refusal())
+        .mockResolvedValueOnce({ page: null, frames: [HERO.ref] })
+      const { undo } = register(store, {
+        notify,
+        calls: {
+          undo: undoCall,
+          redo: async () => ({ page: null, frames: [] }),
+        },
+      })
+
+      act(undo)
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
+      // Lets the refusal reach its wait before the claim shows.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      receiveClaims(store, [CLAIM])
+      expect(undoCall).toHaveBeenCalledTimes(1)
+      receiveClaims(store, [])
+
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(2))
+      expect(notify).not.toHaveBeenCalled()
+    })
+
+    it('drops a waiting undo on Esc without sending it again or raising a toast', async () => {
+      const store = writableWith(1, 0)
+      store.setState({ connected: true })
+      const notify = vi.fn()
+      const undoCall = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockRejectedValueOnce(refusal())
+      const { undo } = register(store, {
+        notify,
+        calls: {
+          undo: undoCall,
+          redo: async () => ({ page: null, frames: [] }),
+        },
+      })
+      act(undo)
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      receiveClaims(store, [CLAIM])
+
+      dropWaiting()
+      receiveClaims(store, [])
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(undoCall).toHaveBeenCalledTimes(1)
+      expect(notify).not.toHaveBeenCalled()
+    })
   })
 
   it('drops the pending box of a frame an undo moved back', async () => {
