@@ -198,7 +198,7 @@ describe('CanvasMenu', () => {
       `Paste here${MOD}V`,
       'New frame hereF',
       `Select all${MOD}A`,
-      'Zoom to fit⇧1',
+      IS_MAC ? 'Zoom to fit⇧1' : 'Zoom to fitShift1',
       `Hide UI${MOD}\\`,
     ])
   })
