@@ -373,4 +373,126 @@ describe('Canvas', () => {
       .poll(() => layerOf(second.container).style.transform)
       .toBe(moved)
   })
+
+  it('centers a box at the current zoom when the controller centers on it', async () => {
+    const { container } = renderCanvas(
+      page('studio/center', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    canvasView.zoomTo(0.5)
+
+    canvasView.centerOn({ x: 5000, y: 0, width: 200, height: 200 })
+
+    // 400 less 5100 at half scale across, 300 less 100 at half scale down.
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(-2150px, 250px) scale(0.5)')
+  })
+
+  it('fits a box larger than the viewport rather than centering it', async () => {
+    const { container } = renderCanvas(
+      page('studio/center-big', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+
+    canvasView.centerOn({ x: 0, y: 0, width: 1344, height: 400 })
+
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(64px, 200px) scale(0.5)')
+  })
+})
+
+describe('onHandMove', () => {
+  const stops: (() => void)[] = []
+  afterEach(() => {
+    for (const stop of stops.splice(0)) stop()
+  })
+
+  function countHandMoves() {
+    const moves = { count: 0 }
+    stops.push(canvasView.onHandMove(() => (moves.count += 1)))
+    return moves
+  }
+
+  it('hears nothing of a travel the controller makes', async () => {
+    const { container } = renderCanvas(
+      page('studio/quiet', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    const moves = countHandMoves()
+
+    canvasView.centerOn({ x: 5000, y: 0, width: 200, height: 200 })
+
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(-4700px, 200px) scale(1)')
+    expect(moves.count).toBe(0)
+  })
+
+  it('hears nothing of a travel to a focused frame', async () => {
+    const moves = countHandMoves()
+
+    const { container } = render(
+      <div style={{ width: 800, height: 600 }}>
+        <Canvas
+          page={page('studio/quiet-focus', [
+            frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+            frame('b', { x: 5000, y: 0, width: 200, height: 200 }),
+          ])}
+          reloads={{}}
+          focus="studio/home/b"
+        />
+      </div>,
+    )
+
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(-4700px, 200px) scale(1)')
+    expect(moves.count).toBe(0)
+  })
+
+  it('hears a wheel pan', () => {
+    const { container } = renderCanvas(
+      page('studio/hand-wheel', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    const moves = countHandMoves()
+
+    wheel(container, { deltaX: 30, deltaY: 50 })
+
+    expect(moves.count).toBeGreaterThan(0)
+  })
+
+  it('hears a pan from the arrow keys', () => {
+    renderCanvas(
+      page('studio/hand-keys', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    const moves = countHandMoves()
+
+    canvasView.panBy(40, 0)
+
+    expect(moves.count).toBeGreaterThan(0)
+  })
+
+  it('hears a press on the canvas', () => {
+    const { container } = renderCanvas(
+      page('studio/hand-press', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    const moves = countHandMoves()
+
+    container
+      .querySelector('[data-hit-layer]')
+      ?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+
+    expect(moves.count).toBe(1)
+  })
 })

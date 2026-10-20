@@ -22,6 +22,7 @@ const CANVAS: CanvasControls = {
   fit: () => {},
   fitTo: () => {},
   panBy: () => {},
+  centerOn: () => {},
 }
 
 describe('boardTargets', () => {
@@ -92,14 +93,14 @@ describe('jumps', () => {
   })
 
   it('selects a frame on another page and zooms once that page’s canvas attaches', () => {
-    const first = attachCanvas(CANVAS)
+    const first = attachCanvas(CANVAS, 'studio/home')
     cleanups.push(first)
 
     jumpToFrame(PRICING.ref)
     const beforeAttach = zooms
     // The route change remounts the canvas, which detaches the old one first.
     first()
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     expect({
       path: location.pathname,
@@ -115,7 +116,7 @@ describe('jumps', () => {
   })
 
   it('zooms at once to a frame on the page already shown', () => {
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     jumpToFrame(HERO.ref)
 
@@ -123,12 +124,12 @@ describe('jumps', () => {
   })
 
   it('zooms once for the latest jump when the first never saw its canvas', () => {
-    const first = attachCanvas(CANVAS)
+    const first = attachCanvas(CANVAS, 'studio/home')
     jumpToFrame(PRICING.ref)
 
     jumpToFrame(HERO.ref)
     first()
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     expect([selectionStore.getState().frames, zooms]).toEqual([[HERO.ref], 1])
   })

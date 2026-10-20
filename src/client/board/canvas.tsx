@@ -31,7 +31,7 @@ import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { followSelection, selectElement, selectionStore } from './selection'
 import { placeFrame } from './structure/tool'
-import { attachCanvas, reportZoom } from './view'
+import { attachCanvas, reportHandMove, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 const FIT_PADDING = 64
@@ -110,6 +110,10 @@ export function Canvas({
     if (!viewport || !layer) return
     const selection = select(viewport)
     let timer: ReturnType<typeof setTimeout> | undefined
+    // Set while the canvas moves the view itself, so every other zoom event
+    // is the developer's. `sourceEvent` cannot tell them apart, since the
+    // wheel and the pan keys go through `translateBy` and carry none.
+    let travelling = false
 
     const settle = (view: View) => setSettled({ view, size: sizeOf(viewport) })
 
@@ -140,6 +144,7 @@ export function Canvas({
         }
         pageViews.set(page.ref, { x, y, k })
         reportZoom(k)
+        if (!travelling) reportHandMove()
       })
       .on('end', ({ transform: { x, y, k } }) => {
         clearTimeout(timer)
@@ -174,12 +179,19 @@ export function Canvas({
         { passive: false },
       )
 
+    let animation = 0
+    const apply = ({ x, y, k }: View) => {
+      travelling = true
+      try {
+        zoomer.transform(selection, zoomIdentity.translate(x, y).scale(k))
+      } finally {
+        travelling = false
+      }
+    }
+
     const start =
       pageViews.get(page.ref) ?? fitView(framesRef.current, sizeOf(viewport))
-    zoomer.transform(
-      selection,
-      zoomIdentity.translate(start.x, start.y).scale(start.k),
-    )
+    apply(start)
     clearTimeout(timer)
     settle(start)
 
@@ -188,9 +200,6 @@ export function Canvas({
     )
     resize.observe(viewport)
 
-    let animation = 0
-    const apply = ({ x, y, k }: View) =>
-      zoomer.transform(selection, zoomIdentity.translate(x, y).scale(k))
     moveToRef.current = (target) => {
       cancelAnimationFrame(animation)
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -217,25 +226,42 @@ export function Canvas({
       animation = requestAnimationFrame(step)
     }
 
-    const detach = attachCanvas({
-      zoomBy: (factor) => zoomer.scaleBy(selection, factor),
-      zoomTo: (scale) => zoomer.scaleTo(selection, scale),
-      fit: () =>
-        moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport))),
-      fitTo: (boxes) =>
-        moveToRef.current?.(
-          fitView(
-            boxes.map((box) => ({ box })),
-            sizeOf(viewport),
+    // A press anywhere on the canvas is the developer taking the view.
+    const press = () => reportHandMove()
+    viewport.addEventListener('pointerdown', press, { capture: true })
+
+    const detach = attachCanvas(
+      {
+        zoomBy: (factor) => zoomer.scaleBy(selection, factor),
+        zoomTo: (scale) => zoomer.scaleTo(selection, scale),
+        // The toolbar's fit is the developer's, though the canvas travels it.
+        fit: () => {
+          reportHandMove()
+          moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport)))
+        },
+        fitTo: (boxes) => {
+          reportHandMove()
+          moveToRef.current?.(
+            fitView(
+              boxes.map((box) => ({ box })),
+              sizeOf(viewport),
+            ),
+          )
+        },
+        panBy: (dx, dy) => {
+          const k = zoomTransform(viewport).k
+          zoomer.translateBy(selection, -dx / k, -dy / k)
+        },
+        centerOn: (box) =>
+          moveToRef.current?.(
+            centerView(box, zoomTransform(viewport).k, sizeOf(viewport)),
           ),
-        ),
-      panBy: (dx, dy) => {
-        const k = zoomTransform(viewport).k
-        zoomer.translateBy(selection, -dx / k, -dy / k)
       },
-    })
+      page.ref,
+    )
 
     return () => {
+      viewport.removeEventListener('pointerdown', press, { capture: true })
       detach()
       clearTimeout(timer)
       cancelAnimationFrame(animation)
@@ -446,6 +472,24 @@ function EmptyNotice() {
       </p>
     </div>
   )
+}
+
+/**
+ * The view centering a box at scale `k`, or fitting it when it does not fit
+ * the viewport at that scale, so following an agent keeps the developer's zoom.
+ */
+function centerView(box: FrameRecord['box'], k: number, size: Size): View {
+  if (
+    box.width * k > size.width - 2 * FIT_PADDING ||
+    box.height * k > size.height - 2 * FIT_PADDING
+  ) {
+    return fitView([{ box }], size)
+  }
+  return {
+    x: size.width / 2 - (box.x + box.width / 2) * k,
+    y: size.height / 2 - (box.y + box.height / 2) * k,
+    k,
+  }
 }
 
 function sizeOf(element: HTMLElement): Size {

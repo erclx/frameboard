@@ -11,7 +11,9 @@ import { modeStore } from './mode'
 import { clear, select, selectionStore } from './selection'
 import { attachCanvas } from './view'
 
-const HERO = frameOf('hero', { box: { x: 10, y: 20, width: 300, height: 200 } })
+const HERO = frameOf('hero', {
+  box: { x: 10, y: 20, width: 300, height: 200 },
+})
 const ABOUT = frameOf('about', {
   box: { x: 400, y: 20, width: 300, height: 200 },
 })
@@ -26,13 +28,17 @@ const IDS = [
 function setup() {
   const pans: [number, number][] = []
   const fits: (readonly Box[])[] = []
-  const detach = attachCanvas({
-    zoomBy: () => {},
-    zoomTo: () => {},
-    fit: () => {},
-    fitTo: (boxes) => fits.push(boxes),
-    panBy: (dx, dy) => pans.push([dx, dy]),
-  })
+  const detach = attachCanvas(
+    {
+      zoomBy: () => {},
+      zoomTo: () => {},
+      fit: () => {},
+      fitTo: (boxes) => fits.push(boxes),
+      panBy: (dx, dy) => pans.push([dx, dy]),
+      centerOn: () => {},
+    },
+    'studio/home',
+  )
   const { result, unmount } = renderHook(() => {
     useBoardActions()
     return useActions(IDS)
