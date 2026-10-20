@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/erclx/frameboard/compare/v0.5.0...v0.6.0) (2026-10-20)
+
+
+### Features
+
+* **follow:** pan the board to each frame a followed agent works on ([#58](https://github.com/erclx/frameboard/issues/58)) ([017a93a](https://github.com/erclx/frameboard/commit/017a93ad1fb74a15b47077b460ced871e79e6bfc))
+* **home:** show frame captures as project thumbnails ([#59](https://github.com/erclx/frameboard/issues/59)) ([2a1e259](https://github.com/erclx/frameboard/commit/2a1e259e5da8bc4ddedb166ada4b79dc0cb77ea7))
+* **menus:** open right-click menus on the board, with copy toasts ([#62](https://github.com/erclx/frameboard/issues/62)) ([71ca209](https://github.com/erclx/frameboard/commit/71ca2094a4517d281e79da18849221c95697e097))
+
 ## [0.5.0](https://github.com/erclx/frameboard/compare/v0.4.0...v0.5.0) (2026-10-20)
 
 
