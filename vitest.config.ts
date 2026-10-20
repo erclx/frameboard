@@ -3,8 +3,13 @@ import { defineConfig, mergeConfig } from 'vitest/config'
 
 import viteConfig from './vite.config.ts'
 
+// The dev proxy sends a frame iframe's request on to the board server on
+// 4173, which no test run starts, so tests drop it. It is stripped before the
+// merge, since `mergeConfig` skips an `undefined` and deep-merges a `{}`.
+const { proxy: _proxy, ...server } = viteConfig.server ?? {}
+
 export default mergeConfig(
-  viteConfig,
+  { ...viteConfig, server },
   defineConfig({
     root: import.meta.dirname,
     // The base config's `strictPort: true` suits dev and preview, which must
