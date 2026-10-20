@@ -82,6 +82,12 @@ test.describe('a frame an agent claims', () => {
     await editing('studio/home/mobile', '--session', 'sess-a')
     await expect(mobile).toHaveAttribute('data-claimed')
     const before = layout()
+    let boxWrites = 0
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/frames/boxes') {
+        boxWrites += 1
+      }
+    })
 
     const from = await center(mobile)
     await page.mouse.move(from.x, from.y)
@@ -92,14 +98,15 @@ test.describe('a frame an agent claims', () => {
     await expect(
       page.locator('[data-waiting-card="studio/home/mobile"]'),
     ).toContainText('Your move will wait until it finishes')
-    // A window in which a write sent too early would have reached the file.
-    await page.waitForTimeout(500)
+    // The card shows once the drop decided to wait, so a send would already have left.
+    expect(boxWrites).toBe(0)
     expect(layout()).toBe(before)
 
     await editing('studio/home/mobile', '--release', '--session', 'sess-a')
 
     await expect.poll(layout, { timeout: 5000 }).not.toBe(before)
     await expect(page.locator('[data-waiting-card]')).toHaveCount(0)
+    expect(boxWrites).toBe(1)
   })
 })
 
