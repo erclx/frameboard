@@ -59,7 +59,7 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 
 ### `src/client/board/claims/`
 
-Owns how a claimed frame shows, apart from `frame.tsx` since the tag, the header initials, and a later waiting card change together.
+Owns how a claimed frame shows and how an edit waits on one, apart from `frame.tsx` since the tag, header initials, and waiting card change together.
 
 - A claimed frame, read from the live store's `claims` slice by frame ref, draws a dashed `--claim` outline at screen width whatever the zoom
 - Its label turns `--claim` with the agent's initial, its tag, and `editing · <elapsed>`, before any findings count
@@ -142,7 +142,7 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 
 ### `src/server/claims/`
 
-Owns the claims record and its expiry, apart from `notes/` and `board/` since the two change together.
+Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together.
 
 - `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`
 - A renewal keeps `claimedAt` and moves only `expiresAt`

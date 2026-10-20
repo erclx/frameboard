@@ -42,6 +42,7 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
 - `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
 - `write.ts` holds a released box as pending until the server's next board carries it, and sends every hand move or resize through `POST /api/frames/boxes`
+- A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
 ### `src/server/`
 
