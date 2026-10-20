@@ -765,6 +765,41 @@ describe('LeftPanel', () => {
       expect(selectionStore.getState().frames).toEqual(['studio/home/front'])
     })
 
+    it("greys a hidden frame's selection items rather than acting on the frame already selected", async () => {
+      renderPanel(
+        project([
+          page('home', [
+            frame('back'),
+            frame('sketch', { order: 1, hidden: true }),
+          ]),
+        ]),
+      )
+      act(() =>
+        selectionStore.setState({
+          page: 'studio/home',
+          frames: ['studio/home/back'],
+        }),
+      )
+      cleanups.push(
+        registerActions([
+          {
+            id: 'frame.delete',
+            label: 'Delete',
+            group: 'frame',
+            run: () => {},
+          },
+        ]),
+      )
+
+      await rightClick(screen.getByRole('button', { name: 'Select sketch' }))
+
+      expect(
+        within(await screen.findByRole('menu')).getByRole('menuitem', {
+          name: /Delete/,
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
+
     it("opens the row's own rename field from the layers menu", async () => {
       renderPanel(project([page('home', [frame('hero')])]))
       await rightClick(screen.getByRole('button', { name: 'Select hero' }))

@@ -17,6 +17,7 @@ import {
   select,
   selectElement,
   selectionStore,
+  useSelection,
 } from '../selection'
 import { startFrameRename } from '../structure/actions'
 import { ElementItems } from './canvas'
@@ -45,10 +46,18 @@ interface FrameRowMenuProps {
  * the frames selected, so every item acts on what the row shows selected.
  * Rename opens the row's own field rather than the inspector's, since the
  * developer is at the row. A hidden frame does not select, as its row click
- * does not, so its items stay greyed.
+ * does not, so the items acting on the selection grey whenever the row's
+ * frame is not among the frames selected, never acting on another one.
  */
 export function FrameRowMenu({ frame, page, trigger }: FrameRowMenuProps) {
-  const [zoom, duplicate, hide, lock, remove] = useActions(FRAME_IDS)
+  const actions = useActions(FRAME_IDS)
+  const held = useSelection(
+    (state) =>
+      state.page === page && !state.element && state.frames.includes(frame.ref),
+  )
+  const [zoom, duplicate, hide, lock, remove] = held
+    ? actions
+    : actions.map(() => undefined)
   const canWrite = useLive((state) => state.canWrite)
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
