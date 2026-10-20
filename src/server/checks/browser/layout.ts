@@ -92,9 +92,10 @@ export async function checkLayout(
   }
 }
 
-// It reads its own boxes rather than `readContentSize`, which counts content
-// a cropping ancestor hides, so an image cropped on purpose would read as
-// clipped.
+// It reads its own boxes rather than `readContentSize`, since it reaches past
+// the width as well and names the boxes that do. The two readers are twins
+// that both leave out a box a cropping ancestor hides, so an image cropped on
+// purpose reads as neither clipped nor content to fit.
 function clipped(target: RenderedTarget, read: LayoutRead): Finding | null {
   const { width, height } = target.box
   const shown = read.boxes.filter((box) => !box.cropped)
@@ -184,6 +185,8 @@ function readLayout(): LayoutRead {
     const style = getComputedStyle(element)
     return style.overflowX !== 'visible' || style.overflowY !== 'visible'
   }
+  // A copy of the test in `readContentSize`, which a page function cannot
+  // import, so a change to one is a change to both.
   const isCropped = (element: Element) => {
     for (
       let parent = element.parentElement;

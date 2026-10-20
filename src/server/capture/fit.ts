@@ -65,12 +65,29 @@ async function measure(
 
 // Both readings take the furthest bottom edge of any box, flow or out of flow,
 // since `scrollHeight` never reads below the viewport and the root's own box
-// leaves out absolutely positioned content. It runs in the page, so it
-// carries everything it reads.
+// leaves out absolutely positioned content. A box an ancestor inside the body
+// crops is left out, since the frame never shows it. It runs in the page, so
+// it carries everything it reads, which keeps the cropping test a copy of
+// `isCropped` in the layout check's `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
+  const crops = (element: Element) => {
+    const style = getComputedStyle(element)
+    return style.overflowX !== 'visible' || style.overflowY !== 'visible'
+  }
+  const isCropped = (element: Element) => {
+    for (
+      let parent = element.parentElement;
+      parent && parent !== document.body;
+      parent = parent.parentElement
+    ) {
+      if (crops(parent)) return true
+    }
+    return false
+  }
   let bottom = root.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {
+    if (isCropped(element)) continue
     bottom = Math.max(bottom, element.getBoundingClientRect().bottom)
   }
   return {
