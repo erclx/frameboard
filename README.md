@@ -38,7 +38,7 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 
 Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board. The agent answers in the note's thread through `notes reply` and closes it with `notes done`, and the notes stay in each page's `notes.json`.
 
-An agent runs `editing` on a frame before rewriting it. The board then outlines the frame and tags it with the agent and how long it has held it, and a second session that tries to claim it is told it is taken. A claim lapses five minutes after the agent last ran `editing`, and a note sent from a claimed frame goes to the session holding it.
+An agent runs `editing` on a frame before rewriting it. The board then outlines the frame and tags it with the agent and how long it has held it, and a second session that tries to claim it is told it is taken. A claim lapses five minutes after the agent last ran `editing`, and a note sent from a claimed frame goes to the session holding it. When you move, resize, edit, rename, or delete a claimed frame, your edit waits until the claim ends, under a card naming the agent, and goes only if the agent left the frame as you saw it.
 
 When an agent writes a frame, the board marks it with a dot and counts it on its page and project until you look at it. A toast names the agent and offers Show, which takes you to the change and makes the edited elements glow, and Next, or `]`, steps to the next one.
 

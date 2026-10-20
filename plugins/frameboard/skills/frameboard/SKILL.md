@@ -34,7 +34,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 ## Claim a frame before you rewrite it
 
-Run `frameboard editing <page>/<frame> --json` before you change a frame, so the developer's board shows you working on it and another session knows it is taken. A claim lapses five minutes after you last ran it, so run it again while you are still at work, and drop it with `frameboard editing <page>/<frame> --release --json` once you are done. A refusal with `frame-claimed` means another session holds the frame. Leave that frame alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
+Run `frameboard editing <page>/<frame> --json` before you change a frame, so the developer's board shows you working on it and another session knows it is taken. A claim lapses five minutes after you last ran it, so run it again while you are still at work, and drop it with `frameboard editing <page>/<frame> --release --json` once you are done. A refusal with `frame-claimed` means another session holds the frame. Leave that frame alone, or ask the developer, rather than writing it anyway, since nothing else stops you. While you hold a frame, the developer's hand edits on it wait for your claim to end, so release it as soon as you are done rather than letting it lapse.
 
 ## Respect what the developer changed
 
