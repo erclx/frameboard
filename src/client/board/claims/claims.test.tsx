@@ -9,6 +9,7 @@ import type { Listener } from '@/shared/records/notes'
 import { frameOf } from '@/test/board'
 
 import { Frame } from '../frame'
+import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { ClaimAvatars } from './avatars'
 import { elapsed } from './label'
@@ -279,6 +280,24 @@ describe('the waiting card', () => {
       `Claude · visual-style is editing hero${line}`,
     )
     act(() => dropWaiting())
+    await ended
+  })
+
+  it('sits at the box a waiting move dropped the frame at', async () => {
+    act(() =>
+      holdBoxes({ [HERO.ref]: { ...HERO.box, x: 400, y: 0, height: 300 } }),
+    )
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+    const ended = startEdit('move')
+
+    const placed = screen.getByRole('status').parentElement?.style
+
+    expect(placed?.left).toContain('400px')
+    expect(placed?.top).toContain('300px')
+    act(() => {
+      dropWaiting()
+      dropPending([HERO.ref])
+    })
     await ended
   })
 

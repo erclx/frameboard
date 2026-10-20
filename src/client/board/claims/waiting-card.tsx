@@ -4,6 +4,7 @@ import type { FrameRecord } from '@/shared/records/list'
 
 import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
+import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { elapsed, initialOf } from './label'
 import { useNow } from './use-now'
@@ -51,9 +52,12 @@ export function WaitingCards({ page, frames }: WaitingCardsProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [waiting])
 
+  // A waiting move draws its frame at the dropped box, so the card follows that box.
+  const drawn = usePendingFrames(frames)
   if (playing) return null
-  return frames.flatMap((frame) => {
-    const card = cardsByFrame(edits).get(frame.ref)
+  const cards = cardsByFrame(edits)
+  return drawn.flatMap((frame) => {
+    const card = cards.get(frame.ref)
     if (!card) return []
     return (
       <div
