@@ -61,6 +61,15 @@ async function canvasPoint(
   )
 }
 
+/** Waits for an open menu's zoom and fade to finish, so the shot holds the menu at rest. */
+async function settledMenu(page: Page): Promise<void> {
+  await page
+    .getByRole('menu')
+    .evaluate((menu) =>
+      Promise.all(menu.getAnimations().map((animation) => animation.finished)),
+    )
+}
+
 async function clickFrames(page: Page, refs: readonly string[]) {
   for (const [index, ref] of refs.entries()) {
     const at = await frameCenter(page, ref)
@@ -156,6 +165,28 @@ const SURFACES: Surface[] = [
         .getByRole('button', { name: /from git user.name$|^Account$/ })
         .click()
       await page.getByRole('menu').waitFor()
+    },
+  },
+  {
+    reference: 'menus/toast',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    act: async (page) => {
+      const at = await frameCenter(page, 'webapp/home/hero')
+      await page.mouse.click(at.x, at.y, { button: 'right' })
+      await settledMenu(page)
+    },
+  },
+  {
+    reference: 'menus/context',
+    board: 'basic',
+    route: '/p/webapp/home',
+    writer: true,
+    act: async (page) => {
+      const at = await canvasPoint(page, -40, -40)
+      await page.mouse.click(at.x, at.y, { button: 'right' })
+      await settledMenu(page)
     },
   },
   {
