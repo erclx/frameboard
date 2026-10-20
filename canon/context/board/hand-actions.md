@@ -25,6 +25,17 @@ Enter at a frame selects the first child of its `body`, and Esc at a child of `b
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
+### `src/client/board/menus/`
+
+Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together.
+
+- Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for, as Paste here shows Paste's
+- A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts on the selection the way its key does
+- A page row's menu moves the canvas to that page first, since the `page.*` actions act on the page shown, and New page below runs `page.new`
+- Flip to light or Flip to dark ends every selected frame in the theme opposite the right-clicked one, lasting until reload and writing nothing
+- Paste here sends the right-clicked point with the paste, which places the group's top left there, and New frame here and Add a note here act at that point too
+- The menu key and Shift+F10 open a row's menu with focus inside, and a Ctrl-press the gestures keep for snapping opens none
+
 ### `src/client/board/structure/`
 
 Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together.
@@ -34,6 +45,7 @@ Owns the frame structure actions, being rename, duplicate, delete, hide, lock, c
 - The server holds the clipboard, being each copied frame's bytes and layout entry in memory, so a paste never reads the source and a restart empties it. A cut is a copy and a delete in one undo step.
 - A paste lands on the page on the canvas, keeping each frame's box on another page and sitting beside its source on its own, and takes the next free name rather than writing over a frame by that name
 - Paste stays disabled until a copy or cut, and again once the socket drops, since the server may have restarted
+- Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller
 
 ### `src/client/board/geometry/`
 
