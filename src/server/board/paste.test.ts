@@ -58,6 +58,24 @@ describe('paste', () => {
     })
   })
 
+  it("places the group's top left at a point, keeping each frame's offset within it", async () => {
+    const held = await holdFrames(
+      board.root,
+      ['webapp/home/hero', 'webapp/home/about'],
+      { cwd: board.root },
+    )
+
+    const pasted = await pasteFrames(board.root, 'webapp/home', held, {
+      cwd: board.root,
+      at: { x: 100, y: 200 },
+    })
+
+    expect(pasted.map((frame) => frame.box)).toEqual([
+      { x: 100, y: 200, width: 1440, height: 900 },
+      { x: 1620, y: 200, width: 390, height: 844 },
+    ])
+  })
+
   it('takes the next free name when the target page holds one by that name', async () => {
     const held = await holdFrames(board.root, ['webapp/home/hero'], {
       cwd: board.root,

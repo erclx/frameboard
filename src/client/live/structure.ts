@@ -73,8 +73,9 @@ export function createStructure(send: typeof fetch = fetch) {
       post<{ held: number }>('/api/clipboard/copy', { refs }),
     cutFrames: (refs: readonly string[]) =>
       held<{ held: number }>(refs, 'cut', '/api/clipboard/cut', { refs }),
-    pasteFrames: (page: string) =>
-      post<FrameRecord[]>('/api/clipboard/paste', { ref: page }),
+    /** Pastes onto a page, with the group's top left at `at` when given and beside its source otherwise. */
+    pasteFrames: (page: string, at?: { x: number; y: number }) =>
+      post<FrameRecord[]>('/api/clipboard/paste', { ref: page, at }),
     undo: () => post<StepAnswer>('/api/undo', {}),
     redo: () => post<StepAnswer>('/api/redo', {}),
   }

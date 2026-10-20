@@ -267,6 +267,32 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(1)
     })
 
+    it('pastes a frame with its top left at the point the body names', async () => {
+      await post('/api/clipboard/copy', { refs: ['studio/home/hero'] })
+
+      const response = await post('/api/clipboard/paste', {
+        ref: 'studio/home',
+        at: { x: -40, y: 300 },
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [{ ref: 'studio/home/hero-2', box: { x: -40, y: 300 } }],
+      })
+    })
+
+    it('refuses a paste at a point off the pixel grid', async () => {
+      await post('/api/clipboard/copy', { refs: ['studio/home/hero'] })
+
+      const response = await post('/api/clipboard/paste', {
+        ref: 'studio/home',
+        at: { x: 10.5, y: 0 },
+      })
+
+      expect(response.status).toBe(400)
+      expect(history.counts().undo).toBe(0)
+    })
+
     it('refuses a paste with nothing held', async () => {
       const response = await post('/api/clipboard/paste', {
         ref: 'studio/home',
