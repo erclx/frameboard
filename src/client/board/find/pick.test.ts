@@ -29,6 +29,7 @@ const CANVAS: CanvasControls = {
   fit: () => {},
   fitTo: () => {},
   panBy: () => {},
+  centerOn: () => {},
 }
 
 describe('pickHit', () => {
@@ -59,11 +60,11 @@ describe('pickHit', () => {
   })
 
   it('selects a text hit’s element on another page and zooms once its canvas attaches', () => {
-    const first = attachCanvas(CANVAS)
+    const first = attachCanvas(CANVAS, 'studio/home')
 
     pickHit('studio', hit())
     first()
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     expect({
       path: location.pathname,
@@ -81,7 +82,7 @@ describe('pickHit', () => {
   })
 
   it('selects the frame alone when its live iframe shows other bytes than the hit read', () => {
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     pickHit('studio', hit(), selectionStore, () => 'b'.repeat(64))
 
@@ -93,7 +94,7 @@ describe('pickHit', () => {
   })
 
   it('selects the element when the live iframe shows the bytes the hit read', () => {
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     pickHit('studio', hit(), selectionStore, () => HASH)
 
@@ -105,7 +106,7 @@ describe('pickHit', () => {
   })
 
   it('selects a frame hit’s frame alone', () => {
-    cleanups.push(attachCanvas(CANVAS))
+    cleanups.push(attachCanvas(CANVAS, 'studio/home'))
 
     pickHit(
       'studio',

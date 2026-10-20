@@ -1280,14 +1280,17 @@ export const BOARD_CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
+        // Following the agent that wrote them, so its initial is the chip.
         setup: themed(
           both(
+            listening,
             seededChanges([
               agentChange('webapp/home/about', 1),
               agentChange('webapp/home/hero', 2),
               agentChange('webapp/settings/profile', 3),
             ]),
-            readyWhen(TOAST_SHOWN),
+            actWhen(TOAST_SHOWN, 'claude · frameboard, listening', 'click'),
+            readyWhen('button[aria-pressed="true"]'),
           ),
         ),
       },

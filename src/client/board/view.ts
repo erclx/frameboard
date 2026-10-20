@@ -12,14 +12,21 @@ export interface CanvasControls {
   fitTo: (boxes: readonly Box[]) => void
   /** Moves the view by a screen offset, so a positive `dx` brings in what lies to the right. */
   panBy: (dx: number, dy: number) => void
+  /**
+   * Travels to center the box at the current zoom, fitting it instead only
+   * when it is larger than the viewport.
+   */
+  centerOn: (box: Box) => void
 }
 
 type Listener = () => void
 
 let controls: CanvasControls | null = null
+let attachedPage: string | null = null
 let zoom = 1
 const zoomListeners = new Set<Listener>()
 const attachListeners = new Set<Listener>()
+const handListeners = new Set<Listener>()
 
 /**
  * The canvas view controller. The zoom label and the zoom actions go through
@@ -30,27 +37,44 @@ export const canvasView = {
   zoom: (): number => zoom,
   /** Whether a canvas is mounted to act on. */
   attached: (): boolean => controls !== null,
+  /** The ref of the page the mounted canvas shows, null with none mounted. */
+  page: (): string | null => attachedPage,
   /** Called on every zoom change, a gesture's frames included. */
   onZoom: (listener: Listener): (() => void) => listen(zoomListeners, listener),
   /** Called when a canvas mounts or unmounts. */
   onAttach: (listener: Listener): (() => void) =>
     listen(attachListeners, listener),
+  /**
+   * Called for every view change the developer made, being a gesture, a pan
+   * or zoom key, the zoom controls, or a click on the canvas, and never for a
+   * travel the controller made, such as Show's.
+   */
+  onHandMove: (listener: Listener): (() => void) =>
+    listen(handListeners, listener),
   zoomBy: (factor: number): void => controls?.zoomBy(factor),
   zoomTo: (scale: number): void => controls?.zoomTo(scale),
   fit: (): void => controls?.fit(),
   fitTo: (boxes: readonly Box[]): void => controls?.fitTo(boxes),
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
+  centerOn: (box: Box): void => controls?.centerOn(box),
 }
 
-/** Called by the canvas on mount, returning the function its unmount calls. */
-export function attachCanvas(next: CanvasControls): () => void {
+/** Called by the canvas of a page on mount, returning the function its unmount calls. */
+export function attachCanvas(next: CanvasControls, page: string): () => void {
   controls = next
+  attachedPage = page
   notify(attachListeners)
   return () => {
     if (controls !== next) return
     controls = null
+    attachedPage = null
     notify(attachListeners)
   }
+}
+
+/** Called by the canvas for a view change the developer made. */
+export function reportHandMove(): void {
+  notify(handListeners)
 }
 
 /** Called by the canvas from its zoom handler. */
