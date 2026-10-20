@@ -187,11 +187,6 @@ export function dropWaiting(): void {
     finish(waiter, new WaitDropped('cancelled'))
 }
 
-/** Whether an edit is waiting now. */
-export function isWaiting(): boolean {
-  return waiters.size > 0
-}
-
 function wait({
   label,
   refs,

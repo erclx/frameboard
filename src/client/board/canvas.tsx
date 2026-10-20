@@ -13,6 +13,7 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { useDwell } from './changes/dwell'
 import { ChangeGlow } from './changes/glow'
+import { WaitingCards, WaitingDock } from './claims/waiting-card'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
@@ -346,6 +347,7 @@ export function Canvas({
             <SelectionOverlay frames={frames} />
             <ElementOverlay frames={frames} container={layer} />
             <ChangeGlow frames={frames} container={layer} />
+            <WaitingCards page={page.ref} frames={frames} />
           </>
         )}
       </div>
@@ -391,6 +393,7 @@ export function Canvas({
       >
         <NotesLayer page={page.ref} frames={frames} container={layer} />
       </div>
+      <WaitingDock frames={frames} />
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (

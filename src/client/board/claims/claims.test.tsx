@@ -3,6 +3,7 @@ import '../../styles.css'
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { liveStore, receiveClaims } from '@/client/live/store'
 import type { Claim } from '@/shared/records/claims'
 import type { Listener } from '@/shared/records/notes'
 import { frameOf } from '@/test/board'
@@ -11,6 +12,13 @@ import { Frame } from '../frame'
 import { modeStore } from '../mode'
 import { ClaimAvatars } from './avatars'
 import { elapsed } from './label'
+import {
+  afterClaims,
+  dropWaiting,
+  type EditLabel,
+  WaitDropped,
+} from './waiting'
+import { WaitingCards, WaitingDock } from './waiting-card'
 
 const NOW = new Date('2026-10-19T10:00:40.000Z')
 
@@ -218,5 +226,129 @@ describe('ClaimAvatars', () => {
     )
 
     expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
+})
+
+describe('the waiting card', () => {
+  const HERO = frameOf('hero')
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    vi.setSystemTime(NOW)
+    act(() => {
+      liveStore.setState({ connected: true })
+      receiveClaims(liveStore, [claimBy('sess-a', HERO.ref)])
+    })
+  })
+
+  afterEach(() => {
+    act(() => {
+      dropWaiting()
+      receiveClaims(liveStore, [])
+    })
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+    act(() => modeStore.setState({ mode: 'edit' }))
+  })
+
+  /** Starts an edit of `label` on the hero, resolving with how its wait ended. */
+  function startEdit(label: EditLabel): Promise<unknown> {
+    let ended: Promise<unknown> = Promise.resolve()
+    act(() => {
+      ended = afterClaims([HERO.ref], label).then(
+        () => 'sent',
+        (error: unknown) => error,
+      )
+    })
+    return ended
+  }
+
+  it.each([
+    ['move', 'Your move will wait until it finishes, about 40s so far.'],
+    ['resize', 'Your resize will wait until it finishes, about 40s so far.'],
+    ['edit', 'Your edit will wait until it finishes, about 40s so far.'],
+    ['rename', 'Your rename will wait until it finishes, about 40s so far.'],
+    ['delete', 'Your delete will wait until it finishes, about 40s so far.'],
+    ['undo', 'Your undo will wait until it finishes, about 40s so far.'],
+  ] as const)('names the holder and says a %s waits', async (label, line) => {
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+
+    const ended = startEdit(label)
+
+    expect(screen.getByRole('status').textContent).toBe(
+      `Claude · visual-style is editing hero${line}`,
+    )
+    act(() => dropWaiting())
+    await ended
+  })
+
+  it('counts on each second while the edit waits', async () => {
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+    const ended = startEdit('move')
+
+    act(() => vi.advanceTimersByTime(30_000))
+
+    expect(document.querySelector('[data-waiting-elapsed]')?.textContent).toBe(
+      '1m',
+    )
+    act(() => dropWaiting())
+    await ended
+  })
+
+  it('closes once the claim is released, sending the edit', async () => {
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+    const ended = startEdit('move')
+
+    act(() => receiveClaims(liveStore, []))
+
+    expect(await ended).toBe('sent')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('closes and cancels the edit on Esc', async () => {
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+    const ended = startEdit('move')
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+
+    expect(await ended).toBeInstanceOf(WaitDropped)
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('cancels the edit on Play', async () => {
+    render(<WaitingCards page="studio/home" frames={[HERO]} />)
+    const ended = startEdit('move')
+
+    act(() => modeStore.setState({ mode: 'play' }))
+
+    expect(await ended).toBeInstanceOf(WaitDropped)
+  })
+
+  it('cancels the edit when the canvas leaves the page', async () => {
+    const { rerender } = render(
+      <WaitingCards page="studio/home" frames={[HERO]} />,
+    )
+    const ended = startEdit('move')
+
+    rerender(<WaitingCards page="studio/pricing" frames={[]} />)
+
+    expect(await ended).toBeInstanceOf(WaitDropped)
+  })
+
+  it('docks the card of a frame the page does not show', async () => {
+    render(<WaitingDock frames={[]} />)
+
+    const ended = startEdit('rename')
+
+    expect(
+      document.querySelector('[data-waiting-dock] [role="status"]')
+        ?.textContent,
+    ).toBe(
+      'Claude · visual-style is editing heroYour rename will wait until it finishes, about 40s so far.',
+    )
+    act(() => dropWaiting())
+    await ended
   })
 })
