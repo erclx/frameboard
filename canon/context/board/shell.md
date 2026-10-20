@@ -117,7 +117,7 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 - `unseen.ts` keeps each frame's latest unseen change, dotted on its label and layers row and counted on pages and projects, with each frame's seen hash in `localStorage`
-- Follow on an agent's avatar pans to what it edits and stops on a click or hand pan, and the board never moves the view otherwise
+- Following an agent from its initial centers each frame it changes or claims at the current zoom, and any hand move the canvas reports stops it, so the view never moves otherwise
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
