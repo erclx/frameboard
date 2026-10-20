@@ -81,6 +81,20 @@ test.describe('the board', () => {
       .toBeGreaterThan(0)
   })
 
+  test('finds copy on another page and selects the element holding it', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/home`)
+    await expect(page.locator('[data-frame]')).toHaveCount(2)
+
+    await page.keyboard.press('ControlOrMeta+f')
+    await page.getByRole('combobox', { name: 'Find in studio' }).fill('plans')
+    await page.getByRole('option', { name: /^Text in plans/ }).click()
+
+    await expect(page).toHaveURL(/\/p\/studio\/pricing$/)
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+  })
+
   test('holds no live page for a frame far offscreen', async ({ page }) => {
     await page.goto(`${server.url}/p/studio/pricing`)
     const canvas = page.locator('[data-canvas]')

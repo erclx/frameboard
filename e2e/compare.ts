@@ -22,7 +22,7 @@ import { type BoardServer, serveBoard } from './support/board-server'
 const OUT = 'screenshots/compare'
 const VIEWPORT = { width: 1440, height: 900 }
 
-type BoardName = 'basic' | 'empty-page' | 'empty'
+type BoardName = 'basic' | 'empty-page' | 'empty' | 'find'
 
 interface Surface {
   /** The reference this capture sits beside, as `<folder>/<name>` under `canon/design/`. */
@@ -169,6 +169,18 @@ const SURFACES: Surface[] = [
     },
   },
   {
+    reference: 'layers/find',
+    board: 'find',
+    route: '/p/diligent-kite/playground',
+    act: async (page) => {
+      await page.keyboard.press('ControlOrMeta+f')
+      await page
+        .getByRole('combobox', { name: 'Find in diligent-kite' })
+        .fill('started')
+      await page.getByRole('option').first().waitFor()
+    },
+  },
+  {
     reference: 'palette/shortcuts',
     board: 'basic',
     route: '/p/webapp/home',
@@ -220,6 +232,20 @@ const ASSET_SIZES: Record<string, number> = {
   'shared.css': 3_000,
 }
 
+/** The copy `layers/find` searches, across two pages as the reference draws them. */
+const FIND_BOARD: Record<string, string> = {
+  'diligent-kite/project.json':
+    '{ "version": 1, "pages": ["playground", "onboarding"] }\n',
+  'diligent-kite/playground/hello-world.html':
+    '<!doctype html><body><h1>Hello, world</h1><p>Get started in minutes</p><button data-name="Get started"><span>Go</span></button></body>',
+  'diligent-kite/playground/getting-started.html':
+    '<!doctype html><body><h1>Pricing</h1></body>',
+  'diligent-kite/onboarding/welcome.html':
+    "<!doctype html><body><h1>Let's get you started</h1></body>",
+  'diligent-kite/onboarding/step-1.html':
+    '<!doctype html><body><p>Before you get started, pick a name</p></body>',
+}
+
 function makeBoard(name: BoardName): FixtureBoard | TempBoard {
   if (name === 'basic') {
     const board = copyFixtureBoard('basic')
@@ -236,6 +262,7 @@ function makeBoard(name: BoardName): FixtureBoard | TempBoard {
     return board
   }
   if (name === 'empty') return writeBoard({})
+  if (name === 'find') return writeBoard(FIND_BOARD)
   return writeBoard({
     'studio/project.json': '{ "version": 1, "pages": ["page-1"] }\n',
     'studio/page-1/layout.json': '{ "version": 1, "frames": {} }\n',
