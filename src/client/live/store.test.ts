@@ -16,6 +16,7 @@ import {
   receiveListeners,
   receiveNotes,
   receiveReload,
+  receiveThumbnails,
 } from './store'
 
 function boardWith(...names: string[]): ListResult {
@@ -282,5 +283,53 @@ describe('receiveClaims', () => {
     receiveDisconnect(store)
 
     expect(store.getState().claims).toEqual({})
+  })
+})
+
+describe('receiveThumbnails', () => {
+  it('merges each stamp into its theme, leaving the other frames', () => {
+    const store = createLiveStore()
+    receiveThumbnails(store, 'light', { 'studio/home/hero': 'r-0-390x844' })
+
+    receiveThumbnails(store, 'light', { 'studio/home/about': 'r-0-390x844' })
+
+    expect(store.getState().thumbnails).toEqual({
+      light: {
+        'studio/home/hero': 'r-0-390x844',
+        'studio/home/about': 'r-0-390x844',
+      },
+      dark: {},
+    })
+  })
+
+  it('keeps the themes apart, so a light capture never shows in dark', () => {
+    const store = createLiveStore()
+
+    receiveThumbnails(store, 'dark', { 'studio/home/hero': 'r-0-390x844' })
+
+    expect(store.getState().thumbnails.light).toEqual({})
+  })
+
+  it('deletes the stamp of a frame marked stale with null', () => {
+    const store = createLiveStore()
+    receiveThumbnails(store, 'light', {
+      'studio/home/hero': 'r-0-390x844',
+      'studio/home/about': 'r-0-390x844',
+    })
+
+    receiveThumbnails(store, 'light', { 'studio/home/hero': null })
+
+    expect(store.getState().thumbnails.light).toEqual({
+      'studio/home/about': 'r-0-390x844',
+    })
+  })
+
+  it('clears every stamp on disconnect, since a restarted server holds none', () => {
+    const store = createLiveStore()
+    receiveThumbnails(store, 'light', { 'studio/home/hero': 'r-0-390x844' })
+
+    receiveDisconnect(store)
+
+    expect(store.getState().thumbnails).toEqual({ light: {}, dark: {} })
   })
 })

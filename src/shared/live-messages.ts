@@ -3,6 +3,7 @@ import type { Finding } from './records/check'
 import type { Claim } from './records/claims'
 import type { ListResult } from './records/list'
 import type { BoardNote, Listener, Note } from './records/notes'
+import type { Theme } from './theme'
 
 /** The socket path on the board's server. */
 export const LIVE_PATH = '/api/live'
@@ -70,3 +71,12 @@ export type ServerMessage =
    * writes has passed.
    */
   | { type: 'changes'; changes: FrameChange[] }
+  /**
+   * Thumbnail stamps in one theme by frame ref: a stamp as each render lands,
+   * and `null` for every frame a batch reloads, marking it stale.
+   */
+  | {
+      type: 'thumbnails'
+      theme: Theme
+      stamps: Record<string, string | null>
+    }
