@@ -96,6 +96,15 @@ describe.skipIf(shell === null)('the layout rules', () => {
     expect(findings).toEqual([])
   })
 
+  it('reads a 100vh element cropped by overflow hidden as no finding', async () => {
+    const findings = await checkHero(
+      '.crop { height: 100px; overflow: hidden } .crop div { height: 100vh }',
+      '<div class="crop"><div></div></div>',
+    )
+
+    expect(findings).toEqual([])
+  })
+
   it('names the panel that scrolls by its element index', async () => {
     const findings = await checkHero(
       '.panel { height: 50px; overflow: auto } .panel div { height: 80px }',

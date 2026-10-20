@@ -6,6 +6,8 @@ import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
 
+import { checkResultSchema } from '@/shared/records/check'
+
 import {
   copyFixtureBoard,
   type FixtureBoard,
@@ -351,6 +353,31 @@ test.describe('frame fit', () => {
 
     expect(exitCode).toBe(0)
     expect(envelope.data).toMatchObject({ contentHeight: 600 })
+  })
+
+  test('fit: ignores content an overflow-hidden parent crops', async () => {
+    const { exitCode, envelope } = await frameboard(
+      ['frame', 'fit', 'fit/cropped'],
+      board.root,
+    )
+    const server = await serveBoard(board.root)
+    let checked: Envelope
+    try {
+      checked = (await frameboard(['check', 'fit/cropped'], board.root))
+        .envelope
+    } finally {
+      await server.stop()
+    }
+    const result = checkResultSchema.parse(
+      checked.data ?? checked.error?.details,
+    )
+
+    expect(exitCode).toBe(0)
+    expect(envelope.data).toMatchObject({ contentHeight: 300 })
+    expect(result.browser).toEqual({ ran: true })
+    expect(result.findings.map((finding) => finding.rule)).not.toContain(
+      'clipped',
+    )
   })
 })
 
