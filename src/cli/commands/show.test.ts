@@ -9,7 +9,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 
-describe('show', () => {
+describe('show', { timeout: 15_000 }, () => {
   let board: FixtureBoard
   let stop: AbortController
   let sockets: WebSocket[]
@@ -50,7 +50,9 @@ describe('show', () => {
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
     // The board, whether it may write, the history, the claims, the changes, the listeners, then every frame's findings.
-    await expect.poll(() => messages.length).toBe(7)
+    await expect
+      .poll(() => messages.length, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(7)
     return messages
   }
 

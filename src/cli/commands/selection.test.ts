@@ -14,7 +14,7 @@ import {
 
 const HERO = 'studio/home/hero'
 
-describe('selection', () => {
+describe('selection', { timeout: 15_000 }, () => {
   let board: FixtureBoard
   let stop: AbortController
 

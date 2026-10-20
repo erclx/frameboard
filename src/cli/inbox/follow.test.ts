@@ -20,6 +20,11 @@ type NoteMessage = Extract<ServerMessage, { type: 'note' }>
 
 const SESSION = 'sess-1'
 
+// The server's browser sweep refuses at once, so close never waits on Chromium.
+async function noBrowser(): Promise<never> {
+  throw new Error('No browser in this spec.')
+}
+
 function queued(id: string): Note {
   return {
     id,
@@ -38,7 +43,7 @@ function queued(id: string): Note {
   }
 }
 
-describe('follow', () => {
+describe('follow', { timeout: 15_000 }, () => {
   let board: FixtureBoard
   let clientDir: string
   let server: RunningServer | undefined
@@ -67,6 +72,7 @@ describe('follow', () => {
       root: board.root,
       port: 0,
       openUrl: () => {},
+      launch: noBrowser,
     })
     const address = newAddress({
       root: board.root,

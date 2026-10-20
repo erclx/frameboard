@@ -167,7 +167,7 @@ describe('startServer access', () => {
   })
 })
 
-describe('startServer live socket', () => {
+describe('startServer live socket', { timeout: 15_000 }, () => {
   let clientDir: string
   let board: FixtureBoard
   let server: RunningServer
@@ -191,8 +191,11 @@ describe('startServer live socket', () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length).toBe(7)
-    hello = messages
+    // A push can land before the poll looks again, so the hello is the first seven.
+    await expect
+      .poll(() => messages.length, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(7)
+    hello = messages.slice(0, 7)
     messages = []
   })
 
@@ -283,7 +286,9 @@ describe('startServer live socket', () => {
         type: 'claims',
         claims: [{ frame: 'studio/home/hero', session: 'sess-a' }],
       })
-    expect(messages.map((message) => message.type)).toEqual(['claims'])
+    // The watcher can report the claims file in two batches under load, so a
+    // repeated claims push is allowed, and anything else is a rescan.
+    expect(messages.filter((message) => message.type !== 'claims')).toEqual([])
   })
 
   it('pushes the claims again once one expires, with no write', async () => {

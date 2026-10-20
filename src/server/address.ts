@@ -9,7 +9,7 @@ import { version } from '@/shared/version'
 import { isAlive, isCode, readRecord, writeRecord } from './board/json-record'
 
 /** How long a live server has to answer the health check. */
-const HEALTH_TIMEOUT_MS = 500
+const HEALTH_TIMEOUT_MS = 5000
 
 export function addressPath(root: string): string {
   return join(root, RUN_FOLDER, ADDRESS_FILE)
@@ -92,7 +92,7 @@ export async function removeAddress(
 
 /**
  * The server recorded for this board when it is live: its pid answers and its
- * health check answers within 500 ms with the same root. Anything else is
+ * health check answers within 5000 ms with the same root. Anything else is
  * stale, and a new `serve` replaces it.
  */
 export async function findLiveServer(
