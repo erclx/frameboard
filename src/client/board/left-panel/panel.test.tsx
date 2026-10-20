@@ -19,6 +19,7 @@ import type {
 } from '@/shared/records/list'
 
 import { trees } from '../element/tree'
+import { closeFind, findStore } from '../find/actions'
 import { clear, selectElement, selectionStore } from '../selection'
 import { LeftPanel } from './panel'
 
@@ -219,6 +220,25 @@ describe('LeftPanel', () => {
     renderPanel(project([page('home')]))
 
     expect(screen.getByText('No frames on this page')).toBeInTheDocument()
+  })
+
+  it('shows find in place of the tabs under the same header while open, and the layers once closed', () => {
+    renderPanel(project([page('home')]))
+
+    act(() => findStore.setState({ open: true }))
+    const finding = [
+      screen.queryByRole('tab', { name: 'Design' }),
+      screen.getByRole('combobox', { name: 'Find in studio' }),
+      screen.getByRole('button', { name: 'Hide UI' }),
+    ]
+    act(() => closeFind())
+
+    expect([
+      finding[0],
+      finding[1] !== null,
+      finding[2] !== null,
+      screen.getByRole('tab', { name: 'Design' }),
+    ]).toEqual([null, true, true, expect.anything()])
   })
 
   it('hides the UI from its header button', async () => {

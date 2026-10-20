@@ -8,6 +8,7 @@ import { checkResultSchema } from './check'
 import { claimSchema } from './claims'
 import { editResultSchema } from './edit'
 import { elementTreeSchema } from './elements'
+import { findResultSchema } from './find'
 import { inspectResultSchema } from './inspect'
 import {
   frameRecordSchema,
@@ -42,4 +43,5 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   assetAdd: assetAddResultSchema,
   elements: elementTreeSchema,
   selection: selectionResultSchema,
+  find: findResultSchema,
 }

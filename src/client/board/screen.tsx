@@ -20,6 +20,7 @@ import { ChangesToast } from './changes/toast'
 import { HiddenPills } from './chrome/hidden-pills'
 import { PlayBanner } from './chrome/play-banner'
 import { Toolbar } from './chrome/toolbar'
+import { useFindActions } from './find/actions'
 import { InspectorPanel } from './inspector/panel'
 import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
@@ -71,6 +72,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
   useChangeActions()
+  useFindActions()
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />

@@ -129,13 +129,13 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens an overlay with its key once the board has drawn, and types `query`
- * into the palette's search. Like `pressOnLoad`, it waits in an init script,
- * since `setup` runs before the harness navigates, and it reads the platform
- * to send the modifier `$mod` means there.
+ * Opens an overlay, or the left panel's find, with its key once the board has
+ * drawn, and types `query` into its search. Like `pressOnLoad`, it waits in an
+ * init script, since `setup` runs before the harness navigates, and it reads
+ * the platform to send the modifier `$mod` means there.
  */
 function openOverlayOnLoad(
-  overlay: 'commands' | 'shortcuts',
+  overlay: 'commands' | 'shortcuts' | 'find',
   query = '',
 ): (page: Page) => Promise<void> {
   return async (page) => {
@@ -172,7 +172,8 @@ function openOverlayOnLoad(
             return
           }
           const mac = /Mac/.test(navigator.platform)
-          key({ key: 'k', code: 'KeyK', metaKey: mac, ctrlKey: !mac })
+          const [letter, code] = kind === 'find' ? ['f', 'KeyF'] : ['k', 'KeyK']
+          key({ key: letter, code, metaKey: mac, ctrlKey: !mac })
           if (text) requestAnimationFrame(type)
         }
         document.addEventListener('DOMContentLoaded', () =>
@@ -990,6 +991,20 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(openOverlayOnLoad('shortcuts')),
+      },
+      {
+        section: 'find',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            openOverlayOnLoad('find', 'o'),
+            readyWhen('[role="listbox"] [role="option"]'),
+          ),
+        ),
       },
       {
         section: 'select-one',

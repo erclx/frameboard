@@ -37,6 +37,7 @@ const SECTIONS: readonly Section[] = [
       { label: 'Hand', actions: ['tool.hand'] },
       { label: 'Frame', actions: ['tool.frame'] },
       { label: 'Note', actions: ['tool.note'] },
+      { label: 'Find', actions: ['find.open'] },
       { label: 'Command palette', actions: ['palette.open'] },
       { label: 'This list', actions: ['help.shortcuts'] },
     ],

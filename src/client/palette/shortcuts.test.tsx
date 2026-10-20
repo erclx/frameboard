@@ -68,6 +68,18 @@ describe('ShortcutsSheet', () => {
     expect(row('Move').querySelector('kbd')?.textContent).toBe('V')
   })
 
+  it('lists Find under Tools with its key', async () => {
+    register(action('find.open', { keys: ['$mod+KeyF'] }))
+    render(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    expect(row('Find').querySelector('kbd')?.textContent).toMatch(
+      /^(⌘ F|Ctrl\+F)$/,
+    )
+  })
+
   it('greys a row whose action is not registered yet', async () => {
     register(action('tool.move', { keys: ['v'] }))
     render(<ShortcutsSheet />)
