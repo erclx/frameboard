@@ -234,27 +234,29 @@ describe('FrameSkeleton in a card', () => {
     expect(container.querySelectorAll('[data-skeleton] rect')).toHaveLength(2)
   })
 
-  it("draws one desktop frame small in a card's well rather than filling it", () => {
+  it("fits one desktop frame to the card's well, as grid draws it", () => {
     const { container } = renderOne(
       withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
     )
 
     expect(
       container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
-    ).toBe('0 0 4320 1890')
+    ).toBe('0 0 1440 900')
   })
 
-  it("fits a page wider than the least extent to its frames' bounds", () => {
+  it("fits the group to its frames' bounds, centered across and held to the top", () => {
     const { container } = renderOne(
       withFrames([
         frame('hero', { x: 100, y: 50, width: 1440, height: 900 }),
         frame('far', { x: 8000, y: 0, width: 1440, height: 3000 }),
       ]),
     )
+    const skeleton = container.querySelector('[data-skeleton]')
 
-    expect(
-      container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
-    ).toBe('100 0 9340 3000')
+    expect([
+      skeleton?.getAttribute('viewBox'),
+      skeleton?.getAttribute('preserveAspectRatio'),
+    ]).toEqual(['100 0 9340 3000', 'xMidYMin meet'])
   })
 
   it('leaves the well empty for a project with no frames', () => {

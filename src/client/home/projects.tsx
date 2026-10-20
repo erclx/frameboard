@@ -220,7 +220,7 @@ function Mini({ project }: { project: ProjectRecord }) {
       aria-hidden
       className="block h-[22px] w-8 overflow-hidden rounded bg-background p-[5px]"
     >
-      <FrameSkeleton project={project} fill className="size-full" />
+      <FrameSkeleton project={project} className="size-full" />
     </span>
   )
 }
