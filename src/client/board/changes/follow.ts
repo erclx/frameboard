@@ -51,7 +51,7 @@ export function follow(
   const travel = () => {
     if (target === null) return
     const [project = '', name = ''] = target.split('/')
-    const ref = `${project}/${name}`
+    const ref = pageOf(target)
     if (canvasView.page() !== ref) {
       if (page !== ref) {
         page = ref
@@ -97,6 +97,10 @@ export function follow(
   const stopAttach = canvasView.onAttach(() => {
     const attached = canvasView.page()
     if (attached === null) return
+    // Show, Next, and the `show` message set `focus` before they navigate,
+    // so a page holding the focused frame is the board's move, not a hand pick.
+    const focus = live.getState().focus
+    if (focus !== null && attached === pageOf(focus)) page = attached
     if (attached !== page) {
       stopFollow()
       return
@@ -130,6 +134,11 @@ export function stopFollow(): void {
   unfollow = null
   stop()
   followStore.setState({ session: null })
+}
+
+function pageOf(ref: string): string {
+  const [project = '', page = ''] = ref.split('/')
+  return `${project}/${page}`
 }
 
 function boxOf(board: ListResult | null, ref: string) {

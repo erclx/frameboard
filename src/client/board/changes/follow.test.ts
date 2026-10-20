@@ -164,6 +164,29 @@ describe('follow', () => {
     expect(followStore.getState().session).toBeNull()
   })
 
+  it('keeps following when Show moves to a change on another page', () => {
+    const { live, canvasOn, detach } = setup()
+
+    live.setState({ focus: 'studio/about/b' })
+    detach()
+    canvasOn('studio/about')
+
+    expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('stops on a hand pick of another page after Show settled', () => {
+    const { live, canvasOn, detach } = setup()
+    live.setState({ focus: 'studio/about/b' })
+    detach()
+    const detachAbout = canvasOn('studio/about')
+    live.setState({ focus: null })
+
+    detachAbout()
+    canvasOn('studio/home')
+
+    expect(followStore.getState().session).toBeNull()
+  })
+
   it('stops when the followed session stops listening', () => {
     const { live } = setup()
 
