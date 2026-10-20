@@ -25,6 +25,8 @@ import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
+import { useMenuActions } from './menus/actions'
+import { CanvasMenu } from './menus/canvas'
 import { modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
@@ -103,6 +105,14 @@ export function Canvas({
   // Ahead of the geometry keys, so Esc goes up from an element before it clears.
   useElementActions(page.ref)
   useGeometryActions(page.ref, frames)
+  useMenuActions(
+    page.ref,
+    page.frames,
+    (ref) =>
+      layerRef.current?.querySelector<HTMLIFrameElement>(
+        `[data-frame="${CSS.escape(ref)}"] iframe`,
+      )?.dataset.renderedAt ?? null,
+  )
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -381,35 +391,46 @@ export function Canvas({
           gestures rather than its page. Play lifts it, so a click reaches
           the frame. */}
       {playing ? null : (
-        <div
-          ref={hitRef}
-          data-hit-layer
-          className="absolute inset-0"
-          // A Note click opens the composer and a Frame click places a
-          // frame, and either goes no further. Selection and marquee
-          // gestures start on pointerdown, so they bind only while the Move
-          // tool is on and never see either press.
-          onClickCapture={(event) => {
-            const viewport = viewportRef.current
-            if (!(noting || framing) || !viewport || !layer) return
-            event.stopPropagation()
-            const [x, y] = zoomTransform(viewport).invert(
-              pointer(event.nativeEvent, viewport),
-            )
-            if (framing) {
-              void placeFrame({ x, y }, { page: page.ref, frames: page.frames })
-              return
-            }
-            const pick = pickAt(layer, frames, { x, y })
-            if (pick) notesUi.setState({ open: { kind: 'new', pick } })
-            else closeNote()
-          }}
-          // The gestures select the frame on pointerup and the click follows,
-          // so a Cmd-click or a double-click picks inside the frame just selected.
-          onClick={(event) => {
-            if (event.metaKey) pickInside(event.nativeEvent)
-          }}
-          onDoubleClick={(event) => pickInside(event.nativeEvent)}
+        <CanvasMenu
+          page={page.ref}
+          frames={() => framesRef.current}
+          viewport={viewportRef}
+          layer={layerRef}
+          trigger={
+            <div
+              ref={hitRef}
+              data-hit-layer
+              className="absolute inset-0"
+              // A Note click opens the composer and a Frame click places a
+              // frame, and either goes no further. Selection and marquee
+              // gestures start on pointerdown, so they bind only while the Move
+              // tool is on and never see either press.
+              onClickCapture={(event) => {
+                const viewport = viewportRef.current
+                if (!(noting || framing) || !viewport || !layer) return
+                event.stopPropagation()
+                const [x, y] = zoomTransform(viewport).invert(
+                  pointer(event.nativeEvent, viewport),
+                )
+                if (framing) {
+                  void placeFrame(
+                    { x, y },
+                    { page: page.ref, frames: page.frames },
+                  )
+                  return
+                }
+                const pick = pickAt(layer, frames, { x, y })
+                if (pick) notesUi.setState({ open: { kind: 'new', pick } })
+                else closeNote()
+              }}
+              // The gestures select the frame on pointerup and the click follows,
+              // so a Cmd-click or a double-click picks inside the frame just selected.
+              onClick={(event) => {
+                if (event.metaKey) pickInside(event.nativeEvent)
+              }}
+              onDoubleClick={(event) => pickInside(event.nativeEvent)}
+            />
+          }
         />
       )}
       <div
