@@ -3,7 +3,7 @@ import type { Browser } from 'playwright-core'
 /**
  * The budget for the hooks that start and close the shell. Chromium takes
  * longer than vitest's 10 s hook default to shut down when several test runs
- * share a machine, and no test in these files needs more than its own default.
+ * share a machine. The tests take their budget from `SHELL_TEST_TIMEOUT_MS`.
  */
 export const SHELL_HOOK_TIMEOUT_MS = 30_000
 
