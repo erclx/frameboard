@@ -65,6 +65,7 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 - A `canon tooling sync web . --write` clobbers `e2e/screenshot.ts`, so restore its `./capture` import, `CASES: CaptureCase[] = CAPTURE_CASES`, and `EVIDENCE_ROOT` line, delete `readme-screenshot.yml`, and run `bun run format`, since the sync writes `config.json` oxfmt rejects
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `vitest.config.ts` clears `server.strictPort` that `vite.config.ts` sets, so vitest's browser server hops to a free port when 63315 is taken and parallel unit runs share a machine, while `dev`, `preview`, and the e2e servers keep failing loud on a taken port
+- `vitest.config.ts` also strips the dev proxy `vite.config.ts` sets before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 4173
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
 - A capture case picks its theme by saving `frameboard.theme` from an init script, since the board reads the choice before its first paint and a class added by hand is overwritten
