@@ -2,7 +2,7 @@ import { FrameboardError } from '@/shared/errors'
 import type { AddressFile } from '@/shared/records/address'
 
 /** How long a running server has to answer before the verb gives up on it. */
-const REQUEST_TIMEOUT_MS = 2000
+const REQUEST_TIMEOUT_MS = 5000
 
 /**
  * Posts to a running board server's write route with the address file's
