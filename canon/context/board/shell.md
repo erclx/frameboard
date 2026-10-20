@@ -83,6 +83,15 @@ Owns the left panel, being its header with the way home and Hide UI, then the De
 
 The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
 
+### `src/client/board/find/`
+
+Owns find, being the panel Cmd+F puts in place of the left panel's tabs under the same header, its query, and the pick, which change together.
+
+- `GET /api/find` searches the frame files through `src/server/edit/find.ts`, so a culled frame is found, matching frame names, element names, and each element's own text
+- A hidden frame is left out, and an element named by its own text hits as text alone, so it is listed once
+- Hits group by page, the page on the canvas when they arrived first, and a pick runs `board/jump.ts`, shared with the palette, selecting by the index and hash the search read
+- The field owns Esc, since the registry skips keys typed in a field, and Cmd+F turns Hide UI off
+
 ### `src/client/board/chrome/`
 
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
@@ -117,7 +126,6 @@ Owns the app shell and the controls around the canvas.
 - The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of git's `user.name`, which signs notes
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
 - Hide UI, through Cmd+\ or a button, hides both panels and keeps the project name, toolbar, avatar, and zoom level
-- Cmd+F swaps the left panel for a search over frame names, element names, and frame text, grouped by page
 - Cmd+K jumps to any project, page, or frame and runs board actions such as new page, theme toggle, and zoom, while inspector edits stay in the inspector
 
 ### `src/server/live/`
