@@ -663,12 +663,17 @@ const PIXEL = Buffer.from(
 )
 
 /**
- * Holds the shot until `selector` has drawn. The harness waits on the load
- * event and on every image completing, so a hidden image the page adds is
- * answered only once the state a setup drove has drawn and two frames have
- * painted it, which a state reached after a fetch needs to shoot alike twice.
+ * Holds the shot until `selector` has drawn and `absent`, when given, matches
+ * nothing. The harness waits on the load event and on every image
+ * completing, so a hidden image the page adds is answered only once the
+ * state a setup drove has drawn, every SVG image on the page has decoded,
+ * which the harness's own wait skips, and two frames have painted it, which
+ * a state reached after a fetch needs to shoot alike twice.
  */
-function readyWhen(selector: string): (page: Page) => Promise<void> {
+function readyWhen(
+  selector: string,
+  absent?: string,
+): (page: Page) => Promise<void> {
   return async (page) => {
     let ready: () => void = () => {}
     const drawn = new Promise<void>((resolve) => (ready = resolve))
@@ -678,17 +683,29 @@ function readyWhen(selector: string): (page: Page) => Promise<void> {
       await route.fulfill({ contentType: 'image/gif', body: PIXEL })
     })
     await page.addInitScript(
-      ({ target, frames }) => {
+      ({ target, missing, frames }) => {
         let left = frames
-        const wait = () => {
-          if (document.querySelector(target)) {
+        const painted = () =>
+          requestAnimationFrame(() =>
             requestAnimationFrame(() =>
-              requestAnimationFrame(() =>
-                (
-                  window as unknown as { captureReady: () => void }
-                ).captureReady(),
-              ),
+              (
+                window as unknown as { captureReady: () => void }
+              ).captureReady(),
+            ),
+          )
+        const wait = () => {
+          if (
+            document.querySelector(target) &&
+            !(missing && document.querySelector(missing))
+          ) {
+            const images = [...document.querySelectorAll('svg image')].map(
+              (image) => {
+                const decoding = new Image()
+                decoding.src = image.getAttribute('href') ?? ''
+                return decoding.decode().catch(() => {})
+              },
             )
+            void Promise.all(images).then(painted)
           } else if (--left > 0) requestAnimationFrame(wait)
           else console.error(`${target} never drew`)
         }
@@ -701,10 +718,15 @@ function readyWhen(selector: string): (page: Page) => Promise<void> {
           requestAnimationFrame(wait)
         })
       },
-      { target: selector, frames: ROW_FRAMES },
+      { target: selector, missing: absent ?? null, frames: ROW_FRAMES },
     )
   }
 }
+
+/** A card well drawing a capture, which the home case waits on beside `CARD_UNCAPTURED`. */
+const CARD_CAPTURED = '[data-skeleton] image'
+/** A frame in a card's well still showing its box alone. */
+const CARD_UNCAPTURED = 'main li [data-skeleton] g:not(:has(image))'
 
 /**
  * Selects the hero frame and double-clicks its headline once the frame has
@@ -912,7 +934,10 @@ export const BOARD_CASES: CaptureCase[] = [
       route: '/',
       evidence: true,
       mask: ['[data-edited]'],
-      setup: chosenTheme(theme),
+      setup: both(
+        chosenTheme(theme),
+        readyWhen(CARD_CAPTURED, CARD_UNCAPTURED),
+      ),
     },
     {
       section: 'home-menu',
@@ -925,7 +950,7 @@ export const BOARD_CASES: CaptureCase[] = [
         chosenTheme(theme),
         asWriter,
         onHomeCard('menu'),
-        readyWhen('[data-slot="context-menu-content"]'),
+        readyWhen('[data-slot="context-menu-content"]', CARD_UNCAPTURED),
       ),
     },
     {
@@ -939,7 +964,7 @@ export const BOARD_CASES: CaptureCase[] = [
         chosenTheme(theme),
         asWriter,
         onHomeCard('rename'),
-        readyWhen('input[aria-label="Rename project webapp"]'),
+        readyWhen('input[aria-label="Rename project webapp"]', CARD_UNCAPTURED),
       ),
     },
     {
