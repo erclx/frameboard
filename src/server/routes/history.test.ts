@@ -161,6 +161,28 @@ describe('historyRoutes', () => {
       expect(history.counts()).toEqual({ undo: 1, redo: 0 })
     })
 
+    it('checks the step each of two quick undos takes, not the one on top when it arrived', async () => {
+      await moveHero(40)
+      const journal = history.journal()
+      await moveFrame(board.root, 'studio/home/mobile', {
+        cwd: board.root,
+        x: 2000,
+        journal,
+      })
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: ['studio/home/mobile'],
+      })
+
+      const answers = await Promise.all([post('/api/undo'), post('/api/undo')])
+
+      expect(answers.map((answer) => answer.status)).toEqual([200, 409])
+      expect(heroX()).toBe(40)
+      expect(history.counts()).toEqual({ undo: 1, redo: 1 })
+    })
+
     it('refuses a redo naming it, keeping the step', async () => {
       await release(board.root, 'sess-a', undefined, new Date())
       await moveHero(40)

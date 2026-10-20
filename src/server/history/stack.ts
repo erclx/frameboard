@@ -37,6 +37,11 @@ export interface StepAnswer {
   hashes?: Record<string, string>
 }
 
+/** Checks the refs a step would write before it is taken, throwing to keep it. */
+export type Gate = (refs: string[]) => Promise<void>
+
+const OPEN: Gate = async () => {}
+
 export interface HistoryCounts {
   undo: number
   redo: number
@@ -110,23 +115,38 @@ export class History {
     return [...new Set([...step.frames, ...refs])]
   }
 
-  undo(): Promise<StepAnswer> {
-    return this.#inTurn(() => this.#move(this.#undo, this.#redo, 'before'))
+  /**
+   * Undoes the top step. `gate` reads what `peek` names of that step in turn,
+   * before it is taken, so a refusal it throws leaves the step on its stack
+   * and a quick second undo never checks one step and takes another.
+   */
+  undo(gate: Gate = OPEN): Promise<StepAnswer> {
+    return this.#inTurn(() =>
+      this.#move(this.#undo, this.#redo, 'before', gate),
+    )
   }
 
-  redo(): Promise<StepAnswer> {
-    return this.#inTurn(() => this.#move(this.#redo, this.#undo, 'after'))
+  /** Redoes the top step, gated as `undo` is. */
+  redo(gate: Gate = OPEN): Promise<StepAnswer> {
+    return this.#inTurn(() => this.#move(this.#redo, this.#undo, 'after', gate))
   }
 
   /** Takes the top step of `from`, writes `to` side of it, and pushes it onto `onto`. */
-  async #move(from: Step[], onto: Step[], to: Side): Promise<StepAnswer> {
-    const step = from.pop()
-    if (!step) {
-      throw new FrameboardError(
+  async #move(
+    from: Step[],
+    onto: Step[],
+    to: Side,
+    gate: Gate,
+  ): Promise<StepAnswer> {
+    const empty = () =>
+      new FrameboardError(
         'nothing-to-undo',
         `There is nothing to ${to === 'before' ? 'undo' : 'redo'}.`,
       )
-    }
+    if (from.length === 0) throw empty()
+    await gate(this.peek(from === this.#undo ? 'undo' : 'redo'))
+    const step = from.pop()
+    if (!step) throw empty()
     const was: Side = to === 'before' ? 'after' : 'before'
     // A record inside a folder an agent removed has no folder to lock in, and
     // its change cannot hold, so the check refuses it unlocked.

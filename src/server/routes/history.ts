@@ -16,14 +16,15 @@ export function historyRoutes(access: Access, history: History): Hono {
   const app = new Hono()
   const authorized = requireWriter(access)
 
-  app.post('/api/undo', authorized, async (c) => {
-    await refuseClaimed(history.root, history.peek('undo'), new Date())
-    return c.json({ ok: true, data: await history.undo() })
-  })
-  app.post('/api/redo', authorized, async (c) => {
-    await refuseClaimed(history.root, history.peek('redo'), new Date())
-    return c.json({ ok: true, data: await history.redo() })
-  })
+  const unclaimed = (refs: string[]) =>
+    refuseClaimed(history.root, refs, new Date())
+
+  app.post('/api/undo', authorized, async (c) =>
+    c.json({ ok: true, data: await history.undo(unclaimed) }),
+  )
+  app.post('/api/redo', authorized, async (c) =>
+    c.json({ ok: true, data: await history.redo(unclaimed) }),
+  )
 
   app.onError(answerRefusal)
 
