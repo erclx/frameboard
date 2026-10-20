@@ -8,6 +8,7 @@ import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
 import { useProjectActions } from './project-actions'
 import { Projects } from './projects'
+import { useThumbnails } from './thumbnails'
 
 interface HomeProps {
   projects: readonly ProjectRecord[]
@@ -20,6 +21,7 @@ export function Home({ projects, calls }: HomeProps) {
   const [now] = useState(Date.now)
   const layout = useHomeLayout()
   useProjectActions(calls)
+  useThumbnails()
   return (
     <div className="flex min-h-full flex-col text-body">
       <HomeHeader hasProjects={projects.length > 0} />
