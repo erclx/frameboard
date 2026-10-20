@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { basename, dirname } from 'node:path'
+import { basename, dirname, isAbsolute, relative, sep } from 'node:path'
 
 import { withLocks } from '@/server/board/json-record'
 import { FRAME_EXTENSION } from '@/shared/board-files'
@@ -79,6 +79,35 @@ export class History {
     this.#redo = []
     this.onChange(this.counts())
     this.onWrite(step)
+  }
+
+  /**
+   * The refs the top undo or redo step would write, without popping it, so a
+   * route can refuse a claimed frame before the step is taken. These are the
+   * step's frames, and the page or project folder and frame file each move
+   * or removal names, since a page or project step names no frames.
+   */
+  peek(side: 'undo' | 'redo'): string[] {
+    const step = (side === 'undo' ? this.#undo : this.#redo).at(-1)
+    if (!step) return []
+    const paths = step.changes.flatMap((change) => {
+      if (change.kind === 'moved') return [change.from, change.to]
+      if (change.kind === 'path') return [change.path]
+      return []
+    })
+    const refs = paths.flatMap((path) => {
+      const inBoard = relative(this.root, path)
+      if (inBoard === '' || inBoard.startsWith('..') || isAbsolute(inBoard)) {
+        return []
+      }
+      const ref = inBoard.split(sep).join('/')
+      return [
+        ref.endsWith(FRAME_EXTENSION)
+          ? ref.slice(0, -FRAME_EXTENSION.length)
+          : ref,
+      ]
+    })
+    return [...new Set([...step.frames, ...refs])]
   }
 
   undo(): Promise<StepAnswer> {
