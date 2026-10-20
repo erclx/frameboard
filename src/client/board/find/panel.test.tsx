@@ -4,6 +4,7 @@ import { act, render, renderHook, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FindHit, FindResult } from '@/shared/records/find'
 
@@ -257,7 +258,8 @@ describe('useFindActions', () => {
     const { unmount } = renderHook(() => useFindActions(store, mode))
     const user = userEvent.setup()
 
-    await user.keyboard('{Meta>}f{/Meta}')
+    // `$mod` is Meta on macOS and Control elsewhere, as on the CI runners.
+    await user.keyboard(IS_MAC ? '{Meta>}f{/Meta}' : '{Control>}f{/Control}')
     const seen = [store.getState().open, mode.getState().hideUi, framed]
     unmount()
     unbind()
