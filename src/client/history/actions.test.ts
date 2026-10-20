@@ -209,6 +209,31 @@ describe('registerHistoryActions', () => {
       expect(notify).not.toHaveBeenCalled()
     })
 
+    it('drops a waiting undo once a newer step lands, so it never undoes that one', async () => {
+      const store = writableWith(1, 0)
+      store.setState({ connected: true })
+      const undoCall = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockRejectedValueOnce(refusal())
+        .mockResolvedValueOnce({ page: null, frames: [] })
+      const { undo } = register(store, {
+        calls: {
+          undo: undoCall,
+          redo: async () => ({ page: null, frames: [] }),
+        },
+      })
+      act(undo)
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      receiveClaims(store, [CLAIM])
+
+      receiveHistory(store, { undo: 2, redo: 0 })
+      receiveClaims(store, [])
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(undoCall).toHaveBeenCalledTimes(1)
+    })
+
     it('drops a waiting undo on Esc without sending it again or raising a toast', async () => {
       const store = writableWith(1, 0)
       store.setState({ connected: true })

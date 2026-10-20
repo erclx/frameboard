@@ -72,6 +72,10 @@ export function registerHistoryActions({
   const step =
     (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
       let done = () => {}
+      // A step landing during the wait would be the one a bare undo takes, so it ends the wait.
+      const counts = store.getState().history
+      const moved = ({ history }: { history: typeof counts }) =>
+        history.undo !== counts.undo || history.redo !== counts.redo
       whenFree(
         [],
         label,
@@ -83,7 +87,7 @@ export function registerHistoryActions({
             throw error
           })
         },
-        { live: store },
+        { live: store, dropWhen: moved },
       ).then(
         (answer) => {
           done()

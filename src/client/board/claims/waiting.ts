@@ -1,7 +1,7 @@
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
-import { type LiveStore, liveStore } from '@/client/live/store'
+import { type LiveState, type LiveStore, liveStore } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
 import { claimCovers } from '@/shared/records/claims'
 
@@ -45,6 +45,8 @@ export interface WaitOptions {
    * the same refs, as a box edit does, since a box is the whole state.
    */
   replace?: string
+  /** Drops the wait once the board's state answers true, as a waiting undo does once a newer step lands. */
+  dropWhen?: (state: LiveState) => boolean
 }
 
 /**
@@ -95,7 +97,7 @@ export function afterClaims(
 function waitIfHeld(
   refs: readonly string[],
   label: EditLabel,
-  { live = liveStore, replace }: WaitOptions,
+  { live = liveStore, replace, dropWhen }: WaitOptions,
 ): Promise<void> | null {
   if (replace) dropReplaced(refs, replace)
   const holding = () =>
@@ -108,6 +110,7 @@ function waitIfHeld(
     label,
     refs,
     replace,
+    dropWhen,
     live,
     holders: held.map(({ frame, tag, claimedAt }) => ({
       frame,
@@ -126,7 +129,7 @@ function waitIfHeld(
 export function afterRefusal(
   error: BoardWriteError,
   label: EditLabel,
-  { live = liveStore, replace }: WaitOptions = {},
+  { live = liveStore, replace, dropWhen }: WaitOptions = {},
 ): Promise<void> {
   const { frame, tag, claimedAt, expiresAt } = error.details
   if (typeof frame !== 'string') return Promise.reject(error)
@@ -145,6 +148,7 @@ export function afterRefusal(
     label,
     refs: [frame],
     replace,
+    dropWhen,
     live,
     holders: [holder],
     ready: () => {
@@ -191,6 +195,7 @@ function wait({
   label,
   refs,
   replace,
+  dropWhen,
   live,
   holders,
   ready,
@@ -198,6 +203,7 @@ function wait({
   label: EditLabel
   refs: readonly string[]
   replace: string | undefined
+  dropWhen: WaitOptions['dropWhen']
   live: LiveStore
   holders: readonly Holder[]
   ready: () => boolean
@@ -205,7 +211,9 @@ function wait({
   return new Promise((resolve, reject) => {
     const edit: WaitingEdit = { id: nextId++, label, holders }
     const check = () => {
-      if (ready()) {
+      if (dropWhen?.(live.getState())) {
+        finish(waiter, new WaitDropped('cancelled'))
+      } else if (ready()) {
         finish(waiter)
         resolve()
       }
