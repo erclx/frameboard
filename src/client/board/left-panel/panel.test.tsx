@@ -662,6 +662,178 @@ describe('LeftPanel', () => {
       ])
     })
   })
+
+  describe('row menus', () => {
+    const rightClick = (target: Element) =>
+      userEvent.pointer({ keys: '[MouseRight]', target })
+
+    it('moves the canvas to the page whose row opened the menu', async () => {
+      const location = renderPanel(THREE())
+
+      await rightClick(screen.getByRole('link', { name: 'pricing' }))
+
+      expect(
+        within(await screen.findByRole('menu'))
+          .getAllByRole('menuitem')
+          .map((item) => item.textContent),
+      ).toEqual(['Rename', 'Duplicate', 'New page below', 'Delete⌫'])
+      expect(location.history.at(-1)).toBe('/p/studio/pricing')
+    })
+
+    it('runs page.new from New page below, which adds after the page on the canvas', async () => {
+      let runs = 0
+      cleanups.push(
+        registerActions([
+          {
+            id: 'page.new',
+            label: 'Add page',
+            group: 'page',
+            run: () => (runs += 1),
+          },
+        ]),
+      )
+      renderPanel(THREE())
+      await rightClick(screen.getByRole('link', { name: 'pricing' }))
+
+      await userEvent.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', {
+          name: 'New page below',
+        }),
+      )
+
+      expect(runs).toBe(1)
+    })
+
+    it('leaves the canvas where it is when the row is the page on it', async () => {
+      const location = renderPanel(THREE())
+
+      await rightClick(screen.getByRole('link', { name: 'home' }))
+
+      await screen.findByRole('menu')
+      expect(location.history).toEqual(['/'])
+    })
+
+    it('opens on Shift+F10 at a focused row with focus inside, and Esc gives it back', async () => {
+      cleanups.push(
+        registerActions([
+          {
+            id: 'page.rename',
+            label: 'Rename page',
+            group: 'page',
+            run: () => {},
+          },
+        ]),
+      )
+      renderPanel(THREE())
+      const row = screen.getByRole('link', { name: 'home' })
+      row.focus()
+
+      await userEvent.keyboard('{Shift>}{F10}{/Shift}')
+      await expect
+        .poll(() => document.activeElement?.textContent)
+        .toBe('Rename')
+      await userEvent.keyboard('{Escape}')
+
+      await expect.poll(() => document.activeElement).toBe(row)
+    })
+
+    it('selects the frame alone whose layers row opened the menu', async () => {
+      renderPanel(
+        project([page('home', [frame('back'), frame('front', { order: 1 })])]),
+      )
+      act(() =>
+        selectionStore.setState({
+          page: 'studio/home',
+          frames: ['studio/home/back'],
+        }),
+      )
+
+      await rightClick(screen.getByRole('button', { name: 'Select front' }))
+
+      expect(
+        within(await screen.findByRole('menu'))
+          .getAllByRole('menuitem')
+          .map((item) => item.textContent?.replace(/[^A-Za-z ].*$/, '')),
+      ).toEqual([
+        'Zoom to frame',
+        'Rename',
+        'Duplicate',
+        'Hide',
+        'Lock',
+        'Delete',
+      ])
+      expect(selectionStore.getState().frames).toEqual(['studio/home/front'])
+    })
+
+    it("greys a hidden frame's selection items rather than acting on the frame already selected", async () => {
+      renderPanel(
+        project([
+          page('home', [
+            frame('back'),
+            frame('sketch', { order: 1, hidden: true }),
+          ]),
+        ]),
+      )
+      act(() =>
+        selectionStore.setState({
+          page: 'studio/home',
+          frames: ['studio/home/back'],
+        }),
+      )
+      cleanups.push(
+        registerActions([
+          {
+            id: 'frame.delete',
+            label: 'Delete',
+            group: 'frame',
+            run: () => {},
+          },
+        ]),
+      )
+
+      await rightClick(screen.getByRole('button', { name: 'Select sketch' }))
+
+      expect(
+        within(await screen.findByRole('menu')).getByRole('menuitem', {
+          name: /Delete/,
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it("opens the row's own rename field from the layers menu", async () => {
+      renderPanel(project([page('home', [frame('hero')])]))
+      await rightClick(screen.getByRole('button', { name: 'Select hero' }))
+
+      await userEvent.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', {
+          name: 'Rename',
+        }),
+      )
+
+      await expect
+        .poll(() => document.activeElement)
+        .toBe(screen.getByRole('textbox', { name: 'Rename frame hero' }))
+    })
+
+    it('selects the element whose row opened the menu', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      await rightClick(screen.getByRole('button', { name: 'footer' }))
+
+      expect(
+        within(await screen.findByRole('menu')).getByText('Element'),
+      ).toBeTruthy()
+      expect(selectionStore.getState().element).toEqual({
+        frame: HERO,
+        index: 8,
+        hash: HASH,
+      })
+    })
+  })
 })
 
 const nextFrame = () =>

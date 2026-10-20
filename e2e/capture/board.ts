@@ -898,6 +898,117 @@ function actWhen(
 /** The about row's lock lights once the server grants writes, so it marks a tab that may write. */
 const WRITES_GRANTED = 'button[aria-label="Unlock about"]:not([disabled])'
 
+/** Where `menuOn` right-clicks: a frame's center, empty canvas, the selected element, or a panel row. */
+type MenuSpot =
+  | { frame: string }
+  | { empty: true }
+  | { element: true }
+  | { row: string }
+
+/**
+ * Once the server grants writes, right-clicks `spot` so its menu opens.
+ * With `copy`, it first runs the menu's Copy as PNG, waits for its toast,
+ * and opens the menu again, so the frame menu shows beside the toast. The
+ * clipboard answers the write at once, since a synthetic click carries no
+ * user activation for the browser to grant it.
+ */
+function menuOn(
+  spot: MenuSpot,
+  { copy = false }: { copy?: boolean } = {},
+): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ spot, copy, ready, frames }) => {
+        if (copy) {
+          navigator.clipboard.write = async (items) => {
+            await items[0]?.getType('image/png').catch(() => null)
+          }
+        }
+        let left = frames
+        const point = (): { x: number; y: number } | null => {
+          const at = (element: Element | null | undefined) => {
+            const box = element?.getBoundingClientRect()
+            return box
+              ? { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+              : null
+          }
+          if ('frame' in spot) {
+            return at(document.querySelector(`[data-frame="${spot.frame}"]`))
+          }
+          if ('element' in spot) {
+            return at(document.querySelector('[data-element-selection]'))
+          }
+          if ('row' in spot) {
+            return at(
+              document.querySelector(
+                `button[aria-label="${spot.row}"], nav a[href$="/${spot.row}"]`,
+              ),
+            )
+          }
+          const hit = document.querySelector('[data-hit-layer]')
+          const box = hit?.getBoundingClientRect()
+          return box ? { x: box.left + 24, y: box.bottom - 120 } : null
+        }
+        const open = (at: { x: number; y: number }) => {
+          const target =
+            'row' in spot
+              ? document.elementFromPoint(at.x, at.y)
+              : document.querySelector('[data-hit-layer]')
+          target?.dispatchEvent(
+            new MouseEvent('contextmenu', {
+              bubbles: true,
+              cancelable: true,
+              button: 2,
+              clientX: at.x,
+              clientY: at.y,
+            }),
+          )
+        }
+        const reopen = (at: { x: number; y: number }) => {
+          const toast = document.querySelector(
+            '[data-slot="toast"]:not([data-starting-style])',
+          )
+          const menu = document.querySelector(
+            '[data-slot="context-menu-content"]',
+          )
+          if (toast && !menu) open(at)
+          else if (--left > 0) requestAnimationFrame(() => reopen(at))
+          else console.error('The copy never toasted')
+        }
+        const run = () => {
+          const at = point()
+          if (!document.querySelector(ready) || !at) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error('No spot to open a menu on')
+            return
+          }
+          open(at)
+          if (!copy) return
+          const item = () =>
+            [
+              ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+            ].find((candidate) =>
+              candidate.textContent?.startsWith('Copy as PNG'),
+            )
+          const press = () => {
+            const found = item()
+            if (found) {
+              found.click()
+              requestAnimationFrame(() => reopen(at))
+            } else if (--left > 0) requestAnimationFrame(press)
+            else console.error('No Copy as PNG item')
+          }
+          requestAnimationFrame(press)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { spot, copy, ready: WRITES_GRANTED, frames: ROW_FRAMES },
+    )
+  }
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -918,8 +1029,9 @@ const STATE_ONLY = ['320', '768', '1536']
  * then the board under Hide UI, in Play, with the avatar menu open, the element
  * inspector for the hero's headline with its token menu open, the hero's
  * Selection colors, and with the Theme
- * tab open, with tokens and with none, and the Assets tab with the reference's
- * six files. The "Edited" times count back from
+ * tab open, with tokens and with none, the Assets tab with the reference's
+ * six files, and the right-click menus on a frame, beside its copy toast, on
+ * the selected element, on empty canvas, and on a page and a layers row. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
  * font, so the board cases also hold the label's check findings mark in both
  * themes, beside the hero taking its colors and faces from the tokens. Every
@@ -1392,6 +1504,101 @@ export const BOARD_CASES: CaptureCase[] = [
             asWriter,
             refusedUndo,
             readyWhen('[data-slot="toast"]:not([data-starting-style])'),
+          ),
+        ),
+      },
+      {
+        section: 'menu-frame',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            menuOn({ frame: 'webapp/home/hero' }),
+            readyWhen('[data-slot="context-menu-content"]'),
+          ),
+        ),
+      },
+      {
+        // The frame menu over the copy's success toast and an undo's refusal, per menus/toast.
+        section: 'menu-frame-toasts',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            refusedUndo,
+            menuOn({ frame: 'webapp/home/hero' }, { copy: true }),
+            readyWhen(
+              'body:has([data-slot="context-menu-content"]):has([data-slot="toast"] ~ [data-slot="toast"]:not([data-starting-style]))',
+            ),
+          ),
+        ),
+      },
+      {
+        section: 'menu-element',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            menuOn({ element: true }),
+            readyWhen('[data-slot="context-menu-content"]'),
+          ),
+        ),
+      },
+      {
+        section: 'menu-empty',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            menuOn({ empty: true }),
+            readyWhen('[data-slot="context-menu-content"]'),
+          ),
+        ),
+      },
+      {
+        section: 'menu-page',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            menuOn({ row: 'home' }),
+            readyWhen('[data-slot="context-menu-content"]'),
+          ),
+        ),
+      },
+      {
+        section: 'menu-layers',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            menuOn({ row: 'Select hero' }),
+            readyWhen('[data-slot="context-menu-content"]'),
           ),
         ),
       },

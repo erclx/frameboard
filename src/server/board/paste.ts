@@ -53,20 +53,34 @@ export async function holdFrames(
   )
 }
 
+export interface PasteOptions extends RefOptions, JournalOptions {
+  /** A board point the pasted group's top left lands on, each frame keeping its offset within the group. */
+  at?: { x: number; y: number }
+}
+
 /**
  * Writes held frames onto a page as new files on top of its stack, each
- * taking the next free name so nothing on the page is overwritten. A frame
- * keeps its box on another page and lands beside its source on its own,
- * the way `duplicateFrame` places a copy.
+ * taking the next free name so nothing on the page is overwritten. Without
+ * `at`, a frame keeps its box on another page and lands beside its source
+ * on its own, the way `duplicateFrame` places a copy.
  */
 export async function pasteFrames(
   root: string,
   pageRef: string,
   held: HeldFrame[],
-  options: RefOptions & JournalOptions,
+  options: PasteOptions,
 ): Promise<FrameRecord[]> {
-  const { journal } = options
+  const { journal, at } = options
   const target = await resolvePageRef(root, pageRef, options)
+  const left = Math.min(...held.map((frame) => frame.placement.box.x))
+  const top = Math.min(...held.map((frame) => frame.placement.box.y))
+  const place = (frame: HeldFrame) => {
+    const { box } = frame.placement
+    if (at) return { ...box, x: at.x + box.x - left, y: at.y + box.y - top }
+    return frame.page === target.path
+      ? { ...box, x: box.x + box.width + FRAME_GAP }
+      : box
+  }
   const names = await withLayouts(
     [target.path],
     async (layouts) => {
@@ -75,7 +89,6 @@ export async function pasteFrames(
       const pasted: string[] = []
       for (const frame of held) {
         const name = freeFrameName(layout.names, frame.name, undefined)
-        const { box } = frame.placement
         const path = join(target.path, `${name}${FRAME_EXTENSION}`)
         await writeFile(path, frame.bytes, { flag: 'wx' })
         await journal?.created(path)
@@ -83,10 +96,7 @@ export async function pasteFrames(
         if (frame.entry) layout.file.frames[name] = { ...frame.entry }
         layout.set(name, {
           ...frame.placement,
-          box:
-            frame.page === target.path
-              ? { ...box, x: box.x + box.width + FRAME_GAP }
-              : box,
+          box: place(frame),
           order: layout.topOrder(),
         })
         pasted.push(name)

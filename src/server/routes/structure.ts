@@ -57,7 +57,10 @@ const frameAddSchema = z.object({
   y: coordinate.optional(),
 })
 const framesSchema = z.object({ refs })
-const pasteSchema = z.object({ ref })
+const pasteSchema = z.object({
+  ref,
+  at: z.object({ x: coordinate, y: coordinate }).optional(),
+})
 const frameFlagSchema = z.object({
   refs,
   flag: z.enum(['hidden', 'locked']),
@@ -333,7 +336,8 @@ export function structureRoutes(
     }
     const held = clipboard
     const frames = await recorded(
-      (journal) => pasteFrames(root, body.ref, held, { cwd, journal }),
+      (journal) =>
+        pasteFrames(root, body.ref, held, { cwd, journal, at: body.at }),
       (pasted) => onFrames(pasted.map((frame) => frame.ref)),
     )
     return c.json({ ok: true, data: frames })
