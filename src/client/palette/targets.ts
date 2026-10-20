@@ -1,8 +1,7 @@
 import { navigate } from 'wouter/use-browser-location'
 
-import { findAction } from '@/client/actions/registry'
+import { jumpTo } from '@/client/board/jump'
 import { select, selectionStore } from '@/client/board/selection'
-import { canvasView } from '@/client/board/view'
 import { boardUrl } from '@/shared/board-urls'
 import type { ListResult } from '@/shared/records/list'
 
@@ -58,38 +57,9 @@ export function jumpToPage(ref: string): void {
   navigate(boardUrl(project, page))
 }
 
-let stopWaiting: (() => void) | null = null
-
-/**
- * Selects the frame on its page and zooms to it. The selection is set before
- * the route changes, since a canvas mounting for another page clears one
- * naming a different page, and the zoom waits for the new page's canvas to
- * attach, since there is nothing to zoom before.
- */
+/** Selects the frame on its page and zooms to it, through the board's jump. */
 export function jumpToFrame(ref: string): void {
   const [project = '', page = ''] = ref.split('/')
-  const url = boardUrl(project, page)
-  stopWaiting?.()
-  stopWaiting = null
-  select(selectionStore, `${project}/${page}`, [ref])
-  if (onRoute(url) && canvasView.attached()) {
-    zoomToSelection()
-    return
-  }
-  const stop = canvasView.onAttach(() => {
-    if (!canvasView.attached()) return
-    stop()
-    stopWaiting = null
-    zoomToSelection()
-  })
-  stopWaiting = stop
-  navigate(url)
-}
-
-function onRoute(url: string): boolean {
-  return decodeURIComponent(location.pathname) === decodeURIComponent(url)
-}
-
-function zoomToSelection(): void {
-  findAction('view.zoomToSelection')?.run()
+  const pageRef = `${project}/${page}`
+  jumpTo(pageRef, () => select(selectionStore, pageRef, [ref]))
 }
