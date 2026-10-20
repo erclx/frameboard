@@ -47,6 +47,19 @@ export function onOutline(box: Box, point: Point, zoom: number): boolean {
   )
 }
 
+/** The selected element's outline box on the canvas, as the layer draws it, null while none draws. */
+export function selectedElementBox(layer: ParentNode): Box | null {
+  const drawn = layer.querySelector<HTMLElement>('[data-element-selection]')
+  if (!drawn) return null
+  const { left, top, width, height } = drawn.style
+  return {
+    x: parseFloat(left),
+    y: parseFloat(top),
+    width: parseFloat(width),
+    height: parseFloat(height),
+  }
+}
+
 /**
  * The topmost shown frame under a canvas point, the strip above it where its
  * label sits counting as the frame. `frames` comes bottom to top, as the

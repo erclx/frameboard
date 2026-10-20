@@ -15,7 +15,13 @@ import {
 } from '../selection'
 import { boundsOf, type Box, type Point, sameBox } from './box'
 import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
-import { cornerAt, frameAt, framesIn, onOutline } from './hit'
+import {
+  cornerAt,
+  frameAt,
+  framesIn,
+  onOutline,
+  selectedElementBox,
+} from './hit'
 import { type Corner, resizeBox, scaleBoxes } from './resize'
 import { SNAP_DISTANCE, snapMove, snapResize } from './snap'
 import { withPending, writeBoxes } from './write'
@@ -80,20 +86,6 @@ export function attachGestures(
 
   const overlay = () =>
     target.layer.querySelector<HTMLElement>('[data-overlay]')
-  /** The selected element's outline box on the canvas, null while none draws. */
-  const elementBox = (): Box | null => {
-    const drawn = target.layer.querySelector<HTMLElement>(
-      '[data-element-selection]',
-    )
-    if (!drawn) return null
-    const { left, top, width, height } = drawn.style
-    return {
-      x: parseFloat(left),
-      y: parseFloat(top),
-      width: parseFloat(width),
-      height: parseFloat(height),
-    }
-  }
   const zoom = () => zoomTransform(target.viewport).k
   const toCanvas = (event: MouseEvent): Point => {
     const [x, y] = pointer(event, target.viewport)
@@ -120,7 +112,7 @@ export function attachGestures(
     // nothing, since an element's size is never set by hand, and the frame's
     // handles are hidden while an element is selected, so they take no press.
     const element = selection.getState().element
-    const outline = element ? elementBox() : null
+    const outline = element ? selectedElementBox(target.layer) : null
     if (outline && onOutline(outline, point, zoom())) {
       gesture = { kind: 'none' }
       return
