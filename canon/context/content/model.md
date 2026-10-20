@@ -60,6 +60,7 @@ Project files sit beside the pages.
 - A drop into `assets/` accepts images, GIF, SVG, video, audio, fonts, stylesheets, and scripts, and refuses HTML and the rest by name. A name is cut to the board's name rule, and one already taken in any letter case takes the first free `-2`, `-3`, so a drop never overwrites a file an agent wrote
 - Lock files, temp files, and dot folders hold generated files, and the watcher and scanner skip them, the watcher reading `.run/claims.json` alone
 - `.run/` holds the address file `serve` writes, with the URL, pid, and token at mode 0600, and the claims `editing` writes, and ignores itself through its own `.gitignore`
+- `.run/thumbnails/` holds the home view's captures by frame and theme, emptied at each start, since a frame edited while no server ran would show a stale one
 - `.run/board-key.json` holds the board key at mode 0600 and survives restarts, so a tab's cookie does too. Deleting it and restarting `serve` revokes every board's cookie
 
 ## Gotchas

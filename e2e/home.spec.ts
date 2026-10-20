@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -10,6 +10,10 @@ import {
 import { type BoardServer, serveBoard } from './support/board-server'
 
 const UNDO = 'ControlOrMeta+KeyZ'
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 test('home page loads', async ({ page }) => {
   await page.goto('/')
@@ -87,5 +91,35 @@ test.describe('projects by hand from the home view', () => {
     await expect(card(page, 'studio')).toBeVisible()
     expect(readFileSync(at('studio/assets/dot.svg'))).toEqual(asset)
     await expect(page).toHaveURL(`${server.url}/`)
+  })
+
+  test("draws a card's frame capture and redraws it once the frame changes", async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/`)
+    const hero = card(page, 'studio').locator(
+      '[data-skeleton] image[href*="ref=studio%2Fhome%2Fhero&"]',
+    )
+    // A capture renders on the server's browser after the first ask.
+    await expect(hero).toHaveCount(1, { timeout: 15_000 })
+    const first = (await hero.getAttribute('href')) ?? ''
+    const served = await page.request.get(`${server.url}${first}`)
+    expect([served.status(), served.headers()['content-type']]).toEqual([
+      200,
+      'image/png',
+    ])
+
+    writeFileSync(at('studio/home/hero.html'), '<h1>Changed</h1>')
+
+    // The old capture goes stale at once, and the new one lands under a new stamp.
+    await expect
+      .poll(
+        () =>
+          hero.evaluateAll((images) =>
+            images.map((image) => image.getAttribute('href')),
+          ),
+        { timeout: 15_000 },
+      )
+      .toEqual([expect.not.stringMatching(`^${escapeRegExp(first)}$`)])
   })
 })

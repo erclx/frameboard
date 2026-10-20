@@ -5,8 +5,10 @@ import { Link } from 'wouter'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import { UnseenCount } from '@/client/components/unseen-count'
+import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
+import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import type { HomeLayout } from './layout'
@@ -32,11 +34,14 @@ interface ProjectsProps {
 /**
  * Every project on the board as cards, per `canon/design/home/grid`, or as
  * rows, per `canon/design/home/list`, each opening its board and the menu of
- * `canon/design/menus/home`. A card's well stays empty until thumbnails draw
- * the project's frames into it.
+ * `canon/design/menus/home`. A card's well draws its first page's frames
+ * with their captures in the theme shown.
  */
 export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const unseen = useUnseen((state) => state.unseen)
+  const theme = useShownTheme()
+  const stamps = useLive((state) => state.thumbnails[theme])
+  const captures = { theme, stamps }
   return (
     <main className="px-4 py-8 sm:px-12">
       <h1 className="mb-5 text-title">Projects</h1>
@@ -52,7 +57,11 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                   aria-hidden
                   className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
                 >
-                  <FrameSkeleton project={project} className="size-full" />
+                  <FrameSkeleton
+                    project={project}
+                    captures={captures}
+                    className="size-full"
+                  />
                 </span>
                 <span className="flex flex-col px-3 pt-1.5 pb-3">
                   <ProjectName
@@ -220,7 +229,7 @@ function Mini({ project }: { project: ProjectRecord }) {
       aria-hidden
       className="block h-[22px] w-8 overflow-hidden rounded bg-background p-[5px]"
     >
-      <FrameSkeleton project={project} fill className="size-full" />
+      <FrameSkeleton project={project} className="size-full" />
     </span>
   )
 }

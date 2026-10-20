@@ -5,6 +5,7 @@ import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
+import type { Theme } from '@/shared/theme'
 
 export interface LiveState {
   /** The last board the server sent, null until the first arrives. */
@@ -26,6 +27,8 @@ export interface LiveState {
   history: { undo: number; redo: number }
   /** The live claims by frame ref, absent meaning nobody holds the frame. */
   claims: Readonly<Record<string, Claim>>
+  /** Thumbnail stamps by theme then frame ref, absent meaning none rendered yet. */
+  thumbnails: Readonly<Record<Theme, Readonly<Record<string, string>>>>
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -42,6 +45,7 @@ export function createLiveStore(): LiveStore {
     listeners: [],
     history: { undo: 0, redo: 0 },
     claims: {},
+    thumbnails: { light: {}, dark: {} },
   }))
 }
 
@@ -102,11 +106,27 @@ export function receiveClaims(
   })
 }
 
+/** Merges one theme's thumbnail stamps, a `null` deleting the frame's. */
+export function receiveThumbnails(
+  store: LiveStore,
+  theme: Theme,
+  stamps: Readonly<Record<string, string | null>>,
+): void {
+  const { thumbnails } = store.getState()
+  const next = { ...thumbnails[theme] }
+  for (const [ref, stamp] of Object.entries(stamps)) {
+    if (stamp === null) delete next[ref]
+    else next[ref] = stamp
+  }
+  store.setState({ thumbnails: { ...thumbnails, [theme]: next } })
+}
+
 /**
  * Marks the socket closed. Writing, the listeners, the notes, the claims, and
  * the history counts all wait on the next hello, which sends them afresh, so a
  * page whose notes went while the socket was down shows none rather than
- * stale ones, and Undo never offers a step a restarted server forgot.
+ * stale ones, and Undo never offers a step a restarted server forgot. The
+ * thumbnails go too, since a restarted server empties the ones it served.
  */
 export function receiveDisconnect(store: LiveStore): void {
   store.setState({
@@ -116,6 +136,7 @@ export function receiveDisconnect(store: LiveStore): void {
     listeners: [],
     history: { undo: 0, redo: 0 },
     claims: {},
+    thumbnails: { light: {}, dark: {} },
   })
 }
 

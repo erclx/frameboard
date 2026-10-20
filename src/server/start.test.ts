@@ -356,19 +356,56 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
   })
 
-  it('pushes the board, the changed frame, its findings, and then the change after a write', async () => {
+  it('pushes the board, the changed frame, its stale thumbnails, its findings, and then the change after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
       .poll(() => messages.map((message) => message.type), {
         timeout: 5000,
       })
-      .toEqual(['board', 'reload', 'findings', 'changes'])
+      .toEqual([
+        'board',
+        'reload',
+        'thumbnails',
+        'thumbnails',
+        'findings',
+        'changes',
+      ])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
-    expect(messages[2]).toMatchObject({
+    expect(messages.slice(2, 4)).toEqual([
+      {
+        type: 'thumbnails',
+        theme: 'light',
+        stamps: { 'studio/home/hero': null },
+      },
+      {
+        type: 'thumbnails',
+        theme: 'dark',
+        stamps: { 'studio/home/hero': null },
+      },
+    ])
+    expect(messages[4]).toMatchObject({
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
+  })
+
+  it('answers a home view with no stamps and sends none when no browser launches', async () => {
+    const ask = () =>
+      fetch(`http://127.0.0.1:${server.port}/api/thumbnails?theme=light`).then(
+        (response) => response.json(),
+      )
+
+    const first = await ask()
+    const second = await ask()
+
+    expect([first, second]).toEqual([
+      { ok: true, data: { stamps: {} } },
+      { ok: true, data: { stamps: {} } },
+    ])
+    expect(messages.filter((message) => message.type === 'thumbnails')).toEqual(
+      [],
+    )
   })
 
   it("marks a frame written from disk as a change by its claim's agent", async () => {

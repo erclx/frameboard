@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { EventEmitter, once } from 'node:events'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -6,6 +7,7 @@ import { relative, sep } from 'node:path'
 import { serve } from '@hono/node-server'
 
 import type { FrameChange } from '@/shared/records/changes'
+import { THEMES } from '@/shared/theme'
 
 import { type Access } from './access/guard'
 import { cookieName, loadBoardKey } from './access/key'
@@ -14,6 +16,7 @@ import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser, type Launcher } from './capture/browser'
 import { createWarmBrowser, createWarmRenderer } from './capture/render'
+import { createThumbnailStore, type ThumbnailStore } from './capture/thumbnails'
 import { type ChangeTracker, createChangeTracker } from './changes/tracker'
 import { checkRendered } from './checks/browser/rendered'
 import { readConfig } from './checks/frame'
@@ -219,16 +222,25 @@ async function listen({
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
     inTurn,
   })
-  // One browser serves the PNG route and the checker, each on its own queue,
-  // launched by the startup sweep.
+  // One browser serves the PNG route, the checker, and the thumbnails, each on
+  // its own queue, launched by the startup sweep.
   const browser = createWarmBrowser(() =>
     launchCaptureBrowser({
-      purpose: 'Board PNGs and browser checks',
+      purpose: 'Board PNGs, thumbnails, and browser checks',
       launch,
     }),
   )
   const baseUrl = () => `http://${HOSTNAME}:${bound}`
-  const renderFrame = createWarmRenderer({ baseUrl, browser })
+  const renderFrame = createWarmRenderer({ baseUrl, browser, scale: 2 })
+  const thumbnails = createThumbnailStore({
+    root,
+    run: randomUUID().slice(0, 8),
+    render: createWarmRenderer({ baseUrl, browser, scale: 0.5 }),
+    onRendered: (theme, stamps) =>
+      hub.broadcast({ type: 'thumbnails', theme, stamps }),
+  })
+  // Captures a previous server left could show a frame edited while none ran.
+  await thumbnails.empty()
   const rendered = createRenderedFindings({
     check: async (frame) =>
       checkRendered(await browser.get(), {
@@ -260,6 +272,7 @@ async function listen({
     history,
     selection,
     renderFrame,
+    thumbnails,
     checks: {
       refresh: () =>
         inTurn(async () => {
@@ -326,6 +339,7 @@ async function listen({
         delivery,
         tracker,
         claims,
+        thumbnails,
         settleLater,
       }),
     )
@@ -361,7 +375,8 @@ async function listen({
 
 /**
  * One rescan per batch: the whole board to every tab, then the frames to
- * reload, then the findings of every frame the batch rechecked, queueing the
+ * reload, marking their thumbnails stale in both themes without rendering
+ * any, then the findings of every frame the batch rechecked, queueing the
  * same frames for the browser checker, then the notes of every page whose
  * notes or frames it touched, whose queue it offers to delivery. The frames
  * an agent changed wait out the grace before the board hears of them.
@@ -377,6 +392,7 @@ async function pushBatch(
     delivery,
     tracker,
     claims,
+    thumbnails,
     settleLater,
   }: {
     hub: LiveHub
@@ -385,6 +401,7 @@ async function pushBatch(
     delivery: Delivery
     tracker: ChangeTracker
     claims: ClaimsPush
+    thumbnails: ThumbnailStore
     /** Broadcasts the changes `own` has not withdrawn once the grace passes. */
     settleLater: (held: FrameChange[]) => void
   },
@@ -398,7 +415,14 @@ async function pushBatch(
   }
   hub.broadcast({ type: 'board', data: board })
   const refs = reloadRefs(root, paths, board, tokens)
-  if (refs.length > 0) hub.broadcast({ type: 'reload', refs })
+  if (refs.length > 0) {
+    hub.broadcast({ type: 'reload', refs })
+    thumbnails.invalidate(refs)
+    const stale = Object.fromEntries(refs.map((ref) => [ref, null]))
+    for (const theme of THEMES) {
+      hub.broadcast({ type: 'thumbnails', theme, stamps: stale })
+    }
+  }
   const held = await tracker.update(board, paths, await claims.read())
   if (held.length > 0) settleLater(held)
   const changed = findings.update(board, paths)

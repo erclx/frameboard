@@ -17,6 +17,7 @@ import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { createStructure, type Structure } from '@/client/live/structure'
 import { unseenStore } from '@/client/live/unseen'
+import { themeStore } from '@/client/theme/store'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
 import { Home } from './home'
@@ -117,6 +118,8 @@ function renderHome(projects: ProjectRecord[]) {
 afterEach(() => {
   localStorage.clear()
   unseenStore.setState({ unseen: {}, cursor: null })
+  liveStore.setState({ thumbnails: { light: {}, dark: {} } })
+  themeStore.setState({ choice: 'system', system: 'light' })
 })
 
 function markUnseen(...refs: string[]): void {
@@ -234,33 +237,101 @@ describe('FrameSkeleton in a card', () => {
     expect(container.querySelectorAll('[data-skeleton] rect')).toHaveLength(2)
   })
 
-  it("draws one desktop frame small in a card's well rather than filling it", () => {
+  it("fits one desktop frame to the card's well, as grid draws it", () => {
     const { container } = renderOne(
       withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
     )
 
     expect(
       container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
-    ).toBe('0 0 4320 1890')
+    ).toBe('0 0 1440 900')
   })
 
-  it("fits a page wider than the least extent to its frames' bounds", () => {
+  it("fits the group to its frames' bounds, centered across and held to the top", () => {
     const { container } = renderOne(
       withFrames([
         frame('hero', { x: 100, y: 50, width: 1440, height: 900 }),
         frame('far', { x: 8000, y: 0, width: 1440, height: 3000 }),
       ]),
     )
+    const skeleton = container.querySelector('[data-skeleton]')
 
-    expect(
-      container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
-    ).toBe('100 0 9340 3000')
+    expect([
+      skeleton?.getAttribute('viewBox'),
+      skeleton?.getAttribute('preserveAspectRatio'),
+    ]).toEqual(['100 0 9340 3000', 'xMidYMin meet'])
   })
 
   it('leaves the well empty for a project with no frames', () => {
     const { container } = renderOne(withFrames([]))
 
     expect(container.querySelector('[data-skeleton]')).toBeNull()
+  })
+
+  it('draws a stamped frame capture over its box, naming the stamp', () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 20, y: 10, width: 1440, height: 900 })]),
+    )
+    const image = container.querySelector('[data-skeleton] image')
+
+    expect(
+      ['x', 'y', 'width', 'height', 'href'].map((name) =>
+        image?.getAttribute(name),
+      ),
+    ).toEqual([
+      '20',
+      '10',
+      '1440',
+      '900',
+      '/api/thumbnails/png?ref=sketch%2Fhome%2Fhero&theme=light&v=r1-0-1440x900',
+    ])
+  })
+
+  it('draws only the box of a frame with no stamp yet', () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([
+        frame('hero', { x: 0, y: 0, width: 1440, height: 900 }),
+        frame('mobile', { x: 1520, y: 0, width: 390, height: 844 }),
+      ]),
+    )
+
+    expect([
+      container.querySelectorAll('[data-skeleton] rect').length,
+      container.querySelectorAll('[data-skeleton] image').length,
+    ]).toEqual([2, 1])
+  })
+
+  it('draws the capture of the theme the board shows', () => {
+    themeStore.setState({ choice: 'dark' })
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+    )
+
+    expect(container.querySelector('[data-skeleton] image')).toBeNull()
+  })
+
+  it("draws no capture in a list row's mark", () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+      'list',
+    )
+
+    expect([
+      container.querySelectorAll('[data-skeleton] rect').length,
+      container.querySelectorAll('[data-skeleton] image').length,
+    ]).toEqual([1, 0])
   })
 
   it("fills the row's mark with the frames in the list", () => {

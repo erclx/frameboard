@@ -15,6 +15,7 @@ import {
   receiveListeners,
   receiveNotes,
   receiveReload,
+  receiveThumbnails,
 } from './store'
 import {
   pruneUnseen,
@@ -82,6 +83,8 @@ export function connectLive(
         receiveHistory(store, { undo: message.undo, redo: message.redo })
       } else if (message.type === 'claims') {
         receiveClaims(store, message.claims)
+      } else if (message.type === 'thumbnails') {
+        receiveThumbnails(store, message.theme, message.stamps)
       } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {

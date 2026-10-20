@@ -50,7 +50,7 @@ In the board you move and resize frames, add, rename, reorder, delete, and searc
 
 Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows support is planned.
 
-`capture`, `frame fit`, and `inspect` render in Playwright's headless shell. Without it, they print the command that installs it and download nothing.
+`capture`, `frame fit`, `inspect`, and the home view's project thumbnails render in Playwright's headless shell. Without it, the commands print the command that installs it and download nothing, and each home card shows its frames as plain boxes.
 
 ## Links
 
