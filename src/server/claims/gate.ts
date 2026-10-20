@@ -1,11 +1,7 @@
 import { FrameboardError } from '@/shared/errors'
+import { claimCovers } from '@/shared/records/claims'
 
 import { readClaims } from './store'
-
-/** Whether a claim on `frame` falls under `ref`, being the frame itself, its page, or its project. */
-function covers(ref: string, frame: string): boolean {
-  return frame === ref || frame.startsWith(`${ref}/`)
-}
 
 /**
  * Refuses `frame-claimed` when another session holds a frame the hand write
@@ -22,7 +18,7 @@ export async function refuseClaimed(
   if (refs.length === 0) return
   const claims = await readClaims(root, now)
   const held = claims.find((claim) =>
-    refs.some((ref) => covers(ref, claim.frame)),
+    refs.some((ref) => claimCovers(ref, claim.frame)),
   )
   if (!held) return
   throw new FrameboardError(
