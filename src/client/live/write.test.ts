@@ -87,6 +87,30 @@ describe('writeBoard', () => {
     expect(liveStore.getState().canWrite).toBe(true)
   })
 
+  it('carries the error envelope details on the error', async () => {
+    const send = answering(409, {
+      ok: false,
+      error: {
+        code: 'frame-claimed',
+        message: 'claude · webapp is editing webapp/home/hero.',
+        details: {
+          frame: 'webapp/home/hero',
+          expiresAt: '2026-10-19T10:05:00.000Z',
+        },
+      },
+    })
+
+    await expect(
+      writeBoard('/api/frame/rename', {}, 'POST', send),
+    ).rejects.toMatchObject({
+      code: 'frame-claimed',
+      details: {
+        frame: 'webapp/home/hero',
+        expiresAt: '2026-10-19T10:05:00.000Z',
+      },
+    })
+  })
+
   it('throws when the answer is not an envelope', async () => {
     const send: typeof fetch = async () =>
       new Response('bad gateway', { status: 502 })

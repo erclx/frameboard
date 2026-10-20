@@ -1,19 +1,33 @@
 import { liveStore } from './store'
 
-/** A write the server answered with an error envelope, carrying its code. */
+/** A write the server answered with an error envelope, carrying its code and details. */
 export class BoardWriteError extends Error {
   readonly code: string
+  /** What the refusal names, such as the held frame and its `expiresAt` for `frame-claimed`. */
+  readonly details: Readonly<Record<string, unknown>>
 
-  constructor(code: string, message: string) {
+  constructor(
+    code: string,
+    message: string,
+    details: Readonly<Record<string, unknown>> = {},
+  ) {
     super(message)
     this.name = 'BoardWriteError'
     this.code = code
+    this.details = details
   }
 }
 
 type Envelope<T> =
   | { ok: true; data: T }
-  | { ok: false; error: { code: string; message: string } }
+  | {
+      ok: false
+      error: {
+        code: string
+        message: string
+        details?: Record<string, unknown>
+      }
+    }
 
 /**
  * The one way the board changes anything on the server: a same-origin JSON
@@ -49,7 +63,11 @@ export async function writeBoard<T = unknown>(
     )
   }
   if (!envelope.ok) {
-    throw new BoardWriteError(envelope.error.code, envelope.error.message)
+    throw new BoardWriteError(
+      envelope.error.code,
+      envelope.error.message,
+      envelope.error.details,
+    )
   }
   return envelope.data
 }
