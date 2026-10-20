@@ -16,6 +16,8 @@ Owns the browser app around the frames, being the home view, the board's panels,
 Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row.
 
 - A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
+- A card's well fits its first page's frames as a group, each capture drawn over its white box, which stays the placeholder until one lands. A list row's mark draws the boxes alone
+- `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card. Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card

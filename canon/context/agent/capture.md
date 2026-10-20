@@ -20,7 +20,8 @@ Owns the capture browser, the frame host, the render, the font check, the image 
 - A frame opens at its layout size from `frameThemeUrl`, so the frame route's injected script sets its root's theme, with `prefers-color-scheme` emulated, off a host mounting the server's look and frame routes through `servedFrames`, and every image renders before any is written
 - Images land under the board's `.run/captures/` by default, as `<project>/<page>/<frame>.<theme>.png` and `<project>/<page>.<theme>.png` for a composite
 - `inspect` loads a frame through the same host and `openFrame`, in one theme per call, and reports each element with a layout box under the index `edit` takes, counting from `querySelectorAll('*')` and skipping elements at or under `data-frameboard`. It reads the file's hash before and after the load, and takes no board server
-- The server keeps one warm browser through `createWarmBrowser`, shared by `GET /api/frames/png` at scale 2 and the browser checker, each on its own queue. The checker opens frames with `fonts: 'wait'`, measuring the fallback, where every capture verb keeps the refusing default
+- The server keeps one warm browser through `createWarmBrowser`, shared by `GET /api/frames/png` at scale 2, the thumbnail store at scale 0.5, and the browser checker, each on its own queue. The checker opens frames with `fonts: 'wait'`, measuring the fallback, where every capture verb keeps the refusing default
+- `thumbnails.ts` renders a frame in one theme only when a home view asks, and a batch only marks its reloaded frames stale. A failed render waits for the frame's stamp to change
 
 ## Gotchas
 
