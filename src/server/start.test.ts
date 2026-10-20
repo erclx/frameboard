@@ -191,8 +191,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    await expect.poll(() => messages.length, { timeout: 5000 }).toBe(7)
-    hello = messages
+    // A push can land before the poll looks again, so the hello is the first seven.
+    await expect
+      .poll(() => messages.length, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(7)
+    hello = messages.slice(0, 7)
     messages = []
   })
 
