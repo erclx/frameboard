@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   launchShellOrNull,
   requireShell,
+  SHELL_HOOK_TIMEOUT_MS,
 } from '../../../../test/support/headless-shell'
 import { serveRendered } from '../../../../test/support/rendered-board'
 import { type TempBoard, writeBoard } from '../../../../test/support/temp-board'
@@ -30,7 +31,7 @@ describe.skipIf(shell === null)('the layout rules', () => {
 
   beforeAll(() => {
     browser = requireShell(shell)
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   afterEach(() => {
     board.cleanup()
@@ -38,7 +39,7 @@ describe.skipIf(shell === null)('the layout rules', () => {
 
   afterAll(async () => {
     await browser.close()
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   async function checkHero(css: string, body: string) {
     board = writeBoard(heroBoard(css, body))

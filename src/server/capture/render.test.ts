@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   launchShellOrNull,
   requireShell,
+  SHELL_HOOK_TIMEOUT_MS,
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
@@ -115,14 +116,14 @@ describe.skipIf(shell === null)('openFrame', () => {
       }),
     })
     host = await startFrameHost({ root: board.root, facesDir: faces })
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   afterAll(async () => {
     await host.close()
     await browser.close()
     board.cleanup()
     rmSync(faces, { recursive: true, force: true })
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   it('refuses font-missing for a face that is not installed', async () => {
     const opening = openFrame(browser, {

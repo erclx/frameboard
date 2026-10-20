@@ -8,6 +8,7 @@ import type { ProjectChecks } from '@/shared/records/board'
 import {
   launchShellOrNull,
   requireShell,
+  SHELL_HOOK_TIMEOUT_MS,
 } from '../../../../test/support/headless-shell'
 import {
   type RenderedBoard,
@@ -31,12 +32,12 @@ describe.skipIf(shell === null)('checkRendered', () => {
   beforeAll(async () => {
     browser = requireShell(shell)
     board = await serveRendered(ROOT)
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   afterAll(async () => {
     await board.close()
     await browser.close()
-  })
+  }, SHELL_HOOK_TIMEOUT_MS)
 
   function check(ref: string, config = CONFIG) {
     return checkRendered(browser, {
