@@ -13,7 +13,7 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 ### `src/client/board/`
 
-Owns selection, the keys, and the menus on the canvas.
+Owns selection, the keys, and the menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
 
 - A click selects the frame, and Cmd-click or a double-click selects the element under the cursor. Enter goes one level down, Esc one level up, and Tab steps through siblings.
 - Shift-click or a marquee drag selects several frames, and move, nudge, align, duplicate, copy, cut, hide, lock, and delete act on all of them
@@ -27,25 +27,23 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 
 ### `src/client/board/menus/`
 
-Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together.
+Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together. Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for.
 
-- Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for, as Paste here shows Paste's
 - A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts on the selection the way its key does
+- Paste here shows Paste's key, sends the right-clicked point with the paste to place the group's top left there, and New frame here and Add a note here act at that point too
 - A page row's menu moves the canvas to that page first, since the `page.*` actions act on the page shown, and New page below runs `page.new`
 - Flip to light or Flip to dark ends every selected frame in the theme opposite the right-clicked one, lasting until reload and writing nothing
-- Paste here sends the right-clicked point with the paste, which places the group's top left there, and New frame here and Add a note here act at that point too
 - The menu key and Shift+F10 open a row's menu with focus inside, and a Ctrl-press the gestures keep for snapping opens none
 
 ### `src/client/board/structure/`
 
-Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together.
+Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller.
 
 - Each acts in Edit while the tab may write, on the frames selected on the canvas's page, and none acts while an element is selected, so Backspace never deletes a frame the developer sees as an element
 - Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway
 - The server holds the clipboard, being each copied frame's bytes and layout entry in memory, so a paste never reads the source and a restart empties it. A cut is a copy and a delete in one undo step.
 - A paste lands on the page on the canvas, keeping each frame's box on another page and sitting beside its source on its own, and takes the next free name rather than writing over a frame by that name
 - Paste stays disabled until a copy or cut, and again once the socket drops, since the server may have restarted
-- Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller
 
 ### `src/client/board/geometry/`
 
@@ -54,26 +52,25 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
 - `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
 - `write.ts` holds a released box as pending until the server's next board carries it, and sends every hand move or resize through `POST /api/frames/boxes`
+- A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
 ### `src/server/`
 
-Owns the edit history undo reads, in `src/server/history/`.
+Owns the edit history undo reads, in `src/server/history/`. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
 
-- Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout entry, one page order, one rename, or one path with its content hash, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it
-- A hand edit inside a frame is one content change holding the whole file before and after, so its undo restores the file only while nothing else wrote it since, and answers the hash it left the frame at so the element stays selected
-- Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent has since changed is refused with `undo-overtaken`, dropped, and named in a toast
+- A hand edit in a frame is one change holding the whole file before and after, so its undo restores the file only if nothing wrote it since, and answers the hash it left so the element stays selected
+- Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
-- Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history
+
+Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history.
 
 ## Gotchas
 
-- Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work
 - Hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, because that would write `display` into the frame, which is layout
-- A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
 - A press on a selected element's outline or corner marks does nothing, and the frame's corners take no resize while an element is selected, since their handles are hidden then
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one

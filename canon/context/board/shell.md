@@ -13,15 +13,18 @@ Owns the browser app around the frames, being the home view, the board's panels,
 
 ### `src/client/home/`
 
-Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row.
+Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row. Opening a card opens its board, and the board's home button is the one way back and between projects.
 
 - A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
 - A card's well fits its first page's frames as a group, each capture drawn over its white box, which stays the placeholder until one lands. A list row's mark draws the boxes alone
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
+
+The header and each card's menu run the `project.*` actions.
+
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
-- A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card. Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
-- Opening a card opens its board, and the board's home button is the one way back and between projects
+- A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
+- Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
 
 ### `src/client/actions/`
 
@@ -31,13 +34,14 @@ Owns the action registry every toolbar button, menu item, and key runs through, 
 - `command` is the label and icon the palette shows, and the palette lists only enabled actions carrying it, so a row opts each action in and a key nobody runs by name stays out
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
+- A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
 
 ### `src/client/palette/`
 
 Owns the two overlays that list the registry, being Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both routes.
 
 - The palette shows Frames with their page, Pages, Actions with their key chips, and Projects, and the home view lists Projects and app-level actions alone
-- A frame row sets the selection on its page, navigates, and runs `view.zoomToSelection` once the new page's canvas attaches, and a hidden frame has no row since the next board would prune it from the selection
+- A frame row sets the selection on its page, navigates, and runs `view.zoomToSelection` once the page's canvas attaches, and a hidden frame has no row, since the next board would prune it
 - `palette.open` and `help.shortcuts` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
 - The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text
 
@@ -45,7 +49,7 @@ Owns the two overlays that list the registry, being Cmd+K's command palette and 
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool, key F, places an empty frame with its top left corner where the canvas is clicked, at the phone 390, tablet 834, or desktop 1440 preset the inspector lists while the tool is on, then selects it and returns to Move
+- The Frame tool, key F, places an empty frame with its top left at the click, at the chosen phone 390, tablet 834, or desktop 1440 preset, then selects it and returns to Move
 - A Note tool pins a note on a frame or element, Send hands it to a listening session, and replies show in the note's thread
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
@@ -75,11 +79,11 @@ Owns the change toast with Show and Next on `]`, the glow over changed elements,
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs.
+Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions.
 
 - Design holds a pages list with a search and a layers tree, split by a divider that remembers its height, and Theme holds the project's tokens read-only
-- A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged to a new place through `reorder.ts`, and `page-actions.ts` registers the `page.*` actions
-- Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, the name, and a `<type> · <size>` line, and a tile click copies `../assets/<name>` with each segment encoded
+- A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
+- Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, name, and `<type> · <size>` line, and a tile click copies `../assets/<name>`, each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
@@ -99,6 +103,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
 - The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- A primary drag on the canvas pans only under the Hand tool
 
 ### `src/client/board/inspector/`
 
@@ -140,7 +145,6 @@ The favicon files sit beside the app.
 
 - A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
-- Edit covers the frames with a hit layer so a press reaches the selection gestures rather than a frame's page, and a primary drag pans only under the Hand tool. Play lifts the layer, so a click moves focus into a frame's window, where the board binds Esc since its own keys never arrive
-- A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
+- Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
 - `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
-- `cn` reads the custom `text-body` and `text-label` steps as colors, so it keeps a kit part's `text-sm` beside one and drops one set before a color. A kit part takes `text-xs` for 12px and `text-[11px]` for 11px
+- `cn` reads the custom `text-body` and `text-label` steps as colors, keeping a kit part's `text-sm` beside one but dropping one before a color. Use `text-xs` for 12px, `text-[11px]` for 11px
