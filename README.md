@@ -104,11 +104,10 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 In the board you move and resize frames, add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool.
 
 - On the home view, New project adds a project, and a card's right-click menu opens, renames, duplicates, or deletes one
-- The inspector edits a selected element's name, opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text
-- It offers the project's tokens first and flags a color no token names
+- The inspector edits a selected element's name, opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text, offering the project's tokens first and flagging untokened colors
 - The layers panel selects, renames, restacks, hides, and locks frames, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
-- Right-click a frame, an element, empty canvas, a page, or a layers row for the actions that apply there, such as Copy as PNG, Paste here, or Flip to light, which shows that frame alone in the other theme until you reload
+- Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Paste here, or Flip to light, which shows that frame alone in the other theme until reload
 
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
 

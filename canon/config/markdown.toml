@@ -4,4 +4,5 @@ gated = [
   "canon/context/content/",
   "canon/context/agent/",
   "canon/context/board/",
+  "README.md",
 ]
