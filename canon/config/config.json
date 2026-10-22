@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.47.0",
-      "syncedAt": "2026-10-19T08:35:38.000Z",
+      "version": "5.55.0",
+      "syncedAt": "2026-10-22T07:01:08.362Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -24,14 +24,13 @@
         ".claude/rules/canon/lib/security-web.md": "sha256:2a02b9a4136c1efbd66eec3ffcfacb0f4d08c5910f186d45397c594c195924f8",
         ".claude/rules/canon/lib/test-scope.md": "sha256:1d7dfc0ad597bf4c8241705dce3df14a079582e812e9a7103ec6c6b842b24aba",
         ".claude/rules/canon/lib/testing-ts.md": "sha256:48e6b1693fccf0931ce216247cbbef4f3b5694c6858ccbe397a5939e8504b23f",
-        ".claude/rules/canon/tooling/ci-workflow.md": "sha256:93b3d24db41428a960173eab92205cdd0e7bc5060b155420aec23a06baefe763",
+        ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
         ".claude/rules/canon/tooling/code-comments.md": "sha256:98d585be0dcf8d97c063c80619d1e67c920e1c672df611ed621fe82c1ba862c8",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:df6b5c282cad711211d45620599bd550679d8a15c48c77c72a7ef44c384a2b53",
         ".claude/rules/canon/tooling/dependencies.md": "sha256:beef3a95783523a1853a1501d2b235dea3ca88b46ba14bda77356349932a4093",
         ".claude/rules/canon/ui/a11y.md": "sha256:5248137e59befa4eb24aeea5b905118c2490ce4801321f35c03323269c866de4",
-        ".claude/rules/canon/ui/canvas.md": "sha256:b246e83c1f6952e37c179ec38ce92bc3424547e6a16818689e5b95561a73b14e",
         ".claude/rules/canon/ui/copy.md": "sha256:a32d07e146d65d620fe4501ff4e04bdb72d1668149bc6edf76ac85eca0d050ff",
-        ".claude/rules/canon/ui/design-reference.md": "sha256:bc738578c8f90e4eb5853f2189d399d52aee068f4fbdeaca4d2c450ab2ecca60",
+        ".claude/rules/canon/ui/design-reference.md": "sha256:c5b9847c0d8e4b68dcf6072de145426562889ed6cc2cd5faaba421f041d43b6a",
         ".claude/rules/canon/ui/design-taste.md": "sha256:4de5f8ea0b3d986a997ba968d4c991ac8a482a878d569eda02138ce3ae72e490",
         ".claude/rules/canon/ui/forms.md": "sha256:dc8667ea520c37626ac799385e479d6e6563e9fcf35af350aff4e2ac7af6a12d",
         ".claude/rules/canon/ui/interface-casing.md": "sha256:1fe12b461fa64119246ba8e29f1d8c780bf9775c63b18b9bc2f1572bac48dd36",
