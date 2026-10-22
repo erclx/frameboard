@@ -21,9 +21,7 @@ Owns the head spliced into a served frame and the Theme tab's token table.
 - A self-removing script beside the style applies the `?theme=` query's theme through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
 - The token table reads each sheet with postcss into one row per custom property, light and dark, grouped as Color, Radius, Font, and Other
 
-### `src/server/routes/`
-
-Owns the URLs a frame imports from.
+The routes a frame imports from sit in `src/server/routes/`, which `canon/context/board/server.md` owns.
 
 - `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied with each license from `@fontsource-variable` into `dist/faces/` at build
 - The build renames each face from the package's variable name, such as `Geist Variable`, to the plain family a frame names

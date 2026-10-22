@@ -11,9 +11,9 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 ## Layout
 
-### `src/client/board/`
+### `src/client/board/element/`
 
-Owns selection, the keys, and the menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
+Owns picking, walking, and outlining an element, and with the board folder's `selection.ts` the selection keys and menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
 
 - A click selects the frame, and Cmd-click or a double-click selects the element under the cursor. Enter goes one level down, Esc one level up, and Tab steps through siblings.
 - Shift-click or a marquee drag selects several frames, and move, nudge, align, duplicate, copy, cut, hide, lock, and delete act on all of them
@@ -55,9 +55,9 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
-### `src/server/`
+### `src/server/history/`
 
-Owns the edit history undo reads, in `src/server/history/`. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
+Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout entry, one page order, one rename, or one path with its content hash, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it

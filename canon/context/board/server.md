@@ -7,9 +7,13 @@ description: Folder watcher, socket hub, claims record, write access, and the HT
 
 ## Overview
 
-Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app that draws what they send is in `canon/context/board/shell.md`, and the edit history undo reads is in `canon/context/board/hand-actions.md`.
+Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/hand-actions.md`, and the live findings in `canon/context/agent/checks.md`.
 
 ## Layout
+
+### `src/server/`
+
+Owns the loopback server around the folders below. `app.ts` is the Hono app, `start.ts` binds it to `127.0.0.1` alone since the board serves the developer's own files, `address.ts` writes the address file and its health check, and `author.ts` reads git's `user.name` to sign notes.
 
 ### `src/server/live/`
 

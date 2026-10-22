@@ -21,6 +21,12 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - Selector rules read the cascade, being `default-font`, `generic-font`, and `theme`, plus `allowed-fonts` and `uppercase` only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`
 - The cascade matches with css-select, weighs with `@bramus/specificity`, resolves custom properties per element, and reads token sheets ahead of the frame's own
 
+The hook's entry is `src/cli/hook.ts`, bundled to `dist/hook.js` beside the CLI, in the folder `canon/context/agent/cli.md` owns.
+
+- The hook prints `decision: "block"` with the findings as `reason`, which Claude Code places beside the tool result as feedback on that write
+- It exits 0 and prints nothing for a non-frame write, a frame outside any board, a file gone since, and stdin that is not JSON, so a write is never reported as failed
+- The bundle carries no commander, Hono, chokidar, ws, or zod, and a run cost a median 80 ms on Bun against a bare start of 17 ms. Measured at d609955 on 2026-10-17.
+
 ### `src/server/checks/browser/`
 
 Owns the browser tier, the rules that read a rendered page. It sits in its own folder so the hook bundle, which imports `checks/frame.ts` alone, never reaches it or `playwright-core`. Its `viewport` rule reports a warning and the rest report errors, since a full-height screen sizes off the viewport on purpose.
@@ -31,17 +37,7 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - `viewport` rereads the content at twice the viewport height through `fit`'s `readContentSize`, which leaves out what a cropping ancestor hides, as `clipped` does
 - `min-font-size` runs only when `project.json` sets `checks.minFontSize` to a positive number of pixels, and picks text elements the way capture's font check does
 
-### `src/cli/`
-
-Owns the hook's entry, bundled to `dist/hook.js` beside the CLI.
-
-- The hook prints `decision: "block"` with the findings as `reason`, which Claude Code places beside the tool result as feedback on that write
-- It exits 0 and prints nothing for a non-frame write, a frame outside any board, a file gone since, and stdin that is not JSON, so a write is never reported as failed
-- The bundle carries no commander, Hono, chokidar, ws, or zod, and a run cost a median 80 ms on Bun against a bare start of 17 ms. Measured at d609955 on 2026-10-17.
-
-### `src/server/live/`
-
-Owns the findings the board holds between watch batches, and the warm checker that runs the browser tier. Each frame's list is its static findings followed by the browser findings last landed for it, so the client keeps one list per ref.
+The findings the board holds between watch batches, and the warm checker that runs this tier, sit in `src/server/live/`, which `canon/context/board/server.md` owns. Each frame's list is its static findings followed by the browser findings last landed for it, so the client keeps one list per ref.
 
 - The server sends the whole findings map after the board on hello, then a partial map per batch where an empty list clears a frame
 - A change to a token sheet rechecks and reloads every frame it reaches, and a change to a project's `project.json` rechecks them without a reload

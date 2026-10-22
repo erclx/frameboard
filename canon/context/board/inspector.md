@@ -1,6 +1,6 @@
 ---
 title: Inspector
-description: Controls for a selected frame, several frames, or an element, the bar a new control clears, and what a hand edit writes
+description: The right panel's controls for a selected frame, several frames, or an element, the bar a new control clears, and what a hand edit writes
 ---
 
 # Inspector
@@ -11,9 +11,9 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 ## Layout
 
-### `src/client/`
+### `src/client/board/inspector/`
 
-Owns the inspector panel. A control joins it only when the developer's edit beats asking the agent and leaves layout alone.
+Owns the right panel, under a header of the avatar and the zoom level, and its controls. A control joins it only when the developer's edit beats asking the agent and leaves layout alone.
 
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key
 - **Element:** name, opacity, radius, and typography size, weight, and alignment, plus its text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
@@ -23,9 +23,10 @@ Owns the inspector panel. A control joins it only when the developer's edit beat
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
-### `src/server/`
+- Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
+- One selected frame's name renames in place on a click, through the same rename the layers row runs
 
-Owns the write a hand edit makes into a frame.
+A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
 - A hand edit writes the element's inline style, one attribute, or its text and nothing else, through `POST /api/frames/edit`, which records one undo step
 - A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
