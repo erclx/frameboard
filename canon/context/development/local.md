@@ -55,7 +55,7 @@ The capture scripts each carry a condition the table leaves out.
 
 - `screenshot:compare` builds first and serves its own boards
 - `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
-- `design:sync` spawns `canon canvas serve` on the main root's canvas, so it fails on a canon release that no longer ships the canvas verbs
+- `design:sync` spawns `canon canvas serve` on the main root's canvas, so it fails while the installed canon ships no canvas verbs
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
 
 ### `scripts/`
