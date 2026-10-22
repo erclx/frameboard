@@ -4,9 +4,10 @@ This page covers getting a working checkout, where things live, how to test a ch
 
 ## Setup
 
-You need [Bun](https://bun.sh) and Node 22 or later.
+You need [Bun](https://bun.sh), Node 22 or later, and the `canon` CLI, since the pre-commit hook runs `canon indexes regen` on staged markdown.
 
 ```bash
+bun add -g @erclx/canon
 git clone https://github.com/erclx/frameboard.git
 cd frameboard
 bun install

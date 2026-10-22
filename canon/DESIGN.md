@@ -1,6 +1,6 @@
 # Design
 
-Values live in `src/client/styles.css`, light on `:root` and dark on `.dark`. This record holds the intent behind the board chrome's values. Frames are not covered, since each takes its look from its own project's tokens. `canon/design/` holds the accepted look of every surface, filed by surface and captured from the canvas by `bun run design:sync`, and this record holds the intent behind it.
+Values live in `src/client/styles.css`, light on `:root` and dark on `.dark`. This record holds the intent behind the board chrome, not frames, which take their own project's tokens. Accepted designs live in `canon/design/`.
 
 ## Overview
 
@@ -9,7 +9,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 ## Colors
 
 - `--primary` is the blue and `--accent` is the hover grey. shadcn's naming invites the reverse, so never reach for `--accent` as a brand color.
-- Give every hue its one meaning alone. A second use, such as a blue guide or a red badge, blurs what the operator reads at a glance.
+- Give every hue one meaning. A second use, such as a blue guide or a red badge, blurs what the operator reads at a glance.
 - Set dark with the `.dark` class on the chrome root. Frames switch on their own `data-theme`, and one toggle sets both.
 
 | Role       | Property             | Intent                                                |
@@ -39,6 +39,11 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 ## Spacing
 
 - Use Tailwind's default spacing scale with no custom steps.
+
+## Layout
+
+- Below 1024px wide the board opens with Hide UI on, so the canvas keeps the screen and still pans and zooms.
+- The width is read once at load, so resizing across 1024px later leaves Hide UI where the developer set it.
 
 ## Shapes
 

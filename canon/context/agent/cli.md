@@ -30,6 +30,9 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 - The tab `serve` opens carries a single-use redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
 - `show` points every open board tab at a frame and exits 3 with `server-not-running` rather than start a server
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
+
+The structure verbs reshape projects, pages, and frames.
+
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 
@@ -51,14 +54,16 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/re
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest
 - The monitor runs `inbox --follow`, and Claude Code hands each line to the session as an event, so a sent note is acted on at once with no MCP server
 - The board sends a note to the session holding the frame's claim while it listens, else to the only listening session, else to the one the developer picks
-- A claim is cooperative. Another live session's claim refuses `frame-claimed`, exit 4, it lapses five minutes after the last `editing`, and the developer's hand edit on a held frame waits in the board until it drops, the server refusing one sent anyway
 
 `editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. The claim is also what names the agent on the board's change toast. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
+
+- A claim is cooperative, so another live session's claim refuses `frame-claimed` with exit 4, and it lapses five minutes after the last `editing`
+- The developer's hand edit on a held frame waits in the board until the claim drops, and the server refuses one sent anyway
 
 ## Gotchas
 
 - The inbox monitor starts with `when: "always"`, because with `on-skill-invoke` it never started in the spike
 - Claude Code runs plugin monitors only in interactive sessions and not on Bedrock, Google Cloud, or Foundry, where a sent note waits as a pinned one
-- `frame fit` sets height only, counts no content a cropping ancestor hides, reports too-wide content, and refuses `fit-unbounded` for content sized off the viewport, such as `min-height: 100vh`, writing nothing
+- `frame fit` sets height only, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `min-height: 100vh`
 - The hook runs the installed check directly, preferring Bun and never a package runner, which costs about ten times the check on every write
 - `--no-open` opens nothing on either `serve` path, which is how tests, `preview`, and capture run, so a test never launches a browser on the developer's screen

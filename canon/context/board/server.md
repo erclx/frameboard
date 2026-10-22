@@ -7,9 +7,13 @@ description: Folder watcher, socket hub, claims record, write access, and the HT
 
 ## Overview
 
-Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app that draws what they send is in `canon/context/board/shell.md`, and the edit history undo reads is in `canon/context/board/hand-actions.md`.
+Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/hand-actions.md`, and the live findings in `canon/context/agent/checks.md`.
 
 ## Layout
+
+### `src/server/`
+
+Owns the loopback server around the folders below. `app.ts` is the Hono app, `start.ts` binds it to `127.0.0.1` alone since the board serves the developer's own files, `address.ts` writes the address file and its health check, and `author.ts` reads git's `user.name` to sign notes.
 
 ### `src/server/live/`
 
@@ -43,13 +47,12 @@ Owns who may write, apart from the route modules.
 
 ### `src/server/routes/`
 
-Owns the HTTP route modules `app.ts` mounts, one per surface.
+Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing.
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
-- Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing
-- `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in the field `files`, behind `requireWriter` and a 64 MiB body limit that answers 413
+- `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in `files`, behind `requireWriter` and a 64 MiB limit answering 413
 - `access.ts` redeems a ticket for the cookie and mints a ticket for a bearer, and `api.ts` mounts every write route behind `requireWriter`
-- `structure.ts` answers `POST /api/<noun>/<verb>`, each body mirroring the CLI verb's flags and recording one step, and `history.ts` answers `POST /api/undo` and `/api/redo`, both sharing `envelope.ts` for their refusals
+- `structure.ts` answers `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags and one step each, and `history.ts` answers `POST /api/undo` and `/api/redo`, sharing `envelope.ts` refusals
 - `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
 ## Gotchas
