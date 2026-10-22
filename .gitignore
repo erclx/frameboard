@@ -15,8 +15,10 @@ node_modules/
 .vscode/
 
 # Claude
-.canon/
 .claude/worktrees/
+
+# Canon
+.canon/
 
 # Build
 dist/
@@ -35,4 +37,3 @@ screenshots/
 
 # Vitest browser mode
 .vitest/
-.canon/tmp/
