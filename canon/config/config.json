@@ -3,7 +3,7 @@
   "domains": {
     "governance": {
       "version": "5.55.0",
-      "syncedAt": "2026-10-22T07:01:08.362Z",
+      "syncedAt": "2026-10-22T07:36:17.314Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -34,6 +34,7 @@
         ".claude/rules/canon/ui/design-taste.md": "sha256:4de5f8ea0b3d986a997ba968d4c991ac8a482a878d569eda02138ce3ae72e490",
         ".claude/rules/canon/ui/forms.md": "sha256:dc8667ea520c37626ac799385e479d6e6563e9fcf35af350aff4e2ac7af6a12d",
         ".claude/rules/canon/ui/interface-casing.md": "sha256:1fe12b461fa64119246ba8e29f1d8c780bf9775c63b18b9bc2f1572bac48dd36",
+        ".claude/rules/canon/ui/keyboard.md": "sha256:4c59db579fe2fbd30865372d1d69eecc624a2ac53d2a86165343e8847d7ac1a6",
         ".claude/rules/canon/ui/link-behavior.md": "sha256:fd0d9c21c96564380aea54d461b8d93bcba4ea4a4db889fe86383dee2d251eb8",
         ".claude/rules/canon/ui/motion.md": "sha256:80b6b132e5b28dc2770d76df7a26131ed51c772d1097982729651ef7ffdd1053",
         ".claude/rules/canon/ui/surface-capture.md": "sha256:f686e7b80ad15f365e2edda476adf48d735db68779235d90f2902873de0212d3",
