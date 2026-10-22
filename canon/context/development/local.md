@@ -7,7 +7,9 @@ description: Local dev workflow, scripts, and husky hooks
 
 ## Overview
 
-Owns how the project runs on a developer machine, being the toolchain, the scripts that verify a change, and the git hooks that run them. CI calls the same scripts, covered in `canon/context/development/ci.md`. Setup is Bun, then `bun install`, which activates the hooks, then `bunx playwright install chromium`.
+Owns how the project runs on a developer machine, being the toolchain, the scripts that verify a change, and the git hooks that run them. CI calls the same scripts, covered in `canon/context/development/ci.md`.
+
+Setup is Bun and the `canon` CLI from `bun add -g @erclx/canon`, which the pre-commit hook calls, then `bun install` to activate the hooks, then `bunx playwright install chromium`.
 
 ## Layout
 
