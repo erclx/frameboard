@@ -89,6 +89,12 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 - `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
 - The `capture` board names only generic families and a Geist face in its `assets/`, so it renders alike on Linux CI and macOS
 
+### Other folders
+
+Test support that lives inside the source tree.
+
+- `src/test/` owns the setup file the Vitest `browser` project loads and the board records client tests build from
+
 ## Gotchas
 
 - `canon tooling sync web . --write` overwrites the project's own `e2e/screenshot.ts`, `e2e/home.spec.ts`, `.oxlintrc.json`, and `commitlint.config.js`, so copy a stack file by hand instead
