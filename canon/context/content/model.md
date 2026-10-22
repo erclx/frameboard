@@ -32,13 +32,11 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 ### `src/server/edit/`
 
-Owns the edit writer, which parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span.
+Owns the edit writer, which parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span. It never serializes the tree, which rewrites the file's formatting, and never uses Bun's `HTMLRewriter`, which Node lacks.
 
-- An element is addressed by its index in `querySelectorAll('*')` order plus the SHA-256 hex of the file's raw bytes, and every reader shares that address, a reader of a live frame skipping the `data-frameboard` elements the server splices into `head`
-- The injected style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from, beside the `data-rendered-at` stamp the note pin still reads
-- An element is named by its `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else its tag, and `elementTree` in `elements.ts` answers that name and the parent of each element under `body`
+- Every reader addresses an element by its `querySelectorAll('*')` index plus the SHA-256 hex of the file's raw bytes, skipping in a live frame the `data-frameboard` elements spliced into `head`
+- An element's name is its `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else its tag, and `elementTree` returns each name and parent under `body`
 - An edit against a hash the file no longer has is refused as stale, so a hand edit never lands on an element an agent has since moved
-- Serializing the tree and Bun's `HTMLRewriter` were dropped, because the first rewrites the file's formatting and the second is missing on Node
 - The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
 - A note anchors to a frame or to an element by its address, and falls back to the frame when the file's hash has changed
 
@@ -57,9 +55,15 @@ Owns the notes record, its anchors, and delivery to a listening session, apart f
 Project files sit beside the pages.
 
 - `assets/` in a project owns images, GIFs, video, SVG, fonts, and stylesheets that any frame may link, and is the one path outside a page a frame may use
-- A drop into `assets/` accepts images, GIF, SVG, video, audio, fonts, stylesheets, and scripts, and refuses HTML and the rest by name. A name is cut to the board's name rule, and one already taken in any letter case takes the first free `-2`, `-3`, so a drop never overwrites a file an agent wrote
+- A drop into `assets/` accepts images, GIF, SVG, video, audio, fonts, stylesheets, and scripts, and refuses HTML and the rest by name
+- A dropped name is cut to the board's name rule, and one already taken in any letter case takes the first free `-2`, `-3`, so a drop never overwrites a file an agent wrote
 - Lock files, temp files, and dot folders hold generated files, and the watcher and scanner skip them, the watcher reading `.run/claims.json` alone
-- `.run/` holds the address file `serve` writes, with the URL, pid, and token at mode 0600, and the claims `editing` writes, and ignores itself through its own `.gitignore`
+
+### `.run/`
+
+Holds what a running board writes about itself, and ignores itself through its own `.gitignore`.
+
+- The address file `serve` writes holds the URL, pid, and token at mode 0600, beside the claims `editing` writes
 - `.run/thumbnails/` holds the home view's captures by frame and theme, emptied at each start, since a frame edited while no server ran would show a stale one
 - `.run/board-key.json` holds the board key at mode 0600 and survives restarts, so a tab's cookie does too. Deleting it and restarting `serve` revokes every board's cookie
 

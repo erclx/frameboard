@@ -17,15 +17,18 @@ Owns the head spliced into a served frame and the Theme tab's token table.
 
 - The frame route splices one `<style data-frameboard>` first in `head`, importing the faces, then the board sheet, then the project sheet, so a frame's own stylesheet still wins
 - The splice lands after a stated `head` start tag, else a stated `html` start tag, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
-- A self-removing script beside the style shows the root in the `?theme=` query's theme through `setFrameTheme`, being `data-theme`, `color-scheme`, and the `.dark` or `.light` class, so the one element a live frame keeps is the style
+- The style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from, beside the `data-rendered-at` stamp the note pin reads
+- A self-removing script beside the style applies the `?theme=` query's theme through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
 - The token table reads each sheet with postcss into one row per custom property, light and dark, grouped as Color, Radius, Font, and Other
 
 ### `src/server/routes/`
 
 Owns the URLs a frame imports from.
 
-- `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied from `@fontsource-variable` into `dist/faces/` at build with each license, and renamed from the package's `Geist Variable` to the plain family a frame names
-- `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`, and `/frames/<project>/tokens.css` serves the project's, so its relative `url(assets/...)` resolves
+- `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied with each license from `@fontsource-variable` into `dist/faces/` at build
+- The build renames each face from the package's variable name, such as `Geist Variable`, to the plain family a frame names
+- `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`
+- `/frames/<project>/tokens.css` serves the project's sheet, so its relative `url(assets/...)` resolves
 - `GET /api/projects/<project>/tokens` answers the token table, naming a sheet that fails to parse rather than answering an empty table
 
 ### `src/client/theme/`
@@ -39,8 +42,8 @@ Owns the board-wide theme.
 
 ## Gotchas
 
-- `serve --tokens <path>` resolves against the working folder and lands in the address file as `tokens`, so the hook and `check` read the same sheet while that server runs, and a second `serve` reports the running server's sheet beside `reused: true`
-- A change to the board sheet, the `--tokens` sheet, or a project's sheet reloads and rechecks every frame it reaches, and a `--tokens` sheet outside the board gets a watch of its own feeding the same batches
+- `serve --tokens <path>` resolves against the working folder and is saved in the address file as `tokens`, so the hook and `check` read that server's sheet, and a `reused: true` answer names it
+- A change to the board, `--tokens`, or project sheet reloads and rechecks every frame it reaches, and a `--tokens` sheet outside the board gets its own watch feeding the same batches
 - With no token sheet at all, frames render unstyled and the Theme tab says where tokens would go
 - Never paste a token sheet into a frame, since the injected copy follows the project and a pasted one stops following it
 - Canon's own frames name Noto Sans Mono and Excalifont, which no package ships, so they fall back until a project adds the face to its `assets/`
