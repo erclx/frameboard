@@ -360,7 +360,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     await expect
-      .poll(() => messages.map((message) => message.type), {
+      .poll(() => messages.map((message) => message.type).slice(0, 6), {
         timeout: 5000,
       })
       .toEqual([
@@ -371,6 +371,18 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         'findings',
         'changes',
       ])
+    // The watcher can report the write in two batches under load, and the
+    // second only repeats board and reload. This reads a snapshot once the
+    // sequence settles: an extra push inside the first six fails the poll, and
+    // one already past it fails here. A second batch still pending is not seen,
+    // since absence cannot be awaited without a fixed pause.
+    expect(
+      messages
+        .slice(6)
+        .filter(
+          (message) => message.type !== 'board' && message.type !== 'reload',
+        ),
+    ).toEqual([])
     expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
     expect(messages.slice(2, 4)).toEqual([
       {
