@@ -2,7 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Action, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
@@ -165,6 +165,53 @@ describe('InspectorPanel', () => {
       'Mixed',
     ])
     expect(screen.getByRole('heading', { name: 'Arrange' })).toBeInTheDocument()
+  })
+
+  describe('with several frames’ styles answered', () => {
+    const BASE = { element: null, hash: 'a'.repeat(64) }
+    const ANSWERS: Record<string, unknown[]> = {
+      [SWATCHES.ref]: [
+        { value: 'var(--primary)', token: '--primary', percent: 100 },
+        { value: '#ABCDEF', token: null, percent: 100 },
+      ],
+      [SUNSET.ref]: [
+        { value: 'var(--primary)', token: '--primary', percent: 100 },
+        { value: '#abcdef', token: null, percent: 100 },
+        { value: '#00ff00', token: null, percent: 100 },
+      ],
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), location.href)
+        const ref = url.searchParams.get('ref') ?? ''
+        if (!url.pathname.endsWith('/styles')) {
+          return Response.json({ ok: false })
+        }
+        return Response.json({
+          ok: true,
+          data: { ...BASE, ref, colors: ANSWERS[ref] ?? [] },
+        })
+      })
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('lists a color both frames use once, whatever its case, and keeps the others', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+      renderPanel()
+
+      await screen.findByRole('heading', { name: 'Selection colors' })
+      const rows = await screen.findAllByRole('listitem')
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'primary100%',
+        'ABCDEF100%',
+        '00ff00100%',
+      ])
+    })
   })
 
   it('runs an Arrange button’s registered action', async () => {
