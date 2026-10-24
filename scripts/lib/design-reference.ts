@@ -57,6 +57,51 @@ export class IndexError extends Error {}
 
 const FOLDER = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
+/** A `frames.json` entry the sync cannot capture, named so the file can be fixed. */
+export class MappingError extends Error {}
+
+const REFERENCE = /^[a-z0-9]+(-[a-z0-9]+)*\/[a-z0-9]+(-[a-z0-9]+)*$/
+const BOARD_REF = /^[^/\s]+\/[^/\s]+\/[^/\s]+$/
+
+/**
+ * Reads `frames.json`, mapping each reference, `<group>/<name>`, to the
+ * board frame `<project>/<page>/<frame>` it is captured from. An entry in
+ * any other shape throws rather than filing into the wrong folder.
+ */
+export function parseFrameMap(json: string): Map<string, string> {
+  const parsed: unknown = JSON.parse(json)
+  const frames =
+    typeof parsed === 'object' && parsed !== null && 'frames' in parsed
+      ? parsed.frames
+      : undefined
+  if (typeof frames !== 'object' || frames === null) {
+    throw new MappingError('frames.json needs a frames object.')
+  }
+  const map = new Map<string, string>()
+  for (const [reference, ref] of Object.entries(frames)) {
+    if (!REFERENCE.test(reference)) {
+      throw new MappingError(
+        `frames.json entry "${reference}" needs a kebab-case <group>/<name>.`,
+      )
+    }
+    if (typeof ref !== 'string' || !BOARD_REF.test(ref)) {
+      throw new MappingError(
+        `frames.json entry "${reference}" needs a board frame as <project>/<page>/<frame>.`,
+      )
+    }
+    map.set(reference, ref)
+  }
+  return map
+}
+
+/** The mapped board frames the board does not hold. */
+export function missingFrames(
+  map: ReadonlyMap<string, string>,
+  board: ReadonlySet<string>,
+): string[] {
+  return [...map.values()].filter((ref) => !board.has(ref))
+}
+
 /**
  * Reads each Surfaces row's folder and every `page/stem` its Frames column
  * cites. A row with no folder, or one still in the two-column shape, throws

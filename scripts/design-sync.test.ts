@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   classifyDrift,
+  MappingError,
+  missingFrames,
   parseCarried,
+  parseFrameMap,
   referenceName,
   resolveCarried,
   spliceFilesSection,
@@ -29,6 +32,56 @@ const canvas = new Map([
   ],
   ['12-canvas', ['hide-ui-dark.html', 'hide-ui-light.html']],
 ])
+
+describe('parseFrameMap', () => {
+  it('should read each reference and the board frame it is captured from', () => {
+    const json = JSON.stringify({
+      frames: {
+        'foundations/logo': 'design/03-logo/picked-arm-5c',
+        'home/grid': 'design/07-home/arm-2',
+      },
+    })
+
+    expect(parseFrameMap(json)).toEqual(
+      new Map([
+        ['foundations/logo', 'design/03-logo/picked-arm-5c'],
+        ['home/grid', 'design/07-home/arm-2'],
+      ]),
+    )
+  })
+
+  it('should refuse a reference that is not a group and a name, naming it', () => {
+    const json = JSON.stringify({
+      frames: { 'Home/grid-dark.png': 'design/07-home/arm-2' },
+    })
+
+    expect(() => parseFrameMap(json)).toThrow(MappingError)
+    expect(() => parseFrameMap(json)).toThrow('Home/grid-dark.png')
+  })
+
+  it('should refuse a board ref missing its project, page, or frame', () => {
+    const json = JSON.stringify({ frames: { 'home/grid': '07-home/arm-2' } })
+
+    expect(() => parseFrameMap(json)).toThrow('home/grid')
+  })
+
+  it('should refuse a file with no frames object', () => {
+    expect(() => parseFrameMap('{"surfaces": []}')).toThrow(MappingError)
+  })
+})
+
+describe('missingFrames', () => {
+  it('should name each mapped board frame the board does not hold', () => {
+    const map = new Map([
+      ['home/grid', 'design/07-home/arm-2'],
+      ['home/list', 'design/07-home/home-list'],
+    ])
+
+    expect(missingFrames(map, new Set(['design/07-home/arm-2']))).toEqual([
+      'design/07-home/home-list',
+    ])
+  })
+})
 
 describe('parseCarried', () => {
   it('should read frames from the Surfaces table alone', () => {
