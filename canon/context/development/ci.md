@@ -29,7 +29,10 @@ Ownership and the workflows the table leaves out sit below.
 - `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
 - The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
 - `phase-label-gate.yml` runs `canon labels scan`, failing a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
-  - `canon/config/pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
+- `canon/config/pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
+
+Releases run through two further bullets.
+
 - `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
 - The publish job builds the tag and refuses one whose `dist/cli.js --version` differs, so a mismatched tarball never reaches npm, and a `tag` input publishes that tag alone
 
