@@ -38,6 +38,8 @@ Load the plugin from your checkout instead of the marketplace, so edits under `p
 claude --plugin-dir ./plugins/frameboard
 ```
 
+Inside the checkout, the check hook and the inbox monitor run your own `dist/`, so run `bun run build` after a change to the CLI or the checks.
+
 After changing a manifest, check it. `claude plugin validate .` reads the marketplace and `claude plugin validate ./plugins/frameboard` reads the plugin.
 
 ## Tests
