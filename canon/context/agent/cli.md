@@ -50,7 +50,7 @@ Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a
 
 Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hook and the monitor share.
 
-- The lookup takes the project's `node_modules` install, then the project's own `dist/` when its `package.json` names `frameboard`, then the install on PATH, so the checkout gets feedback from its own build
+- The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then the install on PATH, so the checkout checks itself
 
 - The skill holds judgment and carries no verb table or rule list, so it cannot drift from the installed tool, and `docs` holds the facts
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest

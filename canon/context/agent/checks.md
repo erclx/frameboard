@@ -18,7 +18,10 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - The `check` verb, the server on every watched batch, and the plugin hook all run `checkFrameIn`, so no path drifts from another
 - `check` exits 8 with `check-findings` and the result in the error's details when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `outside-link`, `network`, and `missing-file`
-- Selector rules read the cascade, being `default-font`, `generic-font`, and `theme`, plus `allowed-fonts` and `uppercase` only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`
+
+Selector rules read the cascade rather than the parsed file.
+
+- They are `default-font`, `generic-font`, and `theme`, plus `allowed-fonts` and `uppercase` only when `project.json` sets `checks.allowedFonts` or `checks.noUppercase`
 - `theme` passes a `box-shadow` or `text-shadow` whose colors are all black or white at or under 0.2 alpha, since a faint shadow reads the same on either theme
 - The cascade matches with css-select, weighs with `@bramus/specificity`, resolves custom properties per element, and reads token sheets ahead of the frame's own
 
