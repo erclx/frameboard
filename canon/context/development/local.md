@@ -30,7 +30,7 @@ These serve the board and run the test layers.
 
 | Command                    | Purpose                                                                                                |
 | -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `bun run preview`          | Serves the built CLI on `basic` under the `CANON_PREVIEW_ROOT` prefix at `PREVIEW_PORT`, default 4173. |
+| `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and no tab |
 | `bun run dev`              | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset    |
 | `bun run test`             | Runs Vitest in watch mode                                                                              |
 | `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once                                                  |
