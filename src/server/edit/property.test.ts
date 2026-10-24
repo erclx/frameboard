@@ -21,6 +21,10 @@ type Element = DefaultTreeAdapterTypes.Element
 
 const SEED = 2026
 const RUNS = 2000
+// The generated-frames case takes about 0.3 s alone and took 5269 ms once the
+// machine ran several test processes, past vitest's 5 s default. 15 s matches
+// `SHELL_TEST_TIMEOUT_MS`, the one other loaded budget.
+const PROPERTY_TEST_TIMEOUT_MS = 15_000
 const FIXTURES = new URL('../../../test/fixtures/frames/', import.meta.url)
 const BOM = '\uFEFF'
 const SHORTHAND_LONGHANDS: Readonly<Record<string, readonly string[]>> = {
@@ -303,25 +307,29 @@ describe('applyEdit', () => {
     },
   )
 
-  it(`should change only the edited span across ${RUNS} generated frames`, () => {
-    const before = { ...made }
+  it(
+    `should change only the edited span across ${RUNS} generated frames`,
+    () => {
+      const before = { ...made }
 
-    fc.assert(
-      fc.property(
-        frameArbitrary,
-        fc.nat(),
-        changeArbitrary,
-        (source, pick, change) => {
-          const count = elementsOf(browserParse(source)).length
-          checkEdit(source, pick % count, change)
-        },
-      ),
-      { numRuns: RUNS, seed: SEED, endOnFailure: true },
-    )
+      fc.assert(
+        fc.property(
+          frameArbitrary,
+          fc.nat(),
+          changeArbitrary,
+          (source, pick, change) => {
+            const count = elementsOf(browserParse(source)).length
+            checkEdit(source, pick % count, change)
+          },
+        ),
+        { numRuns: RUNS, seed: SEED, endOnFailure: true },
+      )
 
-    // A writer refusing everything would pass the checks above vacuously.
-    expect(made.style - before.style).toBeGreaterThan(RUNS / 10)
-    expect(made.attribute - before.attribute).toBeGreaterThan(RUNS / 10)
-    expect(made.text - before.text).toBeGreaterThan(RUNS / 40)
-  })
+      // A writer refusing everything would pass the checks above vacuously.
+      expect(made.style - before.style).toBeGreaterThan(RUNS / 10)
+      expect(made.attribute - before.attribute).toBeGreaterThan(RUNS / 10)
+      expect(made.text - before.text).toBeGreaterThan(RUNS / 40)
+    },
+    PROPERTY_TEST_TIMEOUT_MS,
+  )
 })
