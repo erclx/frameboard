@@ -1,5 +1,8 @@
 {
   "autoMemoryEnabled": false,
+  "env": {
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
+  },
   "permissions": {
     "deny": ["Agent", "Task", "Bash(canon pr merge:*)", "Bash(gh pr merge:*)"]
   },
