@@ -33,7 +33,7 @@ Ownership and the workflows the table leaves out sit below.
 
 Releases run through two further bullets.
 
-- `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
+- `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, the credential check in `scripts/check-npm-credential.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
 - The publish job builds the tag and refuses one whose `dist/cli.js --version` differs, so a mismatched tarball never reaches npm, and a `tag` input publishes that tag alone
 
 ## Gotchas
