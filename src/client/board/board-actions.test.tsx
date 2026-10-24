@@ -19,6 +19,17 @@ const ABOUT = frameOf('about', {
   box: { x: 400, y: 20, width: 300, height: 200 },
 })
 
+/**
+ * The wait for a copy toast. The toast sits behind an image fetch no board
+ * serves in the test, and a machine running several test processes stretched
+ * it past testing-library's 1000 ms default in 5 of 36 measured copies. No
+ * ceiling was measured, so 5 s is a fivefold margin.
+ */
+const TOAST_WAIT_MS = 5_000
+
+/** The test budget for a toast case, set well above `TOAST_WAIT_MS`. */
+const TOAST_TEST_TIMEOUT_MS = 15_000
+
 const IDS = [
   'view.pan.left',
   'view.pan.rightFar',
@@ -122,49 +133,65 @@ describe('useBoardActions', () => {
     expect([one, two]).toEqual([true, false])
   })
 
-  describe('copying a frame as a PNG', () => {
-    afterEach(() => {
-      vi.restoreAllMocks()
-    })
+  describe(
+    'copying a frame as a PNG',
+    { timeout: TOAST_TEST_TIMEOUT_MS },
+    () => {
+      afterEach(() => {
+        vi.restoreAllMocks()
+      })
 
-    it('raises a success toast naming the frame and the theme shown', async () => {
-      // No board serves the image here, so the pending value refuses unread.
-      vi.spyOn(navigator.clipboard, 'write').mockImplementation(
-        async (items) => {
-          await items[0]?.getType('image/png').catch(() => null)
-        },
-      )
-      render(<Toaster />)
-      const board = setup()
-      done = board.done
-      select(selectionStore, 'studio/home', [HERO.ref])
+      it('raises a success toast naming the frame and the theme shown', async () => {
+        // No board serves the image here, so the pending value refuses unread.
+        vi.spyOn(navigator.clipboard, 'write').mockImplementation(
+          async (items) => {
+            await items[0]?.getType('image/png').catch(() => null)
+          },
+        )
+        render(<Toaster />)
+        const board = setup()
+        done = board.done
+        select(selectionStore, 'studio/home', [HERO.ref])
 
-      board.action('frame.copyPng').run()
+        board.action('frame.copyPng').run()
 
-      expect(await screen.findByText('Copied hero')).toBeVisible()
-      expect(
-        screen.getByText('PNG on the clipboard, in the light theme.'),
-      ).toBeVisible()
-    })
+        expect(
+          await screen.findByText(
+            'Copied hero',
+            {},
+            { timeout: TOAST_WAIT_MS },
+          ),
+        ).toBeVisible()
+        expect(
+          screen.getByText('PNG on the clipboard, in the light theme.'),
+        ).toBeVisible()
+      })
 
-    it('raises an error toast when the clipboard refuses the write', async () => {
-      vi.spyOn(navigator.clipboard, 'write').mockImplementation(
-        async (items) => {
-          await items[0]?.getType('image/png').catch(() => null)
-          throw new Error('Write permission denied.')
-        },
-      )
-      render(<Toaster />)
-      const board = setup()
-      done = board.done
-      select(selectionStore, 'studio/home', [HERO.ref])
+      it('raises an error toast when the clipboard refuses the write', async () => {
+        vi.spyOn(navigator.clipboard, 'write').mockImplementation(
+          async (items) => {
+            await items[0]?.getType('image/png').catch(() => null)
+            throw new Error('Write permission denied.')
+          },
+        )
+        render(<Toaster />)
+        const board = setup()
+        done = board.done
+        select(selectionStore, 'studio/home', [HERO.ref])
 
-      board.action('frame.copyPng').run()
+        board.action('frame.copyPng').run()
 
-      expect(await screen.findByText("Couldn't copy hero")).toBeVisible()
-      expect(screen.queryByText('Copied hero')).toBeNull()
-    })
-  })
+        expect(
+          await screen.findByText(
+            "Couldn't copy hero",
+            {},
+            { timeout: TOAST_WAIT_MS },
+          ),
+        ).toBeVisible()
+        expect(screen.queryByText('Copied hero')).toBeNull()
+      })
+    },
+  )
 
   it('zooms to nothing in Play', () => {
     const board = setup()
