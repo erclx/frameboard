@@ -2,7 +2,7 @@ import '../../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard, receiveClaims } from '@/client/live/store'
@@ -329,6 +329,33 @@ describe('FillSection', () => {
     ])
   })
 
+  it('writes a raw hex once when the color input changes, and nothing while it drags', async () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: '#111827', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        disabled={false}
+        write={write}
+      />,
+    )
+    const input = screen.getByLabelText('Fill color') as HTMLInputElement
+
+    // The row listens natively, so a React-driven event would never reach it.
+    input.value = '#ff0000'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(changes).toEqual([])
+
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'background-color', value: '#ff0000' },
+    ])
+  })
+
   it('flags a raw value and names a token with its chip', () => {
     render(
       <>
@@ -385,6 +412,38 @@ describe('StrokeSection', () => {
     ])
   })
 
+  it('shows no color row and enables Add stroke on an element with no border', () => {
+    render(
+      <StrokeSection
+        bordered={false}
+        borderColor={null}
+        tokens={[PRIMARY, BORDER]}
+        theme="light"
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Stroke color')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add stroke' })).toBeEnabled()
+  })
+
+  it('shows the color row and disables Add stroke on a bordered element', () => {
+    render(
+      <StrokeSection
+        bordered
+        borderColor={tokenValueOf('--border')}
+        tokens={[PRIMARY, BORDER]}
+        theme="light"
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.getByLabelText('Stroke color')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add stroke' })).toBeDisabled()
+  })
+
   it('writes the border color through its row', async () => {
     const { changes, write } = recorder()
     render(
@@ -398,7 +457,9 @@ describe('StrokeSection', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: 'Stroke token' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Stroke token' }),
+    )
     await userEvent.click(
       await screen.findByRole('menuitem', { name: 'primary' }),
     )
@@ -813,6 +874,81 @@ describe('InspectorPanel with an element selected', () => {
       'Shadow',
     ])
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+  })
+
+  it('leaves Typography out for an element holding no text', async () => {
+    await mountFrame('<div></div>')
+
+    renderWith(3)
+
+    await screen.findByRole('heading', { name: 'Element' })
+    expect(screen.queryByRole('heading', { name: 'Typography' })).toBeNull()
+  })
+
+  describe('with the project’s tokens answered', () => {
+    // The table groups the shadow with the colors, as the filter exists for.
+    const SHADOW_AS_COLOR: TokenRow = { ...SHADOW, group: 'color' }
+    const TABLE = {
+      sheets: [],
+      tokens: [PRIMARY, SHADOW_AS_COLOR],
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/tokens')) {
+          return Response.json({ ok: true, data: TABLE })
+        }
+        return Response.json({
+          ok: true,
+          data: {
+            ref: HERO.ref,
+            hash: HASH,
+            element: {
+              color: tokenValueOf('--primary'),
+              backgroundColor: null,
+              borderColor: tokenValueOf('--primary'),
+              borderWidth: null,
+              boxShadow: null,
+            },
+            colors: [],
+          },
+        })
+      })
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('offers a shadow token in the Shadow menu and not in the Fill or Stroke menus', async () => {
+      await mountFrame('<h1 style="border:1px solid">Hello</h1>')
+      renderWith(3)
+      await screen.findByRole('heading', { name: 'Element' })
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Fill token' }),
+      )
+      expect(
+        await screen.findByRole('menuitem', { name: 'primary' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      await userEvent.keyboard('{Escape}')
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Stroke token' }),
+      )
+      expect(
+        await screen.findByRole('menuitem', { name: 'primary' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      await userEvent.keyboard('{Escape}')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Shadow' }))
+      expect(
+        await screen.findByRole('menuitem', { name: 'shadow-sm' }),
+      ).toBeInTheDocument()
+    })
   })
 
   it('hides the frame’s name row while an element is selected', async () => {
