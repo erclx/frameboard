@@ -372,8 +372,10 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         'changes',
       ])
     // The watcher can report the write in two batches under load, and the
-    // second only repeats board and reload. A repeated findings, changes, or
-    // thumbnails push is a real extra rescan and still fails.
+    // second only repeats board and reload. This reads a snapshot once the
+    // sequence settles: an extra push inside the first six fails the poll, and
+    // one already past it fails here. A second batch still pending is not seen,
+    // since absence cannot be awaited without a fixed pause.
     expect(
       messages
         .slice(6)
