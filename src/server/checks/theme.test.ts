@@ -82,6 +82,15 @@ describe('setsLiteralColor', () => {
     ['background', 'var(--bg, white)', false],
     ['color', 'currentColor', false],
     ['margin', '0 auto', false],
+    ['box-shadow', '0 1px 2px rgb(0 0 0 / 20%)', false],
+    ['box-shadow', '0 1px 2px rgba(0,0,0,.2)', false],
+    ['text-shadow', '0 1px #00000033', false],
+    ['box-shadow', 'inset 0 0 0 1px rgba(255, 255, 255, 0.08)', false],
+    ['box-shadow', '0 1px 2px rgba(0,0,0,.3)', true],
+    ['box-shadow', '0 1px 2px rgba(255,0,0,.1)', true],
+    ['box-shadow', '0 1px rgba(0,0,0,.1), 0 2px oklch(0.6 0.2 30 / .1)', true],
+    ['box-shadow', '0 0 2px black', true],
+    ['color', 'rgba(0,0,0,.1)', true],
   ])('reads %s: %s as %s', (property, value, expected) => {
     expect(setsLiteralColor(property, value)).toBe(expected)
   })

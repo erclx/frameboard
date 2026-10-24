@@ -52,13 +52,13 @@ These capture and measure what the board renders.
 | `bun run screenshot`         | Builds, serves, and captures every case in `e2e/capture/` into `screenshots/` and `e2e/evidence/`       |
 | `bun run screenshot:compare` | Captures each shell surface at the references' 1440 by 900, light and dark, into `screenshots/compare/` |
 | `bun run smoke:prod`         | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                    |
-| `bun run design:sync`        | Captures the canvas frames `canon/design/index.md` carries into surface folders under `canon/design/`   |
+| `bun run design:sync`        | Builds, then captures each board frame `canon/design/frames.json` maps into its group folder            |
 
 The capture scripts each carry a condition the table leaves out.
 
 - `screenshot:compare` builds first and serves its own boards
 - `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
-- `design:sync` spawns `canon canvas serve` on the main root's canvas, so it fails while the installed canon ships no canvas verbs
+- `design:sync` reads the design board at the main root's `.canon/board` through the built CLI's `capture`, from any worktree
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
 
 ### `scripts/`

@@ -30,4 +30,4 @@ The source layers and the end-to-end suite that drives them.
 The design records the board UI is built against.
 
 - `canon/DESIGN.md`: visual intent, pointing at the stylesheet that holds the values
-- `canon/design/`: the accepted design of every surface as light and dark PNGs beside their frame HTML, filed by surface, which `bun run design:sync` writes once v07.2 moves it off the retired canvas
+- `canon/design/`: each surface's accepted design as light and dark PNGs beside its frame HTML, grouped by app part plus `foundations/`, captured by `bun run design:sync` from `.canon/board`

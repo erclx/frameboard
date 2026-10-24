@@ -117,7 +117,77 @@ function definesTheme(node: Node): boolean {
  * count, and neither does a `url()` whose file name reads as a color.
  */
 export function setsLiteralColor(property: string, value: string): boolean {
-  return COLOR_PROPERTIES.test(property) && isLiteralColor(value)
+  if (!COLOR_PROPERTIES.test(property)) return false
+  if (SHADOW_PROPERTIES.test(property) && isFaintShadow(value)) return false
+  return isLiteralColor(value)
+}
+
+const SHADOW_PROPERTIES = /^(box|text)-shadow$/i
+const FAINT_ALPHA = 0.2
+const RGB_COLOR = /\brgba?\(([^)]*)\)/gi
+const HEX_TOKEN = /#([0-9a-f]{4}|[0-9a-f]{8})\b/gi
+
+/**
+ * Whether every color a shadow names is black or white at or under 0.2
+ * alpha, which reads the same on either theme, so a frame writing one for a
+ * single theme is no finding.
+ */
+function isFaintShadow(value: string): boolean {
+  const own = stripFunctions(value, ['var', 'url'])
+  const colors: boolean[] = []
+  const rest = own
+    .replace(RGB_COLOR, (_match, args: string) => {
+      colors.push(isFaintRgb(args))
+      return ' '
+    })
+    .replace(HEX_TOKEN, (_match, digits: string) => {
+      colors.push(isFaintHex(digits))
+      return ' '
+    })
+  return colors.length > 0 && colors.every(Boolean) && !isLiteralColor(rest)
+}
+
+function isFaintRgb(args: string): boolean {
+  const parts = args
+    .split(/[\s,/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const [r, g, b, a] = parts
+  if (parts.length !== 4 || a === undefined) return false
+  const alpha = a.endsWith('%')
+    ? Number.parseFloat(a) / 100
+    : Number.parseFloat(a)
+  return (
+    isBlackOrWhite(readChannel(r), readChannel(g), readChannel(b)) &&
+    alpha <= FAINT_ALPHA + 1e-9
+  )
+}
+
+function readChannel(part: string | undefined): number | undefined {
+  if (part === undefined) return undefined
+  if (part.endsWith('%')) return (Number.parseFloat(part) / 100) * 255
+  return Number.parseFloat(part)
+}
+
+function isFaintHex(digits: string): boolean {
+  const full =
+    digits.length === 4
+      ? [...digits].map((digit) => digit + digit).join('')
+      : digits
+  const [r, g, b, a] = [0, 2, 4, 6].map((at) =>
+    Number.parseInt(full.slice(at, at + 2), 16),
+  )
+  return isBlackOrWhite(r, g, b) && (a ?? 255) / 255 <= FAINT_ALPHA + 1e-9
+}
+
+function isBlackOrWhite(
+  r: number | undefined,
+  g: number | undefined,
+  b: number | undefined,
+): boolean {
+  return (
+    (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255)
+  )
 }
 
 /** Whether a value holds a color of its own, outside any `var()` or `url()`. */
