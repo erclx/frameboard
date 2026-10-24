@@ -1,8 +1,2 @@
 [markdown]
-gated = [
-  "canon/context/development/",
-  "canon/context/content/",
-  "canon/context/agent/",
-  "canon/context/board/",
-  "README.md",
-]
+gated = ["README.md", "canon/context/"]

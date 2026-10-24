@@ -24,6 +24,8 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 | Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes                                      |
 | macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`   | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
 
+Ownership and the workflows the table leaves out sit below.
+
 - `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
 - The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
 - `phase-label-gate.yml` runs `canon labels scan`, failing a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
