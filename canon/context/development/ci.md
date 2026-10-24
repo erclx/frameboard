@@ -31,9 +31,10 @@ Ownership and the workflows the table leaves out sit below.
 - `phase-label-gate.yml` runs `canon labels scan`, failing a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
 - `canon/config/pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
 
-Releases run through two further bullets.
+Releases run through three further bullets.
 
 - `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
+- The release job runs `scripts/check-npm-credential.sh` before it cuts a tag, so an unset or revoked `NPM_TOKEN` fails the run early
 - The publish job builds the tag and refuses one whose `dist/cli.js --version` differs, so a mismatched tarball never reaches npm, and a `tag` input publishes that tag alone
 
 ## Gotchas

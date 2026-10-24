@@ -30,19 +30,16 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       # Runs before the tag exists, so a release is never cut it cannot publish
       - name: Verify the publish credential
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "::error::NPM_TOKEN is not set. Add the secret before a release can be cut."
-            exit 1
-          fi
-          if ! curl -sf -H "Authorization: Bearer $NPM_TOKEN" https://registry.npmjs.org/-/whoami >/dev/null; then
-            echo "::error::NPM_TOKEN did not authenticate. It is likely expired or revoked."
-            exit 1
-          fi
+        run: bash scripts/check-npm-credential.sh
 
       - name: Release Please
         id: release
