@@ -45,7 +45,7 @@ export type CanvasFiles = ReadonlyMap<string, readonly string[]>
 const FILES_START = '<!-- design:sync:start -->'
 const FILES_END = '<!-- design:sync:end -->'
 const PICKED_COLOR = /#ffd400/i
-const CANVAS_KIT = '../01-kit/'
+const BOARD_KIT = '../assets/kit/'
 const REFERENCE_KIT = '../kit/'
 
 function cell(text: string | undefined): string {
@@ -237,9 +237,9 @@ export function stripPicked(html: string): string {
   return out
 }
 
-/** What the folder holds of a canvas frame: no marker, and links to the folder's kit. */
+/** What the folder holds of a board frame: its project kit links moved to the folder's kit. */
 export function toReference(html: string): string {
-  return stripPicked(html).replaceAll(CANVAS_KIT, REFERENCE_KIT)
+  return html.replaceAll(BOARD_KIT, REFERENCE_KIT)
 }
 
 export interface Drift {

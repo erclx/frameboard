@@ -245,9 +245,9 @@ describe('stripPicked', () => {
 })
 
 describe('toReference', () => {
-  it('should point the shared kit links at the folder kit', () => {
+  it('should point the board project kit links at the folder kit', () => {
     const html =
-      '<link href="../01-kit/kit.css"><script src="../01-kit/vendor/rough.js"></script>'
+      '<link href="../assets/kit/kit.css"><script src="../assets/kit/vendor/rough.js"></script>'
 
     expect(toReference(html)).toBe(
       '<link href="../kit/kit.css"><script src="../kit/vendor/rough.js"></script>',
