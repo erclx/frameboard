@@ -6,12 +6,19 @@
 # never disagree on where the install lives.
 
 # Prints the installed frameboard's dist folder, the project's own install
-# first and then a global one, or returns 1 when there is none.
+# first, then the build of a project that is the frameboard checkout itself,
+# then a global one, or returns 1 when there is none.
 frameboard_dist() {
   local candidate bin
   if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
     candidate="$CLAUDE_PROJECT_DIR/node_modules/frameboard/dist"
     if [[ -f "$candidate/cli.js" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    candidate="$CLAUDE_PROJECT_DIR/dist"
+    if [[ -f "$candidate/cli.js" ]] &&
+      grep -Eq '^  "name": "frameboard",?$' "$CLAUDE_PROJECT_DIR/package.json" 2>/dev/null; then
       printf '%s\n' "$candidate"
       return 0
     fi
