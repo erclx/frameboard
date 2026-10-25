@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.12.0](https://github.com/erclx/frameboard/compare/v0.11.0...v0.12.0) (2026-10-25)
+
+
+### Features
+
+* **board:** answer the keys and clicks a design-tool user reaches for ([#106](https://github.com/erclx/frameboard/issues/106)) ([17504a1](https://github.com/erclx/frameboard/commit/17504a199352a63ef16aef1944f23a2223e975fb))
+* **board:** place text and shapes into a frame and edit text in place ([#109](https://github.com/erclx/frameboard/issues/109)) ([fcbe55f](https://github.com/erclx/frameboard/commit/fcbe55f71b0e26a51d3696787043f5bea9600599))
+* **board:** polish the palette, previews, swatches, Play, and home sort ([#107](https://github.com/erclx/frameboard/issues/107)) ([28d0019](https://github.com/erclx/frameboard/commit/28d0019455ca17fef3df98a485d321e7f524fd74))
+* **canvas:** ease a wheel notch's pan and keep a touchpad one to one ([#102](https://github.com/erclx/frameboard/issues/102)) ([d4834c0](https://github.com/erclx/frameboard/commit/d4834c0cb6e922739ef919725dd1b9e48c3a20e1))
+* **checks:** report HTML and CSS a browser recovers from silently ([#108](https://github.com/erclx/frameboard/issues/108)) ([dfa38f2](https://github.com/erclx/frameboard/commit/dfa38f222bec67aec0a4ea73fe9dc8e0c7b76d73))
+* **edit:** land a queued hand edit past an agent's write ([#104](https://github.com/erclx/frameboard/issues/104)) ([ab5eb5c](https://github.com/erclx/frameboard/commit/ab5eb5cb3e9724670e0ac0673e91da40e6423a2d))
+
+
+### Bug Fixes
+
+* **board:** correct what an agent and the developer read while it works ([#101](https://github.com/erclx/frameboard/issues/101)) ([d257192](https://github.com/erclx/frameboard/commit/d257192672f2f59a662913c3ef1792b668d9648b))
+* **board:** keep a gap under the Pages header, lift empty lines ([#103](https://github.com/erclx/frameboard/issues/103)) ([72ffb4f](https://github.com/erclx/frameboard/commit/72ffb4f18470c67c6afc1dc8ab09254a3f959ae4))
+
 ## [0.11.0](https://github.com/erclx/frameboard/compare/v0.10.0...v0.11.0) (2026-10-25)
 
 
