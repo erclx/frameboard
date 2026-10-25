@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
+import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
 import { type Change, holds, restore, StepJournal } from './changes'
 
@@ -154,24 +155,18 @@ describe('changes', () => {
     })
   })
 
-  describe('content', () => {
+  describe('element', () => {
     const HERO = 'webapp/home/hero.html'
 
-    /** Sets the headline's text by hand, as the edit route does, and journals the file's two states. */
+    /** Sets the headline's text by hand, as the edit route does, and journals the edited element. */
     function editHeadline(text: string): void {
-      const before = readFileSync(at(HERO))
       const edited = editFrameFile(
         at(HERO),
         { index: 5 },
         { kind: 'text', value: text },
       )
       if (!edited.ok) throw new Error(edited.detail)
-      journal.content(
-        at(HERO),
-        'webapp/home/hero',
-        before,
-        readFileSync(at(HERO)),
-      )
+      journal.element(at(HERO), 'webapp/home/hero', edited.span)
     }
 
     it('undoes a hand edit byte for byte', async () => {
@@ -183,17 +178,68 @@ describe('changes', () => {
       expect(read(HERO)).toBe(original)
     })
 
-    it('holds while nothing else wrote the frame', async () => {
+    it('answers the hash of the bytes it left', async () => {
       editHeadline('Welcome')
+
+      const hash = await restore(first(), 'before')
+
+      expect(hash).toBe(contentHash(readFileSync(at(HERO))))
+    })
+
+    it('holds when an agent wrote another element since', async () => {
+      editHeadline('Welcome')
+      writeFileSync(
+        at(HERO),
+        read(HERO).replace('data-name="Caption"', 'data-name="Byline"'),
+      )
 
       await expect(holds(first(), 'after')).resolves.toBe(true)
     })
 
-    it('fails once an agent wrote the frame', async () => {
+    it('restores the element and keeps what the agent wrote elsewhere', async () => {
       editHeadline('Welcome')
-      writeFileSync(at(HERO), read(HERO).replace('Caption', 'Byline'))
+      writeFileSync(
+        at(HERO),
+        read(HERO).replace('data-name="Caption"', 'data-name="Byline"'),
+      )
+
+      await restore(first(), 'before')
+
+      expect(read(HERO)).toContain('<h1 data-name="Headline">hero</h1>')
+      expect(read(HERO)).toContain('data-name="Byline"')
+    })
+
+    it('fails once an agent changed the edited element', async () => {
+      editHeadline('Welcome')
+      writeFileSync(at(HERO), read(HERO).replace('Welcome', 'Hello'))
 
       await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('refuses a restore once an agent changed the edited element', async () => {
+      editHeadline('Welcome')
+      const agent = read(HERO).replace('Welcome', 'Hello')
+      writeFileSync(at(HERO), agent)
+
+      await expect(restore(first(), 'before')).rejects.toMatchObject({
+        code: 'undo-overtaken',
+        details: { change: 'element' },
+      })
+      expect(read(HERO)).toBe(agent)
+    })
+
+    it('refuses a restore once an agent wrote bytes that are not UTF-8', async () => {
+      editHeadline('Welcome')
+      const agent = Buffer.concat([
+        readFileSync(at(HERO)),
+        Buffer.from([0x3c, 0x21, 0x2d, 0x2d, 0xe9, 0x2d, 0x2d, 0x3e]),
+      ])
+      writeFileSync(at(HERO), agent)
+
+      await expect(restore(first(), 'before')).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(readFileSync(at(HERO)).equals(agent)).toBe(true)
     })
 
     it('fails once the frame was removed', async () => {
@@ -203,14 +249,31 @@ describe('changes', () => {
       await expect(holds(first(), 'after')).resolves.toBe(false)
     })
 
-    it('redoes the edit after an undo', async () => {
+    it('keeps the index an undo found the element at', async () => {
       editHeadline('Welcome')
-      const edited = read(HERO)
+      writeFileSync(
+        at(HERO),
+        read(HERO).replace('<h1', '<hr data-name="Rule" />\n    <h1'),
+      )
+
+      await restore(first(), 'before')
+
+      expect(first()).toMatchObject({ span: { index: 6, count: 9 } })
+    })
+
+    it('redoes the edit on the element an undo found moved', async () => {
+      editHeadline('Welcome')
+      writeFileSync(
+        at(HERO),
+        read(HERO).replace('<h1', '<hr data-name="Rule" />\n    <h1'),
+      )
       await restore(first(), 'before')
 
       await restore(first(), 'after')
 
-      expect(read(HERO)).toBe(edited)
+      expect(read(HERO)).toContain(
+        '<hr data-name="Rule" />\n    <h1 data-name="Headline">Welcome</h1>',
+      )
     })
   })
 })

@@ -1,11 +1,8 @@
-import { readFileSync } from 'node:fs'
-
 import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { resolveFrameRef } from '@/server/board/refs'
 import { refuseClaimed } from '@/server/claims/gate'
-import { contentHash } from '@/server/edit/address'
 import { editFrameFile } from '@/server/edit/frame-file'
 import type { History } from '@/server/history/stack'
 import type { EditResult } from '@/shared/records/edit'
@@ -31,9 +28,9 @@ const editSchema = z.object({
 /**
  * A hand edit of one element, behind `requireWriter`, its body mirroring
  * `edit`'s flags with the hash required, since the board always holds the
- * one it rendered. It writes through `editFrameFile`, records the frame's two
- * states as one step, and answers the `edit` record. Each refusal the writer
- * returns answers 409 with its code, `stale-address` among them.
+ * one it rendered. It writes through `editFrameFile`, records the edited
+ * element's span as one step, and answers the `edit` record. Each refusal
+ * the writer returns answers 409 with its code, `stale-address` among them.
  */
 export function editRoutes(
   root: string,
@@ -47,7 +44,6 @@ export function editRoutes(
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
     await refuseClaimed(root, [ref], new Date())
-    const before = readFileSync(frame.path)
     const result = editFrameFile(
       frame.path,
       { index: body.index, hash: body.hash },
@@ -66,13 +62,10 @@ export function editRoutes(
         409,
       )
     }
-    const after = readFileSync(frame.path)
-    // A write landing between the rename and this read would make the after
-    // side another session's bytes, which an undo must never write back.
     // An edit that leaves the bytes as they were records nothing to undo.
-    if (contentHash(after) === result.hash && !after.equals(before)) {
+    if (result.span.before !== result.span.after) {
       const journal = history.journal()
-      journal.content(frame.path, ref, before, after)
+      journal.element(frame.path, ref, result.span)
       history.record({
         id: journal.id,
         changes: journal.changes,

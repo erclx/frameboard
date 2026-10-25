@@ -9,12 +9,14 @@ import {
   type ElementAddress,
   refuse,
 } from './apply'
+import type { ElementSpan } from './element-span'
 
 export type FrameFileEdit =
   | {
       readonly ok: true
       /** The file's hash after the edit, which the next edit is made from. */
       readonly hash: string
+      readonly span: ElementSpan
     }
   | EditRefused
 
@@ -61,5 +63,5 @@ export function editFrameFile(
     return stale(path)
   }
   renameSync(temp, path)
-  return { ok: true, hash: contentHash(applied.html) }
+  return { ok: true, hash: contentHash(applied.html), span: applied.span }
 }

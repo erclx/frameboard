@@ -186,7 +186,7 @@ export function createChangeTracker(
 /** The files and folders a step wrote, being every rewrite, creation, removal, and move. */
 function writtenPaths(step: Step): string[] {
   return step.changes.flatMap((change) => {
-    if (change.kind === 'content' || change.kind === 'path')
+    if (change.kind === 'element' || change.kind === 'path')
       return [change.path]
     if (change.kind === 'moved') return [change.from, change.to]
     return []

@@ -26,6 +26,11 @@ import {
   projectSpec,
 } from '@/server/board/scan'
 import { contentHash } from '@/server/edit/address'
+import {
+  type ElementSpan,
+  holdsSpan,
+  swapSpan,
+} from '@/server/edit/element-span'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { LayoutEntry } from '@/shared/records/board'
@@ -59,18 +64,12 @@ export type Change =
    */
   | { kind: 'path'; path: string; present: Side; hash: string; slot: string }
   /**
-   * A frame file a hand edit rewrote, held whole on both sides with each
-   * side's content hash, so an undo restores it only while nothing else
-   * wrote it since. `ref` names the frame an undo answers the hash for.
+   * The one element a hand edit rewrote in a frame file, held as its span on
+   * both sides, so an undo restores that element while the agent left it
+   * alone and keeps every other byte of the file as it stands. `ref` names
+   * the frame an undo answers the hash for.
    */
-  | {
-      kind: 'content'
-      path: string
-      ref: string
-      before: Buffer
-      after: Buffer
-      hashes: Record<Side, string>
-    }
+  | { kind: 'element'; path: string; ref: string; span: ElementSpan }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -124,18 +123,25 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         ? (await exists(change.path)) &&
             (await hashPath(change.path)) === change.hash
         : !(await exists(change.path)) && (await exists(change.slot))
-    case 'content':
+    case 'element':
       return (
         (await exists(change.path)) &&
-        contentHash(await readFile(change.path)) === change.hashes[side]
+        holdsSpan(await readFile(change.path, 'utf8'), change.span, side)
       )
   }
 }
 
 const OTHER: Record<Side, Side> = { before: 'after', after: 'before' }
 
-/** Writes `side` of a change back, under the record's lock, once `holds` read the other side. */
-export async function restore(change: Change, side: Side): Promise<void> {
+/**
+ * Writes `side` of a change back, under the record's lock, once `holds` read
+ * the other side. A hand edit's change answers the frame's content hash as it
+ * left it, and every other kind answers undefined.
+ */
+export async function restore(
+  change: Change,
+  side: Side,
+): Promise<string | undefined> {
   switch (change.kind) {
     case 'entry': {
       const file = await readRecord(change.layout, layoutSpec)
@@ -162,35 +168,55 @@ export async function restore(change: Change, side: Side): Promise<void> {
       if (change.present === side) await rename(change.slot, change.path)
       else await takeOut(change.path, change.slot)
       return
-    case 'content':
-      await rewrite(change, side)
+    case 'element':
+      return swapElement(change, side)
   }
 }
 
 /**
- * Writes `side` of a frame's bytes through a temporary file and a rename,
- * reading the file again just before the rename so an agent's write landing
- * since `holds` read it is refused rather than overwritten, as a hand edit is.
+ * Swaps the edited element to `side` through a temporary file and a rename,
+ * reading the file again just before the rename. A write landing before that
+ * read is not overwritten: the swap is made once more from the fresh bytes,
+ * and refused once they change again or no longer hold the element. Bytes
+ * that fail a UTF-8 round trip are refused too, since decoding would rewrite
+ * each invalid byte outside the element. The change keeps the index the
+ * element was found at, so a redo lands on it.
  */
-async function rewrite(
-  change: Extract<Change, { kind: 'content' }>,
+async function swapElement(
+  change: Extract<Change, { kind: 'element' }>,
   side: Side,
-): Promise<void> {
+): Promise<string> {
   // A leading dot keeps the temporary file from reading as a frame.
   const temp = join(
     dirname(change.path),
     `.${basename(change.path)}.${process.pid}.tmp`,
   )
-  await writeFile(temp, change[side])
-  if (contentHash(await readFile(change.path)) !== change.hashes[OTHER[side]]) {
-    await rm(temp, { force: true })
-    throw new FrameboardError(
-      'undo-overtaken',
-      `An agent changed ${basename(change.path, FRAME_EXTENSION)} after your edit, so that step was dropped.`,
-      { change: change.kind },
-    )
+  let source = await readText(change.path)
+  for (let attempt = 0; source !== undefined && attempt < 2; attempt += 1) {
+    const swapped = swapSpan(source, change.span, OTHER[side])
+    if (!swapped) break
+    await writeFile(temp, swapped.html)
+    const now = await readText(change.path)
+    if (now === source) {
+      await rename(temp, change.path)
+      change.span = swapped.span
+      return contentHash(swapped.html)
+    }
+    source = now
   }
-  await rename(temp, change.path)
+  await rm(temp, { force: true })
+  throw new FrameboardError(
+    'undo-overtaken',
+    `An agent changed ${basename(change.path, FRAME_EXTENSION)} after your edit, so that step was dropped.`,
+    { change: change.kind },
+  )
+}
+
+/** A frame file's text, or undefined when its bytes do not survive a UTF-8 round trip. */
+async function readText(path: string): Promise<string | undefined> {
+  const bytes = await readFile(path)
+  const text = bytes.toString('utf8')
+  return Buffer.from(text, 'utf8').equals(bytes) ? text : undefined
 }
 
 /**
@@ -225,16 +251,9 @@ export class StepJournal implements Journal {
     this.changes.push({ kind: 'moved', from, to })
   }
 
-  /** A frame file a hand edit rewrote from `before` to `after`, which this journal does not write. */
-  content(path: string, ref: string, before: Buffer, after: Buffer): void {
-    this.changes.push({
-      kind: 'content',
-      path,
-      ref,
-      before,
-      after,
-      hashes: { before: contentHash(before), after: contentHash(after) },
-    })
+  /** The element a hand edit rewrote in a frame file, which this journal does not write. */
+  element(path: string, ref: string, span: ElementSpan): void {
+    this.changes.push({ kind: 'element', path, ref, span })
   }
 
   async created(path: string): Promise<void> {

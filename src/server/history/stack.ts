@@ -150,6 +150,7 @@ export class History {
     const was: Side = to === 'before' ? 'after' : 'before'
     // A record inside a folder an agent removed has no folder to lock in, and
     // its change cannot hold, so the check refuses it unlocked.
+    const hashes: Record<string, string> = {}
     const locks = step.changes
       .flatMap(lockPaths)
       .filter((path) => existsSync(dirname(path)))
@@ -166,7 +167,10 @@ export class History {
         }
         const ordered =
           to === 'before' ? [...step.changes].reverse() : step.changes
-        for (const change of ordered) await restore(change, to)
+        for (const change of ordered) {
+          const hash = await restore(change, to)
+          if (hash !== undefined && 'ref' in change) hashes[change.ref] = hash
+        }
       })
     } catch (error) {
       // Only an overtaken step is dropped. One that waited out a lock stays to try again.
@@ -183,11 +187,6 @@ export class History {
       page: step.page?.[to] ?? null,
       frames: step.frames,
     }
-    const hashes = Object.fromEntries(
-      step.changes.flatMap((change) =>
-        change.kind === 'content' ? [[change.ref, change.hashes[to]]] : [],
-      ),
-    )
     return Object.keys(hashes).length > 0 ? { ...answer, hashes } : answer
   }
 

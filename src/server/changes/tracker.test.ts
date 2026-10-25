@@ -10,7 +10,6 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { scanBoard } from '../board/scan'
-import { contentHash } from '../edit/address'
 import type { Step } from '../history/stack'
 import { createChangeTracker } from './tracker'
 
@@ -116,7 +115,6 @@ describe('createChangeTracker', () => {
   })
 
   it('withdraws a held change the history then tells it wrote', async () => {
-    const before = readFileSync(at('webapp/home/hero.html'))
     writeFileSync(
       at('webapp/home/hero.html'),
       hero().replace('>hero</h1>', '>Hi</h1>'),
@@ -126,14 +124,15 @@ describe('createChangeTracker', () => {
     await tracker.own(
       stepOn(['webapp/home/hero'], null, [
         {
-          kind: 'content',
+          kind: 'element',
           path: at('webapp/home/hero.html'),
           ref: 'webapp/home/hero',
-          before,
-          after: readFileSync(at('webapp/home/hero.html')),
-          hashes: {
-            before: contentHash(before),
-            after: contentHash(readFileSync(at('webapp/home/hero.html'))),
+          span: {
+            scope: 'element',
+            index: 5,
+            count: 8,
+            before: '<h1 data-name="Headline">hero</h1>',
+            after: '<h1 data-name="Headline">Hi</h1>',
           },
         },
       ]),

@@ -11,6 +11,7 @@ import {
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { applyEdit, type EditChange } from './apply'
+import { swapSpan } from './element-span'
 import { changeArbitrary, frameArbitrary } from './frame-arbitrary'
 
 // The oracle below derives what an edit should produce from parse5 and the
@@ -204,10 +205,11 @@ function changedSpan(before: Buffer, after: Buffer): [number, number] {
 }
 
 /**
- * Applies one edit and, unless the writer refused, checks the three
- * properties: the changed bytes lie inside the window, the reparsed tree is
- * the original with that one change, and a style edit keeps every other
- * declaration's decoded value.
+ * Applies one edit and, unless the writer refused, checks the four
+ * properties: the changed bytes lie inside the window, swapping the recorded
+ * span back reproduces the source, the reparsed tree is the original with
+ * that one change, and a style edit keeps every other declaration's decoded
+ * value.
  */
 function checkEdit(source: string, index: number, change: EditChange): void {
   const result = applyEdit(source, { index }, change)
@@ -239,6 +241,11 @@ function checkEdit(source: string, index: number, change: EditChange): void {
       `bytes ${start}-${end} changed outside ${from}-${to}`,
     )
   }
+
+  holds(
+    swapSpan(output, result.span, 'after')?.html === source,
+    'swapping the span back did not reproduce the source',
+  )
 
   const reparsed = browserParse(output)
   const elements = elementsOf(reparsed)

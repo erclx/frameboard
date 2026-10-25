@@ -16,7 +16,7 @@ describe('applyEdit', () => {
           { index: 4 },
           { kind: 'style', property: 'Color', value: 'blue' },
         ),
-      ).toEqual({
+      ).toMatchObject({
         ok: true,
         html: '<div>\n  <p  id=a\n style="color: blue">x</p>\n</div>',
       })
@@ -29,7 +29,7 @@ describe('applyEdit', () => {
           property: 'opacity',
           value: '0.5',
         }),
-      ).toEqual({ ok: true, html: '<p style="opacity: 0.5">x</p>' })
+      ).toMatchObject({ ok: true, html: '<p style="opacity: 0.5">x</p>' })
     })
 
     it('should remove the style attribute once its last declaration drops', () => {
@@ -39,7 +39,7 @@ describe('applyEdit', () => {
           property: 'color',
           value: '',
         }),
-      ).toEqual({ ok: true, html: '<p id=a>x</p>' })
+      ).toMatchObject({ ok: true, html: '<p id=a>x</p>' })
     })
 
     it("should keep an entity's semicolon when appending after it", () => {
@@ -49,7 +49,7 @@ describe('applyEdit', () => {
           property: 'color',
           value: 'blue',
         }),
-      ).toEqual({
+      ).toMatchObject({
         ok: true,
         html: '<p style="font-family: &quot;A&quot;; color: blue">x</p>',
       })
@@ -62,7 +62,7 @@ describe('applyEdit', () => {
           property: 'font-family',
           value: '"Geist", serif',
         }),
-      ).toEqual({
+      ).toMatchObject({
         ok: true,
         html: '<p style="font-family: &quot;Geist&quot;, serif">x</p>',
       })
@@ -75,7 +75,10 @@ describe('applyEdit', () => {
           property: 'color',
           value: '',
         }),
-      ).toEqual({ ok: true, html: '<p style="" style="color: red">x</p>' })
+      ).toMatchObject({
+        ok: true,
+        html: '<p style="" style="color: red">x</p>',
+      })
     })
 
     it('should refuse a style ending inside an open quote', () => {
@@ -130,7 +133,10 @@ describe('applyEdit', () => {
           name: 'title',
           value: 'a "q" & b',
         }),
-      ).toEqual({ ok: true, html: '<p title="a &quot;q&quot; &amp; b">x</p>' })
+      ).toMatchObject({
+        ok: true,
+        html: '<p title="a &quot;q&quot; &amp; b">x</p>',
+      })
     })
 
     it('should not close a circle whose solidus ends an unquoted value', () => {
@@ -141,7 +147,7 @@ describe('applyEdit', () => {
           { index: 4 },
           { kind: 'attribute', name: 'class', value: 'c' },
         ),
-      ).toEqual({
+      ).toMatchObject({
         ok: true,
         html: '<svg><circle id id=x/ class="c"><path d="M0 0"></path></svg>',
       })
@@ -154,7 +160,7 @@ describe('applyEdit', () => {
           name: 'viewBox',
           value: '0 0 2 2',
         }),
-      ).toEqual({ ok: true, html: '<svg viewBox="0 0 2 2"></svg>' })
+      ).toMatchObject({ ok: true, html: '<svg viewBox="0 0 2 2"></svg>' })
     })
 
     it('should set a namespaced SVG attribute', () => {
@@ -168,7 +174,10 @@ describe('applyEdit', () => {
             value: '#b',
           },
         ),
-      ).toEqual({ ok: true, html: '<svg><use xlink:href="#b"></use></svg>' })
+      ).toMatchObject({
+        ok: true,
+        html: '<svg><use xlink:href="#b"></use></svg>',
+      })
     })
 
     it('should add an absent SVG attribute parse5 adjusts the case of', () => {
@@ -178,7 +187,7 @@ describe('applyEdit', () => {
           name: 'viewBox',
           value: '0 0 1 1',
         }),
-      ).toEqual({ ok: true, html: '<svg viewbox="0 0 1 1"></svg>' })
+      ).toMatchObject({ ok: true, html: '<svg viewbox="0 0 1 1"></svg>' })
     })
 
     it('should refuse style, which takes a style edit', () => {
@@ -205,7 +214,7 @@ describe('applyEdit', () => {
     it('should replace the text of an element holding text alone', () => {
       expect(
         applyEdit('<h1>Old</h1>', FIRST, { kind: 'text', value: 'Ship <it>' }),
-      ).toEqual({ ok: true, html: '<h1>Ship &lt;it&gt;</h1>' })
+      ).toMatchObject({ ok: true, html: '<h1>Ship &lt;it&gt;</h1>' })
     })
 
     it('should refuse an element holding another element', () => {
@@ -240,7 +249,7 @@ describe('applyEdit', () => {
         '\uFEFF<!doctype html>\n<html><head></head><body><p>x</p></body></html>'
       expect(
         applyEdit(source, FIRST, { kind: 'attribute', name: 'id', value: 'a' }),
-      ).toEqual({ ok: true, html: source.replace('<p>', '<p id="a">') })
+      ).toMatchObject({ ok: true, html: source.replace('<p>', '<p id="a">') })
     })
 
     it('should refuse when the browser builds a tbody the file does not state', () => {
