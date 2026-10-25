@@ -4,6 +4,7 @@ import type { KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'wouter'
 import { useStore } from 'zustand'
 
+import { characterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import { UnseenCount } from '@/client/components/unseen-count'
@@ -142,9 +143,10 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
 }
 
 /**
- * Moves focus across the cards by the arrow keys, Up and Down stepping a
- * whole row of the grid as it is laid out, and down the list, with Home and
- * End for the ends. Keys typed into a rename field stay in the field.
+ * Moves focus across the cards by the arrow keys, or h, j, k, and l while
+ * single-key shortcuts are on, Up and Down stepping a whole row of the grid
+ * as it is laid out, and down the list, with Home and End for the ends. Keys
+ * typed into a rename field stay in the field.
  */
 function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
   const from = event.target
@@ -152,6 +154,7 @@ function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
   const links = [...event.currentTarget.querySelectorAll<HTMLElement>(LINK)]
   const at = links.indexOf(from)
   const step = layout === 'grid' ? columnsOf(links) : 1
+  const key = pressedKey(event)
   const to = {
     ArrowLeft: layout === 'grid' ? at - 1 : at,
     ArrowRight: layout === 'grid' ? at + 1 : at,
@@ -159,10 +162,28 @@ function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
     ArrowDown: at + step,
     Home: 0,
     End: links.length - 1,
-  }[event.key]
+  }[key]
   if (to === undefined) return
   event.preventDefault()
   links[Math.min(Math.max(to, 0), links.length - 1)]?.focus()
+}
+
+/**
+ * The arrow a bare h, j, k, or l stands for, or the key itself. These read
+ * the Single-key shortcuts switch here, since the cards' own keys never pass
+ * through the registry's `press`.
+ */
+function pressedKey(event: KeyboardEvent<HTMLElement>): string {
+  const modified = event.ctrlKey || event.metaKey || event.altKey
+  const arrow = VIM_KEYS[event.key]
+  return arrow && !modified && characterKeysOn() ? arrow : event.key
+}
+
+const VIM_KEYS: Readonly<Record<string, string>> = {
+  h: 'ArrowLeft',
+  j: 'ArrowDown',
+  k: 'ArrowUp',
+  l: 'ArrowRight',
 }
 
 /** How many cards share the first card's row, as the grid wrapped them. */

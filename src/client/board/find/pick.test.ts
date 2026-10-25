@@ -30,6 +30,7 @@ const CANVAS: CanvasControls = {
   fitTo: () => {},
   panBy: () => {},
   centerOn: () => {},
+  visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
 }
 
 describe('pickHit', () => {

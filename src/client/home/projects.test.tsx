@@ -13,6 +13,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
+import { bindKeys } from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { createStructure, type Structure } from '@/client/live/structure'
@@ -287,6 +289,45 @@ describe('Projects by the arrow keys', () => {
     ])
   })
 
+  describe('hjkl', () => {
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('moves across the grid on l and h', async () => {
+      renderFive('grid')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('ll')
+      const across = document.activeElement
+      await userEvent.keyboard('h')
+
+      expect([across, document.activeElement]).toEqual([
+        card('charlie'),
+        card('bravo'),
+      ])
+    })
+
+    it('moves down and up the list on j and k', async () => {
+      renderFive('list')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('jjk')
+
+      expect(document.activeElement).toBe(card('bravo'))
+    })
+
+    it('moves no card while single-key shortcuts are off', async () => {
+      setCharacterKeys(false)
+      renderFive('list')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('j')
+
+      expect(document.activeElement).toBe(card('alpha'))
+    })
+  })
+
   it('leaves the set on one Tab', async () => {
     renderFive('grid')
     act(() => card('alpha').focus())
@@ -419,6 +460,99 @@ describe('FrameSkeleton in a card', () => {
     expect(
       container.querySelector('[data-skeleton]')?.getAttribute('viewBox'),
     ).toBe('0 0 1440 900')
+  })
+})
+
+describe('Home from nothing focused', () => {
+  const FIVE = ['alpha', 'bravo', 'charlie', 'delta', 'echo'].map((name) =>
+    project(name, '2026-10-13T12:00:00.000Z'),
+  )
+  const unbinds: (() => void)[] = []
+
+  function renderKeyed() {
+    unbinds.push(bindKeys(window))
+    renderHome(FIVE)
+  }
+
+  const card = (name: string) =>
+    screen.getByRole('link', { name: new RegExp(`^${name}`) })
+
+  afterEach(() => {
+    cleanup()
+    while (unbinds.length > 0) unbinds.pop()?.()
+    setCharacterKeys(true)
+    projectStore.setState({ focused: null, renaming: null })
+  })
+
+  it('lands the first arrow on the tab stop card', async () => {
+    renderKeyed()
+
+    await userEvent.keyboard('{ArrowDown}')
+
+    expect(document.activeElement).toBe(card('alpha'))
+  })
+
+  it('lands the first arrow on the card that last held focus', async () => {
+    renderKeyed()
+    act(() => card('charlie').focus())
+    act(() => card('charlie').blur())
+
+    await userEvent.keyboard('{ArrowLeft}')
+
+    expect(document.activeElement).toBe(card('charlie'))
+  })
+
+  it('lands End on the last card and Home on the first', async () => {
+    renderKeyed()
+    act(() => card('charlie').focus())
+    act(() => card('charlie').blur())
+
+    await userEvent.keyboard('{End}')
+    const last = document.activeElement
+    act(() => card('echo').blur())
+    await userEvent.keyboard('{Home}')
+
+    expect([last, document.activeElement]).toEqual([
+      card('echo'),
+      card('alpha'),
+    ])
+  })
+
+  it('lands j on the tab stop card', async () => {
+    renderKeyed()
+
+    await userEvent.keyboard('j')
+
+    expect(document.activeElement).toBe(card('alpha'))
+  })
+
+  it('leaves j to the browser while single-key shortcuts are off', async () => {
+    setCharacterKeys(false)
+    renderKeyed()
+
+    await userEvent.keyboard('j')
+
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('leaves an arrow with the layout toggle that holds focus', async () => {
+    renderKeyed()
+    const grid = screen.getByRole('button', { name: 'Grid' })
+    act(() => grid.focus())
+
+    await userEvent.keyboard('{ArrowDown}')
+
+    expect(document.activeElement).toBe(grid)
+  })
+
+  it('moves a focused card once per arrow', async () => {
+    localStorage.setItem('frameboard.home.layout', 'list')
+    renderKeyed()
+    act(() => card('alpha').focus())
+
+    await userEvent.keyboard('{ArrowDown}')
+
+    expect(document.activeElement).toBe(card('bravo'))
   })
 })
 

@@ -54,6 +54,7 @@ function setup() {
       fitTo: (boxes) => fits.push(boxes),
       panBy: (dx, dy) => pans.push([dx, dy]),
       centerOn: () => {},
+      visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
     },
     'studio/home',
   )
@@ -262,6 +263,7 @@ describe('Shift+0', () => {
         fitTo: () => {},
         panBy: () => {},
         centerOn: () => {},
+        visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
       },
       'studio/home',
     )

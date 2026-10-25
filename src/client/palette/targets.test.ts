@@ -31,6 +31,7 @@ const CANVAS: CanvasControls = {
   fitTo: () => {},
   panBy: () => {},
   centerOn: () => {},
+  visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
 }
 
 const ATLAS_GLOBE = frameOf('globe', {

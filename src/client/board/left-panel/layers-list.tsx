@@ -31,6 +31,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { UnseenDot } from '../changes/dot'
 import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
+import { withDrawn } from '../geometry/write'
 import { FrameRowMenu } from '../menus/layers'
 import { modeStore } from '../mode'
 import {
@@ -47,6 +48,7 @@ import {
   stopFrameRename,
   useRenamingFrame,
 } from '../structure/actions'
+import { canvasView } from '../view'
 import { DropLine } from './drop-line'
 import { ElementRows } from './element-rows'
 import { reportRefusal } from './page-actions'
@@ -234,6 +236,11 @@ function FrameRow({
     if (frame.hidden || modeStore.getState().mode !== 'edit') return
     if (event.shiftKey) toggleSelected(selectionStore, pageOf(frame), frame.ref)
     else select(selectionStore, pageOf(frame), [frame.ref])
+    // A preview draws the frame wider than its stored box, so reveal what draws.
+    const [drawn] = withDrawn([frame])
+    if (drawn && selectionStore.getState().frames.includes(frame.ref)) {
+      canvasView.reveal(drawn.box)
+    }
   }
   const flag = (name: FrameFlag, on: boolean) =>
     calls

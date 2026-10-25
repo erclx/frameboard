@@ -17,6 +17,8 @@ export interface CanvasControls {
    * fitting it instead only when it is larger than the viewport at that zoom.
    */
   centerOn: (box: Box, scale?: number) => void
+  /** The part of the canvas the viewport shows, in canvas coordinates. */
+  visible: () => Box
 }
 
 type Listener = () => void
@@ -57,6 +59,25 @@ export const canvasView = {
   fitTo: (boxes: readonly Box[]): void => controls?.fitTo(boxes),
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
   centerOn: (box: Box, scale?: number): void => controls?.centerOn(box, scale),
+  /**
+   * Centers the box at the current zoom when it lies wholly outside the
+   * view, and leaves a view showing any of it. The developer asked for it,
+   * so it reports as a hand move, which stops Follow.
+   */
+  reveal: (box: Box): void => {
+    if (!controls || overlaps(box, controls.visible())) return
+    reportHandMove()
+    controls.centerOn(box)
+  },
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  )
 }
 
 /** Called by the canvas of a page on mount, returning the function its unmount calls. */

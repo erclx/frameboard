@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { registerActions } from '@/client/actions/registry'
 import type { Structure } from '@/client/live/structure'
 import {
   focusedProject,
@@ -34,6 +35,7 @@ export function Home({ projects, calls }: HomeProps) {
   const pins = usePins()
   useNewProjectAction(calls)
   useProjectActions(focusedProject, { calls })
+  useCardKeys()
   useThumbnails()
   return (
     <div className="flex min-h-full flex-col text-body">
@@ -50,4 +52,59 @@ export function Home({ projects, calls }: HomeProps) {
       )}
     </div>
   )
+}
+
+/**
+ * Registers the keys that bring focus to the cards while nothing holds it,
+ * so the first press lands rather than doing nothing. An arrow or h, j, k,
+ * and l land on the tab stop card, Home on the first, and End on the last.
+ * Once a card holds focus they stand down and the cards' own keys move it.
+ */
+function useCardKeys(): void {
+  const projectLinks = () => [
+    ...document.querySelectorAll<HTMLElement>('[data-project-link]'),
+  ]
+  useEffect(() => {
+    const idle = () =>
+      (document.activeElement ?? document.body) === document.body &&
+      projectLinks().length > 0
+    const land =
+      (pick: (links: HTMLElement[]) => HTMLElement | undefined) => () =>
+        pick(projectLinks())?.focus()
+    return registerActions([
+      {
+        id: 'home.focusCards',
+        label: 'Focus the projects',
+        group: 'project',
+        keys: [
+          'ArrowUp',
+          'ArrowDown',
+          'ArrowLeft',
+          'ArrowRight',
+          'h',
+          'j',
+          'k',
+          'l',
+        ],
+        enabled: idle,
+        run: land((links) => links.find((link) => link.tabIndex === 0)),
+      },
+      {
+        id: 'home.focusFirst',
+        label: 'Focus the first project',
+        group: 'project',
+        keys: ['Home'],
+        enabled: idle,
+        run: land((links) => links[0]),
+      },
+      {
+        id: 'home.focusLast',
+        label: 'Focus the last project',
+        group: 'project',
+        keys: ['End'],
+        enabled: idle,
+        run: land((links) => links.at(-1)),
+      },
+    ])
+  }, [])
 }
