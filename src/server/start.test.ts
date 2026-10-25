@@ -602,7 +602,7 @@ describe.skipIf(shell === null)(
             .find((frame) => frame.ref === 'studio/home/hero')?.box
         : undefined
 
-    it('sends the hugged box in the first board after a content write, with no clipped finding', async () => {
+    it('sends the hugged box in the board that announces a content write, with no clipped finding', async () => {
       writeFileSync(
         join(board.root, 'studio/home/hero.html'),
         '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 1200px"></div></body></html>',
