@@ -16,10 +16,11 @@ export type NumberChange = (from: number) => number
 interface NumberFieldProps {
   label: string
   /** The key letter or icon over the left padding, which scrubs the value when dragged. */
-  prefix: ReactNode
+  prefix?: ReactNode
   /** The input's left padding, which clears the prefix, 26px by default for a letter. */
   inset?: string
   className?: string
+  inputClassName?: string
   /** The stored value, null where the selection's values differ, which reads `Mixed`. */
   value: number | null
   /** What an arrow press or a scrub step moves by, and ten times it with Shift. */
@@ -63,6 +64,7 @@ export function NumberField({
   prefix,
   inset = 'pl-[26px]',
   className,
+  inputClassName,
   value,
   step = 1,
   min,
@@ -219,27 +221,30 @@ export function NumberField({
         commit()
       }}
     >
-      <Primitive.ScrubArea
-        aria-hidden
-        className="absolute top-1/2 left-2 flex -translate-y-1/2 cursor-ew-resize items-center text-xs text-faint select-none"
-        onPointerDown={(event) => {
-          if (disabled || event.button !== 0) return
-          scrubbing.current = true
-          scrubCancelled.current = false
-          // A Mixed field scrubs an offset from zero, since base-ui seeds an empty one at zero.
-          if (value === null && !latest.current) {
-            setDraft({ value: 0, offset: true })
-          }
-        }}
-      >
-        {prefix}
-      </Primitive.ScrubArea>
+      {prefix ? (
+        <Primitive.ScrubArea
+          aria-hidden
+          className="absolute top-1/2 left-2 flex -translate-y-1/2 cursor-ew-resize items-center text-xs text-faint select-none"
+          onPointerDown={(event) => {
+            if (disabled || event.button !== 0) return
+            scrubbing.current = true
+            scrubCancelled.current = false
+            // A Mixed field scrubs an offset from zero, since base-ui seeds an empty one at zero.
+            if (value === null && !latest.current) {
+              setDraft({ value: 0, offset: true })
+            }
+          }}
+        >
+          {prefix}
+        </Primitive.ScrubArea>
+      ) : null}
       <Primitive.Input
         aria-label={label}
         placeholder={value === null ? 'Mixed' : undefined}
         className={cn(
           'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
-          inset,
+          prefix ? inset : undefined,
+          inputClassName,
         )}
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => {

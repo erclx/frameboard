@@ -194,6 +194,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         backgroundColor={own?.backgroundColor ?? null}
         tokens={colors}
         theme={theme}
+        inline={live.textOnly ? live.inline.color : live.inline.backgroundColor}
         disabled={disabled}
         write={write}
       />
@@ -205,6 +206,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         borderColor={own?.borderColor ?? null}
         tokens={colors}
         theme={theme}
+        inline={live.inline.border}
         disabled={disabled}
         write={write}
       />

@@ -50,6 +50,8 @@ interface FillSectionProps {
   /** The project's color tokens. */
   tokens: readonly TokenRow[]
   theme: Theme
+  /** Whether the element's own `style` sets the fill, which remove drops. */
+  inline: boolean
   disabled: boolean
   write: WriteElement
 }
@@ -57,7 +59,9 @@ interface FillSectionProps {
 /**
  * Fill: one color row writing `color` on an element holding text alone and
  * `background-color` otherwise. `+` adds the project's first color token
- * while nothing sets one.
+ * while nothing sets one, and a transparent background reads as none.
+ * Remove drops the element's own fill, or writes `transparent` over a
+ * rule's background, and a rule's text color has no remove.
  */
 export function FillSection({
   textOnly,
@@ -65,13 +69,23 @@ export function FillSection({
   backgroundColor,
   tokens,
   theme,
+  inline,
   disabled,
   write,
 }: FillSectionProps) {
   const property = textOnly ? 'color' : 'background-color'
-  const value = textOnly ? color : backgroundColor
+  const stated = textOnly ? color : backgroundColor
+  const value =
+    stated && stated.value.trim().toLowerCase() !== 'transparent'
+      ? stated
+      : null
   const first = tokens[0]
   const set = (css: string) => write({ kind: 'style', property, value: css })
+  const remove = inline
+    ? () => void set('')
+    : textOnly
+      ? undefined
+      : () => void set('transparent')
   return (
     <ColorSection
       title="Fill"
@@ -91,6 +105,7 @@ export function FillSection({
           theme={theme}
           disabled={disabled}
           onWrite={set}
+          onRemove={remove}
         />
       ) : null}
     </ColorSection>

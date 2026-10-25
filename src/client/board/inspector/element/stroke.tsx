@@ -15,6 +15,8 @@ interface StrokeSectionProps {
   borderColor: StyleValue | null
   tokens: readonly TokenRow[]
   theme: Theme
+  /** Whether the element's own `style` sets any border, which remove drops. */
+  inline: boolean
   disabled: boolean
   write: WriteElement
 }
@@ -22,14 +24,16 @@ interface StrokeSectionProps {
 /**
  * Stroke: one color row writing `border-color` while the element draws a
  * border. `+` writes `border: 1px solid var(--border)`, else the first color
- * token, matching the 1px stroke Figma adds. The width has no control and
- * stays the agent's.
+ * token, matching the 1px stroke Figma adds. Remove drops the element's own
+ * `border` and its longhands, or writes `border-style: none` over a rule's.
+ * The width has no control and stays the agent's.
  */
 export function StrokeSection({
   bordered,
   borderColor,
   tokens,
   theme,
+  inline,
   disabled,
   write,
 }: StrokeSectionProps) {
@@ -64,6 +68,13 @@ export function StrokeSection({
           disabled={disabled}
           onWrite={(css) =>
             write({ kind: 'style', property: 'border-color', value: css })
+          }
+          onRemove={() =>
+            void write(
+              inline
+                ? { kind: 'style', property: 'border', value: '' }
+                : { kind: 'style', property: 'border-style', value: 'none' },
+            )
           }
         />
       ) : null}

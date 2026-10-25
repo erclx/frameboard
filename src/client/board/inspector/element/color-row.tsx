@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { CircleAlert, Link2 } from 'lucide-react'
+import { CircleAlert, Link2, Minus } from 'lucide-react'
 import { type ReactNode, useEffect, useRef } from 'react'
 
 import {
@@ -12,14 +12,13 @@ import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
-import { CommitField } from './field'
+import { NumberField } from '../number-field'
 import {
   chipName,
   COLOR_ROW,
   colorCss,
   type ColorSource,
   HEX,
-  parsePercent,
   swatchOf,
   TOKEN_CHIP,
   tokenValue,
@@ -65,14 +64,23 @@ interface ColorRowProps {
   disabled: boolean
   /** Writes the property's new value and answers whether it was written. */
   onWrite: (css: string) => Promise<boolean>
+  /** Removes the paint, absent where the row has nothing it may remove. */
+  onRemove?: () => void
+}
+
+const PERCENT: Intl.NumberFormatOptions = {
+  style: 'unit',
+  unit: 'percent',
+  maximumFractionDigits: 0,
 }
 
 /**
  * The token-first color row of `inspector/text`. The swatch opens the
  * browser's color input and writes a raw value once it closes, the chip or
- * hex opens the project's color tokens, the percent writes fill opacity,
- * and the link detaches a token to its value in the frame's theme. A raw
- * value carries the raw flag in place of the link.
+ * hex opens the project's color tokens, the percent writes fill opacity
+ * and steps, and the link detaches a token to its value in the frame's
+ * theme. A raw value carries the raw flag in place of the link, and the
+ * minus after either removes the paint.
  */
 export function ColorRow({
   label,
@@ -81,6 +89,7 @@ export function ColorRow({
   theme,
   disabled,
   onWrite,
+  onRemove,
 }: ColorRowProps) {
   const source: ColorSource = value.token
     ? { token: value.token }
@@ -125,17 +134,16 @@ export function ColorRow({
           ))}
         </ChromeMenuContent>
       </DropdownMenu>
-      <CommitField
+      <NumberField
         label={`${label} opacity`}
         className="ml-auto w-12 shrink-0"
         inputClassName="h-6 px-0 text-right text-muted-foreground focus-visible:text-foreground"
-        shown={`${value.percent}%`}
+        value={value.percent}
+        min={0}
+        max={100}
+        format={PERCENT}
         disabled={disabled || !mixable}
-        onCommit={async (typed) => {
-          const percent = parsePercent(typed)
-          if (percent === null) return false
-          return onWrite(colorCss(source, percent))
-        }}
+        onCommit={(change) => onWrite(colorCss(source, change(value.percent)))}
       />
       {value.token ? (
         <button
@@ -155,6 +163,18 @@ export function ColorRow({
       ) : (
         <RawFlag />
       )}
+      {onRemove ? (
+        <button
+          type="button"
+          aria-label={`Remove ${label.toLowerCase()}`}
+          title={`Remove the ${label.toLowerCase()}`}
+          disabled={disabled}
+          onClick={onRemove}
+          className="grid shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
+        >
+          <Minus aria-hidden className="size-[13px]" />
+        </button>
+      ) : null}
     </div>
   )
 }

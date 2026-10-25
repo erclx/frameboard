@@ -1,6 +1,12 @@
 import '../../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +29,7 @@ import { FillSection } from './fill'
 import { LayerSection } from './layer'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
+import { useLiveElement } from './styles'
 import { TextSection } from './text'
 import { TypographySection } from './typography'
 import { type ElementChange, writeElement } from './write'
@@ -260,6 +267,89 @@ describe('TypographySection', () => {
 })
 
 describe('FillSection', () => {
+  it.each([
+    [true, ''],
+    [false, 'transparent'],
+  ])(
+    'removes a background the element’s own style sets (%s) by writing %j',
+    async (inline, written) => {
+      const { changes, write } = recorder()
+      render(
+        <FillSection
+          textOnly={false}
+          color={null}
+          backgroundColor={tokenValueOf('--primary')}
+          tokens={[PRIMARY]}
+          theme="light"
+          inline={inline}
+          disabled={false}
+          write={write}
+        />,
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Remove fill' }))
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'background-color', value: written },
+      ])
+    },
+  )
+
+  it('removes an element’s own text color', async () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly
+        color={tokenValueOf('--primary')}
+        backgroundColor={null}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove fill' }))
+
+    expect(changes).toEqual([{ kind: 'style', property: 'color', value: '' }])
+  })
+
+  it('offers no remove on a text color a rule sets', () => {
+    render(
+      <FillSection
+        textOnly
+        color={tokenValueOf('--primary')}
+        backgroundColor={null}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Remove fill' })).toBeNull()
+  })
+
+  it('reads a transparent background as no fill', () => {
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: 'transparent', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Fill color')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add fill' })).toBeEnabled()
+  })
+
   it('writes color on an element holding text alone', async () => {
     const { changes, write } = recorder()
     render(
@@ -269,6 +359,7 @@ describe('FillSection', () => {
         backgroundColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -293,6 +384,7 @@ describe('FillSection', () => {
         backgroundColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -318,6 +410,7 @@ describe('FillSection', () => {
         backgroundColor={tokenValueOf('--primary')}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -345,6 +438,7 @@ describe('FillSection', () => {
         backgroundColor={{ value: '#111827', token: null, percent: 100 }}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -368,6 +462,7 @@ describe('FillSection', () => {
         backgroundColor={tokenValueOf('--primary')}
         tokens={[PRIMARY]}
         theme="dark"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -391,6 +486,7 @@ describe('FillSection', () => {
         backgroundColor={{ value: '#111827', token: null, percent: 100 }}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -418,6 +514,7 @@ describe('FillSection', () => {
           backgroundColor={null}
           tokens={[PRIMARY]}
           theme="light"
+          inline={false}
           disabled={false}
           write={recorder().write}
         />
@@ -426,6 +523,7 @@ describe('FillSection', () => {
           borderColor={tokenValueOf('--border')}
           tokens={[PRIMARY, BORDER]}
           theme="light"
+          inline={false}
           disabled={false}
           write={recorder().write}
         />
@@ -445,6 +543,33 @@ describe('FillSection', () => {
 })
 
 describe('StrokeSection', () => {
+  it.each([
+    [true, { property: 'border', value: '' }],
+    [false, { property: 'border-style', value: 'none' }],
+  ])(
+    'removes a stroke the element’s own style sets (%s)',
+    async (inline, written) => {
+      const { changes, write } = recorder()
+      render(
+        <StrokeSection
+          bordered
+          borderColor={tokenValueOf('--border')}
+          tokens={[PRIMARY, BORDER]}
+          theme="light"
+          inline={inline}
+          disabled={false}
+          write={write}
+        />,
+      )
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Remove stroke' }),
+      )
+
+      expect(changes).toEqual([{ kind: 'style', ...written }])
+    },
+  )
+
   it('adds a 1px border in the border token', async () => {
     const { changes, write } = recorder()
     render(
@@ -453,6 +578,7 @@ describe('StrokeSection', () => {
         borderColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -472,6 +598,7 @@ describe('StrokeSection', () => {
         borderColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={recorder().write}
       />,
@@ -488,6 +615,7 @@ describe('StrokeSection', () => {
         borderColor={tokenValueOf('--border')}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={recorder().write}
       />,
@@ -505,6 +633,7 @@ describe('StrokeSection', () => {
         borderColor={tokenValueOf('--border')}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -1042,6 +1171,22 @@ describe('InspectorPanel with an element selected', () => {
     await userEvent.keyboard('{Escape}{/ArrowDown}')
 
     expect(headline()?.hasAttribute('style')).toBe(false)
+  })
+
+  it('reads which paints the element’s own style sets', async () => {
+    await mountFrame(
+      '<div style="background: red; border-top-color: blue"></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.inline).toEqual({
+      color: false,
+      backgroundColor: true,
+      border: true,
+    })
   })
 
   it('leaves Typography out for an element holding no text', async () => {

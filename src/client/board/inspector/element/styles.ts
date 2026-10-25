@@ -21,6 +21,8 @@ export interface LiveElement {
   /** Whether it holds text and no element, so its text is edited as a whole. */
   textOnly: boolean
   text: string
+  /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
+  inline: { color: boolean; backgroundColor: boolean; border: boolean }
 }
 
 /**
@@ -81,6 +83,22 @@ function readLive(element: Element, view: Window): LiveElement {
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
+    inline: inlinePaints(element),
+  }
+}
+
+/** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */
+function inlinePaints(element: Element): LiveElement['inline'] {
+  const own = 'style' in element ? (element as HTMLElement).style : null
+  const names = own
+    ? Array.from({ length: own.length }, (_, at) => own.item(at))
+    : []
+  return {
+    color: names.includes('color'),
+    backgroundColor: names.includes('background-color'),
+    border: names.some(
+      (name) => name.startsWith('border-') && !name.endsWith('-radius'),
+    ),
   }
 }
 
