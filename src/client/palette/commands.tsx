@@ -2,6 +2,7 @@ import { Command as CommandIcon, FileText, House, Square } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useRoute } from 'wouter'
 
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyParts } from '@/client/actions/keys'
 import { type Action, useCommands } from '@/client/actions/registry'
 import {
@@ -121,7 +122,7 @@ function ActionRow({
 }) {
   const label = action.command?.label ?? action.label
   const Icon = action.command?.icon ?? CommandIcon
-  const key = action.keys?.[0]
+  const key = liveKey(action.keys, useCharacterKeysOn())
   return (
     <CommandItem
       value={`action:${action.id}`}

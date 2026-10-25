@@ -4,6 +4,7 @@ import { render } from '@testing-library/react'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
@@ -96,6 +97,7 @@ function drag(
 describe('Canvas', () => {
   afterEach(() => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
+    setCharacterKeys(true)
   })
 
   it('covers the frames with the hit layer in Edit', () => {
@@ -151,6 +153,20 @@ describe('Canvas', () => {
     const { getByRole } = renderCanvas(page('studio/empty', []))
 
     expect(getByRole('status')).toHaveTextContent('This page has no frames')
+  })
+
+  it("names the Frame tool's key on an empty page while it is live", () => {
+    const { getByRole } = renderCanvas(page('studio/empty', []))
+
+    expect(getByRole('status')).toHaveTextContent('Pick the Frame tool F and')
+  })
+
+  it("drops the Frame tool's key on an empty page while it is off", () => {
+    setCharacterKeys(false)
+
+    const { getByRole } = renderCanvas(page('studio/empty', []))
+
+    expect(getByRole('status')).toHaveTextContent('Pick the Frame tool and')
   })
 
   it('fits every frame into the viewport on a first visit', () => {

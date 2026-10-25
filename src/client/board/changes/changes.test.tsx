@@ -4,6 +4,7 @@ import { act, render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import { bindKeys } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import {
@@ -146,6 +147,7 @@ describe('ChangesToast', () => {
   afterEach(() => {
     unbind()
     unbind = () => {}
+    setCharacterKeys(true)
   })
 
   it('opens on a change and offers Show', async () => {
@@ -198,6 +200,50 @@ describe('ChangesToast', () => {
     await screen.findByRole('button', { name: 'Next ]' })
 
     await userEvent.keyboard(']')
+
+    expect(store.getState().cursor).toBe('studio/home/about')
+  })
+
+  it('names no key on Next while single-key shortcuts are off', async () => {
+    setCharacterKeys(false)
+    render(<Harness />)
+    act(() =>
+      receiveChanges(store, [
+        change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+        change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
+      ]),
+    )
+
+    const next = await screen.findByRole('button', { name: 'Next' })
+
+    expect(next).not.toHaveAttribute('aria-keyshortcuts')
+  })
+
+  it('shows the change on Enter with the toast focused', async () => {
+    render(<Harness />)
+    act(() => receiveChanges(store, [change('studio/pricing/plans')]))
+    await screen.findByText('Claude updated plans')
+    const toast = document.querySelector<HTMLElement>('[data-change-toast]')
+    if (!toast) throw new Error('The toast did not open')
+
+    act(() => toast.focus())
+    await userEvent.keyboard('{Enter}')
+
+    expect(liveStore.getState().focus).toBe('studio/pricing/plans')
+  })
+
+  it('leaves Enter on Next to Next', async () => {
+    render(<Harness />)
+    act(() =>
+      receiveChanges(store, [
+        change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+        change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
+      ]),
+    )
+    const next = await screen.findByRole('button', { name: 'Next ]' })
+
+    act(() => next.focus())
+    await userEvent.keyboard('{Enter}')
 
     expect(store.getState().cursor).toBe('studio/home/about')
   })

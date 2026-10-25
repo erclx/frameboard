@@ -43,6 +43,10 @@ describe('keyLabel', () => {
     expect(keyLabel('Shift+Digit1', true)).toBe('⇧1')
   })
 
+  it('prints a bracket code as the bracket', () => {
+    expect(keyLabel('BracketLeft', false)).toBe('[')
+  })
+
   it('shortens Escape', () => {
     expect(keyLabel('Escape', false)).toBe('Esc')
   })

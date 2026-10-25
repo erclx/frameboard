@@ -1,6 +1,7 @@
 import { cn } from 'cn'
 import type { ComponentProps, ReactNode } from 'react'
 
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import { type Action, isEnabled } from '@/client/actions/registry'
 import {
@@ -41,7 +42,7 @@ export function ActionMenuItem({
   keys,
   children,
 }: ActionMenuItemProps) {
-  const key = (action?.keys ?? keys)?.[0]
+  const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
   return (
     <DropdownMenuItem
       disabled={!action || !isEnabled(action)}

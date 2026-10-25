@@ -4,6 +4,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import {
   type Action,
   refreshActions,
@@ -88,6 +89,39 @@ describe('Toolbar', () => {
 
     expect(frame).toHaveAttribute('aria-disabled', 'true')
     expect(await screen.findByText('Frame F')).toBeInTheDocument()
+  })
+
+  it("names a tool's key on hover while single-key shortcuts are on", async () => {
+    register({
+      id: 'tool.hand',
+      label: 'Hand',
+      group: 'tool',
+      keys: ['h'],
+      run: () => {},
+    })
+    renderToolbar()
+
+    await userEvent.hover(screen.getByRole('button', { name: 'Hand' }))
+
+    expect(await screen.findByText('Hand H')).toBeInTheDocument()
+  })
+
+  it("drops a tool's key on hover while single-key shortcuts are off", async () => {
+    setCharacterKeys(false)
+    cleanups.push(() => setCharacterKeys(true))
+    register({
+      id: 'tool.hand',
+      label: 'Hand',
+      group: 'tool',
+      keys: ['h'],
+      run: () => {},
+    })
+    renderToolbar()
+
+    await userEvent.hover(screen.getByRole('button', { name: 'Hand' }))
+
+    expect(await screen.findByText('Hand')).toBeInTheDocument()
+    expect(screen.queryByText('Hand H')).toBeNull()
   })
 
   it('turns a button enabled when its action registers after it mounted', () => {

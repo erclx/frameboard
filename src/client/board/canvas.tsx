@@ -3,6 +3,7 @@ import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { TAB_ID } from '@/client/live/socket'
 import { liveStore } from '@/client/live/store'
 import { useUnseen } from '@/client/live/unseen'
@@ -470,6 +471,7 @@ function LayoutErrorNotice({
 }
 
 function EmptyNotice() {
+  const keysOn = useCharacterKeysOn()
   return (
     <div
       role="status"
@@ -484,9 +486,13 @@ function EmptyNotice() {
       </p>
       <p>
         Pick the Frame tool{' '}
-        <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
-          F
-        </kbd>{' '}
+        {keysOn ? (
+          <>
+            <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
+              F
+            </kbd>{' '}
+          </>
+        ) : null}
         and click on the canvas,
         <br />
         or ask your agent to draw one.

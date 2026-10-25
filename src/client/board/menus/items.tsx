@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyParts } from '@/client/actions/keys'
 import { type Action, isEnabled } from '@/client/actions/registry'
 import {
@@ -38,7 +39,10 @@ export function MenuRow({
   keyName,
   variant,
 }: MenuRowProps) {
-  const key = binding ?? action?.keys?.[0]
+  const key = liveKey(
+    binding === undefined ? action?.keys : [binding],
+    useCharacterKeysOn(),
+  )
   const parts = chips ?? (key ? keyParts(key) : [])
   return (
     <ContextMenuItem

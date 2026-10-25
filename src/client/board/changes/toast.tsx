@@ -1,6 +1,8 @@
 import { cn } from 'cn'
 import { useEffect } from 'react'
 
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
+import { keyLabel } from '@/client/actions/keys'
 import { useActions } from '@/client/actions/registry'
 import {
   createToastManager,
@@ -92,6 +94,7 @@ function OpenWhileUnseen({ store }: { store: UnseenStore }) {
 function ChangeToastList() {
   const { toasts } = useToastManager<ToastCopy>()
   const [show, next] = useActions(['changes.show', 'changes.next'])
+  const nextKey = liveKey(next?.keys ?? NEXT_KEYS, useCharacterKeysOn())
   return toasts.flatMap((item) => {
     const copy = item.data
     if (!copy) return []
@@ -101,6 +104,14 @@ function ChangeToastList() {
         toast={item}
         data-change-toast
         style={{ width: copy.width }}
+        onKeyDown={(event) => {
+          // Enter on a button is the button's own, so only the root's runs Show.
+          if (event.key !== 'Enter' || event.target !== event.currentTarget)
+            return
+          if (!copy.show) return
+          event.preventDefault()
+          show?.run()
+        }}
       >
         <ToastContent className="items-center">
           {copy.initial ? (
@@ -127,11 +138,11 @@ function ChangeToastList() {
           {copy.next ? (
             <button
               type="button"
-              aria-keyshortcuts="]"
+              aria-keyshortcuts={nextKey ? keyLabel(nextKey) : undefined}
               onClick={() => next?.run()}
               className={cn(BUTTON, 'bg-secondary text-foreground')}
             >
-              Next ]
+              {nextKey ? `Next ${keyLabel(nextKey)}` : 'Next'}
             </button>
           ) : null}
         </ToastContent>
@@ -139,6 +150,9 @@ function ChangeToastList() {
     )
   })
 }
+
+/** Next's key before `changes.next` registers, matching what it registers. */
+const NEXT_KEYS = ['BracketRight']
 
 /** `.tbtn` in agents/unseen-many. */
 const BUTTON =

@@ -18,6 +18,8 @@ const OTHER_PARTS: Readonly<Record<string, string>> = {
 
 const KEYS: Readonly<Record<string, string>> = {
   Backslash: '\\',
+  BracketLeft: '[',
+  BracketRight: ']',
   Equal: '=',
   Minus: '-',
   Escape: 'Esc',
