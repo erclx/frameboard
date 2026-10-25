@@ -6,8 +6,10 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { type LiveStore, liveStore } from '@/client/live/store'
+import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import {
   clear,
@@ -105,12 +107,14 @@ export interface GeometryContext {
   /** Draws boxes a run of nudges has not sent yet. */
   hold: typeof holdBoxes
   write: typeof writeBoxes
+  /** Fits a frame's height to its content on the server's browser. */
+  fit: Structure['fitFrame']
 }
 
 /**
  * The selection's keys and the arrange actions while a canvas is mounted:
  * Esc to clear, Cmd+A to select the page, arrows to nudge, Cmd with an
- * arrow to resize, and the aligns and distributes. Each `enabled` reads the
+ * arrow to resize, Fit height, and the aligns and distributes. Each `enabled` reads the
  * mode and the selection, so Esc means one thing at a time and an arrow
  * with nothing selected falls through to arrow pan.
  */
@@ -244,6 +248,20 @@ export function geometryActions(context: GeometryContext): Action[] {
           })),
       },
     ]),
+    {
+      id: 'frame.fitHeight',
+      label: 'Fit height',
+      group: 'frame',
+      command: { label: 'Fit height to content' },
+      enabled: () => movable(1)() && chosen().length === 1,
+      run: () => {
+        const [frame] = chosen()
+        if (!frame) return
+        context
+          .fit(frame.ref)
+          .catch(reportRefusal(`Couldn't fit ${frame.name} to its content`))
+      },
+    },
     ...ALIGNMENTS.map(({ id, label, alignment, key }) => ({
       id,
       label,
@@ -286,6 +304,7 @@ export function useGeometryActions(
         live: liveStore,
         hold: holdBoxes,
         write: writeBoxes,
+        fit: structure.fitFrame,
       }),
     )
     const unsubscribe = [

@@ -31,6 +31,8 @@ function setup(frames = [A, B, C, LOCKED]) {
   const writes: Write[] = []
   /** The page each write named, in order. */
   const pages: string[] = []
+  /** The frames a fit was asked for, in order. */
+  const fits: string[] = []
   const view = { page: PAGE }
   const actions = geometryActions({
     page: () => view.page,
@@ -44,13 +46,22 @@ function setup(frames = [A, B, C, LOCKED]) {
       pages.push(page)
       return true
     },
+    fit: async (ref) => {
+      fits.push(ref)
+      return {
+        frame: frameOf('a'),
+        contentHeight: 1,
+        contentWidth: 1,
+        tooWide: false,
+      }
+    },
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
     if (!found) throw new Error(`no action ${id}`)
     return found
   }
-  return { selection, mode, live, writes, pages, view, action, actions }
+  return { selection, mode, live, writes, pages, fits, view, action, actions }
 }
 
 describe('geometryActions', () => {
@@ -65,9 +76,10 @@ describe('geometryActions', () => {
       'arrange.alignBottom',
       'arrange.distributeHorizontal',
       'arrange.distributeVertical',
+      'frame.fitHeight',
     ]
 
-    it('lists select all and the arranges in the palette', () => {
+    it('lists select all, Fit height, and the arranges in the palette', () => {
       const { action } = setup()
 
       expect(NAMED.filter((id) => !action(id).command)).toEqual([])
@@ -127,6 +139,37 @@ describe('geometryActions', () => {
     expect(selection.getState()).toMatchObject({
       page: PAGE,
       frames: [A.ref, B.ref, C.ref, LOCKED.ref],
+    })
+  })
+
+  describe('Fit height', () => {
+    it('fits the one selected frame', () => {
+      const { selection, fits, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      action('frame.fitHeight').run()
+
+      expect(fits).toEqual([A.ref])
+    })
+
+    it.each([
+      ['two frames', [A.ref, B.ref]],
+      ['a locked frame', [LOCKED.ref]],
+      ['no frame', []],
+    ])('stands aside for %s', (_label, refs) => {
+      const { selection, action } = setup()
+      select(selection, PAGE, refs)
+
+      expect(action('frame.fitHeight').enabled?.()).toBe(false)
+    })
+
+    it('stands aside while the tab cannot write', () => {
+      const { selection, live, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      live.setState({ canWrite: false })
+
+      expect(action('frame.fitHeight').enabled?.()).toBe(false)
     })
   })
 

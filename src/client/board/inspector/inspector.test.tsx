@@ -262,6 +262,43 @@ describe('InspectorPanel', () => {
     unregister()
   })
 
+  it('runs Fit height from the one frame’s H field', async () => {
+    let runs = 0
+    const fitHeight: Action = {
+      id: 'frame.fitHeight',
+      label: 'Fit height',
+      group: 'frame',
+      run: () => {
+        runs += 1
+      },
+    }
+    const unregister = registerActions([fitHeight])
+    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+    renderPanel()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fit height' }))
+
+    expect(runs).toBe(1)
+    unregister()
+  })
+
+  it('leaves Fit height out for several frames', () => {
+    const unregister = registerActions([
+      {
+        id: 'frame.fitHeight',
+        label: 'Fit height',
+        group: 'frame',
+        run: () => {},
+      },
+    ])
+    act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+    renderPanel()
+
+    expect(screen.queryByRole('button', { name: 'Fit height' })).toBeNull()
+    unregister()
+  })
+
   it('disables the fields while the tab may not write', () => {
     liveStore.setState({ canWrite: false })
     act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
