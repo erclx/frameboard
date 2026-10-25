@@ -118,7 +118,8 @@ export function useActionGroup(group: string): Action[] {
  * registrations, and returns the function that unbinds them. `only` limits
  * it to the bindings named, as a frame's window in Play takes Esc alone.
  * A press runs the first registered action carrying that key whose
- * `enabled` is true, and no key fires while focus sits in a field or a dialog.
+ * `enabled` is true, and no key fires while focus sits in a field or a dialog
+ * other than a toast.
  */
 export function bindKeys(
   target: Window | Element,
