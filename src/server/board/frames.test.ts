@@ -18,12 +18,14 @@ import {
   addFrame,
   deleteFrame,
   duplicateFrame,
+  fitHeight,
   moveFrame,
   orderFrame,
   renameFrame,
   resizeFrame,
   setBoxes,
   setFrameFlag,
+  setMeasured,
   skeleton,
 } from './frames'
 
@@ -415,6 +417,188 @@ describe('frames', () => {
           { cwd: root },
         ),
       ).rejects.toMatchObject({ code: 'frame-not-found' })
+    })
+  })
+
+  describe('hugging', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+
+    function open(): string {
+      board = copyFixtureBoard('basic')
+      return board.root
+    }
+
+    function hugHero(root: string, flags: object): void {
+      const page = layout('webapp/home')
+      Object.assign(page.frames.hero, flags)
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+    }
+
+    it.each([
+      ['no size', {}, [true, true]],
+      ['a preset', { size: 'phone' }, [false, true]],
+      ['a width', { width: 320 }, [false, true]],
+      ['a height', { height: 200 }, [true, false]],
+      ['a width and a height', { width: 320, height: 200 }, [false, false]],
+    ] as const)('add with %s hugs %j', async (_label, size, hugs) => {
+      const root = open()
+
+      const added = await addFrame(root, 'webapp/home/card', {
+        cwd: root,
+        ...size,
+      })
+
+      expect([added.hugWidth, added.hugHeight]).toEqual(hugs)
+      expect(layout('webapp/home').frames.card).toMatchObject({
+        hugWidth: hugs[0],
+        hugHeight: hugs[1],
+      })
+    })
+
+    it('add with no size keeps the desktop box as its placeholder', async () => {
+      const root = open()
+
+      const added = await addFrame(root, 'webapp/home/card', { cwd: root })
+
+      expect(added.box).toMatchObject({ width: 1440, height: 900 })
+    })
+
+    it('a write to an entry from before the flags adds no hug key', async () => {
+      const root = open()
+
+      await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 40 })
+
+      expect(Object.keys(layout('webapp/home').frames.hero)).toEqual([
+        'x',
+        'y',
+        'width',
+        'height',
+        'order',
+        'hidden',
+        'locked',
+      ])
+    })
+
+    it('resize fixes the axis it sets and leaves the other hugging', async () => {
+      const root = open()
+      hugHero(root, { hugWidth: true, hugHeight: true })
+
+      const resized = await resizeFrame(root, 'webapp/home/hero', {
+        cwd: root,
+        height: 500,
+      })
+
+      expect([resized.hugWidth, resized.hugHeight]).toEqual([true, false])
+    })
+
+    it('fitHeight sets the height and turns its hugging back on', async () => {
+      const root = open()
+
+      const fit = await fitHeight(root, 'webapp/home/hero', 1232, { cwd: root })
+
+      expect(fit).toMatchObject({
+        box: { height: 1232 },
+        hugWidth: false,
+        hugHeight: true,
+      })
+    })
+
+    describe('setMeasured', () => {
+      it('writes a hugging axis and leaves a fixed one', async () => {
+        const root = open()
+        hugHero(root, { hugHeight: true })
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 320, height: 1232 } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual(['hero'])
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          width: 1440,
+          height: 1232,
+          hugHeight: true,
+        })
+      })
+
+      it('writes nothing to a frame that does not hug', async () => {
+        const root = open()
+        const bytes = file('webapp/home/layout.json')
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 320, height: 1232 } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual([])
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
+      it('writes nothing when the measured size already stands', async () => {
+        const root = open()
+        hugHero(root, { hugHeight: true })
+        const bytes = file('webapp/home/layout.json')
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 1440, height: 900 } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual([])
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+    })
+
+    describe('setBoxes on a hugging frame', () => {
+      it('moves it after the server measured, keeping the measured height', async () => {
+        const root = open()
+        hugHero(root, { hugHeight: true })
+        await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 1440, height: 1232 } },
+          { cwd: root },
+        )
+
+        await setBoxes(
+          root,
+          'webapp/home',
+          { hero: { ...HERO, x: 64 } },
+          { hero: HERO },
+          { cwd: root },
+        )
+
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          x: 64,
+          height: 1232,
+          hugHeight: true,
+        })
+      })
+
+      it('fixes the axis a hand resize changes', async () => {
+        const root = open()
+        hugHero(root, { hugWidth: true, hugHeight: true })
+
+        await setBoxes(
+          root,
+          'webapp/home',
+          { hero: { ...HERO, height: 600 } },
+          { hero: HERO },
+          { cwd: root },
+        )
+
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          height: 600,
+          hugWidth: true,
+          hugHeight: false,
+        })
+      })
     })
   })
 

@@ -49,7 +49,9 @@ export function contentFormat() {
     defaultFrameSize: DEFAULT_FRAME_SIZE,
     layout: [
       'x and y are integers, width and height integers of at least 1, and order an integer of at least 0, where a higher order draws on top.',
-      'hidden and locked read as false when absent.',
+      'hidden, locked, hugWidth, and hugHeight read as false when absent, and an axis whose hug flag is false holds the size its entry states.',
+      `An axis that hugs takes its size from the frame's content: a running serve measures it after each write to the frame file, its width at most ${FRAME_SIZES.desktop.width} px, and writes width and height alone, never a flag. Content sized off the viewport keeps the box it has.`,
+      'frame add with no size hugs both axes, --size or --width fixes the width and hugs the height, and --height fixes the height alone, its box standing in until serve measures. frame resize and a hand resize fix each axis they set, and frame fit sets the height and turns hugHeight on.',
       'Frames sort by order, then name, and a write that changes order renumbers the page from 0.',
       `A frame file with no entry is unplaced: it reads at desktop size, y 0, ${FRAME_GAP} px past the right edge of every frame placed before it in name order, and frame add persists that box.`,
       'An entry with no frame file beside it is ignored on read and kept on write.',

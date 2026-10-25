@@ -51,7 +51,9 @@ export type FrameFlag = 'hidden' | 'locked'
 /**
  * Places a frame on its page, writing a skeleton file only when none exists.
  * A file with no entry keeps its bytes and takes the box `list` showed for it
- * unless a size or position is given.
+ * unless a size or position is given. Every axis no size names hugs its
+ * content, a preset fixing the width alone, and the box stands in until the
+ * server measures.
  */
 export async function addFrame(
   root: string,
@@ -93,6 +95,7 @@ export async function addFrame(
           x: options.x ?? computed.box.x,
           y: options.y ?? computed.box.y,
         },
+        ...hugsOf(options),
       })
       layout.renumber()
     },
@@ -260,7 +263,58 @@ export async function resizeFrame(
   return updatePlacement(root, ref, options, (placement) => ({
     ...placement,
     box: { ...placement.box, ...size },
+    hugWidth: placement.hugWidth && size.width === undefined,
+    hugHeight: placement.hugHeight && size.height === undefined,
   }))
+}
+
+/**
+ * Sets a frame's height to its content's measured height and turns hugging
+ * back on for that axis, the inverse of the resize that fixed it.
+ */
+export async function fitHeight(
+  root: string,
+  ref: string,
+  height: number,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  return updatePlacement(root, ref, options, (placement) => ({
+    ...placement,
+    box: { ...placement.box, height },
+    hugHeight: true,
+  }))
+}
+
+/**
+ * Writes the sizes the server measured, on the axes each frame's stored entry
+ * hugs and nowhere else, under the page's lock. It sets no flag and takes no
+ * journal, since the developer never set that size, and answers the names
+ * whose entry changed, none when every size already stands.
+ */
+export async function setMeasured(
+  root: string,
+  pageRef: string,
+  sizes: Readonly<Record<string, { width: number; height: number }>>,
+  options: RefOptions,
+): Promise<string[]> {
+  const page = await resolvePageRef(root, pageRef, options)
+  return withLayouts([page.path], async (layouts) => {
+    const layout = layoutAt(layouts, page.path)
+    const written: string[] = []
+    for (const [name, size] of Object.entries(sizes)) {
+      if (!layout.hasEntry(name) || !layout.names.includes(name)) continue
+      const placement = layout.placement(name)
+      const box = {
+        ...placement.box,
+        width: placement.hugWidth ? size.width : placement.box.width,
+        height: placement.hugHeight ? size.height : placement.box.height,
+      }
+      if (sameBox(box, placement.box)) continue
+      layout.set(name, { ...placement, box })
+      written.push(name)
+    }
+    return written
+  })
 }
 
 type Box = FrameRecord['box']
@@ -298,23 +352,51 @@ export async function setBoxes(
           })
         }
         const started = expected[name]
-        if (!started || !sameBox(started, placement.box)) {
+        const box = boxes[name]
+        const kept = box && started ? measuredAxes(placement, box, started) : {}
+        if (!started || !sameBox({ ...started, ...kept }, placement.box)) {
           throw new FrameboardError(
             'stale-layout',
             `${ref} moved since this edit began, so nothing was written.`,
             { ref, stored: placement.box, expected: started ?? null },
           )
         }
-        return { name, placement, box: boxes[name] }
+        return { name, placement, box, kept, started }
       })
-      for (const { name, placement, box } of placements) {
-        if (box) layout.set(name, { ...placement, box: { ...box } })
+      for (const { name, placement, box, kept, started } of placements) {
+        if (!box || !started) continue
+        layout.set(name, {
+          ...placement,
+          box: { ...box, ...kept },
+          hugWidth: placement.hugWidth && box.width === started.width,
+          hugHeight: placement.hugHeight && box.height === started.height,
+        })
       }
     },
     options.journal,
   )
   const frames = await frameRecords(root, page.project, page.name)
   return frames.filter((frame) => names.includes(frame.name))
+}
+
+/**
+ * The stored size of each hugging axis a hand write leaves at the size it
+ * started from, since the server may have measured that axis since and a move
+ * never meant to set it.
+ */
+function measuredAxes(
+  placement: Placement,
+  box: Box,
+  started: Box,
+): Partial<Box> {
+  return {
+    ...(placement.hugWidth && box.width === started.width
+      ? { width: placement.box.width }
+      : {}),
+    ...(placement.hugHeight && box.height === started.height
+      ? { height: placement.box.height }
+      : {}),
+  }
 }
 
 function sameBox(a: Box, b: Box): boolean {
@@ -399,6 +481,17 @@ async function updatePlacement(
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 
+/** Which axes `frame add` leaves hugging: every one no size option names, the height under a preset. */
+function hugsOf({ size, width, height }: SizeOptions): {
+  hugWidth: boolean
+  hugHeight: boolean
+} {
+  return {
+    hugWidth: size === undefined && width === undefined,
+    hugHeight: height === undefined,
+  }
+}
+
 /** The size a verb sets, from a preset or from explicit width and height. */
 export function sizeOf({ size, width, height }: SizeOptions): {
   width?: number
@@ -471,12 +564,18 @@ class PageLayout {
   }
 
   /**
-   * Writes all seven keys on the entry it creates or changes, after any key
-   * the entry already held, so unknown keys survive in place.
+   * Writes the seven fixed keys on the entry it creates or changes, after any
+   * key the entry already held, so unknown keys survive in place. A hug flag
+   * is written on an entry it creates, once it is on, or when the entry holds
+   * it, so a write to an entry from before the flags adds no key.
    */
-  set(name: string, { box, order, hidden, locked }: Placement): void {
+  set(
+    name: string,
+    { box, order, hidden, locked, hugWidth, hugHeight }: Placement,
+  ): void {
+    const held = this.file.frames[name]
     this.file.frames[name] = {
-      ...this.file.frames[name],
+      ...held,
       x: box.x,
       y: box.y,
       width: box.width,
@@ -484,6 +583,10 @@ class PageLayout {
       order,
       hidden,
       locked,
+      ...(!held || hugWidth || held.hugWidth !== undefined ? { hugWidth } : {}),
+      ...(!held || hugHeight || held.hugHeight !== undefined
+        ? { hugHeight }
+        : {}),
     }
     this.changed = true
   }
