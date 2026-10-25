@@ -43,6 +43,14 @@ test.describe('previewing a frame at another width', () => {
     await expect(
       page.getByRole('textbox', { name: 'X position' }),
     ).toBeEnabled()
+    // Every box write goes through this route, so a preview reaching the
+    // layout would show here as the click that sent it.
+    const writes: string[] = []
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/frames/')) {
+        writes.push(`${request.method()} ${request.url()}`)
+      }
+    })
 
     await page
       .getByRole('button', { name: 'Preview at phone width, 390' })
@@ -63,9 +71,7 @@ test.describe('previewing a frame at another width', () => {
     await page.getByRole('button', { name: 'End preview' }).click()
     await expect(hero).toHaveCSS('width', '1440px')
 
-    // Nothing is awaited here but the absence of a write, so a fixed window
-    // stands in for one that would have reached the file.
-    await page.waitForTimeout(1000)
+    expect(writes).toEqual([])
     expect(layout()).toBe(before)
   })
 })
