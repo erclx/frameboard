@@ -77,6 +77,14 @@ function layerOf(container: HTMLElement): HTMLElement {
   return layer
 }
 
+// The glide's own clock, stepped by hand, so a case proving the view
+// stopped reads it past the glide's end rather than waiting it out.
+function fakeFrames() {
+  vi.useFakeTimers({
+    toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'],
+  })
+}
+
 /** Whether `read` returns the same count before and after a few frames. */
 async function holdsAcrossFrames(read: () => number): Promise<boolean> {
   const at = read()
@@ -137,6 +145,7 @@ function drag(
 
 describe('Canvas', () => {
   afterEach(() => {
+    vi.useRealTimers()
     modeStore.setState({ mode: 'edit', tool: 'move' })
     setCharacterKeys(true)
     liveStore.setState({ canWrite: false })
@@ -228,7 +237,6 @@ describe('Canvas', () => {
 
   describe('panning on the wheel', () => {
     afterEach(() => {
-      vi.useRealTimers()
       vi.restoreAllMocks()
     })
 
@@ -245,17 +253,6 @@ describe('Canvas', () => {
           : real(query),
       )
     }
-
-    // The glide's own clock, stepped by hand, so a case proving the view
-    // stopped reads it past the glide's end rather than waiting it out.
-    const fakeFrames = () =>
-      vi.useFakeTimers({
-        toFake: [
-          'requestAnimationFrame',
-          'cancelAnimationFrame',
-          'performance',
-        ],
-      })
 
     it('leaves the view in place on the event a notch arrives in', () => {
       const { container } = renderCanvas(square('ease-start'))
@@ -513,12 +510,13 @@ describe('Canvas', () => {
     // The first mount commits for a few frames after it renders.
     await expect.poll(() => holdsAcrossFrames(() => commits)).toBe(true)
     const before = commits
+    fakeFrames()
 
     wheel(container, { deltaX: 30, deltaY: 50 })
+    vi.advanceTimersByTime(PAN_EASE_MS / 3)
 
-    // Read mid-glide, ahead of the settle that commits once the view rests.
-    await expect.poll(() => viewOf(container).y).toBeLessThan(200)
-    expect([viewOf(container).x, commits]).toEqual([270, before])
+    const { x, y } = viewOf(container)
+    expect([x, y > 150 && y < 200, commits]).toEqual([270, true, before])
   })
 
   it('pans the layer on a primary drag under the Hand tool', () => {
