@@ -597,6 +597,51 @@ describe('TextSection', () => {
     expect(changes).toEqual([{ kind: 'text', value: 'Welcome' }])
   })
 
+  it('writes the text once on Enter and keeps nothing for the blur', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.clear(area)
+    await userEvent.type(area, 'Welcome{Enter}')
+    await userEvent.tab()
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Welcome' }])
+  })
+
+  it('adds no line on Shift+Enter', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.type(area, '{Shift>}{Enter}{/Shift}')
+
+    expect(area).toHaveValue('Hello')
+    expect(changes).toEqual([])
+  })
+
+  it('writes a pasted line break as a space', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.clear(area)
+    await userEvent.paste('Two\r\nlines')
+    await userEvent.keyboard('{Enter}')
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Two lines' }])
+  })
+
+  it('hints the keys only while it has focus', async () => {
+    const { write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    expect(screen.queryByText('to apply', { exact: false })).toBeNull()
+    await userEvent.click(screen.getByRole('textbox', { name: 'Text' }))
+
+    expect(screen.getByText('to apply', { exact: false })).toBeVisible()
+  })
+
   it('cancels on Esc and writes nothing', async () => {
     const { changes, write } = recorder()
     render(<TextSection text="Hello" disabled={false} write={write} />)

@@ -1,9 +1,13 @@
 import { type KeyboardEvent, useRef, useState } from 'react'
 
+import { Kbd } from '@/client/components/ui/kbd'
 import { Textarea } from '@/client/components/ui/textarea'
 
 import { isStrayHistory } from './stray-history'
 import type { WriteElement } from './write'
+
+/** A pasted line break, in any platform's form. */
+const NEWLINES = /\r\n|\r|\n/g
 
 interface TextSectionProps {
   text: string
@@ -12,9 +16,11 @@ interface TextSectionProps {
 }
 
 /**
- * Text, for an element holding text alone: a text area committing on blur
- * or Cmd+Enter and cancelling on Esc. The written text stays shown until the
- * frame reloads with it.
+ * Text, for an element holding text alone: a text area applying on Enter or
+ * blur and cancelling on Esc, with the keys hinted while it has focus. Text
+ * is one line, since a `<br>` would end the text-only state that shows this
+ * field, so a newline, typed with Shift or pasted, becomes a space. The
+ * written text stays shown until the frame reloads with it.
  */
 export function TextSection({ text, disabled, write }: TextSectionProps) {
   const [draft, setDraft] = useState<string | null>(null)
@@ -22,6 +28,7 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
   if (sent && sent.over !== text) setSent(null)
   const held = sent?.over === text ? sent.value : null
 
+  const [focused, setFocused] = useState(false)
   // Esc blurs the field to leave it, which must not commit what it cancelled.
   const cancelled = useRef(false)
 
@@ -40,9 +47,9 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    if (event.key === 'Enter') {
       event.preventDefault()
-      commit()
+      if (!event.shiftKey) commit()
     }
     if (event.key === 'Escape') {
       setDraft(null)
@@ -65,12 +72,21 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
         disabled={disabled}
         onChange={(event) => {
           if (isStrayHistory(event)) return
-          setDraft(event.currentTarget.value)
+          setDraft(event.currentTarget.value.replace(NEWLINES, ' '))
         }}
-        onBlur={commit}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false)
+          commit()
+        }}
         onKeyDown={onKeyDown}
-        className="min-h-11 resize-none rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"
+        className="max-h-28 min-h-11 resize-none overflow-y-auto rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"
       />
+      {focused ? (
+        <p className="mt-1.5 flex items-center gap-1 text-label font-normal text-muted-foreground">
+          <Kbd>Enter</Kbd> to apply, <Kbd>Esc</Kbd> to cancel
+        </p>
+      ) : null}
     </section>
   )
 }
