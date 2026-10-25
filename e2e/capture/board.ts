@@ -1009,6 +1009,45 @@ function menuOn(
   }
 }
 
+/**
+ * Presses a frame's findings badge through the hit layer above it once the
+ * badge has drawn, the way a click reaches it, so its list opens.
+ */
+function findingsOn(frame: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ frame, frames }) => {
+        let left = frames
+        const press = () => {
+          const badge = document.querySelector(
+            `[data-findings-badge="${frame}"]`,
+          )
+          const hit = document.querySelector('[data-hit-layer]')
+          if (!badge || !hit) {
+            if (--left > 0) requestAnimationFrame(press)
+            else console.error(`${frame} drew no findings badge`)
+            return
+          }
+          const box = badge.getBoundingClientRect()
+          const init = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX: box.left + box.width / 2,
+            clientY: box.top + box.height / 2,
+          }
+          hit.dispatchEvent(new MouseEvent('mousedown', init))
+          window.dispatchEvent(new MouseEvent('mouseup', init))
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(press),
+        )
+      },
+      { frame, frames: ROW_FRAMES },
+    )
+  }
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -1030,7 +1069,8 @@ const STATE_ONLY = ['320', '768', '1536']
  * inspector for the hero's headline with its token menu open, the hero's
  * Selection colors, and with the Theme
  * tab open, with tokens and with none, the Assets tab with the reference's
- * six files, and the right-click menus on a frame, beside its copy toast, on
+ * six files, a frame's findings list open from its badge and listed under
+ * Checks, and the right-click menus on a frame, beside its copy toast, on
  * the selected element, on empty canvas, and on a page and a layers row. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
  * font, so the board cases also hold the label's check findings mark in both
@@ -1179,6 +1219,37 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(onCanvas({ select: ['webapp/home/hero'] })),
+      },
+      {
+        // The about frame sets no font, so its badge opens on its one finding.
+        section: 'findings-open',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            findingsOn('webapp/home/about'),
+            readyWhen('[data-slot="popover-content"]'),
+          ),
+        ),
+      },
+      {
+        section: 'select-checks',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            onCanvas({ select: ['webapp/home/about'] }),
+            readyWhen('[aria-labelledby="inspector-checks"]'),
+          ),
+        ),
       },
       {
         section: 'select-two',
