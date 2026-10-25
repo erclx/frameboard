@@ -5,6 +5,7 @@ import type { ListResult } from '@/shared/records/list'
 
 import {
   createUnseenStore,
+  dropBase,
   markSeen,
   nextUnseen,
   previousUnseen,
@@ -154,6 +155,101 @@ describe('receiveChanges', () => {
     receiveChanges(store, [change('studio/home/hero', 'h2')])
 
     expect(store.getState().unseen['studio/home/hero']?.hash).toBe('h2')
+  })
+})
+
+describe('the compare base', () => {
+  const HERO = 'studio/home/hero'
+
+  it('is the version a change replaced', () => {
+    const store = createUnseenStore(memoryStorage())
+
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+
+    expect(store.getState().base[HERO]).toBe('h0')
+  })
+
+  it('stays before the first change of a run the developer has not seen', () => {
+    const store = createUnseenStore(memoryStorage())
+
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+    receiveChanges(store, [change(HERO, 'h2', { before: 'h1' })])
+
+    expect(store.getState().base[HERO]).toBe('h0')
+  })
+
+  it('outlives the mark once the developer looks', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+
+    markSeen(store, HERO)
+
+    expect(store.getState().base[HERO]).toBe('h0')
+  })
+
+  it('moves to the version seen when a change follows the look', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+    markSeen(store, HERO)
+
+    receiveChanges(store, [change(HERO, 'h2', { before: 'h1' })])
+
+    expect(store.getState().base[HERO]).toBe('h1')
+  })
+
+  it('is absent for a frame the agent created', () => {
+    const store = createUnseenStore(memoryStorage())
+
+    receiveChanges(store, [change(HERO, 'h1', { created: true, whole: true })])
+
+    expect(store.getState().base).not.toHaveProperty(HERO)
+  })
+
+  it('comes from the replayed log after the version seen', () => {
+    const storage = memoryStorage({
+      [SEEN_KEY]: JSON.stringify({ [HERO]: 'h1' }),
+    })
+    const store = createUnseenStore(storage)
+
+    receiveChanges(store, [
+      change(HERO, 'h1', { before: 'h0' }),
+      change(HERO, 'h2', { before: 'h1' }),
+      change(HERO, 'h3', { before: 'h2' }),
+    ])
+
+    expect(store.getState().base[HERO]).toBe('h1')
+  })
+
+  it('reads the same when the log replays over it again', () => {
+    const store = createUnseenStore(memoryStorage())
+    const first = change(HERO, 'h1', { before: 'h0' })
+    const second = change(HERO, 'h2', { before: 'h1' })
+    receiveChanges(store, [first])
+    markSeen(store, HERO)
+    receiveChanges(store, [second])
+
+    receiveChanges(store, [first, second])
+
+    expect(store.getState().base[HERO]).toBe('h1')
+  })
+
+  it('is dropped once the server no longer holds its version', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+
+    dropBase(store, HERO)
+
+    expect(store.getState().base).toEqual({})
+  })
+
+  it('is dropped with a frame the board no longer holds', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change(HERO, 'h1', { before: 'h0' })])
+    markSeen(store, HERO)
+
+    pruneUnseen(store, boardWith('studio/home/about'))
+
+    expect(store.getState().base).toEqual({})
   })
 })
 
