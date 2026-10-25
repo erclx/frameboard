@@ -300,7 +300,10 @@ describe('Frame', () => {
       />,
     )
 
-    expect(getByRole('button')).toHaveAttribute('data-severity', 'error')
+    expect(getByRole('button', { name: /check finding/ })).toHaveAttribute(
+      'data-severity',
+      'error',
+    )
   })
 
   it('marks the pill warning when every finding is a warning', () => {
@@ -313,7 +316,10 @@ describe('Frame', () => {
       />,
     )
 
-    expect(getByRole('button')).toHaveAttribute('data-severity', 'warning')
+    expect(getByRole('button', { name: /check finding/ })).toHaveAttribute(
+      'data-severity',
+      'warning',
+    )
   })
 
   it('tints an error pill in the destructive hue and a warning pill in the note hue', () => {
@@ -336,7 +342,7 @@ describe('Frame', () => {
     const hue = (element: HTMLElement) =>
       getComputedStyle(element).getPropertyValue('--h').trim()
 
-    const [error, warning] = getAllByRole('button')
+    const [error, warning] = getAllByRole('button', { name: /check finding/ })
 
     expect(error && hue(error)).toBe(
       getComputedStyle(document.documentElement)
@@ -360,7 +366,7 @@ describe('Frame', () => {
       />,
     )
 
-    expect(queryByRole('button')).toBeNull()
+    expect(queryByRole('button', { name: /check finding/ })).toBeNull()
   })
 
   it('truncates the name and keeps the count on a narrow frame', () => {
@@ -382,7 +388,8 @@ describe('Frame', () => {
     const name = getByText(narrow.name)
     expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
     expect(
-      getByRole('button').getBoundingClientRect().right,
+      getByRole('button', { name: /check finding/ }).getBoundingClientRect()
+        .right,
     ).toBeLessThanOrEqual(
       Math.ceil(name.parentElement?.getBoundingClientRect().right ?? 0),
     )
@@ -453,3 +460,115 @@ function themeOfRoot(iframe: HTMLIFrameElement): string | null {
     iframe.contentDocument?.documentElement.getAttribute('data-theme') ?? null
   )
 }
+
+describe('Frame theme marker', () => {
+  afterEach(() => {
+    act(() =>
+      themeStore.setState({
+        choice: 'system',
+        system: 'light',
+        flipped: new Set(),
+      }),
+    )
+  })
+
+  it('draws a sun on a frame following the board', () => {
+    const { getByRole } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    const marker = getByRole('button', { name: 'Flip a to dark' })
+    expect(marker).toHaveTextContent('')
+    expect(marker.querySelector('svg')).not.toBeNull()
+  })
+
+  it.each([
+    ['light', 'Dark', 'Flip a to light'],
+    ['dark', 'Light', 'Flip a to dark'],
+  ] as const)(
+    'names the theme of a frame flipped on a %s board',
+    (board, shown, label) => {
+      act(() => chooseTheme(board))
+      act(() => flipFrame('studio/home/a'))
+
+      const { getByRole } = render(
+        <Frame frame={frame('a')} live={false} version={0} />,
+      )
+
+      expect(getByRole('button', { name: label })).toHaveTextContent(shown)
+    },
+  )
+
+  it('flips the frame back on a click', async () => {
+    act(() => flipFrame('studio/home/a'))
+    const { getByRole } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    await userEvent.click(getByRole('button', { name: 'Flip a to light' }))
+
+    expect(getByRole('button', { name: 'Flip a to dark' })).toHaveTextContent(
+      '',
+    )
+  })
+})
+
+describe('Frame label at low zoom', () => {
+  function renderCrowded(findings?: readonly Finding[]) {
+    const view = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={findings}
+      />,
+    )
+    const root = view.container.querySelector<HTMLElement>('[data-frame]')
+    if (!root) throw new Error('no frame root')
+    root.setAttribute('data-label-crowded', '')
+    return { ...view, root }
+  }
+
+  it('hides a crowded label', () => {
+    const { getByTitle } = renderCrowded()
+
+    expect(getByTitle('checkout')).not.toBeVisible()
+  })
+
+  it('shows a crowded label under the pointer', () => {
+    const { getByTitle, root } = renderCrowded()
+
+    root.setAttribute('data-label-hover', '')
+
+    expect(getByTitle('checkout')).toBeVisible()
+  })
+
+  it('shows a crowded label while the frame is selected', () => {
+    const { getByTitle, root } = renderCrowded()
+
+    root.setAttribute('data-selected', 'true')
+
+    expect(getByTitle('checkout')).toBeVisible()
+  })
+
+  it('keeps a findings dot on the corner of a crowded frame', () => {
+    const { container } = renderCrowded([finding('Raw color')])
+
+    const dot = container.querySelector<HTMLElement>('[data-findings-dot]')
+    expect(dot).toBeVisible()
+    expect(dot?.dataset.findingsBadge).toBe('studio/home/checkout')
+  })
+
+  it('draws no findings dot while the label shows', () => {
+    const { container } = render(
+      <Frame
+        frame={frame('checkout')}
+        live={false}
+        version={0}
+        findings={[finding('Raw color')]}
+      />,
+    )
+
+    expect(container.querySelector('[data-findings-dot]')).not.toBeVisible()
+  })
+})
