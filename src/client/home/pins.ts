@@ -42,7 +42,11 @@ let cache: { raw: string | null; pins: ReadonlySet<string> } = {
   raw: null,
   pins: new Set(),
 }
-/** What a browser refusing storage keeps for this visit alone. */
+/**
+ * What a browser refusing a write keeps for this visit alone, read ahead of
+ * storage once set, since a full quota can refuse the write and still serve
+ * the older value.
+ */
 let refused: string | null = null
 const listeners = new Set<() => void>()
 
@@ -52,10 +56,11 @@ function subscribe(listener: () => void): () => void {
 }
 
 function readRaw(): string | null {
+  if (refused !== null) return refused
   try {
     return localStorage.getItem(PINS_KEY)
   } catch {
-    return refused
+    return null
   }
 }
 
@@ -63,6 +68,7 @@ function write(pins: ReadonlySet<string>): void {
   const raw = JSON.stringify([...pins])
   try {
     localStorage.setItem(PINS_KEY, raw)
+    refused = null
   } catch {
     refused = raw
   }

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { pinnedProjects } from '@/client/home/pins'
@@ -123,6 +123,22 @@ describe('project.pin', () => {
     const pin = findAction('project.pin')
 
     expect(pin ? isEnabled(pin) : false).toBe(true)
+  })
+
+  it('keeps a pin for the visit when storage refuses the write', () => {
+    renderHook(() => useProjectActions(OPEN, { calls: server().calls }))
+    const write = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('quota')
+      })
+
+    findAction('project.pin')?.run()
+    const pinned = [...pinnedProjects()]
+    write.mockRestore()
+    findAction('project.pin')?.run()
+
+    expect([pinned, [...pinnedProjects()]]).toEqual([['studio'], []])
   })
 
   it('drops the pin once its project is deleted', async () => {
