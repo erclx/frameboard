@@ -76,16 +76,18 @@ describe('History', () => {
   })
 
   async function editHeadline(text: string): Promise<void> {
-    const path = at('webapp/home/hero.html')
-    const before = readFileSync(path)
     const edited = editFrameFile(
-      path,
+      at('webapp/home/hero.html'),
       { index: 5 },
       { kind: 'text', value: text },
     )
     if (!edited.ok) throw new Error(edited.detail)
     const journal = history.journal()
-    journal.content(path, 'webapp/home/hero', before, readFileSync(path))
+    journal.element(
+      at('webapp/home/hero.html'),
+      'webapp/home/hero',
+      edited.span,
+    )
     history.record({
       id: journal.id,
       changes: journal.changes,
@@ -125,29 +127,8 @@ describe('History', () => {
     )
   })
 
-  async function editHeadlineElement(text: string): Promise<void> {
-    const edited = editFrameFile(
-      at('webapp/home/hero.html'),
-      { index: 5 },
-      { kind: 'text', value: text },
-    )
-    if (!edited.ok) throw new Error(edited.detail)
-    const journal = history.journal()
-    journal.element(
-      at('webapp/home/hero.html'),
-      'webapp/home/hero',
-      edited.span,
-    )
-    history.record({
-      id: journal.id,
-      changes: journal.changes,
-      page: null,
-      frames: ['webapp/home/hero'],
-    })
-  }
-
   it('undoes a hand edit after an agent wrote another element, answering the hash on disk', async () => {
-    await editHeadlineElement('Welcome')
+    await editHeadline('Welcome')
     const hero = at('webapp/home/hero.html')
     writeFileSync(
       hero,
@@ -169,7 +150,7 @@ describe('History', () => {
   })
 
   it('refuses an undo of an element an agent changed since', async () => {
-    await editHeadlineElement('Welcome')
+    await editHeadline('Welcome')
     const hero = at('webapp/home/hero.html')
     const agent = readFileSync(hero, 'utf8').replace('Welcome', 'Hello')
     writeFileSync(hero, agent)

@@ -64,19 +64,6 @@ export type Change =
    */
   | { kind: 'path'; path: string; present: Side; hash: string; slot: string }
   /**
-   * A frame file a hand edit rewrote, held whole on both sides with each
-   * side's content hash, so an undo restores it only while nothing else
-   * wrote it since. `ref` names the frame an undo answers the hash for.
-   */
-  | {
-      kind: 'content'
-      path: string
-      ref: string
-      before: Buffer
-      after: Buffer
-      hashes: Record<Side, string>
-    }
-  /**
    * The one element a hand edit rewrote in a frame file, held as its span on
    * both sides, so an undo restores that element while the agent left it
    * alone and keeps every other byte of the file as it stands. `ref` names
@@ -136,11 +123,6 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         ? (await exists(change.path)) &&
             (await hashPath(change.path)) === change.hash
         : !(await exists(change.path)) && (await exists(change.slot))
-    case 'content':
-      return (
-        (await exists(change.path)) &&
-        contentHash(await readFile(change.path)) === change.hashes[side]
-      )
     case 'element':
       return (
         (await exists(change.path)) &&
@@ -186,8 +168,6 @@ export async function restore(
       if (change.present === side) await rename(change.slot, change.path)
       else await takeOut(change.path, change.slot)
       return
-    case 'content':
-      return rewrite(change, side)
     case 'element':
       return swapElement(change, side)
   }
@@ -231,33 +211,6 @@ async function swapElement(
 }
 
 /**
- * Writes `side` of a frame's bytes through a temporary file and a rename,
- * reading the file again just before the rename so an agent's write landing
- * since `holds` read it is refused rather than overwritten, as a hand edit is.
- */
-async function rewrite(
-  change: Extract<Change, { kind: 'content' }>,
-  side: Side,
-): Promise<string> {
-  // A leading dot keeps the temporary file from reading as a frame.
-  const temp = join(
-    dirname(change.path),
-    `.${basename(change.path)}.${process.pid}.tmp`,
-  )
-  await writeFile(temp, change[side])
-  if (contentHash(await readFile(change.path)) !== change.hashes[OTHER[side]]) {
-    await rm(temp, { force: true })
-    throw new FrameboardError(
-      'undo-overtaken',
-      `An agent changed ${basename(change.path, FRAME_EXTENSION)} after your edit, so that step was dropped.`,
-      { change: change.kind },
-    )
-  }
-  await rename(temp, change.path)
-  return change.hashes[side]
-}
-
-/**
  * The journal one board write reports into, building the changes of one
  * step. A path it takes out waits in the step's trash folder.
  */
@@ -287,18 +240,6 @@ export class StepJournal implements Journal {
   async moved(from: string, to: string): Promise<void> {
     await rename(from, to)
     this.changes.push({ kind: 'moved', from, to })
-  }
-
-  /** A frame file a hand edit rewrote from `before` to `after`, which this journal does not write. */
-  content(path: string, ref: string, before: Buffer, after: Buffer): void {
-    this.changes.push({
-      kind: 'content',
-      path,
-      ref,
-      before,
-      after,
-      hashes: { before: contentHash(before), after: contentHash(after) },
-    })
   }
 
   /** The element a hand edit rewrote in a frame file, which this journal does not write. */
