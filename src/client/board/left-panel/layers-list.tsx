@@ -4,10 +4,10 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  Frame,
   ListChevronsUpDown,
   Lock,
   LockOpen,
-  Square,
 } from 'lucide-react'
 import {
   type MouseEvent,
@@ -249,7 +249,7 @@ function FrameRow({
         reportRefusal(`Couldn't ${FLAG_VERBS[name][on ? 1 : 0]} ${frame.name}`),
       )
   const icon = (
-    <Square
+    <Frame
       aria-hidden
       className={cn(
         'size-[13px] shrink-0',
