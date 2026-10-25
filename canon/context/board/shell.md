@@ -22,7 +22,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it.
 
-`label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and leaves a findings dot on its top left corner, clear of a frame note on the top right. The hit layer stops CSS hover, so the canvas marks the frame under the pointer itself.
+`label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
 
 ### `src/client/board/left-panel/`
 
