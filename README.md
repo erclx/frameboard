@@ -70,7 +70,8 @@ An agent runs `editing` on a frame before rewriting it.
 - The board then outlines the frame and tags it with the agent and how long it has held it, and a second session that tries to claim it is told it is taken
 - A claim lapses five minutes after the agent last ran `editing`, and a note sent from a claimed frame goes to the session holding it
 - When you move, resize, edit, rename, or delete a claimed frame, your edit waits until the claim ends, under a card naming the agent
-- A move, resize, or element edit then goes only if the agent left the frame as you saw it, and a rename or delete goes once the claim ends
+- A move or resize then goes only if the agent left the frame as you saw it, and a rename or delete goes once the claim ends
+- An element edit goes if the agent left that element alone, and otherwise comes back, with typed text kept in the Text field to apply again
 
 ### Change marks and following
 
