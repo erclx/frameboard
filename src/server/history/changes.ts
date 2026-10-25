@@ -175,10 +175,12 @@ export async function restore(
 
 /**
  * Swaps the edited element to `side` through a temporary file and a rename,
- * reading the file again just before the rename. A write landing since is
- * never overwritten: the swap is made once more from the fresh bytes, and
- * refused once they change again or no longer hold the element. The change
- * keeps the index the element was found at, so a redo lands on it.
+ * reading the file again just before the rename. A write landing before that
+ * read is not overwritten: the swap is made once more from the fresh bytes,
+ * and refused once they change again or no longer hold the element. Bytes
+ * that fail a UTF-8 round trip are refused too, since decoding would rewrite
+ * each invalid byte outside the element. The change keeps the index the
+ * element was found at, so a redo lands on it.
  */
 async function swapElement(
   change: Extract<Change, { kind: 'element' }>,
@@ -189,12 +191,12 @@ async function swapElement(
     dirname(change.path),
     `.${basename(change.path)}.${process.pid}.tmp`,
   )
-  let source = await readFile(change.path, 'utf8')
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  let source = await readText(change.path)
+  for (let attempt = 0; source !== undefined && attempt < 2; attempt += 1) {
     const swapped = swapSpan(source, change.span, OTHER[side])
     if (!swapped) break
     await writeFile(temp, swapped.html)
-    const now = await readFile(change.path, 'utf8')
+    const now = await readText(change.path)
     if (now === source) {
       await rename(temp, change.path)
       change.span = swapped.span
@@ -208,6 +210,13 @@ async function swapElement(
     `An agent changed ${basename(change.path, FRAME_EXTENSION)} after your edit, so that step was dropped.`,
     { change: change.kind },
   )
+}
+
+/** A frame file's text, or undefined when its bytes do not survive a UTF-8 round trip. */
+async function readText(path: string): Promise<string | undefined> {
+  const bytes = await readFile(path)
+  const text = bytes.toString('utf8')
+  return Buffer.from(text, 'utf8').equals(bytes) ? text : undefined
 }
 
 /**

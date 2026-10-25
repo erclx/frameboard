@@ -228,6 +228,20 @@ describe('changes', () => {
       expect(read(HERO)).toBe(agent)
     })
 
+    it('refuses a restore once an agent wrote bytes that are not UTF-8', async () => {
+      editHeadline('Welcome')
+      const agent = Buffer.concat([
+        readFileSync(at(HERO)),
+        Buffer.from([0x3c, 0x21, 0x2d, 0x2d, 0xe9, 0x2d, 0x2d, 0x3e]),
+      ])
+      writeFileSync(at(HERO), agent)
+
+      await expect(restore(first(), 'before')).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(readFileSync(at(HERO)).equals(agent)).toBe(true)
+    })
+
     it('fails once the frame was removed', async () => {
       editHeadline('Welcome')
       rmSync(at(HERO))
