@@ -1,10 +1,17 @@
-import { Command as CommandIcon, FileText, House, Square } from 'lucide-react'
+import {
+  Command as CommandIcon,
+  EyeOff,
+  FileText,
+  Folder,
+  Square,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useRoute } from 'wouter'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyParts } from '@/client/actions/keys'
 import { type Action, useCommands } from '@/client/actions/registry'
+import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import {
   Command,
   CommandDialog,
@@ -23,8 +30,14 @@ import {
   jumpToFrame,
   jumpToPage,
   jumpToProject,
+  showAndJumpToFrame,
   type Target,
 } from './targets'
+
+function showHidden(ref: string): void {
+  const name = ref.split('/').at(-1) ?? ref
+  showAndJumpToFrame(ref).catch(reportRefusal(`Couldn't show ${name}`))
+}
 
 /**
  * Cmd+K's palette over the whole board: the open project's frames and pages,
@@ -52,6 +65,7 @@ function Palette() {
   const actions = useCommands().filter(
     (action) => !(action.group === 'mode' && action.checked?.()),
   )
+  const canWrite = useLive((state) => state.canWrite)
   const { frames, pages, projects } = board
     ? boardTargets(board, params?.project ?? null)
     : { frames: [], pages: [], projects: [] }
@@ -71,12 +85,19 @@ function Palette() {
         key={target.ref}
         value={`${kind}:${target.ref}`}
         keywords={[target.label, target.hint ?? '']}
-        onSelect={choose(() => jump(target.ref))}
+        // Showing a hidden frame is a write, which a read-only tab cannot make.
+        disabled={target.hidden && !canWrite}
+        onSelect={choose(() =>
+          target.hidden ? showHidden(target.ref) : jump(target.ref),
+        )}
       >
-        {icon}
+        {target.hidden ? <EyeOff /> : icon}
         <span className="flex-1 truncate">{target.label}</span>
+        {target.hidden ? (
+          <span className="text-muted-foreground">Hidden</span>
+        ) : null}
         {target.hint ? (
-          <span className="text-muted-foreground">{target.hint}</span>
+          <span className="truncate text-muted-foreground">{target.hint}</span>
         ) : null}
       </CommandItem>
     ))
@@ -105,7 +126,7 @@ function Palette() {
         ) : null}
         {projects.length > 0 ? (
           <CommandGroup heading="Projects">
-            {targetRows(projects, <House />, jumpToProject, 'project')}
+            {targetRows(projects, <Folder />, jumpToProject, 'project')}
           </CommandGroup>
         ) : null}
       </CommandList>
@@ -123,6 +144,7 @@ function ActionRow({
   const label = action.command?.label ?? action.label
   const Icon = action.command?.icon ?? CommandIcon
   const key = liveKey(action.keys, useCharacterKeysOn())
+  const hint = action.command?.hint?.()
   return (
     <CommandItem
       value={`action:${action.id}`}
@@ -131,6 +153,9 @@ function ActionRow({
     >
       <Icon />
       <span className="flex-1 truncate">{label}</span>
+      {hint ? (
+        <span className="truncate text-muted-foreground">{hint}</span>
+      ) : null}
       {key ? (
         <KbdGroup>
           {keyParts(key).map((part) => (

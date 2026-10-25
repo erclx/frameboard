@@ -90,7 +90,7 @@ describe('CommandPalette', () => {
       expect.arrayContaining([
         expect.stringContaining('swatch grid'),
         expect.stringContaining('swatch card'),
-        'swatches',
+        'swatchesstudio',
         'Swatch theme',
         'swatch library',
       ]),
@@ -104,22 +104,93 @@ describe('CommandPalette', () => {
     ).toEqual([true, true, true, true])
   })
 
-  it('shows the page a frame sits on', async () => {
+  it('shows the project and page a frame sits on', async () => {
     render(<CommandPalette />)
 
     await openPalette()
 
     expect(
-      await screen.findByRole('option', { name: /swatch card.*swatches/ }),
+      await screen.findByRole('option', {
+        name: /swatch card.*studio \/ swatches/,
+      }),
     ).toBeInTheDocument()
   })
 
-  it('leaves out a hidden frame', async () => {
+  it('lists a hidden frame, marked hidden', async () => {
+    liveStore.setState({ canWrite: true })
+    cleanups.push(() => liveStore.setState({ canWrite: false }))
     render(<CommandPalette />)
 
     await openPalette()
 
-    expect(screen.queryByRole('option', { name: /swatch hidden/ })).toBeNull()
+    const row = await screen.findByRole('option', {
+      name: /swatch hidden.*Hidden/,
+    })
+    expect(row).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('disables a hidden frame in a tab that cannot write', async () => {
+    liveStore.setState({ canWrite: false })
+    render(<CommandPalette />)
+
+    await openPalette()
+
+    expect(
+      await screen.findByRole('option', { name: /swatch hidden/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it("finds another project's frame and opens its page", async () => {
+    receiveBoard(liveStore, {
+      ...BOARD,
+      projects: [
+        ...BOARD.projects,
+        {
+          ...BOARD.projects[0]!,
+          name: 'atlas',
+          pages: [
+            {
+              ...pageOf([], 'index'),
+              ref: 'atlas/index',
+              project: 'atlas',
+              frames: [
+                frameOf('globe', {
+                  ref: 'atlas/index/globe',
+                  project: 'atlas',
+                  page: 'index',
+                }),
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    render(<CommandPalette />)
+
+    await userEvent.type(await openPalette(), 'globe')
+    await userEvent.click(
+      await screen.findByRole('option', { name: /globe.*atlas \/ index/ }),
+    )
+
+    expect([location.pathname, selectionStore.getState().frames]).toEqual([
+      '/p/atlas/index',
+      ['atlas/index/globe'],
+    ])
+  })
+
+  it("prints an action's hint on its row", async () => {
+    register(
+      action('project.rename', 'Rename', {
+        command: { label: 'Rename project', hint: () => 'studio' },
+      }),
+    )
+    render(<CommandPalette />)
+
+    await openPalette()
+
+    expect(
+      await screen.findByRole('option', { name: /^Rename project ?studio$/ }),
+    ).toBeInTheDocument()
   })
 
   it('lists an action only while it is enabled and carries command', async () => {
