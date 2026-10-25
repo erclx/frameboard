@@ -312,15 +312,16 @@ function ThemeMarker({
 
 /**
  * The width a frame is previewed at, beside its name. It reads as a preview
- * rather than a size, since the frame's stored box is unchanged, and gives
- * way before the other parts on a narrow frame.
+ * rather than a size, since the frame's stored box is unchanged. It never
+ * shrinks, since a clipped width reads as a different number, so a narrow
+ * frame truncates the name first.
  */
 function PreviewChip({ width }: { width: number }) {
   return (
     <span
       data-preview-chip
       title={`Previewed at ${width} px wide. The frame's size is unchanged.`}
-      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] whitespace-nowrap text-foreground"
+      className="flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] whitespace-nowrap text-foreground"
     >
       <MoveHorizontal aria-hidden className="size-3 shrink-0" />
       Preview {width}
