@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
-import { registerActions } from '@/client/actions/registry'
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
@@ -816,6 +816,31 @@ describe('LeftPanel', () => {
       expect(sent).toEqual([
         { path: '/api/frame/rename', body: { ref: HERO, name: 'banner' } },
       ])
+    })
+
+    it('renames in the row on F2 there, leaving the board F2 alone', async () => {
+      let boardRenames = 0
+      cleanups.push(
+        registerActions([
+          {
+            id: 'frame.rename',
+            label: 'Rename frame',
+            group: 'frame',
+            keys: ['F2'],
+            run: () => (boardRenames += 1),
+          },
+        ]),
+        bindKeys(window),
+      )
+      renderPanel(project([page('home', [frame('hero')])]))
+      act(() => screen.getByRole('button', { name: 'Select hero' }).focus())
+
+      await userEvent.keyboard('{F2}')
+
+      expect([
+        boardRenames,
+        screen.getByRole('textbox', { name: /hero/ }) !== null,
+      ]).toEqual([0, true])
     })
 
     it('hides a frame from its eye and locks one from its lock', async () => {

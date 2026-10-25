@@ -156,6 +156,7 @@ export function structureActions(context: StructureContext): Action[] {
       id: 'frame.rename',
       label: 'Rename frame',
       group: 'frame',
+      keys: ['F2'],
       command: { label: 'Rename frame', icon: PencilLine },
       // The inspector shows one selected frame's name whenever the panels
       // show, unlike a layers row, which another tab can hide.

@@ -288,6 +288,8 @@ function FrameRow({
                   onKeyDown={(event) => {
                     if (event.key !== 'F2' || !canWrite) return
                     event.preventDefault()
+                    // The board's F2 renames in the inspector, so this row's keeps it here.
+                    event.stopPropagation()
                     startFrameRename(frame.ref, 'layers')
                   }}
                   className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"

@@ -123,7 +123,7 @@ describe('CanvasMenu', () => {
     ).toEqual([
       IS_MAC ? 'Copy as PNG⇧⌘C' : 'Copy as PNGCtrlShiftC',
       `Duplicate${MOD}D`,
-      'Rename',
+      'RenameF2',
       IS_MAC ? 'Hide⇧⌘H' : 'HideCtrlShiftH',
       IS_MAC ? 'Lock⇧⌘L' : 'LockCtrlShiftL',
       'Flip to dark',
