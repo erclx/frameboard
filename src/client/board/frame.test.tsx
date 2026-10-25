@@ -12,6 +12,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { openFindings } from './findings-open'
 import { Frame } from './frame'
 import { modeStore } from './mode'
+import { endPreview, setPreview } from './preview/store'
 
 function frame(name: string): FrameRecord {
   return {
@@ -558,6 +559,28 @@ describe('Frame label at low zoom', () => {
     expect(getByTitle('checkout')).toBeVisible()
   })
 
+  describe('on a previewed frame', () => {
+    afterEach(() => {
+      act(() => endPreview(['studio/home/checkout']))
+    })
+
+    it('hides the preview chip with a crowded label', () => {
+      act(() => setPreview(['studio/home/checkout'], 390))
+      const { container } = renderCrowded()
+
+      expect(container.querySelector('[data-preview-chip]')).not.toBeVisible()
+    })
+
+    it('shows the preview chip with a crowded label under the pointer', () => {
+      act(() => setPreview(['studio/home/checkout'], 390))
+      const { container, root } = renderCrowded()
+
+      root.setAttribute('data-label-hover', '')
+
+      expect(container.querySelector('[data-preview-chip]')).toBeVisible()
+    })
+  })
+
   it('shows a crowded label while the frame is selected', () => {
     const { getByTitle, root } = renderCrowded()
 
@@ -595,5 +618,110 @@ describe('Frame label at low zoom', () => {
     )
 
     expect(container.querySelector('[data-findings-dot]')).not.toBeVisible()
+  })
+})
+
+describe('Frame preview', () => {
+  afterEach(() => {
+    act(() => endPreview(['studio/home/a']))
+  })
+
+  it('lays the live page out at the previewed width without reloading it', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const src = iframe.getAttribute('src')
+    let loads = 0
+    iframe.addEventListener('load', () => (loads += 1))
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    expect(iframe.contentWindow?.innerWidth).toBe(1440)
+    expect(iframe.getAttribute('src')).toBe(src)
+    expect(loads).toBe(0)
+  })
+
+  it("flips the page's width media queries", async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const phone = () => iframe.contentWindow?.matchMedia('(max-width: 600px)')
+    const before = phone()?.matches
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    expect(before).toBe(true)
+    expect(phone()?.matches).toBe(false)
+  })
+
+  it('marks the label with the previewed width', () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => setPreview(['studio/home/a'], 834))
+
+    expect(container.querySelector('[data-preview-chip]')).toHaveTextContent(
+      'Preview 834',
+    )
+  })
+
+  it('draws a hugging height at its content height for the previewed width', async () => {
+    const hugging = { ...frame('a'), hugHeight: true }
+    const { container } = render(<Frame frame={hugging} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const document = iframe.contentDocument
+    if (!document) throw new Error('no frame document')
+    document.body.innerHTML = '<div style="height:320px"></div>'
+    document.body.style.margin = '0'
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('320px')
+  })
+
+  it('keeps a fixed height at a previewed width', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    iframe.contentDocument?.body.replaceChildren()
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('844px')
+  })
+
+  it('keeps the chip inside the label of a narrow frame, truncating the name first', () => {
+    const narrow = {
+      ...frame('a'),
+      name: 'a-very-long-frame-name-that-cannot-fit',
+    }
+    const { container, getByText } = render(
+      <div className="relative" style={{ paddingTop: 40 }}>
+        <Frame frame={narrow} live={false} version={0} />
+      </div>,
+    )
+
+    act(() => setPreview(['studio/home/a'], 60))
+
+    const chip = container.querySelector('[data-preview-chip]')
+    const label = getByText(narrow.name).parentElement
+    const name = getByText(narrow.name)
+    expect(name.clientWidth).toBe(0)
+    expect(chip?.getBoundingClientRect().right).toBeLessThanOrEqual(
+      Math.ceil(label?.getBoundingClientRect().right ?? 0),
+    )
+  })
+
+  it('draws at its stored width once the preview ends', () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    act(() => setPreview(['studio/home/a'], 834))
+
+    act(() => endPreview(['studio/home/a']))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.width).toBe('390px')
+    expect(container.querySelector('[data-preview-chip]')).toBeNull()
   })
 })

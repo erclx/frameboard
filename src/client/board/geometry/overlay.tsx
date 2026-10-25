@@ -4,7 +4,7 @@ import { useSelection } from '../selection'
 import { boundsOf, type Box } from './box'
 import { OUTLINE, place, screen, sizeLabel } from './draw'
 import type { Corner } from './resize'
-import { usePendingFrames } from './write'
+import { useDrawnFrames, usePendingFrames } from './write'
 
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
@@ -32,10 +32,12 @@ interface OverlayProps {
 export function SelectionOverlay({ frames }: OverlayProps) {
   const selected = useSelection((state) => state.frames)
   const inside = useSelection((state) => Boolean(state.element))
-  const shown = usePendingFrames(
-    frames.filter((frame) => selected.includes(frame.ref)),
-  )
+  const chosen = frames.filter((frame) => selected.includes(frame.ref))
+  const shown = useDrawnFrames(chosen)
   const bounds = boundsOf(shown.map((frame) => frame.box))
+  // The chip names the size a write starts from, never a previewed width,
+  // which reads as the frame's size when it is only a view.
+  const sized = boundsOf(usePendingFrames(chosen).map((frame) => frame.box))
   return (
     <div
       data-overlay
@@ -43,7 +45,12 @@ export function SelectionOverlay({ frames }: OverlayProps) {
       style={{ zIndex: OVERLAY_Z }}
     >
       {bounds ? (
-        <Selection frames={shown} bounds={bounds} inside={inside} />
+        <Selection
+          frames={shown}
+          bounds={bounds}
+          size={sized ?? bounds}
+          inside={inside}
+        />
       ) : null}
       <div data-marquee-hits />
       <div
@@ -65,10 +72,13 @@ export function SelectionOverlay({ frames }: OverlayProps) {
 function Selection({
   frames,
   bounds,
+  size,
   inside,
 }: {
   frames: readonly FrameRecord[]
   bounds: Box
+  /** The bounds the chip names, being the stored or pending boxes. */
+  size: Box
   inside: boolean
 }) {
   const several = frames.length > 1
@@ -111,7 +121,7 @@ function Selection({
         ))}
       </div>
       <span data-chip hidden={inside} className={CHIP}>
-        {several ? `${frames.length} frames` : sizeLabel(bounds)}
+        {several ? `${frames.length} frames` : sizeLabel(size)}
       </span>
       <span data-move-chip hidden className={CHIP} />
     </div>

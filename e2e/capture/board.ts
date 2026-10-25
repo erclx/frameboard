@@ -1302,6 +1302,23 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'preview-phone',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        // Carries the active Preview row, the label's chip, and the frame at
+        // phone width into the evidence comparison.
+        evidence: true,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero'] }),
+            actWhen('[data-selection]', 'Preview at phone width, 390', 'click'),
+            readyWhen('[data-preview-chip]'),
+          ),
+        ),
+      },
+      {
         section: 'marquee',
         theme,
         route: '/p/webapp/home',

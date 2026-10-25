@@ -9,7 +9,15 @@ import {
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { dropWaiting } from '../claims/waiting'
-import { followPending, withPending, writeBoxes } from './write'
+import { endPreview, previewOf, setPreview } from '../preview/store'
+import {
+  dropPending,
+  followPending,
+  holdBoxes,
+  withDrawn,
+  withPending,
+  writeBoxes,
+} from './write'
 
 const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 390, height: 844 } })
 const MOVED = { x: 40, y: 0, width: 390, height: 844 }
@@ -244,5 +252,41 @@ describe('writeBoxes', () => {
       expect(drawnBox()).toEqual(HERO.box)
       expect(bodies).toEqual([])
     })
+  })
+})
+
+describe('a previewed frame', () => {
+  afterEach(() => {
+    endPreview([HERO.ref])
+  })
+
+  it('hands a write its stored box, never the previewed width', () => {
+    setPreview([HERO.ref], 1440)
+
+    expect(withPending([HERO])[0]?.box).toEqual(HERO.box)
+    expect(withDrawn([HERO])[0]?.box).toEqual({ ...HERO.box, width: 1440 })
+  })
+
+  it('leaves its preview when a write of its box goes out', async () => {
+    liveStore.setState({ canWrite: true })
+    setPreview([HERO.ref], 1440)
+
+    await writeBoxes(
+      'studio/home',
+      { [HERO.ref]: MOVED },
+      { [HERO.ref]: HERO.box },
+      answering(200, { ok: true, data: { frames: [] } }),
+    )
+
+    expect(previewOf(HERO.ref)).toBeUndefined()
+  })
+
+  it('leaves its preview when a nudge holds its box', () => {
+    setPreview([HERO.ref], 1440)
+
+    holdBoxes({ [HERO.ref]: MOVED })
+    dropPending([HERO.ref])
+
+    expect(previewOf(HERO.ref)).toBeUndefined()
   })
 })

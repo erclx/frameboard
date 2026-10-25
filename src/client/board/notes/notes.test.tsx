@@ -10,6 +10,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 
 import { modeStore } from '../mode'
+import { endPreview, setPreview } from '../preview/store'
 import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
@@ -290,6 +291,23 @@ describe('NotesLayer', () => {
     expect(screen.getByRole('button', { name: 'Note 1 on hero' })).toHaveStyle({
       left: '390px',
       top: '0px',
+    })
+  })
+
+  describe('on a previewed frame', () => {
+    afterEach(() => {
+      act(() => endPreview([HERO.ref]))
+    })
+
+    it('draws a frame note at the corner of the previewed width', () => {
+      live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+      renderLayer()
+
+      act(() => setPreview([HERO.ref], 1440))
+
+      expect(
+        screen.getByRole('button', { name: 'Note 1 on hero' }),
+      ).toHaveStyle({ left: '1440px', top: '0px' })
     })
   })
 

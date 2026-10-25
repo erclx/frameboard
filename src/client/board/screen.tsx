@@ -29,6 +29,7 @@ import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
+import { usePreviewActions } from './preview/actions'
 import { useStructureActions } from './structure/actions'
 import { useFrameTool } from './structure/tool'
 
@@ -83,6 +84,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useCompareActions()
   useFollowActions()
   useFindActions()
+  usePreviewActions()
 
   if (!record) {
     return <Missing message={`No project ${project} on this board.`} />

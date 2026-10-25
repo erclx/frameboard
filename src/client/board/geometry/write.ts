@@ -6,6 +6,14 @@ import { writeBoard } from '@/client/live/write'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
 import { whenFree } from '../claims/waiting'
+import {
+  endPreview,
+  previewedBox,
+  previewFrames,
+  previewsNow,
+  usePreview,
+  usePreviewedFrames,
+} from '../preview/store'
 import { type Box, sameBox } from './box'
 
 /**
@@ -42,9 +50,33 @@ export function usePendingFrames(
   return drawn(frames, byRef)
 }
 
-/** The frames as drawn right now, for a gesture handler. */
+/**
+ * The frames at the boxes a write starts from right now, each pending box
+ * over its stored one, for a gesture or an action. A width preview never
+ * reaches it, so no write can start from a previewed width.
+ */
 export function withPending(frames: readonly FrameRecord[]): FrameRecord[] {
   return drawn(frames, pendingStore.getState().byRef)
+}
+
+/**
+ * The box a frame draws at, its pending box over its stored one at its
+ * preview's width. For drawing alone, since a write starting here would
+ * persist the preview.
+ */
+export function useDrawnBox(frame: FrameRecord): Box {
+  const box = usePendingBox(frame.ref) ?? frame.box
+  return previewedBox(frame, box, usePreview(frame.ref))
+}
+
+/** The frames as drawn, each at its pending box and its preview's width, rereading on every change. */
+export function useDrawnFrames(frames: readonly FrameRecord[]): FrameRecord[] {
+  return usePreviewedFrames(usePendingFrames(frames))
+}
+
+/** The frames as drawn right now, for hit-testing a press. Never a write's base. */
+export function withDrawn(frames: readonly FrameRecord[]): FrameRecord[] {
+  return previewFrames(withPending(frames), previewsNow())
 }
 
 function drawn(
@@ -59,9 +91,11 @@ function drawn(
 
 /**
  * Draws boxes a run of edits has not sent yet, such as nudges waiting for
- * the keys to rest. The `writeBoxes` that follows owns them from then on.
+ * the keys to rest, ending the preview of each frame named. The `writeBoxes`
+ * that follows owns them from then on.
  */
 export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
+  endPreview(Object.keys(boxes))
   setPending(Object.keys(boxes), (ref) => {
     const box = boxes[ref]
     return box && { box }
@@ -96,6 +130,9 @@ export async function writeBoxes(
   send: typeof fetch = fetch,
 ): Promise<boolean> {
   if (Object.keys(asked).length === 0) return true
+  // An edit of a frame's box acts on the box itself, so it ends any preview
+  // rather than leave the frame drawn at a width it no longer starts from.
+  endPreview(Object.keys(asked))
   const boxes: Record<string, Box> = { ...asked }
   const started: Record<string, Box> = { ...expected }
   for (const ref of Object.keys(asked)) {

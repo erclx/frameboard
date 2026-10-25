@@ -12,6 +12,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
+import { endPreview, previewOf, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
 import { startFrameRename, stopFrameRename } from '../structure/actions'
 import { presetStore } from '../structure/tool'
@@ -450,4 +451,130 @@ describe('FrameSection', () => {
 
     expect(writes[0]?.boxes[SWATCHES.ref]?.width).toBe(1)
   })
+
+  describe('Preview row', () => {
+    afterEach(() => {
+      act(() => endPreview([SWATCHES.ref, SUNSET.ref]))
+    })
+
+    function renderRow(frames = [SWATCHES]) {
+      return renderSection(frames)
+    }
+
+    it('previews the frame at a preset width and writes nothing', async () => {
+      const writes = renderRow()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+      )
+
+      expect(previewOf(SWATCHES.ref)).toEqual({ width: 390 })
+      expect(
+        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      expect(writes).toEqual([])
+    })
+
+    it('previews every selected frame at once', async () => {
+      renderRow([SWATCHES, SUNSET])
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Preview at tablet width, 834' }),
+      )
+
+      expect([previewOf(SWATCHES.ref), previewOf(SUNSET.ref)]).toEqual([
+        { width: 834 },
+        { width: 834 },
+      ])
+    })
+
+    it('leaves the Width field at the stored width under a preview', async () => {
+      renderRow()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+      )
+
+      expect(value('Width')).toBe('640')
+      expect(value('Preview width')).toBe('390')
+    })
+
+    it('previews a typed width', async () => {
+      const writes = renderRow()
+
+      await userEvent.type(
+        screen.getByRole('textbox', { name: 'Preview width' }),
+        '500{Enter}',
+      )
+
+      expect(previewOf(SWATCHES.ref)).toEqual({ width: 500 })
+      expect(writes).toEqual([])
+    })
+
+    it('scrubs the width from the stored one, previewing as it drags', () => {
+      const writes = renderRow()
+      const input = screen.getByRole('textbox', { name: 'Preview width' })
+      const area =
+        input.parentElement?.querySelector<HTMLElement>('.cursor-ew-resize')
+      if (!area) throw new Error('no scrub area')
+
+      scrubBy(area, 3)
+
+      expect(previewOf(SWATCHES.ref)?.width).toBeGreaterThan(640)
+      expect(writes).toEqual([])
+    })
+
+    it('steps each frame from its own previewed width on a Mixed value', async () => {
+      act(() => {
+        setPreview([SWATCHES.ref], 390)
+        setPreview([SUNSET.ref], 834)
+      })
+      renderRow([SWATCHES, SUNSET])
+
+      await userEvent.click(
+        screen.getByRole('textbox', { name: 'Preview width' }),
+      )
+      await userEvent.keyboard('{ArrowUp>3/}')
+
+      expect([previewOf(SWATCHES.ref), previewOf(SUNSET.ref)]).toEqual([
+        { width: 393 },
+        { width: 837 },
+      ])
+    })
+
+    it('ends the preview', async () => {
+      act(() => setPreview([SWATCHES.ref], 390))
+      renderRow()
+
+      await userEvent.click(screen.getByRole('button', { name: 'End preview' }))
+
+      expect(previewOf(SWATCHES.ref)).toBeUndefined()
+      expect(
+        screen.queryByRole('button', { name: 'End preview' }),
+      ).not.toBeInTheDocument()
+    })
+  })
 })
+
+/** Drags a scrub area right by `moves` of base-ui's two pixel steps and releases it. */
+function scrubBy(area: HTMLElement, moves: number) {
+  act(() => {
+    area.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        pointerType: 'mouse',
+      }),
+    )
+  })
+  for (let move = 0; move < moves; move++) {
+    act(() => {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, movementX: 2 }),
+      )
+    })
+  }
+  act(() => {
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+  })
+}

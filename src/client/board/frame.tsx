@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Lock, Moon, Sun, TriangleAlert } from 'lucide-react'
+import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -28,8 +28,10 @@ import { ClaimTag } from './claims/tag'
 import { FindingsList } from './findings-list'
 import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
-import { usePendingBox } from './geometry/write'
+import { useDrawnBox } from './geometry/write'
 import { useMode } from './mode'
+import { measureHeight } from './preview/height'
+import { measurePreview, usePreview } from './preview/store'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
@@ -63,8 +65,10 @@ export const Frame = memo(function Frame({
   claim,
   unseen = false,
 }: FrameProps) {
-  // A released move holds its place until the board carries it back.
-  const { x, y, width, height } = usePendingBox(frame.ref) ?? frame.box
+  // A released move holds its place until the board carries it back, and a
+  // preview draws its width without touching either box.
+  const { x, y, width, height } = useDrawnBox(frame)
+  const preview = usePreview(frame.ref)
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
@@ -134,6 +138,24 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', check)
   }, [live, frame.ref])
 
+  // A previewed frame hugging its height takes its content's height at the
+  // previewed width, read again on each load, as an agent's write reloads it.
+  const previewWidth = preview?.width
+  const { hugHeight, box } = frame
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element || previewWidth === undefined || !hugHeight) return
+    const measure = () =>
+      measurePreview(
+        frame.ref,
+        previewWidth,
+        measureHeight(element, box.height),
+      )
+    measure()
+    element.addEventListener('load', measure)
+    return () => element.removeEventListener('load', measure)
+  }, [live, previewWidth, hugHeight, frame.ref, box.height])
+
   useEffect(() => {
     const element = iframe.current
     if (!playing || !element) return
@@ -186,7 +208,10 @@ export const Frame = memo(function Frame({
         ) : null}
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
-        <span className="truncate">{frame.name}</span>
+        <span className={cn('truncate', preview && 'shrink-[1000]')}>
+          {frame.name}
+        </span>
+        {preview ? <PreviewChip width={preview.width} /> : null}
         {playing ? null : (
           <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
         )}
@@ -284,6 +309,26 @@ function ThemeMarker({
       <Icon aria-hidden className="size-3" />
       {theme === 'dark' ? 'Dark' : 'Light'}
     </button>
+  )
+}
+
+/**
+ * The width a frame is previewed at, beside its name. It reads as a preview
+ * rather than a size, since the frame's stored box is unchanged. A narrow
+ * label truncates the name first, which shrinks far faster beside it, then
+ * ends the chip in an ellipsis, so a clipped width never reads as a different
+ * number and the chip stays inside the label.
+ */
+function PreviewChip({ width }: { width: number }) {
+  return (
+    <span
+      data-preview-chip
+      title={`Previewed at ${width} px wide. The frame's size is unchanged.`}
+      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground"
+    >
+      <MoveHorizontal aria-hidden className="size-3 shrink-0" />
+      <span className="truncate">Preview {width}</span>
+    </span>
   )
 }
 

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
+import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectElement, selectionStore } from '../selection'
 import { drawRest } from './draw'
 import { SelectionOverlay } from './overlay'
@@ -101,5 +102,25 @@ describe('SelectionOverlay', () => {
     expect(container.querySelector('[data-chip]')).toHaveTextContent(
       '640 × 188',
     )
+  })
+
+  describe('on a previewed frame', () => {
+    afterEach(() => {
+      act(() => endPreview([LEFT.ref]))
+    })
+
+    it('outlines the previewed width and names the stored size', () => {
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+      act(() => setPreview([LEFT.ref], 390))
+
+      const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+      expect(
+        container.querySelector<HTMLElement>('[data-selection]')?.style.width,
+      ).toBe('390px')
+      expect(container.querySelector('[data-chip]')).toHaveTextContent(
+        '640 × 188',
+      )
+    })
   })
 })

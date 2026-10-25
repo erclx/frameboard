@@ -9,6 +9,7 @@ import type { Box } from '../geometry/box'
 import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
+import { previewedBox, previewOf } from '../preview/store'
 import { glowStore, played } from './glow-store'
 
 /** How long a glow shows, its fade taking the last 600 ms where motion is allowed. */
@@ -49,8 +50,14 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
 
     const play = (frame: FrameRecord, change: FrameChange, doc: Document) => {
       const key = nextPlay++
+      // The whole frame glows as drawn, at a previewed width included.
+      const { width, height } = previewedBox(
+        frame,
+        frame.box,
+        previewOf(frame.ref),
+      )
       const boxes = change.whole
-        ? [{ x: 0, y: 0, width: frame.box.width, height: frame.box.height }]
+        ? [{ x: 0, y: 0, width, height }]
         : change.elements.flatMap((index) => {
             const element = elementAt(doc, index)
             if (!element) return []

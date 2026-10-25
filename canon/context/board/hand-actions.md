@@ -59,6 +59,18 @@ A press on the canvas while an inspector field has focus blurs the field, which 
 
 A move released with Alt held puts the frames back and sends one duplicate carrying the drop's offset, so the copies land there in one undo step. A locked frame neither moves nor copies.
 
+### `src/client/board/preview/`
+
+Owns the width a frame is previewed at, held in this tab's memory alone, so a reload drops it and nothing reaches the server, the history, or the hug step. The palette carries a preview at each preset width and End preview, with no key.
+
+- The iframe keeps its `src` and reflows at the new width, so its animation, media queries, and element selection read the live page
+- A frame hugging its height takes its content's height at the previewed width, read as the server's fit step reads it, and a page sized off the viewport keeps its stored height
+- A frame the board stops showing, deleted, hidden, or moved to another page, drops its preview
+
+A frame draws at its pending box over its stored one at the previewed width, and a press, a hover, an element pick, a note, and a right-click all hit it there. The selection chip still names the stored size.
+
+`withPending` in `geometry/write.ts` hands every gesture and action the stored and pending boxes alone, since each writes what it reads, and a box write ends the preview of each frame it names as it starts.
+
 ### `src/server/history/`
 
 Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
