@@ -47,7 +47,7 @@ The findings the board holds between watch batches, and the warm checker that ru
 - A change to a token sheet rechecks and reloads every frame it reaches, and a change to a project's `project.json` rechecks them without a reload
 - `rendered-findings.ts` rechecks one frame at a time on the PNG route's warm browser but its own queue, sweeping every frame at start and after each browser launch
 - A batch queues the frames `recheckRefs` names plus every frame whose box or file time changed, since a resize writes `layout.json` alone
-- A frame queued again before its result lands drops that result, and a failed recheck lands an empty list, so a label never shows findings from an older file
+- A frame queued again before its result lands drops that result, a failed recheck lands an empty list, and a reading of a file since rewritten lands nothing
 
 ### `src/server/routes/checks.ts`
 

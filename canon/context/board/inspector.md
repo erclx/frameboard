@@ -15,7 +15,7 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 Owns the right panel, under a header of the avatar and the zoom level, and its controls. A control joins it only when the developer's edit beats asking the agent and leaves layout alone.
 
-- **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key
+- **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Element:** name, opacity, radius, and typography size, weight, and alignment, plus its text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
@@ -24,7 +24,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Selection colors:** the colors the frame, the frames, or the element's subtree use, with token names, and a flag on raw values, read-only
 
-The Frame section stays above an element's sections and hides its name row while an element is selected. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
+The Frame section stays above an element's sections and hides its name row while an element is selected. One frame with findings lists them under Checks below it, the list its label's badge opens. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
 - Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs

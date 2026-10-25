@@ -30,6 +30,8 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 - Frame order is stacking order, so reordering in the layers panel changes what draws on top and leaves positions alone, while pages reorder in the pages list
 - `board.json` lets a verb find a standalone board by walking up from the working folder, and a project's `project.json` lists its pages in display order and may hold `checks`
 
+An entry's `hugWidth` and `hugHeight` read as fixed when absent. A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size.
+
 ### `src/server/edit/`
 
 Owns the edit writer, which parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span. It never serializes the tree, which rewrites the file's formatting, and never uses Bun's `HTMLRewriter`, which Node lacks.

@@ -29,6 +29,8 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing
 - A fresh `serve` waits up to one second for an old writing tab to reconnect, and opens one only when no writing tab is connected, so `opened` is true exactly when this call opened one
 
+### Write access
+
 A tab gets write access only through a single-use redeem URL, and the verbs below hand one out or need a live server.
 
 - The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
@@ -36,10 +38,14 @@ A tab gets write access only through a single-use redeem URL, and the verbs belo
 - `open` and `show` exit 3 with `server-not-running` rather than start a server, and `show` points every open board tab at a frame
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
 
+### Structure verbs
+
 The structure verbs reshape projects, pages, and frames.
 
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
+- `frame add` leaves every axis no size names hugging, a preset or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
+- `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
 
 ### `src/cli/inbox/`
 
@@ -71,6 +77,6 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/re
 
 - The inbox monitor starts with `when: "always"`, because with `on-skill-invoke` it never started in the spike
 - Claude Code runs plugin monitors only in interactive sessions and not on Bedrock, Google Cloud, or Foundry, where a sent note waits as a pinned one
-- `frame fit` sets height only, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `min-height: 100vh`
+- `frame fit` sets height only, at the layout width, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `100vh`
 - The hook runs the installed check directly, preferring Bun and never a package runner, which costs about ten times the check on every write
 - `--no-open` opens nothing on either `serve` path, which is how tests, `preview`, and capture run, so a test never launches a browser on the developer's screen

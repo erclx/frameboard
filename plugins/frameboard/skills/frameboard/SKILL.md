@@ -22,6 +22,8 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 ## Draw a frame
 
 1. Place it with `frameboard frame add <page>/<frame> --json`, choosing a phone, tablet, or desktop size when the screen calls for one. The verb writes a skeleton file when none exists.
+   - A frame with no size hugs its content on both axes, and a size fixes its width alone, so leave the size off a component and let the running server measure it
+   - Resize an axis only to fix it, since a resize stops that axis hugging
 2. Write the frame's file at the path the envelope returns. Keep everything it loads inside its own page folder, or in the project's `assets/` folder when two pages share a file.
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
 4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done.
