@@ -197,6 +197,8 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
         <div className="flex min-w-0 flex-1 flex-col pr-4">
           <ToastTitle />
           <ToastDescription />
+          {/* Renders nothing for a toast added with no `actionProps`. */}
+          <ToastAction className="mt-2 self-start" />
         </div>
         <ToastClose />
       </ToastContent>

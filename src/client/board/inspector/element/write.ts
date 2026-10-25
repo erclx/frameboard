@@ -25,31 +25,73 @@ export type ElementChange =
 /** Sends one change for the selected element and answers whether it was written. */
 export type WriteElement = (change: ElementChange) => Promise<boolean>
 
+/** A refused edit as the toast shows it, with the typed text to copy when a text edit was refused. */
+export interface Refusal {
+  title: string
+  description: string
+  copy?: string
+}
+
 export interface WriteDeps {
   selection?: SelectionStore
   send?: typeof fetch
   /** Shows a refusal, the kit's toast by default. */
-  notify?: (refusal: { title: string; description: string }) => void
+  notify?: (refusal: Refusal) => void
 }
 
-/** The hashes an element edit went from and to, null when it was not written. */
-type Landed = { from: readonly string[]; to: string } | null
+/**
+ * The hashes an element edit's chain went from and to, null when it was not
+ * written. `at` maps each element index the chain edited, as its edits were
+ * made, to where it now sits, and `shifted` says whether any was found again
+ * past an agent's write, after which an index the chain never edited may
+ * name another element.
+ */
+type Landed = {
+  from: readonly string[]
+  to: string
+  at: ReadonlyMap<number, number>
+  shifted: boolean
+} | null
 
 /** Each frame's latest element edit, which the next edit of that frame goes behind. */
 const queues = new Map<string, Promise<Landed>>()
 
+/** Typed text an agent's write refused, by frame and element index, which the Text field shows again as a draft. */
+const keptTexts = new Map<string, string>()
+
+function textKey({ frame, index }: Pick<ElementKey, 'frame' | 'index'>) {
+  return `${frame}\n${index}`
+}
+
+/** The text a refused text edit of this element typed, or null when none is kept. */
+export function keptText(
+  at: Pick<ElementKey, 'frame' | 'index'>,
+): string | null {
+  return keptTexts.get(textKey(at)) ?? null
+}
+
+/** Drops the text kept for this element, once it is applied again or cancelled. */
+export function forgetText(at: Pick<ElementKey, 'frame' | 'index'>): void {
+  keptTexts.delete(textKey(at))
+}
+
 /**
  * Writes one change into the element `key` names, made from the hash its
- * frame rendered, so an agent's write in between is refused as stale. The
- * answered hash goes to the selection at once, before the watcher reloads
- * the frame, which leaves its hash check to this write until it answers. A
- * refusal raises the toast and answers false, so the field shows the stored
- * value.
+ * frame rendered. The server finds the element again past an agent's write
+ * to the frame by the bytes the change reads, and refuses as stale once the
+ * agent changed those. The answered hash goes to the selection at once,
+ * before the watcher reloads the frame, which leaves its hash check to this
+ * write until it answers, and the element is selected again at the index it
+ * landed at. A refusal raises the toast and answers false, so the field
+ * shows the stored value, and a refused text edit keeps its text for the
+ * Text field.
  *
  * Edits of one frame go in order. While another session holds the frame an
  * edit waits, and one made from the hash an earlier waiting edit started
  * from is sent from the hash that one answered, so neither is lost nor sent
- * on bytes the file no longer holds. A refusal drops the edits behind it.
+ * on bytes the file no longer holds. Once one was found again elsewhere, an
+ * edit of an element the chain never edited goes from its own hash instead,
+ * for the server to find again too. A refusal drops the edits behind it.
  */
 export function writeElement(
   page: string,
@@ -73,9 +115,20 @@ async function editInTurn(
   {
     selection = selectionStore,
     send = fetch,
-    notify = (refusal) =>
+    notify = ({ copy, ...refusal }) =>
       // It leaves after Base UI's 5 s default, which hover or focus pauses.
-      toast.add({ ...refusal, type: 'warning' }),
+      toast.add({
+        ...refusal,
+        type: 'warning',
+        ...(copy === undefined
+          ? {}
+          : {
+              actionProps: {
+                children: 'Copy text',
+                onClick: () => void navigator.clipboard.writeText(copy),
+              },
+            }),
+      }),
   }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
@@ -85,7 +138,10 @@ async function editInTurn(
     return null
   }
   const follows = before !== undefined && before.from.includes(key.hash)
-  const hash = follows ? before.to : key.hash
+  const moved = follows ? before.at.get(key.index) : undefined
+  const rebased = follows && (!before.shifted || moved !== undefined)
+  const hash = rebased ? before.to : key.hash
+  const index = rebased ? (moved ?? key.index) : key.index
   let done = () => {}
   try {
     const answer = await whenFree([key.frame], 'edit', async () => {
@@ -96,7 +152,7 @@ async function editInTurn(
       try {
         return await writeBoard<EditResult>(
           '/api/frames/edit',
-          { ref: key.frame, index: key.index, hash, change },
+          { ref: key.frame, index, hash, change },
           'POST',
           send,
         )
@@ -105,25 +161,54 @@ async function editInTurn(
         throw error
       }
     })
+    const relocated = answer.from !== undefined && answer.from !== hash
+    // The frame shows the agent's bytes the edit landed over until its reload.
+    if (relocated && answer.from) rememberHash(key.frame, answer.from)
     rememberHash(key.frame, answer.hash)
-    const held = selection.getState().element
-    if (held?.frame === key.frame && held.index === key.index) {
-      selectElement(selection, page, { ...key, hash: answer.hash })
+    const { page: shownPage, frames, element: held } = selection.getState()
+    // The agent's reload during the wait drops the element to its frame.
+    const dropped =
+      !held &&
+      shownPage === page &&
+      frames.length === 1 &&
+      frames[0] === key.frame
+    if (
+      (held?.frame === key.frame &&
+        (held.index === key.index || held.index === index)) ||
+      (relocated && dropped)
+    ) {
+      selectElement(selection, page, {
+        frame: key.frame,
+        index: answer.index,
+        hash: answer.hash,
+      })
     }
     done()
     settleLanded(selection, shownHash)
+    const at = new Map(follows ? before.at : [])
+    at.set(key.index, answer.index)
     return {
       from: follows ? [...before.from, hash] : [key.hash],
       to: answer.hash,
+      at,
+      shifted: (follows && before.shifted) || relocated,
     }
   } catch (error) {
     if (!(error instanceof WaitDropped)) {
+      const text = change.kind === 'text' ? change.value : undefined
+      const stale =
+        error instanceof BoardWriteError && error.code === 'stale-address'
+      if (stale && text !== undefined) keptTexts.set(textKey(key), text)
       notify({
         title: 'Edit not saved',
         description:
           error instanceof BoardWriteError
-            ? sentence(error.message)
+            ? sentence(error.message) +
+              (stale && text !== undefined
+                ? ' Press Enter to apply your text anyway.'
+                : '')
             : 'The board could not be reached, so nothing was written.',
+        ...(stale && text !== undefined ? { copy: text } : {}),
       })
     }
     done()
@@ -140,9 +225,15 @@ export function shownHash(ref: string): string | null {
   return shown ? renderedHash(shown) : null
 }
 
-/** The writer's detail, which starts lowercase for the CLI's line, as a sentence. */
+/**
+ * The writer's detail, which starts lowercase for the CLI's line, as a
+ * sentence. A leading file name keeps its case, as it is spelled on disk.
+ */
 function sentence(detail: string): string {
-  const text = detail.charAt(0).toUpperCase() + detail.slice(1)
+  const fileFirst = /^\S+\.html\b/.test(detail)
+  const text = fileFirst
+    ? detail
+    : detail.charAt(0).toUpperCase() + detail.slice(1)
   return /[.!?]$/.test(text) ? text : `${text}.`
 }
 

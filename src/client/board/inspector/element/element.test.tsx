@@ -21,6 +21,7 @@ import { dropWaiting } from '../../claims/waiting'
 import {
   clear,
   createSelectionStore,
+  select,
   selectElement,
   selectionStore,
 } from '../../selection'
@@ -33,7 +34,13 @@ import { StrokeSection } from './stroke'
 import { useLiveElement } from './styles'
 import { TextSection } from './text'
 import { TypographySection } from './typography'
-import { type ElementChange, writeElement } from './write'
+import {
+  type ElementChange,
+  forgetText,
+  type Refusal,
+  type WriteElement,
+  writeElement,
+} from './write'
 
 function tokenOf(name: string, light: string, dark = light): TokenRow {
   return { name, group: 'color', light, dark, sheet: 'tokens.css' }
@@ -719,9 +726,89 @@ describe('ShadowSection', () => {
 })
 
 describe('TextSection', () => {
+  const AT = { frame: 'studio/home/hero', index: 5 }
+
+  afterEach(() => {
+    forgetText(AT)
+  })
+
+  /** A write answered as the route answers an edit the agent's write to the element refused. */
+  function colliding(): WriteElement {
+    return (change) =>
+      writeElement('studio/home', { ...AT, hash: 'a'.repeat(64) }, change, {
+        selection: createSelectionStore(),
+        send: async () =>
+          Response.json(
+            {
+              ok: false,
+              error: {
+                code: 'stale-address',
+                message:
+                  'the agent changed this <h1> in hero.html while your edit waited, so nothing was written',
+              },
+            },
+            { status: 409 },
+          ),
+        notify: () => {},
+      })
+  }
+
+  it('keeps the typed text as a draft once the agent changed the element', async () => {
+    render(
+      <TextSection
+        text="Hello"
+        disabled={false}
+        write={colliding()}
+        element={AT}
+      />,
+    )
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.clear(area)
+    await userEvent.type(area, 'Welcome{Enter}')
+
+    await expect.poll(() => (area as HTMLTextAreaElement).value).toBe('Welcome')
+  })
+
+  it('shows the kept draft once the element is selected again, and applies it on Enter', async () => {
+    await colliding()({ kind: 'text', value: 'Welcome' })
+    const { changes, write } = recorder()
+
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    expect(area).toHaveValue('Welcome')
+    await userEvent.type(area, '{Enter}')
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Welcome' }])
+  })
+
+  it('forgets the kept draft on Esc', async () => {
+    await colliding()({ kind: 'text', value: 'Welcome' })
+    const { changes, write } = recorder()
+    const { unmount } = render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
+
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Text' }),
+      '{Escape}',
+    )
+    unmount()
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+    expect(changes).toEqual([])
+  })
+
   it('writes the text on Cmd+Enter', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.clear(area)
@@ -732,7 +819,9 @@ describe('TextSection', () => {
 
   it('writes the text once on Enter and keeps nothing for the blur', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.clear(area)
@@ -744,7 +833,9 @@ describe('TextSection', () => {
 
   it('adds no line on Shift+Enter', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.type(area, '{Shift>}{Enter}{/Shift}')
@@ -755,7 +846,9 @@ describe('TextSection', () => {
 
   it('writes a pasted line break as a space', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.clear(area)
@@ -767,7 +860,9 @@ describe('TextSection', () => {
 
   it('hints the keys only while it has focus', async () => {
     const { write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     expect(screen.queryByText('to apply', { exact: false })).toBeNull()
     await userEvent.click(screen.getByRole('textbox', { name: 'Text' }))
@@ -777,7 +872,9 @@ describe('TextSection', () => {
 
   it('cancels on Esc and writes nothing', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.type(area, ' there{Escape}')
@@ -788,7 +885,9 @@ describe('TextSection', () => {
 
   it('shows the stored text again after a refused write', async () => {
     const { write } = recorder(false)
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
     await userEvent.clear(area)
@@ -802,7 +901,14 @@ describe('TextSection', () => {
     'drops a %s while the field is unfocused, and writes nothing on the next blur',
     async (inputType) => {
       const { changes, write } = recorder()
-      render(<TextSection text="Hello" disabled={false} write={write} />)
+      render(
+        <TextSection
+          text="Hello"
+          disabled={false}
+          write={write}
+          element={AT}
+        />,
+      )
       const area = screen.getByRole('textbox', { name: 'Text' })
 
       browserHistory(area as HTMLTextAreaElement, 'Hel', inputType)
@@ -816,7 +922,9 @@ describe('TextSection', () => {
 
   it('follows a historyUndo while the field is focused', async () => {
     const { changes, write } = recorder()
-    render(<TextSection text="Hello" disabled={false} write={write} />)
+    render(
+      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+    )
     const area = screen.getByRole('textbox', { name: 'Text' })
 
     act(() => (area as HTMLTextAreaElement).focus())
@@ -907,15 +1015,126 @@ describe('writeElement', () => {
     expect(selection.getState().element?.hash).toBe('b'.repeat(64))
   })
 
+  it('reselects the element at the index it landed at, once the agent’s reload dropped it', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    select(selection, 'studio/home', [KEY.frame])
+
+    await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'text', value: 'Welcome' },
+      {
+        selection,
+        send: answering(200, {
+          ok: true,
+          data: {
+            ref: KEY.frame,
+            index: 6,
+            hash: 'b'.repeat(64),
+            from: 'c'.repeat(64),
+          },
+        }),
+        notify: () => {},
+      },
+    )
+
+    expect(selection.getState().element).toEqual({
+      frame: KEY.frame,
+      index: 6,
+      hash: 'b'.repeat(64),
+    })
+  })
+
+  it('leaves another element the person selected meanwhile alone', async () => {
+    const selection = createSelectionStore()
+    const other = { ...KEY, index: 3 }
+    selectElement(selection, 'studio/home', other)
+
+    await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'text', value: 'Welcome' },
+      {
+        selection,
+        send: answering(200, {
+          ok: true,
+          data: { ref: KEY.frame, index: 6, hash: 'b'.repeat(64) },
+        }),
+        notify: () => {},
+      },
+    )
+
+    expect(selection.getState().element).toEqual(other)
+  })
+
+  it('keeps a leading file name’s case in the toast', async () => {
+    const told: Refusal[] = []
+
+    await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'style', property: 'opacity', value: '0.5' },
+      {
+        selection: createSelectionStore(),
+        send: answering(409, {
+          ok: false,
+          error: {
+            code: 'stale-address',
+            message:
+              'stats.html changed after this edit was made, so nothing was written',
+          },
+        }),
+        notify: (refusal) => told.push(refusal),
+      },
+    )
+
+    expect(told[0]?.description).toBe(
+      'stats.html changed after this edit was made, so nothing was written.',
+    )
+  })
+
+  it('tells a text edit the agent collided with that Enter applies it anyway, with a copy of the text', async () => {
+    const told: Refusal[] = []
+
+    await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'text', value: 'Welcome' },
+      {
+        selection: createSelectionStore(),
+        send: answering(409, {
+          ok: false,
+          error: {
+            code: 'stale-address',
+            message:
+              'the agent changed this <h1> in stats.html while your edit waited, so nothing was written',
+          },
+        }),
+        notify: (refusal) => told.push(refusal),
+      },
+    )
+    forgetText(KEY)
+
+    expect(told).toEqual([
+      {
+        title: 'Edit not saved',
+        description:
+          'The agent changed this <h1> in stats.html while your edit waited, so nothing was written. Press Enter to apply your text anyway.',
+        copy: 'Welcome',
+      },
+    ])
+  })
+
   it('raises the refusal and keeps the selection on a stale edit', async () => {
     const selection = createSelectionStore()
     selectElement(selection, 'studio/home', KEY)
-    const told: { title: string; description: string }[] = []
+    const told: Refusal[] = []
 
     const written = await writeElement(
       'studio/home',
       KEY,
-      { kind: 'text', value: 'Welcome' },
+      { kind: 'style', property: 'opacity', value: '0.5' },
       {
         selection,
         send: answering(409, {
@@ -935,7 +1154,7 @@ describe('writeElement', () => {
       {
         title: 'Edit not saved',
         description:
-          'Hero.html changed after this edit was made, so nothing was written.',
+          'hero.html changed after this edit was made, so nothing was written.',
       },
     ])
     expect(selection.getState().element).toEqual(KEY)
@@ -1021,10 +1240,104 @@ describe('writeElement', () => {
       ])
     })
 
+    describe('behind an edit the server found again elsewhere', () => {
+      let sentAt: { index: number; hash: string }[]
+      /** Lands the first edit at index 6 over the agent's bytes, and each later one where it was sent. */
+      const relocating: typeof fetch = async (_path, init) => {
+        const body = JSON.parse(String(init?.body))
+        sentAt.push({ index: body.index, hash: body.hash })
+        const first = sentAt.length === 1
+        return Response.json({
+          ok: true,
+          data: {
+            ref: KEY.frame,
+            index: first ? 6 : body.index,
+            hash: String(sentAt.length).repeat(64),
+            from: first ? 'c'.repeat(64) : body.hash,
+          },
+        })
+      }
+
+      beforeEach(() => {
+        sentAt = []
+      })
+
+      it('sends a follower on the same element at the index the first landed at, from its hash', async () => {
+        const deps = {
+          selection: createSelectionStore(),
+          send: relocating,
+          notify: () => {},
+        }
+
+        const first = writeElement('studio/home', KEY, OPACITY, deps)
+        const second = writeElement('studio/home', KEY, RADIUS, deps)
+        receiveClaims(liveStore, [])
+
+        expect(await Promise.all([first, second])).toEqual([true, true])
+        expect(sentAt).toEqual([
+          { index: 5, hash: KEY.hash },
+          { index: 6, hash: '1'.repeat(64) },
+        ])
+      })
+
+      it('sends a follower on another element from its own hash, for the server to find again', async () => {
+        const deps = {
+          selection: createSelectionStore(),
+          send: relocating,
+          notify: () => {},
+        }
+
+        const first = writeElement('studio/home', KEY, OPACITY, deps)
+        const second = writeElement(
+          'studio/home',
+          { ...KEY, index: 3 },
+          RADIUS,
+          deps,
+        )
+        receiveClaims(liveStore, [])
+
+        expect(await Promise.all([first, second])).toEqual([true, true])
+        expect(sentAt).toEqual([
+          { index: 5, hash: KEY.hash },
+          { index: 3, hash: KEY.hash },
+        ])
+      })
+
+      it('keeps a third edit on the first element at its new index past one on another', async () => {
+        const deps = {
+          selection: createSelectionStore(),
+          send: relocating,
+          notify: () => {},
+        }
+
+        const first = writeElement('studio/home', KEY, OPACITY, deps)
+        const second = writeElement(
+          'studio/home',
+          { ...KEY, index: 3 },
+          RADIUS,
+          deps,
+        )
+        const third = writeElement(
+          'studio/home',
+          KEY,
+          { kind: 'text', value: 'Welcome' },
+          deps,
+        )
+        receiveClaims(liveStore, [])
+
+        expect(await Promise.all([first, second, third])).toEqual([
+          true,
+          true,
+          true,
+        ])
+        expect(sentAt[2]).toEqual({ index: 6, hash: '2'.repeat(64) })
+      })
+    })
+
     it('answers false with the stale toast when the agent wrote the frame meanwhile', async () => {
       const selection = createSelectionStore()
       selectElement(selection, 'studio/home', KEY)
-      const told: { title: string; description: string }[] = []
+      const told: Refusal[] = []
 
       const written = writeElement('studio/home', KEY, OPACITY, {
         selection,
@@ -1045,7 +1358,7 @@ describe('writeElement', () => {
         {
           title: 'Edit not saved',
           description:
-            'Hero.html changed after this edit was made, so nothing was written.',
+            'hero.html changed after this edit was made, so nothing was written.',
         },
       ])
     })
