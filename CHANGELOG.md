@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0](https://github.com/erclx/frameboard/compare/v0.9.0...v0.10.0) (2026-10-25)
+
+
+### Features
+
+* **changes:** compare a changed frame with its version before ([#89](https://github.com/erclx/frameboard/issues/89)) ([4c4d9c8](https://github.com/erclx/frameboard/commit/4c4d9c8194a0c7ab890caf48ea95a03a77a64220))
+* **cli:** print an edit link from bun run preview ([#90](https://github.com/erclx/frameboard/issues/90)) ([4038b5f](https://github.com/erclx/frameboard/commit/4038b5f295eac4dd96320e114c140789833b0600))
+* **cli:** refuse serve when the client is not built ([#88](https://github.com/erclx/frameboard/issues/88)) ([0186c00](https://github.com/erclx/frameboard/commit/0186c00f90e5130344fdf00a90ba49d5ca44ee5a))
+
 ## [0.9.0](https://github.com/erclx/frameboard/compare/v0.8.0...v0.9.0) (2026-10-25)
 
 
