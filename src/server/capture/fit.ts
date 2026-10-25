@@ -1,8 +1,9 @@
-import type { Browser } from 'playwright-core'
+import type { Browser, Page } from 'playwright-core'
 
-import { resizeFrame } from '@/server/board/frames'
+import { fitHeight } from '@/server/board/frames'
 import type { RefOptions } from '@/server/board/refs'
 import { FrameboardError } from '@/shared/errors'
+import { FRAME_SIZES } from '@/shared/frame-sizes'
 import type { FitResult } from '@/shared/records/capture'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -13,12 +14,78 @@ interface Reading {
   width: number
 }
 
+/** The widest a hugging width grows, past which the layout check reports the content clipped. */
+export const HUG_MAX_WIDTH = FRAME_SIZES.desktop.width
+
+/** What one measure of a frame's content reads. */
+export interface ContentSize {
+  /** The width it settled on, the box's own unless the frame hugs its width. */
+  width: number
+  /** The content's own height at that width. */
+  height: number
+  /** How wide the content lays out at that width, past it when it overflows. */
+  contentWidth: number
+  /** True when the body holds no element and no text, as a fresh skeleton. */
+  empty: boolean
+}
+
 /**
- * Sets a frame's height to its content's own height, measured at its layout
- * width with a 1 px tall viewport and again at its current height. Readings
- * that differ mean the content sizes itself off the viewport, which has no
- * height of its own to fit, so that refuses `fit-unbounded` and writes
- * nothing. The width is reported, never changed.
+ * Measures a frame's content the way `frame fit` and the server's hug step
+ * both read it, in one page resized between readings. A hugging width takes
+ * the content's `fit-content` width up to `HUG_MAX_WIDTH`, and the height is
+ * read at that width with a 1 px tall viewport and again at the box's height.
+ * Readings that differ mean the content sizes itself off the viewport, which
+ * has no height of its own to fit, so that refuses `fit-unbounded`. Finite
+ * animations finish before the first reading, so an entrance is read at its
+ * settled size.
+ */
+export async function measureContent(
+  browser: Browser,
+  {
+    baseUrl,
+    ref,
+    box,
+    hugWidth,
+  }: {
+    baseUrl: string
+    ref: string
+    box: { width: number; height: number }
+    hugWidth: boolean
+  },
+): Promise<ContentSize> {
+  const opened = await openFrame(browser, {
+    baseUrl,
+    ref,
+    box,
+    theme: 'light',
+  })
+  try {
+    const { page } = opened
+    await page.evaluate(finishAnimations)
+    const empty = await page.evaluate(isBodyEmpty)
+    let width = box.width
+    if (hugWidth && !empty) {
+      await page.setViewportSize({ width: HUG_MAX_WIDTH, height: box.height })
+      width = Math.min(HUG_MAX_WIDTH, await page.evaluate(readFitWidth))
+    }
+    const short = await readAt(page, { width, height: 1 })
+    const current = await readAt(page, { width, height: box.height })
+    if (short.height !== current.height) {
+      throw new FrameboardError(
+        'fit-unbounded',
+        `${ref} grows with the viewport, measuring ${short.height} px in a 1 px viewport and ${current.height} px at its ${box.height} px height, so it has no content height to fit. Size it by hand with frame resize.`,
+        { ref, heights: [short.height, current.height] },
+      )
+    }
+    return { width, height: short.height, contentWidth: current.width, empty }
+  } finally {
+    await opened.close()
+  }
+}
+
+/**
+ * Sets a frame's height to its content's own height at its layout width and
+ * turns its height hugging on. The width is reported, never changed.
  */
 export async function fitFrame(
   browser: Browser,
@@ -28,47 +95,59 @@ export async function fitFrame(
     ...options
   }: RefOptions & { root: string; baseUrl: string; frame: FrameRecord },
 ): Promise<FitResult> {
-  const { width, height } = frame.box
-  const short = await measure(browser, baseUrl, frame.ref, { width, height: 1 })
-  const current = await measure(browser, baseUrl, frame.ref, { width, height })
-  if (short.height !== current.height) {
-    throw new FrameboardError(
-      'fit-unbounded',
-      `${frame.ref} grows with the viewport, measuring ${short.height} px in a 1 px viewport and ${current.height} px at its ${height} px height, so it has no content height to fit. Size it by hand with frame resize.`,
-      { ref: frame.ref, heights: [short.height, current.height] },
-    )
-  }
+  const measured = await measureContent(browser, {
+    baseUrl,
+    ref: frame.ref,
+    box: frame.box,
+    hugWidth: false,
+  })
   return {
-    frame: await resizeFrame(options.root, frame.ref, {
-      ...options,
-      height: short.height,
-    }),
-    contentHeight: short.height,
-    contentWidth: current.width,
-    tooWide: current.width > width,
+    frame: await fitHeight(options.root, frame.ref, measured.height, options),
+    contentHeight: measured.height,
+    contentWidth: measured.contentWidth,
+    tooWide: measured.contentWidth > frame.box.width,
   }
 }
 
-async function measure(
-  browser: Browser,
-  baseUrl: string,
-  ref: string,
-  box: { width: number; height: number },
+async function readAt(
+  page: Page,
+  viewport: { width: number; height: number },
 ): Promise<Reading> {
-  const opened = await openFrame(browser, { baseUrl, ref, box, theme: 'light' })
-  try {
-    return await opened.page.evaluate(readContentSize)
-  } finally {
-    await opened.close()
+  await page.setViewportSize(viewport)
+  return page.evaluate(readContentSize)
+}
+
+// The functions below run in the page, so each carries everything it reads.
+
+function finishAnimations(): void {
+  for (const animation of document.getAnimations()) {
+    const end = animation.effect?.getComputedTiming().endTime
+    if (typeof end === 'number' && Number.isFinite(end)) animation.finish()
   }
+}
+
+function isBodyEmpty(): boolean {
+  const body = document.body
+  return body.children.length === 0 && (body.textContent ?? '').trim() === ''
+}
+
+// The root at `fit-content` shrinks to its widest line within the viewport,
+// margins included, and the inline style is taken off again so the height
+// readings lay out at the width they are given.
+function readFitWidth(): number {
+  const root = document.documentElement
+  const before = root.style.width
+  root.style.width = 'fit-content'
+  const width = Math.ceil(root.getBoundingClientRect().width)
+  root.style.width = before
+  return Math.max(1, width)
 }
 
 // Both readings take the furthest bottom edge of any box, flow or out of flow,
 // since `scrollHeight` never reads below the viewport and the root's own box
 // leaves out absolutely positioned content. A box an ancestor inside the body
-// crops is left out, since the frame never shows it. It runs in the page, so
-// it carries everything it reads, which keeps the cropping test a copy of
-// `isCropped` in the layout check's `readLayout`, and the two must agree.
+// crops is left out, since the frame never shows it. The cropping test is a
+// copy of `isCropped` in the layout check's `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
   const crops = (element: Element) => {
