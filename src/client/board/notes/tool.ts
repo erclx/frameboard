@@ -16,8 +16,16 @@ export type NoteOpen =
 
 export interface NotesUiState {
   open: NoteOpen | null
-  /** Each thread's unsent reply by root note id, so a card closed by a stray press reopens with it. */
+  /**
+   * Unsent text, a thread's reply by its root note id and a new note's by
+   * `newNoteDraft(frame)`, so a card closed by a stray press reopens with it.
+   */
   drafts: Readonly<Record<string, string>>
+}
+
+/** The draft key a new note on `frame` keeps its text under, apart from any note id. */
+export function newNoteDraft(frame: string): string {
+  return `new:${frame}`
 }
 
 export const notesUi = createStore<NotesUiState>()(() => ({
@@ -29,11 +37,11 @@ export function useNotesUi<T>(selector: (state: NotesUiState) => T): T {
   return useStore(notesUi, selector)
 }
 
-/** Holds a thread's unsent reply, dropping it once it is empty. */
-export function setDraft(note: string, text: string): void {
+/** Holds unsent text under `key`, dropping it once it is empty. */
+export function setDraft(key: string, text: string): void {
   notesUi.setState(({ drafts }) => {
-    const { [note]: _dropped, ...rest } = drafts
-    return { drafts: text === '' ? rest : { ...rest, [note]: text } }
+    const { [key]: _dropped, ...rest } = drafts
+    return { drafts: text === '' ? rest : { ...rest, [key]: text } }
   })
 }
 

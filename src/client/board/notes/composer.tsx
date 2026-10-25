@@ -7,6 +7,7 @@ import { writeBoard } from '@/client/live/write'
 import { defaultSession, messageFor } from './form'
 import type { NotePick } from './pick'
 import { ListeningCount, SessionPicker } from './session-picker'
+import { newNoteDraft, setDraft, useNotesUi } from './tool'
 
 interface ComposerProps {
   pick: NotePick
@@ -22,7 +23,10 @@ export function Composer({ pick, onClose }: ComposerProps) {
   const listeners = useLive((state) => state.listeners)
   const holder = useLive((state) => state.claims[pick.frame.ref]?.session)
   const canWrite = useLive((state) => state.canWrite)
-  const [text, setText] = useState('')
+  // Kept by frame, so a composer closed by a stray press reopens with it.
+  const draftKey = newNoteDraft(pick.frame.ref)
+  const text = useNotesUi((state) => state.drafts[draftKey] ?? '')
+  const setText = (next: string) => setDraft(draftKey, next)
   const [session, setSession] = useState(() =>
     defaultSession(listeners, holder),
   )
@@ -52,6 +56,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
           : { element: pick.element, renderedAt: pick.renderedAt }),
         ...(to === null ? {} : { to }),
       })
+      setText('')
       onClose()
     } catch (failure) {
       setError(messageFor(failure))

@@ -356,6 +356,25 @@ describe('NotesLayer', () => {
     )
   })
 
+  it('reopens a new note on the same frame with the text left unsaved', async () => {
+    live({ canWrite: true })
+    renderLayer()
+    act(() => notesUi.setState({ open: { kind: 'new', pick: PICK } }))
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Note on hero' }),
+      'move the button',
+    )
+
+    await userEvent.click(document.body)
+    const closed = screen.queryByRole('textbox', { name: 'Note on hero' })
+    act(() => notesUi.setState({ open: { kind: 'new', pick: PICK } }))
+
+    expect([
+      closed,
+      screen.getByRole('textbox', { name: 'Note on hero' }),
+    ]).toEqual([null, expect.objectContaining({ value: 'move the button' })])
+  })
+
   it('closes a thread opened from its marker on Esc, with focus on the marker', async () => {
     live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
     renderLayer()
