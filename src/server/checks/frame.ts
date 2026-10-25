@@ -6,6 +6,7 @@ import type { ProjectChecks } from '@/shared/records/board'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
 import { buildCascade } from './cascade'
+import { checkUnknownTokens } from './custom-properties'
 import { checkFonts } from './fonts'
 import {
   boardPath,
@@ -54,6 +55,7 @@ export function checkFrameIn(
     ...checkLinks(source),
     ...checkFonts(source, cascade, config),
     ...checkTheme(source),
+    ...checkUnknownTokens(source, tokens),
     ...(config.noUppercase ? checkUppercase(source, cascade) : []),
   ]
 }

@@ -6,6 +6,7 @@ import type { CheckResult, Finding } from '@/shared/records/check'
 
 import { FONT_SIZE_RULES } from './browser/font-size'
 import { LAYOUT_RULES } from './browser/layout'
+import { CUSTOM_PROPERTY_RULES } from './custom-properties'
 import { FONT_RULES } from './fonts'
 import { checkFrameIn, type ProjectContext, readProjectContext } from './frame'
 import { LINK_RULES } from './links'
@@ -20,6 +21,7 @@ export const RULES: RuleDoc[] = [
   ...LINK_RULES,
   ...FONT_RULES,
   ...THEME_RULES,
+  ...CUSTOM_PROPERTY_RULES,
   ...UPPERCASE_RULES,
   ...LAYOUT_RULES,
   ...FONT_SIZE_RULES,
