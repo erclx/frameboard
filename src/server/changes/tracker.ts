@@ -38,6 +38,11 @@ export interface ChangeTracker {
   settle: (changes: readonly FrameChange[]) => FrameChange[]
   /** The recent settled changes, oldest first. */
   log: () => FrameChange[]
+  /**
+   * The source a frame held under `hash` before an agent's write replaced
+   * it, kept while a logged change names it as `before`, else null.
+   */
+  version: (ref: string, hash: string) => string | null
 }
 
 interface Held {
@@ -54,7 +59,10 @@ interface Held {
  */
 export function createChangeTracker(
   root: string,
-  { now = () => new Date() }: { now?: () => Date } = {},
+  {
+    now = () => new Date(),
+    logCap = LOG_CAP,
+  }: { now?: () => Date; logCap?: number } = {},
 ): ChangeTracker {
   const held = new Map<string, Held>()
   /** Hashes of frames that left the board, with the batch they left in. */
@@ -62,6 +70,8 @@ export function createChangeTracker(
   const changes: FrameChange[] = []
   /** Changes a batch found that `own` may still withdraw, by id. */
   const pending = new Map<string, FrameChange>()
+  /** The sources agent writes replaced, by `versionKey`, in memory alone. */
+  const versions = new Map<string, string>()
   let batches = 0
   let nextId = 1
 
@@ -154,6 +164,7 @@ export function createChangeTracker(
         }
         const diff = changedElements(before?.source ?? '', file.source)
         const claim = claims.find((entry) => entry.frame === ref)
+        if (before) versions.set(versionKey(ref, before.hash), before.source)
         found.push({
           id: `c${nextId++}`,
           frame: ref,
@@ -166,6 +177,7 @@ export function createChangeTracker(
           removed: diff.removed,
           whole: !before || diff.whole,
           created: !before,
+          ...(before ? { before: before.hash } : {}),
         })
       }
       for (const change of found) pending.set(change.id, change)
@@ -175,12 +187,27 @@ export function createChangeTracker(
     settle: (held) => {
       const kept = held.filter((change) => pending.delete(change.id))
       changes.push(...kept)
-      if (changes.length > LOG_CAP) changes.splice(0, changes.length - LOG_CAP)
+      if (changes.length > logCap) changes.splice(0, changes.length - logCap)
+      // A version leaves with the last change naming it, so the cap bounds memory.
+      const named = new Set(
+        [...changes, ...pending.values()].flatMap((change) =>
+          change.before ? [versionKey(change.frame, change.before)] : [],
+        ),
+      )
+      for (const key of versions.keys()) {
+        if (!named.has(key)) versions.delete(key)
+      }
       return kept
     },
 
     log: () => [...changes],
+
+    version: (ref, hash) => versions.get(versionKey(ref, hash)) ?? null,
   }
+}
+
+function versionKey(ref: string, hash: string): string {
+  return `${ref}\n${hash}`
 }
 
 /** The files and folders a step wrote, being every rewrite, creation, removal, and move. */

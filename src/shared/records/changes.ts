@@ -32,4 +32,10 @@ export interface FrameChange {
   whole: boolean
   /** The file is new. */
   created: boolean
+  /**
+   * The content hash the frame held before this change, absent when
+   * `created`. The frame route serves that source under `?at=<hash>` while
+   * the server's log still names it.
+   */
+  before?: string
 }
