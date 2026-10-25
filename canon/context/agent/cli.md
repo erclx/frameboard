@@ -26,6 +26,7 @@ Owns the program and the conventions every verb shares, with `index.ts` bundled 
 Owns one module per verb group, with flags and JSON shapes in `frameboard docs`. `selection`, `notes`, `inspect`, `check`, and `capture` report, `edit` sets one property on one element leaving every other byte alone, and `editing` claims frames.
 
 - `serve` with no `--root` reuses the board the walk finds, else creates `.frameboard/` in the working folder, even in a repository. `--root` names the board folder itself for every verb.
+- `serve` reads `dist/client` from source and the `client` folder beside a built bundle, and exits 3 with `client-not-built` when it holds no `index.html`. A live board's reuse skips the check.
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing
 - A fresh `serve` waits up to one second for an old writing tab to reconnect, and opens one only when no writing tab is connected, so `opened` is true exactly when this call opened one
 
