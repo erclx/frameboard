@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -106,9 +106,7 @@ test.describe('the board', () => {
       .boundingBox()
     if (!plans) throw new Error('plans frame has no box')
     await page.mouse.move(plans.x + plans.width / 2, plans.y + plans.height / 2)
-    await page.keyboard.down('Control')
-    await page.mouse.wheel(0, -1500)
-    await page.keyboard.up('Control')
+    await pinch(page, -1500)
 
     await expect(
       page.locator('[data-frame="studio/pricing/faq"] iframe'),
@@ -119,3 +117,16 @@ test.describe('the board', () => {
     await expect(canvas).toBeVisible()
   })
 })
+
+/**
+ * A trackpad pinch of `deltaY` in all, sent as the small Ctrl wheels a
+ * trackpad sends, since one large wheel reads as a mouse notch and steps once.
+ */
+async function pinch(page: Page, deltaY: number): Promise<void> {
+  const parts = Math.ceil(Math.abs(deltaY) / 25)
+  await page.keyboard.down('Control')
+  for (let sent = 0; sent < parts; sent++) {
+    await page.mouse.wheel(0, deltaY / parts)
+  }
+  await page.keyboard.up('Control')
+}

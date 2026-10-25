@@ -12,6 +12,11 @@ export interface ModeState {
   tool: Tool
   /** Both panels hidden, leaving the project and zoom pills and the toolbar. */
   hideUi: boolean
+  /**
+   * Space held on the canvas, under which a primary drag pans whatever the
+   * tool. Cleared on keyup and when the window loses focus, so it never sticks.
+   */
+  spacePan: boolean
 }
 
 /** Below this the board opens with its UI hidden, and the canvas keeps the screen. */
@@ -25,7 +30,50 @@ export function createModeStore(width: number): ModeStore {
     mode: 'edit',
     tool: 'move',
     hideUi: width < NARROW_WIDTH,
+    spacePan: false,
   }))
+}
+
+/**
+ * Holds `spacePan` while Space is down outside a field, a button, a menu, or
+ * a dialog, where Space types or presses. Space is held while a pointer
+ * moves, so it is a gesture here rather than a registry key. Returns the
+ * function that stops listening.
+ */
+export function followSpacePan(
+  target: Window,
+  store: ModeStore = modeStore,
+): () => void {
+  const down = (event: KeyboardEvent) => {
+    if (event.code !== 'Space' || claimsSpace(event.target)) return
+    // Space would otherwise scroll the page or press what has focus.
+    event.preventDefault()
+    if (!store.getState().spacePan) store.setState({ spacePan: true })
+  }
+  const release = () => {
+    if (store.getState().spacePan) store.setState({ spacePan: false })
+  }
+  const up = (event: KeyboardEvent) => {
+    if (event.code === 'Space') release()
+  }
+  target.addEventListener('keydown', down)
+  target.addEventListener('keyup', up)
+  target.addEventListener('blur', release)
+  return () => {
+    target.removeEventListener('keydown', down)
+    target.removeEventListener('keyup', up)
+    target.removeEventListener('blur', release)
+    release()
+  }
+}
+
+function claimsSpace(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return (
+    target.closest(
+      'input, textarea, select, button, a[href], [contenteditable=""], [contenteditable="true"], [role="menu"], [role="menuitem"], [role="dialog"], [role="option"], [role="switch"], [role="tab"], [role="checkbox"], [role="radio"], [role="button"]',
+    ) != null
+  )
 }
 
 /**
