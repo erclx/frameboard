@@ -57,7 +57,7 @@ The hit layer covers the label, so the gestures click a `data-label-control` but
 - The read names the popups by `data-slot` and leaves out the toast viewport, since the change toast and the offer take focus as dialogs
 - The offer is a toast in the kit's one stack, `show-toast.tsx`, naming the frame and Go, and it stays until Go, its close, a newer show, or the developer opening that page unaided
 
-Follow is read again when a wait ends, because a hand move stops it, and a newer show drops a waiting one.
+Follow is read again when a wait ends, because a hand move stops it, and a newer show or a dropped socket drops a waiting one.
 
 ### `src/client/live/`
 
