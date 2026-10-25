@@ -36,7 +36,7 @@ Owns handing a tab write access, beside `show.ts` and `selection.ts`, the other 
 
 - The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
 - `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token
-- `open` and `show` exit 3 with `server-not-running` rather than start a server, and `show` points every open board tab at a frame
+- `open` and `show` exit 3 with `server-not-running` rather than start a server, and `show` sends every open board tab a frame, which each tab then jumps to or offers to jump to by its own state
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
 
 ### `src/cli/commands/frame.ts`

@@ -47,6 +47,18 @@ Compare flips or splits one changed frame between the version before and the cur
 
 The hit layer covers the label, so the gestures click a `data-label-control` button on release and drag the `data-compare-divider`. Starting compare asks the server for the version first, and one it no longer holds drops the base and toasts rather than loading a 404 page.
 
+**How a show lands**
+
+`show.ts` decides in each tab alone whether an agent's `show` moves the view.
+
+- An idle board jumps to the frame, and a show for another project jumps only while Follow is on
+- While the developer is mid-action, a tab following a session waits for the busy read to clear and a tab not following offers the jump
+- `busy.ts` reads a focused text field, a held pointer, and an open menu, popover, or dialog, and the held pointer stands in for a drag, clearing on release, cancel, and window blur
+- The read names the popups by `data-slot` and leaves out the toast viewport, since the change toast and the offer take focus as dialogs
+- The offer is a toast in the kit's one stack, `show-toast.tsx`, naming the frame and Go, and it stays until Go, its close, a newer show, or the developer opening that page unaided
+
+Follow is read again when a wait ends, because a hand move stops it, and a newer show drops a waiting one.
+
 ### `src/client/live/`
 
 Owns the socket and the store every screen reads, and how an agent's changes show.
