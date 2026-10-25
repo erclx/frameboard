@@ -61,7 +61,9 @@ test.describe('editing a selected element by hand', () => {
       await page.keyboard.down('Meta')
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
       await page.keyboard.up('Meta')
-      await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'Appearance' }),
+      ).toBeVisible({
         timeout: 1000,
       })
     }).toPass({ timeout: 10_000 })
@@ -87,7 +89,9 @@ test.describe('editing a selected element by hand', () => {
     await opacity.blur()
     await page.keyboard.press('ControlOrMeta+KeyZ')
     await expect.poll(read).toBe(original)
-    await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Appearance' }),
+    ).toBeVisible()
 
     await page.getByRole('button', { name: 'Fill token' }).click()
     await page
@@ -248,7 +252,9 @@ test.describe('editing a selected element by hand', () => {
       await expect(
         page.frameLocator(`[data-frame="${HERO}"] iframe`).locator('h1'),
       ).toHaveAttribute('style', /opacity: 0\.5/)
-      await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Appearance' }),
+      ).toBeVisible()
       await expect(
         page.getByRole('textbox', { name: 'Opacity', exact: true }),
       ).toHaveValue('50%')

@@ -27,8 +27,8 @@ import {
 } from '../../selection'
 import { InspectorPanel } from '../panel'
 import { SelectionColors } from '../selection-colors'
+import { AppearanceSection } from './appearance'
 import { FillSection } from './fill'
-import { LayerSection } from './layer'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
 import { useLiveElement } from './styles'
@@ -83,11 +83,11 @@ function browserHistory(
   })
 }
 
-describe('LayerSection', () => {
+describe('AppearanceSection', () => {
   it.each(['50', '50%'])('writes opacity 0.5 for %s', async (typed) => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={1}
         radius={0}
@@ -108,7 +108,7 @@ describe('LayerSection', () => {
   it('writes data-name empty for an emptied name', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={1}
         radius={0}
@@ -128,7 +128,7 @@ describe('LayerSection', () => {
   it('writes the radius in px', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={1}
         radius={0}
@@ -149,7 +149,7 @@ describe('LayerSection', () => {
   it('writes a held opacity step once, as a fraction', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={0.5}
         radius={0}
@@ -169,7 +169,7 @@ describe('LayerSection', () => {
   it('writes nothing for an opacity that is not a number', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={1}
         radius={0}
@@ -951,11 +951,11 @@ describe('TextSection', () => {
   })
 })
 
-describe('LayerSection commit field', () => {
+describe('AppearanceSection commit field', () => {
   it('drops a historyUndo while the field is unfocused', () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
+      <AppearanceSection
         name="Headline"
         opacity={1}
         radius={0}
@@ -1510,7 +1510,7 @@ describe('InspectorPanel with an element selected', () => {
     const headings = await screen.findAllByRole('heading')
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',
-      'Element',
+      'Appearance',
       'Typography',
       'Fill',
       'Text',
@@ -1576,7 +1576,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     expect(screen.queryByRole('heading', { name: 'Typography' })).toBeNull()
   })
 
@@ -1676,7 +1676,7 @@ describe('InspectorPanel with an element selected', () => {
     it('offers a shadow token in the Shadow menu and not in the Fill or Stroke menus', async () => {
       await mountFrame('<h1 style="border:1px solid">Hello</h1>')
       renderWith(3)
-      await screen.findByRole('heading', { name: 'Element' })
+      await screen.findByRole('heading', { name: 'Appearance' })
 
       await userEvent.click(
         await screen.findByRole('button', { name: 'Fill token' }),
@@ -1712,7 +1712,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     expect(screen.queryByText('hero')).toBeNull()
   })
 
@@ -1731,7 +1731,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     const controls = [
       ...screen.getAllByRole('textbox'),
       ...screen

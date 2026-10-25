@@ -11,7 +11,7 @@ const PERCENT: Intl.NumberFormatOptions = {
 }
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-interface LayerSectionProps {
+interface AppearanceSectionProps {
   /** The layer name, being `data-name` or the one the tree derives. */
   name: string
   /** From 0 to 1, as the browser computed it. */
@@ -25,27 +25,27 @@ interface LayerSectionProps {
 }
 
 /**
- * The Element section of `inspector/text`: the layer name, written as
+ * The Appearance section of `inspector/text`: the layer name, written as
  * `data-name`, the opacity as a percent, and the corner radius in px, the
  * two numbers stepping and scrubbing. An empty name writes `data-name`
  * empty, so the layer falls back to its derived name.
  */
-export function LayerSection({
+export function AppearanceSection({
   name,
   opacity,
   radius,
   disabled,
   write,
   preview,
-}: LayerSectionProps) {
+}: AppearanceSectionProps) {
   const percent = Math.round(opacity * 100)
   return (
     <section
-      aria-labelledby="inspector-element"
+      aria-labelledby="inspector-appearance"
       className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
     >
-      <h2 id="inspector-element" className="mb-2 text-xs font-semibold">
-        Element
+      <h2 id="inspector-appearance" className="mb-2 text-xs font-semibold">
+        Appearance
       </h2>
       <CommitField
         label="Name"
