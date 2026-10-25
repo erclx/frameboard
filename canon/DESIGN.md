@@ -57,8 +57,8 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 ## Motion
 
-- The claim pulse is the one looped motion, an agent's outline and tag fading and returning slowly while it holds a frame.
-- Under reduced motion the pulse stops and holds the outline and tag at full opacity.
+- The claim pulse is the one looped motion, an agent's outline, its tag's tint, and the initial fading and returning slowly while it holds a frame. The tag's text holds its contrast throughout.
+- Under reduced motion the pulse stops and holds the outline, tint, and initial at full strength.
 - No marching ants, no animated guides, and no entrance motion on panels.
 
 ## Iconography
