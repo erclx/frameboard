@@ -9,7 +9,7 @@ import {
   removeAddress,
   writeAddress,
 } from '@/server/address'
-import { startBoard } from '@/server/board/root'
+import { resolveBoard, startBoard } from '@/server/board/root'
 import { openBoard } from '@/server/live/open-board'
 import { startServer } from '@/server/start'
 import { FrameboardError } from '@/shared/errors'
@@ -37,7 +37,7 @@ export function registerServe(
   program: Command,
   context: ProgramContext & { clientDir: string; facesDir: string },
 ): void {
-  const { io, clientDir } = context
+  const { io } = context
   const command = addVerb(
     program,
     'serve',
@@ -64,6 +64,15 @@ export function registerServe(
         `No token sheet at ${tokens}.`,
         { tokens },
       )
+    }
+    // The refusal comes before the board is started so it leaves nothing
+    // behind, and a live board skips it since reuse binds no client.
+    const existing = await resolveBoard({
+      root: options.root,
+      cwd: io.cwd,
+    }).catch(() => null)
+    if (existing === null || (await findLiveServer(existing)) === null) {
+      void context.clientDir
     }
     const { root, created } = await startBoard({
       root: options.root,
@@ -98,7 +107,7 @@ export function registerServe(
     }
 
     const server = await startServer({
-      clientDir,
+      clientDir: context.clientDir,
       facesDir: context.facesDir,
       root,
       tokens,

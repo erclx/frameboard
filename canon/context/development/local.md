@@ -26,7 +26,7 @@ These gate a change, and `bun run check` is the one the pre-push hook runs.
 | `bun run format`                   | Auto-fixes oxfmt formatting                                                                             |
 | `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown    |
 
-The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale.
+The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale. The board itself needs `bun run build`, since a source `serve` refuses without `dist/client`, and an old build serves the old board.
 
 These serve the board and run the test layers.
 
