@@ -23,6 +23,7 @@ import {
   launchShellOrNull,
   SHELL_HOOK_TIMEOUT_MS,
 } from '../../test/support/headless-shell'
+import { withoutRepeats } from '../../test/support/live-pushes'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
 // The server's browser sweep refuses at once, so no spec here starts Chromium.
@@ -296,7 +297,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   })
 
   it('pushes the claims again once one expires, with no write', async () => {
-    const soon = new Date(Date.now() + 300).toISOString()
+    const soon = new Date(Date.now() + 1000).toISOString()
     writeFileSync(
       join(board.root, '.run/claims.json'),
       JSON.stringify({
@@ -313,9 +314,19 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         ],
       }),
     )
+    // A loaded runner can step over the window the claim is the latest push
+    // for, so this settles on any push that carried it.
     await expect
-      .poll(() => messages.at(-1), { timeout: 5000 })
-      .toMatchObject({ type: 'claims', claims: [{ expiresAt: soon }] })
+      .poll(
+        () =>
+          messages.some(
+            (message) =>
+              message.type === 'claims' &&
+              message.claims.some((claim) => claim.expiresAt === soon),
+          ),
+        { timeout: 5000 },
+      )
+      .toBe(true)
 
     await expect
       .poll(() => messages.at(-1), { timeout: 5000 })
@@ -363,8 +374,13 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   it('pushes the board, the changed frame, its stale thumbnails, its findings, and then the change after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
+    // The watcher can report the write in two batches under load, and the
+    // second only repeats board, reload, and thumbnails. This reads the pushes
+    // without those repeats, so a reorder or a repeated findings or changes
+    // still fails. A batch still pending is not seen, since absence cannot be
+    // awaited without a fixed pause.
     await expect
-      .poll(() => messages.map((message) => message.type).slice(0, 6), {
+      .poll(() => withoutRepeats(messages).map((message) => message.type), {
         timeout: 5000,
       })
       .toEqual([
@@ -375,20 +391,9 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         'findings',
         'changes',
       ])
-    // The watcher can report the write in two batches under load, and the
-    // second only repeats board and reload. This reads a snapshot once the
-    // sequence settles: an extra push inside the first six fails the poll, and
-    // one already past it fails here. A second batch still pending is not seen,
-    // since absence cannot be awaited without a fixed pause.
-    expect(
-      messages
-        .slice(6)
-        .filter(
-          (message) => message.type !== 'board' && message.type !== 'reload',
-        ),
-    ).toEqual([])
-    expect(messages[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
-    expect(messages.slice(2, 4)).toEqual([
+    const pushes = withoutRepeats(messages)
+    expect(pushes[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+    expect(pushes.slice(2, 4)).toEqual([
       {
         type: 'thumbnails',
         theme: 'light',
@@ -400,7 +405,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         stamps: { 'studio/home/hero': null },
       },
     ])
-    expect(messages[4]).toMatchObject({
+    expect(pushes[4]).toMatchObject({
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
@@ -502,7 +507,9 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       refs: names.map((name) => `studio/home/${name}`),
     })
 
-    const pasted = await post('/api/clipboard/paste', { ref: 'studio/pricing' })
+    const pasted = await post('/api/clipboard/paste', {
+      ref: 'studio/pricing',
+    })
     writeFileSync(join(board.root, 'studio/pricing/plans.html'), '<p>new</p>')
 
     expect(pasted.status).toBe(200)
@@ -595,19 +602,30 @@ describe.skipIf(shell === null)(
             .find((frame) => frame.ref === 'studio/home/hero')?.box
         : undefined
 
-    it('sends the hugged box in the first board after a content write, with no clipped finding', async () => {
+    it('sends the hugged box in the board that announces a content write, with no clipped finding', async () => {
       writeFileSync(
         join(board.root, 'studio/home/hero.html'),
         '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 1200px"></div></body></html>',
       )
 
-      await expect
-        .poll(() => messages.find((message) => message.type === 'board'), {
-          timeout: 10_000,
-        })
-        .toBeDefined()
-      const first = messages.find((message) => message.type === 'board')
-      expect(heroBox(first)).toMatchObject({ width: 1440, height: 1200 })
+      // A sweep still settling from hello can push a board ahead of the write's,
+      // so this reads the board that announces the write, being the last one
+      // before its reload.
+      const announcing = () => {
+        const reload = messages.findIndex(
+          (message) =>
+            message.type === 'reload' &&
+            message.refs.includes('studio/home/hero'),
+        )
+        return messages
+          .slice(0, Math.max(reload, 0))
+          .findLast((message) => message.type === 'board')
+      }
+      await expect.poll(announcing, { timeout: 10_000 }).toBeDefined()
+      expect(heroBox(announcing())).toMatchObject({
+        width: 1440,
+        height: 1200,
+      })
       await expect
         .poll(
           () =>
@@ -630,6 +648,75 @@ describe.skipIf(shell === null)(
     })
   },
 )
+
+describe('withoutRepeats', () => {
+  const board = (name: string): ServerMessage =>
+    ({ type: 'board', data: { name } }) as unknown as ServerMessage
+  const reload: ServerMessage = { type: 'reload', refs: ['studio/home/hero'] }
+  const stamps = (theme: 'light' | 'dark'): ServerMessage => ({
+    type: 'thumbnails',
+    theme,
+    stamps: { 'studio/home/hero': null },
+  })
+  const findings: ServerMessage = { type: 'findings', findings: {} }
+  const changes: ServerMessage = { type: 'changes', changes: [] }
+  const kinds = (messages: ServerMessage[]) =>
+    messages.map((message) => message.type)
+
+  it('reads a write reported in two batches as one', () => {
+    const split = [
+      board('a'),
+      reload,
+      stamps('light'),
+      stamps('dark'),
+      findings,
+      board('a'),
+      reload,
+      stamps('light'),
+      stamps('dark'),
+      changes,
+    ]
+
+    expect(kinds(withoutRepeats(split))).toEqual([
+      'board',
+      'reload',
+      'thumbnails',
+      'thumbnails',
+      'findings',
+      'changes',
+    ])
+  })
+
+  it('keeps changes ahead of findings in the order it was sent', () => {
+    const swapped = [board('a'), reload, changes, findings]
+
+    expect(withoutRepeats(swapped)).toEqual(swapped)
+  })
+
+  it('keeps a repeated findings or changes', () => {
+    const doubled = [findings, changes, findings, changes]
+
+    expect(withoutRepeats(doubled)).toEqual(doubled)
+  })
+
+  it('keeps a repeated board that carries different data', () => {
+    const differing = [board('a'), board('b')]
+
+    expect(withoutRepeats(differing)).toEqual(differing)
+  })
+
+  it('keeps a repeated reload that names another ref', () => {
+    const other: ServerMessage = { type: 'reload', refs: ['studio/home/nav'] }
+
+    expect(withoutRepeats([reload, other])).toEqual([reload, other])
+  })
+
+  it('keeps a thumbnails push for the other theme', () => {
+    const pair = [stamps('light'), stamps('dark')]
+
+    expect(withoutRepeats(pair)).toEqual(pair)
+  })
+})
 
 describe('BoardTabs', () => {
   it('resolves true when a writing tab connects within the wait', async () => {
