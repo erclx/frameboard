@@ -50,9 +50,15 @@ function verbLines(verb: VerbDoc): string[] {
     .join(' ')
   return [
     `frameboard ${verb.name}${usage ? ` ${usage}` : ''}  ${verb.description}`,
-    ...verb.options.map(
-      (option) => `${INDENT}${option.flags}  ${option.description}`,
-    ),
+    ...verb.options.map((option) => {
+      const extras = [
+        option.choices ? `one of ${option.choices.join(', ')}` : '',
+        option.default === undefined
+          ? ''
+          : `default ${JSON.stringify(option.default)}`,
+      ].filter(Boolean)
+      return `${INDENT}${option.flags}  ${option.description}${extras.length ? ` (${extras.join(', ')})` : ''}`
+    }),
   ]
 }
 

@@ -161,6 +161,9 @@ describe('docs', () => {
       expect(stdout).toContain('A frame is any *.html file directly in a page')
       expect(stdout).toMatch(/^ {2}outside-link /m)
       expect(stdout).toContain('frameboard open  ')
+      expect(stdout).toContain(
+        '--theme <theme>  the theme to capture (one of light, dark, both, default "both")',
+      )
     })
   })
 })
