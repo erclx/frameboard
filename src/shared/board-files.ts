@@ -16,3 +16,7 @@ export const CLAIMS_FILE = 'claims.json'
 
 /** Where a repository or a working folder keeps its board when no marker says otherwise. */
 export const DEFAULT_BOARD_FOLDER = '.frameboard'
+
+/** The project and page `serve` starts an empty board with, and New project names a project before it is named. */
+export const START_PROJECT = 'untitled'
+export const START_PAGE = 'page-1'

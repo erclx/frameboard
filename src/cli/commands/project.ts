@@ -1,10 +1,17 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 
 import {
   addProject,
   deleteProject,
   renameProject,
 } from '@/server/board/projects'
+import { writeStarterSheet } from '@/server/look/starter'
+import {
+  DEFAULT_LOOK,
+  STARTER_ACCENTS,
+  STARTER_FONTS,
+  type StarterLook,
+} from '@/shared/starter-tokens'
 
 import {
   act,
@@ -61,6 +68,36 @@ export function registerProject(
     async ([name = ''], options) => {
       const result = await deleteProject(await boardOf(options, io), name)
       return { data: result, human: `Deleted project ${result.deleted}` }
+    },
+  )
+
+  act<CommonOptions & StarterLook>(
+    addVerb(
+      project,
+      'tokens',
+      'Write a starter tokens.css into a project no token sheet reaches, refusing tokens-exist where a board, --tokens, or project sheet does',
+    )
+      .argument('<name>', 'the project')
+      .addOption(
+        new Option('--accent <preset>', 'the accent, light and dark')
+          .choices(Object.keys(STARTER_ACCENTS))
+          .default(DEFAULT_LOOK.accent),
+      )
+      .addOption(
+        new Option('--font <face>', 'the text face')
+          .choices(Object.keys(STARTER_FONTS))
+          .default(DEFAULT_LOOK.font),
+      ),
+    context,
+    async ([name = ''], options) => {
+      const record = await writeStarterSheet(await boardOf(options, io), name, {
+        accent: options.accent,
+        font: options.font,
+      })
+      return {
+        data: record,
+        human: `Wrote ${record.path} with the ${record.accent} accent`,
+      }
     },
   )
 }
