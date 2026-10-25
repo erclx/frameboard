@@ -60,7 +60,6 @@ export function LayerSection({
         <NumberField
           label="Opacity"
           prefix={<Circle className="size-1.5 fill-current" />}
-          inset="pl-[28px]"
           value={percent}
           min={0}
           max={100}
@@ -77,7 +76,6 @@ export function LayerSection({
         <NumberField
           label="Corner radius"
           prefix={<Square className="size-3" />}
-          inset="pl-[28px]"
           value={radius}
           min={0}
           format={WHOLE}

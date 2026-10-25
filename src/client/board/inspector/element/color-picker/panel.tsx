@@ -367,8 +367,8 @@ function Channels({ values, names, maxes, onChange }: ChannelsProps) {
           key={name}
           label={name}
           prefix={name[0]}
-          inset="pl-[18px]"
-          inputClassName="px-1.5"
+          inset="pl-[26px]"
+          inputClassName="pr-1"
           value={values[at] ?? 0}
           min={0}
           max={maxes[at]}
