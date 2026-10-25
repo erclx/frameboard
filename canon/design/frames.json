@@ -27,6 +27,8 @@
     "home/grid": "design/07-home/arm-2",
     "home/list": "design/07-home/home-list",
     "home/empty": "design/07-home/home-empty",
+    "home/sort-grid": "design/07-home/home-sort-grid",
+    "home/sort-list": "design/07-home/home-sort-list",
     "layers/edit": "design/08-layers/layers-edit",
     "layers/pages": "design/08-layers/pages-many",
     "layers/search": "design/08-layers/pages-search",
@@ -52,6 +54,8 @@
     "palette/shortcuts": "design/14-overlays/shortcuts",
     "menus/avatar": "design/14-overlays/avatar-menu",
     "menus/home": "design/07-home/context-home",
+    "menus/home-sort": "design/07-home/home-sort-menu",
+    "menus/home-pin": "design/07-home/context-home-pin",
     "menus/toast": "design/14-overlays/menu-toast",
     "menus/context": "design/14-overlays/context-menus"
   }
