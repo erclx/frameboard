@@ -27,6 +27,10 @@ const KEYS: Readonly<Record<string, string>> = {
   Enter: '↵',
   Backspace: '⌫',
   Tab: 'Tab',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
 }
 
 /** Whether the board runs on a Mac, which names `$mod` Cmd rather than Ctrl, as tinykeys does. */

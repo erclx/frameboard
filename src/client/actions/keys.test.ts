@@ -63,6 +63,10 @@ describe('keyLabel', () => {
     expect(keyLabel('Tab', mac)).toBe('Tab')
   })
 
+  it.each([true, false])('draws an arrow as its glyph, mac %s', (mac) => {
+    expect(keyParts('Alt+ArrowUp', mac)).toEqual([mac ? '⌥' : 'Alt', '↑'])
+  })
+
   it('draws a named key after its modifier', () => {
     expect(keyLabel('$mod+Enter', true)).toBe('⌘↵')
     expect(keyLabel('Shift+Tab', false)).toBe('Shift+Tab')

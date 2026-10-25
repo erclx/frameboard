@@ -2,7 +2,7 @@ import '../styles.css'
 
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import {
@@ -11,6 +11,7 @@ import {
   findAction,
   registerActions,
 } from '@/client/actions/registry'
+import { useHomeAction } from '@/client/projects/actions'
 
 import { registerPaletteActions } from './actions'
 import { openOverlay } from './overlay'
@@ -194,6 +195,39 @@ describe('ShortcutsSheet', () => {
         (key) => key.textContent,
       ),
     ).toHaveLength(2)
+  })
+
+  describe('the home key', () => {
+    function HomeAction({ goHome }: { goHome: () => void }) {
+      useHomeAction(goHome)
+      return null
+    }
+
+    it('goes home on Alt+ArrowUp', async () => {
+      const goHome = vi.fn()
+      cleanups.push(bindKeys(window))
+      render(<HomeAction goHome={goHome} />)
+
+      await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}')
+
+      expect(goHome).toHaveBeenCalledOnce()
+    })
+
+    it('lists All projects with its key on a board', async () => {
+      render(
+        <>
+          <HomeAction goHome={() => {}} />
+          <ShortcutsSheet />
+        </>,
+      )
+
+      act(() => openOverlay('shortcuts'))
+      await screen.findByRole('dialog')
+
+      expect(row('All projects').querySelector('kbd kbd')?.textContent).toMatch(
+        /^(⌥ ↑|Alt\+↑)$/,
+      )
+    })
   })
 
   it('opens on ?', async () => {

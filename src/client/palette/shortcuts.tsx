@@ -46,6 +46,7 @@ const SECTIONS: readonly Section[] = [
       { label: 'Find', actions: ['find.open'] },
       { label: 'Command palette', actions: ['palette.open'] },
       { label: 'This list', actions: ['help.shortcuts'] },
+      { label: 'All projects', actions: ['nav.home'] },
     ],
   },
   {

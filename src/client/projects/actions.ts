@@ -128,6 +128,8 @@ export function useHomeAction(goHome: () => void): void {
           label: 'All projects',
           group: 'project',
           command: { label: 'Go to all projects', icon: House },
+          // Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame.
+          keys: ['Alt+ArrowUp'],
           run: goHome,
         },
       ]),
