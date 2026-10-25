@@ -1,5 +1,6 @@
 import type { FrameRecord } from '@/shared/records/list'
 
+import { usePreviews } from '../preview/store'
 import { useSelection } from '../selection'
 import { boundsOf, type Box } from './box'
 import { OUTLINE, place, screen, sizeLabel } from './draw'
@@ -36,8 +37,11 @@ export function SelectionOverlay({ frames }: OverlayProps) {
   const shown = useDrawnFrames(chosen)
   const bounds = boundsOf(shown.map((frame) => frame.box))
   // The chip names the size a write starts from, never a previewed width,
-  // which reads as the frame's size when it is only a view.
+  // which reads as the frame's size when it is only a view. While a chosen
+  // frame is previewed it says so, since the outline then draws another width.
   const sized = boundsOf(usePendingFrames(chosen).map((frame) => frame.box))
+  const previews = usePreviews()
+  const previewed = chosen.some((frame) => frame.ref in previews)
   return (
     <div
       data-overlay
@@ -49,6 +53,7 @@ export function SelectionOverlay({ frames }: OverlayProps) {
           frames={shown}
           bounds={bounds}
           size={sized ?? bounds}
+          previewed={previewed}
           inside={inside}
         />
       ) : null}
@@ -73,12 +78,15 @@ function Selection({
   frames,
   bounds,
   size,
+  previewed,
   inside,
 }: {
   frames: readonly FrameRecord[]
   bounds: Box
   /** The bounds the chip names, being the stored or pending boxes. */
   size: Box
+  /** A chosen frame draws a previewed width, so the chip marks `size` as stored. */
+  previewed: boolean
   inside: boolean
 }) {
   const several = frames.length > 1
@@ -121,7 +129,9 @@ function Selection({
         ))}
       </div>
       <span data-chip hidden={inside} className={CHIP}>
-        {several ? `${frames.length} frames` : sizeLabel(size)}
+        {several
+          ? `${frames.length} frames`
+          : `${previewed ? 'Stored ' : ''}${sizeLabel(size)}`}
       </span>
       <span data-move-chip hidden className={CHIP} />
     </div>

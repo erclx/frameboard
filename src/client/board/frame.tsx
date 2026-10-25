@@ -28,7 +28,7 @@ import { ClaimTag } from './claims/tag'
 import { FindingsList } from './findings-list'
 import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
-import { useDrawnBox } from './geometry/write'
+import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useMode } from './mode'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
@@ -68,6 +68,7 @@ export const Frame = memo(function Frame({
   // A released move holds its place until the board carries it back, and a
   // preview draws its width without touching either box.
   const { x, y, width, height } = useDrawnBox(frame)
+  const storedWidth = (usePendingBox(frame.ref) ?? frame.box).width
   const preview = usePreview(frame.ref)
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
@@ -195,7 +196,11 @@ export const Frame = memo(function Frame({
           '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:hidden',
           claimed ? 'text-claim' : 'text-muted-foreground',
         )}
-        style={{ maxWidth: `calc(${width}px * var(--zoom, 1))` }}
+        // A preview narrower than the stored box leaves that box's room above
+        // it, so the name and the Preview chip may use it.
+        style={{
+          maxWidth: `calc(${Math.max(width, storedWidth)}px * var(--zoom, 1))`,
+        }}
         title={frame.name}
       >
         {frame.locked ? (
