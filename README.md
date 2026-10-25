@@ -105,7 +105,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 
 ### Hand edits
 
-In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool.
+In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
 
 - On the home view, New project adds a project, and a card's right-click menu opens, renames, duplicates, or deletes one
 - The inspector edits a selected element's name, opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text, its numbers stepping on arrow keys and scrubbing from their label
