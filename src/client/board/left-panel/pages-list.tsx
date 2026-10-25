@@ -37,8 +37,12 @@ interface PagesListProps {
 
 const LIST = 'pages'
 
+/** A 24px target drawing the 20px fill the references draw, through `HEADER_FILL`. */
 const HEADER_BUTTON =
-  'grid size-5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent aria-pressed:bg-accent aria-pressed:text-foreground'
+  'group/target grid size-6 place-items-center text-muted-foreground outline-none hover:text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-pressed:text-foreground'
+
+const HEADER_FILL =
+  'grid size-5 place-items-center rounded-md group-hover/target:bg-accent group-focus-visible/target:ring-3 group-focus-visible/target:ring-ring/50 group-aria-disabled/target:bg-transparent group-aria-pressed/target:bg-accent'
 
 /**
  * A project's pages in their saved order, each switching the canvas to it.
@@ -95,7 +99,9 @@ export function PagesList({
               onClick={() => (searching ? closeSearch() : setSearching(true))}
               className={HEADER_BUTTON}
             >
-              <Search aria-hidden className="size-[13px]" />
+              <span className={HEADER_FILL}>
+                <Search aria-hidden className="size-[13px]" />
+              </span>
             </button>
           </ActionTooltip>
           <ActionTooltip label={add?.label ?? 'Add page'} keys={add?.keys}>
@@ -108,7 +114,9 @@ export function PagesList({
               }}
               className={HEADER_BUTTON}
             >
-              <Plus aria-hidden className="size-[13px]" />
+              <span className={HEADER_FILL}>
+                <Plus aria-hidden className="size-[13px]" />
+              </span>
             </button>
           </ActionTooltip>
         </span>

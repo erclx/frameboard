@@ -112,9 +112,11 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
           aria-label="Collapse all layers"
           title="Collapse all layers"
           onClick={() => setExpanded(new Set())}
-          className="grid size-5 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="group/target grid size-6 place-items-center text-muted-foreground outline-none hover:text-foreground"
         >
-          <ListChevronsUpDown aria-hidden className="size-[15px]" />
+          <span className="grid size-5 place-items-center rounded-md group-hover/target:bg-accent group-focus-visible/target:ring-3 group-focus-visible/target:ring-ring/50">
+            <ListChevronsUpDown aria-hidden className="size-[15px]" />
+          </span>
         </button>
       </PanelSection>
       {frames.length === 0 ? (
@@ -191,8 +193,12 @@ interface FrameRowProps {
   children: ReactNode
 }
 
+/** A 24px target drawing the 20px fill the references draw, through `ROW_FILL`. */
 const ROW_BUTTON =
-  'grid size-5 shrink-0 place-items-center rounded-[5px] outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none'
+  'group/target grid size-6 shrink-0 place-items-center outline-none hover:text-foreground disabled:pointer-events-none'
+
+const ROW_FILL =
+  'grid size-5 place-items-center rounded-[5px] group-hover/target:bg-accent group-focus-visible/target:ring-2 group-focus-visible/target:ring-ring/50'
 
 /** Shown on the row's hover or focus alone, for a flag that is off. */
 const ON_HOVER =
@@ -320,11 +326,13 @@ function FrameRow({
                     : cn('text-muted-foreground', ON_HOVER),
                 )}
               >
-                {frame.hidden ? (
-                  <EyeOff aria-hidden className="size-[13px]" />
-                ) : (
-                  <Eye aria-hidden className="size-[13px]" />
-                )}
+                <span className={ROW_FILL}>
+                  {frame.hidden ? (
+                    <EyeOff aria-hidden className="size-[13px]" />
+                  ) : (
+                    <Eye aria-hidden className="size-[13px]" />
+                  )}
+                </span>
               </button>
               <button
                 type="button"
@@ -338,11 +346,13 @@ function FrameRow({
                   !frame.locked && ON_HOVER,
                 )}
               >
-                {frame.locked ? (
-                  <Lock aria-hidden className="size-[13px]" />
-                ) : (
-                  <LockOpen aria-hidden className="size-[13px]" />
-                )}
+                <span className={ROW_FILL}>
+                  {frame.locked ? (
+                    <Lock aria-hidden className="size-[13px]" />
+                  ) : (
+                    <LockOpen aria-hidden className="size-[13px]" />
+                  )}
+                </span>
               </button>
             </div>
           }
