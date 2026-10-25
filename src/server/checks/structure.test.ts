@@ -7,6 +7,7 @@ import {
   checkMalformedTags,
   checkMarkup,
   checkNaming,
+  checkNesting,
 } from './structure'
 
 let board: TempBoard | undefined
@@ -154,5 +155,67 @@ describe('checkMalformedTags', () => {
 
   it('passes a fragment with no doctype', () => {
     expect(checkMalformedTags(frame('<p>hi</p>'))).toEqual([])
+  })
+})
+
+describe('checkNesting', () => {
+  it('reports the empty <p> a </p> after a block adds, at that end tag', () => {
+    const findings = checkNesting(frame('<body>\n<p><div></div></p>\n</body>'))
+
+    expect(findings).toMatchObject([
+      { rule: 'nesting', location: { line: 2, column: 15, startOffset: 21 } },
+    ])
+  })
+
+  it('reports an <a> inside an <a> at the outer one', () => {
+    const findings = checkNesting(
+      frame('<body>\n<a href="#">a<a href="#">b</a></a>\n</body>'),
+    )
+
+    expect(findings).toMatchObject([
+      { rule: 'nesting', location: { line: 2, column: 1 } },
+    ])
+  })
+
+  it('reports a <div> a table moves out ahead of it', () => {
+    const findings = checkNesting(
+      frame('<table><div>x</div><tbody><tr><td>1</td></tr></tbody></table>'),
+    )
+
+    expect(findings).toMatchObject([
+      { rule: 'nesting', location: { startOffset: 7 } },
+    ])
+  })
+
+  it('reports a <span> its parent closes', () => {
+    expect(checkNesting(frame('<div><span>x</div>'))).toMatchObject([
+      { rule: 'nesting', location: { startOffset: 5 } },
+    ])
+  })
+
+  it('passes paragraphs and list items left open, as a valid file may', () => {
+    expect(checkNesting(frame('<p>a<p>b<ul><li>a<li>b</ul>'))).toEqual([])
+  })
+
+  it('passes a self-closing SVG path', () => {
+    expect(
+      checkNesting(frame('<svg viewBox="0 0 1 1"><path d="M0 0"/></svg>')),
+    ).toEqual([])
+  })
+
+  it('passes a template holding cells outside a table', () => {
+    expect(
+      checkNesting(frame('<template><td>x</td></template><p>a</p>')),
+    ).toEqual([])
+  })
+
+  it('passes a full document stating its own wrappers', () => {
+    expect(
+      checkNesting(
+        frame(
+          '<!doctype html><html><head><title>x</title></head><body><img src="a.png"><br></body></html>',
+        ),
+      ),
+    ).toEqual([])
   })
 })
