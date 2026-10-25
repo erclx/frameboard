@@ -559,6 +559,28 @@ describe('Frame label at low zoom', () => {
     expect(getByTitle('checkout')).toBeVisible()
   })
 
+  describe('on a previewed frame', () => {
+    afterEach(() => {
+      act(() => endPreview(['studio/home/checkout']))
+    })
+
+    it('hides the preview chip with a crowded label', () => {
+      act(() => setPreview(['studio/home/checkout'], 390))
+      const { container } = renderCrowded()
+
+      expect(container.querySelector('[data-preview-chip]')).not.toBeVisible()
+    })
+
+    it('shows the preview chip with a crowded label under the pointer', () => {
+      act(() => setPreview(['studio/home/checkout'], 390))
+      const { container, root } = renderCrowded()
+
+      root.setAttribute('data-label-hover', '')
+
+      expect(container.querySelector('[data-preview-chip]')).toBeVisible()
+    })
+  })
+
   it('shows a crowded label while the frame is selected', () => {
     const { getByTitle, root } = renderCrowded()
 
