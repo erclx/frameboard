@@ -265,7 +265,10 @@ function FrameRow({
             <div
               className={cn(
                 'group flex h-[26px] items-center gap-1.5 pr-1 pl-2 text-foreground',
-                frame.hidden && 'text-faint',
+                // Dimmed, yet past 4.5:1 on a hovered row, since a hidden
+                // row still renames and restacks.
+                frame.hidden &&
+                  'text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground))]',
                 tint ?? 'hover:bg-accent',
               )}
             >
