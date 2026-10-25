@@ -10,6 +10,7 @@ import { splitAt } from '../changes/compare'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
+import { endPreview } from '../preview/store'
 import {
   clear,
   select,
@@ -30,7 +31,7 @@ import {
 } from './hit'
 import { type Corner, resizeBox, scaleBoxes } from './resize'
 import { SNAP_DISTANCE, snapMove, snapResize } from './snap'
-import { withPending, writeBoxes } from './write'
+import { withDrawn, withPending, writeBoxes } from './write'
 
 /** How far, in screen pixels, a press travels before it counts as a drag rather than a click. */
 export const CLICK_DISTANCE = 3
@@ -126,7 +127,9 @@ export function attachGestures(
     Object.fromEntries(frames.map((frame) => [frame.ref, frame.box]))
 
   const start = (event: MouseEvent) => {
-    const frames = withPending(target.frames())
+    // A press hits the frames where they draw, previewed widths included,
+    // and a drag writes from their boxes, which a preview never reaches.
+    const drawn = withDrawn(target.frames())
     const point = toCanvas(event)
     from = point
     pressed = { x: event.clientX, y: event.clientY }
@@ -160,14 +163,15 @@ export function attachGestures(
       gesture = { kind: 'none' }
       return
     }
-    const chosen = selected(frames)
+    const shown = boundsOf(selected(drawn).map((frame) => frame.box))
+    const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
+    const chosen = selected(withPending(target.frames()))
     const bounds = boundsOf(chosen.map((frame) => frame.box))
-    const corner = bounds && !element ? cornerAt(bounds, point, zoom()) : null
     if (bounds && corner) {
       gesture = { kind: 'resize', corner, boxes: boxesOf(chosen), bounds }
       return
     }
-    const frame = frameAt(frames, point, zoom())
+    const frame = frameAt(drawn, point, zoom())
     if (frame) {
       // Pressing an unselected frame selects it at once, so a drag moves it.
       // A press leaving a field waits for the drag, since its click selects nothing.
@@ -208,6 +212,9 @@ export function attachGestures(
       if (locked || !stores.canWrite()) gesture = { kind: 'none' }
     }
     if (gesture.kind === 'move' || gesture.kind === 'resize') {
+      // The frames move or resize from their own boxes, so they leave any
+      // preview as the drag starts rather than jump on release.
+      endPreview(Object.keys(gesture.boxes))
       elements = new Map(
         Object.keys(gesture.boxes).flatMap((ref) => {
           const element = target.layer.querySelector<HTMLElement>(
@@ -227,7 +234,7 @@ export function attachGestures(
     const dy = point.y - from.y
     const threshold = event.ctrlKey ? -1 : SNAP_DISTANCE / zoom()
     const others = () =>
-      withPending(target.frames())
+      withDrawn(target.frames())
         .filter((frame) => !('boxes' in gesture && frame.ref in gesture.boxes))
         .map((frame) => frame.box)
     switch (gesture.kind) {
@@ -280,7 +287,7 @@ export function attachGestures(
       }
       case 'marquee': {
         const rect = rectFrom(from, point)
-        const touched = framesIn(withPending(target.frames()), rect)
+        const touched = framesIn(withDrawn(target.frames()), rect)
         drawMarquee(
           root,
           rect,
@@ -354,7 +361,7 @@ export function attachGestures(
     const point = toCanvas(event)
     if (gesture.kind === 'marquee') {
       const touched = framesIn(
-        withPending(target.frames()),
+        withDrawn(target.frames()),
         rectFrom(from, point),
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
@@ -366,12 +373,21 @@ export function attachGestures(
       for (const [ref, box] of Object.entries(gesture.boxes)) {
         const element = elements.get(ref)
         if (!element) continue
-        const drawn = {
-          x: parseFloat(element.style.left),
-          y: parseFloat(element.style.top),
-          width: parseFloat(element.style.width),
-          height: parseFloat(element.style.height),
-        }
+        // A move keeps the size it started from, which a frame that just
+        // left its preview may not have drawn yet.
+        const drawn =
+          gesture.kind === 'move'
+            ? {
+                ...box,
+                x: parseFloat(element.style.left),
+                y: parseFloat(element.style.top),
+              }
+            : {
+                x: parseFloat(element.style.left),
+                y: parseFloat(element.style.top),
+                width: parseFloat(element.style.width),
+                height: parseFloat(element.style.height),
+              }
         if (sameBox(drawn, box)) continue
         next[ref] = drawn
         expected[ref] = box

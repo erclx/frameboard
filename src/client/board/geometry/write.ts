@@ -7,6 +7,7 @@ import type { FrameRecord, ListResult } from '@/shared/records/list'
 
 import { whenFree } from '../claims/waiting'
 import {
+  endPreview,
   type Preview,
   previewedBox,
   previewsNow,
@@ -102,9 +103,11 @@ function drawn(
 
 /**
  * Draws boxes a run of edits has not sent yet, such as nudges waiting for
- * the keys to rest. The `writeBoxes` that follows owns them from then on.
+ * the keys to rest, ending the preview of each frame named. The `writeBoxes`
+ * that follows owns them from then on.
  */
 export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
+  endPreview(Object.keys(boxes))
   setPending(Object.keys(boxes), (ref) => {
     const box = boxes[ref]
     return box && { box }
@@ -139,6 +142,9 @@ export async function writeBoxes(
   send: typeof fetch = fetch,
 ): Promise<boolean> {
   if (Object.keys(asked).length === 0) return true
+  // An edit of a frame's box acts on the box itself, so it ends any preview
+  // rather than leave the frame drawn at a width it no longer starts from.
+  endPreview(Object.keys(asked))
   const boxes: Record<string, Box> = { ...asked }
   const started: Record<string, Box> = { ...expected }
   for (const ref of Object.keys(asked)) {

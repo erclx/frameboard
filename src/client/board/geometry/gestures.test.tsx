@@ -8,6 +8,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
+import { endPreview, previewOf, setPreview } from '../preview/store'
 import { clear, select, selectElement, selectionStore } from '../selection'
 import type { Box } from './box'
 import { attachGestures } from './gestures'
@@ -752,6 +753,66 @@ describe('attachGestures', () => {
         x: 140,
         y: 120,
       })
+    })
+  })
+
+  describe('on a previewed frame', () => {
+    afterEach(() => {
+      endPreview([LEFT.ref, RIGHT.ref])
+    })
+
+    it('selects the frame through the width it is previewed at', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.click(450, 150)
+
+      expect(selectedRefs()).toEqual([LEFT.ref])
+    })
+
+    it('ends the preview on a move and writes the stored width', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.drag([450, 150], [480, 175])
+
+      expect(canvas.writes).toEqual([
+        {
+          page: PAGE,
+          boxes: { [LEFT.ref]: { x: 130, y: 125, width: 200, height: 200 } },
+          expected: { [LEFT.ref]: LEFT.box },
+        },
+      ])
+      expect(previewOf(LEFT.ref)).toBeUndefined()
+    })
+
+    it('keeps the preview through a click', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.click(450, 150)
+
+      expect(previewOf(LEFT.ref)).toEqual({ width: 500 })
+    })
+
+    it('ends the preview on a resize from the drawn corner and resizes the stored box', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.drag([600, 300], [640, 320])
+
+      expect(canvas.writes[0]?.boxes[LEFT.ref]).toEqual({
+        x: 100,
+        y: 100,
+        width: 240,
+        height: 220,
+      })
+      expect(previewOf(LEFT.ref)).toBeUndefined()
     })
   })
 })
