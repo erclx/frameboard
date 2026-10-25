@@ -1,4 +1,5 @@
 import { Slider } from '@base-ui/react/slider'
+import { cn } from 'cn'
 import { ChevronDown, Pipette } from 'lucide-react'
 import { useState } from 'react'
 
@@ -19,7 +20,7 @@ import type { Theme } from '@/shared/theme'
 
 import { ChromeMenuContent, MENU_ROW } from '../../../chrome/menu'
 import { NumberField } from '../../number-field'
-import { chipName } from '../values'
+import { chipName, SWATCH_RING } from '../values'
 import { SaturationArea } from './area'
 import {
   hslToRgb,
@@ -229,7 +230,10 @@ export function ColorPickerPanel({
                   aria-pressed={row.name === token}
                   title={chipName(row.name)}
                   onClick={() => onToken(row.name)}
-                  className="aspect-square rounded-[5px] shadow-[inset_0_0_0_1px_rgba(127,127,127,.3)] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:shadow-[0_0_0_2px_var(--primary)]"
+                  className={cn(
+                    'aspect-square rounded-[5px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:shadow-[0_0_0_2px_var(--primary)]',
+                    SWATCH_RING,
+                  )}
                   style={{ background: row[theme] ?? undefined }}
                 />
               ))}
@@ -257,7 +261,10 @@ export function ColorPickerPanel({
                 >
                   <span
                     aria-hidden
-                    className="size-3.5 shrink-0 rounded-[3px] shadow-[inset_0_0_0_1px_rgba(127,127,127,.3)]"
+                    className={cn(
+                      'size-3.5 shrink-0 rounded-[3px]',
+                      SWATCH_RING,
+                    )}
                     style={{ background: row[theme] ?? undefined }}
                   />
                   {chipName(row.name)}

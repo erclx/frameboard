@@ -12,6 +12,13 @@ export const COLOR_ROW =
 export const TOKEN_CHIP =
   '-ml-1 max-w-max truncate rounded-[4px] bg-[color-mix(in_srgb,var(--foreground)_9%,transparent)] px-1.5 py-px'
 
+/**
+ * The inset ring every color swatch draws, so a swatch near the panel's own
+ * color still shows its edge. `--faint` rather than a fixed grey, which on
+ * the dark sidebar left a near-black swatch with no edge at all.
+ */
+export const SWATCH_RING = 'shadow-[inset_0_0_0_1px_var(--faint)]'
+
 /** A color as the source names it: a token, or a raw value. */
 export type ColorSource = { token: string } | { raw: string }
 
