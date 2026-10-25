@@ -27,6 +27,16 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
 
+### `src/client/board/place/`
+
+Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element into a frame's layout at the click and move nothing else.
+
+- `gap.ts` reads the container and the sibling gap under the pointer from the live DOM, along x in a flex row or a grid and along y otherwise, as the insert route's file indices
+- A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
+- `drop-line.tsx` draws a 2px line in the selection blue at that gap while either tool is on, and nothing over bare canvas or a loading frame
+- `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
+- A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
+
 ### `src/client/board/left-panel/`
 
 Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
@@ -66,7 +76,8 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
-- The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
 ### `src/client/`
