@@ -23,10 +23,22 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 The header and each card's menu run the `project.*` actions.
 
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
+- The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, which the palette lists too
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
 - One card sits in the tab sequence, and the arrow keys move focus across the grid by its measured columns and down the list, with Home and End for the ends
 
+`sort.ts` and `pins.ts` hold the viewer's own order, kept in the browser beside the grid and list choice.
+
+- `sort.ts` orders the projects by last edited, created, or name, last edited newest first by default, and `home.tsx` orders them once so the cards, the arrow keys, and the tab stop follow what is shown
+- A pinned project sits above the rest in the grid and the list, each group in the chosen order, and carries a pin mark after its name
+- `localStorage` holds `frameboard.home.layout`, `frameboard.home.sort`, and the pinned names in `frameboard.home.pins`, and the view renders in its defaults when storage refuses
+- No pin reaches the board folder, so a second browser or an agent sees none, and a pin naming no project is ignored where it is read
+- Neither waits on `canWrite`, so both work in a read-only tab
+
 ### `src/client/projects/`
 
-Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, and Delete reach the palette only while there is a project to act on, naming it as the row's hint.
+Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, Pin, and Delete reach the palette only while there is a project to act on, naming it as the row's hint.
+
+- `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
+- `renameProject` carries a pin to the new name for every caller, a delete from the home view or the board drops it, and a duplicate starts unpinned
