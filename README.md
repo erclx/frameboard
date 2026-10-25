@@ -50,8 +50,7 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it.
 
 - `edit` changes one style, attribute, or text on one element without touching another byte
-- `show` points the open board at a frame, or offers a toast with Go instead while you are mid-action or the frame sits in another project
-- `capture` writes PNGs of a frame or page in either theme
+- `show` points the open board at a frame, or offers a toast with Go while you are mid-action, and `capture` writes PNGs of a frame or page in either theme
 - `frame add` with no size makes a frame that hugs its content, which a running server measures after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
