@@ -25,6 +25,7 @@ import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
 import { Home } from './home'
 import type { HomeLayout } from './layout'
+import { dropPin, togglePin } from './pins'
 import { Projects } from './projects'
 
 const NOW = Date.parse('2026-10-15T12:00:00.000Z')
@@ -264,6 +265,17 @@ describe('Projects by the arrow keys', () => {
 
     expect(across).toBe(card('bravo'))
     expect([below.left, below.top > start.bottom]).toEqual([start.left, true])
+  })
+
+  it('moves up from the rest to the pinned card above it', async () => {
+    act(() => togglePin('alpha'))
+    renderFive('grid')
+    act(() => card('charlie').focus())
+
+    await userEvent.keyboard('{ArrowUp}')
+
+    expect(document.activeElement).toBe(card('alpha'))
+    act(() => dropPin('alpha'))
   })
 
   it('moves down and up the list', async () => {
@@ -1034,6 +1046,36 @@ describe('Home order and pins', () => {
         name: 'Pinned',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('starts the rest of the grid on a new row under a divider', async () => {
+    renderLive(THREE, server().calls)
+
+    await pin(/atlas/)
+
+    const divider = document.querySelector('[data-pin-divider]')
+    const first = screen.getByRole('link', { name: /^studio/ })
+    const pinned = screen.getByRole('link', { name: /^atlas/ })
+    expect(divider?.previousElementSibling).toContainElement(pinned)
+    expect(first.getBoundingClientRect().left).toBe(
+      pinned.getBoundingClientRect().left,
+    )
+  })
+
+  it('draws the divider between groups in the list too', async () => {
+    renderLive(THREE, server().calls, 'list')
+
+    await pin(/webapp/)
+
+    expect(
+      document.querySelector('[data-pin-divider]')?.previousElementSibling,
+    ).toContainElement(screen.getByRole('link', { name: /^webapp/ }))
+  })
+
+  it('draws no divider while nothing is pinned', () => {
+    renderLive(THREE, server().calls)
+
+    expect(document.querySelector('[data-pin-divider]')).toBeNull()
   })
 
   it('holds a pinned row first in the list too', async () => {

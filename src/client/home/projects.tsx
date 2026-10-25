@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { Pin } from 'lucide-react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import { Fragment, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'wouter'
 import { useStore } from 'zustand'
 
@@ -55,6 +55,10 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const rover = projects.some((project) => project.name === focused)
     ? focused
     : projects[0]?.name
+  // The pinned come first, so the rest start at the first unpinned project,
+  // and a divider sits there only when both groups hold one.
+  const firstUnpinned = projects.findIndex((project) => !pins.has(project.name))
+  const divideAt = firstUnpinned > 0 ? firstUnpinned : -1
   return (
     <main className="px-4 py-8 sm:px-12">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -66,35 +70,44 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
           onKeyDown={(event) => roveFocus(event, 'grid')}
           className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5"
         >
-          {projects.map((project) => (
-            <li key={project.name}>
-              <ProjectLink
-                project={project}
-                tabbable={project.name === rover}
-                className="block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary data-popup-open:ring-2 data-popup-open:ring-primary"
-              >
-                <span
+          {projects.map((project, at) => (
+            <Fragment key={project.name}>
+              {at === divideAt ? (
+                <li
                   aria-hidden
-                  className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
+                  data-pin-divider
+                  className="col-span-full h-px bg-border"
+                />
+              ) : null}
+              <li>
+                <ProjectLink
+                  project={project}
+                  tabbable={project.name === rover}
+                  className="block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary data-popup-open:ring-2 data-popup-open:ring-primary"
                 >
-                  <FrameSkeleton
-                    project={project}
-                    captures={captures}
-                    className="size-full"
-                  />
-                </span>
-                <span className="flex flex-col px-3 pt-1.5 pb-3">
-                  <ProjectName
-                    project={project}
-                    calls={calls}
-                    type="text-panel"
-                    unseen={unseenUnder(unseen, project.name)}
-                    pinned={pins.has(project.name)}
-                  />
-                  <Edited project={project} now={now} prefix="Edited " />
-                </span>
-              </ProjectLink>
-            </li>
+                  <span
+                    aria-hidden
+                    className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
+                  >
+                    <FrameSkeleton
+                      project={project}
+                      captures={captures}
+                      className="size-full"
+                    />
+                  </span>
+                  <span className="flex flex-col px-3 pt-1.5 pb-3">
+                    <ProjectName
+                      project={project}
+                      calls={calls}
+                      type="text-panel"
+                      unseen={unseenUnder(unseen, project.name)}
+                      pinned={pins.has(project.name)}
+                    />
+                    <Edited project={project} now={now} prefix="Edited " />
+                  </span>
+                </ProjectLink>
+              </li>
+            </Fragment>
           ))}
         </ul>
       ) : (
@@ -109,31 +122,41 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
             <span className="hidden sm:block">Created</span>
           </div>
           <ul onKeyDown={(event) => roveFocus(event, 'list')}>
-            {projects.map((project) => (
-              <li key={project.name} className="not-last:border-b">
-                <ProjectLink
-                  project={project}
-                  tabbable={project.name === rover}
-                  className="grid h-12 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-popup-open:ring-2 data-popup-open:ring-primary data-popup-open:ring-inset"
-                >
-                  <Mini project={project} />
-                  <ProjectName
-                    project={project}
-                    calls={calls}
-                    type="font-medium"
-                    unseen={unseenUnder(unseen, project.name)}
-                    pinned={pins.has(project.name)}
-                    className="pr-4"
+            {projects.map((project, at) => (
+              <Fragment key={project.name}>
+                {at === divideAt ? (
+                  // Every row already ends on a hairline, so the groups part on a band.
+                  <li
+                    aria-hidden
+                    data-pin-divider
+                    className="h-1.5 border-b border-border bg-muted"
                   />
-                  {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
-                  <span className="hidden truncate sm:block">
-                    <Edited project={project} now={now} prefix="" />
-                  </span>
-                  <span className="hidden sm:block">
-                    <Created project={project} />
-                  </span>
-                </ProjectLink>
-              </li>
+                ) : null}
+                <li className="not-last:border-b">
+                  <ProjectLink
+                    project={project}
+                    tabbable={project.name === rover}
+                    className="grid h-12 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-popup-open:ring-2 data-popup-open:ring-primary data-popup-open:ring-inset"
+                  >
+                    <Mini project={project} />
+                    <ProjectName
+                      project={project}
+                      calls={calls}
+                      type="font-medium"
+                      unseen={unseenUnder(unseen, project.name)}
+                      pinned={pins.has(project.name)}
+                      className="pr-4"
+                    />
+                    {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
+                    <span className="hidden truncate sm:block">
+                      <Edited project={project} now={now} prefix="" />
+                    </span>
+                    <span className="hidden sm:block">
+                      <Created project={project} />
+                    </span>
+                  </ProjectLink>
+                </li>
+              </Fragment>
             ))}
           </ul>
         </div>
@@ -144,8 +167,8 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
 
 /**
  * Moves focus across the cards by the arrow keys, or h, j, k, and l while
- * single-key shortcuts are on, Up and Down stepping a whole row of the grid
- * as it is laid out, and down the list, with Home and End for the ends. Keys
+ * single-key shortcuts are on, Up and Down stepping to the nearest card in
+ * the grid's next row as it is laid out, and down the list, with Home and End for the ends. Keys
  * typed into a rename field stay in the field.
  */
 function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
@@ -153,13 +176,13 @@ function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
   if (!(from instanceof HTMLElement) || !from.matches(LINK)) return
   const links = [...event.currentTarget.querySelectorAll<HTMLElement>(LINK)]
   const at = links.indexOf(from)
-  const step = layout === 'grid' ? columnsOf(links) : 1
+  const grid = layout === 'grid'
   const key = pressedKey(event)
   const to = {
-    ArrowLeft: layout === 'grid' ? at - 1 : at,
-    ArrowRight: layout === 'grid' ? at + 1 : at,
-    ArrowUp: at - step,
-    ArrowDown: at + step,
+    ArrowLeft: grid ? at - 1 : at,
+    ArrowRight: grid ? at + 1 : at,
+    ArrowUp: grid ? rowStep(links, at, -1) : at - 1,
+    ArrowDown: grid ? rowStep(links, at, 1) : at + 1,
     Home: 0,
     End: links.length - 1,
   }[key]
@@ -186,13 +209,35 @@ const VIM_KEYS: Readonly<Record<string, string>> = {
   l: 'ArrowRight',
 }
 
-/** How many cards share the first card's row, as the grid wrapped them. */
-function columnsOf(links: readonly HTMLElement[]): number {
-  const top = links[0]?.getBoundingClientRect().top
-  return Math.max(
-    links.filter((link) => link.getBoundingClientRect().top === top).length,
-    1,
-  )
+/**
+ * The card in the next row up or down nearest the one at `at`, read off
+ * where the grid laid them out rather than counted, since the pinned row
+ * may end short of a full row. Stays put at the first or last row.
+ */
+function rowStep(
+  links: readonly HTMLElement[],
+  at: number,
+  direction: 1 | -1,
+): number {
+  const boxes = links.map((link) => link.getBoundingClientRect())
+  const from = boxes[at]
+  if (!from) return at
+  const tops = boxes
+    .map((box) => box.top)
+    .filter((top) => (top - from.top) * direction > 0)
+  if (tops.length === 0) return at
+  const row = direction > 0 ? Math.min(...tops) : Math.max(...tops)
+  let nearest = at
+  boxes.forEach((box, index) => {
+    if (box.top !== row) return
+    const near = boxes[nearest]
+    if (
+      nearest === at ||
+      (near && Math.abs(box.left - from.left) < Math.abs(near.left - from.left))
+    )
+      nearest = index
+  })
+  return nearest
 }
 
 const LINK = '[data-project-link]'
@@ -290,7 +335,7 @@ function ProjectName({
             <Pin
               role="img"
               aria-label="Pinned"
-              className="size-[13px] shrink-0 text-muted-foreground"
+              className="size-[13px] shrink-0 fill-current text-foreground"
             />
           ) : null}
           <UnseenCount count={unseen} />
