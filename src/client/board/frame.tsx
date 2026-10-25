@@ -208,7 +208,9 @@ export const Frame = memo(function Frame({
         ) : null}
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
-        <span className={cn('truncate', preview && 'shrink-[1000]')}>
+        <span
+          className={cn('truncate', (preview || claimed) && 'shrink-[1000]')}
+        >
           {frame.name}
         </span>
         {preview ? <PreviewChip width={preview.width} /> : null}
@@ -370,7 +372,7 @@ interface FindingsMarkProps {
  * The count of a frame's check findings beside its name, as a pill tinted in
  * the destructive hue when any finding is an error and the note hue when all
  * are warnings. It never shrinks, so a narrow frame truncates the name and
- * keeps the count. It opens a popover listing each finding, which a press
+ * any claim tag and keeps the count. It opens a popover listing each finding, which a press
  * reaches through the hit layer and a key through the badge itself.
  */
 function FindingsMark({ frame, findings }: FindingsMarkProps) {
