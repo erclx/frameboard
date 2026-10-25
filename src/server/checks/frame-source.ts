@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import type { Document, Element } from 'domhandler'
 import { parse, type ParserError, type Token } from 'parse5'
 import { adapter } from 'parse5-htmlparser2-tree-adapter'
-import postcss from 'postcss'
+import postcss, { CssSyntaxError, type Root } from 'postcss'
 
 import { ASSETS_FOLDER, FRAME_EXTENSION } from '@/shared/board-files'
 import type { FindingLocation } from '@/shared/records/check'
@@ -174,6 +174,44 @@ function withImports(sheet: Sheet, imported: Set<string>): Sheet[] {
     )
   })
   return [...before, sheet]
+}
+
+/** A sheet as far as it parses, and the break that stopped it, if any. */
+export interface ParsedSheet {
+  root: Root
+  error: CssSyntaxError | null
+}
+
+/**
+ * Parses `css`, cutting it at each break postcss refuses until what is left
+ * parses, so a rule reads every declaration ahead of an unclosed block or
+ * string rather than none. `error` is the first break, the one a browser
+ * meets.
+ */
+export function parseSheet(css: string): ParsedSheet {
+  let text = css
+  let first: CssSyntaxError | null = null
+  for (;;) {
+    try {
+      return { root: postcss.parse(text), error: first }
+    } catch (error) {
+      if (!(error instanceof CssSyntaxError)) throw error
+      first ??= error
+      const cut = offsetOf(text, error.line ?? 1, error.column ?? 1)
+      text = cut < text.length ? text.slice(0, cut) : ''
+    }
+  }
+}
+
+/** The offset of a 1-based line and column in `text`. */
+export function offsetOf(text: string, line: number, column: number): number {
+  let offset = 0
+  for (let at = 1; at < line; at++) {
+    const next = text.indexOf('\n', offset)
+    if (next === -1) return text.length
+    offset = next + 1
+  }
+  return Math.min(offset + column - 1, text.length)
 }
 
 /** The URL an `@import` rule's parameters name, quoted or through `url()`. */

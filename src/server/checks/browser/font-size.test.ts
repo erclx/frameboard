@@ -42,6 +42,7 @@ describe.skipIf(shell === null)(
       try {
         return await checkRendered(browser, {
           baseUrl: served.url,
+          root: board.root,
           frame: served.target(REF),
           config: { minFontSize },
         })
