@@ -33,6 +33,8 @@
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",
     "agents/unseen-many": "design/13-agents/unseen-many",
+    "agents/compare-flip": "design/13-agents/compare-flip",
+    "agents/compare-split": "design/13-agents/compare-split",
     "notes/place": "design/13-agents/note-place",
     "notes/thread": "design/13-agents/note-thread",
     "palette/commands": "design/14-overlays/palette",
