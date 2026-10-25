@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { type ElementSpan, holdsSpan, swapSpan } from './element-span'
+import { type ElementSpan, holdsSpan, relocate, swapSpan } from './element-span'
 
 // Elements 0 to 2 are the implied html, head, and body, so the two
 // paragraphs sit at 3 and 4.
@@ -128,5 +128,51 @@ describe('holdsSpan', () => {
 
   it('does not hold the other side', () => {
     expect(holdsSpan(EDITED, startTag, 'before')).toBe(false)
+  })
+})
+
+describe('relocate', () => {
+  const WAS = '<h1>hero</h1><p style="color: red">x</p>'
+
+  it('finds the element at its index past a change to a sibling', () => {
+    const found = relocate(
+      WAS,
+      3,
+      'element',
+      '<h1>hero</h1><p style="color: blue">x</p>',
+    )
+
+    expect(found).toEqual({ index: 3, range: [0, 13] })
+  })
+
+  it('finds the element by its bytes once an agent added one above', () => {
+    const found = relocate(WAS, 3, 'element', `<nav></nav>${WAS}`)
+
+    expect(found).toEqual({ index: 4, range: [11, 24] })
+  })
+
+  it('refuses once an agent changed the element', () => {
+    expect(
+      relocate(WAS, 3, 'element', '<h1>hero!</h1><p>x</p>'),
+    ).toBeUndefined()
+  })
+
+  it('refuses a start tag an agent gave a class', () => {
+    expect(
+      relocate(
+        WAS,
+        4,
+        'start-tag',
+        '<h1>hero</h1><p class="a" style="color: red">x</p>',
+      ),
+    ).toBeUndefined()
+  })
+
+  it('refuses when the element now reads twice', () => {
+    expect(relocate(WAS, 3, 'element', `${WAS}<h1>hero</h1>`)).toBeUndefined()
+  })
+
+  it('refuses an index the old source holds no element at', () => {
+    expect(relocate(WAS, 9, 'element', WAS)).toBeUndefined()
   })
 })

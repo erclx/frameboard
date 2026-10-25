@@ -50,7 +50,8 @@ export function spanText(
   return range ? source.slice(...range) : ''
 }
 
-interface Found {
+/** Where an element was found, by index and by the source range its scope covers. */
+export interface Found {
   readonly index: number
   readonly range: [number, number]
 }
@@ -86,6 +87,33 @@ function locate(
     return range ? [{ index, range }] : []
   })
   return found.length === 1 ? found[0] : undefined
+}
+
+/**
+ * Finds again in `source` the element `index` named in `was`, the source an
+ * edit was made from, by the bytes its scope covers there, the way an undo
+ * finds its element. Answers undefined when those bytes changed, read twice,
+ * or name no stated element, since writing on a guess would land over the
+ * agent's work.
+ */
+export function relocate(
+  was: string,
+  index: number,
+  scope: SpanScope,
+  source: string,
+): Found | undefined {
+  const old = parseFrame(was)
+  const element = old.elements[index]
+  const text = element ? spanText(was, element, scope) : ''
+  if (text === '') return undefined
+  const span: ElementSpan = {
+    scope,
+    index,
+    count: old.elements.length,
+    before: text,
+    after: text,
+  }
+  return locate(source, parseFrame(source), span, 'before')
 }
 
 /** Whether the frame still holds the edited element as `side` of the edit left it. */
