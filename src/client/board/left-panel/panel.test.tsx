@@ -908,7 +908,14 @@ describe('LeftPanel', () => {
         within(await screen.findByRole('menu'))
           .getAllByRole('menuitem')
           .map((item) => item.textContent),
-      ).toEqual(['Rename', 'Duplicate', 'New page below', 'Delete⌫'])
+      ).toEqual([
+        'Rename',
+        'Duplicate',
+        'New page below',
+        'Move up',
+        'Move down',
+        'Delete⌫',
+      ])
       expect(location.history.at(-1)).toBe('/p/studio/pricing')
     })
 

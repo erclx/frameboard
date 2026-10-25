@@ -16,6 +16,8 @@ const IDS = [
   'page.rename',
   'page.duplicate',
   'page.new',
+  'page.moveUp',
+  'page.moveDown',
   'page.delete',
 ] as const
 
@@ -34,7 +36,7 @@ interface PageMenuProps {
  * Shift+F10 open it too.
  */
 export function PageMenu({ onOpen, trigger }: PageMenuProps) {
-  const [rename, duplicate, add, remove] = useActions(IDS)
+  const [rename, duplicate, add, up, down, remove] = useActions(IDS)
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
   return (
@@ -51,6 +53,11 @@ export function PageMenu({ onOpen, trigger }: PageMenuProps) {
           <MenuRow action={rename}>Rename</MenuRow>
           <MenuRow action={duplicate}>Duplicate</MenuRow>
           <MenuRow action={add}>New page below</MenuRow>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <MenuRow action={up}>Move up</MenuRow>
+          <MenuRow action={down}>Move down</MenuRow>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <DeleteRow action={remove} />

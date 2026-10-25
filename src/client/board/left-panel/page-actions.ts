@@ -1,4 +1,11 @@
-import { Copy, FilePlus, PencilLine, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  FilePlus,
+  PencilLine,
+  Trash2,
+} from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -106,14 +113,15 @@ export async function deletePage(
 }
 
 /**
- * Registers `page.new`, `page.duplicate`, `page.rename`, and `page.delete`
- * for the page on the canvas while a board is mounted. Each is lit while the
- * tab may write, and a new or copied page opens on the canvas, a new one
- * with its name ready to type over.
+ * Registers `page.new`, `page.duplicate`, `page.rename`, `page.moveUp`,
+ * `page.moveDown`, and `page.delete` for the page on the canvas while a board
+ * is mounted. Each is lit while the tab may write, and a new or copied page
+ * opens on the canvas, a new one with its name ready to type over.
  */
 export function usePageActions(
   project: string,
   page: string | undefined,
+  calls: Structure = structure,
 ): void {
   const [, navigate] = useLocation()
   useEffect(() => {
@@ -138,7 +146,7 @@ export function usePageActions(
         run: () => {
           const names = pages().map((candidate) => candidate.name)
           const at = current()
-          structure
+          calls
             .addPage(
               `${project}/${newPageName(names)}`,
               at ? at.index + 1 : undefined,
@@ -158,7 +166,7 @@ export function usePageActions(
         run: () => {
           const at = current()
           if (!at) return
-          structure
+          calls
             .duplicatePage(at.ref)
             .then(open, reportRefusal(`Couldn't duplicate ${at.name}`))
         },
@@ -174,6 +182,42 @@ export function usePageActions(
           if (at) startRename(at.ref)
         },
       },
+      ...(
+        [
+          {
+            id: 'page.moveUp',
+            label: 'Move up',
+            named: 'Move page up',
+            by: -1,
+            icon: ArrowUp,
+          },
+          {
+            id: 'page.moveDown',
+            label: 'Move down',
+            named: 'Move page down',
+            by: 1,
+            icon: ArrowDown,
+          },
+        ] as const
+      ).map(({ id, label, named, by, icon }): Action => ({
+        id,
+        label,
+        group: 'page',
+        command: { label: named, icon },
+        // The first page has nowhere up to go and the last nowhere down.
+        enabled: () => {
+          const at = current()
+          const to = at ? at.index + by : -1
+          return onPage() && to >= 0 && to < pages().length
+        },
+        run: () => {
+          const at = current()
+          if (!at) return
+          calls
+            .movePage(at.ref, at.index + by)
+            .catch(reportRefusal(`Couldn't move ${at.name}`))
+        },
+      })),
       {
         id: 'page.delete',
         label: 'Delete page',
@@ -182,7 +226,8 @@ export function usePageActions(
         enabled: onPage,
         run: () => {
           const at = current()
-          if (at) void deletePage(at, pages(), { current: at.name, navigate })
+          if (at)
+            void deletePage(at, pages(), { current: at.name, navigate, calls })
         },
       },
     ]
@@ -198,5 +243,5 @@ export function usePageActions(
       unsubscribe()
       unregister()
     }
-  }, [project, page, navigate])
+  }, [project, page, navigate, calls])
 }
