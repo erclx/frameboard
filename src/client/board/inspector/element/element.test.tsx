@@ -6,6 +6,7 @@ import {
   renderHook,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -367,7 +368,9 @@ describe('FillSection', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Fill token' }))
     await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'border' }),
+      within(
+        await screen.findByRole('list', { name: 'Fill tokens' }),
+      ).getByRole('button', { name: 'border' }),
     )
 
     expect(changes).toEqual([
@@ -477,7 +480,7 @@ describe('FillSection', () => {
     ])
   })
 
-  it('writes a raw hex once when the color input changes, and nothing while it drags', async () => {
+  it('writes a hex typed in the picker once, on Enter', async () => {
     const { changes, write } = recorder()
     render(
       <FillSection
@@ -491,18 +494,17 @@ describe('FillSection', () => {
         write={write}
       />,
     )
-    const input = screen.getByLabelText('Fill color') as HTMLInputElement
 
-    // The row listens natively, so a React-driven event would never reach it.
-    input.value = '#ff0000'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    expect(changes).toEqual([])
-
-    input.dispatchEvent(new Event('change', { bubbles: true }))
+    await userEvent.click(screen.getByRole('button', { name: 'Fill color' }))
+    const hex = await screen.findByRole('textbox', { name: 'Hex' })
+    expect(hex).toHaveValue('111827')
+    await userEvent.clear(hex)
+    await userEvent.type(hex, 'FF0000{Enter}')
 
     expect(changes).toEqual([
       { kind: 'style', property: 'background-color', value: '#ff0000' },
     ])
+    expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull()
   })
 
   it('flags a raw value and names a token with its chip', () => {
@@ -643,7 +645,9 @@ describe('StrokeSection', () => {
       await screen.findByRole('button', { name: 'Stroke token' }),
     )
     await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'primary' }),
+      within(
+        await screen.findByRole('list', { name: 'Stroke tokens' }),
+      ).getByRole('button', { name: 'primary' }),
     )
 
     expect(changes).toEqual([
@@ -1242,19 +1246,23 @@ describe('InspectorPanel with an element selected', () => {
       await userEvent.click(
         await screen.findByRole('button', { name: 'Fill token' }),
       )
-      expect(
-        await screen.findByRole('menuitem', { name: 'primary' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      const fill = within(
+        await screen.findByRole('list', { name: 'Fill tokens' }),
+      )
+      expect(fill.getByRole('button', { name: 'primary' })).toBeInTheDocument()
+      expect(fill.queryByRole('button', { name: 'shadow-sm' })).toBeNull()
       await userEvent.keyboard('{Escape}')
 
       await userEvent.click(
         screen.getByRole('button', { name: 'Stroke token' }),
       )
+      const stroke = within(
+        await screen.findByRole('list', { name: 'Stroke tokens' }),
+      )
       expect(
-        await screen.findByRole('menuitem', { name: 'primary' }),
+        stroke.getByRole('button', { name: 'primary' }),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      expect(stroke.queryByRole('button', { name: 'shadow-sm' })).toBeNull()
       await userEvent.keyboard('{Escape}')
 
       await userEvent.click(screen.getByRole('button', { name: 'Shadow' }))

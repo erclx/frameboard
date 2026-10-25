@@ -6,7 +6,7 @@ import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
 import { ColorRow } from './color-row'
-import type { WriteElement } from './write'
+import type { PreviewStyle, WriteElement } from './write'
 
 interface ColorSectionProps {
   title: string
@@ -54,6 +54,10 @@ interface FillSectionProps {
   inline: boolean
   disabled: boolean
   write: WriteElement
+  /** Shows a picked color on the live element before it is written. */
+  preview?: PreviewStyle
+  /** The element's text color, which a `currentcolor` paint shows. */
+  currentColor?: string
 }
 
 /**
@@ -72,6 +76,8 @@ export function FillSection({
   inline,
   disabled,
   write,
+  preview,
+  currentColor,
 }: FillSectionProps) {
   const property = textOnly ? 'color' : 'background-color'
   const stated = textOnly ? color : backgroundColor
@@ -106,6 +112,8 @@ export function FillSection({
           disabled={disabled}
           onWrite={set}
           onRemove={remove}
+          onPreview={(css) => preview?.(property, css)}
+          currentColor={currentColor}
         />
       ) : null}
     </ColorSection>

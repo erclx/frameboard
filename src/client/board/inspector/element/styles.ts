@@ -14,6 +14,8 @@ export interface LiveElement {
   fontSize: number
   fontWeight: number
   textAlign: string
+  /** The computed text color, which a `currentcolor` paint shows. */
+  color: string
   /** Whether any side draws a border. */
   bordered: boolean
   /** Whether the element or anything in it shows text. */
@@ -79,6 +81,7 @@ function readLive(element: Element, view: Window): LiveElement {
     fontSize: Math.round(parseFloat(style.fontSize) * 100) / 100,
     fontWeight: Number(style.fontWeight),
     textAlign: alignOf(style.textAlign, style.direction),
+    color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',

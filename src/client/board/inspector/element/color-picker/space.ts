@@ -82,6 +82,23 @@ export function parseComputed(text: string): Rgba | null {
   return parseHex(value)
 }
 
+/**
+ * The color a CSS value shows, as hue, saturation, and value, resolved by
+ * the browser so a keyword, `rgb()`, or `color-mix()` opens at its color.
+ * Null where the browser reads no color.
+ */
+export function resolveColor(css: string, within: HTMLElement): Hsv | null {
+  const probe = within.ownerDocument.createElement('span')
+  probe.style.color = css
+  if (probe.style.color === '') return null
+  probe.style.display = 'none'
+  within.append(probe)
+  const computed = getComputedStyle(probe).color
+  probe.remove()
+  const rgb = parseComputed(computed)
+  return rgb ? rgbToHsv(rgb) : null
+}
+
 export function rgbToHsv({ r, g, b }: Rgba): Hsv {
   const [red, green, blue] = [r / 255, g / 255, b / 255]
   const max = Math.max(red, green, blue)

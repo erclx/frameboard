@@ -209,6 +209,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         inline={live.inline.border}
         disabled={disabled}
         write={write}
+        preview={preview}
+        currentColor={live.color}
       />
       <ShadowSection
         boxShadow={own?.boxShadow ?? null}

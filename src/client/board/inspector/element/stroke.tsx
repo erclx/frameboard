@@ -4,7 +4,7 @@ import type { Theme } from '@/shared/theme'
 
 import { ColorRow } from './color-row'
 import { ColorSection } from './fill'
-import type { WriteElement } from './write'
+import type { PreviewStyle, WriteElement } from './write'
 
 /** The token the stroke `+` reaches for first. */
 const BORDER_TOKEN = '--border'
@@ -19,6 +19,10 @@ interface StrokeSectionProps {
   inline: boolean
   disabled: boolean
   write: WriteElement
+  /** Shows a picked color on the live element before it is written. */
+  preview?: PreviewStyle
+  /** The element's text color, which a `currentcolor` paint shows. */
+  currentColor?: string
 }
 
 /**
@@ -36,6 +40,8 @@ export function StrokeSection({
   inline,
   disabled,
   write,
+  preview,
+  currentColor,
 }: StrokeSectionProps) {
   const token =
     tokens.find((row) => row.name === BORDER_TOKEN)?.name ?? tokens[0]?.name
@@ -69,6 +75,8 @@ export function StrokeSection({
           onWrite={(css) =>
             write({ kind: 'style', property: 'border-color', value: css })
           }
+          onPreview={(css) => preview?.('border-color', css)}
+          currentColor={currentColor}
           onRemove={() =>
             void write(
               inline
