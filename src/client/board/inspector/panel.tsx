@@ -1,11 +1,10 @@
 import { cn } from 'cn'
-import { type LucideIcon, Monitor, Smartphone, Tablet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { useViewOnly } from '@/client/access/view-only'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
-import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import { FRAME_SIZES } from '@/shared/frame-sizes'
 import type { StyleValue } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
@@ -36,6 +35,7 @@ import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
 import { type ElementChange, writeElement } from './element/write'
 import { FrameSection } from './frame-section'
+import { PRESETS } from './presets'
 import { SelectionColors } from './selection-colors'
 
 /**
@@ -281,16 +281,6 @@ function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
     />
   )
 }
-
-const PRESETS: readonly {
-  preset: FrameSizePreset
-  label: string
-  icon: LucideIcon
-}[] = [
-  { preset: 'phone', label: 'Phone', icon: Smartphone },
-  { preset: 'tablet', label: 'Tablet', icon: Tablet },
-  { preset: 'desktop', label: 'Desktop', icon: Monitor },
-]
 
 /** The sizes the Frame tool places, one chosen at a time, the next canvas click placing it. */
 function PresetSection() {
