@@ -14,6 +14,7 @@ import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
 import { Thread } from './thread'
+import { notesUi } from './tool'
 
 const PICK: NotePick = {
   frame: { ref: 'studio/home/hero', name: 'hero' },
@@ -83,6 +84,7 @@ afterEach(() => {
       claims: {},
     })
     modeStore.setState({ mode: 'edit', tool: 'move' })
+    notesUi.setState({ open: null, drafts: {} })
   })
 })
 
@@ -307,6 +309,51 @@ describe('NotesLayer', () => {
     )
 
     expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
+  })
+
+  it('closes a thread on a press outside its card', async () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
+    renderLayer()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Note 4 on hero' }),
+    )
+
+    await userEvent.click(document.body)
+
+    expect(screen.queryByRole('region', { name: 'Note 4' })).toBeNull()
+  })
+
+  it('keeps a thread open on a press inside its card', async () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
+    renderLayer()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Note 4 on hero' }),
+    )
+
+    await userEvent.click(screen.getByRole('list', { name: 'Messages' }))
+
+    expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
+  })
+
+  it('reopens a thread with the reply left unsent in it', async () => {
+    live({
+      canWrite: true,
+      notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] },
+    })
+    renderLayer()
+    const marker = screen.getByRole('button', { name: 'Note 4 on hero' })
+    await userEvent.click(marker)
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Reply' }),
+      'half a thought',
+    )
+
+    await userEvent.click(document.body)
+    await userEvent.click(marker)
+
+    expect(screen.getByRole('textbox', { name: 'Reply' })).toHaveValue(
+      'half a thought',
+    )
   })
 
   it('closes a thread opened from its marker on Esc, with focus on the marker', async () => {

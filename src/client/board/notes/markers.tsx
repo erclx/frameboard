@@ -79,7 +79,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
       frames.some((frame) => frame.ref === open.pick.frame.ref) ? (
         <>
           <Marker number={nextNumber} at={open.pick.at} active />
-          <Popover at={open.pick.at}>
+          <Popover at={open.pick.at} onDismiss={closeNote}>
             <Composer
               key={open.pick.frame.ref}
               pick={open.pick}
@@ -89,7 +89,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
         </>
       ) : null}
       {thread && threadAt ? (
-        <Popover at={threadAt}>
+        <Popover at={threadAt} onDismiss={closeNote}>
           <Thread notes={thread} page={page} onClose={closeNote} />
         </Popover>
       ) : null}
@@ -145,17 +145,32 @@ const EDGE_GAP = 12
 /**
  * Holds a note card beside its marker at screen size, on the marker's right
  * as the design sets it, or on its left when the right would run the card
- * under the inspector, and moved down or up to stay inside the canvas.
+ * under the inspector, and moved down or up to stay inside the canvas. A
+ * press outside the card or focus leaving it dismisses it, a marker's press
+ * aside, since that opens the card the marker names.
  */
 function Popover({
   at,
+  onDismiss,
   children,
 }: {
   at: BoardPoint
+  onDismiss: () => void
   children: React.ReactNode
 }) {
   const card = useRef<HTMLDivElement>(null)
   const [shift, setShift] = useState({ flip: false, y: 0 })
+  useEffect(() => {
+    const press = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && card.current?.contains(target)) return
+      if (target instanceof Element && target.closest('[data-note-marker]'))
+        return
+      onDismiss()
+    }
+    document.addEventListener('pointerdown', press, true)
+    return () => document.removeEventListener('pointerdown', press, true)
+  }, [onDismiss])
   useLayoutEffect(() => {
     const element = card.current
     const canvas = element?.closest('[data-canvas]')
@@ -186,6 +201,12 @@ function Popover({
       <div
         ref={card}
         className="absolute"
+        onBlur={(event) => {
+          const next = event.relatedTarget
+          if (next instanceof Node && !event.currentTarget.contains(next)) {
+            onDismiss()
+          }
+        }}
         style={{
           top: CARD_OFFSET.y + shift.y,
           ...(shift.flip ? { right: CARD_OFFSET.x } : { left: CARD_OFFSET.x }),
