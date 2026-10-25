@@ -1,0 +1,223 @@
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { createLiveStore } from '@/client/live/store'
+import { frameOf } from '@/test/board'
+
+import { createModeStore } from '../mode'
+import { createSelectionStore } from '../selection'
+import { placeElement } from './write'
+
+const HASH = 'c'.repeat(64)
+const ANSWERED = 'd'.repeat(64)
+const HERO = frameOf('hero', {
+  box: { x: 100, y: 50, width: 400, height: 300 },
+})
+
+// Indices: html 0, head 1, the injected style is skipped, body 2, main 3, then its divs 4 and 5.
+const COLUMN =
+  '<main><div style="height:40px"></div><div style="height:40px"></div></main>'
+const ROW =
+  '<main style="display:flex"><div style="width:100px;height:40px"></div><div style="width:100px;height:40px"></div></main>'
+
+let layer: HTMLDivElement | undefined
+
+afterEach(() => {
+  layer?.remove()
+  layer = undefined
+})
+
+/** A canvas layer holding one live frame showing `body`, resolved once it has loaded. */
+async function mount(body: string): Promise<HTMLDivElement> {
+  layer = document.createElement('div')
+  layer.style.cssText = 'position:absolute;left:0;top:0'
+  const frame = document.createElement('div')
+  frame.dataset.frame = HERO.ref
+  frame.style.cssText = `position:absolute;left:${HERO.box.x}px;top:${HERO.box.y}px;width:${HERO.box.width}px;height:${HERO.box.height}px`
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText = 'display:block;width:100%;height:100%;border:0'
+  const loaded = new Promise((resolve) =>
+    iframe.addEventListener('load', resolve, { once: true }),
+  )
+  iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}</style></head><body>${body}</body></html>`
+  frame.append(iframe)
+  layer.append(frame)
+  document.body.append(layer)
+  await loaded
+  iframe.dataset.renderedAt = HERO.modifiedAt
+  return layer
+}
+
+/** A server answering every request with `status` and `body`, keeping each request's body. */
+function server(status: number, body: unknown) {
+  const sent: unknown[] = []
+  const send: typeof fetch = async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)))
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+  return { sent, send }
+}
+
+describe('placeElement', () => {
+  it('sends the gap under the point from the rendered hash, then selects the new element and returns to Move', async () => {
+    const container = await mount(COLUMN)
+    const selection = createSelectionStore()
+    const mode = createModeStore(1280)
+    mode.setState({ tool: 'shape' })
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    // Past the first div's middle, so the gap is ahead of the second.
+    const placed = await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      'rectangle',
+      { selection, mode, live: createLiveStore(), send },
+    )
+
+    expect(sent).toEqual([
+      {
+        ref: HERO.ref,
+        hash: HASH,
+        parent: 3,
+        before: 5,
+        element: { kind: 'rectangle' },
+      },
+    ])
+    expect(placed).toEqual({ frame: HERO.ref, index: 5, hash: ANSWERED })
+    expect(selection.getState().element).toEqual(placed)
+    expect(mode.getState().tool).toBe('move')
+  })
+
+  it('draws a divider in a row down its side', async () => {
+    const container = await mount(ROW)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 120, y: HERO.box.y + 20 },
+      'divider',
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+      },
+    )
+
+    expect(sent).toMatchObject([
+      { element: { kind: 'divider', vertical: true } },
+    ])
+  })
+
+  it('refuses a frame another session holds and sends nothing', async () => {
+    const container = await mount(COLUMN)
+    const live = createLiveStore()
+    live.setState({
+      claims: {
+        [HERO.ref]: {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: '2026-10-15T00:00:00.000Z',
+          expiresAt: '2026-10-15T01:00:00.000Z',
+        },
+      },
+    })
+    const { sent, send } = server(200, {})
+    const told: string[] = []
+
+    const placed = await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      'text',
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live,
+        send,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([
+      'claude · studio is editing hero, so nothing was written.',
+    ])
+  })
+
+  it('shows a refusal, selects nothing, and keeps the tool on', async () => {
+    const container = await mount(COLUMN)
+    const selection = createSelectionStore()
+    const mode = createModeStore(1280)
+    mode.setState({ tool: 'text' })
+    const { send } = server(409, {
+      ok: false,
+      error: {
+        code: 'stale-address',
+        message:
+          'hero.html changed after this edit was made, so nothing was written',
+      },
+    })
+    const told: string[] = []
+
+    const placed = await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      'text',
+      {
+        selection,
+        mode,
+        live: createLiveStore(),
+        send,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(placed).toBeNull()
+    expect(told).toEqual([
+      'hero.html changed after this edit was made, so nothing was written.',
+    ])
+    expect(selection.getState().element).toBeUndefined()
+    expect(mode.getState().tool).toBe('text')
+  })
+
+  it('places nothing over bare canvas', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {})
+
+    const placed = await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: 10, y: 10 },
+      'text',
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+      },
+    )
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
+  })
+})

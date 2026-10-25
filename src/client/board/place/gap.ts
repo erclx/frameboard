@@ -1,4 +1,7 @@
-import { elementIndex } from '../frame-dom'
+import type { FrameRecord } from '@/shared/records/list'
+
+import { elementIndex, renderedHash } from '../frame-dom'
+import { type BoardPoint, pickAt } from '../notes/pick'
 
 /** A point inside a live frame, in its own viewport pixels. */
 export interface FramePoint {
@@ -212,4 +215,35 @@ function lineAt(
     width: Math.max(0, content.right - content.left),
     height: 0,
   }
+}
+
+/** The gap under a board point, with the frame it is in and the hash of the bytes that frame shows. */
+export interface FrameGap {
+  frame: FrameRecord
+  hash: string
+  gap: Gap
+}
+
+/**
+ * The gap under a board point in the topmost live frame there, or null over
+ * bare canvas, a placeholder, or an iframe that has not finished a load,
+ * since then nothing vouches for the indices.
+ */
+export function gapUnder(
+  container: ParentNode,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+): FrameGap | null {
+  const pick = pickAt(container, frames, at)
+  const frame = frames.find((candidate) => candidate.ref === pick?.frame.ref)
+  if (!frame) return null
+  const shown = container.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
+  )?.contentDocument
+  const hash = shown ? renderedHash(shown) : null
+  const gap =
+    shown && hash
+      ? gapAt(shown, { x: at.x - frame.box.x, y: at.y - frame.box.y })
+      : null
+  return hash && gap ? { frame, hash, gap } : null
 }
