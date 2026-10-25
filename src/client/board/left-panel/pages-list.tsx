@@ -149,11 +149,11 @@ export function PagesList({
         </div>
       ) : null}
       {shown.length === 0 && needle ? (
-        <p className="px-3.5 py-1 text-faint">
+        <p className="px-3.5 py-1 text-muted-foreground">
           No page names match {query.trim()}
         </p>
       ) : (
-        <ul className="flex min-h-0 flex-col -mt-1 overflow-y-auto pt-1 pb-0.5">
+        <ul className="flex min-h-0 flex-col mt-1 overflow-y-auto pt-[3px] pb-0.5">
           {shown.map((page) => (
             <PageRow
               key={page.ref}

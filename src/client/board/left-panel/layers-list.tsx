@@ -120,7 +120,9 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
         </button>
       </PanelSection>
       {frames.length === 0 ? (
-        <p className="px-3.5 py-1 text-faint">No frames on this page</p>
+        <p className="px-3.5 py-1 text-muted-foreground">
+          No frames on this page
+        </p>
       ) : (
         <ul className="flex min-h-0 flex-col overflow-y-auto pb-1">
           {stack.map((frame, index) => {

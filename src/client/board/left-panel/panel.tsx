@@ -45,13 +45,15 @@ function splitId(project: string): string {
 }
 
 /**
- * Pixels. A row is 26 tall under a 29 heading, with 12 of room under the last
- * row so the divider never crowds it, and the list starts at eight rows at most.
+ * Pixels. A row is 26 tall under a 29 heading and a 7 gap, with 12 of room
+ * under the last row so the divider never crowds it, and the list starts at
+ * eight rows at most.
  */
 const ROW_HEIGHT = 26
+const PAGES_GAP = 7
 const PAGES_ROOM = 12
 const PAGES_MIN = 64
-const PAGES_MAX_DEFAULT = 29 + 8 * ROW_HEIGHT + PAGES_ROOM
+const PAGES_MAX_DEFAULT = 29 + PAGES_GAP + 8 * ROW_HEIGHT + PAGES_ROOM
 
 const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
@@ -83,7 +85,10 @@ export function LeftPanel({
   // developer's.
   const resetting = useRef(false)
   const pagesHeight = Math.min(
-    Math.max(29 + project.pages.length * ROW_HEIGHT + PAGES_ROOM, PAGES_MIN),
+    Math.max(
+      29 + PAGES_GAP + project.pages.length * ROW_HEIGHT + PAGES_ROOM,
+      PAGES_MIN,
+    ),
     PAGES_MAX_DEFAULT,
   )
   const frames =
