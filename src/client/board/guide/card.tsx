@@ -14,6 +14,7 @@ import { SWATCH_RING } from '@/client/board/inspector/element/values'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
 import { useTokenTable } from '@/client/board/tokens'
+import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
 import { type Structure, structure } from '@/client/live/structure'
@@ -134,10 +135,12 @@ export function GuideCard({
     }
     if (state.drawer === 'self') {
       choosePreset(state.size)
-      await placeFrame(
+      const added = await placeFrame(
         { x: 0, y: 0 },
         { page: page.ref, frames: page.frames, calls },
       )
+      // An empty page opens at 100%, which clips a desktop frame.
+      if (added) canvasView.fitTo([added.box])
     }
     set({ phase: 'done', busy: false })
     toast.add({

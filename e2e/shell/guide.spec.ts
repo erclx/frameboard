@@ -15,6 +15,18 @@ async function choose(radio: Locator): Promise<void> {
   await expect(radio).toBeChecked()
 }
 
+/** Whether `inner`'s box on screen lies wholly within `outer`'s. */
+async function inside(inner: Locator, outer: Locator): Promise<boolean> {
+  const [a, b] = await Promise.all([inner.boundingBox(), outer.boundingBox()])
+  if (!a || !b) return false
+  return (
+    a.x >= b.x &&
+    a.y >= b.y &&
+    a.x + a.width <= b.x + b.width &&
+    a.y + a.height <= b.y + b.height
+  )
+}
+
 test.describe('a new board guided to its first frame', () => {
   let parent: string
   let root: string
@@ -43,7 +55,7 @@ test.describe('a new board guided to its first frame', () => {
     await guide.getByRole('textbox').fill('Acme mobile')
     await guide.getByRole('button', { name: 'Next' }).click()
     await expect(page).toHaveURL(/\/p\/acme-mobile\/page-1$/)
-    await choose(guide.getByRole('radio', { name: /Tablet/ }))
+    await choose(guide.getByRole('radio', { name: /Desktop/ }))
     await guide.getByRole('button', { name: 'Next' }).click()
     await choose(guide.getByRole('radio', { name: 'Green' }))
     await guide.getByRole('button', { name: 'Next' }).click()
@@ -53,14 +65,22 @@ test.describe('a new board guided to its first frame', () => {
     await expect(guide).toBeHidden()
     await expect
       .poll(() => readdirSync(at('acme-mobile/page-1')))
-      .toContain('tablet.html')
+      .toContain('desktop.html')
     expect(existsSync(at('acme-mobile/tokens.css'))).toBe(true)
     expect(existsSync(at('untitled'))).toBe(false)
+    await expect
+      .poll(() =>
+        inside(
+          page.locator('[data-frame="acme-mobile/page-1/desktop"]'),
+          page.locator('[data-canvas]'),
+        ),
+      )
+      .toBe(true)
 
     await page.keyboard.press('Escape')
     await page.keyboard.press(UNDO)
     await expect
-      .poll(() => existsSync(at('acme-mobile/page-1/tablet.html')))
+      .poll(() => existsSync(at('acme-mobile/page-1/desktop.html')))
       .toBe(false)
     await page.keyboard.press(UNDO)
     await expect
