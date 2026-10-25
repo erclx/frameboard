@@ -2,6 +2,7 @@ import { cn } from 'cn'
 import { type LucideIcon, Monitor, Smartphone, Tablet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { useViewOnly } from '@/client/access/view-only'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
@@ -37,7 +38,8 @@ import { SelectionColors } from './selection-colors'
  * selected frame, or the `N frames` section and
  * Arrange for several, each with the colors they use, and a hint while
  * nothing is selected. An element selected inside the frame adds its
- * sections under Frame, whose name row it hides.
+ * sections under Frame, whose name row it hides. A tab that reads opens the
+ * panel on one View only line, since every field under it reads greyed.
  */
 export function InspectorPanel() {
   const name = useAuthor() ?? null
@@ -45,6 +47,7 @@ export function InspectorPanel() {
   const framing = useMode(
     (state) => state.mode === 'edit' && state.tool === 'frame',
   )
+  const viewOnly = useViewOnly()
   const listeners = useLive((state) => state.listeners)
   const claims = useLive((state) => state.claims)
   const page = useSelection((state) => state.page)
@@ -71,6 +74,11 @@ export function InspectorPanel() {
         </span>
         <ZoomControl />
       </div>
+      {viewOnly ? (
+        <p className="border-b border-sidebar-border px-3 py-2.5 text-muted-foreground">
+          View only. Run frameboard open to edit
+        </p>
+      ) : null}
       {framing ? (
         <PresetSection />
       ) : page && frames.length > 0 ? (

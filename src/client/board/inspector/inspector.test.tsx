@@ -94,6 +94,32 @@ describe('InspectorPanel', () => {
     })
   })
 
+  it('opens on one View only line in a tab the server says reads', () => {
+    act(() =>
+      liveStore.setState({
+        connected: true,
+        accessKnown: true,
+        canWrite: false,
+      }),
+    )
+
+    renderPanel()
+
+    expect(
+      screen.getByText('View only. Run frameboard open to edit'),
+    ).toBeVisible()
+    act(() => liveStore.setState({ connected: false, accessKnown: false }))
+  })
+
+  it('carries no View only line in a tab that writes', () => {
+    act(() => liveStore.setState({ connected: true, accessKnown: true }))
+
+    renderPanel()
+
+    expect(screen.queryByText(/View only/)).toBeNull()
+    act(() => liveStore.setState({ connected: false, accessKnown: false }))
+  })
+
   it('holds the hint while nothing is selected', () => {
     renderPanel()
 
