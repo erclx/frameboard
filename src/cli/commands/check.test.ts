@@ -109,11 +109,56 @@ describe('check', () => {
     expect(run.json().error?.code).toBe('frame-not-found')
   })
 
-  it('prints each finding at its path, line, and column without --json', async () => {
+  it('checks the project a bare name holds on a board of several projects', async () => {
+    const board: TempBoard = writeBoard({
+      'studio/home/hero.html': '<p>Hello</p>',
+      'studio/about/team.html': '<p>Hello</p>',
+      'other/home/hero.html': '<p>Hello</p>',
+    })
+
+    const run = await check(['studio'], board.root)
+    board.cleanup()
+
+    expect(run.exitCode).toBe(8)
+    expect(run.json().error?.details).toMatchObject({ checked: 2 })
+  })
+
+  it('reads a bare name as a page first where a page and a project share it', async () => {
+    const board: TempBoard = writeBoard({
+      'home/home/hero.html': '<p>Hello</p>',
+      'home/about/team.html': '<p>Hello</p>',
+    })
+
+    const run = await check(['home'], board.root)
+    board.cleanup()
+
+    expect(run.json().error?.details).toMatchObject({
+      checked: 1,
+      findings: [{ frame: 'home/home/hero' }],
+    })
+  })
+
+  it('keeps project-required on a bare name no project holds', async () => {
+    const board: TempBoard = writeBoard({
+      'studio/home/hero.html': '<p>Hello</p>',
+      'other/home/hero.html': '<p>Hello</p>',
+    })
+
+    const run = await check(['nowhere'], board.root)
+    board.cleanup()
+
+    expect(run.json().error?.code).toBe('project-required')
+  })
+
+  it('prints the findings on stdout and one summary line on stderr without --json', async () => {
     const run = await cli(['check', 'theme/fail'], { cwd: ROOT })
 
     expect(run.exitCode).toBe(8)
-    expect(run.stderr).toContain('rules/theme/fail.html:9:9  theme  ')
+    expect(run.stdout).toContain('rules/theme/fail.html:9:9  theme  ')
+    expect(run.stderr).not.toContain('rules/theme/fail.html')
+    expect(run.stderr.trim().split('\n')).toEqual([
+      expect.stringMatching(/^frameboard: Checked 1 frame, \d+ findings?\.$/),
+    ])
   })
 
   it('closes the human output saying the browser rules did not run', async () => {

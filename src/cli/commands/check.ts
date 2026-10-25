@@ -71,7 +71,9 @@ export function registerCheck(program: Command, context: ProgramContext): void {
     // A warning, such as a frame sized off the viewport on purpose, never
     // fails a script.
     if (result.findings.some((finding) => finding.severity === 'error')) {
-      throw new FrameboardError('check-findings', describe(result), {
+      // The findings are the verb's output, so stderr carries the summary alone.
+      if (!options.json) context.io.stdout(`${describe(result)}\n`)
+      throw new FrameboardError('check-findings', summarize(result), {
         ...result,
       })
     }
@@ -93,18 +95,33 @@ async function run(
 ): Promise<StaticRun> {
   const refOptions = { project: options.project, cwd }
   if (target === undefined) {
-    const project = await resolveProject(root, options.project)
-    return {
-      result: await checkProject(root, project.name),
-      refs: await projectRefs(root, project.name),
-    }
+    return projectRun(root, (await resolveProject(root, options.project)).name)
   }
   const parts = target.split('/')
   if (target.endsWith(FRAME_EXTENSION) || parts.length === 3) {
     return frameRun(await resolveFrameRef(root, target, refOptions))
   }
   if (parts.length === 1) {
-    return pageRun(root, await resolvePageRef(root, target, refOptions))
+    try {
+      return await pageRun(root, await resolvePageRef(root, target, refOptions))
+    } catch (pageError) {
+      // A bare name no page answers to reads as a project, which is what an
+      // agent copying a project name onto a board of several projects means.
+      if (
+        options.project !== undefined ||
+        !(pageError instanceof FrameboardError) ||
+        !NOT_FRAME.has(pageError.code)
+      ) {
+        throw pageError
+      }
+      let project
+      try {
+        project = await resolveProject(root, target)
+      } catch {
+        throw pageError
+      }
+      return projectRun(root, project.name)
+    }
   }
   // Two parts read as `<page>/<frame>` first and `<project>/<page>` second.
   try {
@@ -141,6 +158,13 @@ async function pageRun(
   return {
     result: await checkPage(root, project, page),
     refs: names.map((name) => `${project}/${page}/${name}`),
+  }
+}
+
+async function projectRun(root: string, project: string): Promise<StaticRun> {
+  return {
+    result: await checkProject(root, project),
+    refs: await projectRefs(root, project),
   }
 }
 
@@ -182,16 +206,18 @@ async function browserFindings(
   }
 }
 
-/** One line per finding, then a count, then why the browser rules did not run. */
-function describe({ checked, findings, browser }: CheckResult): string {
+/** The count line alone, such as `Checked 3 frames, 2 findings.` */
+function summarize({ checked, findings }: CheckResult): string {
   const frames = `${checked} frame${checked === 1 ? '' : 's'}`
-  const lines =
-    findings.length === 0
-      ? [`Checked ${frames}, no findings.`]
-      : [
-          ...findings.map(formatFinding),
-          `Checked ${frames}, ${findings.length} finding${findings.length === 1 ? '' : 's'}.`,
-        ]
+  return findings.length === 0
+    ? `Checked ${frames}, no findings.`
+    : `Checked ${frames}, ${findings.length} finding${findings.length === 1 ? '' : 's'}.`
+}
+
+/** One line per finding, then the count, then why the browser rules did not run. */
+function describe(result: CheckResult): string {
+  const { findings, browser } = result
+  const lines = [...findings.map(formatFinding), summarize(result)]
   if (browser?.reason === 'server-not-running') {
     lines.push(
       'Browser rules did not run, since no board server is running. Run frameboard serve, then check again.',
