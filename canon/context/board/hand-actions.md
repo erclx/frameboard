@@ -67,7 +67,9 @@ Owns the width a frame is previewed at, held in this tab's memory alone, so a re
 - A frame hugging its height takes its content's height at the previewed width, read as the server's fit step reads it, and a page sized off the viewport keeps its stored height
 - A frame the board stops showing, deleted, hidden, or moved to another page, drops its preview
 
-A frame draws, and a press hits it, at its pending box over its stored one at the previewed width. `withPending` in `geometry/write.ts` hands every gesture and action the stored and pending boxes alone, since each writes what it reads, and a box write ends the preview of each frame it names as it starts.
+A frame draws at its pending box over its stored one at the previewed width, and a press, a hover, an element pick, a note, and a right-click all hit it there. The selection chip still names the stored size.
+
+`withPending` in `geometry/write.ts` hands every gesture and action the stored and pending boxes alone, since each writes what it reads, and a box write ends the preview of each frame it names as it starts.
 
 ### `src/server/history/`
 
