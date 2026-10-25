@@ -37,6 +37,7 @@ describe('edit', () => {
   }
 
   it('should write a style edit and return the edit record', async () => {
+    const original = readFileSync(frame)
     const result = await run('--index', HEADING, '--style', 'color=red')
 
     const written = readFileSync(frame, 'utf8')
@@ -50,6 +51,7 @@ describe('edit', () => {
         ref: 'webapp/home/hero',
         index: 5,
         hash: contentHash(written),
+        from: contentHash(original),
       },
     })
     expect(editResultSchema.safeParse(result.json().data).success).toBe(true)

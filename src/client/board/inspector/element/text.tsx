@@ -3,8 +3,9 @@ import { type KeyboardEvent, useRef, useState } from 'react'
 import { Kbd } from '@/client/components/ui/kbd'
 import { Textarea } from '@/client/components/ui/textarea'
 
+import type { ElementKey } from '../../selection'
 import { isStrayHistory } from './stray-history'
-import type { WriteElement } from './write'
+import { forgetText, keptText, type WriteElement } from './write'
 
 /** A pasted line break, in any platform's form. */
 const NEWLINES = /\r\n|\r|\n/g
@@ -13,6 +14,8 @@ interface TextSectionProps {
   text: string
   disabled: boolean
   write: WriteElement
+  /** The element the field edits, whose text an agent's write refused is kept by. */
+  element: Pick<ElementKey, 'frame' | 'index'>
 }
 
 /**
@@ -20,10 +23,17 @@ interface TextSectionProps {
  * blur and cancelling on Esc, with the keys hinted while it has focus. Text
  * is one line, since a `<br>` would end the text-only state that shows this
  * field, so a newline, typed with Shift or pasted, becomes a space. The
- * written text stays shown until the frame reloads with it.
+ * written text stays shown until the frame reloads with it. Text an agent's
+ * write to the element refused stays as an unsaved draft, here or once the
+ * element is selected again, so Enter applies it over the agent's version.
  */
-export function TextSection({ text, disabled, write }: TextSectionProps) {
-  const [draft, setDraft] = useState<string | null>(null)
+export function TextSection({
+  text,
+  disabled,
+  write,
+  element,
+}: TextSectionProps) {
+  const [draft, setDraft] = useState<string | null>(() => keptText(element))
   const [sent, setSent] = useState<{ value: string; over: string } | null>(null)
   if (sent && sent.over !== text) setSent(null)
   const held = sent?.over === text ? sent.value : null
@@ -39,10 +49,13 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
     }
     if (draft === null) return
     setDraft(null)
+    forgetText(element)
     if (draft === text) return
     setSent({ value: draft, over: text })
     void write({ kind: 'text', value: draft }).then((written) => {
-      if (!written) setSent(null)
+      if (written) return
+      setSent(null)
+      setDraft(keptText(element))
     })
   }
 
@@ -53,6 +66,7 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
     }
     if (event.key === 'Escape') {
       setDraft(null)
+      forgetText(element)
       cancelled.current = true
       event.currentTarget.blur()
     }

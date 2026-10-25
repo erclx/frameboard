@@ -14,7 +14,7 @@ import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
 import { type BrowserChecks, checkRoutes } from './routes/checks'
-import { editRoutes } from './routes/edit'
+import { editRoutes, type SettledVersion } from './routes/edit'
 import { elementsRoutes } from './routes/elements'
 import { findRoutes } from './routes/find'
 import type { FrameVersion } from './routes/frames'
@@ -83,6 +83,8 @@ export interface AppOptions {
   measure?: MeasureFrame
   /** The frame versions agent writes replaced, which `?at=<hash>` serves. */
   frameVersion?: FrameVersion
+  /** The same lookup, read after any watch batch in progress, which the edit route relocates a stale edit from. */
+  settledVersion?: SettledVersion
 }
 
 export function createApp({
@@ -101,6 +103,7 @@ export function createApp({
   thumbnails,
   measure,
   frameVersion,
+  settledVersion,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -128,7 +131,7 @@ export function createApp({
   app.route('/', assetsRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
-  app.route('/', editRoutes(root, actions.access, history))
+  app.route('/', editRoutes(root, actions.access, history, settledVersion))
   app.route('/', pngRoutes(root, renderFrame))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))

@@ -50,7 +50,8 @@ export function spanText(
   return range ? source.slice(...range) : ''
 }
 
-interface Found {
+/** Where an element was found, by index and by the source range its scope covers. */
+export interface Found {
   readonly index: number
   readonly range: [number, number]
 }
@@ -86,6 +87,45 @@ function locate(
     return range ? [{ index, range }] : []
   })
   return found.length === 1 ? found[0] : undefined
+}
+
+/**
+ * Finds again in `source` the element `index` named in `was`, the source an
+ * edit was made from, by the bytes its scope covers there, the way an undo
+ * finds its element. The index holds while every byte through the whole
+ * element is unchanged, its text included, since a start tag alone reads the
+ * same on two swapped siblings. Otherwise the bytes must read once in `was` and once in
+ * `source`, since a sibling sharing them could be the one left after a swap
+ * or a removal. Answers undefined when those bytes changed, read twice, or
+ * name no stated element, since writing on a guess would land over the
+ * agent's work.
+ */
+export function relocate(
+  was: string,
+  index: number,
+  scope: SpanScope,
+  source: string,
+): Found | undefined {
+  const old = parseFrame(was)
+  const element = old.elements[index]
+  const range = element && rangeOf(element, scope)
+  if (!range) return undefined
+  const text = was.slice(...range)
+  const tree = parseFrame(source)
+  const end = rangeOf(element, 'element')?.[1] ?? range[1]
+  if (source.slice(0, end) === was.slice(0, end)) {
+    const held = matches(source, tree.elements[index], scope, text)
+    if (held) return { index, range: held }
+  }
+  const once = (from: string, elements: FrameTree['elements']) =>
+    elements.flatMap((candidate, at) => {
+      const found = matches(from, candidate, scope, text)
+      return found ? [{ index: at, range: found }] : []
+    })
+  const found = once(source, tree.elements)
+  return once(was, old.elements).length === 1 && found.length === 1
+    ? found[0]
+    : undefined
 }
 
 /** Whether the frame still holds the edited element as `side` of the edit left it. */

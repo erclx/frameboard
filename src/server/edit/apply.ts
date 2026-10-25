@@ -130,6 +130,11 @@ function resolve(tree: FrameTree, index: number): Element | EditRefused {
   return element
 }
 
+/** Which bytes of the element a change reads and writes, as `SpanScope` splits them. */
+export function scopeOf(change: EditChange): SpanScope {
+  return change.kind === 'text' ? 'element' : 'start-tag'
+}
+
 /** The attribute name an edit writes, or undefined for a text edit. */
 function editedAttribute(change: EditChange): string | undefined {
   if (change.kind === 'style') return 'style'
@@ -284,7 +289,7 @@ export function applyEdit(
       `the edit to <${element.tagName}> would change more than that element, so nothing was written`,
     )
   }
-  const scope: SpanScope = normalized.kind === 'text' ? 'element' : 'start-tag'
+  const scope = scopeOf(normalized)
   const span: ElementSpan = {
     scope,
     index: address.index,

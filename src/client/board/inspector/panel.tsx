@@ -206,7 +206,13 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         currentColor={live.color}
       />
       {live.textOnly ? (
-        <TextSection text={live.text} disabled={disabled} write={write} />
+        <TextSection
+          key={`${element.frame}\n${element.index}`}
+          text={live.text}
+          disabled={disabled}
+          write={write}
+          element={element}
+        />
       ) : null}
       <StrokeSection
         bordered={live.bordered}
