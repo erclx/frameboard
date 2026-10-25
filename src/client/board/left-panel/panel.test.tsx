@@ -592,6 +592,23 @@ describe('LeftPanel', () => {
   })
 
   describe('element rows', () => {
+    it('gives a frame and an element expander a 24px target', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const frameToggle = screen.getByRole('button', {
+        name: 'Show the elements of hero',
+      })
+      await userEvent.click(frameToggle)
+
+      const elementToggle = screen.getByRole('button', {
+        name: 'Show what Card holds',
+      })
+      for (const toggle of [frameToggle, elementToggle]) {
+        const box = toggle.getBoundingClientRect()
+        expect([box.width, box.height]).toEqual([24, 24])
+      }
+    })
+
     it("lists a frame's elements once its row opens", async () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))

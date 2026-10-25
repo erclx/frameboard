@@ -150,7 +150,7 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
                     aria-label={`${open ? 'Hide' : 'Show'} the elements of ${frame.name}`}
                     aria-expanded={open}
                     onClick={() => toggle(frame.ref)}
-                    className="grid w-2.5 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {open ? (
                       <ChevronDown aria-hidden className="size-2.5" />

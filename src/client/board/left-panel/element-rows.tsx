@@ -104,7 +104,7 @@ export function ElementRows({
                     aria-label={`${open ? 'Hide' : 'Show'} what ${element.name} holds`}
                     aria-expanded={open}
                     onClick={() => toggle(element.index)}
-                    className="grid w-2.5 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {open ? (
                       <ChevronDown aria-hidden className="size-2.5" />
