@@ -70,9 +70,9 @@ Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes
 
 Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history.
 
-### What an undo leaves alone
+### `src/server/history/changes.ts`
 
-An undo restores only what the developer set, so a write by an agent or by the server around it survives.
+Owns the change kinds a step holds and what each restores, which is only what the developer set, so a write by an agent or by the server around it survives.
 
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that

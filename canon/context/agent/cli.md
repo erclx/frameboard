@@ -29,18 +29,18 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing
 - A fresh `serve` waits up to one second for an old writing tab to reconnect, and opens one only when no writing tab is connected, so `opened` is true exactly when this call opened one
 
-### Write access
+### `src/cli/commands/open.ts`
 
-A tab gets write access only through a single-use redeem URL, and the verbs below hand one out or need a live server.
+Owns handing a tab write access, beside `show.ts` and `selection.ts`, the other verbs that need a live server. A tab gets write access only through a single-use redeem URL.
 
 - The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
 - `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token
 - `open` and `show` exit 3 with `server-not-running` rather than start a server, and `show` points every open board tab at a frame
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
 
-### Structure verbs
+### `src/cli/commands/frame.ts`
 
-The structure verbs reshape projects, pages, and frames.
+Owns the frame verbs, and `project.ts` and `page.ts` reshape projects and pages the same way.
 
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
