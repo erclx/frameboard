@@ -14,6 +14,10 @@ interface Served {
   reused: boolean
 }
 
+type Document<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: { message: string } }
+
 interface Opened {
   writeUrl: string
 }
@@ -66,17 +70,21 @@ try {
   process.exit(1)
 }
 
-/** The `data` of the one envelope `serve --json` prints, read once it parses. */
+/** The `data` of the one envelope `serve --json` prints, or its refusal as an error, read once it parses. */
 function envelope<T>(child: ChildProcess): Promise<T> {
   return new Promise((done, fail) => {
     let stdout = ''
     child.stdout?.on('data', (chunk: Buffer) => {
       stdout += chunk.toString()
+      let document: Document<T>
       try {
-        done(JSON.parse(stdout).data as T)
+        document = JSON.parse(stdout)
       } catch {
         // The document has not finished printing.
+        return
       }
+      if (document.ok) done(document.data)
+      else fail(new Error(document.error.message))
     })
     child.once('exit', (code) =>
       fail(new Error(`serve exited ${code} before it printed an address`)),

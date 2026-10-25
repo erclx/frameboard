@@ -25,6 +25,7 @@ const SCRIPT = fileURLToPath(
 interface Preview {
   child: ChildProcess
   output: () => string
+  errors: () => string
   /** Resolves with the output once `text` has printed. */
   printed: (text: string) => Promise<string>
   exited: Promise<number | null>
@@ -53,11 +54,15 @@ test.describe('bun run preview', () => {
     rmSync(checkout, { recursive: true, force: true })
   })
 
-  function startPreview(): Preview {
+  function startPreview(port = '0'): Preview {
     const child = spawn('bun', [SCRIPT], {
-      env: { ...process.env, CANON_PREVIEW_ROOT: checkout, PREVIEW_PORT: '0' },
+      env: { ...process.env, CANON_PREVIEW_ROOT: checkout, PREVIEW_PORT: port },
     })
     let stdout = ''
+    let stderr = ''
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString()
+    })
     const waiting: (() => void)[] = []
     child.stdout.on('data', (chunk: Buffer) => {
       stdout += chunk.toString()
@@ -66,6 +71,7 @@ test.describe('bun run preview', () => {
     const preview: Preview = {
       child,
       output: () => stdout,
+      errors: () => stderr,
       printed: (text) =>
         new Promise((done) => {
           const check = () => stdout.includes(text) && done(stdout)
@@ -161,5 +167,13 @@ test.describe('bun run preview', () => {
     expect(await second.exited).toBe(0)
     expect(editLink(output).startsWith(record().url)).toBe(true)
     expect(() => process.kill(record().pid, 0)).not.toThrow()
+  })
+
+  test('reports the refusal serve prints instead of an edit link', async () => {
+    const preview = startPreview('abc')
+
+    expect(await preview.exited).toBe(1)
+    expect(preview.errors()).toContain('Expected a port between 0 and 65535')
+    expect(preview.output()).not.toContain('Edit link:')
   })
 })
