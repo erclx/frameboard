@@ -125,13 +125,18 @@ test.describe('editing a selected element by hand', () => {
     await toast.hover()
     await toast.focus()
     for (let press = 0; press < 3; press++) {
-      await page.keyboard.press('Control+KeyZ')
+      await page.keyboard.press('ControlOrMeta+KeyZ')
     }
 
+    // A blur commit sends its request in the blur handler itself, so the
+    // requests recorded once the blur returns are all it will ever send.
+    const edits: string[] = []
+    page.on('request', (request) => {
+      if (request.url().endsWith('/api/frames/edit')) edits.push(request.url())
+    })
     await text.focus()
     await text.blur()
-    // Nothing should happen across this window, so it is a fixed one.
-    await page.waitForTimeout(300)
+    expect(edits).toEqual([])
     expect(read()).toContain('>Welcome home</h1>')
     await expect(text).toHaveValue('Welcome home')
   })
