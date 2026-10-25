@@ -148,7 +148,7 @@ function ActionRow({
   return (
     <CommandItem
       value={`action:${action.id}`}
-      keywords={[label]}
+      keywords={[label, ...(action.command?.keywords ?? [])]}
       onSelect={choose(action.run)}
     >
       <Icon />
@@ -170,7 +170,9 @@ function ActionRow({
 /**
  * Ranks a row by what it shows rather than by its unique value, which holds
  * a ref that would match a project's name on every frame inside it. A run of
- * the query scores above letters spread across the label.
+ * the query scores above runs that each start a word, as `zofi` finds Zoom
+ * to fit. Letters spread through the middle of words match nothing, since
+ * `new` finding Preview at phone width reads as noise.
  */
 function matchScore(
   _value: string,
@@ -184,16 +186,25 @@ function matchScore(
       const text = keyword.toLowerCase()
       if (text.startsWith(query)) return 1
       if (text.includes(query)) return 0.8
-      return inOrder(text, query) ? 0.3 : 0
+      const words = text.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+      return startsWords(words, query.replace(/\s+/g, '')) ? 0.3 : 0
     }),
   )
 }
 
-function inOrder(text: string, query: string): boolean {
-  let at = 0
-  for (const letter of query) {
-    at = text.indexOf(letter, at) + 1
-    if (at === 0) return false
-  }
-  return true
+/** Whether the query splits into runs, each a prefix of a later word than the last. */
+function startsWords(words: readonly string[], query: string): boolean {
+  if (query === '') return true
+  return words.some((word, at) => {
+    for (let length = sharedPrefix(word, query); length > 0; length -= 1) {
+      if (startsWords(words.slice(at + 1), query.slice(length))) return true
+    }
+    return false
+  })
+}
+
+function sharedPrefix(word: string, query: string): number {
+  let length = 0
+  while (length < word.length && word[length] === query[length]) length += 1
+  return length
 }

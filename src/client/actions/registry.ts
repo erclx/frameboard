@@ -31,8 +31,15 @@ export interface Action {
    * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
    * enabled actions carrying it, so a key a person never runs by name omits it.
    * `hint` prints on the row's right, such as the project a Rename acts on.
+   * `keywords` are further words the palette finds it by, such as `dark` for
+   * Toggle theme.
    */
-  command?: { label: string; icon?: LucideIcon; hint?: () => string }
+  command?: {
+    label: string
+    icon?: LucideIcon
+    hint?: () => string
+    keywords?: readonly string[]
+  }
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
   checked?: () => boolean
 }
