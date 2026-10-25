@@ -547,7 +547,8 @@ function LayoutErrorNotice({
 /**
  * The notice on a page drawing no frame. A page whose frames are all hidden
  * says so, since its layers still list them, and a tab that may write offers
- * to show them.
+ * to show them. Its body mixes the muted text toward the foreground, since
+ * the muted token alone reads 4.3:1 on the light canvas.
  */
 function EmptyNotice({
   hidden,
@@ -568,7 +569,7 @@ function EmptyNotice({
     return (
       <div
         role="status"
-        className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-[color-mix(in_srgb,var(--muted-foreground)_85%,var(--foreground))]"
       >
         <div
           aria-hidden
@@ -601,7 +602,7 @@ function EmptyNotice({
   return (
     <div
       role="status"
-      className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-muted-foreground"
+      className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-[color-mix(in_srgb,var(--muted-foreground)_85%,var(--foreground))]"
     >
       <div
         aria-hidden
