@@ -280,12 +280,21 @@ describe('Canvas', () => {
       await expect.poll(() => viewOf(container).y).toBeCloseTo(152)
     })
 
-    it('eases a horizontal notch, as Shift with a wheel sends it', async () => {
+    it('eases a horizontal notch', async () => {
       const { container } = renderCanvas(square('ease-across'))
 
-      wheel(container, { deltaX: 100, shiftKey: true })
+      wheel(container, { deltaX: 100 })
 
       await expect.poll(() => viewOf(container).x).toBeCloseTo(200)
+    })
+
+    it('pans sideways on Shift with a wheel, sent as a vertical delta', async () => {
+      const { container } = renderCanvas(square('ease-shift'))
+
+      wheel(container, { deltaY: 100, shiftKey: true })
+
+      await expect.poll(() => viewOf(container).x).toBeCloseTo(200)
+      expect(viewOf(container).y).toBe(200)
     })
 
     it('pans a trackpad delta in the same event', () => {

@@ -206,7 +206,12 @@ export function Canvas({
           }
           // Each axis reads alone, so a notch glides and a trackpad's small
           // deltas follow the fingers one to one.
-          const { deltaX, deltaY, deltaMode } = event
+          // Shift turns a wheel sideways, which macOS sends as deltaX and
+          // Chromium on Linux leaves on deltaY.
+          const sideways = event.shiftKey && event.deltaX === 0
+          const deltaX = sideways ? event.deltaY : event.deltaX
+          const deltaY = sideways ? 0 : event.deltaY
+          const { deltaMode } = event
           const dx = -wheelPixels(deltaX, deltaMode)
           const dy = -wheelPixels(deltaY, deltaMode)
           const notchX = isNotch(deltaX, deltaMode)
