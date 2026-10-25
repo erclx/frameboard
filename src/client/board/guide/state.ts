@@ -1,8 +1,15 @@
+import { useEffect } from 'react'
+import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { useLive } from '@/client/live/store'
-import { DEFAULT_BOARD_FOLDER } from '@/shared/board-files'
+import {
+  DEFAULT_BOARD_FOLDER,
+  START_PAGE,
+  START_PROJECT,
+} from '@/shared/board-files'
+import { boardUrl } from '@/shared/board-urls'
 import type { FrameSizePreset } from '@/shared/frame-sizes'
 import type { PageRecord } from '@/shared/records/list'
 import {
@@ -32,6 +39,12 @@ export interface GuideState {
   busy: boolean
   /** Set by a step change, so focus moves to the new step once it paints, remount or not. */
   moved: boolean
+  /**
+   * Whether home may still send the tab on to the guide, set at boot only
+   * where the tab first opened on `/`, and cleared once the board and access
+   * settle, so a later way home shows home.
+   */
+  landing: boolean
 }
 
 const START: GuideState = {
@@ -47,6 +60,7 @@ const START: GuideState = {
   refusal: null,
   busy: false,
   moved: false,
+  landing: false,
 }
 
 /**
@@ -69,6 +83,34 @@ export function useShowsGuide(page: PageRecord): boolean {
   if (!canWrite || page.frames.length > 0) return false
   if (phase === 'open') return page.project === project
   return phase === 'idle' && isUntouched(board, canWrite)
+}
+
+/** Arms the landing for a tab that opened on `path`, once at boot. */
+export function armGuideLanding(path: string): void {
+  guideStore.setState({ landing: path === '/' })
+}
+
+/**
+ * Sends a tab whose first arrival is home on to the start page while the
+ * board is still untouched, once the board and this tab's access are known,
+ * and at most once. Returns whether home should hold its view meanwhile, so
+ * the projects never flash before the move.
+ */
+export function useGuideLanding(): boolean {
+  const board = useLive((state) => state.board)
+  const canWrite = useLive((state) => state.canWrite)
+  const accessKnown = useLive((state) => state.accessKnown)
+  const landing = useStore(guideStore, (state) => state.landing)
+  const phase = useStore(guideStore, (state) => state.phase)
+  const [, navigate] = useLocation()
+  const lands = phase === 'idle' && isUntouched(board, canWrite)
+  const settled = board !== null && accessKnown
+  useEffect(() => {
+    if (!landing || !settled) return
+    guideStore.setState({ landing: false })
+    if (lands) navigate(boardUrl(START_PROJECT, START_PAGE), { replace: true })
+  }, [landing, settled, lands, navigate])
+  return landing && (!settled || lands)
 }
 
 /**

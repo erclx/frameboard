@@ -1,8 +1,16 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect, type Locator, test } from '@playwright/test'
+
+import { STARTER_ACCENTS } from '@/shared/starter-tokens'
 
 import { cli } from '../../test/support/cli'
 import { type BoardServer, serveBoard } from '../support/board-server'
@@ -49,14 +57,21 @@ test.describe('a new board guided to its first frame', () => {
     page,
   }) => {
     await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/untitled/page-1`)
+    await expect(page).toHaveURL(/\/p\/untitled\/page-1$/)
     const guide = page.getByRole('region', { name: 'Set up your board' })
+    await expect(guide).toBeVisible()
+    await page.getByRole('link', { name: 'Home', exact: true }).click()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await page.getByRole('link', { name: /^untitled/ }).click()
 
     await guide.getByRole('textbox').fill('Acme mobile')
     await guide.getByRole('button', { name: 'Next' }).click()
     await expect(page).toHaveURL(/\/p\/acme-mobile\/page-1$/)
     await choose(guide.getByRole('radio', { name: /Desktop/ }))
     await guide.getByRole('button', { name: 'Next' }).click()
+    await choose(guide.getByRole('radio', { name: 'Purple' }))
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await guide.getByRole('button', { name: 'Back' }).click()
     await choose(guide.getByRole('radio', { name: 'Green' }))
     await guide.getByRole('button', { name: 'Next' }).click()
     await choose(guide.getByRole('radio', { name: /start myself/ }))
@@ -66,7 +81,9 @@ test.describe('a new board guided to its first frame', () => {
     await expect
       .poll(() => readdirSync(at('acme-mobile/page-1')))
       .toContain('desktop.html')
-    expect(existsSync(at('acme-mobile/tokens.css'))).toBe(true)
+    expect(readFileSync(at('acme-mobile/tokens.css'), 'utf8')).toContain(
+      STARTER_ACCENTS.green.light,
+    )
     expect(existsSync(at('untitled'))).toBe(false)
     await expect
       .poll(() =>
@@ -95,7 +112,7 @@ test.describe('a new board guided to its first frame', () => {
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/untitled/page-1`)
+    await expect(page).toHaveURL(/\/p\/untitled\/page-1$/)
     const guide = page.getByRole('region', { name: 'Set up your board' })
 
     await guide.getByRole('textbox').fill('Acme web')
