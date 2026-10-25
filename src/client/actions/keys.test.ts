@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
-import { keyLabel, keyParts } from './keys'
+import { isCharacterKey, keyLabel, keyParts } from './keys'
+
+describe('isCharacterKey', () => {
+  it.each(['v', 'BracketRight', 'BracketLeft', 'Shift+?', 'Shift+Digit1'])(
+    'reads %s as a character key',
+    (binding) => {
+      expect(isCharacterKey(binding)).toBe(true)
+    },
+  )
+
+  it.each([
+    'Escape',
+    'ArrowLeft',
+    'F2',
+    '$mod+KeyK',
+    'Alt+KeyA',
+    'Control+KeyY',
+  ])('reads %s as no character key', (binding) => {
+    expect(isCharacterKey(binding)).toBe(false)
+  })
+})
 
 describe('keyLabel', () => {
   it('prints a letter key in capitals', () => {

@@ -1,6 +1,8 @@
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { setCharacterKeys } from './character-keys'
+import { IS_MAC } from './keys'
 import { type Action, bindKeys, registerActions } from './registry'
 
 const cleanups: (() => void)[] = []
@@ -35,6 +37,23 @@ function pressIn(target: typeof window, key: string, code: string): void {
   target.document.body.dispatchEvent(
     new target.KeyboardEvent('keydown', { key, code, bubbles: true }),
   )
+}
+
+/** A press on the body, returned so a test reads whether a handler claimed it. */
+function pressBody(
+  key: string,
+  code: string,
+  modifiers: KeyboardEventInit = {},
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    code,
+    bubbles: true,
+    cancelable: true,
+    ...modifiers,
+  })
+  document.body.dispatchEvent(event)
+  return event
 }
 
 afterEach(() => {
@@ -197,6 +216,59 @@ describe('bindKeys', () => {
     )
 
     expect(exitPlay.runs).toBe(1)
+  })
+
+  describe('with the Single-key shortcuts switch', () => {
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('runs a character key while the switch is on', () => {
+      const next = action('changes.next', { keys: ['BracketRight'] })
+      register(next)
+      bind(window)
+
+      const event = pressBody(']', 'BracketRight')
+
+      expect([next.runs, event.defaultPrevented]).toEqual([1, true])
+    })
+
+    it('leaves a character key to the browser while the switch is off', () => {
+      const next = action('changes.next', { keys: ['BracketRight'] })
+      register(next)
+      bind(window)
+      setCharacterKeys(false)
+
+      const event = pressBody(']', 'BracketRight')
+
+      expect([next.runs, event.defaultPrevented]).toEqual([0, false])
+    })
+
+    it('leaves a shifted character key to the browser while off', () => {
+      const fit = action('view.zoomToFit', { keys: ['Shift+Digit1'] })
+      register(fit)
+      bind(window)
+      setCharacterKeys(false)
+
+      const event = pressBody('!', 'Digit1', { shiftKey: true })
+
+      expect([fit.runs, event.defaultPrevented]).toEqual([0, false])
+    })
+
+    it('runs a modifier key while the switch is off', () => {
+      const open = action('palette.open', { keys: ['$mod+KeyK'] })
+      register(open)
+      bind(window)
+      setCharacterKeys(false)
+
+      const event = pressBody(
+        'k',
+        'KeyK',
+        IS_MAC ? { metaKey: true } : { ctrlKey: true },
+      )
+
+      expect([open.runs, event.defaultPrevented]).toEqual([1, true])
+    })
   })
 
   it("binds into a frame's window, limited to the keys named", async () => {
