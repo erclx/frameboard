@@ -743,6 +743,31 @@ describe('Canvas', () => {
       .toBe('translate(-2150px, 250px) scale(0.5)')
   })
 
+  it('reveals a box off screen and leaves one it shows', async () => {
+    const { container } = renderCanvas(
+      page('studio/reveal', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    canvasView.zoomTo(0.5)
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toMatch(/scale\(0\.5\)$/)
+    const shown = layerOf(container).style.transform
+
+    canvasView.reveal({ x: 0, y: 0, width: 200, height: 200 })
+    for (let frame = 0; frame < 5; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    const kept = layerOf(container).style.transform
+    canvasView.reveal({ x: 5000, y: 0, width: 200, height: 200 })
+
+    expect(kept).toBe(shown)
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(-2150px, 250px) scale(0.5)')
+  })
+
   it('fits a box larger than the viewport rather than centering it', async () => {
     const { container } = renderCanvas(
       page('studio/center-big', [

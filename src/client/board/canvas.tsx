@@ -365,6 +365,17 @@ export function Canvas({
               sizeOf(viewport),
             ),
           ),
+        visible: () => {
+          const transform = zoomTransform(viewport)
+          const { width, height } = sizeOf(viewport)
+          const [x, y] = transform.invert([0, 0])
+          return {
+            x,
+            y,
+            width: width / transform.k,
+            height: height / transform.k,
+          }
+        },
       },
       page.ref,
     )

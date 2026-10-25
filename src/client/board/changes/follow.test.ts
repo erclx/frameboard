@@ -94,6 +94,7 @@ function setup(page = 'studio/home') {
         centered.push({ page: ref, box })
         scales.push(scale)
       },
+      visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
     }
     const detach = attachCanvas(controls, ref)
     cleanups.push(detach)

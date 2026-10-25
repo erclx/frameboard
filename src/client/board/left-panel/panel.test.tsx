@@ -29,7 +29,10 @@ import type {
 
 import { trees } from '../element/tree'
 import { closeFind, findStore } from '../find/actions'
+import type { Box } from '../geometry/box'
+import { endPreview, setPreview } from '../preview/store'
 import { clear, selectElement, selectionStore } from '../selection'
+import { attachCanvas, canvasView } from '../view'
 import { LeftPanel } from './panel'
 
 function frame(name: string, extra: Partial<FrameRecord> = {}): FrameRecord {
@@ -881,6 +884,68 @@ describe('LeftPanel', () => {
       expect(selectionStore.getState()).toMatchObject({
         page: 'studio/home',
         frames: ['studio/home/front', 'studio/home/back'],
+      })
+    })
+
+    describe('revealing the selected frame', () => {
+      /** A canvas showing 800 by 600 from the origin, recording each travel and hand move. */
+      function attachView() {
+        const centered: Box[] = []
+        let handMoves = 0
+        cleanups.push(
+          attachCanvas(
+            {
+              zoomBy: () => {},
+              zoomTo: () => {},
+              fit: () => {},
+              fitTo: () => {},
+              panBy: () => {},
+              centerOn: (box) => centered.push(box),
+              visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
+            },
+            'studio/home',
+          ),
+          canvasView.onHandMove(() => (handMoves += 1)),
+        )
+        return { centered, handMoves: () => handMoves }
+      }
+
+      it('centers a frame lying off screen', async () => {
+        const view = attachView()
+        const far = { x: 5000, y: 0, width: 400, height: 300 }
+        renderPanel(project([page('home', [frame('hero', { box: far })])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Select hero' }),
+        )
+
+        expect([view.centered, view.handMoves()]).toEqual([[far], 1])
+      })
+
+      it('leaves the view on a frame partly on screen', async () => {
+        const view = attachView()
+        const edge = { x: 700, y: 500, width: 400, height: 300 }
+        renderPanel(project([page('home', [frame('hero', { box: edge })])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Select hero' }),
+        )
+
+        expect(view.centered).toEqual([])
+      })
+
+      it('centers the box a previewed frame draws at', async () => {
+        const view = attachView()
+        const far = { x: 5000, y: 0, width: 400, height: 300 }
+        setPreview([HERO], 1200)
+        cleanups.push(() => endPreview([HERO]))
+        renderPanel(project([page('home', [frame('hero', { box: far })])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Select hero' }),
+        )
+
+        expect(view.centered.map((box) => box.width)).toEqual([1200])
       })
     })
 
