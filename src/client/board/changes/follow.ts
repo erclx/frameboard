@@ -36,9 +36,9 @@ let unfollow: (() => void) | null = null
 /**
  * Follows a session: each frame it changes and each frame it newly claims is
  * centered at the current zoom, moving to the frame's page first when it sits
- * on another. Any view change the developer makes, opening another page, or
- * the session leaving the listeners stops it, since the board otherwise never
- * moves the view on its own.
+ * on another and keeping that zoom there. Any view change the developer
+ * makes, opening another page, or the session leaving the listeners stops
+ * it, since the board otherwise never moves the view on its own.
  */
 export function follow(
   session: string,
@@ -48,6 +48,9 @@ export function follow(
   // The page the view is on as Follow sees it, moved only by Follow's own navigation.
   let page = canvasView.page()
   let target: string | null = null
+  // The zoom the view left its page at, which the next page opens on, since
+  // a page's canvas mounts at its own remembered or fitted view.
+  let carried: number | undefined
 
   const travel = () => {
     if (target === null) return
@@ -56,6 +59,7 @@ export function follow(
     if (canvasView.page() !== ref) {
       if (page !== ref) {
         page = ref
+        carried = canvasView.zoom()
         go(boardUrl(project, name))
       }
       return
@@ -64,7 +68,8 @@ export function follow(
     const box = boxOf(live.getState().board, target)
     if (!box) return
     target = null
-    canvasView.centerOn(box)
+    canvasView.centerOn(box, carried)
+    carried = undefined
   }
 
   const head = (next: string | null) => {

@@ -284,9 +284,13 @@ export function Canvas({
           const k = zoomTransform(viewport).k
           zoomer.translateBy(selection, -dx / k, -dy / k)
         },
-        centerOn: (box) =>
+        centerOn: (box, scale) =>
           moveToRef.current?.(
-            centerView(box, zoomTransform(viewport).k, sizeOf(viewport)),
+            centerView(
+              box,
+              scale ?? zoomTransform(viewport).k,
+              sizeOf(viewport),
+            ),
           ),
       },
       page.ref,
