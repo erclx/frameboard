@@ -4,9 +4,11 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import {
   type Action,
   bindKeys,
+  findAction,
   registerActions,
 } from '@/client/actions/registry'
 
@@ -55,7 +57,79 @@ describe('ShortcutsSheet', () => {
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Tools', 'Selection', 'View', 'Frames', 'Arrange'])
+    ).toEqual(['Tools', 'Selection', 'View', 'Frames', 'Arrange', 'Agents'])
+  })
+
+  it('lists the agent change keys under Agents', async () => {
+    register(
+      action('changes.next', { keys: ['BracketRight'] }),
+      action('changes.previous', { keys: ['BracketLeft'] }),
+    )
+    render(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    expect([
+      row('Next change').querySelector('kbd kbd')?.textContent,
+      row('Previous change').querySelector('kbd kbd')?.textContent,
+    ]).toEqual([']', '['])
+  })
+
+  describe('the Single-key shortcuts switch', () => {
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('turns the character keys off from the header', async () => {
+      const move = action('tool.move', { keys: ['v'] })
+      register(move)
+      cleanups.push(bindKeys(window))
+      render(<ShortcutsSheet />)
+      act(() => openOverlay('shortcuts'))
+      const toggle = await screen.findByRole('switch', {
+        name: 'Single-key shortcuts',
+      })
+
+      await userEvent.click(toggle)
+      act(() => openOverlay(null))
+      await userEvent.keyboard('v')
+
+      expect([toggle.getAttribute('aria-checked'), move.runs]).toEqual([
+        'false',
+        0,
+      ])
+    })
+
+    it('names the palette command after what it does next', () => {
+      cleanups.push(registerPaletteActions())
+      const toggle = findAction('help.characterKeys')
+
+      const before = toggle?.command?.label
+      toggle?.run()
+
+      expect([before, toggle?.command?.label]).toEqual([
+        'Turn single-key shortcuts off',
+        'Turn single-key shortcuts on',
+      ])
+    })
+
+    it('draws an off key faint and keeps a modifier key as it is', async () => {
+      register(
+        action('tool.move', { keys: ['v'] }),
+        action('find.open', { keys: ['$mod+KeyF'] }),
+      )
+      setCharacterKeys(false)
+      render(<ShortcutsSheet />)
+
+      act(() => openOverlay('shortcuts'))
+      await screen.findByRole('dialog')
+
+      expect([
+        row('Move').querySelector('kbd kbd')?.hasAttribute('data-off'),
+        row('Find').querySelector('kbd kbd')?.hasAttribute('data-off'),
+      ]).toEqual([true, false])
+    })
   })
 
   it('prints the key a registered action binds', async () => {

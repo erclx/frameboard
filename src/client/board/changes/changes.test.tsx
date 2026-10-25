@@ -204,6 +204,42 @@ describe('ChangesToast', () => {
     expect(store.getState().cursor).toBe('studio/home/about')
   })
 
+  it('steps back to the previous change on [, wrapping', async () => {
+    unbind = bindKeys(window)
+    render(<Harness />)
+    act(() =>
+      receiveChanges(store, [
+        change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+        change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
+        change('studio/home/faq', { at: '2026-10-19T12:00:03Z' }),
+      ]),
+    )
+    await screen.findByRole('button', { name: 'Previous [' })
+
+    await userEvent.keyboard('[[')
+    expect(store.getState().cursor).toBe('studio/home/faq')
+
+    await userEvent.keyboard('[[')
+    expect(store.getState().cursor).toBe('studio/home/about')
+  })
+
+  it('steps neither way on [ or ] while single-key shortcuts are off', async () => {
+    unbind = bindKeys(window)
+    setCharacterKeys(false)
+    render(<Harness />)
+    act(() =>
+      receiveChanges(store, [
+        change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+        change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
+      ]),
+    )
+    await screen.findByRole('button', { name: 'Previous' })
+
+    await userEvent.keyboard('[[]')
+
+    expect(store.getState().cursor).toBeNull()
+  })
+
   it('names no key on Next while single-key shortcuts are off', async () => {
     setCharacterKeys(false)
     render(<Harness />)

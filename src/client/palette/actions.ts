@@ -1,13 +1,23 @@
-import { CircleHelp } from 'lucide-react'
+import { CircleHelp, Keyboard } from 'lucide-react'
 
-import { type Action, registerActions } from '@/client/actions/registry'
+import {
+  characterKeysOn,
+  characterKeysStore,
+  setCharacterKeys,
+} from '@/client/actions/character-keys'
+import {
+  type Action,
+  refreshActions,
+  registerActions,
+} from '@/client/actions/registry'
 
 import { openOverlay } from './overlay'
 
 /**
- * Registers `palette.open` and `help.shortcuts` at the app level, since the
- * home view opens both. `?` binds the symbol, which a layout where it is not
- * Shift+Slash still types. Returns the function that removes them.
+ * Registers `palette.open`, `help.shortcuts`, and `help.characterKeys` at the
+ * app level, since the home view opens all three. `?` binds the symbol, which
+ * a layout where it is not Shift+Slash still types. Returns the function that
+ * removes them.
  */
 export function registerPaletteActions(): () => void {
   const actions: Action[] = [
@@ -26,6 +36,27 @@ export function registerPaletteActions(): () => void {
       run: () => openOverlay('shortcuts'),
       command: { label: 'Keyboard shortcuts', icon: CircleHelp },
     },
+    {
+      id: 'help.characterKeys',
+      label: 'Single-key shortcuts',
+      group: 'help',
+      run: () => setCharacterKeys(!characterKeysOn()),
+      checked: characterKeysOn,
+      // A getter, so the row names what a press does next as the switch moves.
+      command: {
+        get label() {
+          return characterKeysOn()
+            ? 'Turn single-key shortcuts off'
+            : 'Turn single-key shortcuts on'
+        },
+        icon: Keyboard,
+      },
+    },
   ]
-  return registerActions(actions)
+  const unregister = registerActions(actions)
+  const unsubscribe = characterKeysStore.subscribe(refreshActions)
+  return () => {
+    unsubscribe()
+    unregister()
+  }
 }

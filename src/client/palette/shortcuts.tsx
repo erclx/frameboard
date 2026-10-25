@@ -1,4 +1,10 @@
-import { IS_MAC, keyParts } from '@/client/actions/keys'
+import { cn } from 'cn'
+
+import {
+  setCharacterKeys,
+  useCharacterKeysOn,
+} from '@/client/actions/character-keys'
+import { IS_MAC, isCharacterKey, keyParts } from '@/client/actions/keys'
 import { type Action, useActions } from '@/client/actions/registry'
 import {
   Dialog,
@@ -97,6 +103,13 @@ const SECTIONS: readonly Section[] = [
       { label: 'Snap off while dragging', gestures: [`${CTRL} drag`] },
     ],
   },
+  {
+    title: 'Agents',
+    rows: [
+      { label: 'Next change', actions: ['changes.next'] },
+      { label: 'Previous change', actions: ['changes.previous'] },
+    ],
+  },
 ]
 
 const ACTION_IDS = SECTIONS.flatMap((section) =>
@@ -106,7 +119,8 @@ const ACTION_IDS = SECTIONS.flatMap((section) =>
 /**
  * The `?` sheet of every key the board binds. Each action row reads its keys
  * from the registry, so it never drifts from what a press does, and greys
- * out until a row registers the action.
+ * out until a row registers the action. A key the Single-key shortcuts
+ * switch has turned off stays listed, drawn faint.
  */
 export function ShortcutsSheet() {
   const open = useOverlay() === 'shortcuts'
@@ -124,10 +138,11 @@ export function ShortcutsSheet() {
         showCloseButton={false}
         className="top-[90px] translate-y-0 gap-0 p-0 sm:max-w-[760px]"
       >
-        <div className="flex h-12 items-center justify-between border-b border-border px-4 text-[14px]">
+        <div className="flex h-12 items-center gap-4 border-b border-border px-4 text-[14px]">
           <DialogTitle className="text-[14px] leading-none font-semibold">
             Keyboard shortcuts
           </DialogTitle>
+          <CharacterKeysSwitch />
           <span className="text-muted-foreground">Esc</span>
         </div>
         <div className="grid grid-cols-3 gap-x-7 gap-y-[18px] px-5 pt-4 pb-5">
@@ -149,6 +164,34 @@ export function ShortcutsSheet() {
   )
 }
 
+/**
+ * The Single-key shortcuts switch WCAG 2.1.4 asks for, which the palette
+ * reaches too, as Turn single-key shortcuts off, while the keys are off.
+ */
+function CharacterKeysSwitch() {
+  const on = useCharacterKeysOn()
+  return (
+    <label className="ml-auto flex items-center gap-2 text-body text-muted-foreground">
+      Single-key shortcuts
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => setCharacterKeys(!on)}
+        className="relative h-4 w-7 shrink-0 rounded-full bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-checked:bg-primary"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'absolute top-0.5 left-0.5 size-3 rounded-full bg-background shadow-sm transition-transform motion-reduce:transition-none',
+            on && 'translate-x-3',
+          )}
+        />
+      </button>
+    </label>
+  )
+}
+
 function ShortcutRow({
   row,
   byId,
@@ -156,12 +199,15 @@ function ShortcutRow({
   row: Row
   byId: ReadonlyMap<string, Action | undefined>
 }) {
+  const keysOn = useCharacterKeysOn()
   const chips = [
     ...(row.actions ?? []).flatMap((id) => {
       const key = byId.get(id)?.keys?.[0]
-      return key ? [keyParts(key).join(IS_MAC ? ' ' : '+')] : []
+      if (!key) return []
+      const text = keyParts(key).join(IS_MAC ? ' ' : '+')
+      return [{ text, off: !keysOn && isCharacterKey(key) }]
     }),
-    ...(row.gestures ?? []),
+    ...(row.gestures ?? []).map((text) => ({ text, off: false })),
   ]
   // A row of actions waits on them, while a gesture row has nothing to register.
   const waiting =
@@ -174,8 +220,12 @@ function ShortcutRow({
       <span>{row.label}</span>
       <KbdGroup>
         {chips.map((chip) => (
-          <Kbd key={chip} className="px-1.5 text-label font-normal">
-            {chip}
+          <Kbd
+            key={chip.text}
+            data-off={chip.off || undefined}
+            className="px-1.5 text-label font-normal data-off:text-faint"
+          >
+            {chip.text}
           </Kbd>
         ))}
       </KbdGroup>

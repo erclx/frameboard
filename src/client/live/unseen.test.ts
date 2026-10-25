@@ -7,6 +7,7 @@ import {
   createUnseenStore,
   markSeen,
   nextUnseen,
+  previousUnseen,
   pruneUnseen,
   receiveChanges,
   SEEN_KEY,
@@ -234,6 +235,40 @@ describe('nextUnseen', () => {
     )
     expect(nextUnseen(unseen, 'studio/pricing/plans')?.frame).toBe(
       'studio/home/hero',
+    )
+  })
+})
+
+describe('previousUnseen', () => {
+  it('steps back through the changes in landing order and wraps', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/pricing/plans', 'p1', { at: '2026-10-19T12:00:02.000Z' }),
+      change('studio/home/hero', 'h1', { at: '2026-10-19T12:00:01.000Z' }),
+      change('studio/home/faq', 'f1', { at: '2026-10-19T12:00:03.000Z' }),
+    ])
+    const { unseen } = store.getState()
+
+    expect(previousUnseen(unseen, 'studio/home/faq')?.frame).toBe(
+      'studio/pricing/plans',
+    )
+    expect(previousUnseen(unseen, 'studio/pricing/plans')?.frame).toBe(
+      'studio/home/hero',
+    )
+    expect(previousUnseen(unseen, 'studio/home/hero')?.frame).toBe(
+      'studio/home/faq',
+    )
+  })
+
+  it('starts from the last change when it starts from none', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1', { at: '2026-10-19T12:00:01.000Z' }),
+      change('studio/home/faq', 'f1', { at: '2026-10-19T12:00:03.000Z' }),
+    ])
+
+    expect(previousUnseen(store.getState().unseen, null)?.frame).toBe(
+      'studio/home/faq',
     )
   })
 })
