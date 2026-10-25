@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, utimesSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -9,7 +9,7 @@ import type { FrameRecord } from '@/shared/records/list'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { scanBoard } from '../board/scan'
-import { createHug, ownFileRefs } from './hug'
+import { createHug, ownFileRefs, writtenSinceLayout } from './hug'
 
 const CARD = 'studio/home/card'
 const HERO = 'studio/home/hero'
@@ -158,6 +158,42 @@ describe('createHug', () => {
     release()
 
     await expect.poll(() => entries().card.height).toBe(1232)
+  })
+})
+
+describe('writtenSinceLayout', () => {
+  let board: TempBoard
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  it('names a hugging frame written after its layout, and no other', async () => {
+    board = boardOf({
+      card: { hugHeight: true },
+      hero: { hugHeight: true },
+    })
+    const at = (seconds: number) =>
+      new Date(Date.UTC(2026, 9, 25, 0, 0, seconds))
+    utimesSync(join(board.root, 'studio/home/layout.json'), at(10), at(10))
+    utimesSync(join(board.root, 'studio/home/card.html'), at(20), at(20))
+    utimesSync(join(board.root, 'studio/home/hero.html'), at(5), at(5))
+
+    const refs = await writtenSinceLayout(await scanBoard(board.root))
+
+    expect(refs).toEqual([CARD])
+  })
+
+  it('names no frame that does not hug, however new its file', async () => {
+    board = boardOf()
+    const at = (seconds: number) =>
+      new Date(Date.UTC(2026, 9, 25, 0, 0, seconds))
+    utimesSync(join(board.root, 'studio/home/layout.json'), at(10), at(10))
+    utimesSync(join(board.root, 'studio/home/card.html'), at(20), at(20))
+
+    await expect(
+      writtenSinceLayout(await scanBoard(board.root)),
+    ).resolves.toEqual([])
   })
 })
 

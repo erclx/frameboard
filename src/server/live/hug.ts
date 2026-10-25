@@ -1,4 +1,8 @@
+import { stat } from 'node:fs/promises'
+import { join } from 'node:path'
+
 import { setMeasured } from '@/server/board/frames'
+import { LAYOUT_FILE } from '@/server/board/scan'
 import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
@@ -101,6 +105,36 @@ function huggingFrames(
         frame.placed &&
         (frame.hugWidth || frame.hugHeight),
     )
+}
+
+/**
+ * The hugging frames whose file was written after their page's `layout.json`,
+ * as one edited while no server ran, which the start sweep measures before
+ * the first board goes out. Every other frame's stored size already holds.
+ */
+export async function writtenSinceLayout(board: ListResult): Promise<string[]> {
+  const pages = board.projects.flatMap((project) => project.pages)
+  const stale = await Promise.all(
+    pages.map(async (page) => {
+      const hugging = page.frames.filter(
+        (frame) => frame.placed && (frame.hugWidth || frame.hugHeight),
+      )
+      if (hugging.length === 0) return []
+      const layout = await mtimeOf(join(page.path, LAYOUT_FILE))
+      return hugging
+        .filter((frame) => Date.parse(frame.modifiedAt) > layout)
+        .map((frame) => frame.ref)
+    }),
+  )
+  return stale.flat()
+}
+
+async function mtimeOf(path: string): Promise<number> {
+  try {
+    return (await stat(path)).mtimeMs
+  } catch {
+    return 0
+  }
 }
 
 /** The frames a batch reloads through their own file, as against an asset or a token sheet. */

@@ -32,7 +32,13 @@ import {
   recheckRefs,
 } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
-import { createHug, type Hug, type MeasureFrame, ownFileRefs } from './live/hug'
+import {
+  createHug,
+  type Hug,
+  type MeasureFrame,
+  ownFileRefs,
+  writtenSinceLayout,
+} from './live/hug'
 import { openBoard } from './live/open-board'
 import {
   createRenderedFindings,
@@ -337,15 +343,25 @@ async function listen({
   // queued for the browser sweep, whose findings follow as they land.
   void inTurn(async () => {
     let board = await scanBoard(root)
-    const every = board.projects.flatMap((project) =>
-      project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
-    )
-    if (await hug.now(board, every).catch(() => false)) {
+    // Only a frame written while no server ran holds the first board, since
+    // every other stored size already holds, and the rest measure after it.
+    const stale = await writtenSinceLayout(board).catch((): string[] => [])
+    if (await hug.now(board, stale).catch(() => false)) {
       board = await scanBoard(root)
     }
     await tracker.prime(board)
     findings.update(board, 'all')
     rendered.queue(board, [])
+    hug.later(
+      board,
+      board.projects.flatMap((project) =>
+        project.pages.flatMap((page) =>
+          page.frames
+            .map((frame) => frame.ref)
+            .filter((ref) => !stale.includes(ref)),
+        ),
+      ),
+    )
   })
   // A claims file left by an earlier server arms the expiry from what it holds.
   void claims.push()
