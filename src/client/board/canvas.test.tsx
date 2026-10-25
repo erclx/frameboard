@@ -3,7 +3,7 @@ import '../styles.css'
 import { act, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { liveStore } from '@/client/live/store'
@@ -74,6 +74,15 @@ function layerOf(container: HTMLElement): HTMLElement {
   const layer = container.querySelector<HTMLElement>('[data-layer]')
   if (!layer) throw new Error('no canvas layer')
   return layer
+}
+
+/** The layer's translate and scale, read back off its transform. */
+function viewOf(container: HTMLElement) {
+  const match = /translate\((.+)px, (.+)px\) scale\((.+)\)/.exec(
+    layerOf(container).style.transform,
+  )
+  if (!match) throw new Error('no layer transform')
+  return { x: Number(match[1]), y: Number(match[2]), k: Number(match[3]) }
 }
 
 function wheel(container: HTMLElement, init: WheelEventInit) {
@@ -204,6 +213,120 @@ describe('Canvas', () => {
       wheel(container, { deltaY: -3, ctrlKey: true })
 
       expect(canvasView.zoom()).toBeCloseTo(2 ** 0.03)
+    })
+  })
+
+  describe('panning on the wheel', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    const square = (name: string) =>
+      page(`studio/${name}`, [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ])
+
+    const reduceMotion = () => {
+      const real = window.matchMedia.bind(window)
+      vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
+        query.includes('prefers-reduced-motion')
+          ? ({ matches: true } as MediaQueryList)
+          : real(query),
+      )
+    }
+
+    const still = () => new Promise((resolve) => setTimeout(resolve, 200))
+
+    it('leaves the view in place on the event a notch arrives in', () => {
+      const { container } = renderCanvas(square('ease-start'))
+
+      wheel(container, { deltaY: 100 })
+
+      expect(layerOf(container).style.transform).toBe(
+        'translate(300px, 200px) scale(1)',
+      )
+    })
+
+    it('eases a notch to its full distance', async () => {
+      const { container } = renderCanvas(square('ease-full'))
+
+      wheel(container, { deltaY: 100 })
+
+      await expect.poll(() => viewOf(container).y).toBeCloseTo(100)
+    })
+
+    it('eases a line-mode notch 16 pixels a line', async () => {
+      const { container } = renderCanvas(square('ease-line'))
+
+      wheel(container, { deltaY: 3, deltaMode: WheelEvent.DOM_DELTA_LINE })
+
+      await expect.poll(() => viewOf(container).y).toBeCloseTo(152)
+    })
+
+    it('eases a horizontal notch, as Shift with a wheel sends it', async () => {
+      const { container } = renderCanvas(square('ease-across'))
+
+      wheel(container, { deltaX: 100, shiftKey: true })
+
+      await expect.poll(() => viewOf(container).x).toBeCloseTo(200)
+    })
+
+    it('pans a trackpad delta in the same event', () => {
+      const { container } = renderCanvas(square('ease-trackpad'))
+
+      wheel(container, { deltaX: 30, deltaY: 40 })
+
+      expect(layerOf(container).style.transform).toBe(
+        'translate(270px, 160px) scale(1)',
+      )
+    })
+
+    it('adds a notch arriving mid-ease to the distance left', async () => {
+      const { container } = renderCanvas(square('ease-sum'))
+      wheel(container, { deltaY: 100 })
+      await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+
+      wheel(container, { deltaY: 100 })
+
+      await expect.poll(() => viewOf(container).y).toBeCloseTo(0)
+    })
+
+    it('lands a notch in one step under reduced motion', () => {
+      reduceMotion()
+      const { container } = renderCanvas(square('ease-reduced'))
+
+      wheel(container, { deltaY: 100 })
+
+      expect(layerOf(container).style.transform).toBe(
+        'translate(300px, 100px) scale(1)',
+      )
+    })
+
+    it('stops easing once a fit lands mid-ease', async () => {
+      const { container } = renderCanvas(square('ease-fit'))
+      wheel(container, { deltaY: 100 })
+      await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+      reduceMotion()
+
+      canvasView.fit()
+      const fitted = layerOf(container).style.transform
+      await still()
+
+      expect(layerOf(container).style.transform).toBe(fitted)
+    })
+
+    it('stops easing once the canvas is pressed', async () => {
+      const { container } = renderCanvas(square('ease-press'))
+      wheel(container, { deltaY: 100 })
+      await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+
+      container
+        .querySelector('[data-hit-layer]')
+        ?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      const pressed = layerOf(container).style.transform
+      await still()
+
+      expect(layerOf(container).style.transform).toBe(pressed)
     })
   })
 
@@ -359,20 +482,21 @@ describe('Canvas', () => {
     )
   })
 
-  it('pans the layer on a wheel without a React commit', () => {
+  it('pans the layer on a wheel without a React commit', async () => {
     let commits = 0
     const { container } = renderCanvas(
       page('studio/pan', [frame('a', { x: 0, y: 0, width: 200, height: 200 })]),
       () => (commits += 1),
     )
+    // The first mount commits for a few frames after it renders.
+    await new Promise((resolve) => setTimeout(resolve, 200))
     const before = commits
 
     wheel(container, { deltaX: 30, deltaY: 50 })
 
-    expect(layerOf(container).style.transform).toBe(
-      'translate(270px, 150px) scale(1)',
-    )
-    expect(commits).toBe(before)
+    // Read mid-glide, ahead of the settle that commits once the view rests.
+    await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+    expect([viewOf(container).x, commits]).toEqual([270, before])
   })
 
   it('pans the layer on a primary drag under the Hand tool', () => {
@@ -554,7 +678,7 @@ describe('Canvas', () => {
       frame('a', { x: 0, y: 0, width: 200, height: 200 }),
     ])
     const first = renderCanvas(content)
-    wheel(first.container, { deltaX: 100, deltaY: 0 })
+    wheel(first.container, { deltaX: 40, deltaY: 0 })
     const moved = layerOf(first.container).style.transform
     first.unmount()
 
@@ -682,7 +806,7 @@ describe('onHandMove', () => {
     expect(moves.count).toBe(0)
   })
 
-  it('hears a wheel pan', () => {
+  it('hears a wheel pan', async () => {
     const { container } = renderCanvas(
       page('studio/hand-wheel', [
         frame('a', { x: 0, y: 0, width: 200, height: 200 }),
@@ -690,9 +814,9 @@ describe('onHandMove', () => {
     )
     const moves = countHandMoves()
 
-    wheel(container, { deltaX: 30, deltaY: 50 })
+    wheel(container, { deltaX: 0, deltaY: 50 })
 
-    expect(moves.count).toBeGreaterThan(0)
+    await expect.poll(() => moves.count).toBeGreaterThan(0)
   })
 
   it('hears a pan from the arrow keys', () => {
