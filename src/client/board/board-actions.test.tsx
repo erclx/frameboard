@@ -1,7 +1,13 @@
 import { render, renderHook, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { findAction, isEnabled, useActions } from '@/client/actions/registry'
+import {
+  bindKeys,
+  findAction,
+  isEnabled,
+  useActions,
+} from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
@@ -242,5 +248,31 @@ describe('command', () => {
       ['mode.play', 'mode.edit'].map((id) => findAction(id)?.command?.label),
     ).toEqual(['Switch to Play', 'Switch to Edit'])
     unmount()
+  })
+})
+
+describe('Shift+0', () => {
+  it('zooms to 100%', async () => {
+    const zooms: number[] = []
+    const detach = attachCanvas(
+      {
+        zoomBy: () => {},
+        zoomTo: (scale) => zooms.push(scale),
+        fit: () => {},
+        fitTo: () => {},
+        panBy: () => {},
+        centerOn: () => {},
+      },
+      'studio/home',
+    )
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('{Shift>}){/Shift}')
+
+    expect(zooms).toEqual([1])
+    unbind()
+    unmount()
+    detach()
   })
 })

@@ -221,6 +221,7 @@ function boardActions(): Action[] {
     zoom({
       id: 'view.zoom100',
       label: 'Zoom to 100%',
+      keys: ['Shift+Digit0'],
       run: () => canvasView.zoomTo(1),
     }),
     zoom({
