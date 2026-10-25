@@ -4,6 +4,8 @@ import { Link, Route, Switch } from 'wouter'
 
 import { watchExpiredLink } from './access/expired-link'
 import { ViewOnlyNotice } from './access/notice'
+import { SHOW_OFFER } from './board/changes/show'
+import { ShowOfferBody } from './board/changes/show-toast'
 import { CHANGE_TOAST, ChangeToastBody } from './board/changes/toast'
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
@@ -15,7 +17,10 @@ import { CommandPalette } from './palette/commands'
 import { ShortcutsSheet } from './palette/shortcuts'
 
 /** The toasts that draw their own body in the one stack. */
-const TOAST_BODIES = { [CHANGE_TOAST]: ChangeToastBody }
+const TOAST_BODIES = {
+  [CHANGE_TOAST]: ChangeToastBody,
+  [SHOW_OFFER]: ShowOfferBody,
+}
 
 /** Every icon at the one stroke weight the references draw. */
 const ICON_STROKE = 1.6
