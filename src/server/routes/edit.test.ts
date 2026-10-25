@@ -36,6 +36,19 @@ describe('editRoutes', () => {
   const read = () => readFileSync(path(), 'utf8')
   const hash = () => contentHash(readFileSync(path()))
 
+  /** The sources an agent write replaced, as the change tracker keeps them by ref and hash. */
+  let kept: Map<string, string>
+
+  beforeEach(() => {
+    kept = new Map()
+  })
+
+  /** Writes the file as an agent would, keeping the source it replaced. */
+  function agentWrites(next: string) {
+    kept.set(`${HERO}\n${hash()}`, read())
+    writeFileSync(path(), next)
+  }
+
   function post(body: unknown, authorized = true) {
     return editRoutes(
       board.root,
@@ -46,6 +59,7 @@ describe('editRoutes', () => {
         isOwnOrigin: () => false,
       },
       history,
+      async (ref, at) => kept.get(`${ref}\n${at}`) ?? null,
     ).request('/api/frames/edit', {
       method: 'POST',
       headers: {
@@ -150,25 +164,7 @@ describe('editRoutes', () => {
 
   it('writes the text and answers the hash it left', async () => {
     const original = read()
-
-    const response = await post({
-      ref: HERO,
-      index: HEADLINE,
-      hash: hash(),
-      change: { kind: 'text', value: 'Welcome' },
-    })
-
-    expect(read()).toBe(original.replace('>hero</h1>', '>Welcome</h1>'))
-    expect(await response.json()).toEqual({
-      ok: true,
-      data: { ref: HERO, index: HEADLINE, hash: hash() },
-    })
-  })
-
-  it('refuses stale-address once the file was written since', async () => {
     const readFrom = hash()
-    writeFileSync(path(), read().replace('Caption', 'Byline'))
-    const agent = read()
 
     const response = await post({
       ref: HERO,
@@ -177,12 +173,87 @@ describe('editRoutes', () => {
       change: { kind: 'text', value: 'Welcome' },
     })
 
-    expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({
-      ok: false,
-      error: { code: 'stale-address' },
+    expect(read()).toBe(original.replace('>hero</h1>', '>Welcome</h1>'))
+    expect(await response.json()).toEqual({
+      ok: true,
+      data: { ref: HERO, index: HEADLINE, hash: hash(), from: readFrom },
     })
-    expect(read()).toBe(agent)
+  })
+
+  describe('an edit made before an agent wrote the frame', () => {
+    it('lands past the agent’s write to another element, keeping it', async () => {
+      const readFrom = hash()
+      agentWrites(read().replace('Caption', 'Byline'))
+      const agent = hash()
+
+      const response = await post({
+        ref: HERO,
+        index: HEADLINE,
+        hash: readFrom,
+        change: { kind: 'text', value: 'Welcome' },
+      })
+
+      expect(read()).toContain('>Welcome</h1>')
+      expect(read()).toContain('Byline')
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, index: HEADLINE, hash: hash(), from: agent },
+      })
+    })
+
+    it('answers the index it landed at once the agent added an element above', async () => {
+      const readFrom = hash()
+      agentWrites(read().replace('<h1', '<hr><h1'))
+
+      const response = await post({
+        ref: HERO,
+        index: HEADLINE,
+        hash: readFrom,
+        change: { kind: 'text', value: 'Welcome' },
+      })
+
+      expect(read()).toContain('<hr><h1 data-name="Headline">Welcome</h1>')
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { index: HEADLINE + 1 },
+      })
+    })
+
+    it('refuses stale-address once the agent changed the edited element', async () => {
+      const readFrom = hash()
+      agentWrites(read().replace('>hero</h1>', '>Hero</h1>'))
+      const agent = read()
+
+      const response = await post({
+        ref: HERO,
+        index: HEADLINE,
+        hash: readFrom,
+        change: { kind: 'text', value: 'Welcome' },
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+    })
+
+    it('refuses stale-address when no version of the frame is kept', async () => {
+      const readFrom = hash()
+      writeFileSync(path(), read().replace('Caption', 'Byline'))
+      const agent = read()
+
+      const response = await post({
+        ref: HERO,
+        index: HEADLINE,
+        hash: readFrom,
+        change: { kind: 'text', value: 'Welcome' },
+      })
+
+      expect(response.status).toBe(409)
+      expect(read()).toBe(agent)
+    })
   })
 
   it('records one step per edit, which undo reverts byte for byte', async () => {

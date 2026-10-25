@@ -25,17 +25,26 @@ const editSchema = z.object({
   ]),
 })
 
+/** The source a frame held under a hash an agent's write replaced, or null when none is kept. */
+export type SettledVersion = (
+  ref: string,
+  hash: string,
+) => Promise<string | null>
+
 /**
  * A hand edit of one element, behind `requireWriter`, its body mirroring
  * `edit`'s flags with the hash required, since the board always holds the
- * one it rendered. It writes through `editFrameFile`, records the edited
- * element's span as one step, and answers the `edit` record. Each refusal
- * the writer returns answers 409 with its code, `stale-address` among them.
+ * one it rendered. It writes through `editFrameFile`, which finds the element
+ * again in a frame an agent wrote since from the source `version` kept, and
+ * records the edited element's span as one step. It answers the `edit`
+ * record with the index written and the hash written over. Each refusal the
+ * writer returns answers 409 with its code, `stale-address` among them.
  */
 export function editRoutes(
   root: string,
   access: Access,
   history: History,
+  version?: SettledVersion,
 ): Hono {
   const app = new Hono()
 
@@ -44,10 +53,12 @@ export function editRoutes(
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
     await refuseClaimed(root, [ref], new Date())
+    const was = (await version?.(ref, body.hash)) ?? null
     const result = editFrameFile(
       frame.path,
       { index: body.index, hash: body.hash },
       body.change,
+      (hash) => (hash === body.hash ? was : null),
     )
     if (!result.ok) {
       return c.json(
@@ -73,7 +84,12 @@ export function editRoutes(
         frames: [ref],
       })
     }
-    const data: EditResult = { ref, index: body.index, hash: result.hash }
+    const data: EditResult = {
+      ref,
+      index: result.index,
+      hash: result.hash,
+      from: result.from,
+    }
     return c.json({ ok: true, data })
   })
 

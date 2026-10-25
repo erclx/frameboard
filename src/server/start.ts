@@ -298,6 +298,10 @@ async function listen({
     thumbnails,
     measure,
     frameVersion: tracker.version,
+    // A batch logging the agent's write may still be running when the board
+    // sends the edit it queued behind the claim, so the lookup waits its turn.
+    settledVersion: (ref, hash) =>
+      inTurn(async () => tracker.version(ref, hash)),
     checks: {
       refresh: () =>
         inTurn(async () => {

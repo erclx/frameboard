@@ -116,8 +116,9 @@ export function registerEdit(program: Command, context: ProgramContext): void {
       }
       const data: EditResult = {
         ref: frameRef,
-        index: options.index,
+        index: result.index,
         hash: result.hash,
+        from: result.from,
       }
       return {
         data,
