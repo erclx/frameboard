@@ -23,7 +23,7 @@ This record holds at most 600 words.
 ### Hand edits
 
 - The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame at a phone, tablet, or desktop size, selects several frames, and undoes their own changes
-- A developer selects a frame or element and adjusts what is quicker by hand, being frame position and size, and an element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors show their token names.
+- A developer selects a frame or element and adjusts what is quicker by hand, being frame position and size, and an element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
 
 ### Working with the agent
 
@@ -55,7 +55,7 @@ This record holds at most 600 words.
 ### Deferred
 
 - Motion review, being a scrubber, a screenshot at a chosen moment, a filmstrip, or a recording
-- A custom color picker, scrubbing number fields, home view search and archive, and present mode
+- Home view search and archive, and present mode
 - A narrow-screen layout. Below about 1024px the board hides its UI and the canvas still pans and zooms.
 - Opening one frame on a phone over the local network
 - Skill and hook packaging for agents other than Claude Code
