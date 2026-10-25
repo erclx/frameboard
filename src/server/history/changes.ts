@@ -104,7 +104,8 @@ async function reads(change: Change, side: Side): Promise<boolean> {
   switch (change.kind) {
     case 'entry': {
       const file = await readRecord(change.layout, layoutSpec)
-      return isDeepStrictEqual(file.frames[change.frame], change[side])
+      const stored = file.frames[change.frame]
+      return isDeepStrictEqual(stored, withMeasured(change[side], stored))
     }
     case 'pages': {
       const file = await readRecord(change.file, {
@@ -131,6 +132,24 @@ async function reads(change: Change, side: Side): Promise<boolean> {
   }
 }
 
+/**
+ * The entry a step holds, taking the stored size on each axis both it and the
+ * stored entry hug, since the server measures that size and the developer
+ * never set it, so a measure after a hand move neither overtakes the step nor
+ * is reverted by it.
+ */
+function withMeasured(
+  entry: LayoutEntry | undefined,
+  stored: LayoutEntry | undefined,
+): LayoutEntry | undefined {
+  if (!entry || !stored) return entry
+  return {
+    ...entry,
+    ...(entry.hugWidth && stored.hugWidth ? { width: stored.width } : {}),
+    ...(entry.hugHeight && stored.hugHeight ? { height: stored.height } : {}),
+  }
+}
+
 const OTHER: Record<Side, Side> = { before: 'after', after: 'before' }
 
 /**
@@ -146,7 +165,7 @@ export async function restore(
     case 'entry': {
       const file = await readRecord(change.layout, layoutSpec)
       const frames = { ...file.frames }
-      const entry = change[side]
+      const entry = withMeasured(change[side], frames[change.frame])
       if (entry) frames[change.frame] = entry
       else delete frames[change.frame]
       await writeRecord(change.layout, { ...file, frames })

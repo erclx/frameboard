@@ -7,7 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
-import { moveFrame } from '../board/frames'
+import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
@@ -75,6 +75,56 @@ describe('changes', () => {
       const frames = JSON.parse(read('webapp/home/layout.json')).frames
       expect(frames.hero.x).toBe(0)
       expect(frames.about.x).toBe(9)
+    })
+  })
+
+  describe('entry on a hugging frame', () => {
+    function hugHero(): void {
+      const file = JSON.parse(read('webapp/home/layout.json'))
+      file.frames.hero.hugHeight = true
+      writeFileSync(at('webapp/home/layout.json'), JSON.stringify(file))
+    }
+
+    const measure = (height: number) =>
+      setMeasured(
+        board.root,
+        'webapp/home',
+        { hero: { width: 1440, height } },
+        { cwd: board.root },
+      )
+
+    it('holds a hand move after the server measured the height', async () => {
+      hugHero()
+      await moveFrame(board.root, 'webapp/home/hero', { ...options(), x: 40 })
+      await measure(1232)
+
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('undoes the move and keeps the measured height', async () => {
+      hugHero()
+      await moveFrame(board.root, 'webapp/home/hero', { ...options(), x: 40 })
+      await measure(1232)
+
+      await restore(first(), 'before')
+
+      expect(
+        JSON.parse(read('webapp/home/layout.json')).frames.hero,
+      ).toMatchObject({ x: 0, height: 1232, hugHeight: true })
+    })
+
+    it('restores the height a hand resize fixed', async () => {
+      hugHero()
+      await resizeFrame(board.root, 'webapp/home/hero', {
+        ...options(),
+        height: 600,
+      })
+
+      await restore(first(), 'before')
+
+      expect(
+        JSON.parse(read('webapp/home/layout.json')).frames.hero,
+      ).toMatchObject({ height: 900, hugHeight: true })
     })
   })
 
