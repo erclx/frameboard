@@ -8,19 +8,10 @@ import { tokenSheetPaths } from '@/server/checks/tokens'
 import { TOKEN_FILE } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import {
-  type StarterAccent,
-  type StarterFont,
   type StarterLook,
   starterSheet,
+  type StarterSheetRecord,
 } from '@/shared/starter-tokens'
-
-export interface StarterSheetRecord {
-  project: string
-  /** The sheet written, absolute. */
-  path: string
-  accent: StarterAccent
-  font: StarterFont
-}
 
 interface StarterOptions extends JournalOptions {
   /** The `--tokens` sheet a server was given, null for none, or absent to read the address file. */

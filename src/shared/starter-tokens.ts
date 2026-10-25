@@ -26,15 +26,14 @@ export interface StarterLook {
   font: StarterFont
 }
 
+/** What a starter sheet write answers, on the route and the verb alike. */
+export interface StarterSheetRecord extends StarterLook {
+  project: string
+  /** The sheet written, absolute. */
+  path: string
+}
+
 export const DEFAULT_LOOK: StarterLook = { accent: 'blue', font: 'geist' }
-
-export function isStarterAccent(value: string): value is StarterAccent {
-  return Object.hasOwn(STARTER_ACCENTS, value)
-}
-
-export function isStarterFont(value: string): value is StarterFont {
-  return Object.hasOwn(STARTER_FONTS, value)
-}
 
 /** A project token sheet setting the names the fixture sheets use, light then dark. */
 export function starterSheet({ accent, font }: StarterLook): string {

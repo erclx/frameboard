@@ -6,6 +6,7 @@ import type {
   PageRecord,
   ProjectRecord,
 } from '@/shared/records/list'
+import type { StarterLook, StarterSheetRecord } from '@/shared/starter-tokens'
 
 import { writeBoard } from './write'
 
@@ -48,6 +49,9 @@ export function createStructure(send: typeof fetch = fetch) {
       post<ProjectRecord>('/api/project/duplicate', { ref }),
     deleteProject: (ref: string) =>
       post<{ deleted: string }>('/api/project/delete', { ref }),
+    /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
+    projectTokens: (ref: string, look: StarterLook) =>
+      post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),
     addPage: (ref: string, index?: number) =>
       post<PageRecord>('/api/page/add', { ref, index }),
     duplicatePage: (ref: string) =>

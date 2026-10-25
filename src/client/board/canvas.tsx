@@ -28,6 +28,8 @@ import { attachGestures } from './geometry/gestures'
 import { frameAt } from './geometry/hit'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
+import { GuideCard } from './guide/card'
+import { useShowsGuide } from './guide/state'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -525,7 +527,7 @@ export function Canvas({
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (
-        <EmptyNotice hidden={page.frames} calls={calls} />
+        <EmptyState page={page} calls={calls} />
       ) : null}
     </div>
   )
@@ -547,6 +549,15 @@ function LayoutErrorNotice({
         <p className="mt-2">{error.message}</p>
       </div>
     </div>
+  )
+}
+
+/** A new board's guide on its untouched start page, else the empty page notice. */
+function EmptyState({ page, calls }: { page: PageRecord; calls: Structure }) {
+  return useShowsGuide(page) ? (
+    <GuideCard page={page} calls={calls} />
+  ) : (
+    <EmptyNotice hidden={page.frames} calls={calls} />
   )
 }
 
