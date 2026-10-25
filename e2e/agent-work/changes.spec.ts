@@ -1,5 +1,5 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -106,6 +106,62 @@ test.describe('what an agent changed', () => {
     await expect(
       pageRow(page, 'start').getByRole('img', { name: /unseen/ }),
     ).toHaveCount(0)
+  })
+
+  test.describe('a show', () => {
+    test('offers Go instead of moving the view while a field has focus', async ({
+      page,
+    }) => {
+      await openAsWriter(page)
+      await page.keyboard.press('ControlOrMeta+f')
+      const find = page.getByRole('combobox', { name: 'Find in studio' })
+      await find.fill('plans')
+
+      await run('node', [
+        CLI,
+        'show',
+        'pricing/plans',
+        '--root',
+        board.root,
+        '--json',
+      ])
+
+      const offer = page.locator('[data-show-offer]')
+      await expect(offer).toBeVisible()
+      await expect(page).toHaveURL(/\/p\/studio\/home$/)
+      await expect(find).toBeFocused()
+      await expect(find).toHaveValue('plans')
+
+      await offer.getByRole('button', { name: 'Go' }).click()
+
+      await expect(page).toHaveURL(/\/p\/studio\/pricing$/)
+    })
+
+    test('offers Go for a frame in another project and moves nothing', async ({
+      page,
+    }) => {
+      cpSync(at('studio'), at('shop'), { recursive: true })
+      await openAsWriter(page)
+      await expect(page.locator('[data-frame]')).toHaveCount(2)
+
+      await run('node', [
+        CLI,
+        'show',
+        'shop/home/hero',
+        '--root',
+        board.root,
+        '--json',
+      ])
+
+      const offer = page.locator('[data-show-offer]')
+      await expect(offer).toBeVisible()
+      await expect(page).toHaveURL(/\/p\/studio\/home$/)
+
+      await offer.getByRole('button', { name: 'Go' }).click()
+
+      await expect(page).toHaveURL(/\/p\/shop\/home$/)
+      await expect(offer).toHaveCount(0)
+    })
   })
 
   test.describe('following an agent', () => {

@@ -67,6 +67,19 @@ describe('connectLive access', () => {
     stop()
   })
 
+  it('tells its caller when the socket drops', () => {
+    const onDisconnect = vi.fn()
+    const stop = connectLive(createLiveStore(), { onDisconnect })
+    const socket = FakeSocket.instances[0]
+    socket?.dispatchEvent(new Event('open'))
+    expect(onDisconnect).not.toHaveBeenCalled()
+
+    socket?.dispatchEvent(new Event('close'))
+
+    expect(onDisconnect).toHaveBeenCalledTimes(1)
+    stop()
+  })
+
   it('hands each change to the unseen store', () => {
     const unseen = createUnseenStore(null)
     const stop = connectLive(createLiveStore(), { unseen })

@@ -36,6 +36,8 @@ const RECONNECT_MS = 500
 export interface LiveHandlers {
   /** A `show` message, which the router turns into a navigation. */
   onShow?: (ref: string) => void
+  /** The socket closing, which ends anything waiting on a message from it. */
+  onDisconnect?: () => void
   /** Where an agent's changes go, the app's own store unless a test stands in. */
   unseen?: UnseenStore
 }
@@ -47,7 +49,7 @@ export interface LiveHandlers {
  */
 export function connectLive(
   store: LiveStore,
-  { onShow, unseen = unseenStore }: LiveHandlers = {},
+  { onShow, onDisconnect, unseen = unseenStore }: LiveHandlers = {},
 ): () => void {
   let socket: WebSocket | undefined
   let retry: ReturnType<typeof setTimeout> | undefined
@@ -89,6 +91,7 @@ export function connectLive(
     })
     socket.addEventListener('close', () => {
       receiveDisconnect(store)
+      onDisconnect?.()
       if (!stopped) retry = setTimeout(open, RECONNECT_MS)
     })
   }

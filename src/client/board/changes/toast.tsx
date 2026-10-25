@@ -140,7 +140,7 @@ export function ChangeToastBody({
             type="button"
             onClick={() => show?.run()}
             className={cn(
-              BUTTON,
+              TOAST_BUTTON,
               'bg-[color-mix(in_srgb,var(--claim)_22%,transparent)] text-claim',
             )}
           >
@@ -179,7 +179,7 @@ function StepButton({
       type="button"
       aria-keyshortcuts={key ? keyLabel(key) : undefined}
       onClick={() => action?.run()}
-      className={cn(BUTTON, 'bg-secondary text-foreground')}
+      className={cn(TOAST_BUTTON, 'bg-secondary text-foreground')}
     >
       {key ? `${label} ${keyLabel(key)}` : label}
     </button>
@@ -190,5 +190,5 @@ const PREVIOUS_KEYS = ['BracketLeft']
 const NEXT_KEYS = ['BracketRight']
 
 /** `.tbtn` in agents/unseen-many. */
-const BUTTON =
+export const TOAST_BUTTON =
   'ml-2 shrink-0 rounded-md px-2 py-[3px] font-medium whitespace-nowrap outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring/50'
