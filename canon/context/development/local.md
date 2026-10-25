@@ -30,15 +30,15 @@ The CLI run from source needs no build for its faces. It writes them into `node_
 
 These serve the board and run the test layers.
 
-| Command                    | Purpose                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and no tab |
-| `bun run dev`              | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset    |
-| `bun run test`             | Runs Vitest in watch mode                                                                              |
-| `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once                                                  |
-| `bun run test:coverage`    | Runs the `node` project with coverage, as CI's unit-tests job does                                     |
-| `bun run test:e2e`         | Runs Playwright against the built CLI on a port offset per worktree                                    |
-| `bun run test:e2e:changed` | Runs Playwright on specs the import graph reaches from the current diff                                |
+| Command                    | Purpose                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and prints an edit link |
+| `bun run dev`              | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset                 |
+| `bun run test`             | Runs Vitest in watch mode                                                                                           |
+| `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once                                                               |
+| `bun run test:coverage`    | Runs the `node` project with coverage, as CI's unit-tests job does                                                  |
+| `bun run test:e2e`         | Runs Playwright against the built CLI on a port offset per worktree                                                 |
+| `bun run test:e2e:changed` | Runs Playwright on specs the import graph reaches from the current diff                                             |
 
 Two of those need a companion command or variable.
 
@@ -70,6 +70,7 @@ Owns the shell scripts and the verify runner the commands above call, and every 
 - `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
+- `preview.ts` backs `bun run preview`, running the built CLI's `serve` and then `open --no-open`, so the line it prints is a link that edits, and it exits with its server's code
 - `design-sync.ts` writes `canon/design/` and nothing in `src/` imports it, so it is a dev script outside the gate, and `.prettierignore` and `.oxlintrc.json` keep the folder out of format and lint
 
 ### `.husky/`
@@ -118,4 +119,5 @@ These catch the toolchain out.
 These catch a running `preview` out.
 
 - `canon pr drive-copy` rebuilds the copy and drops its `.run/`, so a `preview` already serving it loses its address file and board key, and a rebuild belongs at the start of a pass
+- The edit link from `preview` works once and lives two minutes, so a late reader mints another with the `open --no-open` command the script prints beside it
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs

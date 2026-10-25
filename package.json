@@ -34,7 +34,7 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts",
     "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && vite",
-    "preview": "node dist/cli.js serve --root \"${CANON_PREVIEW_ROOT:-.}/test/fixtures/boards/basic\" --no-open --port ${PREVIEW_PORT:-4173}",
+    "preview": "bun scripts/preview.ts",
     "test": "vitest",
     "test:run": "vitest run --reporter=verbose",
     "test:ui": "vitest --ui",

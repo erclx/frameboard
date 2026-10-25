@@ -36,6 +36,10 @@ export function serveBoard(
   ])
   return new Promise((done, fail) => {
     let stdout = ''
+    let stderr = ''
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString()
+    })
     child.stdout.on('data', (chunk: Buffer) => {
       stdout += chunk.toString()
       let envelope: { data: { url: string } & Record<string, unknown> }
@@ -52,7 +56,9 @@ export function serveBoard(
         stop: () => stop(child),
       })
     })
-    child.once('exit', (code) => fail(new Error(`serve exited ${code}`)))
+    child.once('exit', (code) =>
+      fail(new Error(`serve exited ${code}\n${stderr}`.trimEnd())),
+    )
   })
 }
 

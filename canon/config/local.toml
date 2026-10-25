@@ -1,0 +1,2 @@
+# canon pr local probes this path before it posts a preview link.
+health = ["/api/health"]
