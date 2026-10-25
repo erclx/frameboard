@@ -3,8 +3,10 @@ import { pointer, select as d3Select } from 'd3-selection'
 import { zoomTransform } from 'd3-zoom'
 
 import { liveStore } from '@/client/live/store'
+import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import {
   clear,
@@ -46,6 +48,8 @@ export interface GestureStores {
   mode: ModeStore
   canWrite: () => boolean
   write: typeof writeBoxes
+  /** Copies the frames shifted by `offset` from their own boxes, an Alt-drag's drop. */
+  duplicate: Structure['duplicateFrames']
 }
 
 const STORES: GestureStores = {
@@ -53,6 +57,7 @@ const STORES: GestureStores = {
   mode: modeStore,
   canWrite: () => liveStore.getState().canWrite,
   write: writeBoxes,
+  duplicate: structure.duplicateFrames,
 }
 
 type Gesture =
@@ -67,7 +72,8 @@ type Gesture =
  * Binds the Move tool's pointer gestures to the hit layer over the frames,
  * on `d3-drag` beside the viewport's `d3-zoom`. A click selects, Shift-click
  * toggles, a drag on a frame moves the selection, a drag on a corner handle
- * resizes it, and a drag on empty canvas draws a marquee. A drag writes the
+ * resizes it, and a drag on empty canvas draws a marquee. A move released
+ * with Alt held copies the frames at the drop instead. A drag writes the
  * frames and the overlay straight from its handler and sends one write on
  * release. Returns the function that unbinds them.
  */
@@ -256,6 +262,42 @@ export function attachGestures(
     }
   }
 
+  /**
+   * Puts the dragged frames back and copies them at the drop, as a move
+   * released with Alt held. One duplicate write lands the copies, and no box
+   * write is sent, so the originals stay where they were.
+   */
+  const dropCopies = (boxes: Record<string, Box>) => {
+    const [first] = Object.entries(boxes)
+    const dropped = first ? elements.get(first[0]) : undefined
+    if (!first || !dropped) return
+    const offset = {
+      x: parseFloat(dropped.style.left) - first[1].x,
+      y: parseFloat(dropped.style.top) - first[1].y,
+    }
+    for (const [ref, box] of Object.entries(boxes)) {
+      const element = elements.get(ref)
+      if (!element) continue
+      element.style.left = `${box.x}px`
+      element.style.top = `${box.y}px`
+    }
+    if (offset.x === 0 && offset.y === 0) return
+    const refs = Object.keys(boxes)
+    stores.duplicate(refs, offset).then(
+      (copies) =>
+        select(
+          selection,
+          target.page,
+          copies.map((copy) => copy.ref),
+        ),
+      reportRefusal(
+        refs.length === 1
+          ? `Couldn't duplicate ${refs[0]?.split('/').at(-1) ?? 'the frame'}`
+          : `Couldn't duplicate ${refs.length} frames`,
+      ),
+    )
+  }
+
   const finish = (event: MouseEvent) => {
     const root = overlay()
     if (!moved) {
@@ -281,6 +323,8 @@ export function attachGestures(
         rectFrom(from, point),
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
+    } else if (gesture.kind === 'move' && event.altKey) {
+      dropCopies(gesture.boxes)
     } else if (gesture.kind === 'move' || gesture.kind === 'resize') {
       const next: Record<string, Box> = {}
       const expected: Record<string, Box> = {}
@@ -320,8 +364,11 @@ export function attachGestures(
     // The primary button alone, and a Ctrl-press too, since Ctrl turns
     // snapping off rather than meaning a right-click here.
     .filter((event: MouseEvent) => {
-      const { mode: current, tool } = mode.getState()
-      return event.button === 0 && current === 'edit' && tool === 'move'
+      const { mode: current, tool, spacePan } = mode.getState()
+      // Held Space hands the drag to the viewport's pan.
+      return (
+        event.button === 0 && current === 'edit' && tool === 'move' && !spacePan
+      )
     })
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {
