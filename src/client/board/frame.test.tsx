@@ -472,12 +472,27 @@ describe('Frame theme marker', () => {
     )
   })
 
-  it('draws a sun on a frame following the board', () => {
-    const { getByRole } = render(
+  it('keeps the sun of a frame following the board out of sight at rest', () => {
+    const { container } = render(
       <Frame frame={frame('a')} live={false} version={0} />,
     )
 
+    const marker = container.querySelector('[aria-label="Flip a to dark"]')
+    expect(marker).not.toBeNull()
+    expect(marker).not.toBeVisible()
+  })
+
+  it('draws the sun while the pointer is over the frame', () => {
+    const { container, getByRole } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    container
+      .querySelector('[data-frame]')
+      ?.setAttribute('data-label-hover', '')
+
     const marker = getByRole('button', { name: 'Flip a to dark' })
+    expect(marker).toBeVisible()
     expect(marker).toHaveTextContent('')
     expect(marker.querySelector('svg')).not.toBeNull()
   })
@@ -501,15 +516,15 @@ describe('Frame theme marker', () => {
 
   it('flips the frame back on a click', async () => {
     act(() => flipFrame('studio/home/a'))
-    const { getByRole } = render(
+    const { container, getByRole } = render(
       <Frame frame={frame('a')} live={false} version={0} />,
     )
 
     await userEvent.click(getByRole('button', { name: 'Flip a to light' }))
 
-    expect(getByRole('button', { name: 'Flip a to dark' })).toHaveTextContent(
-      '',
-    )
+    expect(
+      container.querySelector('[aria-label="Flip a to dark"]'),
+    ).toHaveTextContent('')
   })
 })
 
@@ -557,6 +572,16 @@ describe('Frame label at low zoom', () => {
     const dot = container.querySelector<HTMLElement>('[data-findings-dot]')
     expect(dot).toBeVisible()
     expect(dot?.dataset.findingsBadge).toBe('studio/home/checkout')
+  })
+
+  it('centers the findings dot on the top left corner, clear of a frame note', () => {
+    const { container, root } = renderCrowded([finding('Raw color')])
+
+    const dot = container.querySelector<HTMLElement>('[data-findings-dot]')
+    const box = dot?.getBoundingClientRect()
+    const corner = root.getBoundingClientRect()
+    expect(box && box.left + box.width / 2).toBeCloseTo(corner.left, 0)
+    expect(box && box.top + box.height / 2).toBeCloseTo(corner.top, 0)
   })
 
   it('draws no findings dot while the label shows', () => {

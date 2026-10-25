@@ -225,8 +225,10 @@ export const Frame = memo(function Frame({
           data-findings-badge={frame.ref}
           data-severity={severityOf(findings)}
           className={cn(
-            'absolute top-0 right-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-note',
-            // Shown exactly while the label hides, by the label's own rule.
+            'absolute top-0 left-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-note',
+            // Shown exactly while the label hides, by the label's own rule,
+            // on the top left where the label starts, since a frame note
+            // takes the top right.
             '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:block',
           )}
         />
@@ -236,9 +238,10 @@ export const Frame = memo(function Frame({
 })
 
 /**
- * The frame's theme on its label: a sun while it follows the board, and a
- * Dark or Light chip while it is flipped alone, so a flipped frame never
- * reads as a theme bug. A click flips it, reaching the button through the
+ * The frame's theme on its label: a sun while it follows the board, shown
+ * only while the pointer is over the frame as `canon/design/canvas/labels`
+ * draws it, and a Dark or Light chip while it is flipped alone, so a flipped
+ * frame never reads as a theme bug. A click flips it, reaching the button through the
  * hit layer as the compare control does. It gives way before the findings
  * count on a narrow frame, which matters more.
  */
@@ -262,7 +265,7 @@ function ThemeMarker({
         aria-label={label}
         title={label}
         onClick={() => flipFrame(frameRef)}
-        className="grid h-[18px] w-[18px] min-w-0 shrink place-items-center overflow-hidden rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="invisible grid h-[18px] w-[18px] min-w-0 shrink place-items-center overflow-hidden rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [[data-label-hover]_&]:visible"
       >
         <Sun aria-hidden className="size-3" />
       </button>
