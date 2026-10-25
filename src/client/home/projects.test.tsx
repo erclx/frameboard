@@ -814,6 +814,17 @@ describe('Home order and pins', () => {
     expect(shown()).toEqual(['atlas', 'studio', 'webapp'])
   })
 
+  it('closes the sort menu once an order is picked', async () => {
+    renderLive(THREE, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Created' }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
   it('names the chosen order on the sort button', () => {
     localStorage.setItem('frameboard.home.sort', 'created')
 

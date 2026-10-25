@@ -38,6 +38,7 @@ export function SortMenu() {
               <DropdownMenuRadioItem
                 key={sort.id}
                 value={sort.id}
+                closeOnClick
                 onClick={() => sort.run()}
                 className="h-7 px-2 py-0 text-xs"
               >
