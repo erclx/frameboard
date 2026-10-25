@@ -441,13 +441,25 @@ export function Canvas({
                 const viewport = viewportRef.current
                 if (!(noting || framing) || !viewport || !layer) return
                 event.stopPropagation()
-                const [x, y] = zoomTransform(viewport).invert(
+                const transform = zoomTransform(viewport)
+                const [x, y] = transform.invert(
                   pointer(event.nativeEvent, viewport),
                 )
                 if (framing) {
+                  const size = sizeOf(viewport)
+                  const [left, top] = transform.invert([0, 0])
                   void placeFrame(
                     { x, y },
-                    { page: page.ref, frames: page.frames },
+                    {
+                      page: page.ref,
+                      frames: page.frames,
+                      visible: {
+                        x: left,
+                        y: top,
+                        width: size.width / transform.k,
+                        height: size.height / transform.k,
+                      },
+                    },
                   )
                   return
                 }

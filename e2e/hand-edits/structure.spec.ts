@@ -247,20 +247,23 @@ test.describe('page structure by hand, and its undo', () => {
         .click({ position: { x: 40, y: 40 } })
 
       await expect
-        .poll(() => layout().frame)
+        .poll(() => layout().tablet)
         .toMatchObject({
           width: 834,
           height: 1194,
         })
-      await expect(layerRow(page, 'frame')).toBeVisible()
+      await expect(layerRow(page, 'tablet')).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Move', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
+      const name = page.getByRole('textbox', { name: 'Rename frame tablet' })
+      await expect(name).toBeFocused()
+      await name.press('Escape')
 
       await undo(page)
 
       await expect
-        .poll(() => existsSync(at('studio/home/frame.html')))
+        .poll(() => existsSync(at('studio/home/tablet.html')))
         .toBe(false)
     })
 
