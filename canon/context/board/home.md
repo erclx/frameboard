@@ -23,8 +23,13 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 The header and each card's menu run the `project.*` actions.
 
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
-- The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, then offers the two directions named after the key, such as Newest first and Oldest first, which run `home.sortReverse`. The palette lists all four.
-- New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast. A board registers it too and goes home before the add, since leaving the board clears the rename it opens.
+- The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, which the palette lists too
+- Under them it names the two directions after the key, such as Newest first and Oldest first, and picking the other one runs `home.sortReverse`
+- New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
+- A board registers New project too and goes home before the add, since leaving the board clears the rename field the add opens
+
+A card or row takes the menu and the keys the same way.
+
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
 
 **Focus keys**
@@ -39,8 +44,12 @@ The header and each card's menu run the `project.*` actions.
 
 - `sort.ts` orders the projects by last edited, created, or name, last edited newest first by default, and `home.tsx` orders them once so the cards, the arrow keys, and the tab stop follow what is shown
 - Choosing a key starts it in its natural direction, the dates newest first and the name from A. Either way an undated project sits last and a tie falls to the name from A.
-- A pinned project sits above the rest in the grid and the list, each group in the chosen order, and carries a filled pin after its name. The rest start on a new grid row under a hairline, and the list parts the groups with a band, since every row there already ends on a hairline.
-- `localStorage` holds `frameboard.home.layout`, `frameboard.home.sort`, its direction under `frameboard.home.sortDirection`, and the pinned names in `frameboard.home.pins`, and the view renders in its defaults when storage refuses
+- A pinned project sits above the rest in the grid and the list, each group in the chosen order, and carries a filled pin after its name
+- The rest start on a new grid row under a hairline, and the list parts the groups with a band, since every list row already ends on a hairline
+
+The browser keeps both, and neither reaches the board.
+
+- `localStorage` holds `frameboard.home.layout`, `frameboard.home.sort` and its `frameboard.home.sortDirection`, and the pins in `frameboard.home.pins`, falling back to defaults when storage refuses
 - No pin reaches the board folder, so a second browser or an agent sees none, and a pin naming no project is ignored where it is read
 - Neither waits on `canWrite`, so both work in a read-only tab
 
