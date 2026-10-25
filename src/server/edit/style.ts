@@ -3,7 +3,17 @@
  * does not keep overriding the value just set. A longhand write leaves its
  * shorthand alone, since the longhand comes later and already wins.
  */
+const BORDER_SIDES = ['top', 'right', 'bottom', 'left'] as const
+const BORDER_PARTS = ['color', 'style', 'width'] as const
+
 const SHORTHAND_LONGHANDS: Readonly<Record<string, readonly string[]>> = {
+  border: [
+    ...BORDER_PARTS.map((part) => `border-${part}`),
+    ...BORDER_SIDES.flatMap((side) => [
+      `border-${side}`,
+      ...BORDER_PARTS.map((part) => `border-${side}-${part}`),
+    ]),
+  ],
   'border-radius': [
     'border-top-left-radius',
     'border-top-right-radius',

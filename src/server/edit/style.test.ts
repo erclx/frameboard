@@ -56,6 +56,22 @@ describe('setDeclaration', () => {
     ).toEqual({ ok: true, style: 'color: red; padding: 4px' })
   })
 
+  it('should drop a border and every border longhand, leaving the radius', () => {
+    expect(
+      setDeclaration(
+        'border: 1px solid var(--border); border-color: red; border-top-width: 2px; border-radius: 4px',
+        'border',
+        '',
+      ),
+    ).toEqual({ ok: true, style: 'border-radius: 4px' })
+  })
+
+  it('should leave no style once a border and its longhands drop', () => {
+    expect(
+      setDeclaration('border: 1px solid; border-color: red', 'border', ''),
+    ).toEqual({ ok: true, style: '' })
+  })
+
   it('should leave the shorthand alone on a longhand write', () => {
     expect(
       setDeclaration('border-radius: 4px', 'border-top-left-radius', '0'),
