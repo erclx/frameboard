@@ -61,7 +61,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
 
 - The board runs the same rules on each change, and a frame's findings badge opens the list, which the inspector shows too
-- A running server adds the rules only a browser can see, being clipped content, a scrollbar inside the frame, content sized off the viewport, and text under a project's minimum size
+- A running server adds the rules only a browser can see, being clipped content, an inner scrollbar, content sized off the viewport, text under a project's minimum size, and dropped CSS
 
 ### Claims
 

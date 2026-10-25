@@ -1,66 +1,402 @@
 <!doctype html>
 <html lang="en" class="kit">
-<head>
-<meta charset="utf-8">
-<title>Frameboard board</title>
-<link rel="stylesheet" href="../kit/kit.css">
-<script src="../kit/vendor/rough.js"></script>
-<script src="../kit/kit.js"></script>
-<style>
-html.kit{--fb-background:#1f1f1f;--fb-foreground:#e6e6e6;--fb-sidebar:#2a2a2a;--fb-sidebar-foreground:#e6e6e6;--fb-sidebar-accent:#3d3d3d;--fb-sidebar-primary:#4e92f6;--fb-sidebar-border:#353535;--fb-card:#2a2a2a;--fb-popover:#2a2a2a;--fb-primary:#4e92f6;--fb-primary-foreground:#ffffff;--fb-secondary:#363636;--fb-muted:#363636;--fb-muted-foreground:#949494;--fb-accent:#3d3d3d;--fb-border:#353535;--fb-input:#363636;--fb-ring:#4e92f6;--fb-destructive:#ff6b6b;--fb-claim:#e0a3ff;--fb-note:#f5b84a;--fb-faint:#6b6b6b;--fb-success:#5fc48a;--fb-guide:#ff4fa3}
-html.kit[data-theme="light"]{--fb-background:#ececec;--fb-foreground:#1a1a1a;--fb-sidebar:#ffffff;--fb-sidebar-foreground:#1a1a1a;--fb-sidebar-accent:#e8e8e8;--fb-sidebar-primary:#2f7bf0;--fb-sidebar-border:#e4e4e4;--fb-card:#ffffff;--fb-popover:#ffffff;--fb-primary:#2f7bf0;--fb-primary-foreground:#ffffff;--fb-secondary:#f2f2f2;--fb-muted:#f2f2f2;--fb-muted-foreground:#6e6e6e;--fb-accent:#e8e8e8;--fb-border:#e4e4e4;--fb-input:#f2f2f2;--fb-ring:#2f7bf0;--fb-destructive:#d92d2d;--fb-claim:#9b3fd1;--fb-note:#c77a00;--fb-faint:#a5a5a5;--fb-success:#1a7f45;--fb-guide:#e0207f}
-.fbx{background:var(--fb-sidebar);border:1px solid var(--fb-border);border-radius:12px;padding:18px;font-family:Geist,"Geist",sans-serif;font-size:12px;color:var(--fb-foreground);display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 6px}
-.fbx button{font:inherit;border:0}
-.b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;font-weight:500;background:var(--fb-secondary);color:var(--fb-foreground)}
-.b.p{background:var(--fb-primary);color:#fff} .b.d{background:var(--fb-destructive);color:#fff} .b.g{background:none;color:var(--fb-muted-foreground)}
-.f{display:flex;align-items:center;gap:8px;height:26px;width:120px;padding:0 8px;background:var(--fb-input);border-radius:6px} .f i{font-style:normal;color:var(--fb-faint)} .f.r{box-shadow:0 0 0 1.5px var(--fb-ring)}
-.rows{width:260px;border-radius:6px;overflow:hidden}
-.rw{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px} .rw .ic{color:var(--fb-muted-foreground)}
-.rw.a{background:color-mix(in srgb,var(--fb-primary) 7%,transparent)} .rw.s{background:color-mix(in srgb,var(--fb-primary) 26%,transparent)} .rw.s .ic{color:var(--fb-primary)} .rw.k{background:color-mix(in srgb,var(--fb-primary) 13%,transparent)}
-.cr{display:flex;align-items:center;gap:8px;height:26px;width:240px;padding:0 8px;background:var(--fb-input);border-radius:6px} .cr .s{width:14px;height:14px;border-radius:3px} .cr .t{padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--fb-foreground) 9%,transparent)} .cr .pc{margin-left:auto;color:var(--fb-muted-foreground)}
-.ct{color:var(--fb-claim)} .ct span{margin-left:6px;padding:1px 6px;border-radius:9px;background:color-mix(in srgb,var(--fb-claim) 18%,transparent)}
-.cf{width:120px;height:60px;background:#fff;outline:1.5px dashed var(--fb-claim);outline-offset:3px;margin:6px;animation:p 2.4s ease-in-out infinite}
-@keyframes p{50%{outline-color:color-mix(in srgb,var(--fb-claim) 35%,transparent)}}
-@media (prefers-reduced-motion:reduce){.cf{animation:none}}
-.pin{width:22px;height:22px;border-radius:11px 11px 11px 2px;background:var(--fb-note);color:#1a1a1a;font-size:11px;font-weight:600;display:grid;place-items:center}
-.mn{width:220px;padding:4px;background:var(--fb-popover);border:1px solid var(--fb-border);border-radius:10px} .mt{padding:6px 8px 4px;color:var(--fb-faint);font-size:11px;font-weight:600} .mi{display:flex;height:28px;align-items:center;padding:0 8px;border-radius:6px} .mi.h{background:var(--fb-accent)} .mi.d{color:var(--fb-destructive)} .mi kbd{margin-left:auto;font:inherit;color:var(--fb-muted-foreground)} .ms{height:1px;background:var(--fb-border);margin:4px 0}
-.ts{display:flex;gap:10px;width:300px;padding:10px 12px;background:var(--fb-popover);border:1px solid var(--fb-border);border-radius:10px} .ts b{display:block;font-weight:600} .ts span{color:var(--fb-muted-foreground)}
-.gd{position:relative;width:260px;height:60px} .gd i{position:absolute;background:var(--fb-guide)} .gd em{position:absolute;font-style:normal;background:var(--fb-guide);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px}
-</style>
-</head>
-<body>
-<p class="kicker">Frameboard design system · 3 of 3</p>
-<h1>The board</h1>
-<p class="lede">Where each part of the shell sits, and what stays when the UI hides.</p>
-<h2>Shell</h2>
-<p class="cap">Blue marks the canvas, the one thing to look at.</p>
-<div id="shell"></div>
-<h2>Hide UI</h2>
-<p class="cap">Three floating pieces stay. Cmd+\ brings the panels back.</p>
-<div id="hide"></div>
-<h2>Picks behind it</h2>
-<ol class="steps">
-  <li><div><b>Toolbar floats</b><span>Bottom center, over the canvas, unchanged when the UI hides</span></div></li>
-  <li><div><b>Zoom lives in the inspector</b><span>Beside your git initials, never in a canvas corner</span></div></li>
-  <li><div><b>Panels resize</b><span>200 to 400px, 240 by default, remembered</span></div></li>
-  <li><div><b>Play keeps the panels</b><span>Only what clicks do changes</span></div></li>
-  <li><div><b>Left panel has three tabs</b><span>Design, Theme, Assets</span></div></li>
-</ol>
-<script>
-KIT.diagram(document.getElementById('shell'), { w: 972, h: 520,
-  nodes: [
-    { id: 'l', x: 0, y: 0, w: 210, h: 520, t: 'Left panel', s: 'Design, Theme, Assets' },
-    { id: 'c', x: 240, y: 0, w: 492, h: 400, kind: 'key', t: 'Canvas', s: 'frames, labels, pins' },
-    { id: 'tb', x: 330, y: 430, w: 312, h: 60, kind: 'action', t: 'Toolbar', s: 'floats, bottom center' },
-    { id: 'r', x: 762, y: 0, w: 210, h: 520, t: 'Inspector', s: 'avatar and zoom on top' },
-  ], edges: [] });
-KIT.diagram(document.getElementById('hide'), { w: 972, h: 320,
-  groups: [{ x: 0, y: 0, w: 972, h: 320, label: 'Canvas alone' }],
-  nodes: [
-    { id: 'n', x: 20, y: 40, w: 230, h: 60, t: 'Project name', s: 'and show panels' },
-    { id: 'z', x: 722, y: 40, w: 230, h: 60, t: 'Avatar and zoom' },
-    { id: 't', x: 330, y: 230, w: 312, h: 60, kind: 'action', t: 'Toolbar' },
-  ], edges: [] });
-</script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>Frameboard board</title>
+    <link rel="stylesheet" href="../kit/kit.css" />
+    <script src="../kit/vendor/rough.js"></script>
+    <script src="../kit/kit.js"></script>
+    <style>
+      html.kit {
+        --fb-background: #1f1f1f;
+        --fb-foreground: #e6e6e6;
+        --fb-sidebar: #2a2a2a;
+        --fb-sidebar-foreground: #e6e6e6;
+        --fb-sidebar-accent: #3d3d3d;
+        --fb-sidebar-primary: #4e92f6;
+        --fb-sidebar-border: #353535;
+        --fb-card: #2a2a2a;
+        --fb-popover: #2a2a2a;
+        --fb-primary: #4e92f6;
+        --fb-primary-foreground: #ffffff;
+        --fb-secondary: #363636;
+        --fb-muted: #363636;
+        --fb-muted-foreground: #949494;
+        --fb-accent: #3d3d3d;
+        --fb-border: #353535;
+        --fb-input: #363636;
+        --fb-ring: #4e92f6;
+        --fb-destructive: #ff6b6b;
+        --fb-claim: #e0a3ff;
+        --fb-note: #f5b84a;
+        --fb-faint: #6b6b6b;
+        --fb-success: #5fc48a;
+        --fb-guide: #ff4fa3;
+      }
+      html.kit[data-theme='light'] {
+        --fb-background: #ececec;
+        --fb-foreground: #1a1a1a;
+        --fb-sidebar: #ffffff;
+        --fb-sidebar-foreground: #1a1a1a;
+        --fb-sidebar-accent: #e8e8e8;
+        --fb-sidebar-primary: #2f7bf0;
+        --fb-sidebar-border: #e4e4e4;
+        --fb-card: #ffffff;
+        --fb-popover: #ffffff;
+        --fb-primary: #2f7bf0;
+        --fb-primary-foreground: #ffffff;
+        --fb-secondary: #f2f2f2;
+        --fb-muted: #f2f2f2;
+        --fb-muted-foreground: #6e6e6e;
+        --fb-accent: #e8e8e8;
+        --fb-border: #e4e4e4;
+        --fb-input: #f2f2f2;
+        --fb-ring: #2f7bf0;
+        --fb-destructive: #d92d2d;
+        --fb-claim: #9b3fd1;
+        --fb-note: #c77a00;
+        --fb-faint: #a5a5a5;
+        --fb-success: #1a7f45;
+        --fb-guide: #e0207f;
+      }
+      .fbx {
+        background: var(--fb-sidebar);
+        border: 1px solid var(--fb-border);
+        border-radius: 12px;
+        padding: 18px;
+        font-family: Geist, 'Geist', sans-serif;
+        font-size: 12px;
+        color: var(--fb-foreground);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 0 0 6px;
+      }
+      .fbx button {
+        font: inherit;
+        border: 0;
+      }
+      .b {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-weight: 500;
+        background: var(--fb-secondary);
+        color: var(--fb-foreground);
+      }
+      .b.p {
+        background: var(--fb-primary);
+        color: #fff;
+      }
+      .b.d {
+        background: var(--fb-destructive);
+        color: #fff;
+      }
+      .b.g {
+        background: none;
+        color: var(--fb-muted-foreground);
+      }
+      .f {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        width: 120px;
+        padding: 0 8px;
+        background: var(--fb-input);
+        border-radius: 6px;
+      }
+      .f i {
+        font-style: normal;
+        color: var(--fb-faint);
+      }
+      .f.r {
+        box-shadow: 0 0 0 1.5px var(--fb-ring);
+      }
+      .rows {
+        width: 260px;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .rw {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 8px;
+      }
+      .rw .ic {
+        color: var(--fb-muted-foreground);
+      }
+      .rw.a {
+        background: color-mix(in srgb, var(--fb-primary) 7%, transparent);
+      }
+      .rw.s {
+        background: color-mix(in srgb, var(--fb-primary) 26%, transparent);
+      }
+      .rw.s .ic {
+        color: var(--fb-primary);
+      }
+      .rw.k {
+        background: color-mix(in srgb, var(--fb-primary) 13%, transparent);
+      }
+      .cr {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        width: 240px;
+        padding: 0 8px;
+        background: var(--fb-input);
+        border-radius: 6px;
+      }
+      .cr .s {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+      }
+      .cr .t {
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--fb-foreground) 9%, transparent);
+      }
+      .cr .pc {
+        margin-left: auto;
+        color: var(--fb-muted-foreground);
+      }
+      .ct {
+        color: var(--fb-claim);
+      }
+      .ct span {
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--fb-claim) 18%, transparent);
+      }
+      .cf {
+        width: 120px;
+        height: 60px;
+        background: #fff;
+        outline: 1.5px dashed var(--fb-claim);
+        outline-offset: 3px;
+        margin: 6px;
+        animation: p 2.4s ease-in-out infinite;
+      }
+      @keyframes p {
+        50% {
+          outline-color: color-mix(in srgb, var(--fb-claim) 35%, transparent);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cf {
+          animation: none;
+        }
+      }
+      .pin {
+        width: 22px;
+        height: 22px;
+        border-radius: 11px 11px 11px 2px;
+        background: var(--fb-note);
+        color: #1a1a1a;
+        font-size: 11px;
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+      }
+      .mn {
+        width: 220px;
+        padding: 4px;
+        background: var(--fb-popover);
+        border: 1px solid var(--fb-border);
+        border-radius: 10px;
+      }
+      .mt {
+        padding: 6px 8px 4px;
+        color: var(--fb-faint);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .mi {
+        display: flex;
+        height: 28px;
+        align-items: center;
+        padding: 0 8px;
+        border-radius: 6px;
+      }
+      .mi.h {
+        background: var(--fb-accent);
+      }
+      .mi.d {
+        color: var(--fb-destructive);
+      }
+      .mi kbd {
+        margin-left: auto;
+        font: inherit;
+        color: var(--fb-muted-foreground);
+      }
+      .ms {
+        height: 1px;
+        background: var(--fb-border);
+        margin: 4px 0;
+      }
+      .ts {
+        display: flex;
+        gap: 10px;
+        width: 300px;
+        padding: 10px 12px;
+        background: var(--fb-popover);
+        border: 1px solid var(--fb-border);
+        border-radius: 10px;
+      }
+      .ts b {
+        display: block;
+        font-weight: 600;
+      }
+      .ts span {
+        color: var(--fb-muted-foreground);
+      }
+      .gd {
+        position: relative;
+        width: 260px;
+        height: 60px;
+      }
+      .gd i {
+        position: absolute;
+        background: var(--fb-guide);
+      }
+      .gd em {
+        position: absolute;
+        font-style: normal;
+        background: var(--fb-guide);
+        color: #fff;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="kicker">Frameboard design system · 3 of 3</p>
+    <h1>The board</h1>
+    <p class="lede">
+      Where each part of the shell sits, and what stays when the UI hides.
+    </p>
+    <h2>Shell</h2>
+    <p class="cap">Blue marks the canvas, the one thing to look at.</p>
+    <div id="shell"></div>
+    <h2>Hide UI</h2>
+    <p class="cap">Three floating pieces stay. Cmd+\ brings the panels back.</p>
+    <div id="hide"></div>
+    <h2>Picks behind it</h2>
+    <ol class="steps">
+      <li>
+        <div>
+          <b>Toolbar floats</b
+          ><span
+            >Bottom center, over the canvas, unchanged when the UI hides</span
+          >
+        </div>
+      </li>
+      <li>
+        <div>
+          <b>Zoom lives in the inspector</b
+          ><span>Beside your git initials, never in a canvas corner</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <b>Panels resize</b
+          ><span>200 to 400px, 240 by default, remembered</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <b>Play keeps the panels</b><span>Only what clicks do changes</span>
+        </div>
+      </li>
+      <li>
+        <div>
+          <b>Left panel has three tabs</b><span>Design, Theme, Assets</span>
+        </div>
+      </li>
+    </ol>
+    <script>
+      KIT.diagram(document.getElementById('shell'), {
+        w: 972,
+        h: 520,
+        nodes: [
+          {
+            id: 'l',
+            x: 0,
+            y: 0,
+            w: 210,
+            h: 520,
+            t: 'Left panel',
+            s: 'Design, Theme, Assets',
+          },
+          {
+            id: 'c',
+            x: 240,
+            y: 0,
+            w: 492,
+            h: 400,
+            kind: 'key',
+            t: 'Canvas',
+            s: 'frames, labels, pins',
+          },
+          {
+            id: 'tb',
+            x: 330,
+            y: 430,
+            w: 312,
+            h: 60,
+            kind: 'action',
+            t: 'Toolbar',
+            s: 'floats, bottom center',
+          },
+          {
+            id: 'r',
+            x: 762,
+            y: 0,
+            w: 210,
+            h: 520,
+            t: 'Inspector',
+            s: 'avatar and zoom on top',
+          },
+        ],
+        edges: [],
+      })
+      KIT.diagram(document.getElementById('hide'), {
+        w: 972,
+        h: 320,
+        groups: [{ x: 0, y: 0, w: 972, h: 320, label: 'Canvas alone' }],
+        nodes: [
+          {
+            id: 'n',
+            x: 20,
+            y: 40,
+            w: 230,
+            h: 60,
+            t: 'Project name',
+            s: 'and show panels',
+          },
+          { id: 'z', x: 722, y: 40, w: 230, h: 60, t: 'Avatar and zoom' },
+          {
+            id: 't',
+            x: 330,
+            y: 230,
+            w: 312,
+            h: 60,
+            kind: 'action',
+            t: 'Toolbar',
+          },
+        ],
+        edges: [],
+      })
+    </script>
+  </body>
 </html>

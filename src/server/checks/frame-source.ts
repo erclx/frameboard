@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
 import type { Document, Element } from 'domhandler'
-import { parse, type Token } from 'parse5'
+import { parse, type ParserError, type Token } from 'parse5'
 import { adapter } from 'parse5-htmlparser2-tree-adapter'
-import postcss from 'postcss'
+import postcss, { CssSyntaxError, type Root } from 'postcss'
 
 import { ASSETS_FOLDER, FRAME_EXTENSION } from '@/shared/board-files'
 import type { FindingLocation } from '@/shared/records/check'
@@ -28,6 +28,12 @@ export interface Sheet {
   offset: number
 }
 
+/** A parse error the HTML tokenizer or tree builder raised, by its spec code. */
+export interface ParseError {
+  code: string
+  location: FindingLocation
+}
+
 /**
  * A frame read once for every rule: its bytes, the tree css-select walks with
  * source locations, and the stylesheets it renders with in cascade order.
@@ -47,6 +53,8 @@ export interface FrameSource extends FrameTarget {
    * `<link>`s in document order, each after the local sheets it imports.
    */
   sheets: Sheet[]
+  /** Every parse error in source order, which a browser recovers from silently. */
+  parseErrors: ParseError[]
 }
 
 export function readFrame(target: FrameTarget): FrameSource {
@@ -58,9 +66,21 @@ export function readFrame(target: FrameTarget): FrameSource {
   // browser drops a leading BOM before the tokenizer, where parse5 would read
   // it as text and imply the wrappers. A space is ignored alike and keeps
   // every offset.
+  const parseErrors: ParseError[] = []
   const document = parse(html.replace(/^﻿/, ' '), {
     treeAdapter: adapter,
     sourceCodeLocationInfo: true,
+    onParseError: (error: ParserError) => {
+      parseErrors.push({
+        code: error.code,
+        location: {
+          line: error.startLine,
+          column: error.startCol,
+          startOffset: error.startOffset,
+          endOffset: error.endOffset,
+        },
+      })
+    },
   }) as Document
 
   const elements: Element[] = []
@@ -120,6 +140,7 @@ export function readFrame(target: FrameTarget): FrameSource {
     document,
     elements,
     sheets,
+    parseErrors,
   }
 }
 
@@ -153,6 +174,74 @@ function withImports(sheet: Sheet, imported: Set<string>): Sheet[] {
     )
   })
   return [...before, sheet]
+}
+
+/** A sheet as far as it parses, and each break postcss refused in it. */
+export interface ParsedSheet {
+  root: Root
+  /** In source order, every one a break a browser meets in the file. */
+  errors: CssSyntaxError[]
+}
+
+/**
+ * Parses `css` past every break postcss refuses, so a rule reads every
+ * declaration a browser keeps. An unknown word, such as a declaration
+ * missing its colon, is blanked out to its `;` or `}`, as a browser drops
+ * that one declaration, with newlines kept so every offset holds. Any other
+ * break, such as an unclosed block or string, cuts the sheet there, and the
+ * cut's own leftovers are not breaks in the file, so none is recorded.
+ */
+export function parseSheet(css: string): ParsedSheet {
+  let text = css
+  const errors: CssSyntaxError[] = []
+  let cut = false
+  for (;;) {
+    try {
+      return { root: postcss.parse(text), errors }
+    } catch (error) {
+      if (!(error instanceof CssSyntaxError)) throw error
+      if (!cut) errors.push(error)
+      const at = offsetOf(text, error.line ?? 1, error.column ?? 1)
+      const span = cut ? null : unknownWordSpan(text, at, error)
+      if (span) {
+        const [start, end] = span
+        text = `${text.slice(0, start)}${text.slice(start, end).replace(/[^\n]/g, ' ')}${text.slice(end)}`
+      } else {
+        cut = true
+        text = at < text.length ? text.slice(0, at) : ''
+      }
+    }
+  }
+}
+
+/**
+ * The declaration an unknown word sits in, from the `;` or `{` before it
+ * through the `;` after it or up to a `}`, or null for any other break. The
+ * span always holds the word, so each pass blanks at least one character.
+ */
+function unknownWordSpan(
+  text: string,
+  at: number,
+  error: CssSyntaxError,
+): [number, number] | null {
+  if (!error.reason.startsWith('Unknown word')) return null
+  const start =
+    Math.max(text.lastIndexOf(';', at - 1), text.lastIndexOf('{', at - 1)) + 1
+  const next = text.slice(at).search(/[;}]/)
+  const end =
+    next === -1 ? text.length : at + next + (text[at + next] === ';' ? 1 : 0)
+  return end > at && /\S/.test(text[at] ?? '') ? [start, end] : null
+}
+
+/** The offset of a 1-based line and column in `text`. */
+export function offsetOf(text: string, line: number, column: number): number {
+  let offset = 0
+  for (let at = 1; at < line; at++) {
+    const next = text.indexOf('\n', offset)
+    if (next === -1) return text.length
+    offset = next + 1
+  }
+  return Math.min(offset + column - 1, text.length)
 }
 
 /** The URL an `@import` rule's parameters name, quoted or through `url()`. */

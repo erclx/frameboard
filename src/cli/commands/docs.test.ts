@@ -118,7 +118,13 @@ describe('docs', () => {
       checks.rules
         .filter((rule) => rule.tier === 'browser')
         .map((rule) => rule.id),
-    ).toEqual(['clipped', 'scrollbar', 'viewport', 'min-font-size'])
+    ).toEqual([
+      'clipped',
+      'scrollbar',
+      'viewport',
+      'min-font-size',
+      'dropped-declaration',
+    ])
   })
 
   it('names the minFontSize key that turns on the font size rule', async () => {

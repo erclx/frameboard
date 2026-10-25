@@ -59,9 +59,15 @@ These capture and measure what the board renders.
 The capture scripts each carry a condition the table leaves out.
 
 - `screenshot:compare` builds first and serves its own boards
-- `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
-- `design:sync` reads the design board at the main root's `.canon/board` through the built CLI's `capture`, from any worktree
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
+
+`design:sync` carries more conditions than the other capture scripts.
+
+- `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
+- It reads the design board at the main root's `.canon/board` through the built CLI's `capture`, from any worktree
+- It formats each reference through oxfmt's `format()` under `.oxfmtrc.json`, and `--check` compares those formatted bytes, so the board files stay as the agent wrote them
+- It refuses a frame the formatter cannot parse, naming its reference, and writes nothing
+- An oxfmt bump changes every reference's bytes, so the commit bumping it runs `design:sync` too
 
 ### `scripts/`
 

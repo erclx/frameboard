@@ -254,6 +254,7 @@ async function listen({
     check: async (frame) => {
       const list = await checkRendered(await browser.get(), {
         baseUrl: baseUrl(),
+        root,
         frame: {
           ref: frame.ref,
           path: boardPath(root, frame.path),

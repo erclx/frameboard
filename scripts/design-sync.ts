@@ -1,8 +1,9 @@
 // Lands the board's accepted designs in canon/design/: each frame
 // canon/design/frames.json maps, as its HTML beside a PNG per theme, captured
 // through Frameboard's own `capture` verb from the design board at the main
-// worktree's .canon/board. `--check` writes nothing and exits 1 when the
-// folder differs from what a sync would write. Builds the CLI first, since
+// worktree's .canon/board, each HTML formatted under .oxfmtrc.json. `--check`
+// writes nothing and exits 1 when the folder differs from what a sync would
+// write. Builds the CLI first, since
 // only the build carries the faces a capture loads.
 import { spawnSync } from 'node:child_process'
 import {
@@ -17,8 +18,11 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 
+import type { FormatConfig } from 'oxfmt'
+
 import {
   classifyDrift,
+  FormatRefused,
   MappingError,
   missingFrames,
   parseFrameMap,
@@ -48,6 +52,7 @@ const DESIGN = join(ROOT, 'canon', 'design')
 const MAPPING = join(DESIGN, 'frames.json')
 const OWN_FILES = new Set(['index.md', 'frames.json'])
 const CLI = join(ROOT, 'dist', 'cli.js')
+const FORMAT_CONFIG = join(ROOT, '.oxfmtrc.json')
 const KIT_FILES = [
   'kit.css',
   'kit.js',
@@ -81,6 +86,17 @@ function frameboard<T>(args: string[]): T {
   return record.data
 }
 
+/**
+ * The repo's own formatter options, which `format()` never discovers on its
+ * own, so a reference lands as `bun run format` would leave it.
+ */
+function formatOptions(): FormatConfig {
+  const { $schema: _schema, ...options } = JSON.parse(
+    readFileSync(FORMAT_CONFIG, 'utf8'),
+  ) as FormatConfig & { $schema?: string }
+  return options
+}
+
 function build(): void {
   const run = spawnSync('bun', ['run', 'build'], { cwd: ROOT, stdio: 'pipe' })
   if (run.status !== 0) {
@@ -104,6 +120,7 @@ function pruneEmptyDirs(dir: string): void {
 
 async function run(check: boolean): Promise<number> {
   const map = parseFrameMap(readFileSync(MAPPING, 'utf8'))
+  const options = formatOptions()
   const board = join(mainRoot(), '.canon', 'board')
   build()
 
@@ -126,7 +143,10 @@ async function run(check: boolean): Promise<number> {
   try {
     for (const [reference, ref] of map) {
       const path = paths.get(ref) ?? ''
-      output.set(`${reference}.html`, toReference(readFileSync(path, 'utf8')))
+      output.set(
+        `${reference}.html`,
+        await toReference(readFileSync(path, 'utf8'), reference, options),
+      )
       const { images } = frameboard<Capture>([
         'capture',
         ref,
@@ -184,7 +204,9 @@ try {
   process.exitCode = await run(process.argv.includes('--check'))
 } catch (error) {
   console.error(
-    error instanceof SyncRefused || error instanceof MappingError
+    error instanceof SyncRefused ||
+      error instanceof MappingError ||
+      error instanceof FormatRefused
       ? error.message
       : error,
   )

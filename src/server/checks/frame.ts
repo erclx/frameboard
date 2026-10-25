@@ -6,6 +6,7 @@ import type { ProjectChecks } from '@/shared/records/board'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
 import { buildCascade } from './cascade'
+import { checkUnknownTokens } from './custom-properties'
 import { checkFonts } from './fonts'
 import {
   boardPath,
@@ -14,7 +15,12 @@ import {
   type Sheet,
 } from './frame-source'
 import { checkLinks } from './links'
-import { checkMarkup, checkNaming } from './structure'
+import {
+  checkMalformedTags,
+  checkMarkup,
+  checkNaming,
+  checkNesting,
+} from './structure'
 import { checkTheme } from './theme'
 import { tokenSheets } from './tokens'
 import { checkUppercase } from './uppercase'
@@ -44,9 +50,12 @@ export function checkFrameIn(
   return [
     ...checkNaming(target, boardPath(target.root, source.path)),
     ...checkMarkup(source),
+    ...checkMalformedTags(source),
+    ...checkNesting(source),
     ...checkLinks(source),
     ...checkFonts(source, cascade, config),
     ...checkTheme(source),
+    ...checkUnknownTokens(source, tokens),
     ...(config.noUppercase ? checkUppercase(source, cascade) : []),
   ]
 }

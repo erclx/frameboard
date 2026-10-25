@@ -1,3 +1,5 @@
+import { format, type FormatConfig } from 'oxfmt'
+
 const BOARD_KIT = '../assets/kit/'
 const REFERENCE_KIT = '../kit/'
 
@@ -46,9 +48,35 @@ export function missingFrames(
   return [...map.values()].filter((ref) => !board.has(ref))
 }
 
-/** What the folder holds of a board frame: its project kit links moved to the folder's kit. */
-export function toReference(html: string): string {
-  return html.replaceAll(BOARD_KIT, REFERENCE_KIT)
+/** A mapped board frame the formatter cannot parse, so the sync lands nothing. */
+export class FormatRefused extends Error {}
+
+/**
+ * What the folder holds of a board frame: its project kit links moved to the
+ * folder's kit, formatted under `options` so a reference diffs line by line
+ * while the board file stays as the agent wrote it. The write and `--check`
+ * both build through it, so they compare the same bytes.
+ */
+export async function toReference(
+  html: string,
+  reference: string,
+  options: FormatConfig,
+): Promise<string> {
+  const result = await format(
+    `${reference}.html`,
+    html.replaceAll(BOARD_KIT, REFERENCE_KIT),
+    options,
+  )
+  const [error] = result.errors
+  if (error) {
+    // The message carries a code frame of the whole line, which for a
+    // one-line thumbnail is thousands of characters.
+    const [reason] = error.message.split('\n')
+    throw new FormatRefused(
+      `${reference} does not parse as HTML: ${reason}. Fix its board frame and sync again. Nothing written.`,
+    )
+  }
+  return result.code
 }
 
 export interface Drift {

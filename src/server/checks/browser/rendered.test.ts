@@ -46,6 +46,7 @@ describe.skipIf(shell === null)(
     function check(ref: string, config = CONFIG) {
       return checkRendered(browser, {
         baseUrl: board.url,
+        root: ROOT,
         frame: board.target(ref),
         config,
       })
