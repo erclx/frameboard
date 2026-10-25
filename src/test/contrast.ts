@@ -1,28 +1,43 @@
-type Rgba = [number, number, number, number]
+type Rgb = [number, number, number]
+
+interface Color {
+  rgb: Rgb
+  alpha: number
+}
 
 /** A computed color, being `rgb()`, `rgba()`, or the `color(srgb …)` a `color-mix` computes to. */
-function parse(color: string): Rgba {
+function parse(color: string): Color {
   const srgb =
     /^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)$/.exec(color)
   if (srgb) {
-    const [r, g, b] = [srgb[1], srgb[2], srgb[3]].map((part) => Number(part))
-    return [r * 255, g * 255, b * 255, Number(srgb[4] ?? 1)] as Rgba
+    return {
+      rgb: [
+        Number(srgb[1]) * 255,
+        Number(srgb[2]) * 255,
+        Number(srgb[3]) * 255,
+      ],
+      alpha: Number(srgb[4] ?? 1),
+    }
   }
   const rgb = /^rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)$/.exec(
     color,
   )
   if (!rgb) throw new Error(`unread color ${color}`)
-  return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), Number(rgb[4] ?? 1)]
+  return {
+    rgb: [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])],
+    alpha: Number(rgb[4] ?? 1),
+  }
 }
 
-function over(top: Rgba, under: Rgba): Rgba {
-  const a = top[3]
-  return [0, 1, 2].map(
-    (at) => top[at]! * a + under[at]! * (1 - a),
-  ) as unknown as Rgba
+function over({ rgb, alpha }: Color, [r, g, b]: Rgb): Rgb {
+  return [
+    rgb[0] * alpha + r * (1 - alpha),
+    rgb[1] * alpha + g * (1 - alpha),
+    rgb[2] * alpha + b * (1 - alpha),
+  ]
 }
 
-function luminance([r, g, b]: Rgba): number {
+function luminance([r, g, b]: Rgb): number {
   const channel = (value: number) => {
     const c = value / 255
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
@@ -37,21 +52,18 @@ function luminance([r, g, b]: Rgba): number {
  * any fade has finished.
  */
 export function contrastOnPage(element: HTMLElement): number {
-  const layers: Rgba[] = []
+  const layers: Color[] = []
   for (let at: HTMLElement | null = element; at; at = at.parentElement) {
     const fill = parse(getComputedStyle(at).backgroundColor)
-    if (fill[3] > 0) layers.push(fill)
-    if (fill[3] === 1) break
+    if (fill.alpha > 0) layers.push(fill)
+    if (fill.alpha === 1) break
   }
   const ground = layers
     .reverse()
-    .reduce<Rgba>(
-      (under, top) => [...over(top, under), 1] as Rgba,
-      [255, 255, 255, 1],
-    )
+    .reduce<Rgb>((under, top) => over(top, under), [255, 255, 255])
   const text = over(parse(getComputedStyle(element).color), ground)
   const [light, dark] = [luminance(text), luminance(ground)].sort(
     (a, b) => b - a,
   )
-  return (light! + 0.05) / (dark! + 0.05)
+  return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05)
 }
