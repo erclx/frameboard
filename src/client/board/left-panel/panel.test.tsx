@@ -126,6 +126,11 @@ function renderPanel(
   return location
 }
 
+const divider = () =>
+  screen.getByRole('separator', { name: 'Resize the pages list' })
+
+const splitAt = () => divider().getAttribute('aria-valuenow')
+
 const OPEN_STUDIO = () => 'studio'
 
 const THREE = () =>
@@ -509,6 +514,41 @@ describe('LeftPanel', () => {
           .getByRole('separator', { name: 'Resize the pages list' })
           .getAttribute('aria-valuenow'),
       ).toBe(moved)
+    })
+
+    it('keeps a split per project', async () => {
+      const storage = new Map<string, string>()
+      renderPanel(THREE(), 'home', undefined, { storage })
+      const fitted = splitAt()
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+      await expect.poll(() => storage.size).toBe(1)
+      cleanup()
+
+      renderPanel(
+        { ...THREE(), name: 'marketing', path: '/board/marketing' },
+        'home',
+        undefined,
+        { storage },
+      )
+
+      expect(splitAt()).toBe(fitted)
+    })
+
+    it('saves a double-click reset', async () => {
+      const storage = new Map<string, string>()
+      renderPanel(THREE(), 'home', undefined, { storage })
+      const fitted = splitAt()
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+      await expect.poll(() => storage.size).toBe(1)
+      await userEvent.dblClick(divider())
+      await expect.poll(splitAt).toBe(fitted)
+      cleanup()
+
+      renderPanel(THREE(), 'home', undefined, { storage })
+
+      expect(splitAt()).toBe(fitted)
     })
   })
 

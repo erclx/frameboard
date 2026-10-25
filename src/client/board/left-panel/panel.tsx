@@ -1,5 +1,9 @@
-import type { ReactNode } from 'react'
-import { type LayoutStorage, useDefaultLayout } from 'react-resizable-panels'
+import { type ReactNode, useRef } from 'react'
+import {
+  type LayoutStorage,
+  useDefaultLayout,
+  usePanelRef,
+} from 'react-resizable-panels'
 
 import {
   ResizableHandle,
@@ -35,8 +39,10 @@ interface LeftPanelProps {
   calls?: Structure
 }
 
-/** Where the pages list's height is remembered between loads. */
-const SPLIT_ID = 'frameboard.board.pages'
+/** Where a project's pages list height is remembered between loads, one per project since page counts differ. */
+function splitId(project: string): string {
+  return `frameboard.board.pages.${project}`
+}
 
 /** Pixels. A row is 26 tall under a 29 heading, and the list starts at eight rows at most. */
 const ROW_HEIGHT = 26
@@ -61,11 +67,17 @@ export function LeftPanel({
   calls,
 }: LeftPanelProps) {
   const finding = useFind((state) => state.open)
+  const id = splitId(project.name)
   const split = useDefaultLayout({
-    id: SPLIT_ID,
+    id,
     onlySaveAfterUserInteractions: true,
     storage,
   })
+  const pagesPanel = usePanelRef()
+  // The reset is the panel's own resize rather than a drag, which the
+  // layout hook would skip saving, so the change it causes is marked as the
+  // developer's.
+  const resetting = useRef(false)
   const pagesHeight = Math.min(
     Math.max(29 + project.pages.length * ROW_HEIGHT + 4, PAGES_MIN),
     PAGES_MAX_DEFAULT,
@@ -95,13 +107,23 @@ export function LeftPanel({
           </TabsList>
           <TabsContent value="design" className="flex min-h-0 flex-col text-xs">
             <ResizablePanelGroup
-              id={SPLIT_ID}
+              key={id}
+              id={id}
               orientation="vertical"
               defaultLayout={split.defaultLayout}
-              onLayoutChanged={split.onLayoutChanged}
+              onLayoutChanged={(layout, meta) => {
+                split.onLayoutChanged(
+                  layout,
+                  resetting.current
+                    ? { ...meta, isUserInteraction: true }
+                    : meta,
+                )
+                resetting.current = false
+              }}
             >
               <ResizablePanel
                 id="pages"
+                panelRef={pagesPanel}
                 defaultSize={pagesHeight}
                 minSize={PAGES_MIN}
               >
@@ -109,11 +131,16 @@ export function LeftPanel({
               </ResizablePanel>
               <ResizableHandle
                 aria-label="Resize the pages list"
-                className="group cursor-row-resize aria-[orientation=horizontal]:h-[9px] border-t border-sidebar-border bg-transparent after:hidden focus-visible:ring-0 data-[separator=active]:border-t-2 data-[separator=active]:border-primary data-[separator=focus]:border-t-2 data-[separator=focus]:border-primary"
+                disableDoubleClick
+                onDoubleClick={() => {
+                  resetting.current = true
+                  pagesPanel.current?.resize(pagesHeight)
+                }}
+                className="group cursor-row-resize aria-[orientation=horizontal]:h-[9px] border-t border-sidebar-border bg-transparent after:hidden focus-visible:ring-0 data-[separator=active]:border-t-2 data-[separator=active]:border-faint focus-visible:border-t-2 focus-visible:border-primary"
               >
                 <span
                   aria-hidden
-                  className="h-[3px] w-7 rounded-[2px] bg-faint group-data-[separator=active]:bg-primary group-data-[separator=focus]:bg-primary"
+                  className="h-[3px] w-7 rounded-[2px] bg-faint group-data-[separator=active]:bg-muted-foreground group-focus-visible:bg-primary"
                 />
               </ResizableHandle>
               <ResizablePanel id="layers" minSize={PAGES_MIN}>
