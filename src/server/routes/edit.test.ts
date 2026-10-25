@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { claim, release } from '../claims/store'
 import { contentHash } from '../edit/address'
+import { editFrameFile } from '../edit/frame-file'
 import { History } from '../history/stack'
 import { editRoutes } from './edit'
 
@@ -16,6 +17,7 @@ const TOKEN = 'a'.repeat(64)
 const HERO = 'webapp/home/hero'
 /** The `<h1>` in the fixture's hero, by `querySelectorAll('*')` order. */
 const HEADLINE = 5
+const CAPTION = 6
 
 describe('editRoutes', () => {
   let board: FixtureBoard
@@ -202,6 +204,27 @@ describe('editRoutes', () => {
     await history.undo()
     await history.undo()
     expect(read()).toBe(original)
+  })
+
+  it('undoes the edit after an agent wrote another element, keeping its bytes', async () => {
+    await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'text', value: 'Welcome' },
+    })
+    const agent = editFrameFile(
+      path(),
+      { index: CAPTION },
+      { kind: 'attribute', name: 'title', value: 'agent' },
+    )
+    if (!agent.ok) throw new Error(agent.detail)
+
+    const answer = await history.undo()
+
+    expect(read()).toContain('<h1 data-name="Headline">hero</h1>')
+    expect(read()).toContain('<p data-name="Caption" title="agent">')
+    expect(answer.hashes).toEqual({ [HERO]: hash() })
   })
 
   it('records nothing for a refused edit', async () => {
