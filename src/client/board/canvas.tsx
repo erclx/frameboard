@@ -75,6 +75,12 @@ const FOCUS_MS = 400
 
 /** Each page's view for the session, so leaving a page and coming back keeps it. */
 const pageViews = new Map<string, View>()
+/**
+ * Each page whose view is still the empty start nobody has moved, so its
+ * first frames fit on arrival. A press is no move, since the guide card sits
+ * on the canvas and a click on it reports one.
+ */
+const untouchedEmpty = new Set<string>()
 
 interface CanvasProps {
   page: PageRecord
@@ -218,7 +224,10 @@ export function Canvas({
         markCrowded(layer, roomsRef.current, k)
         pageViews.set(page.ref, { x, y, k })
         reportZoom(k)
-        if (!travelling) reportHandMove()
+        if (!travelling) {
+          untouchedEmpty.delete(page.ref)
+          reportHandMove()
+        }
       })
       .on('end', ({ transform: { x, y, k } }) => {
         clearTimeout(timer)
@@ -307,8 +316,17 @@ export function Canvas({
       }
     }
 
+    // A page drawn on while away from its untouched empty start opens
+    // fitted rather than at the start it was left at.
+    const stored = pageViews.get(page.ref)
+    const untouched = !stored || untouchedEmpty.has(page.ref)
+    const empty = framesRef.current.length === 0
+    if (empty && untouched) untouchedEmpty.add(page.ref)
+    else untouchedEmpty.delete(page.ref)
     const start =
-      pageViews.get(page.ref) ?? fitView(framesRef.current, sizeOf(viewport))
+      stored && (empty || !untouched)
+        ? stored
+        : fitView(framesRef.current, sizeOf(viewport))
     apply(start)
     clearTimeout(timer)
     settle(start)
@@ -465,6 +483,13 @@ export function Canvas({
       frames: () => framesRef.current,
     })
   }, [page.ref, playing])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (frames.length === 0 || !viewport || !moveToRef.current) return
+    if (!untouchedEmpty.delete(page.ref)) return
+    moveToRef.current(fitView(frames, sizeOf(viewport)))
+  }, [frames, page.ref])
 
   // Waits for the frame to reach this page's record, since a shown frame can
   // arrive a batch ahead of the board that holds it.
