@@ -336,6 +336,25 @@ describe('GuideCard', () => {
       ])
   })
 
+  it('names the folder holding .frameboard as where to open Claude Code', async () => {
+    const user = userEvent.setup()
+    receiveBoard(liveStore, {
+      ...startBoard(),
+      root: '/home/dev/acme/.frameboard',
+    })
+    renderCard({ loadTokens: BOARD_SHEET })
+
+    await screen.findByText('1 of 3')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+
+    expect(
+      await screen.findByRole('radio', { name: /My agent/ }),
+    ).toHaveAccessibleName(
+      'My agent Paste this into Claude Code opened in /home/dev/acme:',
+    )
+  })
+
   it('offers the agent a prompt naming the size and the project', async () => {
     const user = userEvent.setup()
     renderCard({ loadTokens: BOARD_SHEET })

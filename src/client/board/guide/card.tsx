@@ -17,6 +17,7 @@ import { useTokenTable } from '@/client/board/tokens'
 import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
+import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
@@ -31,6 +32,7 @@ import {
 } from '@/shared/starter-tokens'
 
 import {
+  agentFolder,
   agentPrompt,
   type Drawer,
   folderName,
@@ -80,6 +82,7 @@ export function GuideCard({
 }) {
   const state = useStore(guideStore)
   const table = useTokenTable(page.project, loadTokens)
+  const root = useLive((live) => live.board?.root ?? '')
   const [, navigate] = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -240,6 +243,7 @@ export function GuideCard({
           ) : (
             <AgentStep
               drawer={state.drawer}
+              folder={agentFolder(root)}
               prompt={agentPrompt(state.size, project)}
               size={state.size}
               page={page.name}
@@ -299,9 +303,20 @@ function Writes({ children }: { children: ReactNode }) {
   )
 }
 
-function Path({ children }: { children: ReactNode }) {
+function Path({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <code className="rounded bg-muted px-[5px] py-px font-mono text-[10.5px]">
+    <code
+      className={cn(
+        'rounded bg-muted px-[5px] py-px font-mono text-[10.5px]',
+        className,
+      )}
+    >
       {children}
     </code>
   )
@@ -547,12 +562,15 @@ function LookStep({
 
 function AgentStep({
   drawer,
+  folder,
   prompt,
   size,
   page,
   onChange,
 }: {
   drawer: Drawer
+  /** Where Claude Code opens to find this board. */
+  folder: string
   prompt: string
   size: FrameSizePreset
   page: string
@@ -584,7 +602,8 @@ function AgentStep({
           <span className="min-w-0 flex-1">
             <b className="mb-0.5 block font-semibold">My agent</b>
             <span className="leading-[1.45] text-muted-foreground">
-              Paste this into Claude Code in this folder:
+              Paste this into Claude Code opened in{' '}
+              <Path className="break-all">{folder}</Path>:
             </span>
           </span>
         </Choice>

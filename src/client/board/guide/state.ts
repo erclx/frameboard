@@ -2,6 +2,7 @@ import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { useLive } from '@/client/live/store'
+import { DEFAULT_BOARD_FOLDER } from '@/shared/board-files'
 import type { FrameSizePreset } from '@/shared/frame-sizes'
 import type { PageRecord } from '@/shared/records/list'
 import {
@@ -81,6 +82,18 @@ export function folderName(typed: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * The folder to open Claude Code in for a board at `root`, being the folder
+ * `serve` ran in when it made `.frameboard/` there, since the CLI's walk
+ * finds the board from it, and the root itself for a `--root` board.
+ */
+export function agentFolder(root: string): string {
+  const trimmed = root.replace(/\/+$/, '')
+  const cut = trimmed.lastIndexOf('/')
+  if (trimmed.slice(cut + 1) !== DEFAULT_BOARD_FOLDER) return root
+  return cut > 0 ? trimmed.slice(0, cut) : '/'
 }
 
 /** The line a prompt for the agent carries, naming the size and the project. */
