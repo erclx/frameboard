@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Busy, watchBusy } from './busy'
 
@@ -14,9 +14,6 @@ afterEach(() => {
   watching = null
   document.body.replaceChildren()
 })
-
-/** Lets the read after an event run, since focus has not moved inside `focusout`. */
-const settled = () => new Promise((resolve) => setTimeout(resolve, 5))
 
 function popup(slot: string, open = true): HTMLElement {
   const element = document.createElement('div')
@@ -100,6 +97,18 @@ describe('busy', () => {
 })
 
 describe('whenIdle', () => {
+  /** Runs the read after an event, which waits a timer turn since focus has not moved inside `focusout`. */
+  const settled = () => vi.advanceTimersByTimeAsync(0)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
   it('runs once the last signal clears, and only once', async () => {
     const busy = watch()
     const run = vi.fn()
