@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
-import { Link, Redirect } from 'wouter'
+import { Link, Redirect, useLocation } from 'wouter'
 
 import { buttonVariants } from '@/client/components/ui/button'
 import {
@@ -9,6 +9,7 @@ import {
   ResizablePanelGroup,
 } from '@/client/components/ui/resizable'
 import { liveStore, useLive } from '@/client/live/store'
+import { useHomeAction, useProjectActions } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -68,6 +69,11 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     storage: panelStorage,
   })
   const current = record?.pages.find((candidate) => candidate.name === page)
+  const [, navigate] = useLocation()
+  const openProject = useCallback(() => project, [project])
+  const goHome = useCallback(() => navigate('/'), [navigate])
+  useProjectActions(openProject, { onDeleted: goHome })
+  useHomeAction(goHome)
   useBoardActions()
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)

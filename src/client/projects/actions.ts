@@ -1,4 +1,4 @@
-import { Copy, FolderPlus, PencilLine, Trash2 } from 'lucide-react'
+import { Copy, FolderPlus, House, PencilLine, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -112,6 +112,23 @@ interface ProjectActionsOptions {
   calls?: Structure
   /** Runs once a delete lands, as the board leaves the project it showed. */
   onDeleted?: () => void
+}
+
+/** Registers `nav.home` while the board is mounted, the palette's Go to all projects. */
+export function useHomeAction(goHome: () => void): void {
+  useEffect(
+    () =>
+      registerActions([
+        {
+          id: 'nav.home',
+          label: 'All projects',
+          group: 'project',
+          command: { label: 'Go to all projects', icon: House },
+          run: goHome,
+        },
+      ]),
+    [goHome],
+  )
 }
 
 /**
