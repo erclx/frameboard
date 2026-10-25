@@ -23,7 +23,7 @@ Owns the head spliced into a served frame and the Theme tab's token table.
 
 The routes a frame imports from sit in `src/server/routes/`, which `canon/context/board/server.md` owns.
 
-- `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied with each license from `@fontsource-variable` into `dist/faces/` at build
+- `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat, copied with each license from `@fontsource-variable` into `dist/faces/` at build, and a CLI run from source writes them once into `node_modules/.cache/frameboard/faces` instead of reading `dist/faces/`
 - The build renames each face from the package's variable name, such as `Geist Variable`, to the plain family a frame names
 - `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`
 - `/frames/<project>/tokens.css` serves the project's sheet, so its relative `url(assets/...)` resolves

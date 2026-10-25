@@ -56,6 +56,8 @@ These capture and measure what the board renders.
 
 The capture scripts each carry a condition the table leaves out.
 
+- The CLI run from source needs no build for its faces, since it writes them into `node_modules/.cache/frameboard/faces` on first use, and only a `bun install` that moves a face package leaves that cache stale
+
 - `screenshot:compare` builds first and serves its own boards
 - `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
 - `design:sync` reads the design board at the main root's `.canon/board` through the built CLI's `capture`, from any worktree
