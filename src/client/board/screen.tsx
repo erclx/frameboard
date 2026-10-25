@@ -16,6 +16,7 @@ import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
 import { Canvas } from './canvas'
 import { useChangeActions } from './changes/actions'
+import { useFollowActions } from './changes/follow'
 import { ChangesToast } from './changes/toast'
 import { HiddenPills } from './chrome/hidden-pills'
 import { PlayBanner } from './chrome/play-banner'
@@ -72,6 +73,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
   useChangeActions()
+  useFollowActions()
   useFindActions()
 
   if (!record) {

@@ -1,8 +1,9 @@
-import { LocateOff } from 'lucide-react'
+import { LocateFixed, LocateOff } from 'lucide-react'
+import { useEffect } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 import { createStore } from 'zustand/vanilla'
 
-import { registerActions } from '@/client/actions/registry'
+import { refreshActions, registerActions } from '@/client/actions/registry'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import {
   inLandingOrder,
@@ -134,6 +135,48 @@ export function stopFollow(): void {
   unfollow = null
   stop()
   followStore.setState({ session: null })
+}
+
+/**
+ * Registers `follow.start` while the board is mounted, offered in the
+ * palette while exactly one session listens and nobody is followed, since
+ * with several the palette could not say which it follows. Its hint names
+ * the session.
+ */
+export function useFollowActions(live: LiveStore = liveStore): void {
+  useEffect(() => {
+    const only = () => {
+      const { listeners } = live.getState()
+      return listeners.length === 1 ? listeners[0] : undefined
+    }
+    const unregister = registerActions([
+      {
+        id: 'follow.start',
+        label: 'Follow the agent',
+        group: 'changes',
+        run: () => {
+          const listener = only()
+          if (listener) follow(listener.session, { live })
+        },
+        enabled: () =>
+          only() !== undefined && followStore.getState().session === null,
+        command: {
+          label: 'Follow the agent',
+          icon: LocateFixed,
+          hint: () => only()?.tag ?? '',
+        },
+      },
+    ])
+    const stopLive = live.subscribe((state, previous) => {
+      if (state.listeners !== previous.listeners) refreshActions()
+    })
+    const stopFollowing = followStore.subscribe(refreshActions)
+    return () => {
+      stopFollowing()
+      stopLive()
+      unregister()
+    }
+  }, [live])
 }
 
 function pageOf(ref: string): string {
