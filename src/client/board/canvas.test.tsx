@@ -743,29 +743,34 @@ describe('Canvas', () => {
       .toBe('translate(-2150px, 250px) scale(0.5)')
   })
 
-  it('reveals a box off screen and leaves one it shows', async () => {
+  it('reveals a box lying off screen at the current zoom', async () => {
     const { container } = renderCanvas(
       page('studio/reveal', [
         frame('a', { x: 0, y: 0, width: 200, height: 200 }),
       ]),
     )
     canvasView.zoomTo(0.5)
-    await expect
-      .poll(() => layerOf(container).style.transform)
-      .toMatch(/scale\(0\.5\)$/)
-    const shown = layerOf(container).style.transform
 
-    canvasView.reveal({ x: 0, y: 0, width: 200, height: 200 })
-    for (let frame = 0; frame < 5; frame++) {
-      await new Promise((resolve) => requestAnimationFrame(resolve))
-    }
-    const kept = layerOf(container).style.transform
     canvasView.reveal({ x: 5000, y: 0, width: 200, height: 200 })
 
-    expect(kept).toBe(shown)
     await expect
       .poll(() => layerOf(container).style.transform)
       .toBe('translate(-2150px, 250px) scale(0.5)')
+  })
+
+  it('leaves the view on a box it already shows', () => {
+    renderCanvas(
+      page('studio/reveal-shown', [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+    )
+    let handMoves = 0
+    const stop = canvasView.onHandMove(() => (handMoves += 1))
+
+    canvasView.reveal({ x: 0, y: 0, width: 200, height: 200 })
+    stop()
+
+    expect(handMoves).toBe(0)
   })
 
   it('fits a box larger than the viewport rather than centering it', async () => {
