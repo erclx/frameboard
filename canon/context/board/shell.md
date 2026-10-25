@@ -15,15 +15,20 @@ Owns the browser app around the frames, being the board screen and canvas, its p
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool, key F, places an empty frame with its top left at the click, at the chosen phone 390, tablet 834, or desktop 1440 preset, then selects it and returns to Move
+- The Frame tool, key F, places a frame at the click at the chosen phone, tablet, or desktop preset, named for the preset, then selects it, opens its inspector name, and returns to Move
+- A frame placed partly out of view moves the view to center it at the current zoom
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
+
+A frame's label carries a sun while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it.
+
+`label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and leaves a findings dot on the corner. The hit layer stops CSS hover, so the canvas marks the frame under the pointer itself.
 
 ### `src/client/board/left-panel/`
 
 Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
 
-- Design holds a pages list with a search and a layers tree, split by a divider that remembers its height, and Theme holds the project's tokens read-only
+- Design holds a pages list with a search and a layers tree under a per-project divider that resets on a double-click, and Theme holds the project's tokens read-only
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
 - Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, name, and `<type> · <size>` line, and a tile click copies `../assets/<name>`, each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
