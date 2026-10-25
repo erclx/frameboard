@@ -12,8 +12,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
-
-import { focusProject } from './project-actions'
+import { focusProject } from '@/client/projects/actions'
 
 const IDS = [
   'project.open',

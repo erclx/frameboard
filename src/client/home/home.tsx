@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
 import type { Structure } from '@/client/live/structure'
+import { useProjectActions } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { EmptyHome } from './empty'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
-import { useProjectActions } from './project-actions'
 import { Projects } from './projects'
 import { useThumbnails } from './thumbnails'
 

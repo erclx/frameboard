@@ -8,17 +8,17 @@ import { UnseenCount } from '@/client/components/unseen-count'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
-import { useShownTheme } from '@/client/theme/store'
-import type { ProjectRecord } from '@/shared/records/list'
-
-import type { HomeLayout } from './layout'
 import {
   focusProject,
   projectHref,
   renameProject,
   stopProjectRename,
   useRenamingProject,
-} from './project-actions'
+} from '@/client/projects/actions'
+import { useShownTheme } from '@/client/theme/store'
+import type { ProjectRecord } from '@/shared/records/list'
+
+import type { HomeLayout } from './layout'
 import { ProjectMenu } from './project-menu'
 import { FrameSkeleton } from './skeleton'
 
