@@ -70,8 +70,8 @@ export function TypographySection({
         />
         <NumberField
           label="Font weight"
-          prefix="Wt"
-          inset="pl-[32px]"
+          prefix="Weight"
+          inset="pl-[60px]"
           value={fontWeight}
           step={100}
           min={1}

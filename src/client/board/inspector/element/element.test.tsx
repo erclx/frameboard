@@ -83,7 +83,69 @@ function browserHistory(
   })
 }
 
+/**
+ * Drags a scrub area right by `moves` steps of base-ui's default two
+ * pixels, as a locked pointer reports them, and releases it.
+ */
+function scrubBy(area: HTMLElement, moves: number) {
+  act(() => {
+    area.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        pointerType: 'mouse',
+      }),
+    )
+  })
+  for (let move = 0; move < moves; move++) {
+    act(() => {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, movementX: 2 }),
+      )
+    })
+  }
+  act(() => {
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+  })
+}
+
 describe('AppearanceSection', () => {
+  it('scrubs the opacity from its caption, writing once on release', () => {
+    const { changes, write } = recorder()
+    render(
+      <AppearanceSection
+        opacity={0.5}
+        radius={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Opacity'), 3)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'opacity', value: '0.56' },
+    ])
+  })
+
+  it('scrubs the radius from its caption', () => {
+    const { changes, write } = recorder()
+    render(
+      <AppearanceSection
+        opacity={1}
+        radius={4}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Corner radius'), 1)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'border-radius', value: '6px' },
+    ])
+  })
+
   it.each(['50', '50%'])('writes opacity 0.5 for %s', async (typed) => {
     const { changes, write } = recorder()
     render(
@@ -202,6 +264,25 @@ describe('TypographySection', () => {
 
     expect(changes).toEqual([
       { kind: 'style', property: 'font-weight', value: '500' },
+    ])
+  })
+
+  it('scrubs the weight from its Weight zone by 100 a step', () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Weight'), 1)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-weight', value: '600' },
     ])
   })
 

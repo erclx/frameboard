@@ -1,5 +1,3 @@
-import { Circle, Square } from 'lucide-react'
-
 import { NumberField } from '../number-field'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
@@ -9,6 +7,41 @@ const PERCENT: Intl.NumberFormatOptions = {
   maximumFractionDigits: 0,
 }
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
+
+function OpacityIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3"
+    >
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function RadiusIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3"
+    >
+      <path d="M4 20V10a6 6 0 0 1 6-6h10" />
+    </svg>
+  )
+}
 
 interface AppearanceSectionProps {
   /** From 0 to 1, as the browser computed it. */
@@ -23,7 +56,7 @@ interface AppearanceSectionProps {
 
 /**
  * The Appearance section of `inspector/text`: the opacity as a percent and
- * the corner radius in px, each stepping and scrubbing. The layer name is
+ * the corner radius in px, each captioned, stepping, and scrubbing. The layer name is
  * renamed in Layers rather than here.
  */
 export function AppearanceSection({
@@ -45,7 +78,8 @@ export function AppearanceSection({
       <div className="grid grid-cols-2 gap-1.5">
         <NumberField
           label="Opacity"
-          prefix={<Circle className="size-1.5 fill-current" />}
+          caption="Opacity"
+          prefix={<OpacityIcon />}
           value={percent}
           min={0}
           max={100}
@@ -61,7 +95,8 @@ export function AppearanceSection({
         />
         <NumberField
           label="Corner radius"
-          prefix={<Square className="size-3" />}
+          caption="Corner radius"
+          prefix={<RadiusIcon />}
           value={radius}
           min={0}
           format={WHOLE}
