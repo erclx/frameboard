@@ -136,4 +136,31 @@ describe('docs', () => {
 
     expect(records.checkResult?.type).toBe('object')
   })
+
+  describe('without --json', () => {
+    it('prints a heading for every section the description names', async () => {
+      const { stdout, exitCode } = await cli(['docs'], { cwd })
+
+      expect(exitCode).toBe(0)
+      for (const heading of [
+        'Verbs',
+        'Exit codes',
+        'Records',
+        'Content format',
+        'Check rules',
+      ]) {
+        expect(stdout).toMatch(new RegExp(`^${heading}$`, 'm'))
+      }
+    })
+
+    it('carries an exit code, a record, a content format line, and a rule id', async () => {
+      const { stdout } = await cli(['docs'], { cwd })
+
+      expect(stdout).toMatch(/^ {2}server-not-running +3$/m)
+      expect(stdout).toContain('checkResult')
+      expect(stdout).toContain('A frame is any *.html file directly in a page')
+      expect(stdout).toMatch(/^ {2}outside-link /m)
+      expect(stdout).toContain('frameboard open  ')
+    })
+  })
 })
