@@ -8,11 +8,11 @@ import type { FrameRecord, ListResult } from '@/shared/records/list'
 import { whenFree } from '../claims/waiting'
 import {
   endPreview,
-  type Preview,
   previewedBox,
+  previewFrames,
   previewsNow,
   usePreview,
-  usePreviews,
+  usePreviewedFrames,
 } from '../preview/store'
 import { type Box, sameBox } from './box'
 
@@ -71,24 +71,12 @@ export function useDrawnBox(frame: FrameRecord): Box {
 
 /** The frames as drawn, each at its pending box and its preview's width, rereading on every change. */
 export function useDrawnFrames(frames: readonly FrameRecord[]): FrameRecord[] {
-  return previewed(usePendingFrames(frames), usePreviews())
+  return usePreviewedFrames(usePendingFrames(frames))
 }
 
 /** The frames as drawn right now, for hit-testing a press. Never a write's base. */
 export function withDrawn(frames: readonly FrameRecord[]): FrameRecord[] {
-  return previewed(withPending(frames), previewsNow())
-}
-
-function previewed(
-  frames: readonly FrameRecord[],
-  previews: Readonly<Record<string, Preview>>,
-): FrameRecord[] {
-  return frames.map((frame) => {
-    const preview = previews[frame.ref]
-    return preview
-      ? { ...frame, box: previewedBox(frame, frame.box, preview) }
-      : frame
-  })
+  return previewFrames(withPending(frames), previewsNow())
 }
 
 function drawn(

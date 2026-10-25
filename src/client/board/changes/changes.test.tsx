@@ -19,6 +19,7 @@ import type { FrameChange } from '@/shared/records/changes'
 import { frameOf } from '@/test/board'
 
 import { modeStore } from '../mode'
+import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
 import { useChangeActions } from './actions'
 import { toastCopy } from './copy'
@@ -414,6 +415,25 @@ describe('ChangeGlow', () => {
     expect(
       drawn.querySelector<HTMLElement>('[data-change-glow]')?.style.width,
     ).toContain('400px')
+  })
+
+  it('glows over the whole frame at the width it is previewed at', async () => {
+    const container = await mountFrame()
+    act(() => setPreview([PRICING.ref], 1440))
+    act(() =>
+      receiveChanges(unseenStore, [
+        change(PRICING.ref, { id: 'c-glow-5', whole: true }),
+      ]),
+    )
+
+    const { container: drawn } = render(
+      <ChangeGlow frames={[PRICING]} container={container} />,
+    )
+
+    act(() => endPreview([PRICING.ref]))
+    expect(
+      drawn.querySelector<HTMLElement>('[data-change-glow]')?.style.width,
+    ).toContain('1440px')
   })
 
   it('waits for the frame to show the bytes the change left', async () => {

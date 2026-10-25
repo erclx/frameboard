@@ -91,6 +91,26 @@ export function previewedBox(
   return { ...box, width: preview.width, height }
 }
 
+/** Each frame at its previewed box, the rest as they are. */
+export function previewFrames(
+  frames: readonly FrameRecord[],
+  previews: Readonly<Record<string, Preview>>,
+): FrameRecord[] {
+  return frames.map((frame) => {
+    const preview = previews[frame.ref]
+    return preview
+      ? { ...frame, box: previewedBox(frame, frame.box, preview) }
+      : frame
+  })
+}
+
+/** The frames at their previewed boxes, rereading on every preview change. */
+export function usePreviewedFrames(
+  frames: readonly FrameRecord[],
+): FrameRecord[] {
+  return previewFrames(frames, usePreviews())
+}
+
 /**
  * Drops the preview of each frame a board the server sends no longer shows,
  * one deleted, hidden, or moved to another page, so it never comes back

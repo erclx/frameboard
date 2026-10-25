@@ -7,6 +7,7 @@ import type { BoardNote } from '@/shared/records/notes'
 
 import { elementAt } from '../frame-dom'
 import { useMode } from '../mode'
+import { usePreviewedFrames } from '../preview/store'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
 import { Thread } from './thread'
@@ -35,12 +36,14 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   // so a frame load renders the layer again.
   useFrameLoads(container)
   useCloseOnEscape(open !== null)
+  // A marker sits on the frame as drawn, at a previewed width included.
+  const shown = usePreviewedFrames(frames)
   if (playing) return null
 
   const roots = (notes ?? []).filter(
     (note) => note.thread === null && note.state !== 'done',
   )
-  const framesByName = new Map(frames.map((frame) => [frame.name, frame]))
+  const framesByName = new Map(shown.map((frame) => [frame.name, frame]))
   const place = (note: BoardNote): BoardPoint | null => {
     const frame = framesByName.get(note.frame)
     return frame ? cornerOf(frame, note.element, container) : null
