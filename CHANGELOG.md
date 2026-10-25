@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/erclx/frameboard/compare/v0.10.0...v0.11.0) (2026-10-25)
+
+
+### Features
+
+* **board:** finish the chrome around frames and their labels ([#93](https://github.com/erclx/frameboard/issues/93)) ([53776e2](https://github.com/erclx/frameboard/commit/53776e2b6094149a912d03e0f15e4dd4b9fa5ac1))
+* **board:** guide a new board's first page to its first frame ([#98](https://github.com/erclx/frameboard/issues/98)) ([7af4115](https://github.com/erclx/frameboard/commit/7af411553da0f086672b2d9198a5c47203cc50d4))
+* **board:** preview a frame at another width without writing its box ([#97](https://github.com/erclx/frameboard/issues/97)) ([7f0bebb](https://github.com/erclx/frameboard/commit/7f0bebbc732a7f269f4e62e3c6c40acd425bb90a))
+* **changes:** offer a shown frame rather than jump a busy board ([#96](https://github.com/erclx/frameboard/issues/96)) ([db53c5e](https://github.com/erclx/frameboard/commit/db53c5ef87c1f952727ccf8e83aa1beaf906d87f))
+* **home:** sort projects and pin favorites above the rest ([#99](https://github.com/erclx/frameboard/issues/99)) ([3d0a423](https://github.com/erclx/frameboard/commit/3d0a42312268ce4f278c0aa97d6051676ef38624))
+
 ## [0.10.0](https://github.com/erclx/frameboard/compare/v0.9.0...v0.10.0) (2026-10-25)
 
 
