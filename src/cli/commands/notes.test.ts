@@ -144,6 +144,31 @@ describe('notes', () => {
     expect(onDisk()[0]).toMatchObject({ id: 'n_0000000a', state: 'done' })
   })
 
+  it.each([
+    ['reply', ['n_0000000a', 'On it']],
+    ['done', ['n_0000000a']],
+  ])('%s takes --project naming the note’s project', async (verb, args) => {
+    const result = await run('notes', verb, ...args, '--project', 'webapp')
+
+    expect(result.exitCode).toBe(0)
+  })
+
+  it.each([
+    ['reply', ['n_0000000a', 'On it']],
+    ['done', ['n_0000000a']],
+  ])(
+    '%s refuses note-not-found when the id sits in another project, writing nothing',
+    async (verb, args) => {
+      const before = onDisk()
+
+      const result = await run('notes', verb, ...args, '--project', 'marketing')
+
+      expect(result.exitCode).toBe(3)
+      expect(result.json().error?.code).toBe('note-not-found')
+      expect(onDisk()).toEqual(before)
+    },
+  )
+
   it('refuses a missing id as note-not-found, exit 3', async () => {
     const result = await run('notes', 'reply', 'n_ffffffff', 'x')
 

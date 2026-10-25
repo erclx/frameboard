@@ -143,7 +143,7 @@ export function AssetsTab({
         ) : (
           <>
             This tab is read-only, so files cannot be added. Run{' '}
-            <code className={CODE}>frameboard serve</code> to open one that can.
+            <code className={CODE}>frameboard open</code> for a tab that can.
           </>
         )}
       </div>

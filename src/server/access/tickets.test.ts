@@ -5,7 +5,7 @@ import { createTickets, TICKET_TTL_MS } from './tickets'
 describe('createTickets', () => {
   it('redeems a minted ticket once, then refuses it', () => {
     const tickets = createTickets()
-    const ticket = tickets.mint()
+    const { ticket } = tickets.mint()
 
     expect(ticket).toMatch(/^[0-9a-f]{32}$/)
     expect(tickets.redeem(ticket)).toBe(true)
@@ -15,7 +15,7 @@ describe('createTickets', () => {
   it('refuses a ticket after two minutes', () => {
     let clock = 1_000
     const tickets = createTickets(() => clock)
-    const ticket = tickets.mint()
+    const { ticket } = tickets.mint()
 
     clock += TICKET_TTL_MS
     expect(tickets.redeem(ticket)).toBe(false)
@@ -24,10 +24,16 @@ describe('createTickets', () => {
   it('accepts a ticket just inside the two minutes', () => {
     let clock = 1_000
     const tickets = createTickets(() => clock)
-    const ticket = tickets.mint()
+    const { ticket } = tickets.mint()
 
     clock += TICKET_TTL_MS - 1
     expect(tickets.redeem(ticket)).toBe(true)
+  })
+
+  it('returns the expiry redeem reads, two minutes out', () => {
+    const tickets = createTickets(() => Date.parse('2026-10-24T09:00:00.000Z'))
+
+    expect(tickets.mint().expiresAt).toBe('2026-10-24T09:02:00.000Z')
   })
 
   it('refuses a ticket it never minted', () => {
@@ -36,8 +42,8 @@ describe('createTickets', () => {
 
   it('keeps one ticket valid while another is redeemed', () => {
     const tickets = createTickets()
-    const first = tickets.mint()
-    const second = tickets.mint()
+    const first = tickets.mint().ticket
+    const second = tickets.mint().ticket
 
     expect(tickets.redeem(first)).toBe(true)
     expect(tickets.redeem(second)).toBe(true)

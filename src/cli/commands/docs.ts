@@ -7,6 +7,7 @@ import { RECORDS } from '@/shared/records/index'
 import { version } from '@/shared/version'
 
 import { contentFormat } from '../docs/content-format'
+import { type DocsPayload, renderDocs } from '../docs/text'
 import {
   act,
   addVerb,
@@ -36,25 +37,20 @@ export function registerDocs(program: Command, context: ProgramContext): void {
     ),
     context,
     async () => {
-      const verbs = describeVerbs(program)
-      return {
-        data: {
-          version,
-          verbs,
-          exitCodes: EXIT_CODES,
-          records: Object.fromEntries(
-            Object.entries(RECORDS).map(([name, schema]) => [
-              name,
-              z.toJSONSchema(schema, { io: 'input' }),
-            ]),
-          ),
-          contentFormat: contentFormat(),
-          checks: { rules: RULES },
-        },
-        human: verbs
-          .map((verb) => `frameboard ${verb.name}  ${verb.description}`)
-          .join('\n'),
+      const data: DocsPayload = {
+        version,
+        verbs: describeVerbs(program),
+        exitCodes: EXIT_CODES,
+        records: Object.fromEntries(
+          Object.entries(RECORDS).map(([name, schema]) => [
+            name,
+            z.toJSONSchema(schema, { io: 'input' }),
+          ]),
+        ),
+        contentFormat: contentFormat(),
+        checks: { rules: RULES },
       }
+      return { data, human: renderDocs(data) }
     },
   )
 }

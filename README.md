@@ -14,7 +14,9 @@ A local design board that coding agents draw on as plain HTML files, and you rev
 npx frameboard serve
 ```
 
-In a folder with no board, `serve` creates `.frameboard/` with one empty project and opens the board at `http://127.0.0.1:4173`. Install it with `npm install -g frameboard` or `bun add -g frameboard`.
+In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project, then opens it at `http://127.0.0.1:4173` in a tab that can edit. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
+
+Install it with `npm install -g frameboard` or `bun add -g frameboard`.
 
 ## What you get
 

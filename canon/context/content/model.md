@@ -22,7 +22,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 
 ### `src/server/board/`
 
-Owns reading, watching, and writing the board folder. A board folder is whatever one server shows, sitting in a repository as `.frameboard/`, standalone, or at any path through `--root`.
+Owns reading, watching, and writing the board folder. A board folder is whatever one server shows, being `.frameboard/` in the folder a first `serve` ran in, a standalone folder holding `board.json`, or any path through `--root`.
 
 - A project is a folder in the board folder, not a repository, a page is a folder in a project, and a frame is one `.html` file in a page
 - Each page holds `layout.json` keyed by frame name and a `notes.json` of pinned notes, both beside the frames, since writing a note into one would shift every element address after it

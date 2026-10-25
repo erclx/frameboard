@@ -35,7 +35,7 @@ export function contentFormat() {
       `A page is any folder in a project except ${ASSETS_FOLDER}/ and dot-named ones. Its ${LAYOUT_FILE} holds each frame's box, stacking order, and flags.`,
       `A frame is any *${FRAME_EXTENSION} file directly in a page, named by its stem.`,
       `A page's notes sit in its ${NOTES_FILE}, never in a frame. A note pins to a frame or to one element by index and the frame file's hash, and reads at the frame once the file changes. Read them with notes, answer with notes reply, and close them with notes done.`,
-      `serve in a folder with no board creates ${DEFAULT_BOARD_FOLDER}/ with project ${START_PROJECT} and empty page ${START_PAGE}, and records its address in ${RUN_FOLDER}/${ADDRESS_FILE}.`,
+      `serve reuses a board the walk finds, and otherwise creates ${DEFAULT_BOARD_FOLDER}/ in the working folder with project ${START_PROJECT} and empty page ${START_PAGE}, and records its address in ${RUN_FOLDER}/${ADDRESS_FILE}.`,
       `Dot-named folders, *${LOCK_SUFFIX} files, and *${TEMP_SUFFIX} files belong to Frameboard and are never content.`,
     ],
     names: {

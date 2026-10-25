@@ -20,6 +20,7 @@ import {
   setState,
   updateNotes,
 } from '@/server/notes/store'
+import { FrameboardError } from '@/shared/errors'
 import type { Note } from '@/shared/records/notes'
 
 import {
@@ -96,13 +97,15 @@ export function registerNotes(program: Command, context: ProgramContext): void {
   })
 
   act<CommonOptions>(
-    addVerb(notes, 'reply', 'Answer a note in its thread on the board')
+    addVerb(notes, 'reply', 'Answer a note in its thread on the board', {
+      project: true,
+    })
       .argument('<id>', 'the note id, n_ and 8 hex characters')
       .argument('<text>', 'the reply'),
     context,
     async ([id = '', text = ''], options) => {
       const root = await boardOf(options, io)
-      const found = await findNote(root, id)
+      const found = await noteIn(root, id, options.project)
       const replyId = newNoteId()
       const file = await updateNotes(found.path, (current) =>
         addReply(
@@ -126,15 +129,13 @@ export function registerNotes(program: Command, context: ProgramContext): void {
   )
 
   act<CommonOptions>(
-    addVerb(
-      notes,
-      'done',
-      'Close a note, hiding its marker on the board',
-    ).argument('<id>', 'the note id, n_ and 8 hex characters'),
+    addVerb(notes, 'done', 'Close a note, hiding its marker on the board', {
+      project: true,
+    }).argument('<id>', 'the note id, n_ and 8 hex characters'),
     context,
     async ([id = ''], options) => {
       const root = await boardOf(options, io)
-      const found = await findNote(root, id)
+      const found = await noteIn(root, id, options.project)
       const file = await updateNotes(found.path, (current) =>
         setState(current, id, 'done', new Date()),
       )
@@ -143,6 +144,21 @@ export function registerNotes(program: Command, context: ProgramContext): void {
       return { data: { note: closed }, human: `Closed ${rootId}` }
     },
   )
+}
+
+/** The note an id names, refused as missing when `--project` names another project than the one holding it. */
+async function noteIn(root: string, id: string, project: string | undefined) {
+  const scope =
+    project === undefined ? undefined : await resolveProject(root, project)
+  const found = await findNote(root, id)
+  if (scope && found.project !== scope.name) {
+    throw new FrameboardError(
+      'note-not-found',
+      `No note ${id} in project ${scope.name}. It sits in ${found.project}.`,
+      { id, project: scope.name },
+    )
+  }
+  return found
 }
 
 /** The pages a listing reads: the one `--page` or `--frame` names, else every page in scope. */

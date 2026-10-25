@@ -1,5 +1,11 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -107,6 +113,32 @@ test.describe('the built CLI', () => {
     await exited
 
     expect(existsSync(join(cwd, '.frameboard/.run/address.json'))).toBe(false)
+  })
+
+  test('starts the board in an empty subfolder of a repository, not at its top', async () => {
+    await run('git', ['init', '--quiet'], { cwd })
+    const sub = join(cwd, 'empty')
+    mkdirSync(sub)
+
+    const first = await startServe(sub)
+    server = first.child
+
+    expect(first.envelope.data).toMatchObject({
+      root: join(sub, '.frameboard'),
+      created: true,
+    })
+    expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+  })
+
+  test('exits 0 with nothing on stderr when its reader closes the pipe early', async () => {
+    const { stdout, stderr } = await run(
+      'bash',
+      ['-c', `node "${CLI}" docs --json | head -1; echo "\${PIPESTATUS[0]}"`],
+      { cwd },
+    )
+
+    expect(stdout).toBe('{\n0\n')
+    expect(stderr).toBe('')
   })
 
   test('exits 3 with one envelope where no board exists', async () => {

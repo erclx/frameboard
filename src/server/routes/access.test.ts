@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Access } from '../access/guard'
-import { createTickets } from '../access/tickets'
+import { createTickets, TICKET_TTL_MS } from '../access/tickets'
 import { accessRoutes } from './access'
 
 const TOKEN = 'a'.repeat(64)
@@ -27,7 +27,7 @@ describe('accessRoutes', () => {
       const { routes, tickets } = setup()
 
       const response = await routes.request(
-        `${BASE}/api/access/redeem?ticket=${tickets.mint()}`,
+        `${BASE}/api/access/redeem?ticket=${tickets.mint().ticket}`,
       )
 
       expect(response.status).toBe(303)
@@ -43,27 +43,44 @@ describe('accessRoutes', () => {
     it.each([
       ['an unknown ticket', `ticket=${'f'.repeat(32)}`],
       ['no ticket', ''],
-    ])('sets no cookie for %s and still goes home', async (_case, query) => {
-      const { routes } = setup()
+    ])(
+      'sets no cookie for %s and lands on the expired flag',
+      async (_case, query) => {
+        const { routes } = setup()
 
-      const response = await routes.request(
-        `${BASE}/api/access/redeem?${query}`,
-      )
+        const response = await routes.request(
+          `${BASE}/api/access/redeem?${query}`,
+        )
 
-      expect(response.status).toBe(303)
-      expect(response.headers.get('location')).toBe('/')
-      expect(response.headers.get('set-cookie')).toBeNull()
-    })
+        expect(response.status).toBe(303)
+        expect(response.headers.get('location')).toBe('/?link=expired')
+        expect(response.headers.get('set-cookie')).toBeNull()
+      },
+    )
 
     it('sets no cookie when the ticket is used a second time', async () => {
       const { routes, tickets } = setup()
-      const url = `${BASE}/api/access/redeem?ticket=${tickets.mint()}`
+      const url = `${BASE}/api/access/redeem?ticket=${tickets.mint().ticket}`
       await routes.request(url)
 
       const again = await routes.request(url)
 
       expect(again.status).toBe(303)
+      expect(again.headers.get('location')).toBe('/?link=expired')
       expect(again.headers.get('set-cookie')).toBeNull()
+    })
+
+    it('sets no cookie for an expired ticket', async () => {
+      let clock = 1_000
+      const tickets = createTickets(() => clock)
+      const routes = accessRoutes(access, tickets)
+      const url = `${BASE}/api/access/redeem?ticket=${tickets.mint().ticket}`
+
+      clock += TICKET_TTL_MS
+      const response = await routes.request(url)
+
+      expect(response.headers.get('location')).toBe('/?link=expired')
+      expect(response.headers.get('set-cookie')).toBeNull()
     })
   })
 
@@ -77,6 +94,7 @@ describe('accessRoutes', () => {
       })
       const { data } = await response.json()
 
+      expect(Date.parse(data.expiresAt)).toBeGreaterThan(Date.now())
       expect(data.url).toMatch(
         /^http:\/\/127\.0\.0\.1:4173\/api\/access\/redeem\?ticket=[0-9a-f]{32}$/,
       )

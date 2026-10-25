@@ -15,6 +15,7 @@ import { registerInbox } from './commands/inbox'
 import { registerInspect } from './commands/inspect'
 import { registerList } from './commands/list'
 import { registerNotes } from './commands/notes'
+import { registerOpen } from './commands/open'
 import { registerPage } from './commands/page'
 import { registerProject } from './commands/project'
 import { registerSelection } from './commands/selection'
@@ -94,7 +95,7 @@ export function addVerb(
     .option('--json', 'print one JSON document on stdout')
     .option(
       '--root <path>',
-      'the board folder, found from the working folder when absent',
+      'the board folder itself, holding board.json, found from the working folder when absent',
     )
   if (project) {
     command.option(
@@ -154,6 +155,7 @@ export function createProgram(context: ProgramContext): Command {
     facesDir,
   })
   registerShow(program, context)
+  registerOpen(program, context)
   registerSelection(program, context)
   registerList(program, context)
   registerProject(program, context)

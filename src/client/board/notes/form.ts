@@ -24,7 +24,7 @@ export function messageFor(failure: unknown): string {
       return 'The frame changed since it was clicked. Click the element again.'
     }
     if (failure.code === 'unauthorized') {
-      return 'This tab cannot write. Open the board through frameboard serve.'
+      return 'This tab cannot write. Run frameboard open for a tab that can.'
     }
     if (failure.code === 'notes-invalid') {
       return "This page's notes.json does not read. Fix it by hand and try again."

@@ -1,6 +1,9 @@
 import { LucideProvider } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link, Route, Switch } from 'wouter'
 
+import { watchExpiredLink } from './access/expired-link'
+import { ViewOnlyNotice } from './access/notice'
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
 import { Toaster } from './components/ui/toast'
@@ -31,6 +34,7 @@ export function App() {
 function Shell() {
   const projects = useLive((state) => state.board?.projects)
   const connected = useLive((state) => state.connected)
+  useEffect(() => watchExpiredLink(), [])
 
   return (
     <div className="relative h-svh overflow-auto bg-background text-foreground">
@@ -74,6 +78,7 @@ function Shell() {
           Reconnecting to frameboard serve
         </p>
       ) : null}
+      {projects ? <ViewOnlyNotice /> : null}
     </div>
   )
 }

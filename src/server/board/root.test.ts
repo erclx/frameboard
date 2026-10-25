@@ -79,7 +79,7 @@ describe('root', () => {
   })
 
   describe('startBoard', () => {
-    it('starts .frameboard/ at the repository top with one empty page', async () => {
+    it('starts .frameboard/ in the working folder inside a repository with one empty page', async () => {
       folder('repo', '.git')
 
       const result = await startBoard(
@@ -88,9 +88,10 @@ describe('root', () => {
       )
 
       expect(result).toEqual({
-        root: join(dir, 'repo', '.frameboard'),
+        root: join(dir, 'repo', 'src', '.frameboard'),
         created: true,
       })
+      expect(existsSync(join(dir, 'repo', '.frameboard'))).toBe(false)
       expect(readdirSync(join(result.root, 'untitled', 'page-1'))).toEqual([])
       expect(
         JSON.parse(
@@ -129,6 +130,20 @@ describe('root', () => {
 
       expect(result).toEqual({ root: join(dir, 'boards'), created: false })
       expect(existsSync(join(dir, 'boards', 'web', '.frameboard'))).toBe(false)
+    })
+
+    it('reuses .frameboard/ at the repository top from a subfolder', async () => {
+      folder('repo', '.git')
+      marker('repo', '.frameboard')
+      folder('repo', '.frameboard', 'web')
+
+      const result = await startBoard({ cwd: folder('repo', 'src') })
+
+      expect(result).toEqual({
+        root: join(dir, 'repo', '.frameboard'),
+        created: false,
+      })
+      expect(existsSync(join(dir, 'repo', 'src', '.frameboard'))).toBe(false)
     })
   })
 })

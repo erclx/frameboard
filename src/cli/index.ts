@@ -8,6 +8,12 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => controller.abort())
 }
 
+// A reader that stops early, as `head` does, closes the pipe, which is no failure of the verb.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EPIPE') process.exit(0)
+  throw error
+})
+
 process.exitCode = await runCli(process.argv.slice(2), {
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),

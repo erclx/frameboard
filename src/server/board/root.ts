@@ -63,8 +63,7 @@ export function findBoard(cwd: string): string | null {
 
 /**
  * The board `serve` shows, started when none exists: at `--root` when given,
- * else the board the walk finds, else `.frameboard/` at the repository top,
- * else `.frameboard/` in `cwd`. A board folder holding no project gets one
+ * else the board the walk finds, else `.frameboard/` in `cwd`. A board folder holding no project gets one
  * project with one empty page, and one missing only `board.json` gets that
  * alone.
  */
@@ -74,8 +73,7 @@ export async function startBoard(
 ): Promise<{ root: string; created: boolean }> {
   const target =
     root === undefined
-      ? (findBoard(cwd) ??
-        join(findRepositoryTop(cwd) ?? cwd, DEFAULT_BOARD_FOLDER))
+      ? (findBoard(cwd) ?? join(cwd, DEFAULT_BOARD_FOLDER))
       : resolve(cwd, root)
 
   await mkdir(target, { recursive: true })
@@ -95,13 +93,6 @@ export async function startBoard(
     created = true
   }
   return { root: await realpath(target), created }
-}
-
-function findRepositoryTop(cwd: string): string | null {
-  for (let dir = resolve(cwd); ; dir = dirname(dir)) {
-    if (existsSync(join(dir, '.git'))) return dir
-    if (dirname(dir) === dir) return null
-  }
 }
 
 async function isDirectory(path: string): Promise<boolean> {
