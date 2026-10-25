@@ -26,6 +26,8 @@ These gate a change, and `bun run check` is the one the pre-push hook runs.
 | `bun run format`                   | Auto-fixes oxfmt formatting                                                                             |
 | `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown    |
 
+The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale.
+
 These serve the board and run the test layers.
 
 | Command                    | Purpose                                                                                                |
@@ -55,8 +57,6 @@ These capture and measure what the board renders.
 | `bun run design:sync`        | Builds, then captures each board frame `canon/design/frames.json` maps into its group folder            |
 
 The capture scripts each carry a condition the table leaves out.
-
-- The CLI run from source needs no build for its faces, since it writes them into `node_modules/.cache/frameboard/faces` on first use, and only a `bun install` that moves a face package leaves that cache stale
 
 - `screenshot:compare` builds first and serves its own boards
 - `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
