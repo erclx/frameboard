@@ -67,6 +67,8 @@ function frame(
     order: 0,
     hidden,
     locked: false,
+    hugWidth: false,
+    hugHeight: false,
     placed: true,
     modifiedAt: '2026-10-15T09:00:00.000Z',
   }

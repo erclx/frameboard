@@ -24,6 +24,8 @@ function boardOf(
       order,
       hidden: false,
       locked: false,
+      hugWidth: false,
+      hugHeight: false,
       placed: true,
       modifiedAt,
     }),

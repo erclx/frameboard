@@ -12,6 +12,20 @@ describe('layoutFileSchema', () => {
     ).toBe(true)
   })
 
+  it.each([
+    ['a hug flag that is not a boolean', { hugHeight: 'yes' }, false],
+    ['both hug flags', { hugWidth: true, hugHeight: false }, true],
+  ])('on %s parses as %s', (_label, flags, parses) => {
+    expect(
+      layoutFileSchema.safeParse({
+        version: 1,
+        frames: {
+          hero: { x: 0, y: 0, width: 10, height: 10, order: 0, ...flags },
+        },
+      }).success,
+    ).toBe(parses)
+  })
+
   it('keeps unknown keys on the file and on an entry', () => {
     const layout = layoutFileSchema.parse({
       version: 1,

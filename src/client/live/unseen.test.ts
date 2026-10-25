@@ -80,6 +80,8 @@ function boardWith(...refs: string[]): ListResult {
           order: 0,
           hidden: false,
           locked: false,
+          hugWidth: false,
+          hugHeight: false,
           placed: true,
           modifiedAt: '2026-10-19T12:00:00.000Z',
         })),
