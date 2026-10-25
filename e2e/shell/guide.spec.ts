@@ -1,0 +1,71 @@
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { expect, type Locator, test } from '@playwright/test'
+
+import { type BoardServer, serveBoard } from '../support/board-server'
+
+const UNDO = 'ControlOrMeta+KeyZ'
+
+/** Picks a guide option through the card that wraps its radio, the way a pointer reaches it. */
+async function choose(radio: Locator): Promise<void> {
+  await radio.locator('xpath=..').click()
+  await expect(radio).toBeChecked()
+}
+
+test.describe('a new board guided to its first frame', () => {
+  let parent: string
+  let root: string
+  let server: BoardServer
+
+  const at = (path: string) => join(root, path)
+
+  test.beforeEach(async () => {
+    parent = mkdtempSync(join(tmpdir(), 'frameboard-guide-'))
+    root = join(parent, 'board')
+    server = await serveBoard(root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    rmSync(parent, { recursive: true, force: true })
+  })
+
+  test('writes each answer to files, and undo takes them back in turn', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/untitled/page-1`)
+    const guide = page.getByRole('region', { name: 'Set up your board' })
+
+    await guide.getByRole('textbox').fill('Acme mobile')
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await expect(page).toHaveURL(/\/p\/acme-mobile\/page-1$/)
+    await choose(guide.getByRole('radio', { name: /Tablet/ }))
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await choose(guide.getByRole('radio', { name: 'Green' }))
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await choose(guide.getByRole('radio', { name: /start myself/ }))
+    await guide.getByRole('button', { name: 'Finish' }).click()
+
+    await expect(guide).toBeHidden()
+    await expect
+      .poll(() => readdirSync(at('acme-mobile/page-1')))
+      .toContain('tablet.html')
+    expect(existsSync(at('acme-mobile/tokens.css'))).toBe(true)
+    expect(existsSync(at('untitled'))).toBe(false)
+
+    await page.keyboard.press('Escape')
+    await page.keyboard.press(UNDO)
+    await expect
+      .poll(() => existsSync(at('acme-mobile/page-1/tablet.html')))
+      .toBe(false)
+    await page.keyboard.press(UNDO)
+    await expect
+      .poll(() => existsSync(at('acme-mobile/tokens.css')))
+      .toBe(false)
+    await page.keyboard.press(UNDO)
+    await expect.poll(() => existsSync(at('untitled/page-1'))).toBe(true)
+  })
+})
