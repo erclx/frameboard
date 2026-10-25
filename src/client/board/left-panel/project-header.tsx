@@ -91,7 +91,7 @@ export function ProjectHeader({ project, page, calls }: ProjectHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label="Project menu"
-              className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-sidebar-accent"
+              className="grid size-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-sidebar-accent"
             >
               <ChevronDown aria-hidden className="size-3" />
             </DropdownMenuTrigger>
