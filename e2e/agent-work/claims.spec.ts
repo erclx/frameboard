@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { expect, type Locator, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -187,11 +187,22 @@ test.describe('an element edit on a claimed frame', () => {
     board.cleanup()
   })
 
-  test('is refused with the stale toast once the agent wrote the frame meanwhile', async ({
-    page,
-  }) => {
-    await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/p/webapp/home`)
+  function editing(...args: string[]) {
+    return run('node', [
+      CLI,
+      'editing',
+      HERO,
+      ...args,
+      '--session',
+      'sess-a',
+      '--root',
+      board.root,
+      '--json',
+    ])
+  }
+
+  /** Opens the page and Cmd-clicks the hero's headline until the inspector shows it. */
+  async function selectHeadline(page: Page) {
     const headline = page
       .frameLocator(`[data-frame="${HERO}"] iframe`)
       .locator('h1')
@@ -206,40 +217,56 @@ test.describe('an element edit on a claimed frame', () => {
         timeout: 1000,
       })
     }).toPass({ timeout: 10_000 })
-    await run('node', [
-      CLI,
-      'editing',
-      HERO,
-      '--session',
-      'sess-a',
-      '--root',
-      board.root,
-      '--json',
-    ])
+  }
+
+  async function claimed(page: Page) {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await selectHeadline(page)
+    await editing()
     await expect(page.locator(`[data-frame="${HERO}"]`)).toHaveAttribute(
       'data-claimed',
     )
+  }
+
+  test('lands past the agent’s write to another element, keeping both', async ({
+    page,
+  }) => {
+    await claimed(page)
 
     const opacity = page.getByRole('textbox', { name: 'Opacity', exact: true })
     await opacity.fill('50')
     await opacity.press('Enter')
     await expect(page.locator(`[data-waiting-card="${HERO}"]`)).toBeVisible()
-    const agent = read().replace('Caption', 'Byline')
+    writeFileSync(path(), read().replace('Caption', 'Byline'))
+    await editing('--release')
+
+    await expect
+      .poll(read, { timeout: 10_000 })
+      .toContain('<h1 data-name="Headline" style="opacity: 0.5">')
+    expect(read()).toContain('Byline')
+    await expect(page.getByText('Edit not saved')).toHaveCount(0)
+  })
+
+  test('is refused once the agent changed the edited element, keeping the typed text', async ({
+    page,
+  }) => {
+    await claimed(page)
+
+    const text = page.getByRole('textbox', { name: 'Text' })
+    await text.fill('Welcome')
+    await text.press('Enter')
+    await expect(page.locator(`[data-waiting-card="${HERO}"]`)).toBeVisible()
+    const agent = read().replace('>hero</h1>', '>Hero</h1>')
     writeFileSync(path(), agent)
-    await run('node', [
-      CLI,
-      'editing',
-      HERO,
-      '--release',
-      '--session',
-      'sess-a',
-      '--root',
-      board.root,
-      '--json',
-    ])
+    await editing('--release')
 
     await expect(page.getByText('Edit not saved')).toBeVisible()
     expect(read()).toBe(agent)
+    await selectHeadline(page)
+    await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue(
+      'Welcome',
+    )
   })
 })
 
