@@ -454,6 +454,83 @@ describe('attachGestures', () => {
       expect(selectionStore.getState().element).toBeNull()
     })
 
+    describe('while an inspector field has focus', () => {
+      /** An inspector field holding focus, as one does mid-edit. */
+      function focusField(): HTMLInputElement {
+        const panel = document.createElement('aside')
+        panel.dataset.inspector = ''
+        const field = document.createElement('input')
+        panel.append(field)
+        document.body.append(panel)
+        field.focus()
+        return field
+      }
+
+      afterEach(() => {
+        document.querySelector('[data-inspector]')?.remove()
+      })
+
+      it('blurs the field and keeps the element on a click in its frame', () => {
+        const canvas = setupWithElement()
+        const field = focusField()
+
+        canvas.pointer.click(200, 260)
+
+        expect(field).not.toHaveFocus()
+        expect(selectionStore.getState().element).toEqual(ELEMENT)
+      })
+
+      it('keeps the element on a click over empty canvas, and the next click clears it', () => {
+        const canvas = setupWithElement()
+        focusField()
+
+        canvas.pointer.click(700, 550)
+
+        expect(selectionStore.getState().element).toEqual(ELEMENT)
+
+        canvas.pointer.click(700, 550)
+
+        expect(selectedRefs()).toEqual([])
+      })
+
+      it('keeps the element on a click on another frame', () => {
+        const canvas = setupWithElement()
+        focusField()
+
+        canvas.pointer.click(500, 200)
+
+        expect(selectionStore.getState().element).toEqual(ELEMENT)
+      })
+
+      it('still moves the frame on a drag, keeping the element', () => {
+        const canvas = setupWithElement()
+        focusField()
+
+        canvas.pointer.drag([200, 260], [240, 280])
+
+        expect(canvas.writes[0]?.boxes[LEFT.ref]).toEqual({
+          ...LEFT.box,
+          x: 140,
+          y: 120,
+        })
+        expect(selectionStore.getState().element).toEqual(ELEMENT)
+      })
+
+      it('selects and moves another frame a drag starts on', () => {
+        const canvas = setupWithElement()
+        focusField()
+
+        canvas.pointer.drag([500, 200], [520, 220])
+
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+        expect(canvas.writes[0]?.boxes[RIGHT.ref]).toEqual({
+          ...RIGHT.box,
+          x: 420,
+          y: 120,
+        })
+      })
+    })
+
     it('moves rather than resizes from a frame corner, whose handle is hidden', () => {
       const canvas = setupWithElement()
 

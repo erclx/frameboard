@@ -70,6 +70,7 @@ export function InspectorPanel() {
   return (
     <aside
       aria-label="Inspector"
+      data-inspector
       className="flex h-full min-w-0 flex-col overflow-y-auto bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
