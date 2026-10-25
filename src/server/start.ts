@@ -32,7 +32,7 @@ import {
   recheckRefs,
 } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
-import { createHug, type Hug, ownFileRefs } from './live/hug'
+import { createHug, type Hug, type MeasureFrame, ownFileRefs } from './live/hug'
 import { openBoard } from './live/open-board'
 import {
   createRenderedFindings,
@@ -269,17 +269,15 @@ async function listen({
       }
     },
   })
-  const hug = createHug({
-    root,
-    measure: async (frame) =>
-      measureContent(await browser.get(), {
-        baseUrl: baseUrl(),
-        ref: frame.ref,
-        box: frame.box,
-        hugWidth: frame.hugWidth,
-        fonts: 'wait',
-      }),
-  })
+  const measure: MeasureFrame = async (frame) =>
+    measureContent(await browser.get(), {
+      baseUrl: baseUrl(),
+      ref: frame.ref,
+      box: frame.box,
+      hugWidth: frame.hugWidth,
+      fonts: 'wait',
+    })
+  const hug = createHug({ root, measure })
   const app = createApp({
     clientDir,
     facesDir,
@@ -292,6 +290,7 @@ async function listen({
     selection,
     renderFrame,
     thumbnails,
+    measure,
     checks: {
       refresh: () =>
         inTurn(async () => {

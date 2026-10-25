@@ -7,6 +7,7 @@ import {
   addFrame,
   deleteFrame,
   duplicateFrame,
+  fitHeight,
   orderFrame,
   readFrame,
   renameFrame,
@@ -30,6 +31,7 @@ import { resolvePageRef, resolveProject } from '@/server/board/refs'
 import { listProjects, readPageOrder } from '@/server/board/scan'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
+import type { MeasureFrame } from '@/server/live/hug'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
@@ -61,6 +63,7 @@ const frameDuplicateSchema = z.object({
   refs,
   offset: z.object({ x: coordinate, y: coordinate }).optional(),
 })
+const frameSchema = z.object({ ref })
 const pasteSchema = z.object({
   ref,
   at: z.object({ x: coordinate, y: coordinate }).optional(),
@@ -82,11 +85,14 @@ const UNTITLED = 'untitled'
  * Each write reports into its own journal and records one step, so the
  * developer can undo it, and names the page the board shows on either side
  * of it, so an undo can follow a page it brings back or renames.
+ * `measure` reads a frame's content on the warm browser for a fit, which
+ * refuses `browser-not-found` where none is given.
  */
 export function structureRoutes(
   root: string,
   access: Access,
   history: History,
+  measure?: MeasureFrame,
 ): Hono {
   const app = new Hono()
   app.use('/api/page/*', requireWriter(access))
@@ -293,6 +299,39 @@ export function structureRoutes(
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })
+  })
+
+  /**
+   * Sets one frame's height to its content's own and turns its height
+   * hugging on, as `frame fit` does, refusing a frame whose content sizes
+   * itself off the viewport. The width is reported, never changed.
+   */
+  app.post('/api/frame/fit', async (c) => {
+    const body = await parseBody(c.req.raw, frameSchema)
+    await refuseLocked([body.ref])
+    await refuseHeldFrames([body.ref])
+    if (!measure) {
+      throw new FrameboardError(
+        'browser-not-found',
+        "Fit height needs the board server's browser, and none runs here.",
+      )
+    }
+    const frame = await readFrame(root, body.ref, { cwd })
+    const measured = await measure(frame)
+    const fit = await recorded(
+      (journal) =>
+        fitHeight(root, frame.ref, measured.height, { cwd, journal }),
+      (record) => onFrames([record.ref]),
+    )
+    return c.json({
+      ok: true,
+      data: {
+        frame: fit,
+        contentHeight: measured.height,
+        contentWidth: measured.contentWidth,
+        tooWide: measured.contentWidth > fit.box.width,
+      },
+    })
   })
 
   app.post('/api/frame/delete', async (c) => {
