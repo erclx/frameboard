@@ -17,6 +17,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 - Run `frameboard serve --json` in the background. It creates a board in a folder that has none, and on a board already served it reports `reused: true` and binds nothing, so a second call is safe.
 - Run `frameboard list --json` to see the projects, pages, and frames before adding any.
+- Run `frameboard open --no-open --json` when the developer needs a second tab that can edit, and hand them its `writeUrl`. The link works once and expires at `expiresAt`, and a tab opened on the plain address only reads.
 
 ## Draw a frame
 
@@ -28,7 +29,8 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Warnings alone exit 0 and sit in the envelope's `data.findings`, so read them there
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
-6. Run `frameboard show <page>/<frame>` so the developer's board turns to the frame you drew.
+6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
+7. Run `frameboard show <page>/<frame>` so the developer's board turns to the frame you drew.
 
 ## Make every frame work in both themes
 
