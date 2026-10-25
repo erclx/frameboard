@@ -46,6 +46,8 @@ Owns the left panel, being its header with the way home and Hide UI, then the De
 
 The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
 
+An element row renames on a double-click or F2 too, writing `data-name` as the inspector's Name does. Its F2 stops at the row, so the board's own F2 opens no second field.
+
 ### `src/client/board/find/`
 
 Owns find, being the panel Cmd+F puts in place of the left panel's tabs under the same header, its query, and the pick, which change together.

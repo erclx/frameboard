@@ -17,14 +17,23 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key
 - **Element:** name, opacity, radius, and typography size, weight, and alignment, plus its text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
-- **Fill:** color through the browser's color input with the project's tokens offered first, and fill opacity. On an element holding text alone it is the text color, as in Figma.
-- **Stroke and shadow:** the border color through the same token-first row, and one of the project's shadow tokens or none, which writes `box-shadow: none` so a rule's shadow goes too.
+- **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
+- **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
+- **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
+- **Remove:** a minus on the fill and stroke rows drops the element's own declaration, and over a rule's paint writes `transparent` or `border-style: none`. A rule's text color has none.
 - **Selection colors:** the colors the frame, the frames, or the element's subtree use, with token names, and a flag on raw values, read-only
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
 - Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
+
+Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and dragging its prefix letter or icon scrubs it. A weight steps by 100, and a step on a `Mixed` frame value moves each frame by the step from its own.
+
+- A step or a scrub previews first, a frame at its pending box and an element through an inline style on its live node, and writes once on the arrow's keyup or the scrub's release
+- Esc during either puts the stored value back and writes nothing, and a refused write puts back the preview too
+- The picker under `element/color-picker/` previews a custom color and writes it once as it closes or on Enter in its hex field
+- Esc in the picker writes nothing, and a token swatch writes at once and closes it
 
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
@@ -39,3 +48,8 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 - Each of those is a layout call a prompt makes better, or a number that fights the layout when set by hand
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
+
+The number field works around two base-ui behaviors.
+
+- base-ui commits a keyboard step on every press, so the field steps on its own keys and takes base-ui's commit only for a scrub release
+- base-ui reformats a typed number only on blur, so Enter blurs the field and focuses it again, else a refused value stays shown
