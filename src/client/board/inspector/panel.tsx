@@ -197,6 +197,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         inline={live.textOnly ? live.inline.color : live.inline.backgroundColor}
         disabled={disabled}
         write={write}
+        preview={preview}
+        currentColor={live.color}
       />
       {live.textOnly ? (
         <TextSection text={live.text} disabled={disabled} write={write} />

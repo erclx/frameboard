@@ -1238,6 +1238,63 @@ describe('InspectorPanel with an element selected', () => {
       vi.unstubAllGlobals()
     })
 
+    it('previews a color picked for Fill on the live element and puts it back on Esc', async () => {
+      await mountFrame('<h1>Hello</h1>')
+      renderWith(3)
+      const headline = () =>
+        document
+          .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+          ?.contentDocument?.querySelector('h1')
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Fill color' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      expect(hex).toHaveValue('4F46E5')
+      await userEvent.clear(hex)
+      await userEvent.type(hex, 'FF0000')
+
+      expect(headline()?.style.color).toBe('rgb(255, 0, 0)')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(headline()?.hasAttribute('style')).toBe(false)
+    })
+
+    it('opens the picker on a currentcolor stroke at the element’s text color', async () => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) =>
+        String(input).includes('/tokens')
+          ? Response.json({ ok: true, data: TABLE })
+          : Response.json({
+              ok: true,
+              data: {
+                ref: HERO.ref,
+                hash: HASH,
+                element: {
+                  color: null,
+                  backgroundColor: null,
+                  borderColor: null,
+                  borderWidth: null,
+                  boxShadow: null,
+                },
+                colors: [],
+              },
+            }),
+      )
+      await mountFrame(
+        '<div style="color: #0ea5e9; border: 1px solid currentcolor"></div>',
+      )
+      renderWith(3)
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Stroke color' }),
+      )
+
+      expect(await screen.findByRole('textbox', { name: 'Hex' })).toHaveValue(
+        '0EA5E9',
+      )
+    })
+
     it('offers a shadow token in the Shadow menu and not in the Fill or Stroke menus', async () => {
       await mountFrame('<h1 style="border:1px solid">Hello</h1>')
       renderWith(3)
