@@ -642,6 +642,34 @@ describe('Frame preview', () => {
     )
   })
 
+  it('draws a hugging height at its content height for the previewed width', async () => {
+    const hugging = { ...frame('a'), hugHeight: true }
+    const { container } = render(<Frame frame={hugging} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const document = iframe.contentDocument
+    if (!document) throw new Error('no frame document')
+    document.body.innerHTML = '<div style="height:320px"></div>'
+    document.body.style.margin = '0'
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('320px')
+  })
+
+  it('keeps a fixed height at a previewed width', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    iframe.contentDocument?.body.replaceChildren()
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('844px')
+  })
+
   it('draws at its stored width once the preview ends', () => {
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     act(() => setPreview(['studio/home/a'], 834))

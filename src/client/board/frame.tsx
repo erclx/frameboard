@@ -30,7 +30,8 @@ import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
 import { useDrawnBox } from './geometry/write'
 import { useMode } from './mode'
-import { usePreview } from './preview/store'
+import { measureHeight } from './preview/height'
+import { measurePreview, usePreview } from './preview/store'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
@@ -136,6 +137,24 @@ export const Frame = memo(function Frame({
     element.addEventListener('load', check)
     return () => element.removeEventListener('load', check)
   }, [live, frame.ref])
+
+  // A previewed frame hugging its height takes its content's height at the
+  // previewed width, read again on each load, as an agent's write reloads it.
+  const previewWidth = preview?.width
+  const { hugHeight, box } = frame
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element || previewWidth === undefined || !hugHeight) return
+    const measure = () =>
+      measurePreview(
+        frame.ref,
+        previewWidth,
+        measureHeight(element, box.height),
+      )
+    measure()
+    element.addEventListener('load', measure)
+    return () => element.removeEventListener('load', measure)
+  }, [live, previewWidth, hugHeight, frame.ref, box.height])
 
   useEffect(() => {
     const element = iframe.current
