@@ -1,19 +1,19 @@
-import { type KeyboardEvent, useState } from 'react'
+import { useRef } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
-import { Input } from '@/client/components/ui/input'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
 import type { Box } from '../geometry/box'
-import { writeBoxes } from '../geometry/write'
+import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
 import {
   renameFrame,
   startFrameRename,
   stopFrameRename,
   useRenamingFrame,
 } from '../structure/actions'
+import { type NumberChange, NumberField } from './number-field'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -39,8 +39,9 @@ interface FrameSectionProps {
 /**
  * The selection's place and size. One frame shows its name, which a click
  * renames in place, and several show `N frames` with `Mixed` where their values
- * differ. A field commits on Enter or blur through the same write the
- * gestures use, setting that value on every selected frame.
+ * differ. A field writes through the same write the gestures use, a typed
+ * value setting every selected frame and a step on `Mixed` moving each by
+ * the step, and a step or scrub draws each frame at its pending box first.
  */
 export function FrameSection({
   frames,
@@ -51,21 +52,47 @@ export function FrameSection({
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
   const renaming = useRenamingFrame('inspector')
+  // The boxes a previewed gesture started from, which its pending boxes now hide.
+  const started = useRef<Record<string, Box> | null>(null)
   const [frame] = frames
   if (!frame) return null
   const several = frames.length > 1
   const locked = frames.some((candidate) => candidate.locked)
 
-  const commit = (field: Field, value: number) => {
+  const resize = (field: Field, change: NumberChange) => {
+    const from =
+      started.current ??
+      Object.fromEntries(frames.map(({ ref, box }) => [ref, box]))
     const boxes: Record<string, Box> = {}
     const expected: Record<string, Box> = {}
-    for (const { ref, box } of frames) {
-      const next = { ...box, [field]: value }
+    for (const [ref, box] of Object.entries(from)) {
+      const next = { ...box, [field]: change(box[field]) }
       if (next[field] === box[field]) continue
       boxes[ref] = next
       expected[ref] = box
     }
-    void write(page, boxes, expected)
+    return { boxes, expected }
+  }
+
+  const preview = (field: Field, change: NumberChange | null) => {
+    if (!change) {
+      if (started.current) dropPending(Object.keys(started.current))
+      started.current = null
+      return
+    }
+    started.current ??= Object.fromEntries(
+      frames.map(({ ref, box }) => [ref, box]),
+    )
+    holdBoxes({ ...started.current, ...resize(field, change).boxes })
+  }
+
+  const commit = (field: Field, change: NumberChange) => {
+    const { boxes, expected } = resize(field, change)
+    const held = started.current
+    started.current = null
+    // The write draws its own pending boxes, so the preview's drop for frames it leaves alone.
+    if (held) dropPending(Object.keys(held).filter((ref) => !(ref in boxes)))
+    return write(page, boxes, expected)
   }
 
   return (
@@ -101,14 +128,16 @@ export function FrameSection({
       )}
       <div className="grid grid-cols-2 gap-1.5">
         {FIELDS.map(({ key, letter, label }) => (
-          <BoxField
+          <NumberField
             key={key}
-            letter={letter}
+            prefix={letter}
             label={label}
             value={shared(frames.map(({ box }) => box[key]))}
             min={key === 'width' || key === 'height' ? 1 : undefined}
+            format={WHOLE}
             disabled={!canWrite || locked}
-            onCommit={(value) => commit(key, value)}
+            onPreview={(change) => preview(key, change)}
+            onCommit={(change) => commit(key, change)}
           />
         ))}
       </div>
@@ -116,66 +145,8 @@ export function FrameSection({
   )
 }
 
-interface BoxFieldProps {
-  letter: string
-  label: string
-  /** Null when the selected frames differ, which reads `Mixed`. */
-  value: number | null
-  min?: number
-  disabled: boolean
-  onCommit: (value: number) => void
-}
-
-function BoxField({
-  letter,
-  label,
-  value,
-  min,
-  disabled,
-  onCommit,
-}: BoxFieldProps) {
-  const shown = value === null ? 'Mixed' : String(value)
-  // Null while the field shows the frames' value, a string while it is typed in.
-  const [draft, setDraft] = useState<string | null>(null)
-
-  const commit = () => {
-    if (draft === null) return
-    setDraft(null)
-    const typed = Number(draft.trim())
-    if (draft.trim() === shown || !Number.isInteger(typed)) return
-    onCommit(min === undefined ? typed : Math.max(min, typed))
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') commit()
-    if (event.key === 'Escape') {
-      setDraft(null)
-      event.currentTarget.blur()
-    }
-  }
-
-  return (
-    <label className="relative block">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-faint"
-      >
-        {letter}
-      </span>
-      <Input
-        aria-label={label}
-        inputMode="numeric"
-        className="pl-[26px]"
-        value={draft ?? shown}
-        disabled={disabled}
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        onBlur={commit}
-        onKeyDown={onKeyDown}
-      />
-    </label>
-  )
-}
+/** A frame's box is whole pixels, so a typed fraction rounds. */
+const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
 function shared(values: readonly number[]): number | null {
   const [first] = values

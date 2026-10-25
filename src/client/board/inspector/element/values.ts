@@ -61,19 +61,3 @@ export function swatchOf(
 export function chipName(token: string): string {
   return token.replace(/^--/, '')
 }
-
-/** A typed percent, `50` and `50%` alike, held between 0 and 100. Null for anything else. */
-export function parsePercent(typed: string): number | null {
-  const number = Number(typed.replace(/%$/, '').trim())
-  if (typed.trim() === '' || !Number.isFinite(number)) return null
-  return Math.min(100, Math.max(0, Math.round(number)))
-}
-
-/** A typed whole number of `unit` or bare, at 0 or more. Null for anything else. */
-export function parseWhole(typed: string, unit: string): number | null {
-  const bare =
-    unit !== '' && typed.endsWith(unit) ? typed.slice(0, -unit.length) : typed
-  const number = Number(bare.trim())
-  if (bare.trim() === '' || !Number.isFinite(number)) return null
-  return Math.max(0, Math.round(number))
-}

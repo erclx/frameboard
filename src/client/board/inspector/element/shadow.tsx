@@ -73,7 +73,11 @@ export function ShadowSection({
             className="ml-auto size-2.5 shrink-0 text-muted-foreground"
           />
         </DropdownMenuTrigger>
-        <ChromeMenuContent align="start" sideOffset={6} className="w-52">
+        <ChromeMenuContent
+          align="start"
+          sideOffset={6}
+          className="w-(--anchor-width)"
+        >
           {shadows.map((row) => (
             <DropdownMenuItem
               key={row.name}

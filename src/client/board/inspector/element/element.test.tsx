@@ -1,6 +1,13 @@
 import '../../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +30,7 @@ import { FillSection } from './fill'
 import { LayerSection } from './layer'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
+import { useLiveElement } from './styles'
 import { TextSection } from './text'
 import { TypographySection } from './typography'
 import { type ElementChange, writeElement } from './write'
@@ -131,6 +139,26 @@ describe('LayerSection', () => {
     ])
   })
 
+  it('writes a held opacity step once, as a fraction', async () => {
+    const { changes, write } = recorder()
+    render(
+      <LayerSection
+        name="Headline"
+        opacity={0.5}
+        radius={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Opacity' }))
+    await userEvent.keyboard('{ArrowUp>3/}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'opacity', value: '0.53' },
+    ])
+  })
+
   it('writes nothing for an opacity that is not a number', async () => {
     const { changes, write } = recorder()
     render(
@@ -194,6 +222,26 @@ describe('TypographySection', () => {
     ])
   })
 
+  it('steps the weight by 100', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Font weight' }))
+    await userEvent.keyboard('{ArrowUp}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-weight', value: '800' },
+    ])
+  })
+
   it('writes the alignment a button names and lights the computed one', async () => {
     const { changes, write } = recorder()
     render(
@@ -220,6 +268,89 @@ describe('TypographySection', () => {
 })
 
 describe('FillSection', () => {
+  it.each([
+    [true, false, { property: 'background-color', value: '' }],
+    [true, true, { property: 'background', value: '' }],
+    [false, false, { property: 'background-color', value: 'transparent' }],
+  ])(
+    'removes a background (own %s, shorthand %s) by writing %o',
+    async (inline, shorthand, written) => {
+      const { changes, write } = recorder()
+      render(
+        <FillSection
+          textOnly={false}
+          color={null}
+          backgroundColor={tokenValueOf('--primary')}
+          tokens={[PRIMARY]}
+          theme="light"
+          inline={inline}
+          shorthand={shorthand}
+          disabled={false}
+          write={write}
+        />,
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Remove fill' }))
+
+      expect(changes).toEqual([{ kind: 'style', ...written }])
+    },
+  )
+
+  it('removes an element’s own text color', async () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly
+        color={tokenValueOf('--primary')}
+        backgroundColor={null}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove fill' }))
+
+    expect(changes).toEqual([{ kind: 'style', property: 'color', value: '' }])
+  })
+
+  it('offers no remove on a text color a rule sets', () => {
+    render(
+      <FillSection
+        textOnly
+        color={tokenValueOf('--primary')}
+        backgroundColor={null}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Remove fill' })).toBeNull()
+  })
+
+  it('reads a transparent background as no fill', () => {
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: 'transparent', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Fill color')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add fill' })).toBeEnabled()
+  })
+
   it('writes color on an element holding text alone', async () => {
     const { changes, write } = recorder()
     render(
@@ -229,6 +360,7 @@ describe('FillSection', () => {
         backgroundColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -236,7 +368,9 @@ describe('FillSection', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Fill token' }))
     await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'border' }),
+      within(
+        await screen.findByRole('list', { name: 'Fill tokens' }),
+      ).getByRole('button', { name: 'border' }),
     )
 
     expect(changes).toEqual([
@@ -253,6 +387,7 @@ describe('FillSection', () => {
         backgroundColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -278,6 +413,7 @@ describe('FillSection', () => {
         backgroundColor={tokenValueOf('--primary')}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -305,6 +441,7 @@ describe('FillSection', () => {
         backgroundColor={{ value: '#111827', token: null, percent: 100 }}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -328,6 +465,7 @@ describe('FillSection', () => {
         backgroundColor={tokenValueOf('--primary')}
         tokens={[PRIMARY]}
         theme="dark"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -342,7 +480,7 @@ describe('FillSection', () => {
     ])
   })
 
-  it('writes a raw hex once when the color input changes, and nothing while it drags', async () => {
+  it('writes a hex typed in the picker once, on Enter', async () => {
     const { changes, write } = recorder()
     render(
       <FillSection
@@ -351,22 +489,22 @@ describe('FillSection', () => {
         backgroundColor={{ value: '#111827', token: null, percent: 100 }}
         tokens={[PRIMARY]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
     )
-    const input = screen.getByLabelText('Fill color') as HTMLInputElement
 
-    // The row listens natively, so a React-driven event would never reach it.
-    input.value = '#ff0000'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    expect(changes).toEqual([])
-
-    input.dispatchEvent(new Event('change', { bubbles: true }))
+    await userEvent.click(screen.getByRole('button', { name: 'Fill color' }))
+    const hex = await screen.findByRole('textbox', { name: 'Hex' })
+    expect(hex).toHaveValue('111827')
+    await userEvent.clear(hex)
+    await userEvent.type(hex, 'FF0000{Enter}')
 
     expect(changes).toEqual([
       { kind: 'style', property: 'background-color', value: '#ff0000' },
     ])
+    expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull()
   })
 
   it('flags a raw value and names a token with its chip', () => {
@@ -378,6 +516,7 @@ describe('FillSection', () => {
           backgroundColor={null}
           tokens={[PRIMARY]}
           theme="light"
+          inline={false}
           disabled={false}
           write={recorder().write}
         />
@@ -386,6 +525,7 @@ describe('FillSection', () => {
           borderColor={tokenValueOf('--border')}
           tokens={[PRIMARY, BORDER]}
           theme="light"
+          inline={false}
           disabled={false}
           write={recorder().write}
         />
@@ -405,6 +545,33 @@ describe('FillSection', () => {
 })
 
 describe('StrokeSection', () => {
+  it.each([
+    [true, { property: 'border', value: '' }],
+    [false, { property: 'border-style', value: 'none' }],
+  ])(
+    'removes a stroke the element’s own style sets (%s)',
+    async (inline, written) => {
+      const { changes, write } = recorder()
+      render(
+        <StrokeSection
+          bordered
+          borderColor={tokenValueOf('--border')}
+          tokens={[PRIMARY, BORDER]}
+          theme="light"
+          inline={inline}
+          disabled={false}
+          write={write}
+        />,
+      )
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Remove stroke' }),
+      )
+
+      expect(changes).toEqual([{ kind: 'style', ...written }])
+    },
+  )
+
   it('adds a 1px border in the border token', async () => {
     const { changes, write } = recorder()
     render(
@@ -413,6 +580,7 @@ describe('StrokeSection', () => {
         borderColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -432,6 +600,7 @@ describe('StrokeSection', () => {
         borderColor={null}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={recorder().write}
       />,
@@ -448,6 +617,7 @@ describe('StrokeSection', () => {
         borderColor={tokenValueOf('--border')}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={recorder().write}
       />,
@@ -465,6 +635,7 @@ describe('StrokeSection', () => {
         borderColor={tokenValueOf('--border')}
         tokens={[PRIMARY, BORDER]}
         theme="light"
+        inline={false}
         disabled={false}
         write={write}
       />,
@@ -474,7 +645,9 @@ describe('StrokeSection', () => {
       await screen.findByRole('button', { name: 'Stroke token' }),
     )
     await userEvent.click(
-      await screen.findByRole('menuitem', { name: 'primary' }),
+      within(
+        await screen.findByRole('list', { name: 'Stroke tokens' }),
+      ).getByRole('button', { name: 'primary' }),
     )
 
     expect(changes).toEqual([
@@ -555,6 +728,51 @@ describe('TextSection', () => {
     await userEvent.type(area, 'Welcome{Meta>}{Enter}{/Meta}')
 
     expect(changes).toEqual([{ kind: 'text', value: 'Welcome' }])
+  })
+
+  it('writes the text once on Enter and keeps nothing for the blur', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.clear(area)
+    await userEvent.type(area, 'Welcome{Enter}')
+    await userEvent.tab()
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Welcome' }])
+  })
+
+  it('adds no line on Shift+Enter', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.type(area, '{Shift>}{Enter}{/Shift}')
+
+    expect(area).toHaveValue('Hello')
+    expect(changes).toEqual([])
+  })
+
+  it('writes a pasted line break as a space', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    const area = screen.getByRole('textbox', { name: 'Text' })
+    await userEvent.clear(area)
+    await userEvent.paste('Two\r\nlines')
+    await userEvent.keyboard('{Enter}')
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Two lines' }])
+  })
+
+  it('hints the keys only while it has focus', async () => {
+    const { write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+
+    expect(screen.queryByText('to apply', { exact: false })).toBeNull()
+    await userEvent.click(screen.getByRole('textbox', { name: 'Text' }))
+
+    expect(screen.getByText('to apply', { exact: false })).toBeVisible()
   })
 
   it('cancels on Esc and writes nothing', async () => {
@@ -940,6 +1158,57 @@ describe('InspectorPanel with an element selected', () => {
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
   })
 
+  it('previews a step on the live element and puts it back on Esc', async () => {
+    await mountFrame('<h1>Hello</h1>')
+    renderWith(3)
+    const opacity = await screen.findByRole('textbox', { name: 'Opacity' })
+    const headline = () =>
+      document
+        .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+        ?.contentDocument?.querySelector('h1')
+
+    await userEvent.click(opacity)
+    await userEvent.keyboard('{ArrowDown>2}')
+
+    expect(headline()?.style.opacity).toBe('0.98')
+
+    await userEvent.keyboard('{Escape}{/ArrowDown}')
+
+    expect(headline()?.hasAttribute('style')).toBe(false)
+  })
+
+  it('reads a background color stated alone as no shorthand', async () => {
+    await mountFrame(
+      '<div style="background-color: red; background-image: none"></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.inline).toMatchObject({
+      backgroundColor: true,
+      background: false,
+    })
+  })
+
+  it('reads which paints the element’s own style sets', async () => {
+    await mountFrame(
+      '<div style="background: red; border-top-color: blue"></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.inline).toEqual({
+      color: false,
+      backgroundColor: true,
+      background: true,
+      border: true,
+    })
+  })
+
   it('leaves Typography out for an element holding no text', async () => {
     await mountFrame('<div></div>')
 
@@ -985,6 +1254,63 @@ describe('InspectorPanel with an element selected', () => {
       vi.unstubAllGlobals()
     })
 
+    it('previews a color picked for Fill on the live element and puts it back on Esc', async () => {
+      await mountFrame('<h1>Hello</h1>')
+      renderWith(3)
+      const headline = () =>
+        document
+          .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+          ?.contentDocument?.querySelector('h1')
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Fill color' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      expect(hex).toHaveValue('4F46E5')
+      await userEvent.clear(hex)
+      await userEvent.type(hex, 'FF0000')
+
+      expect(headline()?.style.color).toBe('rgb(255, 0, 0)')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(headline()?.hasAttribute('style')).toBe(false)
+    })
+
+    it('opens the picker on a currentcolor stroke at the element’s text color', async () => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) =>
+        String(input).includes('/tokens')
+          ? Response.json({ ok: true, data: TABLE })
+          : Response.json({
+              ok: true,
+              data: {
+                ref: HERO.ref,
+                hash: HASH,
+                element: {
+                  color: null,
+                  backgroundColor: null,
+                  borderColor: null,
+                  borderWidth: null,
+                  boxShadow: null,
+                },
+                colors: [],
+              },
+            }),
+      )
+      await mountFrame(
+        '<div style="color: #0ea5e9; border: 1px solid currentcolor"></div>',
+      )
+      renderWith(3)
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Stroke color' }),
+      )
+
+      expect(await screen.findByRole('textbox', { name: 'Hex' })).toHaveValue(
+        '0EA5E9',
+      )
+    })
+
     it('offers a shadow token in the Shadow menu and not in the Fill or Stroke menus', async () => {
       await mountFrame('<h1 style="border:1px solid">Hello</h1>')
       renderWith(3)
@@ -993,19 +1319,23 @@ describe('InspectorPanel with an element selected', () => {
       await userEvent.click(
         await screen.findByRole('button', { name: 'Fill token' }),
       )
-      expect(
-        await screen.findByRole('menuitem', { name: 'primary' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      const fill = within(
+        await screen.findByRole('list', { name: 'Fill tokens' }),
+      )
+      expect(fill.getByRole('button', { name: 'primary' })).toBeInTheDocument()
+      expect(fill.queryByRole('button', { name: 'shadow-sm' })).toBeNull()
       await userEvent.keyboard('{Escape}')
 
       await userEvent.click(
         screen.getByRole('button', { name: 'Stroke token' }),
       )
+      const stroke = within(
+        await screen.findByRole('list', { name: 'Stroke tokens' }),
+      )
       expect(
-        await screen.findByRole('menuitem', { name: 'primary' }),
+        stroke.getByRole('button', { name: 'primary' }),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'shadow-sm' })).toBeNull()
+      expect(stroke.queryByRole('button', { name: 'shadow-sm' })).toBeNull()
       await userEvent.keyboard('{Escape}')
 
       await userEvent.click(screen.getByRole('button', { name: 'Shadow' }))

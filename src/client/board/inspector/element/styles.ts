@@ -14,6 +14,8 @@ export interface LiveElement {
   fontSize: number
   fontWeight: number
   textAlign: string
+  /** The computed text color, which a `currentcolor` paint shows. */
+  color: string
   /** Whether any side draws a border. */
   bordered: boolean
   /** Whether the element or anything in it shows text. */
@@ -21,6 +23,14 @@ export interface LiveElement {
   /** Whether it holds text and no element, so its text is edited as a whole. */
   textOnly: boolean
   text: string
+  /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
+  inline: {
+    color: boolean
+    backgroundColor: boolean
+    /** Whether the `background` shorthand states it, which a remove has to drop whole. */
+    background: boolean
+    border: boolean
+  }
 }
 
 /**
@@ -77,10 +87,31 @@ function readLive(element: Element, view: Window): LiveElement {
     fontSize: Math.round(parseFloat(style.fontSize) * 100) / 100,
     fontWeight: Number(style.fontWeight),
     textAlign: alignOf(style.textAlign, style.direction),
+    color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
+    inline: inlinePaints(element),
+  }
+}
+
+/** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */
+function inlinePaints(element: Element): LiveElement['inline'] {
+  const own = 'style' in element ? (element as HTMLElement).style : null
+  const names = own
+    ? Array.from({ length: own.length }, (_, at) => own.item(at))
+    : []
+  return {
+    color: names.includes('color'),
+    backgroundColor: names.includes('background-color'),
+    // The parsed declarations show a shorthand only as its longhands, so the attribute is read for it.
+    background: /(?:^|;)\s*background\s*:/i.test(
+      element.getAttribute('style') ?? '',
+    ),
+    border: names.some(
+      (name) => name.startsWith('border-') && !name.endsWith('-radius'),
+    ),
   }
 }
 
@@ -135,4 +166,53 @@ export async function fetchStyles(
     | { ok: true; data: FrameStyles }
     | { ok: false }
   return body.ok ? body.data : null
+}
+
+/** An inline declaration a preview replaced, kept so it can be put back. */
+interface Replaced {
+  element: HTMLElement
+  value: string
+  priority: string
+}
+
+/** Each previewed declaration by element and property, until it is put back or written. */
+const previews = new Map<string, Replaced>()
+
+/**
+ * Sets one inline declaration on the selected element's live node, so a
+ * step shows on the canvas before it is written, or puts the declaration it
+ * replaced back on null. A written step needs no putting back, since the
+ * frame reloads with the written bytes, so the next preview of a new node
+ * forgets the old one.
+ */
+export function previewStyle(
+  key: ElementKey,
+  property: string,
+  value: string | null,
+): void {
+  const at = `${key.frame}:${key.index}:${property}`
+  const doc = document.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(key.frame)}"] iframe`,
+  )?.contentDocument
+  const target = doc ? elementAt(doc, key.index) : null
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const node = target && 'style' in target ? (target as HTMLElement) : null
+  const replaced = previews.get(at)
+  if (value === null) {
+    previews.delete(at)
+    if (!replaced || replaced.element !== node || !node) return
+    if (replaced.value === '') node.style.removeProperty(property)
+    else node.style.setProperty(property, replaced.value, replaced.priority)
+    if (node.getAttribute('style') === '') node.removeAttribute('style')
+    return
+  }
+  if (!node) return
+  if (replaced?.element !== node) {
+    previews.set(at, {
+      element: node,
+      value: node.style.getPropertyValue(property),
+      priority: node.style.getPropertyPriority(property),
+    })
+  }
+  node.style.setProperty(property, value, 'important')
 }

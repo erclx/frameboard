@@ -55,6 +55,8 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
+A press on the canvas while an inspector field has focus blurs the field, which applies its edit. A click that only leaves the field selects and clears nothing, and a drag from the same press still moves frames.
+
 ### `src/server/history/`
 
 Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.

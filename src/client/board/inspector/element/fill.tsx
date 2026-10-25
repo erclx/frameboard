@@ -6,7 +6,7 @@ import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
 import { ColorRow } from './color-row'
-import type { WriteElement } from './write'
+import type { PreviewStyle, WriteElement } from './write'
 
 interface ColorSectionProps {
   title: string
@@ -50,14 +50,26 @@ interface FillSectionProps {
   /** The project's color tokens. */
   tokens: readonly TokenRow[]
   theme: Theme
+  /** Whether the element's own `style` sets the fill, which remove drops. */
+  inline: boolean
+  /** Whether that style states the fill through the `background` shorthand, which remove drops whole. */
+  shorthand?: boolean
   disabled: boolean
   write: WriteElement
+  /** Shows a picked color on the live element before it is written. */
+  preview?: PreviewStyle
+  /** The element's text color, which a `currentcolor` paint shows. */
+  currentColor?: string
 }
 
 /**
  * Fill: one color row writing `color` on an element holding text alone and
  * `background-color` otherwise. `+` adds the project's first color token
- * while nothing sets one.
+ * while nothing sets one, and a transparent background reads as none.
+ * Remove drops the element's own fill, the whole `background` only where
+ * the shorthand states it so a background image stays otherwise, or writes
+ * `transparent` over a rule's background, and a rule's text color has no
+ * remove.
  */
 export function FillSection({
   textOnly,
@@ -65,13 +77,35 @@ export function FillSection({
   backgroundColor,
   tokens,
   theme,
+  inline,
+  shorthand = false,
   disabled,
   write,
+  preview,
+  currentColor,
 }: FillSectionProps) {
   const property = textOnly ? 'color' : 'background-color'
-  const value = textOnly ? color : backgroundColor
+  const stated = textOnly ? color : backgroundColor
+  const value =
+    stated && stated.value.trim().toLowerCase() !== 'transparent'
+      ? stated
+      : null
   const first = tokens[0]
   const set = (css: string) => write({ kind: 'style', property, value: css })
+  const remove = inline
+    ? () =>
+        void write({
+          kind: 'style',
+          property: textOnly
+            ? 'color'
+            : shorthand
+              ? 'background'
+              : 'background-color',
+          value: '',
+        })
+    : textOnly
+      ? undefined
+      : () => void set('transparent')
   return (
     <ColorSection
       title="Fill"
@@ -91,6 +125,9 @@ export function FillSection({
           theme={theme}
           disabled={disabled}
           onWrite={set}
+          onRemove={remove}
+          onPreview={(css) => preview?.(property, css)}
+          currentColor={currentColor}
         />
       ) : null}
     </ColorSection>

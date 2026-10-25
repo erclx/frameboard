@@ -35,9 +35,10 @@ function renderPanel() {
   )
 }
 
+/** What a field reads, its value or the `Mixed` it shows where frames differ. */
 function value(label: string): string {
-  return (screen.getByRole('textbox', { name: label }) as HTMLInputElement)
-    .value
+  const field = screen.getByRole('textbox', { name: label }) as HTMLInputElement
+  return field.value || field.placeholder
 }
 
 describe('InspectorPanel', () => {
@@ -330,6 +331,34 @@ describe('FrameSection', () => {
 
     expect(writes).toEqual([])
     expect(value('Width')).toBe('640')
+  })
+
+  it('steps a value on ArrowUp, by ten with Shift', async () => {
+    const writes = renderSection()
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'X position' }))
+    await userEvent.keyboard('{ArrowUp}{Shift>}{ArrowUp}{/Shift}')
+
+    expect(writes).toEqual([
+      { boxes: { [SWATCHES.ref]: { ...SWATCHES.box, x: 461 } } },
+      { boxes: { [SWATCHES.ref]: { ...SWATCHES.box, x: 471 } } },
+    ])
+  })
+
+  it('moves each frame by a step on a Mixed value, keeping their offsets', async () => {
+    const writes = renderSection([SWATCHES, SUNSET])
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Y position' }))
+    await userEvent.keyboard('{ArrowUp>3/}')
+
+    expect(writes).toEqual([
+      {
+        boxes: {
+          [SWATCHES.ref]: { ...SWATCHES.box, y: 119 },
+          [SUNSET.ref]: { ...SUNSET.box, y: 283 },
+        },
+      },
+    ])
   })
 
   it('keeps a width at 1 px or more', async () => {

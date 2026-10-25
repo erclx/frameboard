@@ -1,9 +1,16 @@
 import '../../styles.css'
 
-import { act, cleanup, render, screen, within } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -469,6 +476,103 @@ describe('LeftPanel', () => {
       expect(
         screen.queryByRole('list', { name: 'Elements of hero' }),
       ).not.toBeInTheDocument()
+    })
+
+    describe('renaming an element', () => {
+      /** Records each frame edit the board sends, answering it as written. */
+      function edits() {
+        const sent: unknown[] = []
+        vi.stubGlobal(
+          'fetch',
+          async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (String(input).endsWith('/api/frames/edit')) {
+              sent.push(JSON.parse(String(init?.body)))
+            }
+            return Response.json({ ok: true, data: { hash: 'b'.repeat(64) } })
+          },
+        )
+        cleanups.push(() => vi.unstubAllGlobals())
+        return sent
+      }
+
+      async function openHero() {
+        heroTree()
+        renderPanel(project([page('home', [frame('hero')])]))
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Show the elements of hero' }),
+        )
+      }
+
+      it('writes data-name from a double-click', async () => {
+        const sent = edits()
+        await openHero()
+
+        await userEvent.dblClick(screen.getByRole('button', { name: 'footer' }))
+        await userEvent.keyboard('Site footer{Enter}')
+
+        await waitFor(() =>
+          expect(sent).toEqual([
+            {
+              ref: HERO,
+              index: 8,
+              hash: HASH,
+              change: {
+                kind: 'attribute',
+                name: 'data-name',
+                value: 'Site footer',
+              },
+            },
+          ]),
+        )
+      })
+
+      it('opens the field on F2, and Esc writes nothing', async () => {
+        const sent = edits()
+        await openHero()
+        const pressed: string[] = []
+        const board = (event: KeyboardEvent) => pressed.push(event.key)
+        addEventListener('keydown', board)
+        cleanups.push(() => removeEventListener('keydown', board))
+
+        screen.getByRole('button', { name: 'footer' }).focus()
+        await userEvent.keyboard('{F2}')
+        expect(
+          screen.getByRole('textbox', { name: 'Rename footer' }),
+        ).toHaveFocus()
+        await userEvent.keyboard('Gone{Escape}')
+
+        expect(pressed).not.toContain('F2')
+        expect(sent).toEqual([])
+        expect(
+          screen.getByRole('button', { name: 'footer' }),
+        ).toBeInTheDocument()
+      })
+
+      it('writes nothing for an emptied name', async () => {
+        const sent = edits()
+        await openHero()
+
+        await userEvent.dblClick(screen.getByRole('button', { name: 'footer' }))
+        await userEvent.clear(
+          screen.getByRole('textbox', { name: 'Rename footer' }),
+        )
+        await userEvent.keyboard('{Enter}')
+
+        expect(sent).toEqual([])
+      })
+
+      it('opens nothing in a tab that may only view', async () => {
+        liveStore.setState({ canWrite: false })
+        await openHero()
+
+        await userEvent.dblClick(screen.getByRole('button', { name: 'footer' }))
+        screen.getByRole('button', { name: 'footer' }).focus()
+        await userEvent.keyboard('{F2}')
+
+        expect(
+          screen.queryByRole('textbox', { name: 'Rename footer' }),
+        ).toBeNull()
+      })
     })
 
     it('says a frame the server refused cannot be addressed', async () => {

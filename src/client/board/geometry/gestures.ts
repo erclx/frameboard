@@ -81,6 +81,8 @@ export function attachGestures(
   let from: Point = { x: 0, y: 0 }
   let pressed = { x: 0, y: 0 }
   let moved = false
+  // The press took focus out of an inspector field, so a click only leaves it.
+  let leaving = false
   let last: MouseEvent | null = null
   let elements = new Map<string, HTMLElement>()
 
@@ -108,6 +110,10 @@ export function attachGestures(
     pressed = { x: event.clientX, y: event.clientY }
     moved = false
     last = event
+    const field = inspectorField()
+    leaving = field !== null
+    // Blurring here applies the field's edit before any drag writes.
+    field?.blur()
     // A press on the selected element's outline or a corner mark does
     // nothing, since an element's size is never set by hand, and the frame's
     // handles are hidden while an element is selected, so they take no press.
@@ -127,7 +133,9 @@ export function attachGestures(
     const frame = frameAt(frames, point, zoom())
     if (frame) {
       // Pressing an unselected frame selects it at once, so a drag moves it.
-      if (!event.shiftKey && !chosen.some(({ ref }) => ref === frame.ref)) {
+      // A press leaving a field waits for the drag, since its click selects nothing.
+      const unselected = !chosen.some(({ ref }) => ref === frame.ref)
+      if (!leaving && !event.shiftKey && unselected) {
         select(selection, target.page, [frame.ref])
       }
       gesture = { kind: 'press', frame, shift: event.shiftKey }
@@ -145,9 +153,10 @@ export function attachGestures(
     if (gesture.kind !== 'press' && gesture.kind !== 'resize') return
     if (gesture.kind === 'press') {
       const { frame, shift } = gesture
-      if (shift && !selection.getState().frames.includes(frame.ref)) {
-        toggle(selection, target.page, frame.ref)
-      }
+      const unselected = !selection.getState().frames.includes(frame.ref)
+      if (shift && unselected) toggle(selection, target.page, frame.ref)
+      else if (leaving && unselected)
+        select(selection, target.page, [frame.ref])
       const chosen = selected(withPending(target.frames()))
       const bounds = boundsOf(chosen.map(({ box }) => box))
       gesture =
@@ -250,6 +259,11 @@ export function attachGestures(
   const finish = (event: MouseEvent) => {
     const root = overlay()
     if (!moved) {
+      // A click that only leaves an inspector field keeps the selection it edits.
+      if (leaving) {
+        gesture = { kind: 'none' }
+        return
+      }
       if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
@@ -350,6 +364,16 @@ export function attachGestures(
     removeEventListener('keydown', onKey)
     removeEventListener('keyup', onKey)
   }
+}
+
+/** The inspector text field focus sits in, which a press on the canvas leaves. */
+function inspectorField(): HTMLElement | null {
+  const active = document.activeElement
+  return active instanceof HTMLElement &&
+    active.matches('input, textarea') &&
+    active.closest('[data-inspector]')
+    ? active
+    : null
 }
 
 function rectFrom(a: Point, b: Point): Box {

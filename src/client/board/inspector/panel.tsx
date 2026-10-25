@@ -25,7 +25,12 @@ import { FillSection } from './element/fill'
 import { LayerSection } from './element/layer'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
-import { fetchStyles, useFrameStyles, useLiveElement } from './element/styles'
+import {
+  fetchStyles,
+  previewStyle,
+  useFrameStyles,
+  useLiveElement,
+} from './element/styles'
 import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
 import { type ElementChange, writeElement } from './element/write'
@@ -65,6 +70,7 @@ export function InspectorPanel() {
   return (
     <aside
       aria-label="Inspector"
+      data-inspector
       className="flex h-full min-w-0 flex-col overflow-y-auto bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
@@ -159,6 +165,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   }
   const disabled = !canWrite
   const write = (change: ElementChange) => writeElement(page, element, change)
+  const preview = (property: string, value: string | null) =>
+    previewStyle(element, property, value)
   const own = styles?.element
   return (
     <>
@@ -168,6 +176,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         radius={live.radius}
         disabled={disabled}
         write={write}
+        preview={preview}
       />
       {live.holdsText ? (
         <TypographySection
@@ -176,6 +185,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
           textAlign={live.textAlign}
           disabled={disabled}
           write={write}
+          preview={preview}
         />
       ) : null}
       <FillSection
@@ -184,8 +194,12 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         backgroundColor={own?.backgroundColor ?? null}
         tokens={colors}
         theme={theme}
+        inline={live.textOnly ? live.inline.color : live.inline.backgroundColor}
+        shorthand={!live.textOnly && live.inline.background}
         disabled={disabled}
         write={write}
+        preview={preview}
+        currentColor={live.color}
       />
       {live.textOnly ? (
         <TextSection text={live.text} disabled={disabled} write={write} />
@@ -195,8 +209,11 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         borderColor={own?.borderColor ?? null}
         tokens={colors}
         theme={theme}
+        inline={live.inline.border}
         disabled={disabled}
         write={write}
+        preview={preview}
+        currentColor={live.color}
       />
       <ShadowSection
         boxShadow={own?.boxShadow ?? null}

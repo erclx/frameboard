@@ -4,7 +4,7 @@ import type { Theme } from '@/shared/theme'
 
 import { ColorRow } from './color-row'
 import { ColorSection } from './fill'
-import type { WriteElement } from './write'
+import type { PreviewStyle, WriteElement } from './write'
 
 /** The token the stroke `+` reaches for first. */
 const BORDER_TOKEN = '--border'
@@ -15,23 +15,33 @@ interface StrokeSectionProps {
   borderColor: StyleValue | null
   tokens: readonly TokenRow[]
   theme: Theme
+  /** Whether the element's own `style` sets any border, which remove drops. */
+  inline: boolean
   disabled: boolean
   write: WriteElement
+  /** Shows a picked color on the live element before it is written. */
+  preview?: PreviewStyle
+  /** The element's text color, which a `currentcolor` paint shows. */
+  currentColor?: string
 }
 
 /**
  * Stroke: one color row writing `border-color` while the element draws a
  * border. `+` writes `border: 1px solid var(--border)`, else the first color
- * token, matching the 1px stroke Figma adds. The width has no control and
- * stays the agent's.
+ * token, matching the 1px stroke Figma adds. Remove drops the element's own
+ * `border` and its longhands, or writes `border-style: none` over a rule's.
+ * The width has no control and stays the agent's.
  */
 export function StrokeSection({
   bordered,
   borderColor,
   tokens,
   theme,
+  inline,
   disabled,
   write,
+  preview,
+  currentColor,
 }: StrokeSectionProps) {
   const token =
     tokens.find((row) => row.name === BORDER_TOKEN)?.name ?? tokens[0]?.name
@@ -64,6 +74,15 @@ export function StrokeSection({
           disabled={disabled}
           onWrite={(css) =>
             write({ kind: 'style', property: 'border-color', value: css })
+          }
+          onPreview={(css) => preview?.('border-color', css)}
+          currentColor={currentColor}
+          onRemove={() =>
+            void write(
+              inline
+                ? { kind: 'style', property: 'border', value: '' }
+                : { kind: 'style', property: 'border-style', value: 'none' },
+            )
           }
         />
       ) : null}

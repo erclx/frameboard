@@ -5,11 +5,15 @@ import {
   RectangleHorizontal,
   Type,
 } from 'lucide-react'
+import { useState } from 'react'
 
+import { RenameField } from '@/client/components/rename-field'
+import { useLive } from '@/client/live/store'
 import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { useElementTree } from '../element/tree'
+import { writeElement } from '../inspector/element/write'
 import { ElementRowMenu } from '../menus/layers'
 import { selectElement, selectionStore } from '../selection'
 
@@ -35,7 +39,9 @@ interface ElementRowsProps {
  * lists them too, each indented by depth, with a `Type` icon for an element
  * holding text alone, a chevron on one with children, and a click selecting
  * the element. The selected row is tinted deeper than the rest of its
- * frame's band, as `layers/edit` and `inspector/text` draw them.
+ * frame's band, as `layers/edit` and `inspector/text` draw them. A
+ * double-click or F2 renames the element in place, writing `data-name` as
+ * the inspector's Name does.
  */
 export function ElementRows({
   frame,
@@ -46,6 +52,8 @@ export function ElementRows({
   toggle,
 }: ElementRowsProps) {
   const entry = useElementTree(frame.ref)
+  const canWrite = useLive((state) => state.canWrite)
+  const [renaming, setRenaming] = useState<number | null>(null)
   if (!entry || entry.status === 'loading') {
     return <Notice depth={1}>Reading elements</Notice>
   }
@@ -66,15 +74,16 @@ export function ElementRows({
         const open = isOpen(element.index)
         const isSelected = element.index === selected
         const Icon = element.textOnly ? Type : RectangleHorizontal
+        const key = {
+          frame: frame.ref,
+          index: element.index,
+          hash: tree.hash,
+        }
         return (
           <ElementRowMenu
             key={element.index}
             page={page}
-            element={{
-              frame: frame.ref,
-              index: element.index,
-              hash: tree.hash,
-            }}
+            element={key}
             trigger={
               <li
                 className={cn(
@@ -106,32 +115,61 @@ export function ElementRows({
                 ) : (
                   <span aria-hidden className="w-2.5 shrink-0" />
                 )}
-                <button
-                  type="button"
-                  aria-current={isSelected ? 'true' : undefined}
-                  onClick={() =>
-                    selectElement(selectionStore, page, {
-                      frame: frame.ref,
-                      index: element.index,
-                      hash: tree.hash,
-                    })
-                  }
-                  className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
-                >
-                  <Icon
-                    aria-hidden
-                    className={cn(
-                      'size-[13px] shrink-0',
-                      isSelected ? 'text-primary' : 'text-muted-foreground',
-                    )}
-                  />
-                  <span
-                    className="min-w-0 flex-1 truncate"
-                    title={element.name}
+                {renaming === element.index ? (
+                  <>
+                    <Icon
+                      aria-hidden
+                      className={cn(
+                        'size-[13px] shrink-0',
+                        isSelected ? 'text-primary' : 'text-muted-foreground',
+                      )}
+                    />
+                    <RenameField
+                      name={element.name}
+                      label={`Rename ${element.name}`}
+                      onCommit={(name) => {
+                        setRenaming(null)
+                        void writeElement(page, key, {
+                          kind: 'attribute',
+                          name: 'data-name',
+                          value: name,
+                        })
+                      }}
+                      onCancel={() => setRenaming(null)}
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    aria-current={isSelected ? 'true' : undefined}
+                    onClick={() => selectElement(selectionStore, page, key)}
+                    onDoubleClick={() => {
+                      if (canWrite) setRenaming(element.index)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'F2' || !canWrite) return
+                      event.preventDefault()
+                      // The board's own F2 renames the selected frame, which this row's frame is.
+                      event.stopPropagation()
+                      setRenaming(element.index)
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
                   >
-                    {element.name}
-                  </span>
-                </button>
+                    <Icon
+                      aria-hidden
+                      className={cn(
+                        'size-[13px] shrink-0',
+                        isSelected ? 'text-primary' : 'text-muted-foreground',
+                      )}
+                    />
+                    <span
+                      className="min-w-0 flex-1 truncate"
+                      title={element.name}
+                    >
+                      {element.name}
+                    </span>
+                  </button>
+                )}
               </li>
             }
           />

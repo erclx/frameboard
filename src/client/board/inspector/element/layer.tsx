@@ -1,8 +1,15 @@
 import { Circle, Square } from 'lucide-react'
 
+import { NumberField } from '../number-field'
 import { CommitField } from './field'
-import { parsePercent, parseWhole } from './values'
-import type { WriteElement } from './write'
+import { type PreviewStyle, styleNumber, type WriteElement } from './write'
+
+const PERCENT: Intl.NumberFormatOptions = {
+  style: 'unit',
+  unit: 'percent',
+  maximumFractionDigits: 0,
+}
+const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
 interface LayerSectionProps {
   /** The layer name, being `data-name` or the one the tree derives. */
@@ -13,13 +20,15 @@ interface LayerSectionProps {
   radius: number
   disabled: boolean
   write: WriteElement
+  /** Shows a step on the live element before it is written. */
+  preview?: PreviewStyle
 }
 
 /**
  * The Element section of `inspector/text`: the layer name, written as
- * `data-name`, the opacity as a percent, and the corner radius in px. An
- * empty name writes `data-name` empty, so the layer falls back to its
- * derived name.
+ * `data-name`, the opacity as a percent, and the corner radius in px, the
+ * two numbers stepping and scrubbing. An empty name writes `data-name`
+ * empty, so the layer falls back to its derived name.
  */
 export function LayerSection({
   name,
@@ -27,7 +36,9 @@ export function LayerSection({
   radius,
   disabled,
   write,
+  preview,
 }: LayerSectionProps) {
+  const percent = Math.round(opacity * 100)
   return (
     <section
       aria-labelledby="inspector-element"
@@ -46,37 +57,38 @@ export function LayerSection({
         }
       />
       <div className="grid grid-cols-2 gap-1.5">
-        <CommitField
+        <NumberField
           label="Opacity"
           prefix={<Circle className="size-1.5 fill-current" />}
           inset="pl-[28px]"
-          shown={`${Math.round(opacity * 100)}%`}
+          value={percent}
+          min={0}
+          max={100}
+          format={PERCENT}
           disabled={disabled}
-          onCommit={async (typed) => {
-            const percent = parsePercent(typed)
-            if (percent === null) return false
-            return write({
-              kind: 'style',
-              property: 'opacity',
-              value: String(percent / 100),
-            })
-          }}
+          {...styleNumber(
+            'opacity',
+            percent,
+            (value) => String(value / 100),
+            write,
+            preview,
+          )}
         />
-        <CommitField
+        <NumberField
           label="Corner radius"
           prefix={<Square className="size-3" />}
           inset="pl-[28px]"
-          shown={String(radius)}
+          value={radius}
+          min={0}
+          format={WHOLE}
           disabled={disabled}
-          onCommit={async (typed) => {
-            const px = parseWhole(typed, 'px')
-            if (px === null) return false
-            return write({
-              kind: 'style',
-              property: 'border-radius',
-              value: `${px}px`,
-            })
-          }}
+          {...styleNumber(
+            'border-radius',
+            radius,
+            (value) => `${value}px`,
+            write,
+            preview,
+          )}
         />
       </div>
     </section>
