@@ -59,7 +59,7 @@ test.describe('the board write key', () => {
 
     await second.goto(ticket)
 
-    await expect(second).toHaveURL(`${server.url}/`)
+    await expect(second).toHaveURL(`${server.url}/?link=expired`)
     expect(await show(second)).toBe(401)
     await other.close()
   })

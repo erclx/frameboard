@@ -167,7 +167,7 @@ async function listen({
     isOwnOrigin: (host) => isBoardHost(host, bound),
   }
   const boardUrl = () =>
-    `http://${HOSTNAME}:${bound}/api/access/redeem?ticket=${tickets.mint()}`
+    `http://${HOSTNAME}:${bound}/api/access/redeem?ticket=${tickets.mint().ticket}`
   // Scans run one at a time, so a slow scan never lands after a newer one and
   // sends a board older than the last.
   let scanning: Promise<unknown> = Promise.resolve()

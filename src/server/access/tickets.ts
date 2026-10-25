@@ -2,9 +2,16 @@ import { randomBytes } from 'node:crypto'
 
 export const TICKET_TTL_MS = 2 * 60_000
 
+export interface MintedTicket {
+  /** 32 hex, single use. */
+  ticket: string
+  /** ISO time the ticket stops redeeming, on the clock `redeem` reads. */
+  expiresAt: string
+}
+
 export interface Tickets {
-  /** A fresh single-use ticket, 32 hex, valid for two minutes. */
-  mint: () => string
+  /** A fresh single-use ticket, valid for two minutes. */
+  mint: () => MintedTicket
   /** True once for a live ticket, false for a used, expired, or unknown one. */
   redeem: (ticket: string) => boolean
 }
@@ -18,8 +25,9 @@ export function createTickets(now: () => number = Date.now): Tickets {
         if (expiry <= now()) expiries.delete(ticket)
       }
       const ticket = randomBytes(16).toString('hex')
-      expiries.set(ticket, now() + TICKET_TTL_MS)
-      return ticket
+      const expiry = now() + TICKET_TTL_MS
+      expiries.set(ticket, expiry)
+      return { ticket, expiresAt: new Date(expiry).toISOString() }
     },
     redeem: (ticket) => {
       const expiry = expiries.get(ticket)
