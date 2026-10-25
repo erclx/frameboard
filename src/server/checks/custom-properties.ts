@@ -7,6 +7,7 @@ import {
   boardPath,
   type FrameSource,
   locate,
+  parseSheet,
   type Sheet,
 } from './frame-source'
 import { finding, type RuleDoc } from './rule'
@@ -43,8 +44,7 @@ export function checkUnknownTokens(
   const uses: Use[] = []
 
   for (const sheet of [...tokens, ...source.sheets]) {
-    const root = parseOrNull(sheet.css)
-    if (!root) continue
+    const { root } = parseSheet(sheet.css)
     root.walkAtRules(/^property$/i, (rule) => {
       declared.add(rule.params.trim())
     })

@@ -53,6 +53,14 @@ describe('checkUnknownTokens', () => {
     ).toMatchObject([{ rule: 'unknown-token', path: 'site/home/hero.css' }])
   })
 
+  it('reports one ahead of an unclosed rule in the same sheet', () => {
+    expect(
+      check(
+        '<style>.b { color: var(--no-such-token) }\n.c { margin: 0 auto\n</style>',
+      ),
+    ).toMatchObject([{ rule: 'unknown-token', location: { line: 1 } }])
+  })
+
   it('passes a var() with a fallback', () => {
     expect(check('<p style="color: var(--x, red)">x</p>')).toEqual([])
   })
