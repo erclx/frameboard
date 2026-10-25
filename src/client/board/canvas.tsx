@@ -1,7 +1,14 @@
 import { cn } from 'cn'
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
@@ -39,6 +46,9 @@ import { followSpacePan, modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
+import { DropLine } from './place/drop-line'
+import { placedKind, usePlaceTools } from './place/tool'
+import { placeElement } from './place/write'
 import { followSelection, selectElement, selectionStore } from './selection'
 import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
@@ -100,9 +110,13 @@ export function Canvas({
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
+  const placing = useMode(
+    (state) => state.tool === 'text' || state.tool === 'shape',
+  )
   const spacePan = useMode((state) => state.spacePan)
   useEffect(() => followSpacePan(window), [])
   useNoteTool()
+  usePlaceTools()
   const unseen = useUnseen((state) => state.unseen)
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
@@ -439,10 +453,18 @@ export function Canvas({
     onFocused?.()
   }, [focus, frames, onFocused])
 
+  const toBoard = useCallback((event: PointerEvent) => {
+    const viewport = viewportRef.current
+    if (!viewport) return { x: 0, y: 0 }
+    const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+    return { x, y }
+  }, [])
+  const drawnFrames = useCallback(() => withDrawn(framesRef.current), [])
+
   const pickInside = (event: MouseEvent) => {
     const viewport = viewportRef.current
-    // Only the Move tool selects, so the Hand, Note, and Frame tools pick nothing.
-    if (noting || hand || framing || !viewport || !layer) return
+    // Only the Move tool selects, so every other tool picks nothing.
+    if (noting || hand || framing || placing || !viewport || !layer) return
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
@@ -492,7 +514,7 @@ export function Canvas({
       data-canvas
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
-        (noting || framing) && !playing && 'cursor-crosshair',
+        (noting || framing || placing) && !playing && 'cursor-crosshair',
         (spacePan || (hand && !playing)) &&
           'cursor-grab active:cursor-grabbing',
       )}
@@ -520,6 +542,12 @@ export function Canvas({
             ))}
             <SelectionOverlay frames={frames} />
             <ElementOverlay frames={frames} container={layer} />
+            <DropLine
+              viewport={viewportRef}
+              container={layer}
+              frames={drawnFrames}
+              toBoard={toBoard}
+            />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>
@@ -540,18 +568,32 @@ export function Canvas({
               ref={hitRef}
               data-hit-layer
               className="absolute inset-0"
-              // A Note click opens the composer and a Frame click places a
-              // frame, and either goes no further. Selection and marquee
-              // gestures start on pointerdown, so they bind only while the Move
-              // tool is on and never see either press.
+              // A Note click opens the composer, a Frame click places a
+              // frame, and a Text or Shape click places an element, and none
+              // goes further. Selection and marquee gestures start on
+              // pointerdown, so they bind only while the Move tool is on and
+              // never see these presses.
               onClickCapture={(event) => {
                 const viewport = viewportRef.current
-                if (!(noting || framing) || !viewport || !layer) return
+                if (!(noting || framing || placing) || !viewport || !layer) {
+                  return
+                }
                 event.stopPropagation()
                 const transform = zoomTransform(viewport)
                 const [x, y] = transform.invert(
                   pointer(event.nativeEvent, viewport),
                 )
+                const kind = placedKind()
+                if (kind) {
+                  void placeElement(
+                    layer,
+                    page.ref,
+                    withDrawn(frames),
+                    { x, y },
+                    kind,
+                  )
+                  return
+                }
                 if (framing) {
                   const size = sizeOf(viewport)
                   const [left, top] = transform.invert([0, 0])
