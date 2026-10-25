@@ -32,9 +32,18 @@ import { listProjects, readPageOrder } from '@/server/board/scan'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
+import { writeStarterSheet } from '@/server/look/starter'
+import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
+import {
+  DEFAULT_LOOK,
+  STARTER_ACCENTS,
+  STARTER_FONTS,
+  type StarterAccent,
+  type StarterFont,
+} from '@/shared/starter-tokens'
 
 import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal, parseBody } from './envelope'
@@ -75,9 +84,15 @@ const frameFlagSchema = z.object({
 })
 const projectAddSchema = z.object({ name: name.optional() })
 const projectSchema = z.object({ ref })
-
-/** What New project names a project when the developer has not named it yet. */
-const UNTITLED = 'untitled'
+const projectTokensSchema = z.object({
+  ref,
+  accent: z
+    .enum(Object.keys(STARTER_ACCENTS) as [StarterAccent])
+    .default(DEFAULT_LOOK.accent),
+  font: z
+    .enum(Object.keys(STARTER_FONTS) as [StarterFont])
+    .default(DEFAULT_LOOK.font),
+})
 
 /**
  * The board's structure writes, each behind `requireWriter`, its body
@@ -86,13 +101,15 @@ const UNTITLED = 'untitled'
  * developer can undo it, and names the page the board shows on either side
  * of it, so an undo can follow a page it brings back or renames.
  * `measure` reads a frame's content on the warm browser for a fit, which
- * refuses `browser-not-found` where none is given.
+ * refuses `browser-not-found` where none is given. `tokens` is the
+ * `--tokens` sheet the server was given, which a starter sheet never goes under.
  */
 export function structureRoutes(
   root: string,
   access: Access,
   history: History,
   measure?: MeasureFrame,
+  tokens: string | null = null,
 ): Hono {
   const app = new Hono()
   app.use('/api/page/*', requireWriter(access))
@@ -393,7 +410,7 @@ export function structureRoutes(
   app.post('/api/project/add', async (c) => {
     const body = await parseBody(c.req.raw, projectAddSchema)
     const projectName =
-      body.name ?? nextFreeName(UNTITLED, await listProjects(root))
+      body.name ?? nextFreeName(START_PROJECT, await listProjects(root))
     const project = await recorded(
       (journal) => addProject(root, projectName, new Date(), { journal }),
       onHome,
@@ -418,6 +435,22 @@ export function structureRoutes(
       onHome,
     )
     return c.json({ ok: true, data: project })
+  })
+
+  /** Creates the project's `tokens.css` from a preset, refusing where any sheet already reaches it. */
+  app.post('/api/project/tokens', async (c) => {
+    const body = await parseBody(c.req.raw, projectTokensSchema)
+    const sheet = await recorded(
+      (journal) =>
+        writeStarterSheet(
+          root,
+          body.ref,
+          { accent: body.accent, font: body.font },
+          { tokens, journal },
+        ),
+      onHome,
+    )
+    return c.json({ ok: true, data: sheet })
   })
 
   app.post('/api/project/delete', async (c) => {

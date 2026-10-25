@@ -8,11 +8,12 @@ This record holds at most 600 words.
 
 ### Files and folders
 
-- An agent draws by writing an HTML file and running a few commands, each with machine-readable output and no prompts
+- An agent draws by writing an HTML file and running commands with machine-readable output and no prompts
 - The files are the design. Frameboard keeps no private copy, and a hand edit changes only what it edited.
 - Frames render as real web pages, so animation, video, and interaction work
 - A board folder lives inside a repository or anywhere on disk, with or without git
 - An empty folder starts with one command
+- A new board's first page asks for a name, a first screen size, and a look, and writes each answer to files
 
 ### Projects and navigation
 
@@ -22,19 +23,19 @@ This record holds at most 600 words.
 
 ### Hand edits
 
-- The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame at a phone, tablet, or desktop size, selects several frames, and undoes their own changes
-- A developer selects a frame or element and adjusts what is quicker by hand, being frame position and size, and an element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
+- The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds phone, tablet, or desktop frames, selects several frames, and undoes their own changes
+- By hand, a developer sets a selected frame's position and size and a selected element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
 
 ### Working with the agent
 
-- The agent sees what the developer selected and works through notes pinned on frames. A note sent to a listening session reaches it at once, and the agent replies in the note.
+- The agent sees what the developer selected and works through notes pinned on frames. A note reaches a listening session at once, and the agent replies in it.
 - The board shows which frame an agent is editing, and a second session is told it is taken
 - A frame breaking a content rule is reported to the agent that wrote it, at once, and on the board. A project can add rules of its own.
 - An agent screenshots a frame or a whole page, in either theme
 
 ### Themes and tokens
 
-- Every frame works in light and dark. One toggle switches the whole board, and a frame can be flipped alone.
+- Every frame works in light and dark, switched board-wide by one toggle or flipped alone.
 - Frames share one look through design tokens, with a board-wide default and per-project overrides
 
 ## Non-goals

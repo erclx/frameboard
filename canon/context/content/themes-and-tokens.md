@@ -21,6 +21,8 @@ Owns the head spliced into a served frame and the Theme tab's token table.
 - A self-removing script beside the style applies the `?theme=` query's theme through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
 - The token table reads each sheet with postcss into one row per custom property, light and dark, grouped as Color, Radius, Font, and Other
 
+`starter.ts` creates a project `tokens.css` from the presets in `src/shared/starter-tokens.ts`, being five accents with hand-picked dark pairs and Geist or Geist Mono. It refuses `tokens-exist` where a board, `--tokens`, or project sheet already reaches the project, so it never writes under a look somebody chose.
+
 The routes a frame imports from sit in `src/server/routes/`, which `canon/context/board/server.md` owns.
 
 - `/frameboard/faces/<family>/` serves Geist, Geist Mono, and Caveat with each license from `@fontsource-variable`, in `dist/faces/` at build or `node_modules/.cache/frameboard/faces` from source

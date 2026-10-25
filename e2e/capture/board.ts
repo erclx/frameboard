@@ -809,6 +809,49 @@ async function hiddenSketch(page: Page): Promise<void> {
 }
 
 /**
+ * Answers the socket's board message with the board `serve` starts in an
+ * empty folder, being `untitled` alone with an empty `page-1`, so the guide a
+ * new board shows draws over the preview fixture.
+ */
+async function untouchedBoard(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        data?: ListResult
+      }
+      const [first] = parsed.data?.projects ?? []
+      if (parsed.type !== 'board' || !parsed.data || !first) {
+        socket.send(message)
+        return
+      }
+      const path = first.path.replace(/[^/]+$/, 'untitled')
+      parsed.data.projects = [
+        {
+          ...first,
+          name: 'untitled',
+          path,
+          pages: [
+            {
+              ref: 'untitled/page-1',
+              project: 'untitled',
+              name: 'page-1',
+              path: `${path}/page-1`,
+              index: 0,
+              layoutError: null,
+              frames: [],
+            },
+          ],
+        },
+      ]
+      socket.send(JSON.stringify(parsed))
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
  * Lists `webapp/home/about` 20px under the hero through the socket's board
  * message, so the fitted view crowds its label with no fixture edit.
  */
@@ -1109,7 +1152,8 @@ const STATE_ONLY = ['320', '768', '1536']
  * tab open, with tokens and with none, the Assets tab with the reference's
  * six files, a frame's findings list open from its badge and listed under
  * Checks, and the right-click menus on a frame, beside its copy toast, on
- * the selected element, on empty canvas, and on a page and a layers row. The "Edited" times count back from
+ * the selected element, on empty canvas, and on a page and a layers row, and
+ * the guide a new board's start page shows. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
  * font, so the board cases also hold the label's check findings mark in both
  * themes, beside the hero taking its colors and faces from the tokens. Every
@@ -1775,6 +1819,22 @@ export const BOARD_CASES: CaptureCase[] = [
         mask: [AVATAR],
         setup: themed(
           both(stackedAbout, readyWhen('[data-frame][data-label-crowded]')),
+        ),
+      },
+      {
+        section: 'guide',
+        theme,
+        route: '/p/untitled/page-1',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            untouchedBoard,
+            noTokens,
+            asWriter,
+            readyWhen('section[aria-labelledby="guide-title"]'),
+          ),
         ),
       },
       {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -554,6 +554,62 @@ describe('structureRoutes', () => {
       })
       expect(existsSync(join(board.root, 'studio/agent-page'))).toBe(true)
       expect(existsSync(join(board.root, 'studio/home'))).toBe(false)
+    })
+
+    it('writes a starter token sheet and undoes it away', async () => {
+      const response = await post('/api/project/tokens', {
+        ref: 'studio',
+        accent: 'green',
+        font: 'geist',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { project: 'studio', accent: 'green', font: 'geist' },
+      })
+      expect(
+        readFileSync(join(board.root, 'studio/tokens.css'), 'utf8'),
+      ).toContain('--accent: #30a46c;')
+
+      await history.undo()
+
+      expect(existsSync(join(board.root, 'studio/tokens.css'))).toBe(false)
+    })
+
+    it('answers usage for an accent outside the presets', async () => {
+      const response = await post('/api/project/tokens', {
+        ref: 'studio',
+        accent: 'teal',
+      })
+
+      expect(response.status).toBe(400)
+      expect(existsSync(join(board.root, 'studio/tokens.css'))).toBe(false)
+    })
+
+    it('refuses tokens-exist with 409 over the server --tokens sheet', async () => {
+      const given = join(board.root, 'consumer.css')
+      writeFileSync(given, ':root{--a:1px}\n')
+      app = structureRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+        undefined,
+        given,
+      )
+
+      const response = await post('/api/project/tokens', { ref: 'studio' })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'tokens-exist' },
+      })
+      expect(existsSync(join(board.root, 'studio/tokens.css'))).toBe(false)
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
     })
 
     it('refuses a project write with no writer', async () => {

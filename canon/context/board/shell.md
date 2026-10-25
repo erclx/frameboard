@@ -38,6 +38,15 @@ The layers tree lists the top of the stack first. A row click selects its frame 
 
 An element row renames on a double-click or F2 too, writing `data-name` as the inspector's Name does. Its F2 stops at the row, so the board's own F2 opens no second field.
 
+### `src/client/board/guide/`
+
+Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame.
+
+- `untouched.ts` holds while the board is the start project alone with its one empty start page and the tab writes, so nothing on disk records the guide
+- `state.ts` keeps the guide's step in the tab, so it outlives the canvas a rename remounts under the new route, and Skip or Finish ends it until reload
+- Each answer goes through a write the board already makes, being the project rename, `POST /api/project/tokens`, and the Frame tool's add, so Undo takes each back
+- The look step drops out where the token table names any sheet, and the agent choice writes nothing and hands the developer a prompt
+
 ### `src/client/board/find/`
 
 Owns find, being the panel Cmd+F puts in place of the left panel's tabs under the same header, its query, and the pick, which change together.

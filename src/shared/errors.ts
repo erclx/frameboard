@@ -51,6 +51,8 @@ export const EXIT_CODES = {
   'claims-invalid': 5,
   // The board client `serve` would answer with is not built.
   'client-not-built': 3,
+  // A starter token sheet refused, since a sheet already reaches the project.
+  'tokens-exist': 4,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
