@@ -14,6 +14,7 @@ import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
 import { useTokenTable } from '@/client/board/tokens'
 import { toast } from '@/client/components/ui/toast'
+import { movePin } from '@/client/home/pins'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
@@ -149,6 +150,7 @@ export function GuideCard({
       } catch (error) {
         return refuse(error, `Couldn't rename ${project}`)
       }
+      movePin(project, folder)
       set({ project: folder, name: null })
       navigate(boardUrl(folder, page.name), { replace: true })
       return advance()

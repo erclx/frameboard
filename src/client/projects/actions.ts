@@ -68,8 +68,9 @@ export function projectHref({ name, pages }: ProjectRecord): string {
 }
 
 /**
- * Renames a project through the server, carrying its pin to the new name, so
- * every caller of a rename keeps it. A name the verb refuses as invalid
+ * Renames a project through the server, carrying its pin to the new name.
+ * The new board guide renames through the structure client and carries the
+ * pin itself. A name the verb refuses as invalid
  * keeps the field open with the reason under it, and any other refusal
  * closes the field and raises the error toast. Resolves the new name, or
  * null when the project kept its own.

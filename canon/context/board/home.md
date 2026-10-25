@@ -41,4 +41,4 @@ The header and each card's menu run the `project.*` actions.
 Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, Pin, and Delete reach the palette only while there is a project to act on, naming it as the row's hint.
 
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
-- `renameProject` carries a pin to the new name for every caller, a delete from the home view or the board drops it, and a duplicate starts unpinned
+- A rename carries a pin to the new name, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned

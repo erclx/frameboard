@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
+import { pinnedProjects } from '@/client/home/pins'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { PageRecord } from '@/shared/records/list'
@@ -91,6 +92,7 @@ describe('GuideCard', () => {
   })
 
   afterEach(() => {
+    localStorage.clear()
     resetGuide()
     liveStore.setState({ canWrite: false, board: null })
   })
@@ -134,6 +136,22 @@ describe('GuideCard', () => {
       await screen.findByRole('heading', { name: 'Which screen first?' }),
     ).toHaveFocus()
     expect(memory.history.at(-1)).toBe('/p/acme/page-1')
+  })
+
+  it('carries a pin on untitled to the name the guide gives it', async () => {
+    localStorage.setItem('frameboard.home.pins', JSON.stringify(['untitled']))
+    const user = userEvent.setup()
+    renderCard()
+
+    await user.clear(
+      screen.getByRole('textbox', { name: 'What are you designing?' }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'What are you designing?' }),
+      'acme{Enter}',
+    )
+
+    await expect.poll(() => [...pinnedProjects()]).toEqual(['acme'])
   })
 
   it('keeps the name step open with the reason under the field on a refused name', async () => {
