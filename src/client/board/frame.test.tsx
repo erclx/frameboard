@@ -670,6 +670,28 @@ describe('Frame preview', () => {
     expect(root?.style.height).toBe('844px')
   })
 
+  it('keeps the chip inside the label of a narrow frame, truncating the name first', () => {
+    const narrow = {
+      ...frame('a'),
+      name: 'a-very-long-frame-name-that-cannot-fit',
+    }
+    const { container, getByText } = render(
+      <div className="relative" style={{ paddingTop: 40 }}>
+        <Frame frame={narrow} live={false} version={0} />
+      </div>,
+    )
+
+    act(() => setPreview(['studio/home/a'], 60))
+
+    const chip = container.querySelector('[data-preview-chip]')
+    const label = getByText(narrow.name).parentElement
+    const name = getByText(narrow.name)
+    expect(name.clientWidth).toBe(0)
+    expect(chip?.getBoundingClientRect().right).toBeLessThanOrEqual(
+      Math.ceil(label?.getBoundingClientRect().right ?? 0),
+    )
+  })
+
   it('draws at its stored width once the preview ends', () => {
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     act(() => setPreview(['studio/home/a'], 834))

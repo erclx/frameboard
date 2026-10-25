@@ -208,7 +208,9 @@ export const Frame = memo(function Frame({
         ) : null}
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
-        <span className="truncate">{frame.name}</span>
+        <span className={cn('truncate', preview && 'shrink-[1000]')}>
+          {frame.name}
+        </span>
         {preview ? <PreviewChip width={preview.width} /> : null}
         {playing ? null : (
           <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
@@ -312,19 +314,20 @@ function ThemeMarker({
 
 /**
  * The width a frame is previewed at, beside its name. It reads as a preview
- * rather than a size, since the frame's stored box is unchanged. It never
- * shrinks, since a clipped width reads as a different number, so a narrow
- * frame truncates the name first.
+ * rather than a size, since the frame's stored box is unchanged. A narrow
+ * label truncates the name first, which shrinks far faster beside it, then
+ * ends the chip in an ellipsis, so a clipped width never reads as a different
+ * number and the chip stays inside the label.
  */
 function PreviewChip({ width }: { width: number }) {
   return (
     <span
       data-preview-chip
       title={`Previewed at ${width} px wide. The frame's size is unchanged.`}
-      className="flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] whitespace-nowrap text-foreground"
+      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground"
     >
       <MoveHorizontal aria-hidden className="size-3 shrink-0" />
-      Preview {width}
+      <span className="truncate">Preview {width}</span>
     </span>
   )
 }
