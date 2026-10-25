@@ -233,7 +233,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:default}
 .atag{animation:tagtint 2.4s ease-in-out infinite}
 @keyframes tagtint{0%,100%{background-color:color-mix(in srgb,var(--claim) 18%,transparent)}50%{background-color:color-mix(in srgb,var(--claim) 7%,transparent)}}
 .atag .ain{animation:sesspulse 2.4s ease-in-out infinite}
-@keyframes sesspulse{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes sesspulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--claim) 35%,transparent)}50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--claim) 35%,transparent)}}
 @media (prefers-reduced-motion:reduce){.frame.claimed,.atag,.atag .ain{animation:none}}
 .atag{display:inline-flex;align-items:center;gap:6px;padding:2px 8px 2px 3px;border-radius:999px;background:color-mix(in srgb,var(--claim) 18%,transparent);color:color-mix(in srgb,var(--claim) 70%,var(--text));font-weight:500}
 .ain{width:16px;height:16px;border-radius:8px;background:var(--claim);color:var(--panel);display:grid;place-items:center;font-size:9px;font-weight:700}

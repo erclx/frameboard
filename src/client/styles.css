@@ -15,7 +15,7 @@
   --text-label: 11px;
   --text-label--font-weight: 600;
 
-  /* A claimed frame's outline, its tag's tint, and the initial breathe together, per agents/claim-pulse. */
+  /* A claimed frame's outline, its tag's tint, and a ring on the initial breathe together, per agents/claim-pulse. */
   --animate-claim-outline: claim-outline 2.4s ease-in-out infinite;
   --animate-claim-tag: claim-tag 2.4s ease-in-out infinite;
   --animate-claim-dot: claim-dot 2.4s ease-in-out infinite;
@@ -52,13 +52,14 @@
     }
   }
 
+  /* A ring breathes around the initial rather than the initial fading, so its letter holds contrast. */
   @keyframes claim-dot {
     0%,
     100% {
-      opacity: 1;
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--claim) 35%, transparent);
     }
     50% {
-      opacity: 0.6;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--claim) 35%, transparent);
     }
   }
 }
