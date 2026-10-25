@@ -17,6 +17,7 @@ const SHORTHANDS: Record<string, readonly string[]> = {
   font: ['font-family'],
   background: ['background-color'],
   border: ['border-color', 'border-width'],
+  'flex-flow': ['flex-direction', 'flex-wrap'],
 }
 
 /** The properties an element takes from its parent when no rule sets them. */

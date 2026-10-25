@@ -77,6 +77,7 @@ describe('elementsRoutes', () => {
               tag: 'h1',
               name: 'Studio',
               textOnly: true,
+              layout: 'block',
             },
             {
               index: 7,
@@ -84,6 +85,7 @@ describe('elementsRoutes', () => {
               tag: 'img',
               name: 'dot',
               textOnly: false,
+              layout: 'block',
             },
           ],
         },
@@ -102,6 +104,28 @@ describe('elementsRoutes', () => {
 
       expect(response.status).toBe(422)
       expect((await response.json()).error.code).toBe('address-mismatch')
+    })
+
+    it("reads each element's layout from the frame's own sheet", async () => {
+      writeFileSync(
+        join(board.root, 'studio/home/hero.html'),
+        '<!doctype html><html><head><style>.stack { display: flex; flex-direction: column }</style></head><body><div class="stack"><p>a</p></div></body></html>',
+      )
+
+      const response = await routes.request(
+        `/api/frames/elements?ref=${encodeURIComponent(HERO)}`,
+      )
+
+      const { data } = await response.json()
+      expect(
+        data.elements.map((row: { tag: string; layout: string }) => [
+          row.tag,
+          row.layout,
+        ]),
+      ).toEqual([
+        ['div', 'column'],
+        ['p', 'block'],
+      ])
     })
 
     it('refuses a frame the board does not hold', async () => {

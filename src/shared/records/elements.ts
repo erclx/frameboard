@@ -1,5 +1,14 @@
 import { z } from 'zod'
 
+/**
+ * How an element lays out what it holds, read from the frame's static
+ * cascade: a flex by its main axis, a grid, or `block` for anything else,
+ * including a flex or grid set through an unresolved `var()`.
+ */
+export const layoutSchema = z.enum(['row', 'column', 'grid', 'block'])
+
+export type Layout = z.infer<typeof layoutSchema>
+
 /** One element under a frame's `body`, addressed by the index `edit --index` takes. */
 export const treeElementSchema = z.object({
   index: z.int().min(0),
@@ -10,6 +19,8 @@ export const treeElementSchema = z.object({
   name: z.string(),
   /** True when the element holds text and nothing else. */
   textOnly: z.boolean(),
+  /** Its layout, which a culled frame's Layers rows draw from without an iframe. */
+  layout: layoutSchema,
 })
 
 export type TreeElement = z.infer<typeof treeElementSchema>

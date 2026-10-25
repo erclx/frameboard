@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
+import { readFrame } from '@/server/checks/frame-source'
+import { tokenSheets } from '@/server/checks/tokens'
+
+import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { parseFrame } from './address'
-import { elementName, elementTree } from './elements'
+import { elementLayouts, elementName, elementTree } from './elements'
 
 describe('elementTree', () => {
   it('lists each element under body with the index parseFrame gives it', () => {
@@ -11,15 +15,37 @@ describe('elementTree', () => {
     const tree = elementTree(source)
 
     expect(tree).toEqual([
-      { index: 4, parent: null, tag: 'main', name: 'main', textOnly: false },
-      { index: 5, parent: 4, tag: 'h1', name: 'Hi', textOnly: true },
-      { index: 6, parent: 4, tag: 'p', name: 'x', textOnly: true },
+      {
+        index: 4,
+        parent: null,
+        tag: 'main',
+        name: 'main',
+        textOnly: false,
+        layout: 'block',
+      },
+      {
+        index: 5,
+        parent: 4,
+        tag: 'h1',
+        name: 'Hi',
+        textOnly: true,
+        layout: 'block',
+      },
+      {
+        index: 6,
+        parent: 4,
+        tag: 'p',
+        name: 'x',
+        textOnly: true,
+        layout: 'block',
+      },
       {
         index: 7,
         parent: null,
         tag: 'footer',
         name: 'footer',
         textOnly: false,
+        layout: 'block',
       },
     ])
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
@@ -38,10 +64,111 @@ describe('elementTree', () => {
     ])
   })
 
+  it('gives each element the layout read at its index', () => {
+    const tree = elementTree('<body><div><p>a</p></div></body>', [
+      'block',
+      'block',
+      'block',
+      'column',
+    ])
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.tag, row.layout]),
+    ).toEqual([
+      ['div', 'column'],
+      ['p', 'block'],
+    ])
+  })
+
   it('refuses a frame where the browser builds an element the file does not state', () => {
     const tree = elementTree('<body><table><tr><td>a</td></tr></table></body>')
 
     expect(tree).toMatchObject({ ok: false, reason: 'address-mismatch' })
+  })
+})
+
+describe('elementLayouts', () => {
+  let board: TempBoard | undefined
+
+  afterEach(() => {
+    board?.cleanup()
+    board = undefined
+  })
+
+  /** The layout of the element with `id="t"`, read over the board's token sheet. */
+  function layoutOf(body: string, css = '', tokens = '') {
+    board = writeBoard({
+      'tokens.css': tokens,
+      'site/home/hero.html': `<!doctype html><html><head><style>${css}</style></head><body>${body}</body></html>`,
+    })
+    const source = readFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+    const layouts = elementLayouts(source, tokenSheets(board.root, 'site'))
+    const index = source.elements.findIndex(
+      (candidate) => candidate.attribs.id === 't',
+    )
+    return layouts[index]
+  }
+
+  it.each([
+    [
+      'a column flex',
+      '<div id="t" style="display: flex; flex-direction: column"></div>',
+      'column',
+    ],
+    ['a row flex', '<div id="t" style="display: flex"></div>', 'row'],
+    [
+      'a reversed column',
+      '<div id="t" style="display: inline-flex; flex-direction: column-reverse"></div>',
+      'column',
+    ],
+    [
+      'flex-flow: row wrap',
+      '<div id="t" style="display: flex; flex-flow: row wrap"></div>',
+      'row',
+    ],
+    [
+      'flex-flow naming a column',
+      '<div id="t" style="display: flex; flex-flow: column wrap"></div>',
+      'column',
+    ],
+    ['a grid', '<div id="t" style="display: grid"></div>', 'grid'],
+    ['an img', '<img id="t" src="x.png">', 'block'],
+    ['a plain block', '<div id="t"></div>', 'block'],
+  ])('reads %s', (_case, body, expected) => {
+    expect(layoutOf(body)).toBe(expected)
+  })
+
+  it('reads a flex a class sets', () => {
+    const layout = layoutOf(
+      '<div id="t" class="stack"></div>',
+      '.stack { display: flex; flex-direction: column }',
+    )
+
+    expect(layout).toBe('column')
+  })
+
+  it('reads a flex a token sheet rule sets', () => {
+    const layout = layoutOf(
+      '<div id="t" class="toolbar"></div>',
+      '',
+      '.toolbar { display: flex }',
+    )
+
+    expect(layout).toBe('row')
+  })
+
+  it('lets a later flex-direction win over an earlier flex-flow', () => {
+    const layout = layoutOf(
+      '<div id="t" class="a"></div>',
+      '.a { display: flex; flex-flow: column wrap } .a { flex-direction: row }',
+    )
+
+    expect(layout).toBe('row')
   })
 })
 

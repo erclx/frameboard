@@ -17,9 +17,30 @@ const TREE: ElementTree = {
   ref: HERO.ref,
   hash: HASH,
   elements: [
-    { index: 3, parent: null, tag: 'main', name: 'main', textOnly: false },
-    { index: 4, parent: 3, tag: 'h1', name: 'h1', textOnly: false },
-    { index: 5, parent: 4, tag: 'span', name: 'there', textOnly: true },
+    {
+      index: 3,
+      parent: null,
+      tag: 'main',
+      name: 'main',
+      textOnly: false,
+      layout: 'block',
+    },
+    {
+      index: 4,
+      parent: 3,
+      tag: 'h1',
+      name: 'h1',
+      textOnly: false,
+      layout: 'block',
+    },
+    {
+      index: 5,
+      parent: 4,
+      tag: 'span',
+      name: 'there',
+      textOnly: true,
+      layout: 'block',
+    },
   ],
 }
 
