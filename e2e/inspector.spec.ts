@@ -84,7 +84,10 @@ test.describe('editing a selected element by hand', () => {
     await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Fill token' }).click()
-    await page.getByRole('menuitem', { name: 'accent' }).click()
+    await page
+      .getByRole('list', { name: 'Fill tokens' })
+      .getByRole('button', { name: 'accent' })
+      .click()
     await expect.poll(read).toContain('color: var(--accent)')
 
     await page.getByRole('button', { name: 'Shadow' }).click()
