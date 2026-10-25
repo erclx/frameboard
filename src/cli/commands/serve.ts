@@ -37,7 +37,7 @@ export function registerServe(
   program: Command,
   context: ProgramContext & { clientDir: string; facesDir: string },
 ): void {
-  const { io, clientDir, facesDir } = context
+  const { io, clientDir } = context
   const command = addVerb(
     program,
     'serve',
@@ -99,7 +99,7 @@ export function registerServe(
 
     const server = await startServer({
       clientDir,
-      facesDir,
+      facesDir: context.facesDir,
       root,
       tokens,
       port: options.port,

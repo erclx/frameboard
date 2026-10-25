@@ -57,4 +57,12 @@ describe('writeFaces', () => {
 
     expect(existsSync(stray)).toBe(false)
   })
+
+  it('leaves only the faces folder beside its parent', () => {
+    const target = join(out, 'faces')
+
+    writeFaces(target)
+
+    expect(readdirSync(out)).toEqual(['faces'])
+  })
 })

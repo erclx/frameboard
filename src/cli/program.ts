@@ -147,26 +147,31 @@ export function createProgram(context: ProgramContext): Command {
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
-  const facesDir = context.facesDir ?? resolveFacesDir()
-  registerServe(program, {
+  // A getter, so only the verbs that read the faces trigger a source run's
+  // cache write, and the first read settles it for the rest.
+  let facesDir: string | undefined
+  const faced = {
     ...context,
     clientDir: context.clientDir ?? CLIENT_DIR,
-    facesDir,
-  })
+    get facesDir(): string {
+      return (facesDir ??= context.facesDir ?? resolveFacesDir())
+    },
+  }
+  registerServe(program, faced)
   registerShow(program, context)
   registerOpen(program, context)
   registerSelection(program, context)
   registerList(program, context)
   registerProject(program, context)
   registerPage(program, context)
-  registerFrame(program, { ...context, facesDir })
+  registerFrame(program, faced)
   registerEdit(program, context)
   registerCheck(program, context)
   registerNotes(program, context)
   registerInbox(program, context)
   registerEditing(program, context)
-  registerCapture(program, { ...context, facesDir })
-  registerInspect(program, { ...context, facesDir })
+  registerCapture(program, faced)
+  registerInspect(program, faced)
   registerDocs(program, context)
 
   return program
