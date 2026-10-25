@@ -50,6 +50,24 @@ describe('keyLabel', () => {
   it('shortens Escape', () => {
     expect(keyLabel('Escape', false)).toBe('Esc')
   })
+
+  it.each([true, false])(
+    'draws Enter and Backspace as glyphs, mac %s',
+    (mac) => {
+      expect(keyLabel('Enter', mac)).toBe('↵')
+      expect(keyLabel('Backspace', mac)).toBe('⌫')
+    },
+  )
+
+  it.each([true, false])('names Tab in title case, mac %s', (mac) => {
+    expect(keyLabel('Tab', mac)).toBe('Tab')
+  })
+
+  it('draws a named key after its modifier', () => {
+    expect(keyLabel('$mod+Enter', true)).toBe('⌘↵')
+    expect(keyLabel('Shift+Tab', false)).toBe('Shift+Tab')
+    expect(keyLabel('$mod+Backspace', false)).toBe('Ctrl+⌫')
+  })
 })
 
 describe('keyParts', () => {
