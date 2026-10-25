@@ -138,10 +138,16 @@ export function useHomeAction(goHome: () => void): void {
 }
 
 /**
- * Registers `project.new` while the home view is mounted, and a new project
- * opens its name for renaming. It is lit while the tab may write.
+ * Registers `project.new` while the home view or a board is mounted, and a
+ * new project opens its name for renaming on the home view. It is lit while
+ * the tab may write. The board passes `leave`, which goes home before the add
+ * rather than after, since leaving clears the board's project state and would
+ * close the rename field the add opened.
  */
-export function useNewProjectAction(calls: Structure = structure): void {
+export function useNewProjectAction(
+  calls: Structure = structure,
+  leave?: () => void,
+): void {
   useEffect(() => {
     const writable = () => liveStore.getState().canWrite
     const unregister = registerActions([
@@ -152,6 +158,7 @@ export function useNewProjectAction(calls: Structure = structure): void {
         command: { label: 'New project', icon: FolderPlus },
         enabled: writable,
         run: () => {
+          leave?.()
           calls.addProject().then((added) => {
             focusProject(added.name)
             startProjectRename(added.name)
@@ -166,7 +173,7 @@ export function useNewProjectAction(calls: Structure = structure): void {
       unsubscribe()
       unregister()
     }
-  }, [calls])
+  }, [calls, leave])
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   focusProject,
   projectStore,
   renameProject,
+  useNewProjectAction,
   useProjectActions,
 } from './actions'
 
@@ -97,6 +98,24 @@ describe('useProjectActions', () => {
     findAction('project.delete')?.run()
 
     await expect.poll(() => left).toBe(1)
+  })
+})
+
+describe('useNewProjectAction', () => {
+  it('leaves the board before the add, then opens the new name for renaming', async () => {
+    const steps: string[] = []
+    const { calls } = server({ name: 'untitled' })
+    const leave = () => {
+      steps.push(`left with ${projectStore.getState().renaming?.project}`)
+    }
+    renderHook(() => useNewProjectAction(calls, leave))
+
+    findAction('project.new')?.run()
+
+    await expect
+      .poll(() => projectStore.getState().renaming?.project)
+      .toBe('untitled')
+    expect(steps).toEqual(['left with undefined'])
   })
 })
 
