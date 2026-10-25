@@ -14,7 +14,9 @@ A local design board that coding agents draw on as plain HTML files, and you rev
 npx frameboard serve
 ```
 
-In a folder with no board above it, `serve` creates `.frameboard/` in the folder it runs in, with one empty project and opens the board at `http://127.0.0.1:4173`. Install it with `npm install -g frameboard` or `bun add -g frameboard`.
+In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project, then opens it at `http://127.0.0.1:4173` in a tab that can edit. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
+
+Install it with `npm install -g frameboard` or `bun add -g frameboard`.
 
 ## What you get
 
@@ -48,8 +50,7 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it.
 
 - `edit` changes one style, attribute, or text on one element without touching another byte
-- `show` points the open board at a frame, and `capture` writes PNGs of a frame or page in either theme
-- `frame fit` sets a frame's height to its content
+- `show` points the open board at a frame, and `capture` writes PNGs of a frame or page in either theme- `frame fit` sets a frame's height to its content
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
