@@ -21,11 +21,10 @@ import { registerProject } from './commands/project'
 import { registerSelection } from './commands/selection'
 import { registerServe } from './commands/serve'
 import { registerShow } from './commands/show'
+import { resolveFacesDir } from './faces-dir'
 
 // The bundle lands at dist/cli.js, so the built client sits beside it.
 const CLIENT_DIR = fileURLToPath(new URL('./client', import.meta.url))
-// The build copies the faces every frame imports beside the client.
-const FACES_DIR = fileURLToPath(new URL('./faces', import.meta.url))
 
 export interface CliIo {
   stdout: (text: string) => void
@@ -148,7 +147,7 @@ export function createProgram(context: ProgramContext): Command {
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
-  const facesDir = context.facesDir ?? FACES_DIR
+  const facesDir = context.facesDir ?? resolveFacesDir()
   registerServe(program, {
     ...context,
     clientDir: context.clientDir ?? CLIENT_DIR,

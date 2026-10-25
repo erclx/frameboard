@@ -1,5 +1,7 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -263,4 +265,29 @@ describe('capture', () => {
     expect(run.exitCode).toBe(2)
     expect(run.json().error?.code).toBe('usage')
   })
+
+  // A child process, since the mocks above stand in for the browser in this
+  // file only. Caveat, since Geist can pass as an installed font and prove
+  // nothing.
+  it('loads a bundled face when the CLI runs from source', () => {
+    board = writeBoard({
+      'studio/home/hero.html': '<p style="font-family: Caveat">Hello</p>',
+      'studio/home/layout.json': HERO['studio/home/layout.json'],
+    })
+
+    const run = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL('../index.ts', import.meta.url)),
+        'capture',
+        'studio/home/hero',
+        '--theme',
+        'light',
+        '--json',
+      ],
+      { cwd: board.root, encoding: 'utf8' },
+    )
+
+    expect(JSON.parse(run.stdout).ok).toBe(true)
+  }, 60_000)
 })
