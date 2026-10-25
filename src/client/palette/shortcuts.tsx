@@ -1,4 +1,5 @@
 import { cn } from 'cn'
+import { useRoute } from 'wouter'
 
 import {
   setCharacterKeys,
@@ -18,11 +19,14 @@ import { openOverlay, useOverlay } from './overlay'
 /**
  * One line of the sheet. A row names the actions whose first key it prints,
  * or a gesture no action carries, such as a click with a modifier.
+ * `characterGestures` are gestures typing a character, drawn faint while the
+ * Single-key shortcuts switch is off.
  */
 interface Row {
   label: string
   actions?: readonly string[]
   gestures?: readonly string[]
+  characterGestures?: readonly string[]
 }
 
 interface Section {
@@ -114,18 +118,50 @@ const SECTIONS: readonly Section[] = [
   },
 ]
 
-const ACTION_IDS = SECTIONS.flatMap((section) =>
+/** The home view's sheet, its project keys beside the keys every screen shares. */
+const HOME_SECTIONS: readonly Section[] = [
+  {
+    title: 'Projects',
+    rows: [
+      {
+        label: 'Move between projects',
+        gestures: ['Arrows'],
+        characterGestures: ['H J K L'],
+      },
+      { label: 'First, last', gestures: ['Home', 'End'] },
+      { label: 'Open', gestures: ['↵'] },
+      { label: 'Rename', gestures: ['F2'] },
+      { label: 'Delete', gestures: ['Delete'] },
+      { label: 'Menu', gestures: [`${SHIFT} F10`] },
+    ],
+  },
+  {
+    title: 'General',
+    rows: [
+      { label: 'Command palette', actions: ['palette.open'] },
+      { label: 'This list', actions: ['help.shortcuts'] },
+      { label: 'Undo', actions: ['edit.undo'] },
+      { label: 'Redo', actions: ['edit.redo'] },
+    ],
+  },
+]
+
+const ACTION_IDS = [...SECTIONS, ...HOME_SECTIONS].flatMap((section) =>
   section.rows.flatMap((row) => row.actions ?? []),
 )
 
 /**
- * The `?` sheet of every key the board binds. Each action row reads its keys
- * from the registry, so it never drifts from what a press does, and greys
- * out until a row registers the action. A key the Single-key shortcuts
- * switch has turned off stays listed, drawn faint.
+ * The `?` sheet of every key the board binds, or on the home view the keys
+ * that move between projects. Each action row reads its keys from the
+ * registry, so it never drifts from what a press does, and greys out until
+ * a row registers the action. A key the Single-key shortcuts switch has
+ * turned off stays listed, drawn faint. It sits outside the routes, so it
+ * reads the location itself.
  */
 export function ShortcutsSheet() {
   const open = useOverlay() === 'shortcuts'
+  const [home] = useRoute('/')
+  const sections = home ? HOME_SECTIONS : SECTIONS
   const registered = useActions(ACTION_IDS)
   const byId = new Map<string, Action | undefined>(
     ACTION_IDS.map((id, index) => [id, registered[index]]),
@@ -148,7 +184,7 @@ export function ShortcutsSheet() {
           <span className="text-muted-foreground">Esc</span>
         </div>
         <div className="grid grid-cols-3 gap-x-7 gap-y-[18px] px-5 pt-4 pb-5">
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <section key={section.title}>
               <h3 className="pb-1.5 text-label text-muted-foreground">
                 {section.title}
@@ -210,6 +246,7 @@ function ShortcutRow({
       return [{ text, off: !keysOn && isCharacterKey(key) }]
     }),
     ...(row.gestures ?? []).map((text) => ({ text, off: false })),
+    ...(row.characterGestures ?? []).map((text) => ({ text, off: !keysOn })),
   ]
   // A row of actions waits on them, while a gesture row has nothing to register.
   const waiting =

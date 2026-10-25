@@ -2,7 +2,10 @@ import '../styles.css'
 
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Router } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import {
@@ -40,6 +43,15 @@ function action(id: string, extra: Partial<Action> = {}) {
 const row = (label: string) =>
   within(screen.getByRole('dialog')).getByText(label).closest('li')!
 
+/** Renders on a board's route, since the sheet swaps its sections on home. */
+function renderOnBoard(ui: ReactNode) {
+  return render(
+    <Router hook={memoryLocation({ path: '/p/sketch/home' }).hook}>
+      {ui}
+    </Router>,
+  )
+}
+
 afterEach(() => {
   act(() => openOverlay(null))
   while (cleanups.length > 0) cleanups.pop()?.()
@@ -47,7 +59,7 @@ afterEach(() => {
 
 describe('ShortcutsSheet', () => {
   it('lists the sections in the order the reference draws them', async () => {
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
 
@@ -66,7 +78,7 @@ describe('ShortcutsSheet', () => {
       action('changes.next', { keys: ['BracketRight'] }),
       action('changes.previous', { keys: ['BracketLeft'] }),
     )
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -86,7 +98,7 @@ describe('ShortcutsSheet', () => {
       const move = action('tool.move', { keys: ['v'] })
       register(move)
       cleanups.push(bindKeys(window))
-      render(<ShortcutsSheet />)
+      renderOnBoard(<ShortcutsSheet />)
       act(() => openOverlay('shortcuts'))
       const toggle = await screen.findByRole('switch', {
         name: 'Single-key shortcuts',
@@ -121,7 +133,7 @@ describe('ShortcutsSheet', () => {
         action('find.open', { keys: ['$mod+KeyF'] }),
       )
       setCharacterKeys(false)
-      render(<ShortcutsSheet />)
+      renderOnBoard(<ShortcutsSheet />)
 
       act(() => openOverlay('shortcuts'))
       await screen.findByRole('dialog')
@@ -135,7 +147,7 @@ describe('ShortcutsSheet', () => {
 
   it('prints the key a registered action binds', async () => {
     register(action('tool.move', { keys: ['v'] }))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -145,7 +157,7 @@ describe('ShortcutsSheet', () => {
 
   it('lists Zoom to 100% under View with its key', async () => {
     register(action('view.zoom100', { keys: ['Shift+Digit0'] }))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -157,7 +169,7 @@ describe('ShortcutsSheet', () => {
 
   it('lists Find under Tools with its key', async () => {
     register(action('find.open', { keys: ['$mod+KeyF'] }))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -169,7 +181,7 @@ describe('ShortcutsSheet', () => {
 
   it('greys a row whose action is not registered yet', async () => {
     register(action('tool.move', { keys: ['v'] }))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -185,7 +197,7 @@ describe('ShortcutsSheet', () => {
       action('arrange.alignLeft', { keys: ['Alt+KeyA'] }),
       action('arrange.alignRight', { keys: ['Alt+KeyD'] }),
     )
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -214,7 +226,7 @@ describe('ShortcutsSheet', () => {
     })
 
     it('lists All projects with its key on a board', async () => {
-      render(
+      renderOnBoard(
         <>
           <HomeAction goHome={() => {}} />
           <ShortcutsSheet />
@@ -230,9 +242,68 @@ describe('ShortcutsSheet', () => {
     })
   })
 
+  describe('on the home view', () => {
+    function renderHomeSheet() {
+      render(
+        <Router hook={memoryLocation({ path: '/' }).hook}>
+          <ShortcutsSheet />
+        </Router>,
+      )
+      act(() => openOverlay('shortcuts'))
+      return screen.findByRole('dialog')
+    }
+
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('lists the project keys in place of the board sections', async () => {
+      const dialog = await renderHomeSheet()
+
+      expect(
+        within(dialog)
+          .getAllByRole('heading', { level: 3 })
+          .map((heading) => heading.textContent),
+      ).toEqual(['Projects', 'General'])
+    })
+
+    it('shows no Nudge, Resize, or tool rows', async () => {
+      const dialog = await renderHomeSheet()
+
+      expect(
+        ['Nudge', 'Resize', 'Move', 'All projects'].map((label) =>
+          within(dialog).queryByText(label),
+        ),
+      ).toEqual([null, null, null, null])
+    })
+
+    it('draws H J K L faint while single-key shortcuts are off', async () => {
+      setCharacterKeys(false)
+      await renderHomeSheet()
+
+      const chips = [
+        ...row('Move between projects').querySelectorAll('kbd kbd'),
+      ]
+
+      expect(
+        chips.map((chip) => [chip.textContent, chip.hasAttribute('data-off')]),
+      ).toEqual([
+        ['Arrows', false],
+        ['H J K L', true],
+      ])
+    })
+
+    it('keeps the palette key a board lists', async () => {
+      cleanups.push(registerPaletteActions())
+      await renderHomeSheet()
+
+      expect(row('This list').querySelector('kbd')?.textContent).toBe('?')
+    })
+  })
+
   it('opens on ?', async () => {
     cleanups.push(registerPaletteActions(), bindKeys(window))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     await userEvent.keyboard('{Shift>}?{/Shift}')
 
@@ -243,7 +314,7 @@ describe('ShortcutsSheet', () => {
 
   it('shows its own key as ?', async () => {
     cleanups.push(registerPaletteActions())
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
 
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
@@ -255,7 +326,7 @@ describe('ShortcutsSheet', () => {
     const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
     register(exitPlay)
     cleanups.push(bindKeys(window))
-    render(<ShortcutsSheet />)
+    renderOnBoard(<ShortcutsSheet />)
     act(() => openOverlay('shortcuts'))
     await screen.findByRole('dialog')
 
