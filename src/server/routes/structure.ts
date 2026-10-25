@@ -32,6 +32,7 @@ import { listProjects, readPageOrder } from '@/server/board/scan'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
+import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
@@ -75,9 +76,6 @@ const frameFlagSchema = z.object({
 })
 const projectAddSchema = z.object({ name: name.optional() })
 const projectSchema = z.object({ ref })
-
-/** What New project names a project when the developer has not named it yet. */
-const UNTITLED = 'untitled'
 
 /**
  * The board's structure writes, each behind `requireWriter`, its body
@@ -393,7 +391,7 @@ export function structureRoutes(
   app.post('/api/project/add', async (c) => {
     const body = await parseBody(c.req.raw, projectAddSchema)
     const projectName =
-      body.name ?? nextFreeName(UNTITLED, await listProjects(root))
+      body.name ?? nextFreeName(START_PROJECT, await listProjects(root))
     const project = await recorded(
       (journal) => addProject(root, projectName, new Date(), { journal }),
       onHome,
