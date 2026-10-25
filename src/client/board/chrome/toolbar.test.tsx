@@ -156,6 +156,24 @@ describe('Toolbar', () => {
       expect(rows[0]).toHaveAttribute('aria-checked', 'true')
     })
 
+    it('gives the shapes caret a target of at least 24 by 24px clear of its neighbors', () => {
+      renderWithTools()
+
+      const caret = screen.getByRole('button', { name: 'Shapes' })
+      const box = caret.getBoundingClientRect()
+      const shape = screen
+        .getByRole('button', { name: 'Rectangle' })
+        .getBoundingClientRect()
+      const note = screen
+        .getByRole('button', { name: 'Note' })
+        .getBoundingClientRect()
+
+      expect(box.width).toBeGreaterThanOrEqual(24)
+      expect(box.height).toBeGreaterThanOrEqual(24)
+      expect(box.left).toBeGreaterThanOrEqual(shape.right)
+      expect(box.right).toBeLessThanOrEqual(note.left)
+    })
+
     it('shows the Shape button unpressed under another tool', () => {
       renderWithTools()
 

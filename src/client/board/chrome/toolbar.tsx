@@ -185,7 +185,7 @@ function ShapeTool({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Shapes"
-          className="-ml-0.5 grid h-8 w-3 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
         >
           <ChevronDown aria-hidden className="size-[9px]" />
         </DropdownMenuTrigger>
