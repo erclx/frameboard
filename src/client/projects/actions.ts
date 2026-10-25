@@ -1,4 +1,4 @@
-import { FolderPlus } from 'lucide-react'
+import { Copy, FolderPlus, PencilLine, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -69,13 +69,14 @@ export function projectHref({ name, pages }: ProjectRecord): string {
 /**
  * Renames a project through the server. A name the verb refuses as invalid
  * keeps the field open with the reason under it, and any other refusal
- * closes the field and raises the error toast.
+ * closes the field and raises the error toast. Resolves the new name, or
+ * null when the project kept its own.
  */
 export async function renameProject(
   project: string,
   name: string,
   calls: Structure = structure,
-): Promise<void> {
+): Promise<string | null> {
   projectStore.setState(({ renaming }) => ({
     renaming: renaming && { ...renaming, draft: name },
   }))
@@ -90,37 +91,37 @@ export async function renameProject(
           attempt: renaming.attempt + 1,
         },
       }))
-      return
+      return null
     }
     stopProjectRename()
     reportRefusal(`Couldn't rename ${project}`)(error)
-    return
+    return null
   }
   stopProjectRename()
   focusProject(name)
+  return name
+}
+
+/** The focused card or row, which the home view's project actions act on. */
+export function focusedProject(): string | null {
+  return projectStore.getState().focused
+}
+
+interface ProjectActionsOptions {
+  /** Stands in for the server's structure routes, as a test's server does. */
+  calls?: Structure
+  /** Runs once a delete lands, as the board leaves the project it showed. */
+  onDeleted?: () => void
 }
 
 /**
- * Registers `project.new` while the home view is mounted, and `project.open`,
- * `project.rename`, `project.duplicate`, and `project.delete` acting on the
- * focused card or row. Only New project carries a palette command, since
- * opening the palette takes focus off the card the others act on. Each write
- * is lit while the tab may write, and a new project opens its name for
- * renaming.
+ * Registers `project.new` while the home view is mounted, and a new project
+ * opens its name for renaming. It is lit while the tab may write.
  */
-export function useProjectActions(calls: Structure = structure): void {
-  const [, navigate] = useLocation()
+export function useNewProjectAction(calls: Structure = structure): void {
   useEffect(() => {
     const writable = () => liveStore.getState().canWrite
-    const focused = () => {
-      const name = projectStore.getState().focused
-      return liveStore
-        .getState()
-        .board?.projects.find((project) => project.name === name)
-    }
-    const onProject = () => writable() && focused() !== undefined
-
-    const actions: Action[] = [
+    const unregister = registerActions([
       {
         id: 'project.new',
         label: 'New project',
@@ -134,6 +135,43 @@ export function useProjectActions(calls: Structure = structure): void {
           }, reportRefusal("Couldn't add a project"))
         },
       },
+    ])
+    const unsubscribe = liveStore.subscribe((state, previous) => {
+      if (state.canWrite !== previous.canWrite) refreshActions()
+    })
+    return () => {
+      unsubscribe()
+      unregister()
+    }
+  }, [calls])
+}
+
+/**
+ * Registers `project.open`, `project.rename`, `project.duplicate`, and
+ * `project.delete` acting on the project `target` names, the focused card on
+ * the home view and the open project on the board. Rename, Duplicate, and
+ * Delete reach the palette only while there is a target, each naming it as
+ * the row's hint, since an unnamed Delete is a guess. Each write is lit while
+ * the tab may write. Pass a stable `target` and `onDeleted`, since a new one
+ * registers the actions again.
+ */
+export function useProjectActions(
+  target: () => string | null,
+  { calls = structure, onDeleted }: ProjectActionsOptions = {},
+): void {
+  const [, navigate] = useLocation()
+  useEffect(() => {
+    const writable = () => liveStore.getState().canWrite
+    const focused = () => {
+      const name = target()
+      return liveStore
+        .getState()
+        .board?.projects.find((project) => project.name === name)
+    }
+    const onProject = () => writable() && focused() !== undefined
+    const hint = () => focused()?.name ?? ''
+
+    const actions: Action[] = [
       {
         id: 'project.open',
         label: 'Open',
@@ -148,6 +186,7 @@ export function useProjectActions(calls: Structure = structure): void {
         id: 'project.rename',
         label: 'Rename',
         group: 'project',
+        command: { label: 'Rename project', icon: PencilLine, hint },
         enabled: onProject,
         run: () => {
           const project = focused()
@@ -158,6 +197,7 @@ export function useProjectActions(calls: Structure = structure): void {
         id: 'project.duplicate',
         label: 'Duplicate',
         group: 'project',
+        command: { label: 'Duplicate project', icon: Copy, hint },
         enabled: onProject,
         run: () => {
           const project = focused()
@@ -174,13 +214,17 @@ export function useProjectActions(calls: Structure = structure): void {
         id: 'project.delete',
         label: 'Delete',
         group: 'project',
+        command: { label: 'Delete project', icon: Trash2, hint },
         enabled: onProject,
         run: () => {
           const project = focused()
           if (!project) return
           calls
             .deleteProject(project.name)
-            .catch(reportRefusal(`Couldn't delete ${project.name}`))
+            .then(
+              () => onDeleted?.(),
+              reportRefusal(`Couldn't delete ${project.name}`),
+            )
         },
       },
     ]
@@ -197,5 +241,5 @@ export function useProjectActions(calls: Structure = structure): void {
       unregister()
       projectStore.setState({ focused: null, renaming: null })
     }
-  }, [calls, navigate])
+  }, [calls, navigate, target, onDeleted])
 }
