@@ -48,7 +48,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:default}
 .eyebtn{position:relative;display:grid;place-items:center;width:20px;height:20px;margin:-3px -3px;border-radius:5px;background:var(--sel);color:var(--text)}
 .tip{position:absolute;left:50%;top:26px;transform:translateX(-50%);white-space:nowrap;padding:5px 8px;border-radius:6px;background:var(--text);color:var(--panel);font-size:11px;z-index:9;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .row.hov{background:var(--hover)}
-.row.hidden .nm,.row.hidden .ic{color:var(--faint)}
+.row.hidden .nm{color:color-mix(in srgb,var(--muted) 70%,var(--text))}.row.hidden .ic{color:var(--faint)}
 .acts{display:flex;gap:6px;color:var(--muted)}
 .acts.on{color:var(--muted)}
 .dock{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:var(--panel);border-right:1px solid var(--border);width:44px}
