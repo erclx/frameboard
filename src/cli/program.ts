@@ -1,10 +1,9 @@
-import { fileURLToPath } from 'node:url'
-
 import { Command, InvalidArgumentError } from 'commander'
 
 import { resolveBoard } from '@/server/board/root'
 import { version } from '@/shared/version'
 
+import { resolveClientDir } from './client-dir'
 import { registerCapture } from './commands/capture'
 import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
@@ -22,9 +21,6 @@ import { registerSelection } from './commands/selection'
 import { registerServe } from './commands/serve'
 import { registerShow } from './commands/show'
 import { resolveFacesDir } from './faces-dir'
-
-// The bundle lands at dist/cli.js, so the built client sits beside it.
-const CLIENT_DIR = fileURLToPath(new URL('./client', import.meta.url))
 
 export interface CliIo {
   stdout: (text: string) => void
@@ -147,12 +143,19 @@ export function createProgram(context: ProgramContext): Command {
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
-  // A getter, so only the verbs that read the faces trigger a source run's
-  // cache write, and the first read settles it for the rest.
+  // Getters, so only the verbs that read the faces trigger a source run's
+  // cache write, only `serve` checks the client, and the first read settles it
+  // for the rest.
   let facesDir: string | undefined
+  let clientDir: string | undefined
   const faced = {
     ...context,
-    clientDir: context.clientDir ?? CLIENT_DIR,
+    get clientDir(): string {
+      return (clientDir ??= resolveClientDir(
+        import.meta.url,
+        context.clientDir,
+      ))
+    },
     get facesDir(): string {
       return (facesDir ??= context.facesDir ?? resolveFacesDir())
     },
