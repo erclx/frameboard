@@ -181,6 +181,34 @@ export function menuActions(context: MenuContext): Action[] {
         })
       },
     },
+    {
+      id: 'note.addOnFrame',
+      label: 'Add a note',
+      group: 'note',
+      enabled: () =>
+        writable() &&
+        place.getState().at !== null &&
+        place.getState().frame !== null,
+      run: () => {
+        const { at, frame: ref } = place.getState()
+        const frame = context
+          .frames()
+          .find((candidate) => candidate.ref === ref)
+        if (!at || !frame) return
+        mode.setState({ tool: 'note' })
+        notes.setState({
+          open: {
+            kind: 'new',
+            pick: {
+              frame: { ref: frame.ref, name: frame.name },
+              element: null,
+              renderedAt: null,
+              at,
+            },
+          },
+        })
+      },
+    },
   ]
 }
 

@@ -13,7 +13,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 import { useBoardActions } from '../board-actions'
 import { Canvas } from '../canvas'
 import { modeStore } from '../mode'
-import { useNoteTool } from '../notes/tool'
+import { notesUi, useNoteTool } from '../notes/tool'
 import { clear, select, selectElement, selectionStore } from '../selection'
 import { clipboardStore, useStructureActions } from '../structure/actions'
 import { useFrameTool } from '../structure/tool'
@@ -88,6 +88,7 @@ describe('CanvasMenu', () => {
     clipboardStore.setState({ held: 0 })
     themeStore.setState({ choice: 'light', flipped: new Set() })
     modeStore.setState({ mode: 'edit', tool: 'move', hideUi: false })
+    notesUi.setState({ open: null, drafts: {} })
   })
 
   it('selects an unselected frame alone on opening, never the two selected before', async () => {
@@ -121,14 +122,50 @@ describe('CanvasMenu', () => {
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
     ).toEqual([
+      `Copy${MOD}C`,
+      `Cut${MOD}X`,
       IS_MAC ? 'Copy as PNG⇧⌘C' : 'Copy as PNGCtrlShiftC',
       `Duplicate${MOD}D`,
       'RenameF2',
+      'Add a noteN',
       IS_MAC ? 'Hide⇧⌘H' : 'HideCtrlShiftH',
       IS_MAC ? 'Lock⇧⌘L' : 'LockCtrlShiftL',
       'Flip to dark',
       'Delete⌫',
     ])
+  })
+
+  it('opens a note on the right-clicked frame from Add a note', async () => {
+    render(<Board page={PAGE} />)
+    rightClick(centerOf(A.ref))
+    const menu = await screen.findByRole('menu')
+
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: /^Add a note/ }),
+    )
+
+    expect([
+      modeStore.getState().tool,
+      notesUi.getState().open?.kind === 'new' ? notesUi.getState().open : null,
+    ]).toMatchObject([
+      'note',
+      { pick: { frame: { ref: A.ref }, element: null } },
+    ])
+  })
+
+  it('greys Cut on a locked frame and keeps Copy, as their keys do', async () => {
+    render(<Board page={PAGE} />)
+    rightClick(centerOf(C.ref))
+    const menu = await screen.findByRole('menu')
+
+    expect([
+      within(menu)
+        .getByRole('menuitem', { name: 'Copy' })
+        .getAttribute('aria-disabled'),
+      within(menu)
+        .getByRole('menuitem', { name: /^Cut/ })
+        .getAttribute('aria-disabled'),
+    ]).toEqual([null, 'true'])
   })
 
   it('flips the right-clicked frame alone, writing nothing', async () => {
@@ -157,8 +194,10 @@ describe('CanvasMenu', () => {
     rightClick(centerOf(A.ref))
 
     expect(
-      within(await screen.findByRole('menu')).getAllByRole('menuitem')[5],
-    ).toHaveTextContent('Flip to light')
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
+        name: 'Flip to light',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('greys Delete on a locked frame, as its key is', async () => {
