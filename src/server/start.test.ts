@@ -19,6 +19,10 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../test/support/fixture-board'
+import {
+  launchShellOrNull,
+  SHELL_HOOK_TIMEOUT_MS,
+} from '../../test/support/headless-shell'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
 // The server's browser sweep refuses at once, so no spec here starts Chromium.
@@ -536,6 +540,96 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     expect(messages[0]?.type).toBe('board')
   })
 })
+
+const shell = await launchShellOrNull()
+await shell?.close()
+
+describe.skipIf(shell === null)(
+  'startServer hugging',
+  { timeout: 30_000 },
+  () => {
+    let clientDir: string
+    let board: FixtureBoard
+    let server: RunningServer
+    let socket: WebSocket
+    let messages: ServerMessage[]
+
+    beforeEach(async () => {
+      clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+      board = copyFixtureBoard('live')
+      const layout = join(board.root, 'studio/home/layout.json')
+      const file = JSON.parse(readFileSync(layout, 'utf8'))
+      file.frames.hero.hugHeight = true
+      writeFileSync(layout, JSON.stringify(file))
+      const { chromium } = await import('playwright-core')
+      server = await startServer({
+        clientDir,
+        facesDir: clientDir,
+        root: board.root,
+        port: 0,
+        openUrl: () => {},
+        launch: () => chromium.launch(),
+      })
+      messages = []
+      socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+      socket.on('message', (data) => messages.push(JSON.parse(String(data))))
+      await new Promise((resolve) => socket.once('open', resolve))
+      socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+      await expect
+        .poll(() => messages.length, { timeout: 10_000 })
+        .toBeGreaterThanOrEqual(7)
+      messages = []
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(async () => {
+      socket.terminate()
+      await server.close()
+      board.cleanup()
+      rmSync(clientDir, { recursive: true, force: true })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    const heroBox = (message: ServerMessage | undefined) =>
+      message?.type === 'board'
+        ? message.data.projects[0]?.pages
+            .flatMap((page) => page.frames)
+            .find((frame) => frame.ref === 'studio/home/hero')?.box
+        : undefined
+
+    it('sends the hugged box in the first board after a content write, with no clipped finding', async () => {
+      writeFileSync(
+        join(board.root, 'studio/home/hero.html'),
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 1200px"></div></body></html>',
+      )
+
+      await expect
+        .poll(() => messages.find((message) => message.type === 'board'), {
+          timeout: 10_000,
+        })
+        .toBeDefined()
+      const first = messages.find((message) => message.type === 'board')
+      expect(heroBox(first)).toMatchObject({ width: 1440, height: 1200 })
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'findings' &&
+                'studio/home/hero' in message.findings,
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      const clipped = messages.flatMap((message) =>
+        message.type === 'findings'
+          ? (message.findings['studio/home/hero'] ?? []).filter(
+              (finding) => finding.rule === 'clipped',
+            )
+          : [],
+      )
+      expect(clipped).toEqual([])
+    })
+  },
+)
 
 describe('BoardTabs', () => {
   it('resolves true when a writing tab connects within the wait', async () => {

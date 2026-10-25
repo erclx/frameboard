@@ -127,6 +127,7 @@ describe('CanvasMenu', () => {
       IS_MAC ? 'Copy as PNG⇧⌘C' : 'Copy as PNGCtrlShiftC',
       `Duplicate${MOD}D`,
       'RenameF2',
+      'Fit height',
       'Add a noteN',
       IS_MAC ? 'Hide⇧⌘H' : 'HideCtrlShiftH',
       IS_MAC ? 'Lock⇧⌘L' : 'LockCtrlShiftL',
@@ -198,6 +199,25 @@ describe('CanvasMenu', () => {
         name: 'Flip to light',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('offers Fit height on an unlocked frame and greys it on a locked one', async () => {
+    render(<Board page={PAGE} />)
+    rightClick(centerOf(A.ref))
+    const open = within(await screen.findByRole('menu')).getByRole('menuitem', {
+      name: 'Fit height',
+    })
+    expect(open).not.toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect.poll(() => screen.queryByRole('menu')).toBeNull()
+
+    rightClick(centerOf(C.ref))
+
+    expect(
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
+        name: 'Fit height',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('greys Delete on a locked frame, as its key is', async () => {

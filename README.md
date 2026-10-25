@@ -51,7 +51,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 - `edit` changes one style, attribute, or text on one element without touching another byte
 - `show` points the open board at a frame, and `capture` writes PNGs of a frame or page in either theme
-- `frame fit` sets a frame's height to its content
+- `frame add` with no size makes a frame that hugs its content, which a running server measures after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
@@ -59,7 +59,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
 
-- The board runs the same rules on each change
+- The board runs the same rules on each change, and a frame's findings badge opens the list, which the inspector shows too
 - A running server adds the rules only a browser can see, being clipped content, a scrollbar inside the frame, content sized off the viewport, and text under a project's minimum size
 
 ### Claims
@@ -109,7 +109,7 @@ In the board you move and resize frames, Alt-drag one to drop a copy, and hold S
 - The inspector edits a selected element's name, opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text, its numbers stepping on arrow keys and scrubbing from their label
 - The layers panel selects, renames, restacks, hides, and locks frames, renames elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
-- Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Paste here, or Flip to light, which shows that frame alone in the other theme until reload
+- Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 
 Colors come from the inspector's picker, which holds a hex field, opacity, and the project's tokens as swatches, and flags a color no token names.
 

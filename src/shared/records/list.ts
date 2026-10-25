@@ -19,6 +19,9 @@ export const frameRecordSchema = z.object({
   order: z.number(),
   hidden: z.boolean(),
   locked: z.boolean(),
+  /** Whether each axis takes its size from the content rather than holding it. */
+  hugWidth: z.boolean(),
+  hugHeight: z.boolean(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

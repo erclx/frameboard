@@ -3,6 +3,12 @@ import { Lock, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@/client/components/ui/popover'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -11,6 +17,8 @@ import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
+import { FindingsList } from './findings-list'
+import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
 import { usePendingBox } from './geometry/write'
 import { useMode } from './mode'
@@ -163,7 +171,7 @@ export const Frame = memo(function Frame({
         <span className="truncate">{frame.name}</span>
         {claimed ? <ClaimTag claim={claimed} /> : null}
         {findings && findings.length > 0 ? (
-          <FindingsMark findings={findings} />
+          <FindingsMark frame={frame} findings={findings} />
         ) : null}
       </div>
       {live ? (
@@ -211,6 +219,7 @@ function ClaimOutline() {
 }
 
 interface FindingsMarkProps {
+  frame: FrameRecord
   findings: readonly Finding[]
 }
 
@@ -218,23 +227,42 @@ interface FindingsMarkProps {
  * The count of a frame's check findings beside its name, as a pill tinted in
  * the destructive hue when any finding is an error and the note hue when all
  * are warnings. It never shrinks, so a narrow frame truncates the name and
- * keeps the count.
+ * keeps the count. It opens a popover listing each finding, which a press
+ * reaches through the hit layer and a key through the badge itself.
  */
-function FindingsMark({ findings }: FindingsMarkProps) {
+function FindingsMark({ frame, findings }: FindingsMarkProps) {
+  const open = useFindingsOpen(frame.ref)
   const count = findings.length
   const severity = findings.some((finding) => finding.severity === 'error')
     ? 'error'
     : 'warning'
+  const counted = `${count} finding${count === 1 ? '' : 's'}`
   return (
-    <span
-      role="img"
-      aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
-      title={findings.map((finding) => finding.message).join('\n')}
-      data-severity={severity}
-      className="flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+    <Popover
+      open={open}
+      onOpenChange={(next) => openFindings(next ? frame.ref : null)}
     >
-      <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
-      {count}
-    </span>
+      <PopoverTrigger
+        data-findings-badge={frame.ref}
+        aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
+        data-severity={severity}
+        className="flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+      >
+        <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
+        {count}
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        initialFocus
+        className="w-[330px] gap-1.5 p-2.5 text-body"
+      >
+        <PopoverTitle className="text-[11px] font-semibold text-muted-foreground">
+          {counted} on {frame.name}
+        </PopoverTitle>
+        <FindingsList findings={findings} />
+      </PopoverContent>
+    </Popover>
   )
 }

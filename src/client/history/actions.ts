@@ -51,8 +51,8 @@ export function registerHistoryActions({
   navigate = browserNavigate,
   selection = selectionStore,
   notify = (refusal) =>
-    // A refusal is the only record that the step was dropped, so it stays until dismissed.
-    toast.add({ ...refusal, type: 'warning', timeout: 0 }),
+    // It leaves after Base UI's 5 s default, which hover or focus pauses.
+    toast.add({ ...refusal, type: 'warning' }),
   mac = IS_MAC,
 }: HistoryDeps = {}): () => void {
   const follow = (answer: StepAnswer) => {

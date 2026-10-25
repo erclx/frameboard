@@ -42,6 +42,10 @@ export const layoutEntrySchema = z.looseObject({
   // write leaves alone. Readers take absent as false.
   hidden: z.boolean().optional(),
   locked: z.boolean().optional(),
+  // An axis that hugs takes its size from the frame's content, which the
+  // running server measures and writes, and absent reads as fixed.
+  hugWidth: z.boolean().optional(),
+  hugHeight: z.boolean().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>

@@ -47,6 +47,8 @@ function boardWith(...names: string[]): ListResult {
               order: 0,
               hidden: false,
               locked: false,
+              hugWidth: false,
+              hugHeight: false,
               placed: true,
               modifiedAt: '2026-10-15T00:00:00.000Z',
             })),

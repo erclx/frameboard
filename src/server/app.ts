@@ -7,6 +7,7 @@ import type { Tickets } from './access/tickets'
 import type { RenderFrame } from './capture/render'
 import type { ThumbnailStore } from './capture/thumbnails'
 import type { History } from './history/stack'
+import type { MeasureFrame } from './live/hug'
 import type { SelectionHolder } from './live/selection'
 import type { Delivery } from './notes/delivery'
 import { accessRoutes } from './routes/access'
@@ -77,6 +78,8 @@ export interface AppOptions {
   checks?: BrowserChecks
   /** The home view's captures `GET /api/thumbnails` reads, absent where nothing renders them. */
   thumbnails?: ThumbnailStore
+  /** Reads a frame's content on the warm browser for `POST /api/frame/fit`. */
+  measure?: MeasureFrame
 }
 
 export function createApp({
@@ -93,6 +96,7 @@ export function createApp({
   selection,
   checks,
   thumbnails,
+  measure,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -110,7 +114,7 @@ export function createApp({
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions, frames.look, history))
-  app.route('/', structureRoutes(root, actions.access, history))
+  app.route('/', structureRoutes(root, actions.access, history, measure))
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', assetsRoutes(root, actions.access))

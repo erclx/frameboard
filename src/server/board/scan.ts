@@ -53,6 +53,8 @@ export interface Placement {
   order: number
   hidden: boolean
   locked: boolean
+  hugWidth: boolean
+  hugHeight: boolean
   placed: boolean
 }
 
@@ -148,6 +150,8 @@ export function placeFrames(
       order: entry.order,
       hidden: entry.hidden ?? false,
       locked: entry.locked ?? false,
+      hugWidth: entry.hugWidth ?? false,
+      hugHeight: entry.hugHeight ?? false,
       placed: true,
     })
   }
@@ -177,6 +181,8 @@ export function placeNext(placed: Placement[]): Placement {
     order,
     hidden: false,
     locked: false,
+    hugWidth: false,
+    hugHeight: false,
     placed: false,
   }
 }

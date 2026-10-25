@@ -300,7 +300,11 @@ test.describe('frame fit', () => {
       tooWide: false,
       frame: { box: { width: 400, height: 900 } },
     })
-    expect(layout().tall).toMatchObject({ width: 400, height: 900 })
+    expect(layout().tall).toMatchObject({
+      width: 400,
+      height: 900,
+      hugHeight: true,
+    })
   })
 
   test('fit: refuses a 100vh frame with fit-unbounded and leaves its layout alone', async () => {

@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { FrameboardError } from '@/shared/errors'
+
 import {
   copyFixtureBoard,
   type FixtureBoard,
@@ -147,6 +149,65 @@ describe('structureRoutes', () => {
     expect((await history.undo()).page).toBe('studio/home')
     expect(existsSync(join(board.root, 'studio/home/hero.html'))).toBe(true)
     expect((await history.redo()).page).toBe('studio/pricing')
+  })
+
+  describe('fit route', () => {
+    const access = {
+      token: () => TOKEN,
+      key: 'b'.repeat(64),
+      cookieName: 'frameboard-key-111111111111',
+      isOwnOrigin: () => false,
+    }
+    const hero = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+      ).frames.hero
+
+    it('sets the height to the measured content, hugs it, and undoes back', async () => {
+      app = structureRoutes(board.root, access, history, async () => ({
+        width: 1440,
+        height: 1232,
+        contentWidth: 1600,
+        empty: false,
+      }))
+
+      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: {
+          frame: { box: { height: 1232 }, hugHeight: true },
+          contentHeight: 1232,
+          tooWide: true,
+        },
+      })
+      await history.undo()
+      expect(hero()).toMatchObject({ height: 900 })
+      expect(hero().hugHeight).toBeUndefined()
+    })
+
+    it('refuses content sized off the viewport with 422 and writes nothing', async () => {
+      app = structureRoutes(board.root, access, history, async () => {
+        throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
+      })
+
+      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'fit-unbounded' },
+      })
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses browser-not-found with 503 where no browser runs', async () => {
+      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+
+      expect(response.status).toBe(503)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'browser-not-found' },
+      })
+    })
   })
 
   describe('frame routes', () => {

@@ -2,8 +2,11 @@ import { FrameboardError } from '@/shared/errors'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
-/** Runs every browser rule on one frame, as `checkRendered` does on the warm browser. */
-export type CheckFrame = (frame: FrameRecord) => Promise<Finding[]>
+/**
+ * Runs every browser rule on one frame, as `checkRendered` does on the warm
+ * browser, answering null for a reading the frame's file has since moved past.
+ */
+export type CheckFrame = (frame: FrameRecord) => Promise<Finding[] | null>
 
 export interface RenderedFindings {
   /**
@@ -82,7 +85,8 @@ export function createRenderedFindings({
       .then((findings) => {
         const recovered = failure !== null
         failure = null
-        if (current()) onResult(ref, findings)
+        // A stale reading lands nothing, and the write's batch queues the frame again.
+        if (findings && current()) onResult(ref, findings)
         if (!recovered) return
         for (const [other, record] of known) {
           if (other !== ref && !pending.has(other)) enqueue(other, record)

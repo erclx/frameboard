@@ -40,10 +40,12 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
       data-slot="toast"
       className={cn(
         'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-[10px] border border-border bg-card text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)] will-change-transform outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        '[--gap:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))]',
-        'h-(--height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
+        // Every toast stands open in one column at rest, newest at the
+        // bottom, as menus/toast draws them, rather than collapsing behind
+        // the newest until the stack is hovered.
+        '[--gap:0.25rem] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))]',
+        'h-(--toast-height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
-        'data-expanded:h-(--toast-height) data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))]',
         'data-limited:opacity-0 data-starting-style:[transform:translateY(150%)]',
         '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)]',
         'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
@@ -66,7 +68,7 @@ function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs transition-opacity duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] data-behind:opacity-0 data-expanded:opacity-100',
+        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs',
         className,
       )}
       {...props}
@@ -159,10 +161,37 @@ function ToastIcon({ type }: { type: string | undefined }) {
   )
 }
 
-function ToastList() {
+type ToastObject<Data extends object = object> =
+  ToastPrimitive.Root.ToastObject<Data>
+
+/**
+ * How a toast of one `type` draws in place of the icon, title, and
+ * description, root and all, as the change toast draws its Show and Next.
+ */
+type ToastBody = (props: {
+  // oxlint-disable-next-line typescript/no-explicit-any
+  toast: ToastObject<any>
+}) => React.ReactNode
+
+function ToastList({
+  bodies,
+}: {
+  bodies?: Readonly<Record<string, ToastBody>>
+}) {
   const { toasts } = ToastPrimitive.useToastManager()
-  return toasts.map((toastItem) => (
-    <Toast key={toastItem.id} toast={toastItem}>
+  return toasts.map((toastItem) => {
+    const Body = toastItem.type ? bodies?.[toastItem.type] : undefined
+    return Body ? (
+      <Body key={toastItem.id} toast={toastItem} />
+    ) : (
+      <DefaultToast key={toastItem.id} toastItem={toastItem} />
+    )
+  })
+}
+
+function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
+  return (
+    <Toast toast={toastItem}>
       <ToastContent>
         <ToastIcon type={toastItem.type} />
         <div className="flex min-w-0 flex-1 flex-col pr-4">
@@ -172,20 +201,28 @@ function ToastList() {
         <ToastClose />
       </ToastContent>
     </Toast>
-  ))
+  )
 }
 
+/**
+ * The one toast stack, in the corner of the window. A toast whose `type`
+ * `bodies` names draws that body, so a surface with its own controls joins
+ * the same stack rather than a second viewport that cannot see its heights.
+ */
 function Toaster({
   children,
   toastManager = toast,
+  bodies,
   ...props
-}: ToastPrimitive.Provider.Props) {
+}: ToastPrimitive.Provider.Props & {
+  bodies?: Readonly<Record<string, ToastBody>>
+}) {
   return (
     <ToastProvider toastManager={toastManager} {...props}>
       {children}
       <ToastPortal>
         <ToastViewport>
-          <ToastList />
+          <ToastList bodies={bodies} />
         </ToastViewport>
       </ToastPortal>
     </ToastProvider>
@@ -194,6 +231,8 @@ function Toaster({
 
 const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
+
+export type { ToastBody, ToastObject }
 
 export {
   createToastManager,

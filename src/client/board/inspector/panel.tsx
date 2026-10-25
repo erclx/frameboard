@@ -21,6 +21,7 @@ import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
 import { ArrangeSection } from './arrange-section'
+import { ChecksSection } from './checks-section'
 import { FillSection } from './element/fill'
 import { LayerSection } from './element/layer'
 import { ShadowSection } from './element/shadow'
@@ -91,6 +92,9 @@ export function InspectorPanel() {
         <>
           <FrameSection page={page} frames={frames} named={!inFrame} />
           {frames.length > 1 ? <ArrangeSection /> : null}
+          {frames.length === 1 && !inFrame && frames[0] ? (
+            <ChecksSection frame={frames[0].ref} />
+          ) : null}
           {inFrame ? (
             <ElementSections page={page} element={inFrame} />
           ) : (

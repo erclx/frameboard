@@ -65,11 +65,18 @@ Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout entry, page order, rename, path with its content hash, or hand-edited element, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it
-- A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 
 Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history.
+
+### `src/server/history/changes.ts`
+
+Owns the change kinds a step holds and what each restores, which is only what the developer set, so a write by an agent or by the server around it survives.
+
+- A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
+- That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that
+- A layout entry's undo compares and restores the size on an axis both it and the stored entry hug as whatever is stored, since the server measured that size and the developer never set it
 
 ## Gotchas
 

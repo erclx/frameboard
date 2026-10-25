@@ -117,6 +117,7 @@ const FRAME_IDS = [
   'frame.copyPng',
   'frame.duplicate',
   'frame.rename',
+  'frame.fitHeight',
   'note.addOnFrame',
   'tool.note',
   'frame.hide',
@@ -132,6 +133,7 @@ function FrameItems() {
     copyPng,
     duplicate,
     rename,
+    fitHeight,
     note,
     noteTool,
     hide,
@@ -147,6 +149,7 @@ function FrameItems() {
         <MenuRow action={copyPng}>Copy as PNG</MenuRow>
         <MenuRow action={duplicate}>Duplicate</MenuRow>
         <MenuRow action={rename}>Rename</MenuRow>
+        <MenuRow action={fitHeight}>Fit height</MenuRow>
         <MenuRow action={note} binding={noteTool?.keys?.[0]}>
           Add a note
         </MenuRow>

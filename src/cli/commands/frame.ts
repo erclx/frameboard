@@ -67,7 +67,7 @@ export function registerFrame(
       withSize(
         verb(
           'add',
-          'Place a frame, writing a skeleton file when none exists. Defaults to desktop size past every frame.',
+          'Place a frame past every frame, writing a skeleton file when none exists. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
         ),
       ),
     ),
@@ -121,7 +121,7 @@ export function registerFrame(
   )
 
   act<FrameOptions>(
-    withSize(verb('resize', 'Set a frame size')),
+    withSize(verb('resize', 'Set a frame size, fixing each axis it sets')),
     context,
     async ([ref = ''], options) =>
       done(
@@ -136,7 +136,7 @@ export function registerFrame(
   act<CommonOptions>(
     verb(
       'fit',
-      "Set a frame height to its content's own height, reporting a width too wide for the frame",
+      "Set a frame height to its content's own height and hug it from then on, reporting a width too wide for the frame",
     ),
     context,
     async ([ref = ''], options) => {

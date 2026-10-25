@@ -1,10 +1,13 @@
+import { FoldVertical } from 'lucide-react'
 import { useRef } from 'react'
 
+import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { ActionTooltip } from '../chrome/action-tooltip'
 import type { Box } from '../geometry/box'
 import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
 import {
@@ -24,6 +27,8 @@ const FIELDS = [
 
 type Field = (typeof FIELDS)[number]['key']
 
+const FIT_IDS = ['frame.fitHeight'] as const
+
 interface FrameSectionProps {
   /** The selected frames as drawn, one or several. */
   frames: readonly FrameRecord[]
@@ -42,6 +47,7 @@ interface FrameSectionProps {
  * differ. A field writes through the same write the gestures use, a typed
  * value setting every selected frame and a step on `Mixed` moving each by
  * the step, and a step or scrub draws each frame at its pending box first.
+ * One frame's H carries Fit height, running the registered action.
  */
 export function FrameSection({
   frames,
@@ -52,6 +58,7 @@ export function FrameSection({
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
   const renaming = useRenamingFrame('inspector')
+  const [fitHeight] = useActions(FIT_IDS)
   // The boxes a previewed gesture started from, which its pending boxes now hide.
   const started = useRef<Record<string, Box> | null>(null)
   const [frame] = frames
@@ -127,19 +134,30 @@ export function FrameSection({
         </button>
       )}
       <div className="grid grid-cols-2 gap-1.5">
-        {FIELDS.map(({ key, letter, label }) => (
-          <NumberField
-            key={key}
-            prefix={letter}
-            label={label}
-            value={shared(frames.map(({ box }) => box[key]))}
-            min={key === 'width' || key === 'height' ? 1 : undefined}
-            format={WHOLE}
-            disabled={!canWrite || locked}
-            onPreview={(change) => preview(key, change)}
-            onCommit={(change) => commit(key, change)}
-          />
-        ))}
+        {FIELDS.map(({ key, letter, label }) => {
+          const fit =
+            key === 'height' && !several && fitHeight ? fitHeight : null
+          return (
+            <div key={key} className="relative">
+              <NumberField
+                prefix={letter}
+                label={label}
+                value={shared(frames.map(({ box }) => box[key]))}
+                min={key === 'width' || key === 'height' ? 1 : undefined}
+                format={WHOLE}
+                disabled={!canWrite || locked}
+                inputClassName={fit ? 'pr-7' : undefined}
+                onPreview={(change) => preview(key, change)}
+                onCommit={(change) => commit(key, change)}
+              />
+              {fit ? (
+                <span className="absolute inset-y-0 right-0.5 flex items-center">
+                  <FitButton action={fit} />
+                </span>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
     </section>
   )
@@ -147,6 +165,23 @@ export function FrameSection({
 
 /** A frame's box is whole pixels, so a typed fraction rounds. */
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
+
+/** Fit height inside the H field, naming itself on hover as the Arrange buttons do. */
+function FitButton({ action }: { action: Action }) {
+  return (
+    <ActionTooltip label={action.label} keys={action.keys} side="bottom">
+      <button
+        type="button"
+        aria-label={action.label}
+        disabled={!isEnabled(action)}
+        onClick={action.run}
+        className="grid size-6 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40"
+      >
+        <FoldVertical aria-hidden className="size-[13px]" strokeWidth={1.6} />
+      </button>
+    </ActionTooltip>
+  )
+}
 
 function shared(values: readonly number[]): number | null {
   const [first] = values

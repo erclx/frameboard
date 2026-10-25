@@ -74,8 +74,8 @@ async function editInTurn(
     selection = selectionStore,
     send = fetch,
     notify = (refusal) =>
-      // The refusal is the only record that the edit was dropped, so it stays until dismissed.
-      toast.add({ ...refusal, type: 'warning', timeout: 0 }),
+      // It leaves after Base UI's 5 s default, which hover or focus pauses.
+      toast.add({ ...refusal, type: 'warning' }),
   }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined

@@ -89,8 +89,38 @@ describe('scanBoard', () => {
         order: 1,
         hidden: false,
         locked: false,
+        hugWidth: false,
+        hugHeight: false,
         placed: true,
       })
+    })
+
+    it('reads the hug flags an entry holds', async () => {
+      board = copyFixtureBoard('basic')
+      const layout = join(board.root, 'webapp/home/layout.json')
+      writeFileSync(
+        layout,
+        JSON.stringify({
+          version: 1,
+          frames: {
+            about: {
+              x: 1520,
+              y: 0,
+              width: 390,
+              height: 844,
+              order: 1,
+              hugHeight: true,
+            },
+          },
+        }),
+      )
+
+      const { projects } = await scanBoard(board.root, { project: 'webapp' })
+      const about = projects[0]?.pages[1]?.frames.find(
+        (frame) => frame.name === 'about',
+      )
+
+      expect([about?.hugWidth, about?.hugHeight]).toEqual([false, true])
     })
   })
 
@@ -170,6 +200,8 @@ describe('placeNext', () => {
       order: 0,
       hidden: false,
       locked: false,
+      hugWidth: false,
+      hugHeight: false,
       placed: false,
     })
   })

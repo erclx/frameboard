@@ -45,7 +45,14 @@ function setup(
     canWrite = true,
     onCommit = () => {},
     elementBox,
-  }: { canWrite?: boolean; onCommit?: () => void; elementBox?: Box } = {},
+    badge,
+  }: {
+    canWrite?: boolean
+    onCommit?: () => void
+    elementBox?: Box
+    /** A findings badge drawn in the label strip above a frame, at a canvas box. */
+    badge?: { ref: string; box: Box }
+  } = {},
 ) {
   const mode = createModeStore(1280)
   const writes: Write[] = []
@@ -53,6 +60,7 @@ function setup(
     refs: readonly string[]
     offset?: { x: number; y: number }
   }[] = []
+  const opened: string[] = []
   const view = render(
     <Profiler id="canvas" onRender={onCommit}>
       <div
@@ -87,6 +95,18 @@ function setup(
               }}
             />
           ) : null}
+          {badge ? (
+            <span
+              data-findings-badge={badge.ref}
+              className="absolute"
+              style={{
+                left: badge.box.x,
+                top: badge.box.y,
+                width: badge.box.width,
+                height: badge.box.height,
+              }}
+            />
+          ) : null}
         </div>
         <div data-hit-layer className="absolute inset-0" />
       </div>
@@ -113,11 +133,12 @@ function setup(
         duplicates.push({ refs, offset })
         return []
       },
+      openFindings: (ref) => opened.push(ref),
     },
   )
   const origin = viewport.getBoundingClientRect()
   const pointer = new Pointer(part('[data-hit-layer]'), origin)
-  return { ...view, mode, writes, duplicates, part, pointer, detach }
+  return { ...view, mode, writes, duplicates, opened, part, pointer, detach }
 }
 
 /** Sends mouse events in canvas pixels, which the identity view maps one to one. */
@@ -171,6 +192,47 @@ function selectedRefs(): readonly string[] {
 }
 
 describe('attachGestures', () => {
+  describe('on a findings badge', () => {
+    const BADGE = {
+      ref: LEFT.ref,
+      box: { x: 140, y: 80, width: 30, height: 18 },
+    }
+
+    it('opens the frame’s findings on a click and selects nothing', () => {
+      const { pointer, opened } = setup(undefined, { badge: BADGE })
+
+      pointer.click(150, 88)
+
+      expect(opened).toEqual([LEFT.ref])
+      expect(selectedRefs()).toEqual([])
+    })
+
+    it('only leaves a focused inspector field on the first press, and opens on the next', () => {
+      const { pointer, opened } = setup(undefined, { badge: BADGE })
+      const panel = document.createElement('aside')
+      panel.dataset.inspector = ''
+      const field = document.createElement('input')
+      panel.append(field)
+      document.body.append(panel)
+      field.focus()
+
+      pointer.click(150, 88)
+      const first = [...opened]
+      pointer.click(150, 88)
+      panel.remove()
+
+      expect([first, opened]).toEqual([[], [LEFT.ref]])
+    })
+
+    it('opens nothing and moves nothing on a drag from it', () => {
+      const { pointer, opened, writes } = setup(undefined, { badge: BADGE })
+
+      pointer.drag([150, 88], [250, 188])
+
+      expect([opened, writes]).toEqual([[], []])
+    })
+  })
+
   let detach = () => {}
 
   afterEach(() => {
