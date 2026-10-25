@@ -38,3 +38,4 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 - Element position, width, height, padding, flex, gap, border width, font family, line height, and letter spacing have no control
 - Each of those is a layout call a prompt makes better, or a number that fights the layout when set by hand
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
+- A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
