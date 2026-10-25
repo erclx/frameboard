@@ -143,9 +143,12 @@ function FrameItems() {
     flip,
     remove,
   ] = useActions(FRAME_IDS)
+  // Counted as the selection's size chip counts them.
+  const count = useSelection((state) => state.frames.length)
   return (
     <>
       <ContextMenuGroup>
+        <MenuTitle>{count > 1 ? `${count} frames` : 'Frame'}</MenuTitle>
         <MenuRow action={copy}>Copy</MenuRow>
         <MenuRow action={cut}>Cut</MenuRow>
         <MenuRow action={copyPng}>Copy as PNG</MenuRow>
