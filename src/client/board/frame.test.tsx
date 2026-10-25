@@ -12,6 +12,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { openFindings } from './findings-open'
 import { Frame } from './frame'
 import { modeStore } from './mode'
+import { endPreview, setPreview } from './preview/store'
 
 function frame(name: string): FrameRecord {
   return {
@@ -595,5 +596,60 @@ describe('Frame label at low zoom', () => {
     )
 
     expect(container.querySelector('[data-findings-dot]')).not.toBeVisible()
+  })
+})
+
+describe('Frame preview', () => {
+  afterEach(() => {
+    act(() => endPreview(['studio/home/a']))
+  })
+
+  it('lays the live page out at the previewed width without reloading it', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const src = iframe.getAttribute('src')
+    let loads = 0
+    iframe.addEventListener('load', () => (loads += 1))
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    expect(iframe.contentWindow?.innerWidth).toBe(1440)
+    expect(iframe.getAttribute('src')).toBe(src)
+    expect(loads).toBe(0)
+  })
+
+  it("flips the page's width media queries", async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const phone = () => iframe.contentWindow?.matchMedia('(max-width: 600px)')
+    const before = phone()?.matches
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    expect(before).toBe(true)
+    expect(phone()?.matches).toBe(false)
+  })
+
+  it('marks the label with the previewed width', () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => setPreview(['studio/home/a'], 834))
+
+    expect(container.querySelector('[data-preview-chip]')).toHaveTextContent(
+      'Preview 834',
+    )
+  })
+
+  it('draws at its stored width once the preview ends', () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    act(() => setPreview(['studio/home/a'], 834))
+
+    act(() => endPreview(['studio/home/a']))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.width).toBe('390px')
+    expect(container.querySelector('[data-preview-chip]')).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Lock, Moon, Sun, TriangleAlert } from 'lucide-react'
+import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -28,8 +28,9 @@ import { ClaimTag } from './claims/tag'
 import { FindingsList } from './findings-list'
 import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
-import { usePendingBox } from './geometry/write'
+import { useDrawnBox } from './geometry/write'
 import { useMode } from './mode'
+import { usePreview } from './preview/store'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
@@ -63,8 +64,10 @@ export const Frame = memo(function Frame({
   claim,
   unseen = false,
 }: FrameProps) {
-  // A released move holds its place until the board carries it back.
-  const { x, y, width, height } = usePendingBox(frame.ref) ?? frame.box
+  // A released move holds its place until the board carries it back, and a
+  // preview draws its width without touching either box.
+  const { x, y, width, height } = useDrawnBox(frame)
+  const preview = usePreview(frame.ref)
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
@@ -187,6 +190,7 @@ export const Frame = memo(function Frame({
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
         <span className="truncate">{frame.name}</span>
+        {preview ? <PreviewChip width={preview.width} /> : null}
         {playing ? null : (
           <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
         )}
@@ -284,6 +288,24 @@ function ThemeMarker({
       <Icon aria-hidden className="size-3" />
       {theme === 'dark' ? 'Dark' : 'Light'}
     </button>
+  )
+}
+
+/**
+ * The width a frame is previewed at, beside its name. It reads as a preview
+ * rather than a size, since the frame's stored box is unchanged, and gives
+ * way before the other parts on a narrow frame.
+ */
+function PreviewChip({ width }: { width: number }) {
+  return (
+    <span
+      data-preview-chip
+      title={`Previewed at ${width} px wide. The frame's size is unchanged.`}
+      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] whitespace-nowrap text-foreground"
+    >
+      <MoveHorizontal aria-hidden className="size-3 shrink-0" />
+      Preview {width}
+    </span>
   )
 }
 

@@ -4,7 +4,7 @@ import { useSelection } from '../selection'
 import { boundsOf, type Box } from './box'
 import { OUTLINE, place, screen, sizeLabel } from './draw'
 import type { Corner } from './resize'
-import { usePendingFrames } from './write'
+import { useDrawnFrames } from './write'
 
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
@@ -32,7 +32,7 @@ interface OverlayProps {
 export function SelectionOverlay({ frames }: OverlayProps) {
   const selected = useSelection((state) => state.frames)
   const inside = useSelection((state) => Boolean(state.element))
-  const shown = usePendingFrames(
+  const shown = useDrawnFrames(
     frames.filter((frame) => selected.includes(frame.ref)),
   )
   const bounds = boundsOf(shown.map((frame) => frame.box))
