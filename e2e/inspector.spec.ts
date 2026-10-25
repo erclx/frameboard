@@ -159,4 +159,49 @@ test.describe('editing a selected element by hand', () => {
     await expect(opacity).toHaveValue('100%')
     expect(read()).toBe(agent)
   })
+
+  /** Drags the hero by a point clear of the headline, from wherever focus sits. */
+  async function dragHero(page: Page): Promise<void> {
+    const frame = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
+    if (!frame) throw new Error('the hero has no box on screen')
+    const from = {
+      x: frame.x + frame.width * 0.8,
+      y: frame.y + frame.height * 0.85,
+    }
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x + 80, from.y + 40, { steps: 8 })
+    await page.mouse.up()
+  }
+
+  const layout = () =>
+    readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8')
+
+  for (const commit of ['Enter', 'a press on the canvas'] as const) {
+    test(`the first drag after an edit applied by ${commit} keeps the element`, async ({
+      page,
+    }) => {
+      const before = layout()
+      const opacity = page.getByRole('textbox', {
+        name: 'Opacity',
+        exact: true,
+      })
+      await opacity.fill('50')
+      if (commit === 'Enter') await opacity.press('Enter')
+
+      await dragHero(page)
+
+      await expect.poll(read).toContain('opacity: 0.5')
+      await expect.poll(layout).not.toBe(before)
+      // The drop the guard is for came with the frame's reload, so the
+      // selection is read only once the frame shows the written bytes.
+      await expect(
+        page.frameLocator(`[data-frame="${HERO}"] iframe`).locator('h1'),
+      ).toHaveAttribute('style', /opacity: 0\.5/)
+      await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible()
+      await expect(
+        page.getByRole('textbox', { name: 'Opacity', exact: true }),
+      ).toHaveValue('50%')
+    })
+  }
 })
