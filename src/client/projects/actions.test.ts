@@ -1,7 +1,8 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { findAction, isEnabled } from '@/client/actions/registry'
+import { pinnedProjects } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { boardOf } from '@/test/board'
@@ -36,6 +37,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  localStorage.clear()
   liveStore.setState({ canWrite: false, board: null })
   projectStore.setState({ focused: null, renaming: null })
 })
@@ -98,7 +100,92 @@ describe('useProjectActions', () => {
   })
 })
 
+describe('project.pin', () => {
+  it('pins the focused card, and unpins it on a second run', () => {
+    renderHook(() =>
+      useProjectActions(focusedProject, { calls: server().calls }),
+    )
+    focusProject('studio')
+
+    findAction('project.pin')?.run()
+    const pinned = [...pinnedProjects()]
+    findAction('project.pin')?.run()
+
+    expect([pinned, [...pinnedProjects()]]).toEqual([['studio'], []])
+  })
+
+  it('pins in a tab that may not write, since a pin writes no board file', () => {
+    liveStore.setState({ canWrite: false })
+    renderHook(() =>
+      useProjectActions(focusedProject, { calls: server().calls }),
+    )
+    focusProject('studio')
+    const pin = findAction('project.pin')
+
+    expect(pin ? isEnabled(pin) : false).toBe(true)
+  })
+
+  it('keeps a pin for the visit when storage refuses the write', () => {
+    renderHook(() => useProjectActions(OPEN, { calls: server().calls }))
+    const write = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('quota')
+      })
+
+    findAction('project.pin')?.run()
+    const pinned = [...pinnedProjects()]
+    write.mockRestore()
+    findAction('project.pin')?.run()
+
+    expect([pinned, [...pinnedProjects()]]).toEqual([['studio'], []])
+  })
+
+  it('drops the pin once its project is deleted', async () => {
+    renderHook(() => useProjectActions(OPEN, { calls: server().calls }))
+    findAction('project.pin')?.run()
+
+    findAction('project.delete')?.run()
+
+    await expect.poll(() => [...pinnedProjects()]).toEqual([])
+  })
+
+  it('leaves a duplicate unpinned', async () => {
+    renderHook(() =>
+      useProjectActions(OPEN, { calls: server({ name: 'studio 2' }).calls }),
+    )
+    findAction('project.pin')?.run()
+
+    findAction('project.duplicate')?.run()
+
+    await expect.poll(() => projectStore.getState().focused).toBe('studio 2')
+    expect([...pinnedProjects()]).toEqual(['studio'])
+  })
+})
+
 describe('renameProject', () => {
+  it('moves the pin to the new name', async () => {
+    localStorage.setItem('frameboard.home.pins', JSON.stringify(['studio']))
+
+    await renameProject('studio', 'atlas', server().calls)
+
+    expect([...pinnedProjects()]).toEqual(['atlas'])
+  })
+
+  it('keeps the pin on the old name when the rename is refused', async () => {
+    localStorage.setItem('frameboard.home.pins', JSON.stringify(['studio']))
+    const calls = createStructure(async () =>
+      Response.json(
+        { ok: false, error: { code: 'invalid-name', message: 'Bad name' } },
+        { status: 400 },
+      ),
+    )
+
+    await renameProject('studio', '..', calls)
+
+    expect([...pinnedProjects()]).toEqual(['studio'])
+  })
+
   it('resolves the new name once the rename lands', async () => {
     const { calls } = server()
 

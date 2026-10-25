@@ -18,6 +18,7 @@ const IDS = [
   'project.open',
   'project.rename',
   'project.duplicate',
+  'project.pin',
   'project.delete',
 ] as const
 
@@ -30,10 +31,10 @@ interface ProjectMenuProps {
 /**
  * The right-click menu of `canon/design/menus/home` on a project's card or
  * row, its items running the `project.*` actions on the project it opened
- * from. The menu key and Shift+F10 open it too, with focus on its first item.
+ * from, Pin reading Unpin on a pinned one. The menu key and Shift+F10 open it too, with focus on its first item.
  */
 export function ProjectMenu({ project, trigger }: ProjectMenuProps) {
-  const [open, rename, duplicate, remove] = useActions(IDS)
+  const [open, rename, duplicate, pin, remove] = useActions(IDS)
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
   return (
@@ -52,6 +53,7 @@ export function ProjectMenu({ project, trigger }: ProjectMenuProps) {
           </MenuItem>
           <MenuItem action={rename}>Rename</MenuItem>
           <MenuItem action={duplicate}>Duplicate</MenuItem>
+          <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <MenuItem

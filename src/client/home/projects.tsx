@@ -1,4 +1,5 @@
 import { cn } from 'cn'
+import { Pin } from 'lucide-react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'wouter'
 import { useStore } from 'zustand'
@@ -21,10 +22,13 @@ import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import type { HomeLayout } from './layout'
+import { usePins } from './pins'
 import { ProjectMenu } from './project-menu'
 import { FrameSkeleton } from './skeleton'
+import { SortMenu } from './sort-menu'
 
 interface ProjectsProps {
+  /** In the order shown, which the arrow keys and the tab stop follow. */
   projects: readonly ProjectRecord[]
   layout: HomeLayout
   /** The time "last edited" counts back from. */
@@ -37,7 +41,8 @@ interface ProjectsProps {
  * Every project on the board as cards, per `canon/design/home/grid`, or as
  * rows, per `canon/design/home/list`, each opening its board and the menu of
  * `canon/design/menus/home`. A card's well draws its first page's frames
- * with their captures in the theme shown.
+ * with their captures in the theme shown, and a pinned project carries the
+ * pin mark after its name.
  */
 export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const unseen = useUnseen((state) => state.unseen)
@@ -45,12 +50,16 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const stamps = useLive((state) => state.thumbnails[theme])
   const captures = { theme, stamps }
   const focused = useStore(projectStore, (state) => state.focused)
+  const pins = usePins()
   const rover = projects.some((project) => project.name === focused)
     ? focused
     : projects[0]?.name
   return (
     <main className="px-4 py-8 sm:px-12">
-      <h1 className="mb-5 text-title">Projects</h1>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-title">Projects</h1>
+        <SortMenu />
+      </div>
       {layout === 'grid' ? (
         <ul
           onKeyDown={(event) => roveFocus(event, 'grid')}
@@ -79,6 +88,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     calls={calls}
                     type="text-panel"
                     unseen={unseenUnder(unseen, project.name)}
+                    pinned={pins.has(project.name)}
                   />
                   <Edited project={project} now={now} prefix="Edited " />
                 </span>
@@ -111,6 +121,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     calls={calls}
                     type="font-medium"
                     unseen={unseenUnder(unseen, project.name)}
+                    pinned={pins.has(project.name)}
                     className="pr-4"
                   />
                   {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
@@ -228,6 +239,7 @@ interface ProjectNameProps {
   type: string
   /** How many of the project's frames an agent changed unseen, counted after the name. */
   unseen: number
+  pinned: boolean
   /** Added to the name's line, such as the list cell's gap before Edited. */
   className?: string
 }
@@ -242,6 +254,7 @@ function ProjectName({
   calls,
   type,
   unseen,
+  pinned,
   className,
 }: ProjectNameProps) {
   const renaming = useRenamingProject(project.name)
@@ -251,7 +264,16 @@ function ProjectName({
         <span className={cn('truncate', type)} title={project.name}>
           {project.name}
         </span>
-        <UnseenCount count={unseen} className="ml-auto" />
+        <span className="ml-auto flex items-center gap-1.5">
+          {pinned ? (
+            <Pin
+              role="img"
+              aria-label="Pinned"
+              className="size-[13px] shrink-0 text-muted-foreground"
+            />
+          ) : null}
+          <UnseenCount count={unseen} />
+        </span>
       </span>
     )
   }
