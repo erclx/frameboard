@@ -122,7 +122,7 @@ export function createApp({
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
   app.route('/', accessRoutes(actions.access, tickets))
   app.route('/', apiRoutes(root, actions, frames.look, history))
-  app.route('/', structureRoutes(root, actions.access, history, measure))
+  app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery))
   app.route('/', assetsRoutes(root, actions.access))
