@@ -1,6 +1,7 @@
 import { cn } from 'cn'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'wouter'
+import { useStore } from 'zustand'
 
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
@@ -11,6 +12,7 @@ import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import {
   focusProject,
   projectHref,
+  projectStore,
   renameProject,
   stopProjectRename,
   useRenamingProject,
@@ -42,15 +44,23 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const theme = useShownTheme()
   const stamps = useLive((state) => state.thumbnails[theme])
   const captures = { theme, stamps }
+  const focused = useStore(projectStore, (state) => state.focused)
+  const rover = projects.some((project) => project.name === focused)
+    ? focused
+    : projects[0]?.name
   return (
     <main className="px-4 py-8 sm:px-12">
       <h1 className="mb-5 text-title">Projects</h1>
       {layout === 'grid' ? (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
+        <ul
+          onKeyDown={(event) => roveFocus(event, 'grid')}
+          className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5"
+        >
           {projects.map((project) => (
             <li key={project.name}>
               <ProjectLink
                 project={project}
+                tabbable={project.name === rover}
                 className="block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary data-popup-open:ring-2 data-popup-open:ring-primary"
               >
                 <span
@@ -87,11 +97,12 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
             <span className="hidden sm:block">Edited</span>
             <span className="hidden sm:block">Created</span>
           </div>
-          <ul>
+          <ul onKeyDown={(event) => roveFocus(event, 'list')}>
             {projects.map((project) => (
               <li key={project.name} className="not-last:border-b">
                 <ProjectLink
                   project={project}
+                  tabbable={project.name === rover}
                   className="grid h-12 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-popup-open:ring-2 data-popup-open:ring-primary data-popup-open:ring-inset"
                 >
                   <Mini project={project} />
@@ -119,8 +130,45 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   )
 }
 
+/**
+ * Moves focus across the cards by the arrow keys, Up and Down stepping a
+ * whole row of the grid as it is laid out, and down the list, with Home and
+ * End for the ends. Keys typed into a rename field stay in the field.
+ */
+function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
+  const from = event.target
+  if (!(from instanceof HTMLElement) || !from.matches(LINK)) return
+  const links = [...event.currentTarget.querySelectorAll<HTMLElement>(LINK)]
+  const at = links.indexOf(from)
+  const step = layout === 'grid' ? columnsOf(links) : 1
+  const to = {
+    ArrowLeft: layout === 'grid' ? at - 1 : at,
+    ArrowRight: layout === 'grid' ? at + 1 : at,
+    ArrowUp: at - step,
+    ArrowDown: at + step,
+    Home: 0,
+    End: links.length - 1,
+  }[event.key]
+  if (to === undefined) return
+  event.preventDefault()
+  links[Math.min(Math.max(to, 0), links.length - 1)]?.focus()
+}
+
+/** How many cards share the first card's row, as the grid wrapped them. */
+function columnsOf(links: readonly HTMLElement[]): number {
+  const top = links[0]?.getBoundingClientRect().top
+  return Math.max(
+    links.filter((link) => link.getBoundingClientRect().top === top).length,
+    1,
+  )
+}
+
+const LINK = '[data-project-link]'
+
 interface ProjectLinkProps {
   project: ProjectRecord
+  /** The one card the tab sequence holds, the focused one or else the first. */
+  tabbable: boolean
   className: string
   children: ReactNode
 }
@@ -131,7 +179,12 @@ interface ProjectLinkProps {
  * it. While its name is a rename field it stops being a link, so the field's
  * clicks and keys stay in the field.
  */
-function ProjectLink({ project, className, children }: ProjectLinkProps) {
+function ProjectLink({
+  project,
+  tabbable,
+  className,
+  children,
+}: ProjectLinkProps) {
   const renaming = useRenamingProject(project.name) !== null
   if (renaming) return <div className={className}>{children}</div>
   return (
@@ -140,6 +193,9 @@ function ProjectLink({ project, className, children }: ProjectLinkProps) {
       trigger={
         <Link
           href={projectHref(project)}
+          data-project-link
+          // One card sits in the tab sequence, so Tab leaves the set in one press.
+          tabIndex={tabbable ? 0 : -1}
           onFocus={() => focusProject(project.name)}
           onKeyDown={(event: KeyboardEvent) => {
             const id = CARD_KEYS[event.key]

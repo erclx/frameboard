@@ -17,6 +17,7 @@ import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { createStructure, type Structure } from '@/client/live/structure'
 import { unseenStore } from '@/client/live/unseen'
+import { projectStore } from '@/client/projects/actions'
 import { themeStore } from '@/client/theme/store'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
@@ -220,6 +221,79 @@ describe('Projects', () => {
 
     expect(screen.getByRole('link', { name: /webapp/ })).toHaveTextContent(
       /^webapp2 days ago$/,
+    )
+  })
+})
+
+describe('Projects by the arrow keys', () => {
+  const FIVE = ['alpha', 'bravo', 'charlie', 'delta', 'echo'].map((name) =>
+    project(name, '2026-10-13T12:00:00.000Z'),
+  )
+
+  function renderFive(layout: HomeLayout) {
+    render(
+      <Router hook={memoryLocation({ path: '/' }).hook}>
+        <Projects projects={FIVE} layout={layout} now={NOW} />
+        <button type="button">After</button>
+      </Router>,
+    )
+  }
+
+  const card = (name: string) =>
+    screen.getByRole('link', { name: new RegExp(`^${name}`) })
+
+  afterEach(() => {
+    projectStore.setState({ focused: null, renaming: null })
+  })
+
+  it('moves across a row of the grid and down a whole row', async () => {
+    renderFive('grid')
+    act(() => card('alpha').focus())
+    const start = card('alpha').getBoundingClientRect()
+
+    await userEvent.keyboard('{ArrowRight}')
+    const across = document.activeElement
+    await userEvent.keyboard('{ArrowLeft}{ArrowDown}')
+    const below = (
+      document.activeElement as HTMLElement
+    ).getBoundingClientRect()
+
+    expect(across).toBe(card('bravo'))
+    expect([below.left, below.top > start.bottom]).toEqual([start.left, true])
+  })
+
+  it('moves down and up the list', async () => {
+    renderFive('list')
+    act(() => card('alpha').focus())
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}')
+
+    expect(document.activeElement).toBe(card('bravo'))
+  })
+
+  it('jumps to the ends on Home and End', async () => {
+    renderFive('list')
+    act(() => card('bravo').focus())
+
+    await userEvent.keyboard('{End}')
+    const last = document.activeElement
+    await userEvent.keyboard('{Home}')
+
+    expect([last, document.activeElement]).toEqual([
+      card('echo'),
+      card('alpha'),
+    ])
+  })
+
+  it('leaves the set on one Tab', async () => {
+    renderFive('grid')
+    act(() => card('alpha').focus())
+
+    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.tab()
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'After' }),
     )
   })
 })
