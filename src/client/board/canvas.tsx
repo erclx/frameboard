@@ -29,6 +29,11 @@ import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
+import {
+  editTextInPlace,
+  editTextWhenShown,
+  overElement,
+} from './element/text-in-place'
 import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
@@ -38,6 +43,7 @@ import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
 import { GuideCard } from './guide/card'
 import { useShowsGuide } from './guide/state'
+import { writeElement } from './inspector/element/write'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -49,7 +55,12 @@ import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { DropLine } from './place/drop-line'
 import { placedKind, usePlaceTools } from './place/tool'
 import { placeElement } from './place/write'
-import { followSelection, selectElement, selectionStore } from './selection'
+import {
+  type ElementKey,
+  followSelection,
+  selectElement,
+  selectionStore,
+} from './selection'
 import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
@@ -106,6 +117,18 @@ export function Canvas({
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
   const picks = useRef(0)
+  // The element selected when a double-click's first press landed, since
+  // that press selects the frame before the double-click arrives.
+  const pressedOn = useRef<ElementKey | null>(null)
+  // Ends the in-place text edit open or waiting on a frame's reload.
+  const stopEditing = useRef<(() => void) | null>(null)
+  useEffect(
+    () => () => {
+      stopEditing.current?.()
+      stopEditing.current = null
+    },
+    [page.ref],
+  )
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
@@ -461,6 +484,40 @@ export function Canvas({
   }, [])
   const drawnFrames = useCallback(() => withDrawn(framesRef.current), [])
 
+  /** Opens a text element's text for typing, a double-click's or a placed Text's. */
+  const editText = (key: ElementKey, waits: boolean): boolean => {
+    if (!layer) return false
+    const write = (change: Parameters<typeof writeElement>[2]) =>
+      writeElement(page.ref, key, change)
+    stopEditing.current?.()
+    stopEditing.current = null
+    if (waits) {
+      stopEditing.current = editTextWhenShown(layer, key, write, selectionStore)
+      return true
+    }
+    const shown = layer.querySelector<HTMLIFrameElement>(
+      `[data-frame="${CSS.escape(key.frame)}"] iframe`,
+    )?.contentDocument
+    selectElement(selectionStore, page.ref, key)
+    stopEditing.current = shown ? editTextInPlace(shown, key, write) : null
+    return stopEditing.current !== null
+  }
+
+  // A double-click on the text element selected before it edits that
+  // text, and anywhere else picks inside the frame.
+  const doubleClick = (event: MouseEvent) => {
+    const viewport = viewportRef.current
+    const held = pressedOn.current
+    if (viewport && layer && held && !(noting || hand || framing || placing)) {
+      const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+      const drawn = withDrawn(frames)
+      if (overElement(layer, drawn, held, { x, y }) && editText(held, false)) {
+        return
+      }
+    }
+    pickInside(event)
+  }
+
   const pickInside = (event: MouseEvent) => {
     const viewport = viewportRef.current
     // Only the Move tool selects, so every other tool picks nothing.
@@ -484,7 +541,9 @@ export function Canvas({
    */
   const onLabel = (event: MouseEvent): boolean => {
     const viewport = viewportRef.current
-    if (noting || hand || framing || !viewport || !layer) return false
+    if (noting || hand || framing || placing || !viewport || !layer) {
+      return false
+    }
     if (drawnAt(layer, '[data-label-control]', event)) return false
     const transform = zoomTransform(viewport)
     const [x, y] = transform.invert(pointer(event, viewport))
@@ -591,7 +650,10 @@ export function Canvas({
                     withDrawn(frames),
                     { x, y },
                     kind,
-                  )
+                  ).then((placed) => {
+                    // A placed Text opens for typing once its frame shows it.
+                    if (placed && kind === 'text') editText(placed, true)
+                  })
                   return
                 }
                 if (framing) {
@@ -621,15 +683,20 @@ export function Canvas({
               onClick={(event) => {
                 if (event.metaKey) pickInside(event.nativeEvent)
               }}
+              onMouseDownCapture={(event) => {
+                if (event.detail <= 1) {
+                  pressedOn.current = selectionStore.getState().element ?? null
+                }
+              }}
               // The label strip renames as F2 does, through its gates, and
-              // anywhere else a double-click picks inside the frame.
+              // anywhere else a double-click edits text or picks inside the frame.
               onDoubleClick={(event) => {
                 if (onLabel(event.nativeEvent)) {
                   const rename = findAction('frame.rename')
                   if (rename && isEnabled(rename)) rename.run()
                   return
                 }
-                pickInside(event.nativeEvent)
+                doubleClick(event.nativeEvent)
               }}
             />
           }
