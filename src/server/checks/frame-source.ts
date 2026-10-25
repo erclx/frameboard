@@ -176,31 +176,61 @@ function withImports(sheet: Sheet, imported: Set<string>): Sheet[] {
   return [...before, sheet]
 }
 
-/** A sheet as far as it parses, and the break that stopped it, if any. */
+/** A sheet as far as it parses, and each break postcss refused in it. */
 export interface ParsedSheet {
   root: Root
-  error: CssSyntaxError | null
+  /** In source order, every one a break a browser meets in the file. */
+  errors: CssSyntaxError[]
 }
 
 /**
- * Parses `css`, cutting it at each break postcss refuses until what is left
- * parses, so a rule reads every declaration ahead of an unclosed block or
- * string rather than none. `error` is the first break, the one a browser
- * meets.
+ * Parses `css` past every break postcss refuses, so a rule reads every
+ * declaration a browser keeps. An unknown word, such as a declaration
+ * missing its colon, is blanked out to its `;` or `}`, as a browser drops
+ * that one declaration, with newlines kept so every offset holds. Any other
+ * break, such as an unclosed block or string, cuts the sheet there, and the
+ * cut's own leftovers are not breaks in the file, so none is recorded.
  */
 export function parseSheet(css: string): ParsedSheet {
   let text = css
-  let first: CssSyntaxError | null = null
+  const errors: CssSyntaxError[] = []
+  let cut = false
   for (;;) {
     try {
-      return { root: postcss.parse(text), error: first }
+      return { root: postcss.parse(text), errors }
     } catch (error) {
       if (!(error instanceof CssSyntaxError)) throw error
-      first ??= error
-      const cut = offsetOf(text, error.line ?? 1, error.column ?? 1)
-      text = cut < text.length ? text.slice(0, cut) : ''
+      if (!cut) errors.push(error)
+      const at = offsetOf(text, error.line ?? 1, error.column ?? 1)
+      const span = cut ? null : unknownWordSpan(text, at, error)
+      if (span) {
+        const [start, end] = span
+        text = `${text.slice(0, start)}${text.slice(start, end).replace(/[^\n]/g, ' ')}${text.slice(end)}`
+      } else {
+        cut = true
+        text = at < text.length ? text.slice(0, at) : ''
+      }
     }
   }
+}
+
+/**
+ * The declaration an unknown word sits in, from the `;` or `{` before it
+ * through the `;` after it or up to a `}`, or null for any other break. The
+ * span always holds the word, so each pass blanks at least one character.
+ */
+function unknownWordSpan(
+  text: string,
+  at: number,
+  error: CssSyntaxError,
+): [number, number] | null {
+  if (!error.reason.startsWith('Unknown word')) return null
+  const start =
+    Math.max(text.lastIndexOf(';', at - 1), text.lastIndexOf('{', at - 1)) + 1
+  const next = text.slice(at).search(/[;}]/)
+  const end =
+    next === -1 ? text.length : at + next + (text[at + next] === ';' ? 1 : 0)
+  return end > at && /\S/.test(text[at] ?? '') ? [start, end] : null
 }
 
 /** The offset of a 1-based line and column in `text`. */

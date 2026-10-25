@@ -30,7 +30,7 @@ The custom property rule reads declarations rather than the tree.
 
 - `unknown-token` reports a `var()` with no fallback that no token sheet, frame sheet, or style attribute declares, leaving a token sheet's own references to the board
 - A property a script sets reads as unknown to `unknown-token`, which a fallback silences
-- `parseSheet` cuts a sheet at each break postcss refuses, so `unknown-token` and `dropped-declaration` read every declaration ahead of an unclosed rule
+- `parseSheet` blanks a declaration postcss reads as an unknown word and cuts the sheet at any other break, so `unknown-token` and `dropped-declaration` read every declaration a browser keeps
 
 Selector rules read the cascade rather than the parsed file.
 

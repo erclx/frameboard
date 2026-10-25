@@ -65,13 +65,13 @@ export async function checkDeclarations(
   for (const sheet of source.sheets) {
     const path = boardPath(source.root, sheet.path)
     const text = sheet.origin === 'style' ? source.html : sheet.css
-    const { root, error } = parseSheet(sheet.css)
-    if (error) {
+    const { root, errors } = parseSheet(sheet.css)
+    for (const error of errors) {
       findings.push(
         finding('dropped-declaration', {
           frame: source.ref,
           path,
-          message: `The sheet stops parsing here: ${error.reason}. The browser drops the declarations the break swallows, so close the rule, the string, or the comment.`,
+          message: breakMessage(error),
           location: syntaxLocation(text, sheet, error),
         }),
       )
@@ -147,6 +147,14 @@ function checkable(node: Declaration): boolean {
     }
   }
   return true
+}
+
+/** What to tell the agent about a break, by the cure its kind takes. */
+function breakMessage(error: CssSyntaxError): string {
+  if (error.reason.startsWith('Unknown word')) {
+    return `The browser drops this declaration, since it reads no property and value in it (${error.reason}). Check for a missing colon between the two.`
+  }
+  return `The sheet stops parsing here: ${error.reason}. The browser drops the declarations the break swallows, so close the rule, the string, or the comment.`
 }
 
 /** Where postcss stopped, as an offset into the file the sheet sits in. */

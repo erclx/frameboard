@@ -100,6 +100,21 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    it('reports a declaration missing its colon and checks every rule after it', async () => {
+      const findings = await dropped(
+        '<style>\n.a { color red; margin: 4pz }\n.b { colr: blue }\n</style>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          location: { line: 2, column: 6 },
+          message: expect.stringContaining('missing colon'),
+        },
+        { location: { line: 2, column: 17 } },
+        { location: { line: 3, column: 6 } },
+      ])
+    })
+
     it('reports one in a style attribute at the attribute', async () => {
       expect(
         await dropped('', '<p style="color: red; margin: 4pz">x</p>'),

@@ -61,6 +61,14 @@ describe('checkUnknownTokens', () => {
     ).toMatchObject([{ rule: 'unknown-token', location: { line: 1 } }])
   })
 
+  it('reports one after a declaration missing its colon', () => {
+    expect(
+      check(
+        '<style>.a { color red; margin: 0 }\n.b { color: var(--nope) }</style>',
+      ),
+    ).toMatchObject([{ rule: 'unknown-token', location: { line: 2 } }])
+  })
+
   it('passes a var() with a fallback', () => {
     expect(check('<p style="color: var(--x, red)">x</p>')).toEqual([])
   })
