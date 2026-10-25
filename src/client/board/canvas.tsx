@@ -25,8 +25,10 @@ import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
+import { frameAt } from './geometry/hit'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
+import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
 import { CanvasMenu } from './menus/canvas'
@@ -127,6 +129,15 @@ export function Canvas({
   useLayoutEffect(() => {
     framesRef.current = frames
   }, [frames])
+  // Read by the zoom handler, which marks crowded labels with no render.
+  const rooms = useMemo(() => labelRoom(frames), [frames])
+  const roomsRef = useRef(rooms)
+  useLayoutEffect(() => {
+    roomsRef.current = rooms
+    const viewport = viewportRef.current
+    const layer = layerRef.current
+    if (viewport && layer) markCrowded(layer, rooms, zoomTransform(viewport).k)
+  }, [rooms])
   // Ahead of the geometry keys, so Esc goes up from an element before it clears.
   useElementActions(page.ref)
   useGeometryActions(page.ref, frames)
@@ -179,6 +190,7 @@ export function Canvas({
           moved.style.transform = `translate(${x}px, ${y}px) scale(${k})`
           moved.style.setProperty('--zoom', String(k))
         }
+        markCrowded(layer, roomsRef.current, k)
         pageViews.set(page.ref, { x, y, k })
         reportZoom(k)
         if (!travelling) reportHandMove()
@@ -267,6 +279,23 @@ export function Canvas({
     const press = () => reportHandMove()
     viewport.addEventListener('pointerdown', press, { capture: true })
 
+    // The hit layer covers every frame, so the frame under the pointer is
+    // found by geometry and marked, which shows its label while crowded.
+    let hovered: string | null = null
+    const hover = (ref: string | null) => {
+      if (ref === hovered) return
+      hovered = ref
+      markHovered(layer, ref)
+    }
+    const track = (event: PointerEvent) => {
+      const transform = zoomTransform(viewport)
+      const [x, y] = transform.invert(pointer(event, viewport))
+      hover(frameAt(framesRef.current, { x, y }, transform.k)?.ref ?? null)
+    }
+    const leave = () => hover(null)
+    viewport.addEventListener('pointermove', track)
+    viewport.addEventListener('pointerleave', leave)
+
     const detach = attachCanvas(
       {
         zoomBy: (factor) => zoomer.scaleBy(selection, factor),
@@ -303,6 +332,8 @@ export function Canvas({
 
     return () => {
       viewport.removeEventListener('pointerdown', press, { capture: true })
+      viewport.removeEventListener('pointermove', track)
+      viewport.removeEventListener('pointerleave', leave)
       detach()
       clearTimeout(timer)
       cancelAnimationFrame(animation)

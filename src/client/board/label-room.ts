@@ -1,5 +1,7 @@
 import type { FrameRecord } from '@/shared/records/list'
 
+import { LABEL_HEIGHT } from './geometry/hit'
+
 /**
  * The board-unit gap above each frame's top edge, up to the nearest frame
  * above it that overlaps it across. A frame with nothing above takes
@@ -27,4 +29,28 @@ export function labelRoom(
     rooms.set(ref, room)
   }
   return rooms
+}
+
+/**
+ * Marks each frame element in `layer` whose room is shorter than the label
+ * at `zoom`, as `data-label-crowded`, which the frame reads to hide its
+ * label. It writes attributes alone, so the zoom handler calls it on every
+ * gesture frame with no React render.
+ */
+export function markCrowded(
+  layer: ParentNode,
+  rooms: ReadonlyMap<string, number>,
+  zoom: number,
+): void {
+  for (const element of layer.querySelectorAll<HTMLElement>('[data-frame]')) {
+    const room = rooms.get(element.dataset.frame ?? '') ?? Infinity
+    element.toggleAttribute('data-label-crowded', room * zoom < LABEL_HEIGHT)
+  }
+}
+
+/** Marks the frame under the pointer as `data-label-hover`, clearing it from every other, so a crowded label shows on hover. */
+export function markHovered(layer: ParentNode, ref: string | null): void {
+  for (const element of layer.querySelectorAll<HTMLElement>('[data-frame]')) {
+    element.toggleAttribute('data-label-hover', element.dataset.frame === ref)
+  }
 }
