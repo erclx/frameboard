@@ -1,9 +1,6 @@
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { writeFaces } from '@/server/look/write-faces'
-import { FACES } from '@/shared/faces'
+import { hasFaces, writeFaces } from '@/server/look/write-faces'
 
 /**
  * The folder the faces are served from. A built run reads the `faces` folder
@@ -20,11 +17,8 @@ export function resolveFacesDir(moduleUrl: string = import.meta.url): string {
   const cache = fileURLToPath(
     new URL('../../node_modules/.cache/frameboard/faces', moduleUrl),
   )
-  const complete = FACES.every((face) =>
-    existsSync(join(cache, face.folder, 'index.css')),
-  )
-  if (!complete) {
-    writeFaces(cache)
+  if (!hasFaces(cache)) {
+    writeFaces(cache, { keepComplete: true })
   }
   return cache
 }

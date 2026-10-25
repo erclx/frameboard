@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -64,5 +65,24 @@ describe('writeFaces', () => {
     writeFaces(target)
 
     expect(readdirSync(out)).toEqual(['faces'])
+  })
+
+  it('keeps a complete folder when asked to', () => {
+    writeFaces(out)
+    const marker = join(out, 'marker')
+    writeFileSync(marker, 'x')
+
+    writeFaces(out, { keepComplete: true })
+
+    expect(existsSync(marker)).toBe(true)
+  })
+
+  it('replaces an incomplete folder even when asked to keep a complete one', () => {
+    mkdirSync(join(out, 'geist'))
+    writeFileSync(join(out, 'geist', 'index.css'), '')
+
+    writeFaces(out, { keepComplete: true })
+
+    expect(existsSync(join(out, 'caveat', 'index.css'))).toBe(true)
   })
 })
