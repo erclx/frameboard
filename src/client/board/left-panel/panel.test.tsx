@@ -535,6 +535,33 @@ describe('LeftPanel', () => {
       expect(splitAt()).toBe(fitted)
     })
 
+    it('saves nothing for a double-click on a split already at its fit', async () => {
+      const storage = new Map<string, string>()
+      const kept = {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => void storage.set(key, value),
+      }
+      const location = memoryLocation({ path: '/', record: true })
+      const panel = (record: ProjectRecord) => (
+        <Router hook={location.hook}>
+          <TooltipProvider>
+            <div className="h-[600px]">
+              <LeftPanel project={record} page="home" storage={kept} />
+            </div>
+          </TooltipProvider>
+        </Router>
+      )
+      const { rerender } = render(panel(THREE()))
+      await userEvent.dblClick(divider())
+
+      rerender(
+        panel({ ...THREE(), name: 'marketing', path: '/board/marketing' }),
+      )
+
+      await expect.poll(splitAt).not.toBeNull()
+      expect(storage.size).toBe(0)
+    })
+
     it('saves a double-click reset', async () => {
       const storage = new Map<string, string>()
       renderPanel(THREE(), 'home', undefined, { storage })

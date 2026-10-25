@@ -133,8 +133,17 @@ export function LeftPanel({
                 aria-label="Resize the pages list"
                 disableDoubleClick
                 onDoubleClick={() => {
+                  const panel = pagesPanel.current
+                  // A split already at its fit changes no layout, so no
+                  // change would arrive to clear the mark.
+                  if (
+                    !panel ||
+                    Math.abs(panel.getSize().inPixels - pagesHeight) < 1
+                  ) {
+                    return
+                  }
                   resetting.current = true
-                  pagesPanel.current?.resize(pagesHeight)
+                  panel.resize(pagesHeight)
                 }}
                 className="group cursor-row-resize aria-[orientation=horizontal]:h-[9px] border-t border-sidebar-border bg-transparent after:hidden focus-visible:ring-0 data-[separator=active]:border-t-2 data-[separator=active]:border-faint focus-visible:border-t-2 focus-visible:border-primary"
               >
