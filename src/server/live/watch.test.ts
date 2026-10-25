@@ -306,7 +306,10 @@ describe('watchBoard', { timeout: SEEN_MS + 2000 }, () => {
         { timeout: SEEN_MS },
       )
       .toContain(sentinel)
-    expect(new Set(batches.flat())).toEqual(new Set([sentinel]))
+    // macOS can report the claims write again after the reset above
+    const claims = join(board.root, '.run/claims.json')
+    const reported = batches.flat().filter((path) => path !== claims)
+    expect(new Set(reported)).toEqual(new Set([sentinel]))
   })
 
   it('keeps reporting to later listeners when one throws', async () => {
