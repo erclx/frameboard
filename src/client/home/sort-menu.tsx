@@ -23,13 +23,10 @@ export function SortMenu() {
   const current = sorts.find((action) => action.checked?.())
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-lg pr-2 pl-2.5 font-medium text-muted-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:bg-muted">
-        <ArrowUpDown aria-hidden className="size-3.5" />
-        Sort:
-        <span className="text-foreground">
-          {current?.label ?? 'Last edited'}
-        </span>
-        <ChevronDown aria-hidden className="size-3" />
+      <DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-lg pr-2 pl-2.5 font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:bg-muted">
+        <ArrowUpDown aria-hidden className="size-3.5 text-muted-foreground" />
+        Sort: {current?.label ?? 'Last edited'}
+        <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
       </DropdownMenuTrigger>
       <ChromeMenuContent align="end" className="w-45">
         <DropdownMenuGroup>
