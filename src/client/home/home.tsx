@@ -44,7 +44,7 @@ export function Home({ projects, calls }: HomeProps) {
         <EmptyHome />
       ) : (
         <Projects
-          projects={orderProjects(projects, sort, pins)}
+          projects={orderProjects(projects, sort.by, pins, sort.direction)}
           layout={layout}
           now={now}
           calls={calls}

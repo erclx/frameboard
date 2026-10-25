@@ -959,6 +959,60 @@ describe('Home order and pins', () => {
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
   })
 
+  it('reverses the order from the sort menu and remembers it', async () => {
+    renderLive(THREE, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Oldest first' }),
+    )
+    cleanup()
+    renderLive(THREE, server().calls)
+
+    expect(shown()).toEqual(['atlas', 'webapp', 'studio'])
+  })
+
+  it('names the direction after the key, from A for Name', async () => {
+    localStorage.setItem('frameboard.home.sort', 'name')
+    renderLive(THREE, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'A to Z' }),
+    ).toHaveAttribute('aria-checked', 'true')
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Z to A' }),
+    ).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('starts a newly picked key in its own direction', async () => {
+    localStorage.setItem('frameboard.home.sort', 'name')
+    localStorage.setItem('frameboard.home.sortDirection', 'desc')
+    renderLive(THREE, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Last edited' }),
+    )
+
+    expect(shown()).toEqual(['studio', 'webapp', 'atlas'])
+  })
+
+  it('reverses for the visit when storage refuses the write', async () => {
+    renderLive(THREE, server().calls)
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('refused')
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Oldest first' }),
+    )
+
+    expect(shown()).toEqual(['atlas', 'webapp', 'studio'])
+  })
+
   it('names the chosen order on the sort button', () => {
     localStorage.setItem('frameboard.home.sort', 'created')
 
