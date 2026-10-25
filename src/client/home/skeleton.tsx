@@ -1,3 +1,4 @@
+import { cardFrames } from '@/shared/card-frames'
 import type { ProjectRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
@@ -12,7 +13,7 @@ interface FrameSkeletonProps {
 }
 
 /**
- * The frames of the page a project opens on, drawn as white boxes at their
+ * The frames of a project's first page holding a visible one, drawn as white boxes at their
  * layout boxes and scaled as a group to fit, centered across and held to the
  * top, as `canon/design/home/grid` and `canon/design/home/list` draw a card's
  * well and a row's mark. A frame holding a stamp draws its capture over its
@@ -24,9 +25,7 @@ export function FrameSkeleton({
   captures,
   className,
 }: FrameSkeletonProps) {
-  const frames = (project.pages[0]?.frames ?? []).filter(
-    (frame) => !frame.hidden,
-  )
+  const frames = cardFrames(project)
   if (frames.length === 0) return null
   const boxes = frames.map((frame) => frame.box)
   const left = Math.min(...boxes.map((box) => box.x))

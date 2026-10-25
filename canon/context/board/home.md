@@ -16,7 +16,8 @@ Owns where the developer picks a project, being the home view and the project ac
 Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row. Opening a card opens its board, and the board's home button is the one way back and between projects.
 
 - A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
-- A card's well fits its first page's frames as a group, each capture drawn over its white box, which stays the placeholder until one lands. A list row's mark draws the boxes alone
+- A card's well fits the visible frames of the first page holding one as a group, each capture drawn over its white box until one lands. A list row's mark draws the boxes alone
+- `src/shared/card-frames.ts` makes that pick for the thumbnail route, the ask, and the skeleton alike, so a card never draws a box whose capture was never stamped
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
 
 The header and each card's menu run the `project.*` actions.

@@ -126,6 +126,11 @@ function renderPanel(
   return location
 }
 
+const divider = () =>
+  screen.getByRole('separator', { name: 'Resize the pages list' })
+
+const splitAt = () => divider().getAttribute('aria-valuenow')
+
 const OPEN_STUDIO = () => 'studio'
 
 const THREE = () =>
@@ -510,9 +515,100 @@ describe('LeftPanel', () => {
           .getAttribute('aria-valuenow'),
       ).toBe(moved)
     })
+
+    it('fits the split with room under the last page', () => {
+      renderPanel(THREE())
+
+      const links = within(
+        screen.getByRole('navigation', { name: 'Pages' }),
+      ).getAllByRole('link')
+      const last = links.at(-1)?.getBoundingClientRect().bottom ?? 0
+      expect(
+        divider().getBoundingClientRect().top - last,
+      ).toBeGreaterThanOrEqual(12)
+    })
+
+    it('keeps a split per project', async () => {
+      const storage = new Map<string, string>()
+      renderPanel(THREE(), 'home', undefined, { storage })
+      const fitted = splitAt()
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+      await expect.poll(() => storage.size).toBe(1)
+      cleanup()
+
+      renderPanel(
+        { ...THREE(), name: 'marketing', path: '/board/marketing' },
+        'home',
+        undefined,
+        { storage },
+      )
+
+      expect(splitAt()).toBe(fitted)
+    })
+
+    it('saves nothing for a double-click on a split already at its fit', async () => {
+      const storage = new Map<string, string>()
+      const kept = {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => void storage.set(key, value),
+      }
+      const location = memoryLocation({ path: '/', record: true })
+      const panel = (record: ProjectRecord) => (
+        <Router hook={location.hook}>
+          <TooltipProvider>
+            <div className="h-[600px]">
+              <LeftPanel project={record} page="home" storage={kept} />
+            </div>
+          </TooltipProvider>
+        </Router>
+      )
+      const { rerender } = render(panel(THREE()))
+      await userEvent.dblClick(divider())
+
+      rerender(
+        panel({ ...THREE(), name: 'marketing', path: '/board/marketing' }),
+      )
+
+      await expect.poll(splitAt).not.toBeNull()
+      expect(storage.size).toBe(0)
+    })
+
+    it('saves a double-click reset', async () => {
+      const storage = new Map<string, string>()
+      renderPanel(THREE(), 'home', undefined, { storage })
+      const fitted = splitAt()
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+      await expect.poll(() => storage.size).toBe(1)
+      await userEvent.dblClick(divider())
+      await expect.poll(splitAt).toBe(fitted)
+      cleanup()
+
+      renderPanel(THREE(), 'home', undefined, { storage })
+
+      expect(splitAt()).toBe(fitted)
+    })
   })
 
   describe('element rows', () => {
+    it('gives a frame and an element expander a 24px target', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const frameToggle = screen.getByRole('button', {
+        name: 'Show the elements of hero',
+      })
+      await userEvent.click(frameToggle)
+
+      const elementToggle = screen.getByRole('button', {
+        name: 'Show what Card holds',
+      })
+      for (const toggle of [frameToggle, elementToggle]) {
+        const box = toggle.getBoundingClientRect()
+        expect([box.width, box.height]).toEqual([24, 24])
+      }
+    })
+
     it("lists a frame's elements once its row opens", async () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))

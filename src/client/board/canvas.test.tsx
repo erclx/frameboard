@@ -1,10 +1,13 @@
 import '../styles.css'
 
 import { render } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { liveStore } from '@/client/live/store'
+import { createStructure } from '@/client/live/structure'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
@@ -51,11 +54,15 @@ function page(
   }
 }
 
-function renderCanvas(content: PageRecord, onCommit = () => {}) {
+function renderCanvas(
+  content: PageRecord,
+  onCommit = () => {},
+  calls?: ReturnType<typeof createStructure>,
+) {
   return render(
     <div style={{ width: 800, height: 600 }}>
       <Profiler id="canvas" onRender={onCommit}>
-        <Canvas page={content} reloads={{}} />
+        <Canvas page={content} reloads={{}} calls={calls} />
       </Profiler>
     </div>,
   )
@@ -111,6 +118,7 @@ describe('Canvas', () => {
   afterEach(() => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
     setCharacterKeys(true)
+    liveStore.setState({ canWrite: false })
   })
 
   it('covers the frames with the hit layer in Edit', () => {
@@ -270,6 +278,70 @@ describe('Canvas', () => {
     const { getByRole } = renderCanvas(page('studio/empty', []))
 
     expect(getByRole('status')).toHaveTextContent('Pick the Frame tool and')
+  })
+
+  describe('a page whose frames are all hidden', () => {
+    const hiddenPage = () =>
+      page('studio/home', [
+        frame(
+          'profile',
+          { x: 0, y: 0, width: 390, height: 844 },
+          { hidden: true },
+        ),
+        frame(
+          'billing',
+          { x: 400, y: 0, width: 390, height: 844 },
+          { hidden: true },
+        ),
+      ])
+
+    it('counts the hidden frames and shows them on a press', async () => {
+      liveStore.setState({ canWrite: true })
+      const sent: unknown[] = []
+      const calls = createStructure(async (_path, init) => {
+        sent.push(JSON.parse(String(init?.body)))
+        return Response.json({ ok: true, data: [] })
+      })
+      const { getByRole } = renderCanvas(hiddenPage(), () => {}, calls)
+
+      expect(getByRole('status')).toHaveTextContent(
+        'Every frame on this page is hidden',
+      )
+      await userEvent.click(getByRole('button', { name: 'Show 2 frames' }))
+
+      expect(sent).toEqual([
+        {
+          refs: ['studio/home/profile', 'studio/home/billing'],
+          flag: 'hidden',
+          on: false,
+        },
+      ])
+    })
+
+    it('offers no Show button to a tab that cannot write', () => {
+      const { getByRole, queryByRole } = renderCanvas(hiddenPage())
+
+      expect(getByRole('status')).toHaveTextContent(
+        '2 hidden frames stay listed under Layers.',
+      )
+      expect(queryByRole('button', { name: 'Show 2 frames' })).toBeNull()
+    })
+
+    it('agrees the verb with one hidden frame', () => {
+      const { getByRole } = renderCanvas(
+        page('studio/home', [
+          frame(
+            'profile',
+            { x: 0, y: 0, width: 390, height: 844 },
+            { hidden: true },
+          ),
+        ]),
+      )
+
+      expect(getByRole('status')).toHaveTextContent(
+        '1 hidden frame stays listed under Layers.',
+      )
+    })
   })
 
   it('fits every frame into the viewport on a first visit', () => {

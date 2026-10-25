@@ -23,6 +23,10 @@ const KEYS: Readonly<Record<string, string>> = {
   Equal: '=',
   Minus: '-',
   Escape: 'Esc',
+  // The same on every platform, as `canon/design/palette/shortcuts` draws them.
+  Enter: '↵',
+  Backspace: '⌫',
+  Tab: 'Tab',
 }
 
 /** Whether the board runs on a Mac, which names `$mod` Cmd rather than Ctrl, as tinykeys does. */

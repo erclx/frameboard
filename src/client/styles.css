@@ -15,9 +15,10 @@
   --text-label: 11px;
   --text-label--font-weight: 600;
 
-  /* A claimed frame's outline and tag breathe together, per agents/claim-pulse. */
+  /* A claimed frame's outline, its tag's tint, and a ring on the initial breathe together, per agents/claim-pulse. */
   --animate-claim-outline: claim-outline 2.4s ease-in-out infinite;
   --animate-claim-tag: claim-tag 2.4s ease-in-out infinite;
+  --animate-claim-dot: claim-dot 2.4s ease-in-out infinite;
   /* An agent's change glows for 2s and fades over its last 600ms, per agents/claim-full. */
   --animate-change-glow: change-glow 2s linear forwards;
 
@@ -44,10 +45,21 @@
   @keyframes claim-tag {
     0%,
     100% {
-      opacity: 1;
+      background-color: color-mix(in srgb, var(--claim) 18%, transparent);
     }
     50% {
-      opacity: 0.6;
+      background-color: color-mix(in srgb, var(--claim) 7%, transparent);
+    }
+  }
+
+  /* A ring breathes around the initial rather than the initial fading, so its letter holds contrast. */
+  @keyframes claim-dot {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--claim) 35%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--claim) 35%, transparent);
     }
   }
 }
@@ -165,8 +177,11 @@
 }
 
 @layer base {
+  /* A frame is its own document, so the thin scrollbar stays in the chrome. */
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--faint) transparent;
   }
   body {
     @apply bg-background text-foreground;

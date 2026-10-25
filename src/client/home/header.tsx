@@ -25,7 +25,7 @@ export function HomeHeader({ hasProjects }: HomeHeaderProps) {
   const [grid, list, newProject, theme] = useActions(IDS)
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
-      <span className="flex flex-1 items-center gap-2 text-sm font-semibold">
+      <span className="flex flex-1 items-center gap-2 text-base font-semibold">
         <Mark />
         Frameboard
       </span>
@@ -125,10 +125,18 @@ function pressable(action: Action | undefined) {
   }
 }
 
-/** Mark 5c, as `src/client/public/icon.svg` draws it, in the chrome's own colors. */
+/**
+ * Mark 5c, as `src/client/public/icon.svg` draws it, in the chrome's own
+ * colors. Its body sits 1.5px below the box's center at 24px, so it rises by
+ * that much to center the wordmark on the body rather than on the box.
+ */
 function Mark() {
   return (
-    <svg aria-hidden viewBox="0 0 64 64" className="size-5">
+    <svg
+      aria-hidden
+      viewBox="0 0 64 64"
+      className="size-6 -translate-y-[1.5px]"
+    >
       <rect
         x="4"
         y="12"

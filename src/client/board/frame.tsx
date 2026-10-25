@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Lock, TriangleAlert } from 'lucide-react'
+import { Lock, Moon, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -10,11 +10,16 @@ import {
   PopoverTrigger,
 } from '@/client/components/ui/popover'
 import { useUnseen } from '@/client/live/unseen'
-import { frameTheme, useFrameTheme } from '@/client/theme/store'
+import {
+  flipFrame,
+  frameTheme,
+  useFrameTheme,
+  useShownTheme,
+} from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl, setFrameTheme, type Theme } from '@/shared/theme'
 
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
@@ -47,8 +52,8 @@ interface FrameProps {
 /**
  * One frame at its box on the canvas layer, with its name above it at a
  * constant screen size. The label is the surface later rows add check
- * findings and claim tags to. In Play a click moves focus into the frame,
- * so Esc is bound into its window to reach the board.
+ * findings, claim tags, and the theme marker to. In Play a click moves focus
+ * into the frame, so Esc is bound into its window to reach the board.
  */
 export const Frame = memo(function Frame({
   frame,
@@ -64,6 +69,7 @@ export const Frame = memo(function Frame({
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
   const theme = useFrameTheme(frame.ref)
+  const findingsOpen = useFindingsOpen(frame.ref)
   const hasBase = useUnseen((state) => frame.ref in state.base)
   const compared = useCompare((state) =>
     state.ref === frame.ref ? state.hash : null,
@@ -154,12 +160,17 @@ export const Frame = memo(function Frame({
       data-frame={frame.ref}
       data-selected={selected || undefined}
       data-claimed={claimed ? true : undefined}
+      data-findings-open={findingsOpen || undefined}
       className="absolute"
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
       <div
         className={cn(
           'absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label [transform:scale(calc(1/var(--zoom,1)))]',
+          // Hidden while the canvas marks the frame crowded, its room above
+          // shorter than the label at this zoom, unless the pointer is over
+          // it, it is selected, or its findings are open.
+          '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:hidden',
           claimed ? 'text-claim' : 'text-muted-foreground',
         )}
         style={{ maxWidth: `calc(${width}px * var(--zoom, 1))` }}
@@ -176,6 +187,9 @@ export const Frame = memo(function Frame({
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
         <span className="truncate">{frame.name}</span>
+        {playing ? null : (
+          <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
+        )}
         {hasBase && !playing ? (
           <CompareControl frameRef={frame.ref} name={frame.name} />
         ) : null}
@@ -204,9 +218,80 @@ export const Frame = memo(function Frame({
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
       {claimed ? <ClaimOutline /> : null}
+      {findings && findings.length > 0 ? (
+        <span
+          aria-hidden
+          data-findings-dot
+          data-findings-badge={frame.ref}
+          data-severity={severityOf(findings)}
+          className={cn(
+            'absolute top-0 left-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-note',
+            // Shown exactly while the label hides, by the label's own rule,
+            // on the top left where the label starts, since a frame note
+            // takes the top right.
+            '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:block',
+          )}
+        />
+      ) : null}
     </div>
   )
 })
+
+/**
+ * The frame's theme on its label: a sun while it follows the board, shown
+ * only while the pointer is over the frame as `canon/design/canvas/labels`
+ * draws it, and a Dark or Light chip while it is flipped alone, so a flipped
+ * frame never reads as a theme bug. A click flips it, reaching the button through the
+ * hit layer as the compare control does. It gives way before the findings
+ * count on a narrow frame, which matters more.
+ */
+function ThemeMarker({
+  frameRef,
+  name,
+  theme,
+}: {
+  frameRef: string
+  name: string
+  theme: Theme
+}) {
+  const board = useShownTheme()
+  const to = theme === 'dark' ? 'light' : 'dark'
+  const label = `Flip ${name} to ${to}`
+  if (theme === board) {
+    return (
+      <button
+        type="button"
+        data-label-control
+        aria-label={label}
+        title={label}
+        onClick={() => flipFrame(frameRef)}
+        className="invisible grid h-[18px] w-[18px] min-w-0 shrink place-items-center overflow-hidden rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [[data-label-hover]_&]:visible"
+      >
+        <Sun aria-hidden className="size-3" />
+      </button>
+    )
+  }
+  const Icon = theme === 'dark' ? Moon : Sun
+  return (
+    <button
+      type="button"
+      data-label-control
+      aria-label={label}
+      title={label}
+      onClick={() => flipFrame(frameRef)}
+      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <Icon aria-hidden className="size-3" />
+      {theme === 'dark' ? 'Dark' : 'Light'}
+    </button>
+  )
+}
+
+function severityOf(findings: readonly Finding[]): Finding['severity'] {
+  return findings.some((finding) => finding.severity === 'error')
+    ? 'error'
+    : 'warning'
+}
 
 /**
  * The claimed frame's dashed outline, 1.5px wide and 3px outside it on
@@ -246,9 +331,7 @@ interface FindingsMarkProps {
 function FindingsMark({ frame, findings }: FindingsMarkProps) {
   const open = useFindingsOpen(frame.ref)
   const count = findings.length
-  const severity = findings.some((finding) => finding.severity === 'error')
-    ? 'error'
-    : 'warning'
+  const severity = severityOf(findings)
   const counted = `${count} finding${count === 1 ? '' : 's'}`
   return (
     <Popover

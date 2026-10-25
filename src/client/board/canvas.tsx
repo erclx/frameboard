@@ -5,7 +5,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { TAB_ID } from '@/client/live/socket'
-import { liveStore } from '@/client/live/store'
+import { liveStore, useLive } from '@/client/live/store'
+import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
 import type { Finding } from '@/shared/records/check'
@@ -24,8 +25,11 @@ import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
+import { frameAt } from './geometry/hit'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
+import { labelRoom, markCrowded, markHovered } from './label-room'
+import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
 import { CanvasMenu } from './menus/canvas'
 import { followSpacePan, modeStore, useMode } from './mode'
@@ -73,6 +77,8 @@ interface CanvasProps {
   claims?: Readonly<Record<string, Claim>>
   /** A frame to bring into view, as `show` asks, once it is on this page. */
   focus?: string | null
+  /** The server calls the empty page's Show writes through, the board's own when absent. */
+  calls?: Structure
   /** Called once the view has started toward `focus`. */
   onFocused?: () => void
 }
@@ -92,6 +98,7 @@ export function Canvas({
   claims,
   focus,
   onFocused,
+  calls = structure,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
@@ -122,6 +129,15 @@ export function Canvas({
   useLayoutEffect(() => {
     framesRef.current = frames
   }, [frames])
+  // Read by the zoom handler, which marks crowded labels with no render.
+  const rooms = useMemo(() => labelRoom(frames), [frames])
+  const roomsRef = useRef(rooms)
+  useLayoutEffect(() => {
+    roomsRef.current = rooms
+    const viewport = viewportRef.current
+    const layer = layerRef.current
+    if (viewport && layer) markCrowded(layer, rooms, zoomTransform(viewport).k)
+  }, [rooms])
   // Ahead of the geometry keys, so Esc goes up from an element before it clears.
   useElementActions(page.ref)
   useGeometryActions(page.ref, frames)
@@ -174,6 +190,7 @@ export function Canvas({
           moved.style.transform = `translate(${x}px, ${y}px) scale(${k})`
           moved.style.setProperty('--zoom', String(k))
         }
+        markCrowded(layer, roomsRef.current, k)
         pageViews.set(page.ref, { x, y, k })
         reportZoom(k)
         if (!travelling) reportHandMove()
@@ -262,6 +279,23 @@ export function Canvas({
     const press = () => reportHandMove()
     viewport.addEventListener('pointerdown', press, { capture: true })
 
+    // The hit layer covers every frame, so the frame under the pointer is
+    // found by geometry and marked, which shows its label while crowded.
+    let hovered: string | null = null
+    const hover = (ref: string | null) => {
+      if (ref === hovered) return
+      hovered = ref
+      markHovered(layer, ref)
+    }
+    const track = (event: PointerEvent) => {
+      const transform = zoomTransform(viewport)
+      const [x, y] = transform.invert(pointer(event, viewport))
+      hover(frameAt(framesRef.current, { x, y }, transform.k)?.ref ?? null)
+    }
+    const leave = () => hover(null)
+    viewport.addEventListener('pointermove', track)
+    viewport.addEventListener('pointerleave', leave)
+
     const detach = attachCanvas(
       {
         zoomBy: (factor) => zoomer.scaleBy(selection, factor),
@@ -298,6 +332,8 @@ export function Canvas({
 
     return () => {
       viewport.removeEventListener('pointerdown', press, { capture: true })
+      viewport.removeEventListener('pointermove', track)
+      viewport.removeEventListener('pointerleave', leave)
       detach()
       clearTimeout(timer)
       cancelAnimationFrame(animation)
@@ -436,13 +472,25 @@ export function Canvas({
                 const viewport = viewportRef.current
                 if (!(noting || framing) || !viewport || !layer) return
                 event.stopPropagation()
-                const [x, y] = zoomTransform(viewport).invert(
+                const transform = zoomTransform(viewport)
+                const [x, y] = transform.invert(
                   pointer(event.nativeEvent, viewport),
                 )
                 if (framing) {
+                  const size = sizeOf(viewport)
+                  const [left, top] = transform.invert([0, 0])
                   void placeFrame(
                     { x, y },
-                    { page: page.ref, frames: page.frames },
+                    {
+                      page: page.ref,
+                      frames: page.frames,
+                      visible: {
+                        x: left,
+                        y: top,
+                        width: size.width / transform.k,
+                        height: size.height / transform.k,
+                      },
+                    },
                   )
                   return
                 }
@@ -471,7 +519,7 @@ export function Canvas({
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (
-        <EmptyNotice />
+        <EmptyNotice hidden={page.frames} calls={calls} />
       ) : null}
     </div>
   )
@@ -496,12 +544,65 @@ function LayoutErrorNotice({
   )
 }
 
-function EmptyNotice() {
+/**
+ * The notice on a page drawing no frame. A page whose frames are all hidden
+ * says so, since its layers still list them, and a tab that may write offers
+ * to show them. Its body mixes the muted text toward the foreground, since
+ * the muted token alone reads 4.3:1 on the light canvas.
+ */
+function EmptyNotice({
+  hidden,
+  calls,
+}: {
+  /** The page's frames, every one hidden when there are any. */
+  hidden: readonly FrameRecord[]
+  calls: Structure
+}) {
   const keysOn = useCharacterKeysOn()
+  const canWrite = useLive((state) => state.canWrite)
+  if (hidden.length > 0) {
+    const counted =
+      hidden.length === 1
+        ? '1 hidden frame stays'
+        : `${hidden.length} hidden frames stay`
+    const show = `Show ${hidden.length} frame${hidden.length === 1 ? '' : 's'}`
+    return (
+      <div
+        role="status"
+        className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-[color-mix(in_srgb,var(--muted-foreground)_85%,var(--foreground))]"
+      >
+        <div
+          aria-hidden
+          className="mx-auto mb-3.5 h-12 w-16 rounded-lg border-[1.5px] border-dashed border-faint"
+        />
+        <p className="mb-1 text-sm font-semibold text-foreground">
+          Every frame on this page is hidden
+        </p>
+        <p>{counted} listed under Layers.</p>
+        {canWrite ? (
+          <button
+            type="button"
+            onClick={() =>
+              void calls
+                .flagFrames(
+                  hidden.map((frame) => frame.ref),
+                  'hidden',
+                  false,
+                )
+                .catch(reportRefusal("Couldn't show the hidden frames"))
+            }
+            className="pointer-events-auto mt-3.5 h-[30px] rounded-lg bg-muted px-3 font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {show}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
   return (
     <div
       role="status"
-      className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-muted-foreground"
+      className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-[color-mix(in_srgb,var(--muted-foreground)_85%,var(--foreground))]"
     >
       <div
         aria-hidden

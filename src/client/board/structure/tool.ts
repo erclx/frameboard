@@ -10,9 +10,12 @@ import { DEFAULT_FRAME_SIZE, type FrameSizePreset } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
 
+import type { Box } from '../geometry/box'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import { select, type SelectionStore, selectionStore } from '../selection'
+import { canvasView } from '../view'
+import { startFrameRename } from './actions'
 
 /** The preset the Frame tool's next click places, chosen from the inspector's list. */
 export type PresetStore = StoreApi<{ preset: FrameSizePreset }>
@@ -29,9 +32,6 @@ export function choosePreset(preset: FrameSizePreset): void {
   presetStore.setState({ preset })
 }
 
-/** The name a new frame takes, being `frame` or its next free copy among every frame on the page. */
-export const NEW_FRAME_NAME = 'frame'
-
 export interface PlaceContext {
   page: string
   /** Every frame on the page, hidden ones included, since they hold names too. */
@@ -40,11 +40,18 @@ export interface PlaceContext {
   selection?: SelectionStore
   mode?: ModeStore
   calls?: Structure
+  /** The board area the view shows, which a new frame outside it pans to. Absent, the view stays. */
+  visible?: Box
+  view?: Pick<typeof canvasView, 'centerOn'>
+  /** Opens the new frame's name for editing, the inspector's Name field when absent. */
+  rename?: (ref: string) => void
 }
 
 /**
  * Adds a frame at the chosen preset with its top left corner on a board
- * point, then selects it and returns to Move, as one click of the Frame tool.
+ * point, named for the preset as duplicate and new page name theirs, then
+ * selects it, returns to Move, opens its name for editing, and centers the
+ * view on it when it is not wholly in view, as one click of the Frame tool.
  */
 export async function placeFrame(
   point: { x: number; y: number },
@@ -55,24 +62,39 @@ export async function placeFrame(
     selection = selectionStore,
     mode = modeStore,
     calls = structure,
+    visible,
+    view = canvasView,
+    rename = (ref) => startFrameRename(ref, 'inspector'),
   }: PlaceContext,
 ): Promise<void> {
+  const size = preset.getState().preset
   const name = nextFreeName(
-    NEW_FRAME_NAME,
+    size,
     frames.map((frame) => frame.name),
   )
   try {
     const added = await calls.addFrame(
       `${page}/${name}`,
-      preset.getState().preset,
+      size,
       Math.round(point.x),
       Math.round(point.y),
     )
     select(selection, page, [added.ref])
     mode.setState({ tool: 'move' })
+    rename(added.ref)
+    if (visible && !within(added.box, visible)) view.centerOn(added.box)
   } catch (error) {
     reportRefusal("Couldn't add a frame")(error)
   }
+}
+
+function within(box: Box, area: Box): boolean {
+  return (
+    box.x >= area.x &&
+    box.y >= area.y &&
+    box.x + box.width <= area.x + area.width &&
+    box.y + box.height <= area.y + area.height
+  )
 }
 
 const canWrite = () => liveStore.getState().canWrite

@@ -211,7 +211,13 @@ describe('menuActions', () => {
       await settle()
 
       expect(sent).toEqual([
-        ['addFrame', 'studio/home/frame', DEFAULT_FRAME_SIZE, 300, 41],
+        [
+          'addFrame',
+          `studio/home/${DEFAULT_FRAME_SIZE}`,
+          DEFAULT_FRAME_SIZE,
+          300,
+          41,
+        ],
       ])
     })
 

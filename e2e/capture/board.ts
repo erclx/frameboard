@@ -808,6 +808,44 @@ async function hiddenSketch(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Lists `webapp/home/about` 20px under the hero through the socket's board
+ * message, so the fitted view crowds its label with no fixture edit.
+ */
+async function stackedAbout(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        data?: ListResult
+      }
+      if (parsed.type !== 'board' || !parsed.data) {
+        socket.send(message)
+        return
+      }
+      for (const project of parsed.data.projects) {
+        for (const shown of project.pages) {
+          const hero = shown.frames.find(
+            (frame) => frame.ref === 'webapp/home/hero',
+          )
+          const about = shown.frames.find(
+            (frame) => frame.ref === 'webapp/home/about',
+          )
+          if (!hero || !about) continue
+          about.box = {
+            ...about.box,
+            x: hero.box.x,
+            y: hero.box.y + hero.box.height + 20,
+          }
+        }
+      }
+      socket.send(JSON.stringify(parsed))
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
 /** One change an agent made, as the server's change log carries it. */
 function agentChange(frame: string, at: number): FrameChange {
   return {
@@ -1708,6 +1746,38 @@ export const BOARD_CASES: CaptureCase[] = [
             readyWhen('[data-slot="context-menu-content"]'),
           ),
         ),
+      },
+      {
+        // The about frame sits 20px under the hero, so at the fitted zoom
+        // its label has no room and hides.
+        section: 'labels-low-zoom',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(stackedAbout, readyWhen('[data-frame][data-label-crowded]')),
+        ),
+      },
+      {
+        // The settings page's one frame is hidden.
+        section: 'empty-hidden',
+        theme,
+        route: '/p/webapp/settings',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, readyWhen('[role="status"] button'))),
+      },
+      {
+        section: 'flipped-marker',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(pressOnLoad('^Flip hero to')),
       },
     ]
   }),

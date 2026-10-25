@@ -84,6 +84,25 @@ describe('GET /api/thumbnails', () => {
     ])
   })
 
+  it('asks for the next page when every frame on the first is hidden', async () => {
+    board = writeBoard({
+      'studio/home/draft.html': '<p>Draft</p>',
+      'studio/home/layout.json': layout({
+        draft: { x: 0, y: 0, width: 390, height: 844, order: 0, hidden: true },
+      }),
+      'studio/settings/form.html': '<p>Form</p>',
+    })
+    const { store, asked } = fakeStore()
+
+    await thumbnailRoutes(board.root, store).request(
+      '/api/thumbnails?theme=light',
+    )
+
+    expect(asked[0]?.frames.map((frame) => frame.ref)).toEqual([
+      'studio/settings/form',
+    ])
+  })
+
   it('answers 400 for a theme other than light or dark', async () => {
     board = writeBoard({})
     const { store, asked } = fakeStore()
