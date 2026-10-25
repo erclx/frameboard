@@ -1,4 +1,4 @@
-import { Copy, FolderPlus, House, PencilLine, Trash2 } from 'lucide-react'
+import { Copy, FolderPlus, House, PencilLine, Pin, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -10,6 +10,7 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
+import { dropPin, movePin, pinnedProjects, togglePin } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
@@ -67,7 +68,8 @@ export function projectHref({ name, pages }: ProjectRecord): string {
 }
 
 /**
- * Renames a project through the server. A name the verb refuses as invalid
+ * Renames a project through the server, carrying its pin to the new name, so
+ * every caller of a rename keeps it. A name the verb refuses as invalid
  * keeps the field open with the reason under it, and any other refusal
  * closes the field and raises the error toast. Resolves the new name, or
  * null when the project kept its own.
@@ -97,6 +99,7 @@ export async function renameProject(
     reportRefusal(`Couldn't rename ${project}`)(error)
     return null
   }
+  movePin(project, name)
   stopProjectRename()
   focusProject(name)
   return name
@@ -164,12 +167,13 @@ export function useNewProjectAction(calls: Structure = structure): void {
 }
 
 /**
- * Registers `project.open`, `project.rename`, `project.duplicate`, and
- * `project.delete` acting on the project `target` names, the focused card on
- * the home view and the open project on the board. Rename, Duplicate, and
- * Delete reach the palette only while there is a target, each naming it as
- * the row's hint, since an unnamed Delete is a guess. Each write is lit while
- * the tab may write. Pass a stable `target` and `onDeleted`, since a new one
+ * Registers `project.open`, `project.rename`, `project.duplicate`,
+ * `project.pin`, and `project.delete` acting on the project `target` names,
+ * the focused card on the home view and the open project on the board.
+ * Rename, Duplicate, Pin, and Delete reach the palette only while there is a
+ * target, each naming it as the row's hint, since an unnamed Delete is a
+ * guess. Each write is lit while the tab may write, and Pin whenever there is
+ * a target, since a pin lives in the browser rather than the board. Pass a stable `target` and `onDeleted`, since a new one
  * registers the actions again.
  */
 export function useProjectActions(
@@ -228,6 +232,18 @@ export function useProjectActions(
         },
       },
       {
+        id: 'project.pin',
+        label: 'Pin',
+        group: 'project',
+        command: { label: 'Pin project', icon: Pin, hint },
+        enabled: () => focused() !== undefined,
+        checked: () => pinnedProjects().has(target() ?? ''),
+        run: () => {
+          const project = focused()
+          if (project) togglePin(project.name)
+        },
+      },
+      {
         id: 'project.delete',
         label: 'Delete',
         group: 'project',
@@ -236,12 +252,13 @@ export function useProjectActions(
         run: () => {
           const project = focused()
           if (!project) return
-          calls
-            .deleteProject(project.name)
-            .then(
-              () => onDeleted?.(),
-              reportRefusal(`Couldn't delete ${project.name}`),
-            )
+          calls.deleteProject(project.name).then(
+            () => {
+              dropPin(project.name)
+              onDeleted?.()
+            },
+            reportRefusal(`Couldn't delete ${project.name}`),
+          )
         },
       },
     ]
