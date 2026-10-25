@@ -51,7 +51,7 @@ Owns who may write, apart from the route modules.
 
 Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing.
 
-- `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so a frame's relative links resolve with no rewriting
+- `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so relative links resolve unrewritten, and `?at=<hash>` a replaced frame version
 - `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in `files`, behind `requireWriter` and a 64 MiB limit answering 413
 - `access.ts` trades a ticket for the cookie, mints one with its `expiresAt` for a bearer, and lands a failed redeem on `/?link=expired`. `api.ts` mounts every write route behind `requireWriter`
 - `structure.ts` answers `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags and one step each, and `history.ts` answers `POST /api/undo` and `/api/redo`, sharing `envelope.ts` refusals
