@@ -22,6 +22,9 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 
+- A double-click in the label strip runs `frame.rename`, opening the inspector's name through F2's gates, so a read-only tab opens nothing
+- It skips a point over a `[data-label-control]`, which clicks on release, and anywhere else a double-click picks inside the frame
+
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
 
 ### `src/client/board/left-panel/`
@@ -35,6 +38,9 @@ Owns the left panel, being `project-header.tsx` with the way home, the project n
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
 The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
+
+- Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
+- The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
 
 An element row renames on a double-click or F2 too, writing `data-name` as the inspector's Name does. Its F2 stops at the row, so the board's own F2 opens no second field.
 

@@ -26,7 +26,14 @@ The header and each card's menu run the `project.*` actions.
 - The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, which the palette lists too
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
+
+**Focus keys**
+
 - One card sits in the tab sequence, and the arrow keys move focus across the grid by its measured columns and down the list, with Home and End for the ends
+- H, J, K, and L stand for the arrows while single-key shortcuts are on. `roveFocus` reads the switch itself, the one character key outside the registry's gate
+- With nothing focused, `home.focusCards` lands the first arrow or hjkl on the tab stop card, and `home.focusFirst` and `home.focusLast` land Home and End
+- All three stand down once a card, a toggle, or a field holds focus, so a press moves focus once
+- The `?` sheet on home swaps the board's sections for Projects, listing these keys, and General, with the palette, the sheet, undo, and redo
 
 `sort.ts` and `pins.ts` hold the viewer's own order, kept in the browser beside the grid and list choice.
 
@@ -40,5 +47,6 @@ The header and each card's menu run the `project.*` actions.
 
 Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, Pin, and Delete reach the palette only while there is a project to act on, naming it as the row's hint.
 
+- `nav.home` goes home on Alt+ArrowUp, Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
 - A rename carries a pin to the new name, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned

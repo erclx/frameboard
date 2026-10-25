@@ -35,6 +35,10 @@ Owns the two overlays that list the registry, being Cmd+K's command palette and 
 
 The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text. Its header carries the Single-key shortcuts switch, an off key stays listed but faint, and an Agents group lists `]` and `[`.
 
+- On a board the Tools group ends with All projects, `nav.home` on Alt+ArrowUp
+- On home it reads `/` through wouter's `useRoute` and shows Projects and General in place of the board's sections, with H J K L faint while the switch is off
+- It sits outside the routes, so a test rendering it needs a `Router` on the path it means
+
 ### `src/client/history/`
 
 Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac, registered for the whole app since the home view undoes too, lit from the server's `history` counts and following the page an undo brings back.
