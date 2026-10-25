@@ -172,8 +172,13 @@ export function NumberField({
     }
   }
 
-  const shownFormat = useMemo<Intl.NumberFormatOptions | undefined>(
-    () => (draft?.offset ? { ...format, signDisplay: 'exceptZero' } : format),
+  // Grouping would show a 1440 px frame as 1,440, which reads as two numbers.
+  const shownFormat = useMemo<Intl.NumberFormatOptions>(
+    () => ({
+      useGrouping: false,
+      ...format,
+      ...(draft?.offset ? { signDisplay: 'exceptZero' } : {}),
+    }),
     [draft?.offset, format],
   )
 
