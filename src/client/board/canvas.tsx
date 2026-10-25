@@ -41,25 +41,10 @@ import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { followSelection, selectElement, selectionStore } from './selection'
 import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
+import { wheelZoom } from './wheel'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
-/** The zoom a mouse notch takes, the toolbar's own step. */
-const NOTCH_STEP = 1.2
-
-/**
- * The factor one zooming wheel event scales by. A mouse sends a line-mode
- * event or a pixel one of 50 or more per notch, which steps once whatever
- * its size, while a trackpad pinch sends many small ones that follow the
- * curve, so the pinch stays smooth.
- */
-function wheelZoom(deltaY: number, deltaMode: number): number {
-  if (deltaY === 0) return 1
-  if (deltaMode === WheelEvent.DOM_DELTA_LINE || Math.abs(deltaY) >= 50) {
-    return deltaY < 0 ? NOTCH_STEP : 1 / NOTCH_STEP
-  }
-  return 2 ** (-deltaY * 0.01)
-}
 const FIT_PADDING = 64
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
