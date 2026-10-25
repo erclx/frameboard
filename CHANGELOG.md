@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/erclx/frameboard/compare/v0.6.0...v0.7.0) (2026-10-25)
+
+
+### Features
+
+* **design-sync:** move the design references onto a frameboard board ([#73](https://github.com/erclx/frameboard/issues/73)) ([4df6b4f](https://github.com/erclx/frameboard/commit/4df6b4ff782deefbcc42a4f75fb172c7fe3a9a46))
+* **labels:** declare the pull request label map ([#68](https://github.com/erclx/frameboard/issues/68)) ([f460b17](https://github.com/erclx/frameboard/commit/f460b17c3acaa3d9cb1c5adfc38e9e90677a68de))
+
+
+### Bug Fixes
+
+* **inspector:** ignore a browser undo reaching an unfocused field ([#74](https://github.com/erclx/frameboard/issues/74)) ([87b6bb2](https://github.com/erclx/frameboard/commit/87b6bb20950fd23c77d56daa2bf5dfac203840ce))
+
 ## [0.6.0](https://github.com/erclx/frameboard/compare/v0.5.0...v0.6.0) (2026-10-20)
 
 
