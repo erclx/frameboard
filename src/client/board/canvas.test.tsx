@@ -321,8 +321,26 @@ describe('Canvas', () => {
     it('offers no Show button to a tab that cannot write', () => {
       const { getByRole, queryByRole } = renderCanvas(hiddenPage())
 
-      expect(getByRole('status')).toHaveTextContent('2 hidden frames')
+      expect(getByRole('status')).toHaveTextContent(
+        '2 hidden frames stay listed under Layers.',
+      )
       expect(queryByRole('button', { name: 'Show 2 frames' })).toBeNull()
+    })
+
+    it('agrees the verb with one hidden frame', () => {
+      const { getByRole } = renderCanvas(
+        page('studio/home', [
+          frame(
+            'profile',
+            { x: 0, y: 0, width: 390, height: 844 },
+            { hidden: true },
+          ),
+        ]),
+      )
+
+      expect(getByRole('status')).toHaveTextContent(
+        '1 hidden frame stays listed under Layers.',
+      )
     })
   })
 

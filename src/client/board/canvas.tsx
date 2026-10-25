@@ -577,7 +577,7 @@ function EmptyNotice({
         <p className="mb-1 text-sm font-semibold text-foreground">
           Every frame on this page is hidden
         </p>
-        <p>{counted} stay listed under Layers.</p>
+        <p>{counted} listed under Layers.</p>
         {canWrite ? (
           <button
             type="button"
