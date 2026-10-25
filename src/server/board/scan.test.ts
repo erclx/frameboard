@@ -88,7 +88,7 @@ describe('scanBoard', () => {
         box: { x: 1520, y: 0, width: 390, height: 844 },
         order: 1,
         hidden: false,
-        locked: true,
+        locked: false,
         placed: true,
       })
     })

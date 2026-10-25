@@ -53,6 +53,8 @@ describe('frame', () => {
 
   it('lock --off clears the flag', async () => {
     const run = on('basic')
+    const locked = await run('frame', 'lock', 'webapp/home/about')
+    expect(locked.json().data).toMatchObject({ locked: true })
 
     const result = await run('frame', 'lock', 'webapp/home/about', '--off')
 
