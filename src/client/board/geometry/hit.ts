@@ -47,6 +47,31 @@ export function onOutline(box: Box, point: Point, zoom: number): boolean {
   )
 }
 
+/**
+ * The frame whose findings badge sits under a screen point, null when none
+ * does. The badge draws under the hit layer at a constant screen size, so it
+ * is found by where the layer drew it rather than by canvas geometry.
+ */
+export function badgeAt(
+  layer: ParentNode,
+  point: { clientX: number; clientY: number },
+): string | null {
+  for (const badge of layer.querySelectorAll<HTMLElement>(
+    '[data-findings-badge]',
+  )) {
+    const { left, right, top, bottom } = badge.getBoundingClientRect()
+    if (
+      point.clientX >= left &&
+      point.clientX <= right &&
+      point.clientY >= top &&
+      point.clientY <= bottom
+    ) {
+      return badge.dataset.findingsBadge ?? null
+    }
+  }
+  return null
+}
+
 /** The selected element's outline box on the canvas, as the layer draws it, null while none draws. */
 export function selectedElementBox(layer: ParentNode): Box | null {
   const drawn = layer.querySelector<HTMLElement>('[data-element-selection]')

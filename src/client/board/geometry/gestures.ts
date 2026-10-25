@@ -6,6 +6,7 @@ import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import {
@@ -18,6 +19,7 @@ import {
 import { boundsOf, type Box, type Point, sameBox } from './box'
 import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
 import {
+  badgeAt,
   cornerAt,
   frameAt,
   framesIn,
@@ -50,6 +52,8 @@ export interface GestureStores {
   write: typeof writeBoxes
   /** Copies the frames shifted by `offset` from their own boxes, an Alt-drag's drop. */
   duplicate: Structure['duplicateFrames']
+  /** Opens a frame's findings popover. */
+  openFindings: (ref: string) => void
 }
 
 const STORES: GestureStores = {
@@ -58,10 +62,13 @@ const STORES: GestureStores = {
   canWrite: () => liveStore.getState().canWrite,
   write: writeBoxes,
   duplicate: structure.duplicateFrames,
+  openFindings,
 }
 
 type Gesture =
   | { kind: 'press'; frame: FrameRecord; shift: boolean }
+  /** A press on a frame's findings badge, which opens its list on release and selects nothing. */
+  | { kind: 'badge'; ref: string }
   | { kind: 'marquee'; shift: boolean; base: readonly string[] }
   | { kind: 'resize'; corner: Corner; boxes: Record<string, Box>; bounds: Box }
   | { kind: 'move'; boxes: Record<string, Box>; bounds: Box }
@@ -120,6 +127,11 @@ export function attachGestures(
     leaving = field !== null
     // Blurring here applies the field's edit before any drag writes.
     field?.blur()
+    const badge = badgeAt(target.layer, event)
+    if (badge) {
+      gesture = { kind: 'badge', ref: badge }
+      return
+    }
     // A press on the selected element's outline or a corner mark does
     // nothing, since an element's size is never set by hand, and the frame's
     // handles are hidden while an element is selected, so they take no press.
@@ -306,7 +318,9 @@ export function attachGestures(
         gesture = { kind: 'none' }
         return
       }
-      if (gesture.kind === 'press') {
+      if (gesture.kind === 'badge') {
+        stores.openFindings(gesture.ref)
+      } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
       } else if (gesture.kind === 'marquee' && !gesture.shift) {

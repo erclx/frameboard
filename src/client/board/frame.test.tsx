@@ -1,13 +1,15 @@
 import '../styles.css'
 
 import { act, render } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { registerActions } from '@/client/actions/registry'
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { openFindings } from './findings-open'
 import { Frame } from './frame'
 import { modeStore } from './mode'
 
@@ -202,9 +204,87 @@ describe('Frame', () => {
       />,
     )
 
-    const mark = getByRole('img', { name: '2 check findings' })
+    const mark = getByRole('button', { name: '2 check findings' })
     expect(mark).toHaveTextContent('2')
-    expect(mark).toHaveAttribute('title', 'One theme alone.\nDefault font.')
+  })
+
+  describe('findings popover', () => {
+    const FINDINGS: Finding[] = [
+      {
+        ...finding('Sets its own colors for one theme alone.'),
+        location: { line: 7, column: 3, startOffset: 60, endOffset: 91 },
+      },
+      {
+        ...finding('Grows with the viewport.', 'warning'),
+        rule: 'viewport',
+      },
+    ]
+
+    afterEach(() => {
+      act(() => openFindings(null))
+    })
+
+    function renderMarked() {
+      return render(
+        <Frame
+          frame={frame('checkout')}
+          live={false}
+          version={0}
+          findings={FINDINGS}
+        />,
+      )
+    }
+
+    it('lists each finding by rule, line, and message once opened', async () => {
+      const { findByRole } = renderMarked()
+
+      act(() => openFindings('studio/home/checkout'))
+
+      const list = await findByRole('dialog', {
+        name: '2 findings on checkout',
+      })
+      expect(
+        [...list.querySelectorAll('li')].map((item) => item.textContent),
+      ).toEqual([
+        'theme · line 7Sets its own colors for one theme alone.',
+        'viewportGrows with the viewport.',
+      ])
+    })
+
+    it('opens from the badge by keyboard', async () => {
+      const { getByRole, findByRole } = renderMarked()
+
+      getByRole('button', { name: '2 check findings' }).focus()
+      await userEvent.keyboard('{Enter}')
+
+      expect(await findByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('closes on Esc before the board clears the selection', async () => {
+      let clears = 0
+      const unregister = registerActions([
+        {
+          id: 'selection.clear',
+          label: 'Clear selection',
+          group: 'selection',
+          keys: ['Escape'],
+          run: () => {
+            clears += 1
+          },
+        },
+      ])
+      const unbind = bindKeys(window)
+      const { findByRole, queryByRole } = renderMarked()
+      act(() => openFindings('studio/home/checkout'))
+      await findByRole('dialog')
+
+      await userEvent.keyboard('{Escape}')
+
+      await expect.poll(() => queryByRole('dialog')).toBeNull()
+      expect(clears).toBe(0)
+      unbind()
+      unregister()
+    })
   })
 
   it('marks the pill error when any finding is an error', () => {
@@ -220,7 +300,7 @@ describe('Frame', () => {
       />,
     )
 
-    expect(getByRole('img')).toHaveAttribute('data-severity', 'error')
+    expect(getByRole('button')).toHaveAttribute('data-severity', 'error')
   })
 
   it('marks the pill warning when every finding is a warning', () => {
@@ -233,7 +313,7 @@ describe('Frame', () => {
       />,
     )
 
-    expect(getByRole('img')).toHaveAttribute('data-severity', 'warning')
+    expect(getByRole('button')).toHaveAttribute('data-severity', 'warning')
   })
 
   it('tints an error pill in the destructive hue and a warning pill in the note hue', () => {
@@ -256,7 +336,7 @@ describe('Frame', () => {
     const hue = (element: HTMLElement) =>
       getComputedStyle(element).getPropertyValue('--h').trim()
 
-    const [error, warning] = getAllByRole('img')
+    const [error, warning] = getAllByRole('button')
 
     expect(error && hue(error)).toBe(
       getComputedStyle(document.documentElement)
@@ -280,7 +360,7 @@ describe('Frame', () => {
       />,
     )
 
-    expect(queryByRole('img')).toBeNull()
+    expect(queryByRole('button')).toBeNull()
   })
 
   it('truncates the name and keeps the count on a narrow frame', () => {
@@ -301,7 +381,9 @@ describe('Frame', () => {
 
     const name = getByText(narrow.name)
     expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
-    expect(getByRole('img').getBoundingClientRect().right).toBeLessThanOrEqual(
+    expect(
+      getByRole('button').getBoundingClientRect().right,
+    ).toBeLessThanOrEqual(
       Math.ceil(name.parentElement?.getBoundingClientRect().right ?? 0),
     )
   })

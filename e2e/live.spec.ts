@@ -136,7 +136,7 @@ test.describe('the live board', () => {
     const hero = page.locator('[data-frame="studio/home/hero"]')
     const frame = join(board.root, 'studio/home/hero.html')
     await expect(
-      hero.getByRole('img', { name: '2 check findings' }),
+      hero.getByRole('button', { name: '2 check findings' }),
     ).toBeVisible()
 
     writeFileSync(
@@ -147,7 +147,7 @@ test.describe('the live board', () => {
 
     writeFileSync(frame, '<!doctype html><title>hero</title><h1>Studio</h1>')
     await expect(
-      hero.getByRole('img', { name: '1 check finding' }),
+      hero.getByRole('button', { name: '1 check finding' }),
     ).toBeVisible()
   })
 
@@ -156,17 +156,21 @@ test.describe('the live board', () => {
   }) => {
     // Its two static findings are what it carries before the resize.
     const mobile = page.locator('[data-frame="studio/home/mobile"]')
-    const before = mobile.getByRole('img', { name: '2 check findings' })
+    const before = mobile.getByRole('button', { name: '2 check findings' })
     await expect(before).toBeVisible()
-    await expect(before).not.toHaveAttribute('title', /px tall/)
 
     // A resize writes layout.json alone, so the browser checker reads the box.
     await cli(['frame', 'resize', 'home/mobile', '--height', '20', '--json'], {
       cwd: board.root,
     })
-    const clipped = mobile.getByRole('img', { name: '3 check findings' })
+    const clipped = mobile.getByRole('button', { name: '3 check findings' })
     await expect(clipped).toBeVisible()
-    await expect(clipped).toHaveAttribute('title', /px tall in its 20 px/)
+    // The hit layer above the badge takes the press and opens its list.
+    await clipped.click({ force: true })
+    await expect(
+      page.getByRole('dialog', { name: '3 findings on mobile' }),
+    ).toContainText(/px tall in its 20 px/)
+    await page.keyboard.press('Escape')
 
     await cli(['frame', 'fit', 'home/mobile', '--json'], { cwd: board.root })
     await expect(before).toBeVisible()

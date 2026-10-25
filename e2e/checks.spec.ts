@@ -194,7 +194,7 @@ test.describe('the browser rules on a running board', () => {
       await expect(pass).toBeVisible()
 
       await expect(
-        fail.getByRole('img', { name: '1 check finding' }),
+        fail.getByRole('button', { name: '1 check finding' }),
       ).toBeVisible()
       await expect(pass.getByRole('img')).toHaveCount(0)
     })
