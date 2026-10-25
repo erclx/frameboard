@@ -91,6 +91,17 @@ describe('receiveAccess', () => {
     receiveAccess(store, false)
     expect(store.getState().canWrite).toBe(false)
   })
+
+  it('marks the answer known until the socket drops', () => {
+    const store = createLiveStore()
+    expect(store.getState().accessKnown).toBe(false)
+
+    receiveAccess(store, false)
+    expect(store.getState().accessKnown).toBe(true)
+
+    receiveDisconnect(store)
+    expect(store.getState().accessKnown).toBe(false)
+  })
 })
 
 describe('receiveReload', () => {
