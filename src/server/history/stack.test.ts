@@ -125,6 +125,62 @@ describe('History', () => {
     )
   })
 
+  async function editHeadlineElement(text: string): Promise<void> {
+    const edited = editFrameFile(
+      at('webapp/home/hero.html'),
+      { index: 5 },
+      { kind: 'text', value: text },
+    )
+    if (!edited.ok) throw new Error(edited.detail)
+    const journal = history.journal()
+    journal.element(
+      at('webapp/home/hero.html'),
+      'webapp/home/hero',
+      edited.span,
+    )
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: ['webapp/home/hero'],
+    })
+  }
+
+  it('undoes a hand edit after an agent wrote another element, answering the hash on disk', async () => {
+    await editHeadlineElement('Welcome')
+    const hero = at('webapp/home/hero.html')
+    writeFileSync(
+      hero,
+      readFileSync(hero, 'utf8').replace(
+        'data-name="Caption"',
+        'title="agent" data-name="Caption"',
+      ),
+    )
+
+    const answer = await history.undo()
+
+    expect(readFileSync(hero, 'utf8')).toContain(
+      '<h1 data-name="Headline">hero</h1>',
+    )
+    expect(readFileSync(hero, 'utf8')).toContain('title="agent"')
+    expect(answer.hashes).toEqual({
+      'webapp/home/hero': contentHash(readFileSync(hero)),
+    })
+  })
+
+  it('refuses an undo of an element an agent changed since', async () => {
+    await editHeadlineElement('Welcome')
+    const hero = at('webapp/home/hero.html')
+    const agent = readFileSync(hero, 'utf8').replace('Welcome', 'Hello')
+    writeFileSync(hero, agent)
+
+    await expect(history.undo()).rejects.toMatchObject({
+      code: 'undo-overtaken',
+      details: { change: 'element' },
+    })
+    expect(readFileSync(hero, 'utf8')).toBe(agent)
+  })
+
   it('redoes an undone step', async () => {
     await renameHome('start')
     await history.undo()
