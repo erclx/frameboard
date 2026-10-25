@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/erclx/frameboard/compare/v0.7.0...v0.8.0) (2026-10-25)
+
+
+### Features
+
+* **access:** start boards where serve runs and add a writing-tab verb ([#77](https://github.com/erclx/frameboard/issues/77)) ([4360528](https://github.com/erclx/frameboard/commit/4360528b7515e488b43751a689505940a4dc0929))
+* **undo:** undo a hand edit by its element, not its whole file ([#79](https://github.com/erclx/frameboard/issues/79)) ([9482735](https://github.com/erclx/frameboard/commit/9482735b4f173ae11dabff8fbda25f4b10360634))
+
+
+### Bug Fixes
+
+* **actions:** run board keys while a toast has focus ([#76](https://github.com/erclx/frameboard/issues/76)) ([36c800e](https://github.com/erclx/frameboard/commit/36c800e711e95f6c907e9012b0dd64eb0671495d))
+* **cli:** load bundled faces when the CLI runs from source ([#81](https://github.com/erclx/frameboard/issues/81)) ([188ad99](https://github.com/erclx/frameboard/commit/188ad99818e06d9482e0c1532a16765dd6efe0e9))
+
 ## [0.7.0](https://github.com/erclx/frameboard/compare/v0.6.0...v0.7.0) (2026-10-25)
 
 
