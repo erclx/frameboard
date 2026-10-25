@@ -276,7 +276,7 @@ describe('capture', () => {
     })
 
     const run = spawnSync(
-      process.execPath,
+      'bun',
       [
         fileURLToPath(new URL('../index.ts', import.meta.url)),
         'capture',
