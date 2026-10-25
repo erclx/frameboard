@@ -41,6 +41,11 @@ export function previewsNow(): PreviewState['byRef'] {
   return previewStore.getState().byRef
 }
 
+/** Calls `listener` on each preview change, returning the function that stops. */
+export function onPreviewChange(listener: () => void): () => void {
+  return previewStore.subscribe(listener)
+}
+
 /** Shows each frame named at `width`, dropping a height measured at another one. */
 export function setPreview(refs: readonly string[], width: number): void {
   const rounded = Math.max(1, Math.round(width))
