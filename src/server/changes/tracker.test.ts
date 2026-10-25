@@ -143,6 +143,35 @@ describe('createChangeTracker', () => {
     expect(tracker.log()).toEqual([])
   })
 
+  it('withdraws a held change the history then tells it placed an element in', async () => {
+    const markup = '<p data-name="Text">Text</p>'
+    writeFileSync(
+      at('webapp/home/hero.html'),
+      hero().replace('<h1', `${markup}<h1`),
+    )
+    const held = await batch(['webapp/home/hero.html'])
+
+    await tracker.own(
+      stepOn(['webapp/home/hero'], null, [
+        {
+          kind: 'inserted',
+          path: at('webapp/home/hero.html'),
+          ref: 'webapp/home/hero',
+          span: {
+            markup,
+            index: 5,
+            count: 9,
+            placement: { parent: 4, before: 5 },
+            parent: { tagName: 'body', tag: '<body>' },
+            next: '<h1 data-name="Headline">',
+          },
+        },
+      ]),
+    )
+
+    expect(tracker.settle(held)).toEqual([])
+  })
+
   it('keeps a held change when the step only moved its frame', async () => {
     writeFileSync(
       at('webapp/home/hero.html'),
