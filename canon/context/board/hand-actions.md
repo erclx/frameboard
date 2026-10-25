@@ -30,8 +30,8 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together. Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for.
 
 - A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts on the selection the way its key does
-- Paste here shows Paste's key, sends the right-clicked point with the paste to place the group's top left there, and New frame here and Add a note here act at that point too
-- A page row's menu moves the canvas to that page first, since the `page.*` actions act on the page shown, and New page below runs `page.new`
+- Paste here shows Paste's key, sends the right-clicked point with the paste to place the group's top left there, and New frame here and both Add a note rows act at that point too
+- A page row's menu moves the canvas to that page first, since the `page.*` actions act on the page shown, New page below runs `page.new`, and Move up and Move down grey at the ends
 - Flip to light or Flip to dark ends every selected frame in the theme opposite the right-clicked one, lasting until reload and writing nothing
 - The menu key and Shift+F10 open a row's menu with focus inside, and a Ctrl-press the gestures keep for snapping opens none
 
@@ -40,7 +40,7 @@ Owns the right-click menus on a frame, the selected element, empty canvas, a pag
 Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller.
 
 - Each acts in Edit while the tab may write, on the frames selected on the canvas's page, and none acts while an element is selected, so Backspace never deletes a frame the developer sees as an element
-- Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway
+- Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway. F2 renames one selected frame in the inspector.
 - The server holds the clipboard, being each copied frame's bytes and layout entry in memory, so a paste never reads the source and a restart empties it. A cut is a copy and a delete in one undo step.
 - A paste lands on the page on the canvas, keeping each frame's box on another page and sitting beside its source on its own, and takes the next free name rather than writing over a frame by that name
 - Paste stays disabled until a copy or cut, and again once the socket drops, since the server may have restarted
@@ -56,6 +56,8 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
 A press on the canvas while an inspector field has focus blurs the field, which applies its edit. A click that only leaves the field selects and clears nothing, and a drag from the same press still moves frames.
+
+A move released with Alt held puts the frames back and sends one duplicate carrying the drop's offset, so the copies land there in one undo step. A locked frame neither moves nor copies.
 
 ### `src/server/history/`
 
