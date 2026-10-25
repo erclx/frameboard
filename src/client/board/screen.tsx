@@ -150,7 +150,9 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               }
             />
           )}
-          {playing ? <PlayBanner /> : null}
+          {playing ? (
+            <PlayBanner frames={current?.frames ?? NO_FRAMES} />
+          ) : null}
           {hideUi ? <HiddenPills project={record.name} /> : null}
         </main>
       </ResizablePanel>
