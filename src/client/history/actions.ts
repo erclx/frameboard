@@ -1,6 +1,7 @@
 import { Redo2, Undo2 } from 'lucide-react'
 import { navigate as browserNavigate } from 'wouter/use-browser-location'
 
+import { IS_MAC } from '@/client/actions/keys'
 import {
   type Action,
   refreshActions,
@@ -32,11 +33,13 @@ export interface HistoryDeps {
   selection?: SelectionStore
   /** Shows a refusal, the kit's toast by default. */
   notify?: (refusal: { title: string; description: string }) => void
+  /** Whether the board runs on a Mac, where Ctrl+Y is not redo. */
+  mac?: boolean
 }
 
 /**
- * Registers `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, which the
- * toolbar draws, each lit while the tab may write and the server holds a
+ * Registers `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y
+ * off a Mac, which the toolbar draws, each lit while the tab may write and the server holds a
  * step. A step that renamed, added, or removed a page answers the page to
  * show, which the board follows, a hand edit answers its frame's hash, which
  * keeps the selected element, and a refused step raises a toast. Returns
@@ -50,6 +53,7 @@ export function registerHistoryActions({
   notify = (refusal) =>
     // A refusal is the only record that the step was dropped, so it stays until dismissed.
     toast.add({ ...refusal, type: 'warning', timeout: 0 }),
+  mac = IS_MAC,
 }: HistoryDeps = {}): () => void {
   const follow = (answer: StepAnswer) => {
     dropPending(answer.frames)
@@ -125,7 +129,7 @@ export function registerHistoryActions({
       id: 'edit.redo',
       label: 'Redo',
       group: 'edit',
-      keys: ['$mod+Shift+KeyZ'],
+      keys: mac ? ['$mod+Shift+KeyZ'] : ['$mod+Shift+KeyZ', 'Control+KeyY'],
       run: step(calls.redo, 'Redo skipped', 'redo'),
       enabled: can('redo'),
       command: { label: 'Redo', icon: Redo2 },

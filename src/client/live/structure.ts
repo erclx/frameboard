@@ -59,8 +59,11 @@ export function createStructure(send: typeof fetch = fetch) {
       held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
     addFrame: (ref: string, size: FrameSizePreset, x: number, y: number) =>
       post<FrameRecord>('/api/frame/add', { ref, size, x, y }),
-    duplicateFrames: (refs: readonly string[]) =>
-      post<FrameRecord[]>('/api/frame/duplicate', { refs }),
+    /** Copies beside each source, or `offset` away from it when given, as an Alt-drag drops them. */
+    duplicateFrames: (
+      refs: readonly string[],
+      offset?: { x: number; y: number },
+    ) => post<FrameRecord[]>('/api/frame/duplicate', { refs, offset }),
     renameFrame: (ref: string, name: string) =>
       held<FrameRecord>([ref], 'rename', '/api/frame/rename', { ref, name }),
     orderFrame: (ref: string, index: number) =>

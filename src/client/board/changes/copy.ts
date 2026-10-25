@@ -8,10 +8,13 @@ export interface ToastCopy {
   detail: string
   /** Show is offered, which it is not while the one change glows on screen. */
   show: boolean
-  /** Next is offered, which it is once several frames changed. */
+  /** Previous and Next are offered, which they are once several frames changed. */
   next: boolean
-  /** The width agents/unseen-one, unseen-many, and claim-full draw each form at. */
-  width: 300 | 340 | 380
+  /**
+   * The width agents/unseen-one and claim-full draw each form at, and
+   * unseen-many's 380 widened by the Previous button it predates.
+   */
+  width: 300 | 340 | 460
 }
 
 /**
@@ -59,7 +62,7 @@ export function toastCopy(
     detail: `on ${pages} ${pages === 1 ? 'page' : 'pages'} · ${at} of ${count}`,
     show: true,
     next: true,
-    width: 380,
+    width: 460,
   }
 }
 

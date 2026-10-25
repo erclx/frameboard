@@ -1,12 +1,16 @@
 import { useState } from 'react'
 
 import type { Structure } from '@/client/live/structure'
+import {
+  focusedProject,
+  useNewProjectAction,
+  useProjectActions,
+} from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { EmptyHome } from './empty'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
-import { useProjectActions } from './project-actions'
 import { Projects } from './projects'
 import { useThumbnails } from './thumbnails'
 
@@ -20,7 +24,8 @@ interface HomeProps {
 export function Home({ projects, calls }: HomeProps) {
   const [now] = useState(Date.now)
   const layout = useHomeLayout()
-  useProjectActions(calls)
+  useNewProjectAction(calls)
+  useProjectActions(focusedProject, { calls })
   useThumbnails()
   return (
     <div className="flex min-h-full flex-col text-body">

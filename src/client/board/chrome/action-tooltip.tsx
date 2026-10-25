@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import {
   Tooltip,
@@ -15,14 +16,14 @@ interface ActionTooltipProps {
   side?: 'top' | 'bottom'
 }
 
-/** A control's name and its first key, as the toolbar and panel headers show them on hover. */
+/** A control's name and its first live key, as the toolbar and panel headers show them on hover. */
 export function ActionTooltip({
   label,
   keys,
   children,
   side = 'top',
 }: ActionTooltipProps) {
-  const key = keys?.[0]
+  const key = liveKey(keys, useCharacterKeysOn())
   return (
     <Tooltip>
       <TooltipTrigger render={children} />

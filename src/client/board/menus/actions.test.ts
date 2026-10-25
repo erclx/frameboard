@@ -45,7 +45,7 @@ function setup({
   const clipboard = createClipboardStore()
   const theme = createThemeStore()
   const place = createMenuPlace()
-  const notes = createStore<NotesUiState>()(() => ({ open: null }))
+  const notes = createStore<NotesUiState>()(() => ({ open: null, drafts: {} }))
   const { sent, calls } = fakeCalls()
   const actions = menuActions({
     page: () => PAGE,

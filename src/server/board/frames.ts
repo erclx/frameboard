@@ -103,7 +103,9 @@ export async function addFrame(
 
 /**
  * Copies the frame's file byte for byte, into its own page beside the source
- * or into `--to` at the source's box, on top of the target page.
+ * or into `--to` at the source's box, on top of the target page. An `offset`
+ * places the copy that far from the source's box instead, as an Alt-drag
+ * drops it.
  */
 export async function duplicateFrame(
   root: string,
@@ -111,9 +113,15 @@ export async function duplicateFrame(
   {
     to,
     name,
+    offset,
     journal,
     ...options
-  }: RefOptions & JournalOptions & { to?: string; name?: string },
+  }: RefOptions &
+    JournalOptions & {
+      to?: string
+      name?: string
+      offset?: { x: number; y: number }
+    },
 ): Promise<FrameRecord> {
   const source = await resolveFrameRef(root, ref, options)
   const target = to ? await resolvePageRef(root, to, options) : undefined
@@ -126,8 +134,13 @@ export async function duplicateFrame(
       const targetLayout = layoutAt(layouts, into)
       const copyName = freeFrameName(targetLayout.names, source.name, name)
       const placement = sourceLayout.placement(source.name)
-      const box =
-        into === from
+      const box = offset
+        ? {
+            ...placement.box,
+            x: placement.box.x + offset.x,
+            y: placement.box.y + offset.y,
+          }
+        : into === from
           ? {
               ...placement.box,
               x: placement.box.x + placement.box.width + FRAME_GAP,

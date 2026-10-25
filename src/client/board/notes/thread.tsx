@@ -9,6 +9,7 @@ import type { BoardNote } from '@/shared/records/notes'
 import { NoteButton, NoteCard } from './composer'
 import { defaultSession, messageFor } from './form'
 import { SessionPicker } from './session-picker'
+import { setDraft, useNotesUi } from './tool'
 
 interface ThreadProps {
   /** The root note and its replies, root first. */
@@ -30,7 +31,9 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
     page ? state.claims[`${page}/${notes[0]?.frame}`]?.session : undefined,
   )
   const canWrite = useLive((state) => state.canWrite)
-  const [text, setText] = useState('')
+  const rootId = notes[0]?.id ?? ''
+  const text = useNotesUi((state) => state.drafts[rootId] ?? '')
+  const setText = (next: string) => setDraft(rootId, next)
   const [session, setSession] = useState(() =>
     defaultSession(listeners, holder),
   )

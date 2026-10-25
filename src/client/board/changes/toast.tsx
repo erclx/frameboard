@@ -1,7 +1,9 @@
 import { cn } from 'cn'
 import { useEffect } from 'react'
 
-import { useActions } from '@/client/actions/registry'
+import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
+import { keyLabel } from '@/client/actions/keys'
+import { type Action, useActions } from '@/client/actions/registry'
 import {
   createToastManager,
   Toast,
@@ -24,8 +26,9 @@ export const CLOSE_AFTER_MS = 5000
 const changeToasts = createToastManager<ToastCopy>()
 
 /**
- * The one toast over the canvas column offering Show and Next, per
- * agents/unseen-one and unseen-many. It stays while any change is unseen and
+ * The one toast over the canvas column offering Show, Previous, and Next,
+ * per agents/unseen-one and unseen-many. Enter on the toast itself runs Show.
+ * It stays while any change is unseen and
  * closes 5 seconds after the last clears.
  */
 export function ChangesToast({ store = unseenStore }: { store?: UnseenStore }) {
@@ -91,7 +94,11 @@ function OpenWhileUnseen({ store }: { store: UnseenStore }) {
 
 function ChangeToastList() {
   const { toasts } = useToastManager<ToastCopy>()
-  const [show, next] = useActions(['changes.show', 'changes.next'])
+  const [show, previous, next] = useActions([
+    'changes.show',
+    'changes.previous',
+    'changes.next',
+  ])
   return toasts.flatMap((item) => {
     const copy = item.data
     if (!copy) return []
@@ -101,6 +108,14 @@ function ChangeToastList() {
         toast={item}
         data-change-toast
         style={{ width: copy.width }}
+        onKeyDown={(event) => {
+          // Enter on a button is the button's own, so only the root's runs Show.
+          if (event.key !== 'Enter' || event.target !== event.currentTarget)
+            return
+          if (!copy.show) return
+          event.preventDefault()
+          show?.run()
+        }}
       >
         <ToastContent className="items-center">
           {copy.initial ? (
@@ -125,20 +140,47 @@ function ChangeToastList() {
             </button>
           ) : null}
           {copy.next ? (
-            <button
-              type="button"
-              aria-keyshortcuts="]"
-              onClick={() => next?.run()}
-              className={cn(BUTTON, 'bg-secondary text-foreground')}
-            >
-              Next ]
-            </button>
+            <>
+              <StepButton
+                action={previous}
+                label="Previous"
+                keys={PREVIOUS_KEYS}
+              />
+              <StepButton action={next} label="Next" keys={NEXT_KEYS} />
+            </>
           ) : null}
         </ToastContent>
       </Toast>
     )
   })
 }
+
+/** A step through the changes, naming its key while that key is live. */
+function StepButton({
+  action,
+  label,
+  keys,
+}: {
+  action: Action | undefined
+  label: string
+  /** The key shown before the action registers, matching what it registers. */
+  keys: readonly string[]
+}) {
+  const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
+  return (
+    <button
+      type="button"
+      aria-keyshortcuts={key ? keyLabel(key) : undefined}
+      onClick={() => action?.run()}
+      className={cn(BUTTON, 'bg-secondary text-foreground')}
+    >
+      {key ? `${label} ${keyLabel(key)}` : label}
+    </button>
+  )
+}
+
+const PREVIOUS_KEYS = ['BracketLeft']
+const NEXT_KEYS = ['BracketRight']
 
 /** `.tbtn` in agents/unseen-many. */
 const BUTTON =

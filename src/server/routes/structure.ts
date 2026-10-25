@@ -57,6 +57,10 @@ const frameAddSchema = z.object({
   y: coordinate.optional(),
 })
 const framesSchema = z.object({ refs })
+const frameDuplicateSchema = z.object({
+  refs,
+  offset: z.object({ x: coordinate, y: coordinate }).optional(),
+})
 const pasteSchema = z.object({
   ref,
   at: z.object({ x: coordinate, y: coordinate }).optional(),
@@ -250,10 +254,11 @@ export function structureRoutes(
   })
 
   app.post('/api/frame/duplicate', async (c) => {
-    const body = await parseBody(c.req.raw, framesSchema)
+    const body = await parseBody(c.req.raw, frameDuplicateSchema)
     const copies = await eachFrame(
       body.refs,
-      (frame, journal) => duplicateFrame(root, frame, { cwd, journal }),
+      (frame, journal) =>
+        duplicateFrame(root, frame, { cwd, journal, offset: body.offset }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: copies })

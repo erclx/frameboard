@@ -18,6 +18,8 @@ const OTHER_PARTS: Readonly<Record<string, string>> = {
 
 const KEYS: Readonly<Record<string, string>> = {
   Backslash: '\\',
+  BracketLeft: '[',
+  BracketRight: ']',
   Equal: '=',
   Minus: '-',
   Escape: 'Esc',
@@ -64,4 +66,34 @@ function keyName(key: string): string {
   if (named) return named
   const code = /^(?:Key|Digit)(.)$/.exec(key)
   return (code?.[1] ?? key).toUpperCase()
+}
+
+/** The `.code` names of the punctuation keys, which type a character as a letter does. */
+const CHARACTER_CODES = new Set([
+  'Backquote',
+  'Backslash',
+  'BracketLeft',
+  'BracketRight',
+  'Comma',
+  'Equal',
+  'Minus',
+  'Period',
+  'Quote',
+  'Semicolon',
+  'Slash',
+])
+
+/**
+ * Whether a binding is a character-key shortcut under WCAG 2.1.4, being a
+ * key that types a character pressed alone or with Shift, such as `v`,
+ * `BracketRight`, `Shift+?`, or `Shift+Digit1`. Esc, an arrow, F2, and any
+ * binding carrying another modifier are not.
+ */
+export function isCharacterKey(binding: string): boolean {
+  const parts = binding.split('+')
+  const key = parts.pop() ?? ''
+  if (parts.some((part) => part !== 'Shift')) return false
+  return (
+    key.length === 1 || /^(?:Key|Digit).$/.test(key) || CHARACTER_CODES.has(key)
+  )
 }

@@ -115,6 +115,17 @@ export function nextUnseen(
   return ordered[(at + 1) % ordered.length] ?? null
 }
 
+/** The change landing before `from`'s, wrapping, or the last when `from` holds none. */
+export function previousUnseen(
+  unseen: Readonly<Record<string, FrameChange>>,
+  from: string | null,
+): FrameChange | null {
+  const ordered = inLandingOrder(unseen)
+  const at = ordered.findIndex((change) => change.frame === from)
+  const back = at < 0 ? ordered.length - 1 : at - 1 + ordered.length
+  return ordered[back % ordered.length] ?? null
+}
+
 function readSeen(storage: SeenStorage | null): Record<string, string> {
   try {
     const parsed: unknown = JSON.parse(storage?.getItem(SEEN_KEY) ?? '{}')

@@ -1,8 +1,9 @@
-import { LocateOff } from 'lucide-react'
+import { LocateFixed, LocateOff } from 'lucide-react'
+import { useEffect } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 import { createStore } from 'zustand/vanilla'
 
-import { registerActions } from '@/client/actions/registry'
+import { refreshActions, registerActions } from '@/client/actions/registry'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import {
   inLandingOrder,
@@ -35,9 +36,9 @@ let unfollow: (() => void) | null = null
 /**
  * Follows a session: each frame it changes and each frame it newly claims is
  * centered at the current zoom, moving to the frame's page first when it sits
- * on another. Any view change the developer makes, opening another page, or
- * the session leaving the listeners stops it, since the board otherwise never
- * moves the view on its own.
+ * on another and keeping that zoom there. Any view change the developer
+ * makes, opening another page, or the session leaving the listeners stops
+ * it, since the board otherwise never moves the view on its own.
  */
 export function follow(
   session: string,
@@ -47,6 +48,9 @@ export function follow(
   // The page the view is on as Follow sees it, moved only by Follow's own navigation.
   let page = canvasView.page()
   let target: string | null = null
+  // The zoom the view left its page at, which the next page opens on, since
+  // a page's canvas mounts at its own remembered or fitted view.
+  let carried: number | undefined
 
   const travel = () => {
     if (target === null) return
@@ -55,6 +59,7 @@ export function follow(
     if (canvasView.page() !== ref) {
       if (page !== ref) {
         page = ref
+        carried = canvasView.zoom()
         go(boardUrl(project, name))
       }
       return
@@ -63,7 +68,8 @@ export function follow(
     const box = boxOf(live.getState().board, target)
     if (!box) return
     target = null
-    canvasView.centerOn(box)
+    canvasView.centerOn(box, carried)
+    carried = undefined
   }
 
   const head = (next: string | null) => {
@@ -134,6 +140,48 @@ export function stopFollow(): void {
   unfollow = null
   stop()
   followStore.setState({ session: null })
+}
+
+/**
+ * Registers `follow.start` while the board is mounted, offered in the
+ * palette while exactly one session listens and nobody is followed, since
+ * with several the palette could not say which it follows. Its hint names
+ * the session.
+ */
+export function useFollowActions(live: LiveStore = liveStore): void {
+  useEffect(() => {
+    const only = () => {
+      const { listeners } = live.getState()
+      return listeners.length === 1 ? listeners[0] : undefined
+    }
+    const unregister = registerActions([
+      {
+        id: 'follow.start',
+        label: 'Follow the agent',
+        group: 'changes',
+        run: () => {
+          const listener = only()
+          if (listener) follow(listener.session, { live })
+        },
+        enabled: () =>
+          only() !== undefined && followStore.getState().session === null,
+        command: {
+          label: 'Follow the agent',
+          icon: LocateFixed,
+          hint: () => only()?.tag ?? '',
+        },
+      },
+    ])
+    const stopLive = live.subscribe((state, previous) => {
+      if (state.listeners !== previous.listeners) refreshActions()
+    })
+    const stopFollowing = followStore.subscribe(refreshActions)
+    return () => {
+      stopFollowing()
+      stopLive()
+      unregister()
+    }
+  }, [live])
 }
 
 function pageOf(ref: string): string {

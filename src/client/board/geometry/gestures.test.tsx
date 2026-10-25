@@ -49,6 +49,10 @@ function setup(
 ) {
   const mode = createModeStore(1280)
   const writes: Write[] = []
+  const duplicates: {
+    refs: readonly string[]
+    offset?: { x: number; y: number }
+  }[] = []
   const view = render(
     <Profiler id="canvas" onRender={onCommit}>
       <div
@@ -105,11 +109,15 @@ function setup(
         writes.push({ page, boxes, expected })
         return true
       },
+      duplicate: async (refs, offset) => {
+        duplicates.push({ refs, offset })
+        return []
+      },
     },
   )
   const origin = viewport.getBoundingClientRect()
   const pointer = new Pointer(part('[data-hit-layer]'), origin)
-  return { ...view, mode, writes, part, pointer, detach }
+  return { ...view, mode, writes, duplicates, part, pointer, detach }
 }
 
 /** Sends mouse events in canvas pixels, which the identity view maps one to one. */
@@ -168,6 +176,60 @@ describe('attachGestures', () => {
   afterEach(() => {
     detach()
     clear(selectionStore)
+  })
+
+  describe('Alt-drag', () => {
+    it('copies the frame at the drop with one duplicate and no box write', () => {
+      const canvas = setup()
+      detach = canvas.detach
+
+      canvas.pointer.drag([150, 150], [190, 210], { altKey: true })
+
+      expect([canvas.duplicates, canvas.writes]).toEqual([
+        [{ refs: [LEFT.ref], offset: { x: 40, y: 60 } }],
+        [],
+      ])
+    })
+
+    it('puts the dragged frame back where it was', () => {
+      const canvas = setup()
+      detach = canvas.detach
+
+      canvas.pointer.drag([150, 150], [190, 210], { altKey: true })
+
+      const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+      expect([left.style.left, left.style.top]).toEqual(['100px', '100px'])
+    })
+
+    it('moves the frame when Alt is let go before the drop', () => {
+      const canvas = setup()
+      detach = canvas.detach
+
+      canvas.pointer.down(150, 150, { altKey: true })
+      canvas.pointer.move(190, 210, { altKey: true })
+      canvas.pointer.up(190, 210)
+
+      expect([canvas.duplicates.length, canvas.writes.length]).toEqual([0, 1])
+    })
+
+    it('leaves a locked frame alone', () => {
+      const canvas = setup()
+      detach = canvas.detach
+
+      canvas.pointer.drag([150, 450], [190, 510], { altKey: true })
+
+      expect([canvas.duplicates, canvas.writes]).toEqual([[], []])
+    })
+  })
+
+  it('starts no gesture while Space is held for a pan', () => {
+    const canvas = setup()
+    detach = canvas.detach
+    canvas.mode.setState({ spacePan: true })
+
+    canvas.pointer.drag([150, 150], [190, 210])
+
+    expect([selectedRefs(), canvas.writes]).toEqual([[], []])
   })
 
   describe('selecting', () => {

@@ -1,4 +1,4 @@
-import { ArrowRight, ScanEye } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ScanEye } from 'lucide-react'
 import { useEffect } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 
@@ -12,6 +12,7 @@ import {
   inLandingOrder,
   nextUnseen,
   pointAt,
+  previousUnseen,
   type UnseenStore,
   unseenStore,
 } from '@/client/live/unseen'
@@ -49,9 +50,10 @@ export function showChange(
 }
 
 /**
- * Registers Show and Next, with `]` for Next, while the board is mounted.
- * Next steps through the changes in the order they landed, wrapping, and
- * shows each, since the view moves only because the developer asked.
+ * Registers Show, Next on `]`, and Previous on `[` while the board is
+ * mounted. Next and Previous step through the changes in the order they
+ * landed, wrapping, and show each, since the view moves only because the
+ * developer asked.
  */
 export function useChangeActions(
   store: UnseenStore = unseenStore,
@@ -59,6 +61,16 @@ export function useChangeActions(
 ): void {
   useEffect(() => {
     const unseenAny = () => Object.keys(store.getState().unseen).length > 0
+    // From the change the toast shows, so a step always moves past what it reads.
+    const step = (pick: typeof nextUnseen) => () => {
+      const to = pick(
+        store.getState().unseen,
+        currentChange(store)?.frame ?? null,
+      )
+      if (!to) return
+      pointAt(store, to.frame)
+      showChange(to.frame, go)
+    }
     const actions: Action[] = [
       {
         id: 'changes.show',
@@ -78,18 +90,18 @@ export function useChangeActions(
         label: 'Next change',
         group: 'changes',
         keys: ['BracketRight'],
-        run: () => {
-          // From the change the toast shows, so Next always moves past what it reads.
-          const next = nextUnseen(
-            store.getState().unseen,
-            currentChange(store)?.frame ?? null,
-          )
-          if (!next) return
-          pointAt(store, next.frame)
-          showChange(next.frame, go)
-        },
+        run: step(nextUnseen),
         enabled: unseenAny,
         command: { label: 'Next agent change', icon: ArrowRight },
+      },
+      {
+        id: 'changes.previous',
+        label: 'Previous change',
+        group: 'changes',
+        keys: ['BracketLeft'],
+        run: step(previousUnseen),
+        enabled: unseenAny,
+        command: { label: 'Previous agent change', icon: ArrowLeft },
       },
     ]
     const unregister = registerActions(actions)

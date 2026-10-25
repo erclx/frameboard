@@ -1,5 +1,7 @@
+import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { findAction, isEnabled } from '@/client/actions/registry'
 import { createLiveStore } from '@/client/live/store'
 import { createUnseenStore, receiveChanges } from '@/client/live/unseen'
 import type { FrameChange } from '@/shared/records/changes'
@@ -7,8 +9,13 @@ import type { Claim } from '@/shared/records/claims'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
-import { attachCanvas, type CanvasControls, reportHandMove } from '../view'
-import { follow, followStore, stopFollow } from './follow'
+import {
+  attachCanvas,
+  type CanvasControls,
+  reportHandMove,
+  reportZoom,
+} from '../view'
+import { follow, followStore, stopFollow, useFollowActions } from './follow'
 
 const HOME_BOX = { x: 900, y: 40, width: 390, height: 844 }
 const ABOUT_BOX = { x: 2000, y: 0, width: 390, height: 844 }
@@ -74,6 +81,7 @@ function setup(page = 'studio/home') {
   })
   const unseen = createUnseenStore(null)
   const centered: { page: string; box: Box }[] = []
+  const scales: (number | undefined)[] = []
   const visited: string[] = []
   const canvasOn = (ref: string) => {
     const controls: CanvasControls = {
@@ -82,7 +90,10 @@ function setup(page = 'studio/home') {
       fit: () => {},
       fitTo: () => {},
       panBy: () => {},
-      centerOn: (box) => centered.push({ page: ref, box }),
+      centerOn: (box, scale) => {
+        centered.push({ page: ref, box })
+        scales.push(scale)
+      },
     }
     const detach = attachCanvas(controls, ref)
     cleanups.push(detach)
@@ -90,7 +101,7 @@ function setup(page = 'studio/home') {
   }
   const detach = canvasOn(page)
   follow('s-1', { live, unseen, go: (url) => visited.push(url) })
-  return { live, unseen, centered, visited, canvasOn, detach }
+  return { live, unseen, centered, scales, visited, canvasOn, detach }
 }
 
 describe('follow', () => {
@@ -131,6 +142,26 @@ describe('follow', () => {
 
     expect(centered).toEqual([{ page: 'studio/about', box: ABOUT_BOX }])
     expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('keeps the zoom it left with across a page switch', () => {
+    const { unseen, scales, detach, canvasOn } = setup()
+    reportZoom(0.5)
+    cleanups.push(() => reportZoom(1))
+
+    receiveChanges(unseen, [change('studio/about/b', 's-1')])
+    detach()
+    canvasOn('studio/about')
+
+    expect(scales).toEqual([0.5])
+  })
+
+  it('centers at the zoom on screen for a change on the same page', () => {
+    const { unseen, scales } = setup()
+
+    receiveChanges(unseen, [change('studio/home/a', 's-1')])
+
+    expect(scales).toEqual([undefined])
   })
 
   it('centers only the last of a batch of changes', () => {
@@ -195,5 +226,40 @@ describe('follow', () => {
     })
 
     expect(followStore.getState().session).toBeNull()
+  })
+})
+
+describe('useFollowActions', () => {
+  function listening(...sessions: string[]) {
+    const live = createLiveStore()
+    live.setState({
+      listeners: sessions.map((session) => ({
+        session,
+        tag: `claude · ${session}`,
+        since: '',
+      })),
+    })
+    const { unmount } = renderHook(() => useFollowActions(live))
+    cleanups.push(unmount)
+    return live
+  }
+
+  it('follows the one listening session from the palette', () => {
+    listening('s-1')
+    const start = findAction('follow.start')
+
+    const offered = start ? isEnabled(start) : false
+    start?.run()
+
+    expect([offered, start?.command?.hint?.(), followStore.getState()]).toEqual(
+      [true, 'claude · s-1', { session: 's-1' }],
+    )
+  })
+
+  it('offers nothing while two sessions listen', () => {
+    listening('s-1', 's-2')
+    const start = findAction('follow.start')
+
+    expect(start ? isEnabled(start) : true).toBe(false)
   })
 })

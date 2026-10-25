@@ -4,6 +4,7 @@ import { render } from '@testing-library/react'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
@@ -71,6 +72,17 @@ function wheel(container: HTMLElement, init: WheelEventInit) {
   )
 }
 
+/**
+ * A pinch of `deltaY` in all, sent as the small ctrlKey wheels a trackpad
+ * sends, which follow the zoom curve rather than stepping a notch each.
+ */
+function pinch(container: HTMLElement, deltaY: number, at: WheelEventInit) {
+  const parts = Math.ceil(Math.abs(deltaY) / 25)
+  for (let sent = 0; sent < parts; sent++) {
+    wheel(container, { ...at, deltaY: deltaY / parts, ctrlKey: true })
+  }
+}
+
 /** A press on the hit layer, one move, and a release, as a mouse sends them. */
 function drag(
   container: HTMLElement,
@@ -96,6 +108,7 @@ function drag(
 describe('Canvas', () => {
   afterEach(() => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
+    setCharacterKeys(true)
   })
 
   it('covers the frames with the hit layer in Edit', () => {
@@ -144,13 +157,117 @@ describe('Canvas', () => {
 
     wheel(container, { deltaY: -100, ctrlKey: true })
 
-    expect(canvasView.zoom()).toBe(2)
+    expect(canvasView.zoom()).toBeCloseTo(1.2)
+  })
+
+  describe('zooming on the wheel', () => {
+    const square = (name: string) =>
+      page(`studio/${name}`, [
+        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+      ])
+
+    it.each([100, 300])('steps one notch for a mouse notch of %i', (deltaY) => {
+      const { container } = renderCanvas(square(`notch-${deltaY}`))
+
+      wheel(container, { deltaY: -deltaY, ctrlKey: true })
+
+      expect(canvasView.zoom()).toBeCloseTo(1.2)
+    })
+
+    it('steps one notch out for a line-mode notch', () => {
+      const { container } = renderCanvas(square('line'))
+
+      wheel(container, {
+        deltaY: 3,
+        deltaMode: WheelEvent.DOM_DELTA_LINE,
+        ctrlKey: true,
+      })
+
+      expect(canvasView.zoom()).toBeCloseTo(1 / 1.2)
+    })
+
+    it('follows the curve for a pinch of small deltas', () => {
+      const { container } = renderCanvas(square('curve'))
+
+      wheel(container, { deltaY: -3, ctrlKey: true })
+
+      expect(canvasView.zoom()).toBeCloseTo(2 ** 0.03)
+    })
+  })
+
+  describe('panning with Space held', () => {
+    afterEach(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keyup', { code: 'Space', key: ' ' }),
+      )
+    })
+
+    const pressSpace = (target: EventTarget = document.body) =>
+      target.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          code: 'Space',
+          key: ' ',
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+
+    it('pans a primary drag under the Move tool', () => {
+      const { container } = renderCanvas(
+        page('studio/space', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+        ]),
+      )
+      const before = layerOf(container).style.transform
+
+      pressSpace()
+      drag(container, { x: 400, y: 300 }, { x: 450, y: 340 })
+
+      expect([
+        modeStore.getState().spacePan,
+        layerOf(container).style.transform !== before,
+      ]).toEqual([true, true])
+    })
+
+    it('leaves Space to a focused button', () => {
+      renderCanvas(page('studio/space', []))
+      const button = document.createElement('button')
+      document.body.append(button)
+
+      pressSpace(button)
+
+      expect(modeStore.getState().spacePan).toBe(false)
+      button.remove()
+    })
+
+    it('lets go of the pan when the window loses focus', () => {
+      renderCanvas(page('studio/space', []))
+      pressSpace()
+
+      window.dispatchEvent(new Event('blur'))
+
+      expect(modeStore.getState().spacePan).toBe(false)
+    })
   })
 
   it('tells an empty page how to add its first frame', () => {
     const { getByRole } = renderCanvas(page('studio/empty', []))
 
     expect(getByRole('status')).toHaveTextContent('This page has no frames')
+  })
+
+  it("names the Frame tool's key on an empty page while it is live", () => {
+    const { getByRole } = renderCanvas(page('studio/empty', []))
+
+    expect(getByRole('status')).toHaveTextContent('Pick the Frame tool F and')
+  })
+
+  it("drops the Frame tool's key on an empty page while it is off", () => {
+    setCharacterKeys(false)
+
+    const { getByRole } = renderCanvas(page('studio/empty', []))
+
+    expect(getByRole('status')).toHaveTextContent('Pick the Frame tool and')
   })
 
   it('fits every frame into the viewport on a first visit', () => {
@@ -225,7 +342,7 @@ describe('Canvas', () => {
     )
   })
 
-  it('zooms on a wheel with ctrlKey, as a pinch sends it', () => {
+  it('zooms the layer on a wheel with ctrlKey, as a pinch sends it', () => {
     const { container } = renderCanvas(
       page('studio/pinch', [
         frame('a', { x: 0, y: 0, width: 200, height: 200 }),
@@ -234,7 +351,7 @@ describe('Canvas', () => {
 
     wheel(container, { deltaY: -100, ctrlKey: true })
 
-    expect(layerOf(container).style.transform).toMatch(/scale\(2\)$/)
+    expect(layerOf(container).style.transform).toMatch(/scale\(1\.2\)$/)
   })
 
   it('keeps live pages near the view and placeholders far from it', () => {
@@ -248,13 +365,11 @@ describe('Canvas', () => {
         ),
       ]),
     )
-    // The two frames fit only far zoomed out, so zoom in on the near one.
+    // The two frames fit only far zoomed out, so pinch in on the near one.
     const near = container
       .querySelector('[data-frame="studio/home/near"]')
       ?.getBoundingClientRect()
-    wheel(container, {
-      deltaY: -1000,
-      ctrlKey: true,
+    pinch(container, -1000, {
       clientX: (near?.x ?? 0) + (near?.width ?? 0) / 2,
       clientY: (near?.y ?? 0) + (near?.height ?? 0) / 2,
     })

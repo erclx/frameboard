@@ -179,6 +179,12 @@ describe('structureActions', () => {
     stopFrameRename()
   })
 
+  it('renames the one selected frame on F2', () => {
+    const { action } = setup()
+
+    expect(action('frame.rename').keys).toEqual(['F2'])
+  })
+
   it('disables rename while the panels are hidden', () => {
     const { selection, mode, enabled } = setup()
     select(selection, PAGE, [A.ref])

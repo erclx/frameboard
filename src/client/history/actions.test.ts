@@ -103,8 +103,16 @@ describe('registerHistoryActions', () => {
     )
   })
 
-  it('binds Undo to Cmd+Z and Redo to Cmd+Shift+Z', () => {
-    register(writableWith(0, 0))
+  it('binds Redo to Ctrl+Y as well off a Mac', () => {
+    register(writableWith(0, 0), { mac: false })
+
+    const { result } = renderHook(() => useActions(['edit.redo']))
+
+    expect(result.current[0]?.keys).toEqual(['$mod+Shift+KeyZ', 'Control+KeyY'])
+  })
+
+  it('binds Undo to Cmd+Z and Redo to Cmd+Shift+Z on a Mac', () => {
+    register(writableWith(0, 0), { mac: true })
 
     const { result } = renderHook(() => useActions(['edit.undo', 'edit.redo']))
 

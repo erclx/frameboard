@@ -3,6 +3,7 @@ import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { TAB_ID } from '@/client/live/socket'
 import { liveStore } from '@/client/live/store'
 import { useUnseen } from '@/client/live/unseen'
@@ -27,7 +28,7 @@ import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
 import { useMenuActions } from './menus/actions'
 import { CanvasMenu } from './menus/canvas'
-import { modeStore, useMode } from './mode'
+import { followSpacePan, modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
@@ -36,6 +37,23 @@ import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
+
+/** The zoom a mouse notch takes, the toolbar's own step. */
+const NOTCH_STEP = 1.2
+
+/**
+ * The factor one zooming wheel event scales by. A mouse sends a line-mode
+ * event or a pixel one of 50 or more per notch, which steps once whatever
+ * its size, while a trackpad pinch sends many small ones that follow the
+ * curve, so the pinch stays smooth.
+ */
+function wheelZoom(deltaY: number, deltaMode: number): number {
+  if (deltaY === 0) return 1
+  if (deltaMode === WheelEvent.DOM_DELTA_LINE || Math.abs(deltaY) >= 50) {
+    return deltaY < 0 ? NOTCH_STEP : 1 / NOTCH_STEP
+  }
+  return 2 ** (-deltaY * 0.01)
+}
 const FIT_PADDING = 64
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
@@ -87,6 +105,8 @@ export function Canvas({
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
+  const spacePan = useMode((state) => state.spacePan)
+  useEffect(() => followSpacePan(window), [])
   useNoteTool()
   const unseen = useUnseen((state) => state.unseen)
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
@@ -132,17 +152,19 @@ export function Canvas({
       unknown
     >()
       .scaleExtent(SCALE_EXTENT)
-      // A primary-button drag pans under the Hand tool and in Play alone,
-      // since in Move it selects. The middle button and the wheel always pan.
+      // A primary-button drag pans under the Hand tool, in Play, and while
+      // Space is held, since in Move it selects. The middle button and the
+      // wheel always pan.
       .filter((event: MouseEvent | WheelEvent | TouchEvent) => {
         if (event.type === 'wheel' || event.type.startsWith('touch')) {
           return true
         }
         const { button, ctrlKey } = event as MouseEvent
         if (ctrlKey) return false
-        const { mode, tool } = modeStore.getState()
+        const { mode, tool, spacePan } = modeStore.getState()
         return (
-          button === 1 || (button === 0 && (tool === 'hand' || mode === 'play'))
+          button === 1 ||
+          (button === 0 && (tool === 'hand' || mode === 'play' || spacePan))
         )
       })
       .on('zoom', ({ transform: { x, y, k } }) => {
@@ -175,7 +197,7 @@ export function Canvas({
           if (event.ctrlKey || event.metaKey) {
             zoomer.scaleBy(
               selection,
-              2 ** (-event.deltaY * unit * 0.01),
+              wheelZoom(event.deltaY, event.deltaMode),
               pointer(event, viewport),
             )
           } else {
@@ -262,9 +284,13 @@ export function Canvas({
           const k = zoomTransform(viewport).k
           zoomer.translateBy(selection, -dx / k, -dy / k)
         },
-        centerOn: (box) =>
+        centerOn: (box, scale) =>
           moveToRef.current?.(
-            centerView(box, zoomTransform(viewport).k, sizeOf(viewport)),
+            centerView(
+              box,
+              scale ?? zoomTransform(viewport).k,
+              sizeOf(viewport),
+            ),
           ),
       },
       page.ref,
@@ -355,8 +381,9 @@ export function Canvas({
       data-canvas
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
-        hand && !playing && 'cursor-grab active:cursor-grabbing',
         (noting || framing) && !playing && 'cursor-crosshair',
+        (spacePan || (hand && !playing)) &&
+          'cursor-grab active:cursor-grabbing',
       )}
     >
       <div
@@ -470,6 +497,7 @@ function LayoutErrorNotice({
 }
 
 function EmptyNotice() {
+  const keysOn = useCharacterKeysOn()
   return (
     <div
       role="status"
@@ -484,9 +512,13 @@ function EmptyNotice() {
       </p>
       <p>
         Pick the Frame tool{' '}
-        <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
-          F
-        </kbd>{' '}
+        {keysOn ? (
+          <>
+            <kbd className="rounded-[5px] bg-muted px-1.5 py-0.5 font-mono text-label font-normal text-foreground">
+              F
+            </kbd>{' '}
+          </>
+        ) : null}
         and click on the canvas,
         <br />
         or ask your agent to draw one.

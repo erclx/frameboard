@@ -1,9 +1,6 @@
-import { House, PanelLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { type LayoutStorage, useDefaultLayout } from 'react-resizable-panels'
-import { Link } from 'wouter'
 
-import { useActions } from '@/client/actions/registry'
 import {
   ResizableHandle,
   ResizablePanel,
@@ -18,11 +15,11 @@ import {
 import type { Structure } from '@/client/live/structure'
 import type { ProjectRecord } from '@/shared/records/list'
 
-import { ActionTooltip } from '../chrome/action-tooltip'
 import { useFind } from '../find/actions'
 import { FindPanel } from '../find/panel'
 import { LayersList } from './layers-list'
 import { PagesList } from './pages-list'
+import { ProjectHeader } from './project-header'
 
 interface LeftPanelProps {
   project: ProjectRecord
@@ -63,7 +60,6 @@ export function LeftPanel({
   storage,
   calls,
 }: LeftPanelProps) {
-  const [hideUi] = useActions(['view.hideUi'])
   const finding = useFind((state) => state.open)
   const split = useDefaultLayout({
     id: SPLIT_ID,
@@ -81,29 +77,7 @@ export function LeftPanel({
       aria-label="Pages and layers"
       className="flex h-full min-w-0 flex-col bg-sidebar text-sidebar-foreground"
     >
-      <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-2">
-        <ActionTooltip label="Home" side="bottom">
-          <Link href="/" aria-label="Home" className={ICON_BUTTON}>
-            <House aria-hidden className="size-[15px]" />
-          </Link>
-        </ActionTooltip>
-        <span
-          className="min-w-0 flex-1 truncate text-panel"
-          title={project.name}
-        >
-          {project.name}
-        </span>
-        <ActionTooltip label="Hide UI" keys={hideUi?.keys} side="bottom">
-          <button
-            type="button"
-            aria-label="Hide UI"
-            onClick={() => hideUi?.run()}
-            className={ICON_BUTTON}
-          >
-            <PanelLeft aria-hidden className="size-[15px]" />
-          </button>
-        </ActionTooltip>
-      </div>
+      <ProjectHeader project={project} page={page} calls={calls} />
       {finding ? (
         <FindPanel project={project.name} page={page} />
       ) : (
@@ -158,6 +132,3 @@ export function LeftPanel({
     </aside>
   )
 }
-
-const ICON_BUTTON =
-  'grid size-[26px] shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'

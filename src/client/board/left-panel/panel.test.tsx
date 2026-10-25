@@ -4,6 +4,7 @@ import {
   act,
   cleanup,
   render,
+  renderHook,
   screen,
   waitFor,
   within,
@@ -14,11 +15,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
-import { registerActions } from '@/client/actions/registry'
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { unseenStore } from '@/client/live/unseen'
+import { useProjectActions } from '@/client/projects/actions'
 import type {
   FrameRecord,
   PageRecord,
@@ -121,6 +123,8 @@ function renderPanel(
   )
   return location
 }
+
+const OPEN_STUDIO = () => 'studio'
 
 const THREE = () =>
   project([page('home', [], 0), page('pricing', [], 1), page('about', [], 2)])
@@ -265,6 +269,105 @@ describe('LeftPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Hide UI' }))
 
     expect(runs).toBe(1)
+  })
+
+  describe('the project header', () => {
+    const atlas: ProjectRecord = {
+      ...project([]),
+      name: 'atlas',
+      path: '/board/atlas',
+      pages: [{ ...page('index'), ref: 'atlas/index', project: 'atlas' }],
+    }
+
+    /** The board's project actions on `studio`, with the board holding both projects. */
+    function withProjectActions(calls: ReturnType<typeof createStructure>) {
+      const studio = project([page('home')])
+      liveStore.setState({
+        board: { root: '/board', projects: [studio, atlas] },
+      })
+      const hook = renderHook(() => useProjectActions(OPEN_STUDIO, { calls }))
+      cleanups.push(hook.unmount, () => liveStore.setState({ board: null }))
+      return studio
+    }
+
+    it('renames the project from a click on its name and follows it', async () => {
+      const { sent, calls } = server()
+      const studio = withProjectActions(calls)
+      const location = renderPanel(studio, 'home', undefined, { calls })
+
+      await userEvent.click(screen.getByRole('button', { name: 'studio' }))
+      const field = screen.getByRole('textbox', {
+        name: 'Rename project studio',
+      })
+      await userEvent.clear(field)
+      await userEvent.type(field, 'gallery{Enter}')
+
+      await expect.poll(() => location.history?.at(-1)).toBe('/p/gallery/home')
+      expect(sent).toEqual([
+        {
+          path: '/api/project/rename',
+          body: { ref: 'studio', name: 'gallery' },
+        },
+      ])
+    })
+
+    it('duplicates the project from its menu', async () => {
+      const { sent, calls } = server({ name: 'studio-copy' })
+      const studio = withProjectActions(calls)
+      renderPanel(studio, 'home', undefined, { calls })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Project menu' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'Duplicate' }),
+      )
+
+      await expect
+        .poll(() => sent)
+        .toEqual([{ path: '/api/project/duplicate', body: { ref: 'studio' } }])
+    })
+
+    it('switches to another project from its menu', async () => {
+      const studio = withProjectActions(server().calls)
+      const location = renderPanel(studio)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Project menu' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'Switch project' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'atlas' }),
+      )
+
+      expect(location.history?.at(-1)).toBe('/p/atlas/index')
+    })
+
+    it('goes to all projects from its menu', async () => {
+      let runs = 0
+      cleanups.push(
+        registerActions([
+          {
+            id: 'nav.home',
+            label: 'All projects',
+            group: 'project',
+            run: () => (runs += 1),
+          },
+        ]),
+      )
+      renderPanel(project([page('home')]))
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Project menu' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'All projects' }),
+      )
+
+      expect(runs).toBe(1)
+    })
   })
 
   describe('pages', () => {
@@ -715,6 +818,31 @@ describe('LeftPanel', () => {
       ])
     })
 
+    it('renames in the row on F2 there, leaving the board F2 alone', async () => {
+      let boardRenames = 0
+      cleanups.push(
+        registerActions([
+          {
+            id: 'frame.rename',
+            label: 'Rename frame',
+            group: 'frame',
+            keys: ['F2'],
+            run: () => (boardRenames += 1),
+          },
+        ]),
+        bindKeys(window),
+      )
+      renderPanel(project([page('home', [frame('hero')])]))
+      act(() => screen.getByRole('button', { name: 'Select hero' }).focus())
+
+      await userEvent.keyboard('{F2}')
+
+      expect([
+        boardRenames,
+        screen.getByRole('textbox', { name: /hero/ }) !== null,
+      ]).toEqual([0, true])
+    })
+
     it('hides a frame from its eye and locks one from its lock', async () => {
       const { sent, calls } = server([])
       renderPanel(project([page('home', [frame('hero')])]), 'home', undefined, {
@@ -780,7 +908,14 @@ describe('LeftPanel', () => {
         within(await screen.findByRole('menu'))
           .getAllByRole('menuitem')
           .map((item) => item.textContent),
-      ).toEqual(['Rename', 'Duplicate', 'New page below', 'Delete⌫'])
+      ).toEqual([
+        'Rename',
+        'Duplicate',
+        'New page below',
+        'Move up',
+        'Move down',
+        'Delete⌫',
+      ])
       expect(location.history.at(-1)).toBe('/p/studio/pricing')
     })
 

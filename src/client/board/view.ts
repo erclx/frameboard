@@ -13,10 +13,10 @@ export interface CanvasControls {
   /** Moves the view by a screen offset, so a positive `dx` brings in what lies to the right. */
   panBy: (dx: number, dy: number) => void
   /**
-   * Travels to center the box at the current zoom, fitting it instead only
-   * when it is larger than the viewport.
+   * Travels to center the box at `scale`, the current zoom when absent,
+   * fitting it instead only when it is larger than the viewport at that zoom.
    */
-  centerOn: (box: Box) => void
+  centerOn: (box: Box, scale?: number) => void
 }
 
 type Listener = () => void
@@ -56,7 +56,7 @@ export const canvasView = {
   fit: (): void => controls?.fit(),
   fitTo: (boxes: readonly Box[]): void => controls?.fitTo(boxes),
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
-  centerOn: (box: Box): void => controls?.centerOn(box),
+  centerOn: (box: Box, scale?: number): void => controls?.centerOn(box, scale),
 }
 
 /** Called by the canvas of a page on mount, returning the function its unmount calls. */

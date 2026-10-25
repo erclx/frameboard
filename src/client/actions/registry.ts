@@ -4,6 +4,9 @@ import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { createStore } from 'zustand/vanilla'
 
+import { characterKeysOn } from './character-keys'
+import { isCharacterKey } from './keys'
+
 /**
  * One thing the board can do, run the same way from a button, a menu item,
  * or a key. A row needing a field this shape lacks adds it as optional.
@@ -27,8 +30,9 @@ export interface Action {
    * Lists the action in the command palette under this label and icon, which
    * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
    * enabled actions carrying it, so a key a person never runs by name omits it.
+   * `hint` prints on the row's right, such as the project a Rename acts on.
    */
-  command?: { label: string; icon?: LucideIcon }
+  command?: { label: string; icon?: LucideIcon; hint?: () => string }
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
   checked?: () => boolean
 }
@@ -151,7 +155,14 @@ export function bindKeys(
   }
 }
 
+/**
+ * A character key the Single-key shortcuts switch has turned off returns
+ * before `preventDefault`, so the press reaches the browser untouched, as
+ * WCAG 2.1.4 asks. The gate sits here rather than per action, so a key added
+ * later is covered.
+ */
 function press(key: string, event: KeyboardEvent): void {
+  if (isCharacterKey(key) && !characterKeysOn()) return
   const action = registry
     .getState()
     .actions.find(

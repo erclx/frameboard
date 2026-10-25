@@ -1,30 +1,15 @@
 ---
 title: Board shell
-description: Home view, the board screen and canvas, Edit and Play, the panels, find, and the toolbar
+description: The board screen and canvas, Edit and Play, the panels, find, and the toolbar
 ---
 
 # Board shell
 
 ## Overview
 
-Owns the browser app around the frames, being the home view, the board screen and canvas, its panels, find, and the toolbar. Its look belongs to `canon/DESIGN.md`. Commands are in `canon/context/board/commands.md`, an agent's work on the board in `canon/context/board/agent-work.md`, and the server behind it in `canon/context/board/server.md`.
+Owns the browser app around the frames, being the board screen and canvas, its panels, find, and the toolbar. Its look belongs to `canon/DESIGN.md`. The home view is in `canon/context/board/home.md`, commands in `canon/context/board/commands.md`, agent work in `canon/context/board/agent-work.md`, and the server in `canon/context/board/server.md`.
 
 ## Layout
-
-### `src/client/home/`
-
-Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row. Opening a card opens its board, and the board's home button is the one way back and between projects.
-
-- A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
-- A card's well fits its first page's frames as a group, each capture drawn over its white box, which stays the placeholder until one lands. A list row's mark draws the boxes alone
-- `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
-
-The header and each card's menu run the `project.*` actions.
-
-- The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
-- New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
-- A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
-- Of the `project.*` actions only `project.new` carries a palette command, since the palette takes focus off the card
 
 ### `src/client/board/`
 
@@ -36,7 +21,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being its header with the way home and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions.
+Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
 
 - Design holds a pages list with a search and a layers tree, split by a divider that remembers its height, and Theme holds the project's tokens read-only
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
@@ -62,7 +47,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
 - The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
-- A primary drag on the canvas pans only under the Hand tool
+- A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
 ### `src/client/`
 
@@ -89,6 +74,7 @@ The favicon files sit beside the app.
 ## Gotchas
 
 - A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
-- Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a pinch, a wheel carrying `ctrlKey`, zooms
+- Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a wheel carrying `ctrlKey` zooms
+- A zooming wheel in line mode or of 50 pixels or more is a mouse notch and steps one 1.2 zoom, while a pinch's small deltas follow a curve, so the pinch stays smooth
 - Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
 - `cn` reads the custom `text-body` and `text-label` steps as colors, keeping a kit part's `text-sm` beside one but dropping one before a color. Use `text-xs` for 12px, `text-[11px]` for 11px

@@ -112,9 +112,13 @@ export function CanvasMenu({
 }
 
 const FRAME_IDS = [
+  'frame.copy',
+  'frame.cut',
   'frame.copyPng',
   'frame.duplicate',
   'frame.rename',
+  'note.addOnFrame',
+  'tool.note',
   'frame.hide',
   'frame.lock',
   'frame.flipTheme',
@@ -122,14 +126,30 @@ const FRAME_IDS = [
 ] as const
 
 function FrameItems() {
-  const [copyPng, duplicate, rename, hide, lock, flip, remove] =
-    useActions(FRAME_IDS)
+  const [
+    copy,
+    cut,
+    copyPng,
+    duplicate,
+    rename,
+    note,
+    noteTool,
+    hide,
+    lock,
+    flip,
+    remove,
+  ] = useActions(FRAME_IDS)
   return (
     <>
       <ContextMenuGroup>
+        <MenuRow action={copy}>Copy</MenuRow>
+        <MenuRow action={cut}>Cut</MenuRow>
         <MenuRow action={copyPng}>Copy as PNG</MenuRow>
         <MenuRow action={duplicate}>Duplicate</MenuRow>
         <MenuRow action={rename}>Rename</MenuRow>
+        <MenuRow action={note} binding={noteTool?.keys?.[0]}>
+          Add a note
+        </MenuRow>
       </ContextMenuGroup>
       <ContextMenuSeparator />
       <ContextMenuGroup>
