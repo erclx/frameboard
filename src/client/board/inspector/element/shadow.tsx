@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import { ChevronDown } from 'lucide-react'
 
 import {
@@ -12,7 +13,13 @@ import type { Theme } from '@/shared/theme'
 
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { RawFlag } from './color-row'
-import { chipName, COLOR_ROW, TOKEN_CHIP, tokenValue } from './values'
+import {
+  chipName,
+  COLOR_ROW,
+  SWATCH_RING,
+  TOKEN_CHIP,
+  tokenValue,
+} from './values'
 import type { WriteElement } from './write'
 
 interface ShadowSectionProps {
@@ -107,7 +114,7 @@ function ShadowSwatch({ shadow }: { shadow: string | null }) {
   return (
     <span
       aria-hidden
-      className="size-3.5 shrink-0 rounded-[3px] bg-sidebar shadow-[inset_0_0_0_1px_rgba(127,127,127,.3)]"
+      className={cn('size-3.5 shrink-0 rounded-[3px] bg-sidebar', SWATCH_RING)}
       style={shadow ? { boxShadow: shadow } : undefined}
     />
   )

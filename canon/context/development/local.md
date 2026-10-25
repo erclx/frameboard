@@ -106,7 +106,7 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 
 Test support that lives inside the source tree.
 
-- `src/test/` owns the setup file the Vitest `browser` project loads and the board records client tests build from
+- `src/test/` owns the setup file the Vitest `browser` project loads, the board records client tests build from, and the contrast measure component tests read rendered colors with
 
 ## Gotchas
 

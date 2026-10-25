@@ -100,6 +100,70 @@ describe('orderProjects', () => {
     ).toEqual(['zine', 'atlas', 'studio', 'webapp'])
   })
 
+  it('orders by name from Z once reversed', () => {
+    const projects = [
+      project('Atlas', '2026-10-01T00:00:00.000Z'),
+      project('webapp', '2026-10-15T00:00:00.000Z'),
+      project('studio', '2026-10-08T00:00:00.000Z'),
+    ]
+
+    expect(names(orderProjects(projects, 'name', NONE, 'desc'))).toEqual([
+      'webapp',
+      'studio',
+      'Atlas',
+    ])
+  })
+
+  it('puts the oldest edit first once reversed', () => {
+    const projects = [
+      project('atlas', '2026-10-01T00:00:00.000Z'),
+      project('studio', '2026-10-15T00:00:00.000Z'),
+      project('webapp', '2026-10-08T00:00:00.000Z'),
+    ]
+
+    expect(names(orderProjects(projects, 'edited', NONE, 'asc'))).toEqual([
+      'atlas',
+      'webapp',
+      'studio',
+    ])
+  })
+
+  it('keeps an undated project last with the oldest made first', () => {
+    const projects = [
+      project('atlas', '2026-10-15T00:00:00.000Z', null),
+      project('studio', '2026-10-01T00:00:00.000Z', '2026-03-01T00:00:00.000Z'),
+      project('webapp', '2026-10-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'),
+    ]
+
+    expect(names(orderProjects(projects, 'created', NONE, 'asc'))).toEqual([
+      'webapp',
+      'studio',
+      'atlas',
+    ])
+  })
+
+  it('breaks a tie from A while reversed', () => {
+    const at = '2026-10-15T00:00:00.000Z'
+    const projects = [project('webapp', at), project('atlas', at)]
+
+    expect(names(orderProjects(projects, 'edited', NONE, 'asc'))).toEqual([
+      'atlas',
+      'webapp',
+    ])
+  })
+
+  it('holds the pinned above the rest once reversed', () => {
+    const projects = [
+      project('atlas', '2026-10-01T00:00:00.000Z'),
+      project('studio', '2026-10-15T00:00:00.000Z'),
+      project('zine', '2026-10-02T00:00:00.000Z'),
+    ]
+
+    expect(
+      names(orderProjects(projects, 'name', new Set(['studio']), 'desc')),
+    ).toEqual(['studio', 'zine', 'atlas'])
+  })
+
   it('ignores a pin naming no project', () => {
     const projects = [
       project('atlas', '2026-10-01T00:00:00.000Z'),

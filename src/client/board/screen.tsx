@@ -9,7 +9,12 @@ import {
   ResizablePanelGroup,
 } from '@/client/components/ui/resizable'
 import { liveStore, useLive } from '@/client/live/store'
-import { useHomeAction, useProjectActions } from '@/client/projects/actions'
+import { structure } from '@/client/live/structure'
+import {
+  useHomeAction,
+  useNewProjectAction,
+  useProjectActions,
+} from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -76,6 +81,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const goHome = useCallback(() => navigate('/'), [navigate])
   useProjectActions(openProject, { onDeleted: goHome })
   useHomeAction(goHome)
+  useNewProjectAction(structure, goHome)
   useBoardActions()
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
@@ -144,7 +150,9 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               }
             />
           )}
-          {playing ? <PlayBanner /> : null}
+          {playing ? (
+            <PlayBanner frames={current?.frames ?? NO_FRAMES} />
+          ) : null}
           {hideUi ? <HiddenPills project={record.name} /> : null}
         </main>
       </ResizablePanel>

@@ -1,9 +1,12 @@
+import '../../styles.css'
+
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
+import { contrastOnPage } from '@/test/contrast'
 
 import { attachCanvas, type CanvasControls } from '../view'
 import { receiveShow, SHOW_OFFER, startBusyWatch } from './show'
@@ -56,6 +59,15 @@ describe('the show offer', () => {
     expect(await screen.findByText('An agent showed hero')).toBeTruthy()
     expect(screen.getByText('home in shop')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Go' })).toBeTruthy()
+  })
+
+  it('draws Go at 4.5:1 or better on its tint', async () => {
+    renderStack()
+
+    act(() => receiveShow(SHOP_HERO))
+
+    const go = await screen.findByRole('button', { name: 'Go' })
+    expect(contrastOnPage(go)).toBeGreaterThanOrEqual(4.5)
   })
 
   it('jumps to the frame and closes on Go', async () => {

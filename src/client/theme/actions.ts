@@ -34,7 +34,11 @@ export function registerThemeActions(
       id: 'theme.toggle',
       label: 'Theme',
       group: 'view',
-      command: { label: 'Toggle theme', icon: SunMoon },
+      command: {
+        label: 'Toggle theme',
+        icon: SunMoon,
+        keywords: ['dark', 'light', 'mode'],
+      },
       run: () => toggleTheme(store),
     },
     ...CHOICES.map(({ choice, label }) => ({

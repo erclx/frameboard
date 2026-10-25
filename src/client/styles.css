@@ -135,7 +135,8 @@
   --sidebar-accent-foreground: #1a1a1a;
   --sidebar-border: #e4e4e4;
   --sidebar-ring: #2f7bf0;
-  --claim: #9b3fd1;
+  /* Dark enough for claim text on a 25% claim tint over white at 4.5:1. */
+  --claim: #7f2db5;
   --note: #c77a00;
   --faint: #a5a5a5;
   --success: #1a7f45;

@@ -119,8 +119,18 @@ describe('SelectionOverlay', () => {
         container.querySelector<HTMLElement>('[data-selection]')?.style.width,
       ).toBe('390px')
       expect(container.querySelector('[data-chip]')).toHaveTextContent(
-        '640 × 188',
+        /^Stored 640 × 188$/,
       )
     })
+  })
+
+  it('names the size alone once no chosen frame is previewed', () => {
+    act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    expect(container.querySelector('[data-chip]')).toHaveTextContent(
+      /^640 × 188$/,
+    )
   })
 })

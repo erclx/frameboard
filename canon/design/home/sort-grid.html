@@ -14,7 +14,7 @@
         --faint: #a5a5a5;
         --accent: #2f7bf0;
         --accentfg: #ffffff;
-        --claim: #9b3fd1;
+        --claim: #7f2db5;
         --note: #c77a00;
         --destructive: #d92d2d;
         --good: #1a7f45;
@@ -41,6 +41,16 @@
       [data-theme='dark'] [data-theme-only='light'],
       :root:not([data-theme='dark']) [data-theme-only='dark'] {
         display: none !important;
+      }
+      .pindiv {
+        grid-column: 1/-1;
+        height: 1px;
+        background: var(--border);
+      }
+      .pinband {
+        height: 6px;
+        background: var(--raised);
+        border-bottom: 1px solid var(--border);
       }
     </style>
     <meta charset="utf-8" />
@@ -1458,7 +1468,10 @@
       }
       .pinmark {
         flex: none;
-        color: var(--muted);
+        color: var(--text);
+      }
+      .pinmark svg {
+        fill: currentColor;
       }
       .cmeta b {
         display: flex !important;
@@ -2445,6 +2458,7 @@
               ><span>Edited 3 days ago</span>
             </div>
           </div>
+          <div class="pindiv"></div>
           <div class="card">
             <div class="thumb">
               <i

@@ -104,6 +104,49 @@ describe('CommandPalette', () => {
     ).toEqual([true, true, true, true])
   })
 
+  it("finds an action by one of its command's keywords", async () => {
+    register(
+      action('theme.toggle', 'Theme', {
+        command: { label: 'Toggle theme', keywords: ['dark', 'light'] },
+      }),
+    )
+    render(<CommandPalette />)
+
+    await userEvent.type(await openPalette(), 'dark')
+
+    expect(
+      await screen.findByRole('option', { name: 'Toggle theme' }),
+    ).toBeInTheDocument()
+  })
+
+  it('leaves out a row whose letters only spread across the middle of words', async () => {
+    register(
+      action('preview.phone', 'Phone', {
+        command: { label: 'Preview at phone width' },
+      }),
+    )
+    render(<CommandPalette />)
+
+    await userEvent.type(await openPalette(), 'new')
+
+    expect(await screen.findByText('Nothing matches.')).toBeInTheDocument()
+  })
+
+  it('finds a row by runs of letters that each start a word', async () => {
+    register(
+      action('view.zoomToFit', 'Zoom to fit', {
+        command: { label: 'Zoom to fit' },
+      }),
+    )
+    render(<CommandPalette />)
+
+    await userEvent.type(await openPalette(), 'zofi')
+
+    expect(
+      await screen.findByRole('option', { name: 'Zoom to fit' }),
+    ).toBeInTheDocument()
+  })
+
   it('shows the project and page a frame sits on', async () => {
     render(<CommandPalette />)
 

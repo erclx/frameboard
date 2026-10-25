@@ -10,6 +10,7 @@ import {
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
 
+import { SWATCH_RING } from '@/client/board/inspector/element/values'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
 import { useTokenTable } from '@/client/board/tokens'
@@ -500,7 +501,10 @@ function LookStep({
               >
                 <span
                   aria-hidden
-                  className="absolute inset-0 rounded-[5px] bg-(--swatch) shadow-[inset_0_0_0_1px_rgba(127,127,127,.3)] dark:bg-(--swatch-dark)"
+                  className={cn(
+                    'absolute inset-0 rounded-[5px] bg-(--swatch) dark:bg-(--swatch-dark)',
+                    SWATCH_RING,
+                  )}
                   style={
                     {
                       '--swatch': STARTER_ACCENTS[each].light,

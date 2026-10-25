@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import { Fragment } from 'react'
 
 import {
@@ -6,6 +7,7 @@ import {
   type TokenTable,
 } from '@/shared/records/tokens'
 
+import { SWATCH_RING } from '../inspector/element/values'
 import { fetchTokenTable, useTokenTable } from '../tokens'
 
 const GROUP_TITLES: Record<TokenRow['group'], string> = {
@@ -170,7 +172,7 @@ function Swatch({ theme, value }: { theme: string; value: string | null }) {
       role="img"
       aria-label={`${theme}: ${value}`}
       title={value}
-      className="size-4 rounded-[4px] shadow-[inset_0_0_0_1px_rgba(127,127,127,.35)]"
+      className={cn('size-4 rounded-[4px]', SWATCH_RING)}
       style={{ background: value }}
     />
   )

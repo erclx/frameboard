@@ -731,6 +731,7 @@ describe('Frame preview', () => {
     const narrow = {
       ...frame('a'),
       name: 'a-very-long-frame-name-that-cannot-fit',
+      box: { x: 0, y: 0, width: 60, height: 844 },
     }
     const { container, getByText } = render(
       <div className="relative" style={{ paddingTop: 40 }}>
@@ -738,7 +739,7 @@ describe('Frame preview', () => {
       </div>,
     )
 
-    act(() => setPreview(['studio/home/a'], 60))
+    act(() => setPreview(['studio/home/a'], 40))
 
     const chip = container.querySelector('[data-preview-chip]')
     const label = getByText(narrow.name).parentElement
@@ -747,6 +748,21 @@ describe('Frame preview', () => {
     expect(chip?.getBoundingClientRect().right).toBeLessThanOrEqual(
       Math.ceil(label?.getBoundingClientRect().right ?? 0),
     )
+  })
+
+  it('gives a label narrowed by a preview the room its stored box holds', () => {
+    const named = { ...frame('a'), name: 'checkout-summary-mobile' }
+    const { container, getByText } = render(
+      <div className="relative" style={{ paddingTop: 40 }}>
+        <Frame frame={named} live={false} version={0} />
+      </div>,
+    )
+
+    act(() => setPreview(['studio/home/a'], 60))
+
+    const name = getByText(named.name)
+    expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth)
+    expect(container.querySelector('[data-preview-chip]')).toBeVisible()
   })
 
   it('draws at its stored width once the preview ends', () => {

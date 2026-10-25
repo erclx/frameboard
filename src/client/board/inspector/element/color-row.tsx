@@ -20,6 +20,7 @@ import {
   colorCss,
   type ColorSource,
   HEX,
+  SWATCH_RING,
   swatchOf,
   TOKEN_CHIP,
   tokenValue,
@@ -36,7 +37,8 @@ export function Swatch({
     <span
       aria-hidden
       className={cn(
-        'size-3.5 shrink-0 rounded-[3px] shadow-[inset_0_0_0_1px_rgba(127,127,127,.3)]',
+        'size-3.5 shrink-0 rounded-[3px]',
+        SWATCH_RING,
         color === null && 'border border-dashed border-faint',
         className,
       )}

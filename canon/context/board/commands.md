@@ -16,7 +16,7 @@ Owns how every button, menu item, and key reaches the board, being the action re
 Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
 
 - An action is `{ id, label, group, keys?, run, enabled?, checked?, command? }`, a row registers its own and removes them on unmount, and a row needing a field adds it as optional
-- `command` is the label, icon, and optional right-hand `hint` the palette shows, and the palette lists only enabled actions carrying it, so a key nobody runs by name stays out
+- `command` is the label, icon, right-hand `hint`, and search `keywords` the palette reads, and the palette lists only enabled actions carrying it, so a key nobody runs by name stays out
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time

@@ -7,7 +7,7 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { IS_MAC } from '@/client/actions/keys'
-import { bindKeys } from '@/client/actions/registry'
+import { bindKeys, findAction } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import type { ListResult } from '@/shared/records/list'
@@ -61,7 +61,7 @@ beforeEach(() => {
 
 afterEach(() => {
   unbind()
-  liveStore.setState({ board: null })
+  liveStore.setState({ board: null, canWrite: false })
   modeStore.setState({ mode: 'edit', tool: 'move', hideUi: false })
   localStorage.clear()
 })
@@ -106,6 +106,22 @@ describe('BoardScreen', () => {
     expect(
       screen.getByText('Playing. Clicks go to the frames. Esc to edit'),
     ).toBeVisible()
+  })
+
+  it('offers New project, which goes home', () => {
+    const location = memoryLocation({ path: '/p/studio/home', record: true })
+    liveStore.setState({ canWrite: true })
+    render(
+      <Router hook={location.hook}>
+        <TooltipProvider>
+          <BoardScreen project="studio" page="home" />
+        </TooltipProvider>
+      </Router>,
+    )
+
+    act(() => findAction('project.new')?.run())
+
+    expect(location.history.at(-1)).toBe('/')
   })
 
   it('returns to Edit on Esc in Play', async () => {

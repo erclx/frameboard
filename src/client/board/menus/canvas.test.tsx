@@ -114,6 +114,27 @@ describe('CanvasMenu', () => {
     expect(selectionStore.getState().frames).toEqual([A.ref, B.ref])
   })
 
+  it('heads the menu of one frame with Frame', async () => {
+    render(<Board page={PAGE} />)
+
+    rightClick(centerOf(A.ref))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getAllByRole('group')[0]).toHaveAccessibleName('Frame')
+  })
+
+  it('heads the menu of a selection of two with 2 frames', async () => {
+    render(<Board page={PAGE} />)
+    select(selectionStore, PAGE.ref, [A.ref, B.ref])
+
+    rightClick(centerOf(B.ref))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getAllByRole('group')[0]).toHaveAccessibleName(
+      '2 frames',
+    )
+  })
+
   it("lists the frame's items with their keys as chips", async () => {
     render(<Board page={PAGE} />)
 
