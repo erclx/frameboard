@@ -94,7 +94,7 @@ export function addVerb(
     .option('--json', 'print one JSON document on stdout')
     .option(
       '--root <path>',
-      'the board folder, found from the working folder when absent',
+      'the board folder itself, holding board.json, found from the working folder when absent',
     )
   if (project) {
     command.option(
