@@ -1,24 +1,32 @@
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
-import { contentHash } from './address'
+import { contentHash, parseFrame } from './address'
 import {
   applyEdit,
   type EditChange,
   type EditRefused,
   type ElementAddress,
   refuse,
+  scopeOf,
 } from './apply'
-import type { ElementSpan } from './element-span'
+import { type ElementSpan, relocate } from './element-span'
 
 export type FrameFileEdit =
   | {
       readonly ok: true
       /** The file's hash after the edit, which the next edit is made from. */
       readonly hash: string
+      /** The hash the edit was written over, which differs from the address's once relocated. */
+      readonly from: string
+      /** The element's index in the file as written. */
+      readonly index: number
       readonly span: ElementSpan
     }
   | EditRefused
+
+/** The source a frame held under a hash it no longer has, or null when none is kept. */
+export type SourceAt = (hash: string) => string | null
 
 function stale(path: string): EditRefused {
   return refuse(
@@ -27,19 +35,31 @@ function stale(path: string): EditRefused {
   )
 }
 
+function collided(path: string, was: string, index: number): EditRefused {
+  const element = parseFrame(was).elements[index]
+  if (!element) return stale(path)
+  return refuse(
+    'stale-address',
+    `the agent changed this <${element.tagName}> in ${basename(path)} while your edit waited, so nothing was written`,
+  )
+}
+
 /**
  * Edits one element of a frame file and replaces the file through a
  * temporary file and a rename. A file whose bytes do not survive a UTF-8
  * round trip is refused, since decoding would rewrite every invalid byte. An
- * address carrying a hash the file no longer has is refused as stale, and the
- * file is read again just before the rename so a write landing meanwhile is
- * refused rather than overwritten. No lock is taken, since an agent's raw
- * write never takes one and the hash is what protects a hand edit.
+ * address carrying a hash the file no longer has is found again through
+ * `sourceAt`, by the bytes the edit reads, and refused as stale when no source
+ * is kept or those bytes changed. The file is read again just before the
+ * rename so a write landing meanwhile is refused rather than overwritten. No
+ * lock is taken, since an agent's raw write never takes one and the hash is
+ * what protects a hand edit.
  */
 export function editFrameFile(
   path: string,
   address: ElementAddress,
   change: EditChange,
+  sourceAt?: SourceAt,
 ): FrameFileEdit {
   const bytes = readFileSync(path)
   const source = bytes.toString('utf8')
@@ -50,9 +70,16 @@ export function editFrameFile(
     )
   }
   const hash = contentHash(bytes)
-  if (address.hash !== undefined && address.hash !== hash) return stale(path)
+  let index = address.index
+  if (address.hash !== undefined && address.hash !== hash) {
+    const was = sourceAt?.(address.hash)
+    if (!was) return stale(path)
+    const found = relocate(was, address.index, scopeOf(change), source)
+    if (!found) return collided(path, was, address.index)
+    index = found.index
+  }
 
-  const applied = applyEdit(source, address, change)
+  const applied = applyEdit(source, { index }, change)
   if (!applied.ok) return applied
 
   // A leading dot keeps the temporary file from reading as a frame.
@@ -63,5 +90,11 @@ export function editFrameFile(
     return stale(path)
   }
   renameSync(temp, path)
-  return { ok: true, hash: contentHash(applied.html), span: applied.span }
+  return {
+    ok: true,
+    hash: contentHash(applied.html),
+    from: hash,
+    index,
+    span: applied.span,
+  }
 }

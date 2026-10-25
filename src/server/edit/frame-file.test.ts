@@ -86,6 +86,83 @@ describe('editFrameFile', () => {
     expect(readFileSync(frame, 'utf8')).toBe('<h1>Old</h1>')
   })
 
+  describe('an edit made from a source the file has since left', () => {
+    const WAS = '<h1>Old</h1><p style="color: red">x</p>'
+    const sourceAt = (hash: string) => (hash === contentHash(WAS) ? WAS : null)
+
+    it('should land past an agent write to a sibling, keeping both', () => {
+      const agent = '<h1>Old</h1><p style="color: blue">x</p>'
+      writeFileSync(frame, agent)
+
+      const result = editFrameFile(
+        frame,
+        { index: 3, hash: contentHash(WAS) },
+        { kind: 'text', value: 'New' },
+        sourceAt,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        '<h1>New</h1><p style="color: blue">x</p>',
+      )
+      expect(result).toMatchObject({
+        ok: true,
+        index: 3,
+        from: contentHash(agent),
+      })
+    })
+
+    it('should land at the new index once an agent added an element above', () => {
+      writeFileSync(frame, `<nav></nav>${WAS}`)
+
+      const result = editFrameFile(
+        frame,
+        { index: 4, hash: contentHash(WAS) },
+        { kind: 'style', property: 'color', value: 'green' },
+        sourceAt,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        '<nav></nav><h1>Old</h1><p style="color: green">x</p>',
+      )
+      expect(result).toMatchObject({ ok: true, index: 5 })
+    })
+
+    it('should refuse once the agent changed the edited element', () => {
+      writeFileSync(frame, '<h1>Agent</h1><p style="color: red">x</p>')
+
+      const result = editFrameFile(
+        frame,
+        { index: 3, hash: contentHash(WAS) },
+        { kind: 'text', value: 'New' },
+        sourceAt,
+      )
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: 'stale-address',
+        detail:
+          'the agent changed this <h1> in hero.html while your edit waited, so nothing was written',
+      })
+      expect(readFileSync(frame, 'utf8')).toBe(
+        '<h1>Agent</h1><p style="color: red">x</p>',
+      )
+    })
+
+    it('should refuse when no source is kept under the hash', () => {
+      writeFileSync(frame, '<h1>Old</h1><p>y</p>')
+
+      const result = editFrameFile(
+        frame,
+        { index: 3, hash: contentHash('<h1>Older</h1>') },
+        { kind: 'text', value: 'New' },
+        sourceAt,
+      )
+
+      expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
+      expect(readFileSync(frame, 'utf8')).toBe('<h1>Old</h1><p>y</p>')
+    })
+  })
+
   it('should refuse a file holding invalid UTF-8 and leave its bytes', () => {
     const bytes = Buffer.concat([
       Buffer.from('<h1>a'),
