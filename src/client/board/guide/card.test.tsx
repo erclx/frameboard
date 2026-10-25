@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
@@ -202,6 +202,40 @@ describe('GuideCard', () => {
           body: { ref: 'untitled', accent: 'purple', font: 'geist-mono' },
         },
       ])
+  })
+
+  it('locks the look on Back once the guide has written the sheet', async () => {
+    const user = userEvent.setup()
+    const { sent, calls } = server()
+    let written = false
+    const loadTokens = async (): Promise<TokenTable> => ({
+      sheets: written
+        ? [{ path: 'untitled/tokens.css', kind: 'project', error: null }]
+        : [],
+      tokens: [],
+    })
+    renderCard({ calls, loadTokens })
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await screen.findByRole('heading', { name: 'Who draws the first frame?' })
+    written = true
+    act(() => receiveBoard(liveStore, startBoard()))
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Purple' })).toBeDisabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Who draws the first frame?',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      sent.filter((each) => each.path === '/api/project/tokens'),
+    ).toHaveLength(1)
   })
 
   it('drops the look step where a token sheet already reaches the project', async () => {

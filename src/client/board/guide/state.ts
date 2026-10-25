@@ -22,7 +22,6 @@ export interface GuideState {
   at: number
   /** Whether the look step runs, fixed at the first answer so the count holds once a sheet is written. */
   withLook: boolean | null
-  sheetWritten: boolean
   name: string | null
   size: FrameSizePreset
   accent: StarterAccent
@@ -39,7 +38,6 @@ const START: GuideState = {
   project: null,
   at: 0,
   withLook: null,
-  sheetWritten: false,
   name: null,
   size: 'phone',
   accent: DEFAULT_LOOK.accent,

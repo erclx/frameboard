@@ -89,6 +89,10 @@ export function GuideCard({
     : ['name', 'size', 'agent']
   const at = Math.min(state.at, steps.length - 1)
   const step = steps[at] ?? 'name'
+  // The table lists the project's own sheet once one exists, so a sheet the
+  // guide wrote locks the look, and an Undo removing it unlocks it again.
+  const sheetWritten =
+    table?.sheets.some((sheet) => sheet.kind === 'project') ?? false
   const name = state.name ?? project
   const folder = folderName(name)
 
@@ -149,7 +153,7 @@ export function GuideCard({
       navigate(boardUrl(folder, page.name), { replace: true })
       return advance()
     }
-    if (step === 'look' && !state.sheetWritten) {
+    if (step === 'look' && !sheetWritten) {
       try {
         await calls.projectTokens(project, {
           accent: state.accent,
@@ -163,7 +167,6 @@ export function GuideCard({
           return refuse(error, `Couldn't write ${project}/tokens.css`)
         }
       }
-      set({ sheetWritten: true })
       return advance()
     }
     if (step === 'agent') return finish()
@@ -228,9 +231,9 @@ export function GuideCard({
               accent={state.accent}
               font={state.font}
               project={project}
-              written={state.sheetWritten}
+              written={sheetWritten}
               refusal={state.refusal}
-              onChange={(look) => set({ ...look, sheetWritten: false })}
+              onChange={(look) => set(look)}
             />
           ) : (
             <AgentStep
@@ -366,6 +369,7 @@ function Choice({
   className,
   children,
   label,
+  disabled = false,
 }: {
   group: string
   checked: boolean
@@ -373,11 +377,12 @@ function Choice({
   className: string
   children: ReactNode
   label?: string
+  disabled?: boolean
 }) {
   return (
     <label
       className={cn(
-        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
+        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-disabled:opacity-60',
         className,
       )}
     >
@@ -386,6 +391,7 @@ function Choice({
         name={group}
         checked={checked}
         onChange={onSelect}
+        disabled={disabled}
         aria-label={label}
         className="peer sr-only"
       />
@@ -486,6 +492,7 @@ function LookStep({
                 group="guide-accent"
                 label={ACCENT_LABELS[each]}
                 checked={accent === each}
+                disabled={written}
                 onSelect={() => onChange({ accent: each, font })}
                 className="size-5 overflow-hidden rounded-[5px] has-checked:shadow-[0_0_0_2px_var(--muted),0_0_0_3.5px_var(--foreground)]"
               >
@@ -510,10 +517,11 @@ function LookStep({
           <span className="relative block">
             <select
               value={font}
+              disabled={written}
               onChange={(event) =>
                 onChange({ accent, font: event.target.value as StarterFont })
               }
-              className="h-[26px] w-full appearance-none rounded-md bg-card px-2 text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-[26px] w-full appearance-none rounded-md bg-card px-2 text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
             >
               {fonts.map((each) => (
                 <option key={each} value={each}>
@@ -530,7 +538,16 @@ function LookStep({
       </div>
       {refusal ? <Refusal id="guide-refusal">{refusal}</Refusal> : null}
       <Writes>
-        {written ? 'Wrote' : 'Writes'} <Path>{project}/tokens.css</Path>
+        {written ? (
+          <>
+            Wrote <Path>{project}/tokens.css</Path>, so Undo takes it back to
+            pick again
+          </>
+        ) : (
+          <>
+            Writes <Path>{project}/tokens.css</Path>
+          </>
+        )}
       </Writes>
     </>
   )
