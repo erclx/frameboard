@@ -37,4 +37,4 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, registered for the who
 
 ## Gotchas
 
-- `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
+- `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`. A toast is a dialog to base-ui but takes board keys, undo among them, through its `data-slot="toast"` marker, and Enter there stays with the toast so its Show button still clicks
