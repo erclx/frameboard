@@ -9,14 +9,12 @@ import { contentHash } from '@/server/edit/address'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
+import { AT_QUERY } from '@/shared/theme'
 
 const NOTES_FILE = 'notes.json'
 
 /** Where the look route serves the board's token sheet, whichever file stands in for it. */
 export const BOARD_SHEET_URL = '/frameboard/tokens.css'
-
-/** The query naming a held version of a frame by its content hash. */
-export const AT_QUERY = 'at'
 
 /**
  * The source a frame held under a content hash before an agent's write

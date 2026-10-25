@@ -6,6 +6,7 @@ import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { splitAt } from '../changes/compare'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
@@ -21,6 +22,7 @@ import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
 import {
   badgeAt,
   cornerAt,
+  drawnAt,
   frameAt,
   framesIn,
   onOutline,
@@ -54,6 +56,8 @@ export interface GestureStores {
   duplicate: Structure['duplicateFrames']
   /** Opens a frame's findings popover. */
   openFindings: (ref: string) => void
+  /** Moves a compared frame's split divider to a screen x. */
+  splitAt: (clientX: number) => void
 }
 
 const STORES: GestureStores = {
@@ -63,12 +67,17 @@ const STORES: GestureStores = {
   write: writeBoxes,
   duplicate: structure.duplicateFrames,
   openFindings,
+  splitAt,
 }
 
 type Gesture =
   | { kind: 'press'; frame: FrameRecord; shift: boolean }
   /** A press on a frame's findings badge, which opens its list on release and selects nothing. */
   | { kind: 'badge'; ref: string }
+  /** A press on a button in a frame's label, clicked on release, selecting nothing. */
+  | { kind: 'control'; element: HTMLElement }
+  /** A drag on a compared frame's split divider, which moves it and selects nothing. */
+  | { kind: 'divider' }
   | { kind: 'marquee'; shift: boolean; base: readonly string[] }
   | { kind: 'resize'; corner: Corner; boxes: Record<string, Box>; bounds: Box }
   | { kind: 'move'; boxes: Record<string, Box>; bounds: Box }
@@ -127,6 +136,16 @@ export function attachGestures(
     leaving = field !== null
     // Blurring here applies the field's edit before any drag writes.
     field?.blur()
+    const control = drawnAt(target.layer, '[data-label-control]', event)
+    if (control) {
+      gesture = { kind: 'control', element: control }
+      return
+    }
+    if (drawnAt(target.layer, '[data-compare-divider]', event)) {
+      gesture = { kind: 'divider' }
+      stores.splitAt(event.clientX)
+      return
+    }
     const badge = badgeAt(target.layer, event)
     if (badge) {
       gesture = { kind: 'badge', ref: badge }
@@ -320,6 +339,8 @@ export function attachGestures(
       }
       if (gesture.kind === 'badge') {
         stores.openFindings(gesture.ref)
+      } else if (gesture.kind === 'control') {
+        gesture.element.click()
       } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
@@ -393,6 +414,10 @@ export function attachGestures(
     .on('drag', (event: { sourceEvent: MouseEvent }) => {
       const source = event.sourceEvent
       last = source
+      if (gesture.kind === 'divider') {
+        stores.splitAt(source.clientX)
+        return
+      }
       if (!moved) {
         const distance = Math.hypot(
           source.clientX - pressed.x,

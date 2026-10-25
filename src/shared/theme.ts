@@ -7,6 +7,9 @@ export type Theme = (typeof THEMES)[number]
 /** The query a frame is served with, which its injected script sets `data-theme` from. */
 export const THEME_QUERY = 'theme'
 
+/** The query naming a version an agent's write replaced, by its content hash. */
+export const AT_QUERY = 'at'
+
 /**
  * The attribute on every element the frame route injects. A reader counting
  * a live frame's elements skips the ones carrying it, so the live index
@@ -43,14 +46,17 @@ export function oppositeTheme(theme: Theme): Theme {
 
 /**
  * Where a frame is served in one theme, with `version` naming the reload so
- * a changed file loads fresh.
+ * a changed file loads fresh, and `at` naming a version an agent's write
+ * replaced by its content hash.
  */
 export function frameThemeUrl(
   ref: string,
   theme: Theme,
   version?: number,
+  at?: string,
 ): string {
   const query = new URLSearchParams({ [THEME_QUERY]: theme })
   if (version !== undefined) query.set('v', String(version))
+  if (at !== undefined) query.set(AT_QUERY, at)
   return `${frameUrl(ref)}?${query}`
 }
