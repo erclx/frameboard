@@ -9,7 +9,7 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -558,16 +558,17 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Pin, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, remove, ...rest] =
+    const [open, rename, duplicate, pin, remove, ...rest] =
       within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
     expect(rename).toHaveAccessibleName('Rename')
     expect(duplicate).toHaveAccessibleName('Duplicate')
+    expect(pin).toHaveAccessibleName('Pin')
     expect(remove).toHaveAccessibleName('Delete')
     expect(rest).toEqual([])
     expect(
@@ -767,5 +768,152 @@ describe('project actions', () => {
     expect(
       screen.getByRole('textbox', { name: 'Rename project studio' }),
     ).toHaveValue('studi')
+  })
+})
+
+describe('Home order and pins', () => {
+  const THREE = [
+    project('atlas', '2026-10-01T00:00:00.000Z'),
+    project('studio', '2026-10-15T09:00:00.000Z'),
+    project('webapp', '2026-10-13T12:00:00.000Z'),
+  ]
+
+  const shown = () =>
+    screen
+      .getAllByRole('link')
+      .map((link) => link.querySelector('[title]')?.getAttribute('title'))
+
+  async function pin(name: RegExp) {
+    const menu = await openMenu(name)
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Pin' }))
+  }
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+    liveStore.setState({ canWrite: false, board: null })
+    projectStore.setState({ focused: null, renaming: null })
+  })
+
+  it('shows the last edited first', () => {
+    renderLive(THREE, server().calls)
+
+    expect(shown()).toEqual(['studio', 'webapp', 'atlas'])
+  })
+
+  it('reorders by name from the sort menu and remembers it', async () => {
+    renderLive(THREE, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Sort/ }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Name' }),
+    )
+    cleanup()
+    renderLive(THREE, server().calls, 'list')
+
+    expect(shown()).toEqual(['atlas', 'studio', 'webapp'])
+  })
+
+  it('names the chosen order on the sort button', () => {
+    localStorage.setItem('frameboard.home.sort', 'created')
+
+    renderLive(THREE, server().calls)
+
+    expect(screen.getByRole('button', { name: /^Sort/ })).toHaveTextContent(
+      'Created',
+    )
+  })
+
+  it('holds a pinned project first and marks it', async () => {
+    renderLive(THREE, server().calls)
+
+    await pin(/atlas/)
+
+    expect(shown()).toEqual(['atlas', 'studio', 'webapp'])
+    expect(
+      within(screen.getByRole('link', { name: /atlas/ })).getByRole('img', {
+        name: 'Pinned',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('holds a pinned row first in the list too', async () => {
+    renderLive(THREE, server().calls, 'list')
+
+    await pin(/webapp/)
+
+    expect(shown()).toEqual(['webapp', 'studio', 'atlas'])
+  })
+
+  it('offers Unpin on a pinned project, which puts it back in order', async () => {
+    renderLive(THREE, server().calls)
+    await pin(/atlas/)
+
+    const menu = await openMenu(/atlas/)
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Unpin' }))
+
+    expect(shown()).toEqual(['studio', 'webapp', 'atlas'])
+  })
+
+  it('keeps a pin across a reload', async () => {
+    renderLive(THREE, server().calls)
+    await pin(/atlas/)
+
+    cleanup()
+    renderLive(THREE, server().calls)
+
+    expect(shown()[0]).toBe('atlas')
+  })
+
+  it('pins in a tab that may not write', async () => {
+    renderLive(THREE, server().calls)
+    act(() => liveStore.setState({ canWrite: false }))
+
+    await pin(/atlas/)
+
+    expect(shown()[0]).toBe('atlas')
+  })
+
+  it('ignores a stored pin naming no project', () => {
+    localStorage.setItem('frameboard.home.pins', JSON.stringify(['gone']))
+
+    renderLive(THREE, server().calls)
+
+    expect(shown()).toEqual(['studio', 'webapp', 'atlas'])
+    expect(screen.queryByRole('img', { name: 'Pinned' })).toBeNull()
+  })
+
+  it('shows the last edited first when the browser refuses storage', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('refused')
+    })
+
+    renderLive(THREE, server().calls)
+
+    expect(shown()).toEqual(['studio', 'webapp', 'atlas'])
+  })
+
+  it('walks the shown order on Home and End, pinned first', async () => {
+    renderLive(THREE, server().calls, 'list')
+    await pin(/atlas/)
+    act(() => screen.getByRole('link', { name: /studio/ }).focus())
+
+    await userEvent.keyboard('{Home}')
+    const first = document.activeElement
+    await userEvent.keyboard('{End}')
+
+    expect([first, document.activeElement]).toEqual([
+      screen.getByRole('link', { name: /atlas/ }),
+      screen.getByRole('link', { name: /webapp/ }),
+    ])
+  })
+
+  it('holds the tab stop on the first shown card', () => {
+    renderLive(THREE, server().calls)
+
+    expect(screen.getByRole('link', { name: /studio/ })).toHaveAttribute(
+      'tabindex',
+      '0',
+    )
   })
 })

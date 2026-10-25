@@ -11,7 +11,9 @@ import type { ProjectRecord } from '@/shared/records/list'
 import { EmptyHome } from './empty'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
+import { usePins } from './pins'
 import { Projects } from './projects'
+import { orderProjects, useHomeSort } from './sort'
 import { useThumbnails } from './thumbnails'
 
 interface HomeProps {
@@ -20,10 +22,16 @@ interface HomeProps {
   calls?: Structure
 }
 
-/** The home view under its header, counting "last edited" back from when it opened. */
+/**
+ * The home view under its header, counting "last edited" back from when it
+ * opened. The projects are ordered once here, so the cards, the arrow keys,
+ * and the tab stop all follow the order shown.
+ */
 export function Home({ projects, calls }: HomeProps) {
   const [now] = useState(Date.now)
   const layout = useHomeLayout()
+  const sort = useHomeSort()
+  const pins = usePins()
   useNewProjectAction(calls)
   useProjectActions(focusedProject, { calls })
   useThumbnails()
@@ -33,7 +41,12 @@ export function Home({ projects, calls }: HomeProps) {
       {projects.length === 0 ? (
         <EmptyHome />
       ) : (
-        <Projects projects={projects} layout={layout} now={now} calls={calls} />
+        <Projects
+          projects={orderProjects(projects, sort, pins)}
+          layout={layout}
+          now={now}
+          calls={calls}
+        />
       )}
     </div>
   )
