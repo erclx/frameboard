@@ -2,6 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 
 import { type NumberChange, NumberField } from './number-field'
@@ -136,6 +137,33 @@ describe('NumberField', () => {
     await userEvent.keyboard('{ArrowUp}')
 
     expect(calls.writes).toEqual([500])
+  })
+
+  it('writes a step whose preview moved the stored value under it', async () => {
+    const writes: number[] = []
+    // A frame's preview is its pending box, which the field reads back as the stored value.
+    function Previewed() {
+      const [value, setValue] = useState(40)
+      return (
+        <NumberField
+          label="X position"
+          prefix="X"
+          value={value}
+          disabled={false}
+          onPreview={(change) => setValue(change ? change(40) : 40)}
+          onCommit={async (change) => {
+            writes.push(change(40))
+            return true
+          }}
+        />
+      )
+    }
+    render(<Previewed />)
+
+    await userEvent.click(field())
+    await userEvent.keyboard('{ArrowUp}')
+
+    expect(writes).toEqual([41])
   })
 
   it('puts the stored value back on Esc and writes nothing', async () => {

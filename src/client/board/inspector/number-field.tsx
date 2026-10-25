@@ -75,13 +75,17 @@ export function NumberField({
   const [draft, setDraftState] = useState<Draft | null>(null)
   // Read by the keyup and blur that follow a press in the same task, before a render.
   const latest = useRef<Draft | null>(null)
-  const setDraft = (next: Draft | null) => {
-    latest.current = next
-    setDraftState(next)
-  }
   const [sent, setSent] = useState<{ value: number; over: number } | null>(null)
   if (sent && sent.over !== value) setSent(null)
   const held = sent?.over === value ? sent.value : null
+  // The value a gesture started from, since a preview the caller draws may
+  // move the stored value under it, as a frame's pending box does.
+  const started = useRef<number | null>(null)
+  const setDraft = (next: Draft | null) => {
+    if (!latest.current && next) started.current = held ?? value
+    latest.current = next
+    setDraftState(next)
+  }
 
   const scrubbing = useRef(false)
   // Esc during a scrub drops the moves left before the release.
@@ -116,7 +120,7 @@ export function NumberField({
     setDraft(null)
     const unchanged = current.offset
       ? current.value === 0
-      : current.value === value
+      : current.value === started.current
     if (current.value === null || unchanged) {
       onPreview?.(null)
       return
