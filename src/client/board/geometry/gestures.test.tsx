@@ -207,6 +207,23 @@ describe('attachGestures', () => {
       expect(selectedRefs()).toEqual([])
     })
 
+    it('only leaves a focused inspector field on the first press, and opens on the next', () => {
+      const { pointer, opened } = setup(undefined, { badge: BADGE })
+      const panel = document.createElement('aside')
+      panel.dataset.inspector = ''
+      const field = document.createElement('input')
+      panel.append(field)
+      document.body.append(panel)
+      field.focus()
+
+      pointer.click(150, 88)
+      const first = [...opened]
+      pointer.click(150, 88)
+      panel.remove()
+
+      expect([first, opened]).toEqual([[], [LEFT.ref]])
+    })
+
     it('opens nothing and moves nothing on a drag from it', () => {
       const { pointer, opened, writes } = setup(undefined, { badge: BADGE })
 
