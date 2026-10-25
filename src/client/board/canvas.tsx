@@ -5,7 +5,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { TAB_ID } from '@/client/live/socket'
-import { liveStore } from '@/client/live/store'
+import { liveStore, useLive } from '@/client/live/store'
+import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
 import type { Finding } from '@/shared/records/check'
@@ -26,6 +27,7 @@ import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending } from './geometry/write'
+import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
 import { CanvasMenu } from './menus/canvas'
 import { followSpacePan, modeStore, useMode } from './mode'
@@ -73,6 +75,8 @@ interface CanvasProps {
   claims?: Readonly<Record<string, Claim>>
   /** A frame to bring into view, as `show` asks, once it is on this page. */
   focus?: string | null
+  /** The server calls the empty page's Show writes through, the board's own when absent. */
+  calls?: Structure
   /** Called once the view has started toward `focus`. */
   onFocused?: () => void
 }
@@ -92,6 +96,7 @@ export function Canvas({
   claims,
   focus,
   onFocused,
+  calls = structure,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layerRef = useRef<HTMLDivElement>(null)
@@ -471,7 +476,7 @@ export function Canvas({
       {page.layoutError ? (
         <LayoutErrorNotice error={page.layoutError} />
       ) : frames.length === 0 ? (
-        <EmptyNotice />
+        <EmptyNotice hidden={page.frames} calls={calls} />
       ) : null}
     </div>
   )
@@ -496,8 +501,57 @@ function LayoutErrorNotice({
   )
 }
 
-function EmptyNotice() {
+/**
+ * The notice on a page drawing no frame. A page whose frames are all hidden
+ * says so, since its layers still list them, and a tab that may write offers
+ * to show them.
+ */
+function EmptyNotice({
+  hidden,
+  calls,
+}: {
+  /** The page's frames, every one hidden when there are any. */
+  hidden: readonly FrameRecord[]
+  calls: Structure
+}) {
   const keysOn = useCharacterKeysOn()
+  const canWrite = useLive((state) => state.canWrite)
+  if (hidden.length > 0) {
+    const counted = `${hidden.length} hidden frame${hidden.length === 1 ? '' : 's'}`
+    const show = `Show ${hidden.length} frame${hidden.length === 1 ? '' : 's'}`
+    return (
+      <div
+        role="status"
+        className="pointer-events-none absolute top-1/2 left-1/2 w-105 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-[55%] text-center text-body leading-[1.6] text-muted-foreground"
+      >
+        <div
+          aria-hidden
+          className="mx-auto mb-3.5 h-12 w-16 rounded-lg border-[1.5px] border-dashed border-faint"
+        />
+        <p className="mb-1 text-sm font-semibold text-foreground">
+          Every frame on this page is hidden
+        </p>
+        <p>{counted} stay listed under Layers.</p>
+        {canWrite ? (
+          <button
+            type="button"
+            onClick={() =>
+              void calls
+                .flagFrames(
+                  hidden.map((frame) => frame.ref),
+                  'hidden',
+                  false,
+                )
+                .catch(reportRefusal("Couldn't show the hidden frames"))
+            }
+            className="pointer-events-auto mt-3.5 h-[30px] rounded-lg bg-muted px-3 font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {show}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
   return (
     <div
       role="status"
