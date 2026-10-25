@@ -2,6 +2,7 @@ import { type KeyboardEvent, useRef, useState } from 'react'
 
 import { Textarea } from '@/client/components/ui/textarea'
 
+import { isStrayHistory } from './stray-history'
 import type { WriteElement } from './write'
 
 interface TextSectionProps {
@@ -62,7 +63,10 @@ export function TextSection({ text, disabled, write }: TextSectionProps) {
         aria-labelledby="inspector-text"
         value={draft ?? held ?? text}
         disabled={disabled}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        onChange={(event) => {
+          if (isStrayHistory(event)) return
+          setDraft(event.currentTarget.value)
+        }}
         onBlur={commit}
         onKeyDown={onKeyDown}
         className="min-h-11 resize-none rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"

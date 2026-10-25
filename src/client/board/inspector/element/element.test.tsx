@@ -55,6 +55,19 @@ function recorder(answer = true) {
   return { changes, write }
 }
 
+/** Types into a field the way a browser undo does: a value change tagged with its history input type. */
+function browserHistory(
+  field: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+  inputType: 'historyUndo' | 'historyRedo' = 'historyUndo',
+) {
+  const proto = Object.getPrototypeOf(field)
+  Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(field, value)
+  act(() => {
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType }))
+  })
+}
+
 describe('LayerSection', () => {
   it.each(['50', '50%'])('writes opacity 0.5 for %s', async (typed) => {
     const { changes, write } = recorder()
@@ -565,6 +578,57 @@ describe('TextSection', () => {
     await userEvent.tab()
 
     await expect.poll(() => (area as HTMLTextAreaElement).value).toBe('Hello')
+  })
+
+  it.each(['historyUndo', 'historyRedo'] as const)(
+    'drops a %s while the field is unfocused, and writes nothing on the next blur',
+    async (inputType) => {
+      const { changes, write } = recorder()
+      render(<TextSection text="Hello" disabled={false} write={write} />)
+      const area = screen.getByRole('textbox', { name: 'Text' })
+
+      browserHistory(area as HTMLTextAreaElement, 'Hel', inputType)
+      act(() => (area as HTMLTextAreaElement).focus())
+      act(() => (area as HTMLTextAreaElement).blur())
+
+      expect(changes).toEqual([])
+      expect(area).toHaveValue('Hello')
+    },
+  )
+
+  it('follows a historyUndo while the field is focused', async () => {
+    const { changes, write } = recorder()
+    render(<TextSection text="Hello" disabled={false} write={write} />)
+    const area = screen.getByRole('textbox', { name: 'Text' })
+
+    act(() => (area as HTMLTextAreaElement).focus())
+    browserHistory(area as HTMLTextAreaElement, 'Hel')
+    act(() => (area as HTMLTextAreaElement).blur())
+
+    expect(changes).toEqual([{ kind: 'text', value: 'Hel' }])
+  })
+})
+
+describe('LayerSection commit field', () => {
+  it('drops a historyUndo while the field is unfocused', () => {
+    const { changes, write } = recorder()
+    render(
+      <LayerSection
+        name="Headline"
+        opacity={1}
+        radius={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Opacity' })
+
+    browserHistory(field as HTMLInputElement, '50')
+    act(() => (field as HTMLInputElement).focus())
+    act(() => (field as HTMLInputElement).blur())
+
+    expect(changes).toEqual([])
+    expect(field).toHaveValue('100%')
   })
 })
 

@@ -3,6 +3,8 @@ import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
 import { Input } from '@/client/components/ui/input'
 
+import { isStrayHistory } from './stray-history'
+
 interface CommitFieldProps {
   label: string
   /** The key letter or icon over the left padding, as the reference's `.k`. */
@@ -86,7 +88,10 @@ export function CommitField({
         value={draft ?? held ?? shown}
         disabled={disabled}
         onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        onChange={(event) => {
+          if (isStrayHistory(event)) return
+          setDraft(event.currentTarget.value)
+        }}
         onBlur={commit}
         onKeyDown={onKeyDown}
       />
