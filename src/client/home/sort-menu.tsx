@@ -15,7 +15,7 @@ const IDS = ['home.sortEdited', 'home.sortCreated', 'home.sortName'] as const
 
 /**
  * The button on the right of the Projects title, per
- * `canon/design/home/sort-menu`, naming the order shown and opening the
+ * `canon/design/menus/home-sort`, naming the order shown and opening the
  * `home.sort*` choices. It waits on the home view registering them.
  */
 export function SortMenu() {
