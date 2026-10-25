@@ -25,6 +25,7 @@ This record holds at most 600 words.
 
 - The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds phone, tablet, or desktop frames, selects several frames, and undoes their own changes
 - By hand, a developer sets a selected frame's position and size and a selected element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
+- A developer places text or a shape inside a frame, landing in the layout where clicked, and edits text in place on a double-click
 
 ### Working with the agent
 
@@ -48,8 +49,8 @@ This record holds at most 600 words.
 
 ### Never by hand
 
-- Drawing tools, vector editing, or image editing
-- Layout editing, being flex, padding, element size, or position inside a frame
+- Vector editing, pen and path tools, or image editing
+- Layout editing, being flex, padding, or moving an element once placed
 - Effects controls such as blending and filters
 - Components, constraints, or a plugin system
 
@@ -65,6 +66,6 @@ This record holds at most 600 words.
 ## Constraints
 
 - Runs on macOS and Linux
-- A hand control earns its place only when the edit beats asking the agent, and nothing by hand reshapes layout.
+- A hand control earns its place only when the edit beats asking the agent, and nothing by hand reshapes the layout around what it touches.
 - Human and agent edits never silently overwrite each other.
 - Frameboard knows nothing about any one consumer. Another tool hands it a board folder and a token stylesheet.
