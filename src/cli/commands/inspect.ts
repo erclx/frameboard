@@ -24,7 +24,7 @@ export function registerInspect(
   program: Command,
   context: ProgramContext & { facesDir: string },
 ): void {
-  const { io, facesDir } = context
+  const { io } = context
   act<InspectOptions>(
     addVerb(
       program,
@@ -50,7 +50,7 @@ export function registerInspect(
         cwd: io.cwd,
       })
       const data: InspectResult = await withFrameHost(
-        { root, facesDir },
+        { root, facesDir: context.facesDir },
         'inspect',
         (browser, baseUrl) =>
           inspectFrame(browser, {

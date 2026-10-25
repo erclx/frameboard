@@ -36,7 +36,7 @@ export function registerCapture(
   program: Command,
   context: ProgramContext & { facesDir: string },
 ): void {
-  const { io, facesDir } = context
+  const { io } = context
   const command = addVerb(
     program,
     'capture',
@@ -96,7 +96,7 @@ export function registerCapture(
       }
       const out = await outOf()
       const images = await withFrameHost(
-        { root, facesDir },
+        { root, facesDir: context.facesDir },
         'capture',
         (browser, baseUrl) =>
           options.composite
@@ -118,7 +118,7 @@ export function registerCapture(
     const frame = await readFrame(root, ref ?? '', refOptions)
     const out = await outOf()
     const images = await withFrameHost(
-      { root, facesDir },
+      { root, facesDir: context.facesDir },
       'capture',
       (browser, baseUrl) =>
         captureFrameImages(browser, { baseUrl, frames: [frame], themes, out }),

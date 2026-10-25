@@ -1,11 +1,14 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { captureResultSchema } from '@/shared/records/capture'
 
 import { cli } from '../../../test/support/cli'
+import { launchShellOrNull } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 
 // The writer stands in for the browser, so these cases run the verb's own
@@ -70,6 +73,9 @@ vi.mock('@/server/capture/images', () => ({
       height: 1,
     })),
 }))
+
+const shell = await launchShellOrNull()
+await shell?.close()
 
 const PAGE = {
   'studio/home/hero.html': '<p>Hello</p>',
@@ -263,4 +269,38 @@ describe('capture', () => {
     expect(run.exitCode).toBe(2)
     expect(run.json().error?.code).toBe('usage')
   })
+})
+
+// Skipped where the headless shell is not installed, as on the unit job.
+describe.skipIf(shell === null)('capture from source', () => {
+  let board: TempBoard
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  // A child process, since the mocks above stand in for the browser in this
+  // file only. Caveat, since Geist can pass as an installed font and prove
+  // nothing.
+  it('loads a bundled face when the CLI runs from source', () => {
+    board = writeBoard({
+      'studio/home/hero.html': '<p style="font-family: Caveat">Hello</p>',
+      'studio/home/layout.json': HERO['studio/home/layout.json'],
+    })
+
+    const run = spawnSync(
+      'bun',
+      [
+        fileURLToPath(new URL('../index.ts', import.meta.url)),
+        'capture',
+        'studio/home/hero',
+        '--theme',
+        'light',
+        '--json',
+      ],
+      { cwd: board.root, encoding: 'utf8' },
+    )
+
+    expect(JSON.parse(run.stdout).ok).toBe(true)
+  }, 60_000)
 })

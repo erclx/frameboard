@@ -37,7 +37,7 @@ export function registerFrame(
   program: Command,
   context: ProgramContext & { facesDir: string },
 ): void {
-  const { io, facesDir } = context
+  const { io } = context
   const frame = program.command('frame').description('Manage frames')
   const verb = (name: string, description: string) =>
     addVerb(frame, name, description, { project: true }).argument(
@@ -145,7 +145,7 @@ export function registerFrame(
       // Resolved ahead of the browser, so a missing frame never reads as a missing browser.
       const frame = await readFrame(root, ref, refOptions)
       const result = await withFrameHost(
-        { root, facesDir },
+        { root, facesDir: context.facesDir },
         'frame fit',
         (browser, baseUrl) =>
           fitFrame(browser, { ...refOptions, root, baseUrl, frame }),
