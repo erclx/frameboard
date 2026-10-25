@@ -25,10 +25,15 @@ Owns the program and the conventions every verb shares, with `index.ts` bundled 
 
 Owns one module per verb group, with flags and JSON shapes in `frameboard docs`. `selection`, `notes`, `inspect`, `check`, and `capture` report, `edit` sets one property on one element leaving every other byte alone, and `editing` claims frames.
 
+- `serve` with no `--root` reuses the board the walk finds, else creates `.frameboard/` in the working folder, even in a repository. `--root` names the board folder itself for every verb.
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing
 - A fresh `serve` waits up to one second for an old writing tab to reconnect, and opens one only when no writing tab is connected, so `opened` is true exactly when this call opened one
-- The tab `serve` opens carries a single-use redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
-- `show` points every open board tab at a frame and exits 3 with `server-not-running` rather than start a server
+
+A tab gets write access only through a single-use redeem URL, and the verbs below hand one out or need a live server.
+
+- The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
+- `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token
+- `open` and `show` exit 3 with `server-not-running` rather than start a server, and `show` points every open board tab at a frame
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
 
 The structure verbs reshape projects, pages, and frames.
