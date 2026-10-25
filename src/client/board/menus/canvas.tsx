@@ -118,6 +118,7 @@ const FRAME_IDS = [
   'frame.duplicate',
   'frame.rename',
   'frame.fitHeight',
+  'frame.compare',
   'note.addOnFrame',
   'tool.note',
   'frame.hide',
@@ -134,6 +135,7 @@ function FrameItems() {
     duplicate,
     rename,
     fitHeight,
+    compare,
     note,
     noteTool,
     hide,
@@ -150,6 +152,7 @@ function FrameItems() {
         <MenuRow action={duplicate}>Duplicate</MenuRow>
         <MenuRow action={rename}>Rename</MenuRow>
         <MenuRow action={fitHeight}>Fit height</MenuRow>
+        <MenuRow action={compare}>Compare with before</MenuRow>
         <MenuRow action={note} binding={noteTool?.keys?.[0]}>
           Add a note
         </MenuRow>
