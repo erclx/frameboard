@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
 import type { Document, Element } from 'domhandler'
-import { parse, type Token } from 'parse5'
+import { parse, type ParserError, type Token } from 'parse5'
 import { adapter } from 'parse5-htmlparser2-tree-adapter'
 import postcss from 'postcss'
 
@@ -28,6 +28,12 @@ export interface Sheet {
   offset: number
 }
 
+/** A parse error the HTML tokenizer or tree builder raised, by its spec code. */
+export interface ParseError {
+  code: string
+  location: FindingLocation
+}
+
 /**
  * A frame read once for every rule: its bytes, the tree css-select walks with
  * source locations, and the stylesheets it renders with in cascade order.
@@ -47,6 +53,8 @@ export interface FrameSource extends FrameTarget {
    * `<link>`s in document order, each after the local sheets it imports.
    */
   sheets: Sheet[]
+  /** Every parse error in source order, which a browser recovers from silently. */
+  parseErrors: ParseError[]
 }
 
 export function readFrame(target: FrameTarget): FrameSource {
@@ -58,9 +66,21 @@ export function readFrame(target: FrameTarget): FrameSource {
   // browser drops a leading BOM before the tokenizer, where parse5 would read
   // it as text and imply the wrappers. A space is ignored alike and keeps
   // every offset.
+  const parseErrors: ParseError[] = []
   const document = parse(html.replace(/^﻿/, ' '), {
     treeAdapter: adapter,
     sourceCodeLocationInfo: true,
+    onParseError: (error: ParserError) => {
+      parseErrors.push({
+        code: error.code,
+        location: {
+          line: error.startLine,
+          column: error.startCol,
+          startOffset: error.startOffset,
+          endOffset: error.endOffset,
+        },
+      })
+    },
   }) as Document
 
   const elements: Element[] = []
@@ -120,6 +140,7 @@ export function readFrame(target: FrameTarget): FrameSource {
     document,
     elements,
     sheets,
+    parseErrors,
   }
 }
 

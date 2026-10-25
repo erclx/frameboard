@@ -14,7 +14,7 @@ import {
   type Sheet,
 } from './frame-source'
 import { checkLinks } from './links'
-import { checkMarkup, checkNaming } from './structure'
+import { checkMalformedTags, checkMarkup, checkNaming } from './structure'
 import { checkTheme } from './theme'
 import { tokenSheets } from './tokens'
 import { checkUppercase } from './uppercase'
@@ -44,6 +44,7 @@ export function checkFrameIn(
   return [
     ...checkNaming(target, boardPath(target.root, source.path)),
     ...checkMarkup(source),
+    ...checkMalformedTags(source),
     ...checkLinks(source),
     ...checkFonts(source, cascade, config),
     ...checkTheme(source),
