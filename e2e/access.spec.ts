@@ -59,8 +59,36 @@ test.describe('the board write key', () => {
 
     await second.goto(ticket)
 
-    await expect(second).toHaveURL(`${server.url}/?link=expired`)
     expect(await show(second)).toBe(401)
+    await other.close()
+  })
+
+  test('a plain-URL tab says it reads and names the fix', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    await page.goto(server.url)
+
+    await expect(
+      page.getByRole('status').filter({ hasText: 'View only' }),
+    ).toHaveText('View only. Run frameboard open to edit')
+    await context.close()
+  })
+
+  test('a used ticket lands with a toast that stays and a clean address', async ({
+    browser,
+    page,
+  }) => {
+    const ticket = await server.ticketUrl()
+    await page.goto(ticket)
+    const other = await browser.newContext()
+    const second = await other.newPage()
+
+    await second.goto(ticket)
+
+    await expect(second.getByText('This edit link has expired')).toBeVisible()
+    await expect(second).toHaveURL(`${server.url}/`)
     await other.close()
   })
 
