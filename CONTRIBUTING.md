@@ -19,16 +19,16 @@ bun run check
 
 ## Layout
 
-| Path                  | What it holds                                                                     |
-| --------------------- | --------------------------------------------------------------------------------- |
-| `src/cli/`            | The `frameboard` command, which rolldown bundles into `dist/cli.js`               |
-| `src/server/`         | The Hono app and the loopback server that serves the built client                 |
-| `src/client/`         | The React board UI, its shadcn kit under `components/ui/`, and the token styles   |
-| `src/shared/`         | Code both the CLI and the server import                                           |
-| `e2e/`                | Playwright specs, the screenshot harness and its cases, and the evidence baseline |
-| `plugins/frameboard/` | The Claude Code plugin, listed by `.claude-plugin/marketplace.json`               |
-| `scripts/`            | The verify runner and the shell scripts the package scripts call                  |
-| `canon/`              | Requirements, design intent, and per-domain context for contributors and agents   |
+| Path                  | What it holds                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/cli/`            | The `frameboard` command, which rolldown bundles into `dist/cli.js`                                    |
+| `src/server/`         | The Hono app and the loopback server that serves the built client                                      |
+| `src/client/`         | The React board UI, its shadcn kit under `components/ui/`, and the token styles                        |
+| `src/shared/`         | Code both the CLI and the server import                                                                |
+| `e2e/`                | Playwright specs in four role folders, the screenshot harness and its cases, and the evidence baseline |
+| `plugins/frameboard/` | The Claude Code plugin, listed by `.claude-plugin/marketplace.json`                                    |
+| `scripts/`            | The verify runner and the shell scripts the package scripts call                                       |
+| `canon/`              | Requirements, design intent, and per-domain context for contributors and agents                        |
 
 ## Running the plugin locally
 

@@ -3,12 +3,12 @@ import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
 
-import { cli } from '../test/support/cli'
+import { cli } from '../../test/support/cli'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { type BoardServer, serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
 
 const HOME = '/p/studio/home'
 

@@ -13,12 +13,12 @@ import { frameUrl } from '@/shared/board-urls'
 import { checkResultSchema } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { cli } from '../test/support/cli'
+import { cli } from '../../test/support/cli'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { type BoardServer, serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
 
 /**
  * Holds the font and theme rules to the browser's own answer: the first

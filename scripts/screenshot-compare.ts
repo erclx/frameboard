@@ -4,12 +4,12 @@ import path from 'node:path'
 
 import { chromium, expect, type Page } from '@playwright/test'
 
+import { type BoardServer, serveBoard } from '../e2e/support/board-server'
 import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../test/support/fixture-board'
 import { type TempBoard, writeBoard } from '../test/support/temp-board'
-import { type BoardServer, serveBoard } from './support/board-server'
 
 /**
  * Captures each shell surface at the 1440 by 900 the references under

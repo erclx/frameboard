@@ -11,8 +11,8 @@ import { checkResultSchema } from '@/shared/records/check'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { serveBoard } from '../support/board-server'
 
 const CLI = resolve('dist/cli.js')
 const ROOT = resolve('test/fixtures/boards/capture')

@@ -68,5 +68,5 @@ The plugin side of the hook sits outside `src/`.
 - `frame.ts` holds `checkFrame` apart from the runner in `run.ts`, because the runner reads the board scanner and its zod classic import would double the hook's start
 - The browser rules run on the server and never in the hook, so an agent sees them through `check` with a server running and on the board, never in the turn of its write
 - Every serve launches Chromium for the startup sweep, so a spec or capture case reading a label count waits on `check` or `POST /api/checks` first, since a browser finding can land mid-assertion
-- The browser comparison in `e2e/checks.spec.ts` never sets `color-scheme` itself, since that flips the default text color around a frame's fixed literal color and reads as two themes
+- The browser comparison in `e2e/cli/checks.spec.ts` never sets `color-scheme` itself, since that flips the default text color around a frame's fixed literal color and reads as two themes
 - A project rule kind is added only when a real frame needs it, since a config language that grows ahead of need becomes the design tool Frameboard is not
