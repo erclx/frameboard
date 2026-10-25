@@ -895,8 +895,8 @@ function actWhen(
   }
 }
 
-/** The about row's lock lights once the server grants writes, so it marks a tab that may write. */
-const WRITES_GRANTED = 'button[aria-label="Unlock about"]:not([disabled])'
+/** The unlocked about row's lock button enables once the server grants writes, so it marks a tab that may write. */
+const WRITES_GRANTED = 'button[aria-label="Lock about"]:not([disabled])'
 
 /** Where `menuOn` right-clicks: a frame's center, empty canvas, the selected element, or a panel row. */
 type MenuSpot =
@@ -1198,7 +1198,7 @@ export const BOARD_CASES: CaptureCase[] = [
         route: '/p/webapp/home',
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        // From above the hero's left edge to inside the locked about frame.
+        // From above the hero's left edge to inside the about frame.
         setup: themed(
           onCanvas({ hold: { from: [-60, -80], to: [1700, 400] } }),
         ),
@@ -1245,7 +1245,7 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
-        // The hero selected, the fixture's about locked, and a hidden sketch at the bottom.
+        // The hero selected, and a hidden sketch at the bottom.
         section: 'layers-rows',
         theme,
         route: '/p/webapp/home',

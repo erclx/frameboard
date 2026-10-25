@@ -363,6 +363,10 @@ describe('frames', () => {
     it('refuses a locked frame and writes nothing', async () => {
       board = copyFixtureBoard('basic')
       const root = board.root
+      await setFrameFlag(root, 'webapp/home/about', 'locked', {
+        cwd: root,
+        on: true,
+      })
       const bytes = file('webapp/home/layout.json')
 
       await expect(
