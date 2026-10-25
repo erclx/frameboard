@@ -72,6 +72,16 @@ describe('setDeclaration', () => {
     ).toEqual({ ok: true, style: '' })
   })
 
+  it('should drop a background and every background longhand', () => {
+    expect(
+      setDeclaration(
+        'background: #fff; color: red; background-color: blue; background-image: none',
+        'background',
+        '',
+      ),
+    ).toEqual({ ok: true, style: 'color: red' })
+  })
+
   it('should leave the shorthand alone on a longhand write', () => {
     expect(
       setDeclaration('border-radius: 4px', 'border-top-left-radius', '0'),

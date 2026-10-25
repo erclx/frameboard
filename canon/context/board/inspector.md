@@ -20,7 +20,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
-- **Remove:** a minus on the fill and stroke rows drops the element's own declaration, and over a rule's paint writes `transparent` or `border-style: none`. A rule's text color has none.
+- **Remove:** a minus on the fill and stroke rows drops the element's own `background` or `border` with their longhands, and over a rule's paint writes `transparent` or `border-style: none`
 - **Selection colors:** the colors the frame, the frames, or the element's subtree use, with token names, and a flag on raw values, read-only
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.

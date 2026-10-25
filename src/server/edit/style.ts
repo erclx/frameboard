@@ -7,6 +7,16 @@ const BORDER_SIDES = ['top', 'right', 'bottom', 'left'] as const
 const BORDER_PARTS = ['color', 'style', 'width'] as const
 
 const SHORTHAND_LONGHANDS: Readonly<Record<string, readonly string[]>> = {
+  background: [
+    'background-attachment',
+    'background-clip',
+    'background-color',
+    'background-image',
+    'background-origin',
+    'background-position',
+    'background-repeat',
+    'background-size',
+  ],
   border: [
     ...BORDER_PARTS.map((part) => `border-${part}`),
     ...BORDER_SIDES.flatMap((side) => [

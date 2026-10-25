@@ -269,10 +269,10 @@ describe('TypographySection', () => {
 
 describe('FillSection', () => {
   it.each([
-    [true, ''],
-    [false, 'transparent'],
+    [true, { property: 'background', value: '' }],
+    [false, { property: 'background-color', value: 'transparent' }],
   ])(
-    'removes a background the element’s own style sets (%s) by writing %j',
+    'removes a background the element’s own style sets (%s) by writing %o',
     async (inline, written) => {
       const { changes, write } = recorder()
       render(
@@ -290,9 +290,7 @@ describe('FillSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Remove fill' }))
 
-      expect(changes).toEqual([
-        { kind: 'style', property: 'background-color', value: written },
-      ])
+      expect(changes).toEqual([{ kind: 'style', ...written }])
     },
   )
 
