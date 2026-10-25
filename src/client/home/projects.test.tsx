@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { createStructure, type Structure } from '@/client/live/structure'
@@ -285,6 +286,45 @@ describe('Projects by the arrow keys', () => {
       card('echo'),
       card('alpha'),
     ])
+  })
+
+  describe('hjkl', () => {
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('moves across the grid on l and h', async () => {
+      renderFive('grid')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('ll')
+      const across = document.activeElement
+      await userEvent.keyboard('h')
+
+      expect([across, document.activeElement]).toEqual([
+        card('charlie'),
+        card('bravo'),
+      ])
+    })
+
+    it('moves down and up the list on j and k', async () => {
+      renderFive('list')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('jjk')
+
+      expect(document.activeElement).toBe(card('bravo'))
+    })
+
+    it('moves no card while single-key shortcuts are off', async () => {
+      setCharacterKeys(false)
+      renderFive('list')
+      act(() => card('alpha').focus())
+
+      await userEvent.keyboard('j')
+
+      expect(document.activeElement).toBe(card('alpha'))
+    })
   })
 
   it('leaves the set on one Tab', async () => {
