@@ -8,7 +8,7 @@ import { isStrayHistory } from './stray-history'
 import { forgetText, keptText, type WriteElement } from './write'
 
 /** A pasted line break, in any platform's form. */
-const NEWLINES = /\r\n|\r|\n/g
+export const NEWLINES = /\r\n|\r|\n/g
 
 interface TextSectionProps {
   text: string
