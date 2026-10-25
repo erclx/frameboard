@@ -165,8 +165,11 @@
 }
 
 @layer base {
+  /* A frame is its own document, so the thin scrollbar stays in the chrome. */
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--faint) transparent;
   }
   body {
     @apply bg-background text-foreground;
