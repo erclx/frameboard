@@ -70,11 +70,11 @@ function clipped(ref: string, message = 'cut off'): Finding {
 function heldCheck() {
   const calls: {
     frame: FrameRecord
-    land: (findings: Finding[]) => void
+    land: (findings: Finding[] | null) => void
     fail: (error: Error) => void
   }[] = []
   const check = (frame: FrameRecord) =>
-    new Promise<Finding[]>((resolve, reject) => {
+    new Promise<Finding[] | null>((resolve, reject) => {
       calls.push({ frame, land: resolve, fail: reject })
     })
   return { calls, check }
@@ -119,6 +119,22 @@ describe('createRenderedFindings', () => {
     await tick()
 
     expect(landed).toEqual([['site/home/hero', []]])
+  })
+
+  it('lands nothing for a reading its file has moved past', async () => {
+    const { calls, check } = heldCheck()
+    const landed: string[] = []
+    const rendered = createRenderedFindings({
+      check,
+      onResult: (ref) => landed.push(ref),
+    })
+    rendered.queue(boardOf({ hero: BOX }), [])
+    await tick()
+
+    calls[0]?.land(null)
+    await tick()
+
+    expect(landed).toEqual([])
   })
 
   it('queues a frame whose box changed with no file write', async () => {

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { EventEmitter, once } from 'node:events'
+import { stat } from 'node:fs/promises'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { relative, sep } from 'node:path'
@@ -15,6 +16,7 @@ import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser, type Launcher } from './capture/browser'
+import { measureContent } from './capture/fit'
 import { createWarmBrowser, createWarmRenderer } from './capture/render'
 import { createThumbnailStore, type ThumbnailStore } from './capture/thumbnails'
 import { type ChangeTracker, createChangeTracker } from './changes/tracker'
@@ -30,6 +32,7 @@ import {
   recheckRefs,
 } from './live/findings'
 import { createHub, type LiveHub } from './live/hub'
+import { createHug, type Hug, ownFileRefs } from './live/hug'
 import { openBoard } from './live/open-board'
 import {
   createRenderedFindings,
@@ -242,8 +245,8 @@ async function listen({
   // Captures a previous server left could show a frame edited while none ran.
   await thumbnails.empty()
   const rendered = createRenderedFindings({
-    check: async (frame) =>
-      checkRendered(await browser.get(), {
+    check: async (frame) => {
+      const list = await checkRendered(await browser.get(), {
         baseUrl: baseUrl(),
         frame: {
           ref: frame.ref,
@@ -251,7 +254,12 @@ async function listen({
           box: { width: frame.box.width, height: frame.box.height },
         },
         config: readConfig(root, frame.project),
-      }),
+      })
+      // A file written since the scan was read at the box from before the
+      // write, which a hugging frame is about to leave, so that write's batch
+      // checks it again instead.
+      return (await modifiedAt(frame.path)) === frame.modifiedAt ? list : null
+    },
     onResult: (ref, list) => {
       const before = findings.rendered([ref])[ref]
       if (JSON.stringify(before) === JSON.stringify(list)) return
@@ -260,6 +268,17 @@ async function listen({
         hub.broadcast({ type: 'findings', findings: changed })
       }
     },
+  })
+  const hug = createHug({
+    root,
+    measure: async (frame) =>
+      measureContent(await browser.get(), {
+        baseUrl: baseUrl(),
+        ref: frame.ref,
+        box: frame.box,
+        hugWidth: frame.hugWidth,
+        fonts: 'wait',
+      }),
   })
   const app = createApp({
     clientDir,
@@ -318,7 +337,13 @@ async function listen({
   // Every frame is checked once at start, ahead of any hello's findings, and
   // queued for the browser sweep, whose findings follow as they land.
   void inTurn(async () => {
-    const board = await scanBoard(root)
+    let board = await scanBoard(root)
+    const every = board.projects.flatMap((project) =>
+      project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
+    )
+    if (await hug.now(board, every).catch(() => false)) {
+      board = await scanBoard(root)
+    }
     await tracker.prime(board)
     findings.update(board, 'all')
     rendered.queue(board, [])
@@ -340,6 +365,7 @@ async function listen({
         tracker,
         claims,
         thumbnails,
+        hug,
         settleLater,
       }),
     )
@@ -356,6 +382,7 @@ async function listen({
     boardUrl,
     close: async () => {
       rendered.close()
+      hug.close()
       claims.close()
       for (const timer of settling) clearTimeout(timer)
       await Promise.all([
@@ -393,6 +420,7 @@ async function pushBatch(
     tracker,
     claims,
     thumbnails,
+    hug,
     settleLater,
   }: {
     hub: LiveHub
@@ -402,19 +430,33 @@ async function pushBatch(
     tracker: ChangeTracker
     claims: ClaimsPush
     thumbnails: ThumbnailStore
+    hug: Hug
     /** Broadcasts the changes `own` has not withdrawn once the grace passes. */
     settleLater: (held: FrameChange[]) => void
   },
 ): Promise<void> {
   let board
+  let own: string[]
   try {
     board = await scanBoard(root)
+    own = ownFileRefs(board, paths)
+    // A frame its own file reloaded is measured first, so the board never
+    // shows it at its old size, and the write's own batch reloads nothing.
+    if (await hug.now(board, own).catch(() => false)) {
+      board = await scanBoard(root)
+    }
   } catch {
     // A board folder mid-removal does not scan, and the next batch catches up.
     return
   }
   hub.broadcast({ type: 'board', data: board })
   const refs = reloadRefs(root, paths, board, tokens)
+  // A token or asset change reloads every frame it reaches, so those are
+  // measured after the push rather than holding it.
+  hug.later(
+    board,
+    refs.filter((ref) => !own.includes(ref)),
+  )
   if (refs.length > 0) {
     hub.broadcast({ type: 'reload', refs })
     thumbnails.invalidate(refs)
@@ -431,6 +473,14 @@ async function pushBatch(
   }
   rendered.queue(board, recheckRefs(root, paths, board, tokens))
   await pushNotes(root, paths, hub, delivery)
+}
+
+async function modifiedAt(path: string): Promise<string | null> {
+  try {
+    return new Date((await stat(path)).mtimeMs).toISOString()
+  } catch {
+    return null
+  }
 }
 
 /**

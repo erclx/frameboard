@@ -7,7 +7,7 @@ import { FRAME_SIZES } from '@/shared/frame-sizes'
 import type { FitResult } from '@/shared/records/capture'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { openFrame } from './render'
+import { openFrame, type OpenFrameOptions } from './render'
 
 interface Reading {
   height: number
@@ -46,11 +46,14 @@ export async function measureContent(
     ref,
     box,
     hugWidth,
+    fonts,
   }: {
     baseUrl: string
     ref: string
     box: { width: number; height: number }
     hugWidth: boolean
+    /** As `openFrame` takes it, so the server measures what the board shows. */
+    fonts?: OpenFrameOptions['fonts']
   },
 ): Promise<ContentSize> {
   const opened = await openFrame(browser, {
@@ -58,6 +61,7 @@ export async function measureContent(
     ref,
     box,
     theme: 'light',
+    fonts,
   })
   try {
     const { page } = opened
