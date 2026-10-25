@@ -33,7 +33,7 @@ export interface ShowDeps {
 
 const defaults: ShowDeps = {
   live: liveStore,
-  busy: lazyBusy(),
+  busy: startBusyWatch,
   toasts: kitToasts,
   go: navigate,
   following: () => followStore.getState().session !== null,
@@ -117,13 +117,23 @@ function offer(ref: string, deps: ShowDeps): void {
   closeOffer = close
 }
 
-function supersede(): void {
-  cancelWait?.()
-  cancelWait = null
-  closeOffer?.()
+let shared: Busy | null = null
+
+/**
+ * Starts the one busy watch, which the app calls before the socket connects
+ * so a press held before the first show is already on the record.
+ */
+export function startBusyWatch(): Busy {
+  return (shared ??= watchBusy())
 }
 
-function lazyBusy(): () => Busy {
-  let busy: Busy | null = null
-  return () => (busy ??= watchBusy())
+/** Drops a show still waiting for the developer, as a dropped socket does. */
+export function cancelPendingShow(): void {
+  cancelWait?.()
+  cancelWait = null
+}
+
+function supersede(): void {
+  cancelPendingShow()
+  closeOffer?.()
 }

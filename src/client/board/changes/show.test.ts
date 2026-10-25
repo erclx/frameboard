@@ -7,6 +7,7 @@ import type { Busy } from './busy'
 import { followStore } from './follow'
 import {
   acceptOffer,
+  cancelPendingShow,
   offerCopy,
   receiveShow,
   SHOW_OFFER,
@@ -221,6 +222,18 @@ describe('a newer show', () => {
     busy.clear()
 
     expect(go).toHaveBeenCalledExactlyOnceWith('/p/studio/about')
+  })
+
+  it('is dropped by a cancel, as when the socket closes', () => {
+    follow(true)
+    const { deps, go, busy } = rig()
+    busy.set(true)
+    receiveShow(PRICING, deps)
+
+    cancelPendingShow()
+    busy.clear()
+
+    expect(go).not.toHaveBeenCalled()
   })
 
   it('closes an open offer', () => {

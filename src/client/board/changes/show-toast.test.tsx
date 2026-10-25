@@ -6,7 +6,7 @@ import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 
 import { attachCanvas, type CanvasControls } from '../view'
-import { receiveShow, SHOW_OFFER } from './show'
+import { receiveShow, SHOW_OFFER, startBusyWatch } from './show'
 import { ShowOfferBody } from './show-toast'
 
 const SHOP_HERO = 'shop/home/hero'
@@ -34,6 +34,19 @@ function renderStack() {
 }
 
 describe('the show offer', () => {
+  it('offers rather than jumps when a press began before the first show', async () => {
+    startBusyWatch()
+    history.replaceState(null, '', '/p/studio/home')
+    document.dispatchEvent(new Event('pointerdown'))
+    cleanups.push(() => document.dispatchEvent(new Event('pointerup')))
+    renderStack()
+
+    act(() => receiveShow('studio/pricing/plans'))
+
+    expect(await screen.findByText('An agent showed plans')).toBeTruthy()
+    expect(location.pathname).toBe('/p/studio/home')
+  })
+
   it('names the frame and its project beside Go', async () => {
     renderStack()
 
