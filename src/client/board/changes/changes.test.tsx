@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { bindKeys } from '@/client/actions/registry'
+import { toast, Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import {
   createUnseenStore,
@@ -24,7 +25,7 @@ import { toastCopy } from './copy'
 import { DWELL_MS, useDwell } from './dwell'
 import { ChangeGlow } from './glow'
 import { glowStore } from './glow-store'
-import { ChangesToast } from './toast'
+import { CHANGE_TOAST, ChangesToast, ChangeToastBody } from './toast'
 
 const HASH = 'c'.repeat(64)
 
@@ -134,7 +135,11 @@ describe('ChangesToast', () => {
 
   function Harness() {
     useChangeActions(store, (url) => went.push(url))
-    return <ChangesToast store={store} />
+    return (
+      <Toaster bodies={{ [CHANGE_TOAST]: ChangeToastBody }}>
+        <ChangesToast store={store} />
+      </Toaster>
+    )
   }
 
   let unbind = () => {}
@@ -284,9 +289,41 @@ describe('ChangesToast', () => {
     expect(store.getState().cursor).toBe('studio/home/about')
   })
 
+  it('joins the one stack below a toast raised before it, both open with a gap', async () => {
+    render(<Harness />)
+    act(() => {
+      toast.add({ title: 'Copied hero', timeout: 0 })
+    })
+    const copied = await screen.findByText('Copied hero')
+
+    act(() => receiveChanges(store, [change('studio/home/pricing')]))
+    const changed = await screen.findByText('Claude updated pricing')
+
+    await vi.waitFor(() => {
+      const above = copied
+        .closest('[data-slot="toast"]')
+        ?.getBoundingClientRect()
+      const below = changed
+        .closest('[data-slot="toast"]')
+        ?.getBoundingClientRect()
+      expect(above && below && below.top - above.bottom).toBeGreaterThan(0)
+    })
+    act(() => toast.close())
+  })
+
   describe('closing', () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+    })
+
+    it('stays past 5 seconds while its change is unseen', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, [change('studio/home/pricing')]))
+      await screen.findByText('Claude updated pricing')
+
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getByText('Claude updated pricing')).toBeVisible()
     })
 
     afterEach(() => {

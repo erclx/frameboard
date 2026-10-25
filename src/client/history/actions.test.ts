@@ -1,5 +1,5 @@
-import { renderHook } from '@testing-library/react'
-import { act } from 'react'
+import { render, renderHook, screen } from '@testing-library/react'
+import { act, createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { isEnabled, useActions, useCommands } from '@/client/actions/registry'
@@ -10,6 +10,7 @@ import {
   select,
   selectElement,
 } from '@/client/board/selection'
+import { Toaster } from '@/client/components/ui/toast'
 import {
   createLiveStore,
   type LiveStore,
@@ -173,6 +174,39 @@ describe('registerHistoryActions', () => {
         description: 'Another writer held the layout for more than 2000 ms.',
       }),
     )
+  })
+
+  describe('the refusal toast', () => {
+    afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    })
+
+    it('leaves on its own once 5 seconds pass', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      render(createElement(Toaster))
+      const { undo } = register(writableWith(1, 0), {
+        notify: undefined,
+        calls: {
+          undo: async () => {
+            throw new BoardWriteError('undo-overtaken', 'Hero changed since.')
+          },
+          redo: async () => ({ page: null, frames: [] }),
+        },
+      })
+
+      act(undo)
+      await screen.findByText('Hero changed since.')
+      act(() => {
+        // The test page starts unfocused, and a blurred window pauses toasts.
+        window.dispatchEvent(new FocusEvent('focus'))
+        vi.advanceTimersByTime(5100)
+      })
+
+      await vi.waitFor(() =>
+        expect(screen.queryByText('Hero changed since.')).toBeNull(),
+      )
+    })
   })
 
   describe('a step naming a frame another session holds', () => {
