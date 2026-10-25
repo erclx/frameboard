@@ -92,7 +92,9 @@ describe('serve', () => {
           '--port',
           '0',
         ],
-        { cwd, encoding: 'utf8' },
+        // A server that bound would never exit, so the kill fails the status
+        // assertion instead of hanging the run.
+        { cwd, encoding: 'utf8', timeout: 20_000 },
       )
 
       expect(run.status).toBe(3)
