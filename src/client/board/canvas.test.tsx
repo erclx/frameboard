@@ -15,6 +15,7 @@ import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { endPreview, setPreview } from './preview/store'
 import { canvasView } from './view'
+import { PAN_EASE_MS } from './wheel'
 
 function frame(
   name: string,
@@ -74,6 +75,15 @@ function layerOf(container: HTMLElement): HTMLElement {
   const layer = container.querySelector<HTMLElement>('[data-layer]')
   if (!layer) throw new Error('no canvas layer')
   return layer
+}
+
+/** Whether `read` returns the same count before and after a few frames. */
+async function holdsAcrossFrames(read: () => number): Promise<boolean> {
+  const at = read()
+  for (let frame = 0; frame < 5; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
+  return read() === at
 }
 
 /** The layer's translate and scale, read back off its transform. */
@@ -218,6 +228,7 @@ describe('Canvas', () => {
 
   describe('panning on the wheel', () => {
     afterEach(() => {
+      vi.useRealTimers()
       vi.restoreAllMocks()
     })
 
@@ -235,7 +246,16 @@ describe('Canvas', () => {
       )
     }
 
-    const still = () => new Promise((resolve) => setTimeout(resolve, 200))
+    // The glide's own clock, stepped by hand, so a case proving the view
+    // stopped reads it past the glide's end rather than waiting it out.
+    const fakeFrames = () =>
+      vi.useFakeTimers({
+        toFake: [
+          'requestAnimationFrame',
+          'cancelAnimationFrame',
+          'performance',
+        ],
+      })
 
     it('leaves the view in place on the event a notch arrives in', () => {
       const { container } = renderCanvas(square('ease-start'))
@@ -302,31 +322,33 @@ describe('Canvas', () => {
       )
     })
 
-    it('stops easing once a fit lands mid-ease', async () => {
+    it('stops easing once a fit lands mid-ease', () => {
       const { container } = renderCanvas(square('ease-fit'))
+      fakeFrames()
       wheel(container, { deltaY: 100 })
-      await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+      vi.advanceTimersByTime(PAN_EASE_MS / 3)
       reduceMotion()
 
       canvasView.fit()
       const fitted = layerOf(container).style.transform
-      await still()
+      vi.advanceTimersByTime(PAN_EASE_MS)
 
       expect(layerOf(container).style.transform).toBe(fitted)
     })
 
-    it('stops easing once the canvas is pressed', async () => {
+    it('stops easing once the canvas is pressed', () => {
       const { container } = renderCanvas(square('ease-press'))
+      fakeFrames()
       wheel(container, { deltaY: 100 })
-      await expect.poll(() => viewOf(container).y).toBeLessThan(200)
+      vi.advanceTimersByTime(PAN_EASE_MS / 3)
 
       container
         .querySelector('[data-hit-layer]')
         ?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-      const pressed = layerOf(container).style.transform
-      await still()
+      const pressed = viewOf(container)
+      vi.advanceTimersByTime(PAN_EASE_MS)
 
-      expect(layerOf(container).style.transform).toBe(pressed)
+      expect([pressed.y < 200, viewOf(container)]).toEqual([true, pressed])
     })
   })
 
@@ -489,7 +511,7 @@ describe('Canvas', () => {
       () => (commits += 1),
     )
     // The first mount commits for a few frames after it renders.
-    await new Promise((resolve) => setTimeout(resolve, 200))
+    await expect.poll(() => holdsAcrossFrames(() => commits)).toBe(true)
     const before = commits
 
     wheel(container, { deltaX: 30, deltaY: 50 })
