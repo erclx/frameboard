@@ -6,15 +6,18 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import { CommitField } from './field'
-import { parseWhole } from './values'
-import type { WriteElement } from './write'
+import { NumberField } from '../number-field'
+import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const ALIGNS: readonly { value: string; label: string; icon: LucideIcon }[] = [
   { value: 'left', label: 'Align text left', icon: AlignLeft },
   { value: 'center', label: 'Align text center', icon: AlignCenter },
   { value: 'right', label: 'Align text right', icon: AlignRight },
 ]
+
+/** A computed size can carry a fraction, as `styles.ts` reads it to two places. */
+const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
+const WEIGHT: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
 interface TypographySectionProps {
   fontSize: number
@@ -23,12 +26,14 @@ interface TypographySectionProps {
   textAlign: string
   disabled: boolean
   write: WriteElement
+  /** Shows a step on the live element before it is written. */
+  preview?: PreviewStyle
 }
 
 /**
- * The Typography section of `inspector/text`: size in px, weight, and three
- * alignment buttons, each writing one declaration. Family, line height, and
- * letter spacing stay the agent's.
+ * The Typography section of `inspector/text`: size in px, weight stepping
+ * by 100, and three alignment buttons, each writing one declaration.
+ * Family, line height, and letter spacing stay the agent's.
  */
 export function TypographySection({
   fontSize,
@@ -36,6 +41,7 @@ export function TypographySection({
   textAlign,
   disabled,
   write,
+  preview,
 }: TypographySectionProps) {
   return (
     <section
@@ -46,37 +52,33 @@ export function TypographySection({
         Typography
       </h2>
       <div className="grid grid-cols-2 gap-1.5">
-        <CommitField
+        <NumberField
           label="Font size"
           prefix="Size"
           inset="pl-[40px]"
-          shown={String(fontSize)}
+          value={fontSize}
+          min={1}
+          format={SIZE}
           disabled={disabled}
-          onCommit={async (typed) => {
-            const px = parseWhole(typed, 'px')
-            if (px === null || px === 0) return false
-            return write({
-              kind: 'style',
-              property: 'font-size',
-              value: `${px}px`,
-            })
-          }}
+          {...styleNumber(
+            'font-size',
+            fontSize,
+            (value) => `${value}px`,
+            write,
+            preview,
+          )}
         />
-        <CommitField
+        <NumberField
           label="Font weight"
           prefix="Wt"
           inset="pl-[32px]"
-          shown={String(fontWeight)}
+          value={fontWeight}
+          step={100}
+          min={1}
+          max={1000}
+          format={WEIGHT}
           disabled={disabled}
-          onCommit={async (typed) => {
-            const weight = parseWhole(typed, '')
-            if (weight === null || weight < 1 || weight > 1000) return false
-            return write({
-              kind: 'style',
-              property: 'font-weight',
-              value: String(weight),
-            })
-          }}
+          {...styleNumber('font-weight', fontWeight, String, write, preview)}
         />
       </div>
       <div className="mt-1.5 flex w-max gap-0.5 rounded-md bg-input p-0.5">

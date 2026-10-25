@@ -136,3 +136,52 @@ export async function fetchStyles(
     | { ok: false }
   return body.ok ? body.data : null
 }
+
+/** An inline declaration a preview replaced, kept so it can be put back. */
+interface Replaced {
+  element: HTMLElement
+  value: string
+  priority: string
+}
+
+/** Each previewed declaration by element and property, until it is put back or written. */
+const previews = new Map<string, Replaced>()
+
+/**
+ * Sets one inline declaration on the selected element's live node, so a
+ * step shows on the canvas before it is written, or puts the declaration it
+ * replaced back on null. A written step needs no putting back, since the
+ * frame reloads with the written bytes, so the next preview of a new node
+ * forgets the old one.
+ */
+export function previewStyle(
+  key: ElementKey,
+  property: string,
+  value: string | null,
+): void {
+  const at = `${key.frame}:${key.index}:${property}`
+  const doc = document.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(key.frame)}"] iframe`,
+  )?.contentDocument
+  const target = doc ? elementAt(doc, key.index) : null
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const node = target && 'style' in target ? (target as HTMLElement) : null
+  const replaced = previews.get(at)
+  if (value === null) {
+    previews.delete(at)
+    if (!replaced || replaced.element !== node || !node) return
+    if (replaced.value === '') node.style.removeProperty(property)
+    else node.style.setProperty(property, replaced.value, replaced.priority)
+    if (node.getAttribute('style') === '') node.removeAttribute('style')
+    return
+  }
+  if (!node) return
+  if (replaced?.element !== node) {
+    previews.set(at, {
+      element: node,
+      value: node.style.getPropertyValue(property),
+      priority: node.style.getPropertyPriority(property),
+    })
+  }
+  node.style.setProperty(property, value, 'important')
+}

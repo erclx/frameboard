@@ -131,6 +131,26 @@ describe('LayerSection', () => {
     ])
   })
 
+  it('writes a held opacity step once, as a fraction', async () => {
+    const { changes, write } = recorder()
+    render(
+      <LayerSection
+        name="Headline"
+        opacity={0.5}
+        radius={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Opacity' }))
+    await userEvent.keyboard('{ArrowUp>3/}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'opacity', value: '0.53' },
+    ])
+  })
+
   it('writes nothing for an opacity that is not a number', async () => {
     const { changes, write } = recorder()
     render(
@@ -191,6 +211,26 @@ describe('TypographySection', () => {
 
     expect(changes).toEqual([
       { kind: 'style', property: 'font-weight', value: '500' },
+    ])
+  })
+
+  it('steps the weight by 100', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Font weight' }))
+    await userEvent.keyboard('{ArrowUp}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-weight', value: '800' },
     ])
   })
 
@@ -938,6 +978,25 @@ describe('InspectorPanel with an element selected', () => {
       'Shadow',
     ])
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+  })
+
+  it('previews a step on the live element and puts it back on Esc', async () => {
+    await mountFrame('<h1>Hello</h1>')
+    renderWith(3)
+    const opacity = await screen.findByRole('textbox', { name: 'Opacity' })
+    const headline = () =>
+      document
+        .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+        ?.contentDocument?.querySelector('h1')
+
+    await userEvent.click(opacity)
+    await userEvent.keyboard('{ArrowDown>2}')
+
+    expect(headline()?.style.opacity).toBe('0.98')
+
+    await userEvent.keyboard('{Escape}{/ArrowDown}')
+
+    expect(headline()?.hasAttribute('style')).toBe(false)
   })
 
   it('leaves Typography out for an element holding no text', async () => {

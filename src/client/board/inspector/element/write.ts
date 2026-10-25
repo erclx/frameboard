@@ -14,6 +14,7 @@ import {
   settleLanded,
   settleRefused,
 } from '../../selection'
+import type { NumberChange } from '../number-field'
 
 /** One change to the selected element, as `POST /api/frames/edit` takes it. */
 export type ElementChange =
@@ -143,4 +144,30 @@ export function shownHash(ref: string): string | null {
 function sentence(detail: string): string {
   const text = detail.charAt(0).toUpperCase() + detail.slice(1)
   return /[.!?]$/.test(text) ? text : `${text}.`
+}
+
+/** Shows one declaration on the selected element before it is written, or puts back the one it replaced on null. */
+export type PreviewStyle = (property: string, value: string | null) => void
+
+/**
+ * A number field's preview and write for one declaration of the selected
+ * element, from the value it shows, `css` giving the declaration's value for
+ * a number.
+ */
+export function styleNumber(
+  property: string,
+  from: number,
+  css: (value: number) => string,
+  write: WriteElement,
+  preview?: PreviewStyle,
+): {
+  onPreview: (change: NumberChange | null) => void
+  onCommit: (change: NumberChange) => Promise<boolean>
+} {
+  return {
+    onPreview: (change) =>
+      preview?.(property, change ? css(change(from)) : null),
+    onCommit: (change) =>
+      write({ kind: 'style', property, value: css(change(from)) }),
+  }
 }

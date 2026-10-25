@@ -25,7 +25,12 @@ import { FillSection } from './element/fill'
 import { LayerSection } from './element/layer'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
-import { fetchStyles, useFrameStyles, useLiveElement } from './element/styles'
+import {
+  fetchStyles,
+  previewStyle,
+  useFrameStyles,
+  useLiveElement,
+} from './element/styles'
 import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
 import { type ElementChange, writeElement } from './element/write'
@@ -159,6 +164,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   }
   const disabled = !canWrite
   const write = (change: ElementChange) => writeElement(page, element, change)
+  const preview = (property: string, value: string | null) =>
+    previewStyle(element, property, value)
   const own = styles?.element
   return (
     <>
@@ -168,6 +175,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         radius={live.radius}
         disabled={disabled}
         write={write}
+        preview={preview}
       />
       {live.holdsText ? (
         <TypographySection
@@ -176,6 +184,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
           textAlign={live.textAlign}
           disabled={disabled}
           write={write}
+          preview={preview}
         />
       ) : null}
       <FillSection
