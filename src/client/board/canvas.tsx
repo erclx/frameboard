@@ -27,7 +27,7 @@ import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
 import { frameAt } from './geometry/hit'
 import { SelectionOverlay } from './geometry/overlay'
-import { followPending } from './geometry/write'
+import { followPending, withDrawn } from './geometry/write'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -290,7 +290,10 @@ export function Canvas({
     const track = (event: PointerEvent) => {
       const transform = zoomTransform(viewport)
       const [x, y] = transform.invert(pointer(event, viewport))
-      hover(frameAt(framesRef.current, { x, y }, transform.k)?.ref ?? null)
+      hover(
+        frameAt(withDrawn(framesRef.current), { x, y }, transform.k)?.ref ??
+          null,
+      )
     }
     const leave = () => hover(null)
     viewport.addEventListener('pointermove', track)
@@ -395,11 +398,13 @@ export function Canvas({
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
-    void pickElementRead(layer, frames, { x, y }, readTree).then((element) => {
-      if (element && turn === picks.current) {
-        selectElement(selectionStore, page.ref, element)
-      }
-    })
+    void pickElementRead(layer, withDrawn(frames), { x, y }, readTree).then(
+      (element) => {
+        if (element && turn === picks.current) {
+          selectElement(selectionStore, page.ref, element)
+        }
+      },
+    )
   }
 
   const live = useMemo(
@@ -456,7 +461,8 @@ export function Canvas({
       {playing ? null : (
         <CanvasMenu
           page={page.ref}
-          frames={() => framesRef.current}
+          // A right-click hits the frames where they draw, as a press does.
+          frames={() => withDrawn(framesRef.current)}
           viewport={viewportRef}
           layer={layerRef}
           trigger={
@@ -494,7 +500,7 @@ export function Canvas({
                   )
                   return
                 }
-                const pick = pickAt(layer, frames, { x, y })
+                const pick = pickAt(layer, withDrawn(frames), { x, y })
                 if (pick) notesUi.setState({ open: { kind: 'new', pick } })
                 else closeNote()
               }}

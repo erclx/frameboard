@@ -1,6 +1,6 @@
 import '../styles.css'
 
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -12,6 +12,8 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
 import { modeStore } from './mode'
+import { closeNote, notesUi } from './notes/tool'
+import { endPreview, setPreview } from './preview/store'
 import { canvasView } from './view'
 
 function frame(
@@ -591,6 +593,42 @@ describe('Canvas', () => {
     await expect
       .poll(() => layerOf(container).style.transform)
       .toBe('translate(64px, 200px) scale(0.5)')
+  })
+})
+
+describe('Canvas on a previewed frame', () => {
+  const WIDE = frame('wide', { x: 0, y: 0, width: 400, height: 300 })
+
+  afterEach(() => {
+    act(() => {
+      endPreview([WIDE.ref])
+      closeNote()
+      modeStore.setState({ mode: 'edit', tool: 'move' })
+    })
+  })
+
+  it('pins a note through the width the frame is previewed at', async () => {
+    const { container } = renderCanvas(page('studio/home', [WIDE]))
+    act(() => setPreview([WIDE.ref], 1200))
+    act(() => modeStore.setState({ tool: 'note' }))
+    const drawn = container
+      .querySelector(`[data-frame="${WIDE.ref}"]`)
+      ?.getBoundingClientRect()
+    if (!drawn) throw new Error('no drawn frame')
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!hit) throw new Error('no hit layer')
+
+    await userEvent.pointer({
+      target: hit,
+      keys: '[MouseLeft]',
+      coords: {
+        clientX: drawn.left + drawn.width * 0.9,
+        clientY: drawn.top + drawn.height / 2,
+      },
+    })
+
+    const open = notesUi.getState().open
+    expect(open?.kind === 'new' ? open.pick.frame.ref : null).toBe(WIDE.ref)
   })
 })
 
