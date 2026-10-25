@@ -118,8 +118,17 @@ function clipped(target: RenderedTarget, read: LayoutRead): Finding | null {
   return finding('clipped', {
     frame: target.ref,
     path: target.path,
-    message: `${target.ref} is ${reach}, so the board cuts it off${offenders(past, 'past the box')}. Run frame fit, or shorten the content.`,
+    message: `${target.ref} is ${reach}, so the board cuts it off${offenders(past, 'past the box')}. ${clippedAdvice(tall, wide, width)}`,
   })
+}
+
+// `frame fit` grows the height alone, so it is no answer to a width.
+function clippedAdvice(tall: boolean, wide: boolean, width: number): string {
+  if (!wide) return 'Run frame fit, or shorten the content.'
+  if (!tall) {
+    return `Reflow or shorten the content to fit its ${width} px width, since frame fit sets the height alone.`
+  }
+  return `Run frame fit for the height, and reflow or shorten the content to fit its ${width} px width.`
 }
 
 function scrollbar(target: RenderedTarget, read: LayoutRead): Finding | null {

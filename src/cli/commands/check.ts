@@ -71,8 +71,11 @@ export function registerCheck(program: Command, context: ProgramContext): void {
     // A warning, such as a frame sized off the viewport on purpose, never
     // fails a script.
     if (result.findings.some((finding) => finding.severity === 'error')) {
-      // The findings are the verb's output, so stderr carries the summary alone.
-      if (!options.json) context.io.stdout(`${describe(result)}\n`)
+      // The findings are the verb's output, so stderr carries the summary
+      // alone, through the error's message.
+      if (!options.json) {
+        context.io.stdout(`${describe(result, { count: false })}\n`)
+      }
       throw new FrameboardError('check-findings', summarize(result), {
         ...result,
       })
@@ -214,10 +217,14 @@ function summarize({ checked, findings }: CheckResult): string {
     : `Checked ${frames}, ${findings.length} finding${findings.length === 1 ? '' : 's'}.`
 }
 
-/** One line per finding, then the count, then why the browser rules did not run. */
-function describe(result: CheckResult): string {
+/**
+ * One line per finding, then the count unless the caller prints it elsewhere,
+ * then why the browser rules did not run.
+ */
+function describe(result: CheckResult, { count = true } = {}): string {
   const { findings, browser } = result
-  const lines = [...findings.map(formatFinding), summarize(result)]
+  const lines = findings.map(formatFinding)
+  if (count) lines.push(summarize(result))
   if (browser?.reason === 'server-not-running') {
     lines.push(
       'Browser rules did not run, since no board server is running. Run frameboard serve, then check again.',

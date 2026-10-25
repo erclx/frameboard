@@ -82,7 +82,44 @@ describe.skipIf(shell === null)(
       )
 
       expect(findings).toMatchObject([
-        { rule: 'clipped', message: expect.stringContaining('px wide') },
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /px wide .*Reflow or shorten the content to fit its 400 px width/,
+          ),
+        },
+      ])
+    })
+
+    it('advises frame fit for content taller than the box alone', async () => {
+      const findings = await checkHero(
+        'div { height: 300px }',
+        '<div>tall</div>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /Run frame fit, or shorten the content\.$/,
+          ),
+        },
+      ])
+    })
+
+    it('advises frame fit for the height and reflowing for the width when both overflow', async () => {
+      const findings = await checkHero(
+        'div { width: 600px; height: 300px }',
+        '<div>both</div>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /Run frame fit for the height, and reflow or shorten the content to fit its 400 px width\.$/,
+          ),
+        },
       ])
     })
 

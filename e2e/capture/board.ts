@@ -1499,6 +1499,27 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        // The 390 px about frame at the fitted zoom, claimed beside its
+        // findings badge, so the label has to truncate the claim tag. The
+        // elapsed time sits wholly past the ellipsis, so it takes no mask,
+        // whose box would draw outside the label.
+        section: 'claimed-narrow',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            listening,
+            claimed('webapp/home/about'),
+            readyWhen(
+              '[data-frame="webapp/home/about"] [data-claim-tag] ~ [data-findings-badge]',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'claimed-frame-waiting',
         theme,
         route: '/p/webapp/home',

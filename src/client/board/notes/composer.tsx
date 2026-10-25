@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useLive } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 
+import { modeStore } from '../mode'
 import { defaultSession, messageFor } from './form'
 import type { NotePick } from './pick'
 import { ListeningCount, SessionPicker } from './session-picker'
@@ -57,6 +58,10 @@ export function Composer({ pick, onClose }: ComposerProps) {
         ...(to === null ? {} : { to }),
       })
       setText('')
+      // One note per pick, as the Frame tool places one frame.
+      if (modeStore.getState().tool === 'note') {
+        modeStore.setState({ tool: 'move' })
+      }
       onClose()
     } catch (failure) {
       setError(messageFor(failure))

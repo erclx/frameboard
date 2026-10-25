@@ -395,6 +395,41 @@ describe('Frame', () => {
       Math.ceil(name.parentElement?.getBoundingClientRect().right ?? 0),
     )
   })
+
+  it('keeps the count on a claimed narrow frame, truncating the claim tag', () => {
+    const narrow = {
+      ...frame('pricing'),
+      box: { x: 0, y: 0, width: 136, height: 100 },
+    }
+    const { container, getByRole } = render(
+      <div className="relative" style={{ paddingTop: 40 }}>
+        <Frame
+          frame={narrow}
+          live={false}
+          version={0}
+          findings={[finding('One theme alone.'), finding('Default font.')]}
+          claim={{
+            frame: 'studio/home/pricing',
+            session: 's-1',
+            agent: 'claude',
+            tag: 'claude · visual-style',
+            claimedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 60_000).toISOString(),
+          }}
+        />
+      </div>,
+    )
+
+    // The label box is capped at the frame's width while its children can
+    // overflow it, so the frame's own edge is the one the badge must hold.
+    const edge = container
+      .querySelector('[data-frame]')
+      ?.getBoundingClientRect().right
+    expect(
+      getByRole('button', { name: '2 check findings' }).getBoundingClientRect()
+        .right,
+    ).toBeLessThanOrEqual(Math.ceil(edge ?? 0))
+  })
 })
 
 describe('Frame theme', () => {

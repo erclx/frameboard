@@ -155,6 +155,7 @@ describe('check', () => {
 
     expect(run.exitCode).toBe(8)
     expect(run.stdout).toContain('rules/theme/fail.html:9:9  theme  ')
+    expect(run.stdout).not.toMatch(/^Checked /m)
     expect(run.stderr).not.toContain('rules/theme/fail.html')
     expect(run.stderr.trim().split('\n')).toEqual([
       expect.stringMatching(/^frameboard: Checked 1 frame, \d+ findings?\.$/),
