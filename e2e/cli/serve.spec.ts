@@ -7,8 +7,8 @@ import { expect, test } from '@playwright/test'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { type BoardServer, serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
 
 const CLI = resolve('dist/cli.js')
 const run = promisify(execFile)

@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { type BoardServer, serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
 
 test.describe('the board', () => {
   let board: FixtureBoard

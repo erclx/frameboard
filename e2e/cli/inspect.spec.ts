@@ -7,11 +7,11 @@ import { expect, test } from '@playwright/test'
 import type {
   InspectedElement,
   InspectResult,
-} from '../src/shared/records/inspect'
+} from '../../src/shared/records/inspect'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
+} from '../../test/support/fixture-board'
 
 const CLI = resolve('dist/cli.js')
 const run = promisify(execFile)

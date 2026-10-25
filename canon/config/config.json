@@ -81,6 +81,10 @@
           "disposition": "declined",
           "reason": "Frameboard's capture cases live in e2e/capture/index.ts and board.ts"
         },
+        "e2e/home.spec.ts": {
+          "disposition": "declined",
+          "reason": "Frameboard keeps its home spec at e2e/shell/home.spec.ts, grouped by journey"
+        },
         "e2e/screenshot.ts": {
           "disposition": "customized",
           "base": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b"

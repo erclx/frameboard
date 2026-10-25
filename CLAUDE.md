@@ -23,7 +23,7 @@ The source layers and the end-to-end suite that drives them.
 - `src/server/`: the Hono app and the loopback server that serves the built client
 - `src/client/`: the React board UI, its shadcn kit under `components/ui/`, and the token stylesheet
 - `src/shared/`: code both the CLI and the server import, such as the package version
-- `e2e/`: Playwright specs, the capture harness with its cases under `e2e/capture/`, and the evidence baseline
+- `e2e/`: Playwright specs in `cli/`, `agent-work/`, `hand-edits/`, and `shell/`, the capture harness with its cases under `e2e/capture/`, and the evidence baseline
 
 ### Content
 

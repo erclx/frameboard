@@ -3,8 +3,8 @@ import { expect, type Page, test } from '@playwright/test'
 import {
   copyFixtureBoard,
   type FixtureBoard,
-} from '../test/support/fixture-board'
-import { type BoardServer, serveBoard } from './support/board-server'
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
 
 /** Posts to the show route from the page itself, the way a board control would. */
 function show(page: Page): Promise<number> {
