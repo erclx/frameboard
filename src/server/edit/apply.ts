@@ -7,6 +7,7 @@ import {
   removeAttribute,
   setRawAttribute,
 } from './attribute'
+import { type ElementSpan, type SpanScope, spanText } from './element-span'
 import { declaredValues, setDeclaration } from './style'
 import { setText } from './text'
 
@@ -47,8 +48,15 @@ export interface EditRefused {
 }
 
 export type AppliedEdit =
-  | { readonly ok: true; readonly html: string }
+  | {
+      readonly ok: true
+      readonly html: string
+      /** The edited element's bytes on both sides, which an undo swaps back. */
+      readonly span: ElementSpan
+    }
   | EditRefused
+
+type Written = { readonly ok: true; readonly html: string } | EditRefused
 
 const MAX_VALUE_LENGTH = 200
 
@@ -129,11 +137,7 @@ function editedAttribute(change: EditChange): string | undefined {
   return undefined
 }
 
-function write(
-  source: string,
-  element: Element,
-  change: EditChange,
-): AppliedEdit {
+function write(source: string, element: Element, change: EditChange): Written {
   if (change.kind === 'text') {
     const written = setText(source, element, change.value)
     return written.ok ? written : refuse('not-text-only', written.detail)
@@ -280,5 +284,13 @@ export function applyEdit(
       `the edit to <${element.tagName}> would change more than that element, so nothing was written`,
     )
   }
-  return written
+  const scope: SpanScope = normalized.kind === 'text' ? 'element' : 'start-tag'
+  const span: ElementSpan = {
+    scope,
+    index: address.index,
+    count: before.elements.length,
+    before: spanText(source, element, scope),
+    after: spanText(written.html, target, scope),
+  }
+  return { ok: true, html: written.html, span }
 }

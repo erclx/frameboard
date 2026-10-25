@@ -54,7 +54,10 @@ describe('editFrameFile', () => {
     )
 
     expect(readFileSync(frame, 'utf8')).toBe('<h1>New</h1>')
-    expect(result).toEqual({ ok: true, hash: contentHash('<h1>New</h1>') })
+    expect(result).toMatchObject({
+      ok: true,
+      hash: contentHash('<h1>New</h1>'),
+    })
   })
 
   it('should write when the given hash matches the file', () => {
