@@ -164,6 +164,13 @@ describe('editTextInPlace', () => {
     ).toBeNull()
   })
 
+  it('refuses an empty box, as a placed shape is', async () => {
+    const { shown, heading } = await mount('<h1></h1>')
+
+    expect(editTextInPlace(shown, KEY, recorder().write)).toBeNull()
+    expect(heading.hasAttribute('contenteditable')).toBe(false)
+  })
+
   it('refuses an element holding more than text', async () => {
     const { shown } = await mount('<h1>Hi <em>there</em></h1>')
 

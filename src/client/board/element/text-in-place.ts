@@ -17,8 +17,9 @@ export const EDITING = 'data-frameboard-editing'
  * Shift or pasted, becomes a space, and a paste is taken as plain text.
  * A reload of the frame ends the edit with nothing sent, since its hash names
  * bytes the file no longer holds. Answers the function that cancels the
- * edit, or null when the frame does not show those bytes or the element holds
- * more than text.
+ * edit, or null when the frame does not show those bytes or the element
+ * holds more than text or none, as the Text field's `textOnly` reads it, so
+ * an empty box such as a placed shape never takes text.
  */
 export function editTextInPlace(
   document: Document,
@@ -31,7 +32,8 @@ export function editTextInPlace(
     !view ||
     renderedHash(document) !== key.hash ||
     !(found instanceof view.HTMLElement) ||
-    found.childElementCount > 0
+    found.childElementCount > 0 ||
+    (found.textContent ?? '').trim() === ''
   ) {
     return null
   }
