@@ -168,11 +168,40 @@ describe('relocate', () => {
     ).toBeUndefined()
   })
 
-  it('refuses when the element now reads twice', () => {
-    expect(relocate(WAS, 3, 'element', `${WAS}<h1>hero</h1>`)).toBeUndefined()
+  it('refuses when a copy above makes the element read twice', () => {
+    expect(
+      relocate(WAS, 3, 'element', `<div><h1>hero</h1></div>${WAS}`),
+    ).toBeUndefined()
   })
 
   it('refuses an index the old source holds no element at', () => {
     expect(relocate(WAS, 9, 'element', WAS)).toBeUndefined()
+  })
+
+  describe('a start tag a sibling shares', () => {
+    const LIST = '<ul><li>Alpha</li><li>Beta</li></ul>'
+
+    it('refuses once the agent swapped the two', () => {
+      expect(
+        relocate(LIST, 4, 'start-tag', '<ul><li>Beta</li><li>Alpha</li></ul>'),
+      ).toBeUndefined()
+    })
+
+    it('refuses once the agent deleted the edited one', () => {
+      expect(
+        relocate(LIST, 4, 'start-tag', '<ul><li>Beta</li></ul>'),
+      ).toBeUndefined()
+    })
+
+    it('lands at its index while every byte before it holds', () => {
+      const found = relocate(
+        LIST,
+        4,
+        'start-tag',
+        '<ul><li>Alpha</li><li>Gamma</li></ul>',
+      )
+
+      expect(found).toEqual({ index: 4, range: [4, 8] })
+    })
   })
 })

@@ -198,15 +198,16 @@ async function editInTurn(
       const text = change.kind === 'text' ? change.value : undefined
       const stale =
         error instanceof BoardWriteError && error.code === 'stale-address'
-      if (stale && text !== undefined) keptTexts.set(textKey(key), text)
+      // Only a collision whose element count held leaves the index on the
+      // element the text was typed for, so only then is the draft kept.
+      const kept = stale && text !== undefined && error.details.moved === false
+      if (kept) keptTexts.set(textKey(key), text)
       notify({
         title: 'Edit not saved',
         description:
           error instanceof BoardWriteError
             ? sentence(error.message) +
-              (stale && text !== undefined
-                ? ' Press Enter to apply your text anyway.'
-                : '')
+              (kept ? ' Press Enter to apply your text anyway.' : '')
             : 'The board could not be reached, so nothing was written.',
         ...(stale && text !== undefined ? { copy: text } : {}),
       })

@@ -19,7 +19,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Element:** name, opacity, radius, and typography size, weight, and alignment, plus its text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
-- **Kept text:** text an agent's write to the element refused stays as a draft by frame and index, shown when the element is selected again, and its toast offers Copy text.
+- **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.

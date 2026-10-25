@@ -38,9 +38,12 @@ describe('editRoutes', () => {
 
   /** The sources an agent write replaced, as the change tracker keeps them by ref and hash. */
   let kept: Map<string, string>
+  /** The hashes the route asked the kept sources for. */
+  let asked: string[]
 
   beforeEach(() => {
     kept = new Map()
+    asked = []
   })
 
   /** Writes the file as an agent would, keeping the source it replaced. */
@@ -59,7 +62,10 @@ describe('editRoutes', () => {
         isOwnOrigin: () => false,
       },
       history,
-      async (ref, at) => kept.get(`${ref}\n${at}`) ?? null,
+      async (ref, at) => {
+        asked.push(at)
+        return kept.get(`${ref}\n${at}`) ?? null
+      },
     ).request('/api/frames/edit', {
       method: 'POST',
       headers: {
@@ -180,6 +186,17 @@ describe('editRoutes', () => {
     })
   })
 
+  it('asks for no kept source while the hash still matches the file', async () => {
+    await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'text', value: 'Welcome' },
+    })
+
+    expect(asked).toEqual([])
+  })
+
   describe('an edit made before an agent wrote the frame', () => {
     it('lands past the agent’s write to another element, keeping it', async () => {
       const readFrom = hash()
@@ -234,7 +251,7 @@ describe('editRoutes', () => {
       expect(response.status).toBe(409)
       expect(await response.json()).toMatchObject({
         ok: false,
-        error: { code: 'stale-address' },
+        error: { code: 'stale-address', details: { moved: false } },
       })
       expect(read()).toBe(agent)
     })

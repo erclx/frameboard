@@ -24,6 +24,15 @@ export type FrameFileEdit =
       readonly span: ElementSpan
     }
   | EditRefused
+  | Collided
+
+/**
+ * A stale edit whose element the agent changed. `moved` says the frame's
+ * element count changed too, so the sent index may now name another element.
+ */
+export interface Collided extends EditRefused {
+  readonly moved: boolean
+}
 
 /** The source a frame held under a hash it no longer has, or null when none is kept. */
 export type SourceAt = (hash: string) => string | null
@@ -35,13 +44,22 @@ function stale(path: string): EditRefused {
   )
 }
 
-function collided(path: string, was: string, index: number): EditRefused {
-  const element = parseFrame(was).elements[index]
+function collided(
+  path: string,
+  was: string,
+  index: number,
+  source: string,
+): EditRefused | Collided {
+  const old = parseFrame(was).elements
+  const element = old[index]
   if (!element) return stale(path)
-  return refuse(
-    'stale-address',
-    `the agent changed this <${element.tagName}> in ${basename(path)} while your edit waited, so nothing was written`,
-  )
+  return {
+    ...refuse(
+      'stale-address',
+      `the agent changed this <${element.tagName}> in ${basename(path)} while your edit waited, so nothing was written`,
+    ),
+    moved: parseFrame(source).elements.length !== old.length,
+  }
 }
 
 /**
@@ -75,7 +93,7 @@ export function editFrameFile(
     const was = sourceAt?.(address.hash)
     if (!was) return stale(path)
     const found = relocate(was, address.index, scopeOf(change), source)
-    if (!found) return collided(path, was, address.index)
+    if (!found) return collided(path, was, address.index, source)
     index = found.index
   }
 

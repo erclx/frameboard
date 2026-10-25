@@ -733,7 +733,7 @@ describe('TextSection', () => {
   })
 
   /** A write answered as the route answers an edit the agent's write to the element refused. */
-  function colliding(): WriteElement {
+  function colliding(moved = false): WriteElement {
     return (change) =>
       writeElement('studio/home', { ...AT, hash: 'a'.repeat(64) }, change, {
         selection: createSelectionStore(),
@@ -745,6 +745,7 @@ describe('TextSection', () => {
                 code: 'stale-address',
                 message:
                   'the agent changed this <h1> in hero.html while your edit waited, so nothing was written',
+                details: { ref: AT.frame, index: AT.index, moved },
               },
             },
             { status: 409 },
@@ -752,6 +753,21 @@ describe('TextSection', () => {
         notify: () => {},
       })
   }
+
+  it('keeps no draft once the agent’s write also moved the element’s index', async () => {
+    await colliding(true)({ kind: 'text', value: 'Welcome' })
+
+    render(
+      <TextSection
+        text="Hello"
+        disabled={false}
+        write={recorder().write}
+        element={AT}
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+  })
 
   it('keeps the typed text as a draft once the agent changed the element', async () => {
     render(
@@ -1109,6 +1125,7 @@ describe('writeElement', () => {
             code: 'stale-address',
             message:
               'the agent changed this <h1> in stats.html while your edit waited, so nothing was written',
+            details: { ref: KEY.frame, index: KEY.index, moved: false },
           },
         }),
         notify: (refusal) => told.push(refusal),
@@ -1121,6 +1138,38 @@ describe('writeElement', () => {
         title: 'Edit not saved',
         description:
           'The agent changed this <h1> in stats.html while your edit waited, so nothing was written. Press Enter to apply your text anyway.',
+        copy: 'Welcome',
+      },
+    ])
+  })
+
+  it('offers only the copy once the element’s index moved, since Enter would write elsewhere', async () => {
+    const told: Refusal[] = []
+
+    await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'text', value: 'Welcome' },
+      {
+        selection: createSelectionStore(),
+        send: answering(409, {
+          ok: false,
+          error: {
+            code: 'stale-address',
+            message:
+              'the agent changed this <h1> in stats.html while your edit waited, so nothing was written',
+            details: { ref: KEY.frame, index: KEY.index, moved: true },
+          },
+        }),
+        notify: (refusal) => told.push(refusal),
+      },
+    )
+
+    expect(told).toEqual([
+      {
+        title: 'Edit not saved',
+        description:
+          'The agent changed this <h1> in stats.html while your edit waited, so nothing was written.',
         copy: 'Welcome',
       },
     ])

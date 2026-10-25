@@ -142,10 +142,31 @@ describe('editFrameFile', () => {
         reason: 'stale-address',
         detail:
           'the agent changed this <h1> in hero.html while your edit waited, so nothing was written',
+        moved: false,
       })
       expect(readFileSync(frame, 'utf8')).toBe(
         '<h1>Agent</h1><p style="color: red">x</p>',
       )
+    })
+
+    it('should say the index moved once the agent also added an element', () => {
+      writeFileSync(
+        frame,
+        '<nav></nav><h1>Agent</h1><p style="color: red">x</p>',
+      )
+
+      const result = editFrameFile(
+        frame,
+        { index: 3, hash: contentHash(WAS) },
+        { kind: 'text', value: 'New' },
+        sourceAt,
+      )
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: 'stale-address',
+        moved: true,
+      })
     })
 
     it('should refuse when no source is kept under the hash', () => {

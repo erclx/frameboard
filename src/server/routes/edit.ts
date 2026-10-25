@@ -1,8 +1,11 @@
+import { readFile } from 'node:fs/promises'
+
 import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { resolveFrameRef } from '@/server/board/refs'
 import { refuseClaimed } from '@/server/claims/gate'
+import { contentHash } from '@/server/edit/address'
 import { editFrameFile } from '@/server/edit/frame-file'
 import type { History } from '@/server/history/stack'
 import type { EditResult } from '@/shared/records/edit'
@@ -53,7 +56,9 @@ export function editRoutes(
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
     await refuseClaimed(root, [ref], new Date())
-    const was = (await version?.(ref, body.hash)) ?? null
+    // The lookup waits on the scan turn, so an edit on the file's own hash skips it.
+    const moved = contentHash(await readFile(frame.path)) !== body.hash
+    const was = moved ? ((await version?.(ref, body.hash)) ?? null) : null
     const result = editFrameFile(
       frame.path,
       { index: body.index, hash: body.hash },
@@ -67,7 +72,11 @@ export function editRoutes(
           error: {
             code: result.reason,
             message: result.detail,
-            details: { ref, index: body.index },
+            details: {
+              ref,
+              index: body.index,
+              ...('moved' in result ? { moved: result.moved } : {}),
+            },
           },
         },
         409,
