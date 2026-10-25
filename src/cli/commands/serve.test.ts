@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -10,6 +11,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
@@ -57,6 +59,49 @@ describe('serve', () => {
     expect(readdirSync(join(cwd, '.frameboard/untitled/page-1'))).toEqual([])
     expect(existsSync(join(cwd, '.frameboard/.run/address.json'))).toBe(true)
   })
+
+  it('refuses a client that is not built, before creating the board', async () => {
+    const clientDir = join(cwd, 'no-client')
+
+    const run = await cli(['serve', '--json', '--port', '0', '--no-open'], {
+      cwd,
+      clientDir,
+    })
+
+    expect(run.exitCode).toBe(3)
+    expect(run.json()).toMatchObject({
+      ok: false,
+      error: { code: 'client-not-built' },
+    })
+    expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+  })
+
+  // A child process, since only a real source run resolves its own client.
+  // It reads the checkout's `dist/client`, so a built checkout skips it.
+  const repo = fileURLToPath(new URL('../../..', import.meta.url))
+  it.skipIf(existsSync(join(repo, 'dist/client/index.html')))(
+    'refuses a source run when no build exists',
+    () => {
+      const run = spawnSync(
+        'bun',
+        [
+          join(repo, 'src/cli/index.ts'),
+          'serve',
+          '--json',
+          '--no-open',
+          '--port',
+          '0',
+        ],
+        { cwd, encoding: 'utf8' },
+      )
+
+      expect(run.status).toBe(3)
+      expect(JSON.parse(run.stdout)).toMatchObject({
+        error: { code: 'client-not-built' },
+      })
+      expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
+    },
+  )
 
   it('reuses a live server for the same board without binding', async () => {
     const first = await serve('--no-open')

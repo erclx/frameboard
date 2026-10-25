@@ -49,6 +49,8 @@ export const EXIT_CODES = {
   // Another live session holds the frame, named in the error's details.
   'frame-claimed': 4,
   'claims-invalid': 5,
+  // The board client `serve` would answer with is not built.
+  'client-not-built': 3,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
