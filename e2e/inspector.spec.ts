@@ -106,6 +106,36 @@ test.describe('editing a selected element by hand', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a browser undo on a focused toast never writes into the Text field', async ({
+    page,
+  }) => {
+    const text = page.getByRole('textbox', { name: 'Text' })
+    await text.press('ControlOrMeta+KeyA')
+    await text.pressSequentially('Welcome home')
+    await text.press('Tab')
+    await expect.poll(read).toContain('>Welcome home</h1>')
+
+    // Copying raises a toast, and a toast is a focusable dialog the board's
+    // undo skips, so Chromium undoes the last field edited instead.
+    await page.mouse.move(0, 0)
+    await page.keyboard.press('ControlOrMeta+Shift+KeyC')
+    const toast = page.getByRole('dialog').filter({ hasText: /copy|Copied/i })
+    await expect(toast).toBeVisible()
+    // Base UI pauses a toast's timer on hover, so it outlasts the presses.
+    await toast.hover()
+    await toast.focus()
+    for (let press = 0; press < 3; press++) {
+      await page.keyboard.press('Control+KeyZ')
+    }
+
+    await text.focus()
+    await text.blur()
+    // Nothing should happen across this window, so it is a fixed one.
+    await page.waitForTimeout(300)
+    expect(read()).toContain('>Welcome home</h1>')
+    await expect(text).toHaveValue('Welcome home')
+  })
+
   test('an edit made from bytes an agent has since replaced is refused', async ({
     page,
   }) => {
