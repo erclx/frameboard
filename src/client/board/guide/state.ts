@@ -20,7 +20,7 @@ export interface GuideState {
   /** The project the guide answers for, which its rename moves. */
   project: string | null
   at: number
-  /** Whether the look step runs, fixed at the first answer so the count holds once a sheet is written. */
+  /** Whether the look step runs, fixed at the first answer so the count holds when a sheet reaches the project mid-guide. */
   withLook: boolean | null
   name: string | null
   size: FrameSizePreset

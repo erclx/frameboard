@@ -91,10 +91,6 @@ export function GuideCard({
     : ['name', 'size', 'agent']
   const at = Math.min(state.at, steps.length - 1)
   const step = steps[at] ?? 'name'
-  // The table lists the project's own sheet once one exists, so a sheet the
-  // guide wrote locks the look, and an Undo removing it unlocks it again.
-  const sheetWritten =
-    table?.sheets.some((sheet) => sheet.kind === 'project') ?? false
   const name = state.name ?? project
   const folder = folderName(name)
 
@@ -119,6 +115,23 @@ export function GuideCard({
   }
 
   const finish = async () => {
+    if (withLook) {
+      try {
+        await calls.projectTokens(project, {
+          accent: state.accent,
+          font: state.font,
+        })
+      } catch (error) {
+        // A sheet that reached the project meanwhile already gives it a look.
+        if (
+          !(error instanceof BoardWriteError && error.code === 'tokens-exist')
+        ) {
+          // The last step draws no refusal line, so the toast carries it.
+          set({ busy: false })
+          return reportRefusal(`Couldn't write ${project}/tokens.css`)(error)
+        }
+      }
+    }
     if (state.drawer === 'self') {
       choosePreset(state.size)
       await placeFrame(
@@ -154,22 +167,6 @@ export function GuideCard({
       movePin(project, folder)
       set({ project: folder, name: null })
       navigate(boardUrl(folder, page.name), { replace: true })
-      return advance()
-    }
-    if (step === 'look' && !sheetWritten) {
-      try {
-        await calls.projectTokens(project, {
-          accent: state.accent,
-          font: state.font,
-        })
-      } catch (error) {
-        // A sheet that reached the project meanwhile already gives it a look.
-        if (
-          !(error instanceof BoardWriteError && error.code === 'tokens-exist')
-        ) {
-          return refuse(error, `Couldn't write ${project}/tokens.css`)
-        }
-      }
       return advance()
     }
     if (step === 'agent') return finish()
@@ -234,7 +231,6 @@ export function GuideCard({
               accent={state.accent}
               font={state.font}
               project={project}
-              written={sheetWritten}
               refusal={state.refusal}
               onChange={(look) => set(look)}
             />
@@ -457,14 +453,12 @@ function LookStep({
   accent,
   font,
   project,
-  written,
   refusal,
   onChange,
 }: {
   accent: StarterAccent
   font: StarterFont
   project: string
-  written: boolean
   refusal: string | null
   onChange: (look: { accent: StarterAccent; font: StarterFont }) => void
 }) {
@@ -495,7 +489,6 @@ function LookStep({
                 group="guide-accent"
                 label={ACCENT_LABELS[each]}
                 checked={accent === each}
-                disabled={written}
                 onSelect={() => onChange({ accent: each, font })}
                 className="size-5 overflow-hidden rounded-[5px] has-checked:shadow-[0_0_0_2px_var(--muted),0_0_0_3.5px_var(--foreground)]"
               >
@@ -523,7 +516,6 @@ function LookStep({
           <span className="relative block">
             <select
               value={font}
-              disabled={written}
               onChange={(event) =>
                 onChange({ accent, font: event.target.value as StarterFont })
               }
@@ -544,16 +536,7 @@ function LookStep({
       </div>
       {refusal ? <Refusal id="guide-refusal">{refusal}</Refusal> : null}
       <Writes>
-        {written ? (
-          <>
-            Wrote <Path>{project}/tokens.css</Path>, so Undo takes it back to
-            pick again
-          </>
-        ) : (
-          <>
-            Writes <Path>{project}/tokens.css</Path>
-          </>
-        )}
+        Finish writes <Path>{project}/tokens.css</Path>
       </Writes>
     </>
   )
