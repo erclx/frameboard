@@ -63,6 +63,7 @@ const SECTIONS: readonly Section[] = [
     rows: [
       { label: 'Zoom to fit', actions: ['view.zoomToFit'] },
       { label: 'Zoom to selection', actions: ['view.zoomToSelection'] },
+      { label: 'Zoom to 100%', actions: ['view.zoom100'] },
       { label: 'Hide UI', actions: ['view.hideUi'] },
       { label: 'Undo', actions: ['edit.undo'] },
       { label: 'Redo', actions: ['edit.redo'] },

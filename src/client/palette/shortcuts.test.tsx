@@ -142,6 +142,18 @@ describe('ShortcutsSheet', () => {
     expect(row('Move').querySelector('kbd')?.textContent).toBe('V')
   })
 
+  it('lists Zoom to 100% under View with its key', async () => {
+    register(action('view.zoom100', { keys: ['Shift+Digit0'] }))
+    render(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    expect(row('Zoom to 100%').querySelector('kbd kbd')?.textContent).toMatch(
+      /^(⇧ 0|Shift\+0)$/,
+    )
+  })
+
   it('lists Find under Tools with its key', async () => {
     register(action('find.open', { keys: ['$mod+KeyF'] }))
     render(<ShortcutsSheet />)
