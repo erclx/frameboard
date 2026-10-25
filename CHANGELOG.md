@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0](https://github.com/erclx/frameboard/compare/v0.8.0...v0.9.0) (2026-10-25)
+
+
+### Features
+
+* **board:** add a single-key switch and move around by keyboard ([#84](https://github.com/erclx/frameboard/issues/84)) ([e6d6f09](https://github.com/erclx/frameboard/commit/e6d6f09ee797b70268cf2958a3cb4e224b47aec2))
+* **board:** hug frames to their content and open their findings ([#85](https://github.com/erclx/frameboard/issues/85)) ([11c6b6a](https://github.com/erclx/frameboard/commit/11c6b6a57066dc32d80c9db87f1d7a8e30d2acd0))
+* **inspector:** rebuild the hand controls around a color picker ([#82](https://github.com/erclx/frameboard/issues/82)) ([3813111](https://github.com/erclx/frameboard/commit/38131111045ac0bbd898916d9ec509e30e949a07))
+
 ## [0.8.0](https://github.com/erclx/frameboard/compare/v0.7.0...v0.8.0) (2026-10-25)
 
 
