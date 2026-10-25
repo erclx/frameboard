@@ -88,7 +88,6 @@ describe('AppearanceSection', () => {
     const { changes, write } = recorder()
     render(
       <AppearanceSection
-        name="Headline"
         opacity={1}
         radius={0}
         disabled={false}
@@ -105,31 +104,10 @@ describe('AppearanceSection', () => {
     ])
   })
 
-  it('writes data-name empty for an emptied name', async () => {
-    const { changes, write } = recorder()
-    render(
-      <AppearanceSection
-        name="Headline"
-        opacity={1}
-        radius={0}
-        disabled={false}
-        write={write}
-      />,
-    )
-
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }))
-    await userEvent.tab()
-
-    expect(changes).toEqual([
-      { kind: 'attribute', name: 'data-name', value: '' },
-    ])
-  })
-
   it('writes the radius in px', async () => {
     const { changes, write } = recorder()
     render(
       <AppearanceSection
-        name="Headline"
         opacity={1}
         radius={0}
         disabled={false}
@@ -150,7 +128,6 @@ describe('AppearanceSection', () => {
     const { changes, write } = recorder()
     render(
       <AppearanceSection
-        name="Headline"
         opacity={0.5}
         radius={0}
         disabled={false}
@@ -170,7 +147,6 @@ describe('AppearanceSection', () => {
     const { changes, write } = recorder()
     render(
       <AppearanceSection
-        name="Headline"
         opacity={1}
         radius={0}
         disabled={false}
@@ -767,6 +743,7 @@ describe('TextSection', () => {
     )
 
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull()
   })
 
   it('keeps the typed text as a draft once the agent changed the element', async () => {
@@ -956,7 +933,6 @@ describe('AppearanceSection commit field', () => {
     const { changes, write } = recorder()
     render(
       <AppearanceSection
-        name="Headline"
         opacity={1}
         radius={0}
         disabled={false}
