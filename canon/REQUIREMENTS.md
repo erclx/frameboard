@@ -13,6 +13,7 @@ This record holds at most 600 words.
 - Frames render as real web pages, so animation, video, and interaction work
 - A board folder lives inside a repository or anywhere on disk, with or without git
 - An empty folder starts with one command
+- A new board's first page asks for a name, a first screen size, and a look, and writes each answer to files
 
 ### Projects and navigation
 
