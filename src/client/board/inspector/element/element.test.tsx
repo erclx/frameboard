@@ -269,11 +269,12 @@ describe('TypographySection', () => {
 
 describe('FillSection', () => {
   it.each([
-    [true, { property: 'background', value: '' }],
-    [false, { property: 'background-color', value: 'transparent' }],
+    [true, false, { property: 'background-color', value: '' }],
+    [true, true, { property: 'background', value: '' }],
+    [false, false, { property: 'background-color', value: 'transparent' }],
   ])(
-    'removes a background the element’s own style sets (%s) by writing %o',
-    async (inline, written) => {
+    'removes a background (own %s, shorthand %s) by writing %o',
+    async (inline, shorthand, written) => {
       const { changes, write } = recorder()
       render(
         <FillSection
@@ -283,6 +284,7 @@ describe('FillSection', () => {
           tokens={[PRIMARY]}
           theme="light"
           inline={inline}
+          shorthand={shorthand}
           disabled={false}
           write={write}
         />,
@@ -1175,6 +1177,21 @@ describe('InspectorPanel with an element selected', () => {
     expect(headline()?.hasAttribute('style')).toBe(false)
   })
 
+  it('reads a background color stated alone as no shorthand', async () => {
+    await mountFrame(
+      '<div style="background-color: red; background-image: none"></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.inline).toMatchObject({
+      backgroundColor: true,
+      background: false,
+    })
+  })
+
   it('reads which paints the element’s own style sets', async () => {
     await mountFrame(
       '<div style="background: red; border-top-color: blue"></div>',
@@ -1187,6 +1204,7 @@ describe('InspectorPanel with an element selected', () => {
     expect(result.current?.inline).toEqual({
       color: false,
       backgroundColor: true,
+      background: true,
       border: true,
     })
   })

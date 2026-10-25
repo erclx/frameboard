@@ -24,7 +24,13 @@ export interface LiveElement {
   textOnly: boolean
   text: string
   /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
-  inline: { color: boolean; backgroundColor: boolean; border: boolean }
+  inline: {
+    color: boolean
+    backgroundColor: boolean
+    /** Whether the `background` shorthand states it, which a remove has to drop whole. */
+    background: boolean
+    border: boolean
+  }
 }
 
 /**
@@ -99,6 +105,10 @@ function inlinePaints(element: Element): LiveElement['inline'] {
   return {
     color: names.includes('color'),
     backgroundColor: names.includes('background-color'),
+    // The parsed declarations show a shorthand only as its longhands, so the attribute is read for it.
+    background: /(?:^|;)\s*background\s*:/i.test(
+      element.getAttribute('style') ?? '',
+    ),
     border: names.some(
       (name) => name.startsWith('border-') && !name.endsWith('-radius'),
     ),

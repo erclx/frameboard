@@ -52,6 +52,8 @@ interface FillSectionProps {
   theme: Theme
   /** Whether the element's own `style` sets the fill, which remove drops. */
   inline: boolean
+  /** Whether that style states the fill through the `background` shorthand, which remove drops whole. */
+  shorthand?: boolean
   disabled: boolean
   write: WriteElement
   /** Shows a picked color on the live element before it is written. */
@@ -64,9 +66,10 @@ interface FillSectionProps {
  * Fill: one color row writing `color` on an element holding text alone and
  * `background-color` otherwise. `+` adds the project's first color token
  * while nothing sets one, and a transparent background reads as none.
- * Remove drops the element's own fill, its whole `background` so a
- * shorthand goes too, or writes `transparent` over a rule's background, and
- * a rule's text color has no remove.
+ * Remove drops the element's own fill, the whole `background` only where
+ * the shorthand states it so a background image stays otherwise, or writes
+ * `transparent` over a rule's background, and a rule's text color has no
+ * remove.
  */
 export function FillSection({
   textOnly,
@@ -75,6 +78,7 @@ export function FillSection({
   tokens,
   theme,
   inline,
+  shorthand = false,
   disabled,
   write,
   preview,
@@ -92,7 +96,11 @@ export function FillSection({
     ? () =>
         void write({
           kind: 'style',
-          property: textOnly ? 'color' : 'background',
+          property: textOnly
+            ? 'color'
+            : shorthand
+              ? 'background'
+              : 'background-color',
           value: '',
         })
     : textOnly

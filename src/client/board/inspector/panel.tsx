@@ -195,6 +195,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         tokens={colors}
         theme={theme}
         inline={live.textOnly ? live.inline.color : live.inline.backgroundColor}
+        shorthand={!live.textOnly && live.inline.background}
         disabled={disabled}
         write={write}
         preview={preview}
