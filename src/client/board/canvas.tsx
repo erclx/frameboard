@@ -560,7 +560,10 @@ function EmptyNotice({
   const keysOn = useCharacterKeysOn()
   const canWrite = useLive((state) => state.canWrite)
   if (hidden.length > 0) {
-    const counted = `${hidden.length} hidden frame${hidden.length === 1 ? '' : 's'}`
+    const counted =
+      hidden.length === 1
+        ? '1 hidden frame stays'
+        : `${hidden.length} hidden frames stay`
     const show = `Show ${hidden.length} frame${hidden.length === 1 ? '' : 's'}`
     return (
       <div
