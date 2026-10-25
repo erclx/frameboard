@@ -1457,6 +1457,26 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'compare-label',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // A `before` hash gives the frame a base, so its label offers compare.
+        setup: themed(
+          both(
+            seededChanges([
+              {
+                ...agentChange('webapp/home/about', 1),
+                before: '1'.repeat(64),
+              },
+            ]),
+            readyWhen('button[aria-label="Compare about with before"]'),
+          ),
+        ),
+      },
+      {
         section: 'unseen-many',
         theme,
         route: '/p/webapp/home',
