@@ -1,7 +1,13 @@
+import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test,
+} from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -142,8 +148,23 @@ test.describe('editing a selected element by hand', () => {
     expect(read()).toBe(original)
   })
 
-  test('an edit made from bytes an agent has since replaced is refused', async ({
+  /** Settles once the server keeps the source the agent's write replaced, which a stale edit is found again from. */
+  async function keptSource(request: APIRequestContext): Promise<void> {
+    const at = createHash('sha256').update(original).digest('hex')
+    await expect
+      .poll(
+        async () =>
+          (
+            await request.get(`${server.url}/frames/${HERO}.html?at=${at}`)
+          ).status(),
+        { timeout: 10_000 },
+      )
+      .toBe(200)
+  }
+
+  test('an edit made from bytes an agent has since replaced lands past the agent’s other element', async ({
     page,
+    request,
   }) => {
     // Hold the frame's reload, so the board still names the bytes it showed
     // when the agent's write lands, as it does mid-flight.
@@ -151,8 +172,34 @@ test.describe('editing a selected element by hand', () => {
       (url) => url.pathname.startsWith('/frames/'),
       () => {},
     )
-    const agent = original.replace('Caption', 'Byline')
+    writeFileSync(path(), original.replace('Caption', 'Byline'))
+    await keptSource(request)
+
+    const opacity = page.getByRole('textbox', { name: 'Opacity', exact: true })
+    await opacity.fill('50')
+    await opacity.press('Enter')
+
+    await expect
+      .poll(read)
+      .toContain('<h1 data-name="Headline" style="opacity: 0.5">')
+    expect(read()).toContain('Byline')
+    await expect(page.getByText('Edit not saved')).toHaveCount(0)
+  })
+
+  test('an edit made from bytes whose element an agent has since changed is refused', async ({
+    page,
+    request,
+  }) => {
+    await page.route(
+      (url) => url.pathname.startsWith('/frames/'),
+      () => {},
+    )
+    const agent = original.replace(
+      '<h1 data-name="Headline">',
+      '<h1 data-name="Headline" class="agent">',
+    )
     writeFileSync(path(), agent)
+    await keptSource(request)
 
     const opacity = page.getByRole('textbox', { name: 'Opacity', exact: true })
     await opacity.fill('50')
