@@ -192,6 +192,53 @@ describe('structureRoutes', () => {
       expect(existsSync(frameFile('mobile-2'))).toBe(false)
     })
 
+    it('lands a copy at an offset from its source and undoes it in one step', async () => {
+      const { x, y, width, height } = layout().hero
+      const source = { x, y, width, height }
+
+      const response = await post('/api/frame/duplicate', {
+        refs: ['studio/home/hero'],
+        offset: { x: 30, y: -20 },
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [
+          {
+            ref: 'studio/home/hero-2',
+            box: { ...source, x: source.x + 30, y: source.y - 20 },
+          },
+        ],
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(existsSync(frameFile('hero-2'))).toBe(false)
+    })
+
+    it('lands a copy beside its source with no offset', async () => {
+      const { x, y, width, height } = layout().hero
+      const source = { x, y, width, height }
+
+      const response = await post('/api/frame/duplicate', {
+        refs: ['studio/home/hero'],
+      })
+      const [copy] = (await response.json()).data
+
+      expect([copy.box.x > source.x + source.width, copy.box.y]).toEqual([
+        true,
+        source.y,
+      ])
+    })
+
+    it('refuses an offset that is not two whole coordinates', async () => {
+      const response = await post('/api/frame/duplicate', {
+        refs: ['studio/home/hero'],
+        offset: { x: 1.5 },
+      })
+
+      expect(response.status).toBe(400)
+    })
+
     it('renames a frame and undoes it back', async () => {
       await post('/api/frame/rename', { ref: 'studio/home/hero', name: 'top' })
       expect(existsSync(frameFile('top'))).toBe(true)
