@@ -17,6 +17,7 @@ import {
   useRenamingFrame,
 } from '../structure/actions'
 import { type NumberChange, NumberField } from './number-field'
+import { PreviewRow } from './preview-row'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -47,7 +48,9 @@ interface FrameSectionProps {
  * differ. A field writes through the same write the gestures use, a typed
  * value setting every selected frame and a step on `Mixed` moving each by
  * the step, and a step or scrub draws each frame at its pending box first.
- * One frame's H carries Fit height, running the registered action.
+ * One frame's H carries Fit height, running the registered action. The
+ * Preview row under the fields shows the frames at another width and writes
+ * nothing.
  */
 export function FrameSection({
   frames,
@@ -159,6 +162,7 @@ export function FrameSection({
           )
         })}
       </div>
+      <PreviewRow frames={frames} />
     </section>
   )
 }
