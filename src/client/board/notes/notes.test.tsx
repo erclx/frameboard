@@ -2,7 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { Claim } from '@/shared/records/claims'
@@ -15,7 +15,7 @@ import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
 import { Thread } from './thread'
-import { notesUi } from './tool'
+import { notesUi, useNoteTool } from './tool'
 
 const PICK: NotePick = {
   frame: { ref: 'studio/home/hero', name: 'hero' },
@@ -89,7 +89,13 @@ afterEach(() => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
     notesUi.setState({ open: null, drafts: {} })
   })
+  vi.unstubAllGlobals()
 })
+
+/** The board answering every write with `envelope`. */
+function boardAnswering(envelope: unknown): void {
+  vi.stubGlobal('fetch', async () => Response.json(envelope))
+}
 
 describe('Composer', () => {
   it('says no session is listening and holds Send', () => {
@@ -172,12 +178,82 @@ describe('Composer', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
   })
 
+  it('returns to Move once a note is sent', async () => {
+    live({ canWrite: true, listeners: [listener('a')] })
+    act(() => modeStore.setState({ tool: 'note' }))
+    boardAnswering({ ok: true, data: {} })
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Warmer sky')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(modeStore.getState().tool).toBe('move')
+  })
+
+  it('returns to Move once a note is saved', async () => {
+    live({ canWrite: true })
+    act(() => modeStore.setState({ tool: 'note' }))
+    boardAnswering({ ok: true, data: {} })
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Warmer sky')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(modeStore.getState().tool).toBe('move')
+  })
+
+  it('stays on the Note tool with the text and the error when a save fails', async () => {
+    live({ canWrite: true })
+    act(() => modeStore.setState({ tool: 'note' }))
+    boardAnswering({
+      ok: false,
+      error: { code: 'frame-not-found', message: 'No frame hero.' },
+    })
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Warmer sky')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(modeStore.getState().tool).toBe('note')
+    expect(screen.getByRole('textbox')).toHaveValue('Warmer sky')
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
   it('names the frame it pins to', () => {
     render(<Composer pick={PICK} onClose={() => {}} />)
 
     expect(
       screen.getByRole('region', { name: 'New note on hero' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('useNoteTool', () => {
+  function Canvas() {
+    useNoteTool()
+    return null
+  }
+
+  it('returns the Note tool to Move and closes a new note when the canvas leaves', () => {
+    const { unmount } = render(<Canvas />)
+    act(() => {
+      modeStore.setState({ tool: 'note' })
+      notesUi.setState({ open: { kind: 'new', pick: PICK } })
+    })
+
+    unmount()
+
+    expect(modeStore.getState().tool).toBe('move')
+    expect(notesUi.getState().open).toBeNull()
+  })
+
+  it('leaves another tool as it was when the canvas leaves', () => {
+    const { unmount } = render(<Canvas />)
+    act(() => modeStore.setState({ tool: 'hand' }))
+
+    unmount()
+
+    expect(modeStore.getState().tool).toBe('hand')
   })
 })
 
