@@ -268,6 +268,28 @@ describe('NumberField', () => {
     expect(field()).toHaveValue('40')
   })
 
+  it('shows the stored value again when a typed value is refused, keeping focus', async () => {
+    const calls = recorder({ answer: false })
+    render(
+      <NumberField
+        label="X position"
+        prefix="X"
+        value={40}
+        format={{ style: 'unit', unit: 'percent' }}
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    await userEvent.click(field())
+    await userEvent.keyboard('50{Enter}')
+    await settle()
+
+    expect(calls.writes).toEqual([50])
+    expect(field()).toHaveValue('40%')
+    expect(field()).toHaveFocus()
+  })
+
   it('moves each Mixed value by the step from its own', async () => {
     const writes: number[][] = []
     render(

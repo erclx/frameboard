@@ -166,7 +166,14 @@ export function NumberField({
       event.stopPropagation()
       stepBy(event)
     }
-    if (event.key === 'Enter') commit()
+    if (event.key === 'Enter') {
+      commit()
+      // base-ui formats typed text, and follows the stored value again, only
+      // once the field blurs, so a refused value would stay shown until then.
+      const input = event.currentTarget
+      input.blur()
+      input.focus()
+    }
     if (event.key === 'Escape') {
       cancel()
       cancelled.current = true
