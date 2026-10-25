@@ -106,7 +106,7 @@ test.describe('editing a selected element by hand', () => {
     await expect.poll(read).toBe(original)
   })
 
-  test('a browser undo on a focused toast never writes into the Text field', async ({
+  test('undo on a focused toast runs the board undo, not the browser one', async ({
     page,
   }) => {
     const text = page.getByRole('textbox', { name: 'Text' })
@@ -115,18 +115,17 @@ test.describe('editing a selected element by hand', () => {
     await text.press('Tab')
     await expect.poll(read).toContain('>Welcome home</h1>')
 
-    // Copying raises a toast, and a toast is a focusable dialog the board's
-    // undo skips, so Chromium undoes the last field edited instead.
+    // Copying raises a toast, which takes focus as a dialog. The board's
+    // undo runs there, so Chromium never undoes the last field edited.
     await page.mouse.move(0, 0)
     await page.keyboard.press('ControlOrMeta+Shift+KeyC')
     const toast = page.getByRole('dialog').filter({ hasText: /copy|Copied/i })
     await expect(toast).toBeVisible()
-    // Base UI pauses a toast's timer on hover, so it outlasts the presses.
+    // Base UI pauses a toast's timer on hover, so it outlasts the press.
     await toast.hover()
     await toast.focus()
-    for (let press = 0; press < 3; press++) {
-      await page.keyboard.press('ControlOrMeta+KeyZ')
-    }
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await expect.poll(read).toBe(original)
 
     // A blur commit sends its request in the blur handler itself, so the
     // requests recorded once the blur returns are all it will ever send.
@@ -137,8 +136,7 @@ test.describe('editing a selected element by hand', () => {
     await text.focus()
     await text.blur()
     expect(edits).toEqual([])
-    expect(read()).toContain('>Welcome home</h1>')
-    await expect(text).toHaveValue('Welcome home')
+    expect(read()).toBe(original)
   })
 
   test('an edit made from bytes an agent has since replaced is refused', async ({

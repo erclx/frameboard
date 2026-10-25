@@ -133,6 +133,56 @@ describe('bindKeys', () => {
     expect(move.runs).toBe(0)
   })
 
+  it('leaves Esc pressed inside an open dialog to the dialog', async () => {
+    const clear = action('selection.clear', { keys: ['Escape'] })
+    register(clear)
+    bind(window)
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.tabIndex = -1
+    document.body.append(dialog)
+    dialog.focus()
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(clear.runs).toBe(0)
+  })
+
+  it('runs a key pressed inside a toast', async () => {
+    const move = action('tool.move', { keys: ['v'] })
+    register(move)
+    bind(window)
+    const toast = document.createElement('div')
+    toast.setAttribute('role', 'dialog')
+    toast.dataset.slot = 'toast'
+    toast.tabIndex = -1
+    document.body.append(toast)
+    toast.focus()
+
+    await userEvent.keyboard('v')
+
+    expect(move.runs).toBe(1)
+  })
+
+  it('leaves Enter pressed on a button inside a toast to the button', async () => {
+    const down = action('element.down', { keys: ['Enter'] })
+    register(down)
+    bind(window)
+    const toast = document.createElement('div')
+    toast.setAttribute('role', 'dialog')
+    toast.dataset.slot = 'toast'
+    const show = document.createElement('button')
+    toast.append(show)
+    document.body.append(toast)
+    let clicks = 0
+    show.addEventListener('click', () => (clicks += 1))
+    show.focus()
+
+    await userEvent.keyboard('{Enter}')
+
+    expect([down.runs, clicks]).toEqual([0, 1])
+  })
+
   it('runs a key pressed with no element focused', () => {
     const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
     register(exitPlay)

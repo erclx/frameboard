@@ -118,7 +118,8 @@ export function useActionGroup(group: string): Action[] {
  * registrations, and returns the function that unbinds them. `only` limits
  * it to the bindings named, as a frame's window in Play takes Esc alone.
  * A press runs the first registered action carrying that key whose
- * `enabled` is true, and no key fires while focus sits in a field or a dialog.
+ * `enabled` is true, and no key fires while focus sits in a field or a dialog
+ * other than a toast.
  */
 export function bindKeys(
   target: Window | Element,
@@ -165,15 +166,18 @@ function press(key: string, event: KeyboardEvent): void {
  * tinykeys skips fields by tag, and `isContentEditable` adds the children of
  * an editable root. A press inside an open dialog is skipped too, so the
  * Esc that closes the shortcuts sheet never clears the selection or leaves
- * Play. Its own check calls `matches` on the target, which a press aimed at a
+ * Play. A toast is the exception, since base-ui gives it `role="dialog"` and
+ * it takes focus on a tab or a click, which would kill every key including
+ * undo. Enter there stays with the toast, so its Show button still clicks.
+ * Its own check calls `matches` on the target, which a press aimed at a
  * document or window lacks, so those pass through.
  */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null
   if (typeof target?.matches !== 'function') return false
-  return (
-    defaultKeybindingsHandlerIgnore(event) ||
-    target.isContentEditable === true ||
-    target.closest?.('[role="dialog"]') != null
-  )
+  if (defaultKeybindingsHandlerIgnore(event) || target.isContentEditable)
+    return true
+  if (target.closest?.('[data-slot="toast"]') != null)
+    return event.key === 'Enter'
+  return target.closest?.('[role="dialog"]') != null
 }
