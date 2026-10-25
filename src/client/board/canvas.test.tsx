@@ -145,6 +145,7 @@ function drag(
 
 describe('Canvas', () => {
   afterEach(() => {
+    if (vi.isFakeTimers()) vi.runOnlyPendingTimers()
     vi.useRealTimers()
     modeStore.setState({ mode: 'edit', tool: 'move' })
     setCharacterKeys(true)
