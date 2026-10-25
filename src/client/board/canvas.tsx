@@ -41,25 +41,10 @@ import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { followSelection, selectElement, selectionStore } from './selection'
 import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
+import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
-/** The zoom a mouse notch takes, the toolbar's own step. */
-const NOTCH_STEP = 1.2
-
-/**
- * The factor one zooming wheel event scales by. A mouse sends a line-mode
- * event or a pixel one of 50 or more per notch, which steps once whatever
- * its size, while a trackpad pinch sends many small ones that follow the
- * curve, so the pinch stays smooth.
- */
-function wheelZoom(deltaY: number, deltaMode: number): number {
-  if (deltaY === 0) return 1
-  if (deltaMode === WheelEvent.DOM_DELTA_LINE || Math.abs(deltaY) >= 50) {
-    return deltaY < 0 ? NOTCH_STEP : 1 / NOTCH_STEP
-  }
-  return 2 ** (-deltaY * 0.01)
-}
 const FIT_PADDING = 64
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
@@ -211,26 +196,70 @@ export function Canvas({
         'wheel.zoom',
         (event: WheelEvent) => {
           event.preventDefault()
-          const k = zoomTransform(viewport).k
-          const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1
           if (event.ctrlKey || event.metaKey) {
             zoomer.scaleBy(
               selection,
               wheelZoom(event.deltaY, event.deltaMode),
               pointer(event, viewport),
             )
-          } else {
-            zoomer.translateBy(
-              selection,
-              (-event.deltaX * unit) / k,
-              (-event.deltaY * unit) / k,
-            )
+            return
           }
+          // Each axis reads alone, so a notch glides and a trackpad's small
+          // deltas follow the fingers one to one.
+          // Shift turns a wheel sideways, which macOS sends as deltaX and
+          // Chromium on Linux leaves on deltaY.
+          const sideways = event.shiftKey && event.deltaX === 0
+          const deltaX = sideways ? event.deltaY : event.deltaX
+          const deltaY = sideways ? 0 : event.deltaY
+          const { deltaMode } = event
+          const dx = -wheelPixels(deltaX, deltaMode)
+          const dy = -wheelPixels(deltaY, deltaMode)
+          const notchX = isNotch(deltaX, deltaMode)
+          const notchY = isNotch(deltaY, deltaMode)
+          panScreen(notchX ? 0 : dx, notchY ? 0 : dy)
+          if (notchX || notchY) glideBy(notchX ? dx : 0, notchY ? dy : 0)
         },
         { passive: false },
       )
 
     let animation = 0
+    const panScreen = (dx: number, dy: number) => {
+      if (dx === 0 && dy === 0) return
+      const k = zoomTransform(viewport).k
+      zoomer.translateBy(selection, dx / k, dy / k)
+    }
+
+    // A notch's pan, held in screen pixels so a zoom mid-glide moves nothing.
+    // A notch arriving mid-glide adds to what is left and starts it again.
+    let glide = 0
+    let left = { x: 0, y: 0 }
+    const stopGlide = () => {
+      cancelAnimationFrame(glide)
+      left = { x: 0, y: 0 }
+    }
+    const glideBy = (dx: number, dy: number) => {
+      // The developer took the view from any travel under way.
+      cancelAnimationFrame(animation)
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        panScreen(dx, dy)
+        return
+      }
+      cancelAnimationFrame(glide)
+      const total = { x: left.x + dx, y: left.y + dy }
+      left = total
+      const began = performance.now()
+      let covered = 0
+      const step = (now: number) => {
+        const share = panEase(
+          Math.min(1, Math.max(0, now - began) / PAN_EASE_MS),
+        )
+        panScreen(total.x * (share - covered), total.y * (share - covered))
+        covered = share
+        left = { x: total.x * (1 - share), y: total.y * (1 - share) }
+        if (share < 1) glide = requestAnimationFrame(step)
+      }
+      glide = requestAnimationFrame(step)
+    }
     const apply = ({ x, y, k }: View) => {
       travelling = true
       try {
@@ -253,6 +282,7 @@ export function Canvas({
 
     moveToRef.current = (target) => {
       cancelAnimationFrame(animation)
+      stopGlide()
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
         apply(target)
         return
@@ -278,7 +308,10 @@ export function Canvas({
     }
 
     // A press anywhere on the canvas is the developer taking the view.
-    const press = () => reportHandMove()
+    const press = () => {
+      stopGlide()
+      reportHandMove()
+    }
     viewport.addEventListener('pointerdown', press, { capture: true })
 
     // The hit layer covers every frame, so the frame under the pointer is
@@ -342,6 +375,7 @@ export function Canvas({
       detach()
       clearTimeout(timer)
       cancelAnimationFrame(animation)
+      cancelAnimationFrame(glide)
       moveToRef.current = null
       resize.disconnect()
       selection.on('.zoom', null)

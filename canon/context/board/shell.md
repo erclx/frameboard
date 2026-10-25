@@ -89,6 +89,6 @@ The favicon files sit beside the app.
 
 - A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a wheel carrying `ctrlKey` zooms
-- A zooming wheel in line mode or of 50 pixels or more is a mouse notch and steps one 1.2 zoom, while a pinch's small deltas follow a curve, so the pinch stays smooth
+- `wheel.ts` reads an axis in line mode or of 50 pixels or more as a mouse notch, which zooms one 1.2 step or pans over 120 ms, so a unit test polls the view after a notch-sized pan
 - Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
 - `cn` reads the custom `text-body` and `text-label` steps as colors, keeping a kit part's `text-sm` beside one but dropping one before a color. Use `text-xs` for 12px, `text-[11px]` for 11px
