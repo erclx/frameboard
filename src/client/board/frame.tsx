@@ -9,12 +9,15 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { useUnseen } from '@/client/live/unseen'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { useCompare } from './changes/compare'
+import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { FindingsList } from './findings-list'
@@ -61,6 +64,10 @@ export const Frame = memo(function Frame({
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
   const theme = useFrameTheme(frame.ref)
+  const hasBase = useUnseen((state) => frame.ref in state.base)
+  const compared = useCompare((state) =>
+    state.ref === frame.ref ? state.hash : null,
+  )
   // Read on each load rather than bound to the effect, so a newer record
   // arriving before the reload stamps the file the iframe then shows.
   const modifiedAt = useRef(frame.modifiedAt)
@@ -169,6 +176,9 @@ export const Frame = memo(function Frame({
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
         <span className="truncate">{frame.name}</span>
+        {hasBase && !playing ? (
+          <CompareControl frameRef={frame.ref} name={frame.name} />
+        ) : null}
         {claimed ? <ClaimTag claim={claimed} /> : null}
         {findings && findings.length > 0 ? (
           <FindingsMark frame={frame} findings={findings} />
@@ -190,6 +200,9 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {live && compared && !playing ? (
+        <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
+      ) : null}
       {claimed ? <ClaimOutline /> : null}
     </div>
   )

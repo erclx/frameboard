@@ -9,11 +9,18 @@ import { contentHash } from '@/server/edit/address'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
+import { AT_QUERY } from '@/shared/theme'
 
 const NOTES_FILE = 'notes.json'
 
 /** Where the look route serves the board's token sheet, whichever file stands in for it. */
 export const BOARD_SHEET_URL = '/frameboard/tokens.css'
+
+/**
+ * The source a frame held under a content hash before an agent's write
+ * replaced it, or null where the server holds none.
+ */
+export type FrameVersion = (ref: string, hash: string) => string | null
 
 /** How a served frame gets its look from outside itself. */
 export interface FrameLook {
@@ -58,9 +65,15 @@ const CONTENT_TYPES: Record<string, string> = {
  *
  * A frame served from a page gets the faces and the token sheets spliced
  * first into its `head`, in the response alone, and every other file is
- * served byte for byte.
+ * served byte for byte. A frame path carrying `?at=<hash>` serves the
+ * version `version` holds under that hash in its place, with the same head,
+ * and any other path carrying it answers 404.
  */
-export function frameRoutes(root: string, look: FrameLook): Hono {
+export function frameRoutes(
+  root: string,
+  look: FrameLook,
+  version?: FrameVersion,
+): Hono {
   const app = new Hono()
 
   app.get('/frames/*', async (c) => {
@@ -70,12 +83,21 @@ export function frameRoutes(root: string, look: FrameLook): Hono {
     const file = parts && (await resolveFile(root, parts))
     if (!file) return c.notFound()
 
-    const [project = '', page = ''] = parts
-    const bytes = new Uint8Array(await readFile(file))
+    const [project = '', page = '', name = ''] = parts
     const isFrame =
       page !== ASSETS_FOLDER &&
       parts.length === 3 &&
       extname(file).toLowerCase() === FRAME_EXTENSION
+    const at = c.req.query(AT_QUERY)
+    let bytes: Uint8Array<ArrayBuffer>
+    if (at === undefined) {
+      bytes = new Uint8Array(await readFile(file))
+    } else {
+      const ref = `${project}/${page}/${name.slice(0, -FRAME_EXTENSION.length)}`
+      const held = isFrame ? (version?.(ref, at) ?? null) : null
+      if (held === null) return c.notFound()
+      bytes = new TextEncoder().encode(held)
+    }
     const body = isFrame
       ? injectHead(
           bytes,

@@ -76,6 +76,8 @@ An agent runs `editing` on a frame before rewriting it.
 When an agent writes a frame, the board marks it with a dot and counts it on its page and project until you look at it.
 
 - A toast names the agent and offers Show, which takes you to the change and makes the edited elements glow, and Next, or `]`, steps to the next one
+- The compare button on a changed frame's label flips it to the version before the agent's run, or splits it at a divider you drag
+- The server keeps that version until it restarts or 200 later changes land
 - Click a listening agent's initial in the inspector header to follow it
 - The board then pans to each frame it claims or writes, across pages, until you pan, zoom, or click the canvas yourself
 

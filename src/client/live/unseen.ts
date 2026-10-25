@@ -20,6 +20,12 @@ export interface UnseenState {
   seen: Readonly<Record<string, string>>
   /** The frame the toast is on, which Show zooms to and Next steps from. */
   cursor: string | null
+  /**
+   * The content hash each frame held before the first change since the
+   * developer last looked, which compare shows as the before side. It
+   * outlives the look and moves on the next change after it.
+   */
+  base: Readonly<Record<string, string>>
 }
 
 export interface UnseenStore extends StoreApi<UnseenState> {
@@ -36,24 +42,35 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
     unseen: {},
     seen: readSeen(storage),
     cursor: null,
+    base: {},
   }))
   return Object.assign(store, { storage })
 }
 
-/** Marks each change's frame, unless this browser already saw the hash it left. */
+/**
+ * Marks each change's frame, unless this browser already saw the hash it
+ * left, and moves its base when the change opens a run. A change opens one
+ * when the frame holds no mark, so the base is read off the log's `before`
+ * hashes and a replay of the same log lands on the same base.
+ */
 export function receiveChanges(
   store: UnseenStore,
   changes: readonly FrameChange[],
 ): void {
-  const { unseen, seen } = store.getState()
+  const { unseen, seen, base } = store.getState()
   const next = { ...unseen }
+  const nextBase = { ...base }
   // Changes arrive oldest first, so a seen one also clears an older one the
   // same replay marked before it.
   for (const change of changes) {
+    if (!next[change.frame]) {
+      if (change.before) nextBase[change.frame] = change.before
+      else delete nextBase[change.frame]
+    }
     if (seen[change.frame] === change.hash) delete next[change.frame]
     else next[change.frame] = change
   }
-  store.setState({ unseen: next })
+  store.setState({ unseen: next, base: nextBase })
 }
 
 /** Clears a frame's mark and remembers the hash looked at. */
@@ -67,19 +84,37 @@ export function markSeen(store: UnseenStore, ref: string): void {
   writeSeen(store.storage, nextSeen)
 }
 
-/** Drops the marks of frames the board no longer holds. */
+/** Drops the marks and bases of frames the board no longer holds. */
 export function pruneUnseen(store: UnseenStore, board: ListResult): void {
   const refs = new Set(
     board.projects.flatMap((project) =>
       project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
     ),
   )
-  const { unseen } = store.getState()
+  const { unseen, base } = store.getState()
+  const kept = keptOn(unseen, refs)
+  const keptBase = keptOn(base, refs)
+  if (kept === unseen && keptBase === base) return
+  store.setState({ unseen: kept, base: keptBase })
+}
+
+/** Drops a frame's base once the server no longer holds its version. */
+export function dropBase(store: UnseenStore, ref: string): void {
+  const { base } = store.getState()
+  if (!(ref in base)) return
+  const { [ref]: _, ...rest } = base
+  store.setState({ base: rest })
+}
+
+/** The entries under refs the board holds, or `byRef` itself when it holds them all. */
+function keptOn<T>(
+  byRef: Readonly<Record<string, T>>,
+  refs: ReadonlySet<string>,
+): Readonly<Record<string, T>> {
   const kept = Object.fromEntries(
-    Object.entries(unseen).filter(([ref]) => refs.has(ref)),
+    Object.entries(byRef).filter(([ref]) => refs.has(ref)),
   )
-  if (Object.keys(kept).length === Object.keys(unseen).length) return
-  store.setState({ unseen: kept })
+  return Object.keys(kept).length === Object.keys(byRef).length ? byRef : kept
 }
 
 /** Moves the toast to a frame. */

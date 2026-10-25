@@ -17,6 +17,7 @@ import { type BrowserChecks, checkRoutes } from './routes/checks'
 import { editRoutes } from './routes/edit'
 import { elementsRoutes } from './routes/elements'
 import { findRoutes } from './routes/find'
+import type { FrameVersion } from './routes/frames'
 import { historyRoutes } from './routes/history'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
@@ -80,6 +81,8 @@ export interface AppOptions {
   thumbnails?: ThumbnailStore
   /** Reads a frame's content on the warm browser for `POST /api/frame/fit`. */
   measure?: MeasureFrame
+  /** The frame versions agent writes replaced, which `?at=<hash>` serves. */
+  frameVersion?: FrameVersion
 }
 
 export function createApp({
@@ -97,6 +100,7 @@ export function createApp({
   checks,
   thumbnails,
   measure,
+  frameVersion,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -107,7 +111,11 @@ export function createApp({
     c.header('x-frameboard-version', version)
   })
   app.use('*', boardHostGuard(port))
-  const frames = servedFrames(root, { facesDir, tokens: given })
+  const frames = servedFrames(root, {
+    facesDir,
+    tokens: given,
+    version: frameVersion,
+  })
 
   // A second serve reads the root back to tell this board's server from
   // another, and the sheet to report the one this server was started with.

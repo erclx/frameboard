@@ -46,12 +46,18 @@ function setup(
     onCommit = () => {},
     elementBox,
     badge,
+    control,
+    divider,
   }: {
     canWrite?: boolean
     onCommit?: () => void
     elementBox?: Box
     /** A findings badge drawn in the label strip above a frame, at a canvas box. */
     badge?: { ref: string; box: Box }
+    /** A button drawn in the label strip above a frame, at a canvas box. */
+    control?: { box: Box; onClick: () => void }
+    /** A compared frame's split divider, at a canvas box. */
+    divider?: Box
   } = {},
 ) {
   const mode = createModeStore(1280)
@@ -61,6 +67,7 @@ function setup(
     offset?: { x: number; y: number }
   }[] = []
   const opened: string[] = []
+  const splits: number[] = []
   const view = render(
     <Profiler id="canvas" onRender={onCommit}>
       <div
@@ -107,6 +114,32 @@ function setup(
               }}
             />
           ) : null}
+          {control ? (
+            <button
+              type="button"
+              data-label-control
+              onClick={control.onClick}
+              className="absolute"
+              style={{
+                left: control.box.x,
+                top: control.box.y,
+                width: control.box.width,
+                height: control.box.height,
+              }}
+            />
+          ) : null}
+          {divider ? (
+            <div
+              data-compare-divider={LEFT.ref}
+              className="absolute"
+              style={{
+                left: divider.x,
+                top: divider.y,
+                width: divider.width,
+                height: divider.height,
+              }}
+            />
+          ) : null}
         </div>
         <div data-hit-layer className="absolute inset-0" />
       </div>
@@ -118,6 +151,7 @@ function setup(
     return element
   }
   const viewport = part('[data-viewport]')
+  const origin = viewport.getBoundingClientRect()
   const detach = attachGestures(
     part('[data-hit-layer]'),
     { viewport, layer: part('[data-layer]'), page: PAGE, frames: () => frames },
@@ -134,11 +168,21 @@ function setup(
         return []
       },
       openFindings: (ref) => opened.push(ref),
+      splitAt: (clientX) => splits.push(clientX - origin.left),
     },
   )
-  const origin = viewport.getBoundingClientRect()
   const pointer = new Pointer(part('[data-hit-layer]'), origin)
-  return { ...view, mode, writes, duplicates, opened, part, pointer, detach }
+  return {
+    ...view,
+    mode,
+    writes,
+    duplicates,
+    opened,
+    splits,
+    part,
+    pointer,
+    detach,
+  }
 }
 
 /** Sends mouse events in canvas pixels, which the identity view maps one to one. */
@@ -192,6 +236,35 @@ function selectedRefs(): readonly string[] {
 }
 
 describe('attachGestures', () => {
+  // First in the file, since d3-drag swallows the next click for one timer
+  // tick after a drag, and a drag ending the test before would eat this one.
+  describe('on a label control', () => {
+    const BOX = { x: 140, y: 80, width: 18, height: 18 }
+
+    it('clicks the control on release and selects nothing', () => {
+      const clicks: string[] = []
+      const { pointer } = setup(undefined, {
+        control: { box: BOX, onClick: () => clicks.push('clicked') },
+      })
+
+      pointer.click(148, 88)
+
+      expect(clicks).toEqual(['clicked'])
+      expect(selectedRefs()).toEqual([])
+    })
+
+    it('clicks nothing and moves nothing on a drag from it', () => {
+      const clicks: string[] = []
+      const { pointer, writes } = setup(undefined, {
+        control: { box: BOX, onClick: () => clicks.push('clicked') },
+      })
+
+      pointer.drag([148, 88], [248, 188])
+
+      expect([clicks, writes]).toEqual([[], []])
+    })
+  })
+
   describe('on a findings badge', () => {
     const BADGE = {
       ref: LEFT.ref,
@@ -230,6 +303,20 @@ describe('attachGestures', () => {
       pointer.drag([150, 88], [250, 188])
 
       expect([opened, writes]).toEqual([[], []])
+    })
+  })
+
+  describe('on a split divider', () => {
+    it('moves the divider with the pointer and moves no frame', () => {
+      const { pointer, splits, writes } = setup(undefined, {
+        divider: { x: 196, y: 100, width: 8, height: 100 },
+      })
+
+      pointer.drag([200, 150], [180, 150])
+
+      expect(splits).toEqual([200, 180])
+      expect(writes).toEqual([])
+      expect(selectedRefs()).toEqual([])
     })
   })
 

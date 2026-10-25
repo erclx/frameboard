@@ -26,13 +26,13 @@ The board's frame and the inputs every part draws on read first.
 
 The home view, the overlays, and the agent's marks follow.
 
-| Group     | What the user sees                                 | Code                                                | States                                        |
-| --------- | -------------------------------------------------- | --------------------------------------------------- | --------------------------------------------- |
-| `home`    | The project list a board opens on                  | `src/client/home/`                                  | Grid, list, no projects                       |
-| `palette` | The command palette and the shortcuts sheet        | `src/client/palette/`                               | Commands listed, shortcuts open               |
-| `menus`   | Right-click and avatar menus, and the copy toast   | `src/client/board/menus/`, `chrome/avatar-menu.tsx` | Home card, canvas, avatar, a toast shown      |
-| `agents`  | An agent's claim on a frame and its unseen changes | `src/client/board/claims/`, `changes/`              | Claim held, claim pulsing, one or many unseen |
-| `notes`   | Notes pinned on frames and their threads           | `src/client/board/notes/`                           | Placing a note, a thread open                 |
+| Group     | What the user sees                                           | Code                                                | States                                                                   |
+| --------- | ------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| `home`    | The project list a board opens on                            | `src/client/home/`                                  | Grid, list, no projects                                                  |
+| `palette` | The command palette and the shortcuts sheet                  | `src/client/palette/`                               | Commands listed, shortcuts open                                          |
+| `menus`   | Right-click and avatar menus, and the copy toast             | `src/client/board/menus/`, `chrome/avatar-menu.tsx` | Home card, canvas, avatar, a toast shown                                 |
+| `agents`  | An agent's claim on a frame, its unseen changes, and compare | `src/client/board/claims/`, `changes/`              | Claim held, claim pulsing, one or many unseen, compare flipped and split |
+| `notes`   | Notes pinned on frames and their threads                     | `src/client/board/notes/`                           | Placing a note, a thread open                                            |
 
 ## Writing the folder
 

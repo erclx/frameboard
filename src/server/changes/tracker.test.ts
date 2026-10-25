@@ -289,3 +289,100 @@ describe('createChangeTracker', () => {
     ])
   })
 })
+
+describe('the versions an agent write replaced', () => {
+  let board: FixtureBoard
+  let tracker: ReturnType<typeof createChangeTracker>
+
+  beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    tracker = createChangeTracker(board.root, { now: () => NOW, logCap: 2 })
+    await tracker.prime(await scanBoard(board.root))
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const at = (path: string) => join(board.root, path)
+
+  async function write(path: string, source: string) {
+    writeFileSync(at(path), source)
+    return tracker.update(await scanBoard(board.root), [at(path)], [])
+  }
+
+  it('keeps the source a write replaced under the hash it had', async () => {
+    const original = readFileSync(at('webapp/home/hero.html'), 'utf8')
+
+    const [change] = tracker.settle(
+      await write('webapp/home/hero.html', '<p>one</p>'),
+    )
+
+    expect(change?.before).toEqual(expect.any(String))
+    expect(tracker.version('webapp/home/hero', change?.before ?? '')).toBe(
+      original,
+    )
+  })
+
+  it('names no before for a created frame', async () => {
+    const [change] = tracker.settle(
+      await write('webapp/home/pricing.html', '<h1>Pricing</h1>'),
+    )
+
+    expect(change?.created).toBe(true)
+    expect(change).not.toHaveProperty('before')
+  })
+
+  it('answers no version under another frame', async () => {
+    const [change] = tracker.settle(
+      await write('webapp/home/hero.html', '<p>one</p>'),
+    )
+
+    expect(
+      tracker.version('webapp/home/about', change?.before ?? ''),
+    ).toBeNull()
+  })
+
+  it('keeps no version for a write the history told it of', async () => {
+    const original = readFileSync(at('webapp/home/hero.html'), 'utf8')
+    const held = await write(
+      'webapp/home/hero.html',
+      original.replace('>hero</h1>', '>Hi</h1>'),
+    )
+    await tracker.own(
+      stepOn(['webapp/home/hero'], null, [
+        {
+          kind: 'element',
+          path: at('webapp/home/hero.html'),
+          ref: 'webapp/home/hero',
+          span: {
+            scope: 'element',
+            index: 5,
+            count: 8,
+            before: '<h1 data-name="Headline">hero</h1>',
+            after: '<h1 data-name="Headline">Hi</h1>',
+          },
+        },
+      ]),
+    )
+
+    tracker.settle(held)
+
+    expect(
+      tracker.version('webapp/home/hero', held[0]?.before ?? ''),
+    ).toBeNull()
+  })
+
+  it('drops a version once no logged change names it', async () => {
+    const [first] = tracker.settle(
+      await write('webapp/home/hero.html', '<p>one</p>'),
+    )
+    tracker.settle(await write('webapp/home/hero.html', '<p>two</p>'))
+    tracker.settle(await write('webapp/home/hero.html', '<p>three</p>'))
+
+    expect(tracker.version('webapp/home/hero', first?.before ?? '')).toBeNull()
+    expect(tracker.version('webapp/home/hero', first?.hash ?? '')).toBe(
+      '<p>one</p>',
+    )
+  })
+})

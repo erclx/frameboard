@@ -6,12 +6,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { IS_MAC } from '@/client/actions/keys'
 import { liveStore, receiveBoard } from '@/client/live/store'
+import { receiveChanges, unseenStore } from '@/client/live/unseen'
 import { frameTheme, themeStore } from '@/client/theme/store'
 import type { PageRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { useBoardActions } from '../board-actions'
 import { Canvas } from '../canvas'
+import { useCompareActions } from '../changes/compare'
 import { modeStore } from '../mode'
 import { notesUi, useNoteTool } from '../notes/tool'
 import { clear, select, selectElement, selectionStore } from '../selection'
@@ -34,6 +36,7 @@ function Board({ page }: { page: PageRecord }) {
   useStructureActions(page.ref, page.frames)
   useFrameTool()
   useNoteTool()
+  useCompareActions()
   return (
     <div style={{ width: 1200, height: 700 }}>
       <Canvas page={page} reloads={{}} />
@@ -128,6 +131,7 @@ describe('CanvasMenu', () => {
       `Duplicate${MOD}D`,
       'RenameF2',
       'Fit height',
+      'Compare with before',
       'Add a noteN',
       IS_MAC ? 'Hide⇧⌘H' : 'HideCtrlShiftH',
       IS_MAC ? 'Lock⇧⌘L' : 'LockCtrlShiftL',
@@ -216,6 +220,43 @@ describe('CanvasMenu', () => {
     expect(
       within(await screen.findByRole('menu')).getByRole('menuitem', {
         name: 'Fit height',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('offers Compare with before on a frame an agent changed and greys it on another', async () => {
+    act(() =>
+      receiveChanges(unseenStore, [
+        {
+          id: 'c1',
+          frame: A.ref,
+          at: '2026-10-25T12:00:00.000Z',
+          hash: 'c'.repeat(64),
+          author: null,
+          elements: [1],
+          removed: 0,
+          whole: false,
+          created: false,
+          before: 'b'.repeat(64),
+        },
+      ]),
+    )
+    render(<Board page={PAGE} />)
+    rightClick(centerOf(A.ref))
+    const offered = within(await screen.findByRole('menu')).getByRole(
+      'menuitem',
+      { name: 'Compare with before' },
+    )
+    expect(offered).not.toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect.poll(() => screen.queryByRole('menu')).toBeNull()
+    act(() => unseenStore.setState({ unseen: {}, base: {} }))
+
+    rightClick(centerOf(B.ref))
+
+    expect(
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
+        name: 'Compare with before',
       }),
     ).toHaveAttribute('aria-disabled', 'true')
   })
