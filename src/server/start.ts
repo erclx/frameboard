@@ -297,6 +297,7 @@ async function listen({
     renderFrame,
     thumbnails,
     measure,
+    frameVersion: tracker.version,
     checks: {
       refresh: () =>
         inTurn(async () => {

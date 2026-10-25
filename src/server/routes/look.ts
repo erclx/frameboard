@@ -11,6 +11,7 @@ import {
   decodeSegments,
   type FrameLook,
   frameRoutes,
+  type FrameVersion,
 } from './frames'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -36,11 +37,16 @@ export interface ServedFrames {
  * The look routes and the frame routes over `root`, so the board server and
  * the capture host serve a frame the same way. `tokens` is a known
  * `--tokens` sheet, null for none, or absent to read the one a running
- * server recorded in the address file on each request.
+ * server recorded in the address file on each request. `version` serves the
+ * frame versions an agent write replaced, absent where nothing holds them.
  */
 export function servedFrames(
   root: string,
-  { facesDir, tokens }: { facesDir: string; tokens?: string | null },
+  {
+    facesDir,
+    tokens,
+    version,
+  }: { facesDir: string; tokens?: string | null; version?: FrameVersion },
 ): ServedFrames {
   const look: FrameLook = {
     sheets: (project) => tokenSheetPaths(root, project, tokens),
@@ -50,7 +56,7 @@ export function servedFrames(
     '/',
     lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, tokens) }),
   )
-  routes.route('/', frameRoutes(root, look))
+  routes.route('/', frameRoutes(root, look, version))
   return { look, routes }
 }
 

@@ -239,6 +239,63 @@ describe('frameRoutes', () => {
       expect(response.status).toBe(404)
     })
   })
+
+  describe('a version an agent write replaced', () => {
+    const OLD = '<html><head></head><body><h1>Before</h1></body></html>'
+    const OLD_HASH = contentHash(OLD)
+
+    function getAt(path: string) {
+      return frameRoutes(
+        board.root,
+        { sheets: (project) => tokenSheetPaths(board.root, project, null) },
+        (ref, hash) =>
+          ref === 'studio/home/hero' && hash === OLD_HASH ? OLD : null,
+      ).request(path)
+    }
+
+    it('serves the held source with the look and its own hash', async () => {
+      const response = await getAt(
+        `/frames/studio/home/hero.html?at=${OLD_HASH}&theme=dark`,
+      )
+
+      const served = await response.text()
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(served).toContain('<h1>Before</h1>')
+      expect(served).not.toContain('<h1>Studio</h1>')
+      expect(served).toContain('<style data-frameboard')
+      expect(/data-hash="([0-9a-f]{64})"/.exec(served)?.[1]).toBe(OLD_HASH)
+    })
+
+    it.each([
+      [
+        'a hash it does not hold',
+        `/frames/studio/home/hero.html?at=${'0'.repeat(64)}`,
+      ],
+      [
+        'a held hash under another frame',
+        `/frames/studio/home/mobile.html?at=${OLD_HASH}`,
+      ],
+      ['an asset', `/frames/studio/assets/dot.svg?at=${OLD_HASH}`],
+      [
+        'a stylesheet in a page',
+        `/frames/studio/home/styles.css?at=${OLD_HASH}`,
+      ],
+      ['a project token sheet', `/frames/studio/tokens.css?at=${OLD_HASH}`],
+    ])('answers 404 for %s', async (_case, path) => {
+      writeFileSync(join(board.root, 'studio/tokens.css'), ':root {}')
+
+      const response = await getAt(path)
+
+      expect(response.status).toBe(404)
+    })
+
+    it('answers 404 where the server holds no versions', async () => {
+      const response = await get(`/frames/studio/home/hero.html?at=${OLD_HASH}`)
+
+      expect(response.status).toBe(404)
+    })
+  })
 })
 
 function importsOf(html: string): string[] {
