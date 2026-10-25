@@ -31,6 +31,12 @@ import {
   holdsSpan,
   swapSpan,
 } from '@/server/edit/element-span'
+import {
+  holdsInserted,
+  type InsertedSpan,
+  removeInserted,
+  restoreInserted,
+} from '@/server/edit/insert'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { LayoutEntry } from '@/shared/records/board'
@@ -70,6 +76,13 @@ export type Change =
    * the frame an undo answers the hash for.
    */
   | { kind: 'element'; path: string; ref: string; span: ElementSpan }
+  /**
+   * The one element a placement tool wrote into a frame file, present on the
+   * after side alone. An undo takes out the element its bytes match, and a
+   * redo puts it back under its parent, so an agent's write elsewhere in the
+   * file neither blocks either nor is reverted.
+   */
+  | { kind: 'inserted'; path: string; ref: string; span: InsertedSpan }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -128,6 +141,11 @@ async function reads(change: Change, side: Side): Promise<boolean> {
       return (
         (await exists(change.path)) &&
         holdsSpan(await readFile(change.path, 'utf8'), change.span, side)
+      )
+    case 'inserted':
+      return (
+        (await exists(change.path)) &&
+        holdsInserted(await readFile(change.path, 'utf8'), change.span, side)
       )
   }
 }
@@ -188,22 +206,47 @@ export async function restore(
       else await takeOut(change.path, change.slot)
       return
     case 'element':
-      return swapElement(change, side)
+      return rewriteFrame(change, (source) => {
+        const swapped = swapSpan(source, change.span, OTHER[side])
+        return (
+          swapped && {
+            html: swapped.html,
+            keep: () => {
+              change.span = swapped.span
+            },
+          }
+        )
+      })
+    case 'inserted':
+      return rewriteFrame(change, (source) => {
+        const written =
+          side === 'before'
+            ? removeInserted(source, change.span)
+            : restoreInserted(source, change.span)
+        return (
+          written && {
+            html: written.html,
+            keep: () => {
+              change.span = written.span
+            },
+          }
+        )
+      })
   }
 }
 
 /**
- * Swaps the edited element to `side` through a temporary file and a rename,
- * reading the file again just before the rename. A write landing before that
- * read is not overwritten: the swap is made once more from the fresh bytes,
- * and refused once they change again or no longer hold the element. Bytes
- * that fail a UTF-8 round trip are refused too, since decoding would rewrite
- * each invalid byte outside the element. The change keeps the index the
- * element was found at, so a redo lands on it.
+ * Writes a hand edit's element to the other side through a temporary file and
+ * a rename, reading the file again just before the rename. A write landing
+ * before that read is not overwritten: the rewrite is made once more from the
+ * fresh bytes, and refused once they change again or no longer hold the
+ * element. Bytes that fail a UTF-8 round trip are refused too, since decoding
+ * would rewrite each invalid byte outside the element. The change keeps where
+ * the element was found, through `keep`, so the next side lands on it.
  */
-async function swapElement(
-  change: Extract<Change, { kind: 'element' }>,
-  side: Side,
+async function rewriteFrame(
+  change: Extract<Change, { kind: 'element' | 'inserted' }>,
+  rewrite: (source: string) => { html: string; keep: () => void } | undefined,
 ): Promise<string> {
   // A leading dot keeps the temporary file from reading as a frame.
   const temp = join(
@@ -212,14 +255,14 @@ async function swapElement(
   )
   let source = await readText(change.path)
   for (let attempt = 0; source !== undefined && attempt < 2; attempt += 1) {
-    const swapped = swapSpan(source, change.span, OTHER[side])
-    if (!swapped) break
-    await writeFile(temp, swapped.html)
+    const written = rewrite(source)
+    if (!written) break
+    await writeFile(temp, written.html)
     const now = await readText(change.path)
     if (now === source) {
       await rename(temp, change.path)
-      change.span = swapped.span
-      return contentHash(swapped.html)
+      written.keep()
+      return contentHash(written.html)
     }
     source = now
   }
@@ -273,6 +316,11 @@ export class StepJournal implements Journal {
   /** The element a hand edit rewrote in a frame file, which this journal does not write. */
   element(path: string, ref: string, span: ElementSpan): void {
     this.changes.push({ kind: 'element', path, ref, span })
+  }
+
+  /** The element a placement tool wrote into a frame file, which this journal does not write. */
+  inserted(path: string, ref: string, span: InsertedSpan): void {
+    this.changes.push({ kind: 'inserted', path, ref, span })
   }
 
   async created(path: string): Promise<void> {
