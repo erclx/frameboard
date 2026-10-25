@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Action, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
-import { liveStore, receiveBoard } from '@/client/live/store'
+import { liveStore, receiveBoard, receiveFindings } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
@@ -297,6 +297,48 @@ describe('InspectorPanel', () => {
 
     expect(screen.queryByRole('button', { name: 'Fit height' })).toBeNull()
     unregister()
+  })
+
+  describe('Checks', () => {
+    afterEach(() => {
+      act(() => receiveFindings(liveStore, { [SWATCHES.ref]: [] }))
+    })
+
+    const finding = {
+      rule: 'viewport',
+      severity: 'warning',
+      frame: SWATCHES.ref,
+      path: 'studio/home/swatches.html',
+      message: 'Grows with the viewport.',
+      location: null,
+    } as const
+
+    it('lists one selected frame’s findings', () => {
+      receiveFindings(liveStore, { [SWATCHES.ref]: [finding] })
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      const section = screen.getByRole('region', { name: 'Checks · 1' })
+      expect(section).toHaveTextContent('viewportGrows with the viewport.')
+    })
+
+    it('draws no section for a frame with no findings', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(screen.queryByRole('region', { name: /Checks/ })).toBeNull()
+    })
+
+    it('draws no section for several frames', () => {
+      receiveFindings(liveStore, { [SWATCHES.ref]: [finding] })
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+      renderPanel()
+
+      expect(screen.queryByRole('region', { name: /Checks/ })).toBeNull()
+    })
   })
 
   it('disables the fields while the tab may not write', () => {
