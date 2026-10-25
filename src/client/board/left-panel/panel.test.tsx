@@ -516,6 +516,18 @@ describe('LeftPanel', () => {
       ).toBe(moved)
     })
 
+    it('fits the split with room under the last page', () => {
+      renderPanel(THREE())
+
+      const links = within(
+        screen.getByRole('navigation', { name: 'Pages' }),
+      ).getAllByRole('link')
+      const last = links.at(-1)?.getBoundingClientRect().bottom ?? 0
+      expect(
+        divider().getBoundingClientRect().top - last,
+      ).toBeGreaterThanOrEqual(12)
+    })
+
     it('keeps a split per project', async () => {
       const storage = new Map<string, string>()
       renderPanel(THREE(), 'home', undefined, { storage })
