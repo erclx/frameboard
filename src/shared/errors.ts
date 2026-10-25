@@ -29,6 +29,7 @@ export const EXIT_CODES = {
   'verify-failed': 7,
   'invalid-utf8': 7,
   'stale-address': 7,
+  'invalid-container': 7,
   // `check` finding anything, with the result in the error's details.
   'check-findings': 8,
   // No capture browser launched, with the install command in the message.
