@@ -71,6 +71,10 @@ test.describe('previewing a frame at another width', () => {
     await page.getByRole('button', { name: 'End preview' }).click()
     await expect(hero).toHaveCSS('width', '1440px')
 
+    // Nothing is awaited here but the absence of a write, and a held box edit
+    // sends only once the keys rest for 300 ms, so the window outlasts that
+    // rest before the assertion reads it.
+    await page.waitForTimeout(1000)
     expect(writes).toEqual([])
     expect(layout()).toBe(before)
   })
