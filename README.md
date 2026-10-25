@@ -14,7 +14,7 @@ A local design board that coding agents draw on as plain HTML files, and you rev
 npx frameboard serve
 ```
 
-In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project, then opens it at `http://127.0.0.1:4173` in a tab that can edit. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
+In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project and opens it at `http://127.0.0.1:4173` in a tab that can edit, where a first page asks for a project name, a screen size, and a look. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
 
 Install it with `npm install -g frameboard` or `bun add -g frameboard`.
 
@@ -39,6 +39,7 @@ A board folder holds projects, a project holds pages, and a page holds frames.
 Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides.
 
 - `serve --tokens <path>` takes a sheet another tool manages instead
+- `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
 - The server puts the sheets and three faces, Geist, Geist Mono, and Caveat, ahead of each frame's own styles as it serves the frame
 - The file on disk stays as written
 - One toggle switches the board and every frame between light and dark
