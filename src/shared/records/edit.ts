@@ -13,3 +13,12 @@ export const editResultSchema = z.object({
 })
 
 export type EditResult = z.infer<typeof editResultSchema>
+
+/** What `POST /api/frames/insert` returns: the frame it wrote, the new element, and the hash the next write is made from. */
+export const insertResultSchema = z.object({
+  ref: z.string(),
+  index: z.int().min(0),
+  hash,
+})
+
+export type InsertResult = z.infer<typeof insertResultSchema>

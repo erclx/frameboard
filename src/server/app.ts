@@ -131,7 +131,16 @@ export function createApp({
   app.route('/', assetsRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
-  app.route('/', editRoutes(root, actions.access, history, settledVersion))
+  app.route(
+    '/',
+    editRoutes(
+      root,
+      actions.access,
+      history,
+      settledVersion,
+      frames.look.sheets,
+    ),
+  )
   app.route('/', pngRoutes(root, renderFrame))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))

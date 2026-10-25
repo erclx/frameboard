@@ -40,6 +40,7 @@ export type EditRefusal =
   | 'verify-failed'
   | 'invalid-utf8'
   | 'stale-address'
+  | 'invalid-container'
 
 export interface EditRefused {
   readonly ok: false

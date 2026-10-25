@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { contentHash } from './address'
-import { editFrameFile } from './frame-file'
+import { editFrameFile, insertFrameFile } from './frame-file'
 
 // Lets a test land a write on the frame while the editor holds its temporary
 // file, which is the window the reread before the rename guards.
@@ -247,6 +247,62 @@ describe('editFrameFile', () => {
 
     editFrameFile(frame, { index: 3 }, { kind: 'text', value: 'New' })
 
+    expect(readdirSync(dir)).toEqual(['hero.html'])
+  })
+})
+
+describe('insertFrameFile', () => {
+  const TEXT = '<p data-name="Text">Text</p>'
+
+  it('should write the element and answer its index and the new hash', () => {
+    writeFileSync(frame, '<main></main>')
+
+    const result = insertFrameFile(
+      frame,
+      contentHash('<main></main>'),
+      { parent: 3, before: null },
+      TEXT,
+    )
+
+    expect(readFileSync(frame, 'utf8')).toBe(`<main>${TEXT}</main>`)
+    expect(result).toMatchObject({
+      ok: true,
+      index: 4,
+      hash: contentHash(`<main>${TEXT}</main>`),
+    })
+  })
+
+  it('should refuse a hash the file no longer has, so a retried insert lands once', () => {
+    writeFileSync(frame, '<main></main>')
+    const sent = contentHash('<main></main>')
+    insertFrameFile(frame, sent, { parent: 3, before: null }, TEXT)
+
+    const retried = insertFrameFile(
+      frame,
+      sent,
+      { parent: 3, before: null },
+      TEXT,
+    )
+
+    expect(retried).toMatchObject({ ok: false, reason: 'stale-address' })
+    expect(readFileSync(frame, 'utf8')).toBe(`<main>${TEXT}</main>`)
+  })
+
+  it('should refuse a write landing before the rename and keep the newer bytes', () => {
+    writeFileSync(frame, '<main></main>')
+    race.onWrite = (path) => {
+      if (path !== frame) writeFileSync(frame, '<main>Agent</main>')
+    }
+
+    const result = insertFrameFile(
+      frame,
+      contentHash('<main></main>'),
+      { parent: 3, before: null },
+      TEXT,
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
+    expect(readFileSync(frame, 'utf8')).toBe('<main>Agent</main>')
     expect(readdirSync(dir)).toEqual(['hero.html'])
   })
 })

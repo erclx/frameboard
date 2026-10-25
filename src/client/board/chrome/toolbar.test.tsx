@@ -11,7 +11,10 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import { liveStore } from '@/client/live/store'
 
+import { modeStore } from '../mode'
+import { shapeStore, usePlaceTools } from '../place/tool'
 import { Toolbar } from './toolbar'
 
 const cleanups: (() => void)[] = []
@@ -89,6 +92,78 @@ describe('Toolbar', () => {
 
     expect(frame).toHaveAttribute('aria-disabled', 'true')
     expect(await screen.findByText('Frame F')).toBeInTheDocument()
+  })
+
+  it('places Text and the Shape tool after Frame, ahead of Note', () => {
+    renderToolbar()
+
+    expect(
+      screen
+        .getAllByRole('button')
+        .slice(0, 7)
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Move', 'Hand', 'Frame', 'Text', 'Rectangle', 'Shapes', 'Note'])
+  })
+
+  describe('the Shape tool', () => {
+    function PlaceTools() {
+      usePlaceTools()
+      return null
+    }
+
+    function renderWithTools() {
+      liveStore.setState({ canWrite: true })
+      return render(
+        <TooltipProvider>
+          <PlaceTools />
+          <Toolbar />
+        </TooltipProvider>,
+      )
+    }
+
+    afterEach(() => {
+      shapeStore.setState({ shape: 'rectangle' })
+      modeStore.setState({ tool: 'move', mode: 'edit' })
+      liveStore.setState({ canWrite: false })
+    })
+
+    it('places the last shape chosen from its menu and shows it pressed', async () => {
+      renderWithTools()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: /Ellipse/ }),
+      )
+
+      expect(modeStore.getState().tool).toBe('shape')
+      expect(screen.getByRole('button', { name: 'Ellipse' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it("marks the shape chosen in its menu and names each shape's key", async () => {
+      renderWithTools()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
+
+      const rows = await screen.findAllByRole('menuitemradio')
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'RectangleR',
+        'EllipseO',
+        'DividerL',
+      ])
+      expect(rows[0]).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('shows the Shape button unpressed under another tool', () => {
+      renderWithTools()
+
+      expect(screen.getByRole('button', { name: 'Rectangle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
   })
 
   it("names a tool's key on hover while single-key shortcuts are on", async () => {

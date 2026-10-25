@@ -15,7 +15,7 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 Owns picking, walking, and outlining an element, and with the board folder's `selection.ts` the selection keys and menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
 
-- A click selects the frame, and Cmd-click or a double-click selects the element under the cursor. Enter goes one level down, Esc one level up, and Tab steps through siblings.
+- A click selects the frame, Cmd-click or a double-click the element under the cursor, and a double-click on a selected text element edits it in place. Enter, Esc, and Tab walk down, up, and across.
 - Shift-click or a marquee drag selects several frames, and move, nudge, align, duplicate, copy, cut, hide, lock, and delete act on all of them
 - Arrow keys nudge a frame, Cmd with an arrow resizes it, and Cmd+C, Cmd+X, and Cmd+V copy, cut, and paste frames into any project's current page
 - Alt+A, D, W, S align, Alt+H and Alt+V center, and Ctrl+Alt+H and Ctrl+Alt+V distribute, each writing the page's layout alone
@@ -76,7 +76,7 @@ A frame draws at its pending box over its stored one at the previewed width, and
 Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
-- A change is one layout entry, page order, rename, path with its content hash, or hand-edited element, so an agent's write elsewhere in the same file neither blocks an undo nor is reverted by it
+- A change is one layout entry, page order, rename, path with its hash, or hand-edited or placed element, so an agent's write elsewhere in the file neither blocks an undo nor is reverted by it
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 
@@ -88,6 +88,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that
+- A placed element's undo takes out the one element its bytes match, and its redo puts it back under its parent, ahead of the sibling it preceded, both found by start tag
 - A layout entry's undo compares and restores the size on an axis both it and the stored entry hug as whatever is stored, since the server measured that size and the developer never set it
 
 ## Gotchas

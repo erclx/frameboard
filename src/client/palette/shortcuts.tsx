@@ -46,6 +46,11 @@ const SECTIONS: readonly Section[] = [
       { label: 'Move', actions: ['tool.move'] },
       { label: 'Hand', actions: ['tool.hand'] },
       { label: 'Frame', actions: ['tool.frame'] },
+      { label: 'Text', actions: ['tool.text'] },
+      {
+        label: 'Rectangle, ellipse, divider',
+        actions: ['tool.rectangle', 'tool.ellipse', 'tool.divider'],
+      },
       { label: 'Note', actions: ['tool.note'] },
       { label: 'Find', actions: ['find.open'] },
       { label: 'Command palette', actions: ['palette.open'] },

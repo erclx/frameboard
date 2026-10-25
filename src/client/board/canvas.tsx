@@ -1,7 +1,14 @@
 import { cn } from 'cn'
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
@@ -22,6 +29,11 @@ import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
+import {
+  editTextInPlace,
+  editTextWhenShown,
+  overElement,
+} from './element/text-in-place'
 import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
@@ -31,6 +43,7 @@ import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
 import { GuideCard } from './guide/card'
 import { useShowsGuide } from './guide/state'
+import { writeElement } from './inspector/element/write'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -39,7 +52,15 @@ import { followSpacePan, modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
-import { followSelection, selectElement, selectionStore } from './selection'
+import { DropLine } from './place/drop-line'
+import { placedKind, usePlaceTools } from './place/tool'
+import { placeElement } from './place/write'
+import {
+  type ElementKey,
+  followSelection,
+  selectElement,
+  selectionStore,
+} from './selection'
 import { placeFrame } from './structure/tool'
 import { attachCanvas, reportHandMove, reportZoom } from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
@@ -96,13 +117,29 @@ export function Canvas({
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
   const picks = useRef(0)
+  // The element selected when a double-click's first press landed, since
+  // that press selects the frame before the double-click arrives.
+  const pressedOn = useRef<ElementKey | null>(null)
+  // Ends the in-place text edit open or waiting on a frame's reload.
+  const stopEditing = useRef<(() => void) | null>(null)
+  useEffect(
+    () => () => {
+      stopEditing.current?.()
+      stopEditing.current = null
+    },
+    [page.ref],
+  )
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
+  const placing = useMode(
+    (state) => state.tool === 'text' || state.tool === 'shape',
+  )
   const spacePan = useMode((state) => state.spacePan)
   useEffect(() => followSpacePan(window), [])
   useNoteTool()
+  usePlaceTools()
   const unseen = useUnseen((state) => state.unseen)
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
@@ -439,10 +476,52 @@ export function Canvas({
     onFocused?.()
   }, [focus, frames, onFocused])
 
+  const toBoard = useCallback((event: PointerEvent) => {
+    const viewport = viewportRef.current
+    if (!viewport) return { x: 0, y: 0 }
+    const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+    return { x, y }
+  }, [])
+  const drawnFrames = useCallback(() => withDrawn(framesRef.current), [])
+
+  /** Opens a text element's text for typing, a double-click's or a placed Text's. */
+  const editText = (key: ElementKey, waits: boolean): boolean => {
+    if (!layer) return false
+    const write = (change: Parameters<typeof writeElement>[2]) =>
+      writeElement(page.ref, key, change)
+    stopEditing.current?.()
+    stopEditing.current = null
+    if (waits) {
+      stopEditing.current = editTextWhenShown(layer, key, write, selectionStore)
+      return true
+    }
+    const shown = layer.querySelector<HTMLIFrameElement>(
+      `[data-frame="${CSS.escape(key.frame)}"] iframe`,
+    )?.contentDocument
+    selectElement(selectionStore, page.ref, key)
+    stopEditing.current = shown ? editTextInPlace(shown, key, write) : null
+    return stopEditing.current !== null
+  }
+
+  // A double-click on the text element selected before it edits that
+  // text, and anywhere else picks inside the frame.
+  const doubleClick = (event: MouseEvent) => {
+    const viewport = viewportRef.current
+    const held = pressedOn.current
+    if (viewport && layer && held && !(noting || hand || framing || placing)) {
+      const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+      const drawn = withDrawn(frames)
+      if (overElement(layer, drawn, held, { x, y }) && editText(held, false)) {
+        return
+      }
+    }
+    pickInside(event)
+  }
+
   const pickInside = (event: MouseEvent) => {
     const viewport = viewportRef.current
-    // Only the Move tool selects, so the Hand, Note, and Frame tools pick nothing.
-    if (noting || hand || framing || !viewport || !layer) return
+    // Only the Move tool selects, so every other tool picks nothing.
+    if (noting || hand || framing || placing || !viewport || !layer) return
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
@@ -462,7 +541,9 @@ export function Canvas({
    */
   const onLabel = (event: MouseEvent): boolean => {
     const viewport = viewportRef.current
-    if (noting || hand || framing || !viewport || !layer) return false
+    if (noting || hand || framing || placing || !viewport || !layer) {
+      return false
+    }
     if (drawnAt(layer, '[data-label-control]', event)) return false
     const transform = zoomTransform(viewport)
     const [x, y] = transform.invert(pointer(event, viewport))
@@ -492,7 +573,7 @@ export function Canvas({
       data-canvas
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
-        (noting || framing) && !playing && 'cursor-crosshair',
+        (noting || framing || placing) && !playing && 'cursor-crosshair',
         (spacePan || (hand && !playing)) &&
           'cursor-grab active:cursor-grabbing',
       )}
@@ -520,6 +601,12 @@ export function Canvas({
             ))}
             <SelectionOverlay frames={frames} />
             <ElementOverlay frames={frames} container={layer} />
+            <DropLine
+              viewport={viewportRef}
+              container={layer}
+              frames={drawnFrames}
+              toBoard={toBoard}
+            />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>
@@ -540,18 +627,35 @@ export function Canvas({
               ref={hitRef}
               data-hit-layer
               className="absolute inset-0"
-              // A Note click opens the composer and a Frame click places a
-              // frame, and either goes no further. Selection and marquee
-              // gestures start on pointerdown, so they bind only while the Move
-              // tool is on and never see either press.
+              // A Note click opens the composer, a Frame click places a
+              // frame, and a Text or Shape click places an element, and none
+              // goes further. Selection and marquee gestures start on
+              // pointerdown, so they bind only while the Move tool is on and
+              // never see these presses.
               onClickCapture={(event) => {
                 const viewport = viewportRef.current
-                if (!(noting || framing) || !viewport || !layer) return
+                if (!(noting || framing || placing) || !viewport || !layer) {
+                  return
+                }
                 event.stopPropagation()
                 const transform = zoomTransform(viewport)
                 const [x, y] = transform.invert(
                   pointer(event.nativeEvent, viewport),
                 )
+                const kind = placedKind()
+                if (kind) {
+                  void placeElement(
+                    layer,
+                    page.ref,
+                    withDrawn(frames),
+                    { x, y },
+                    kind,
+                  ).then((placed) => {
+                    // A placed Text opens for typing once its frame shows it.
+                    if (placed && kind === 'text') editText(placed, true)
+                  })
+                  return
+                }
                 if (framing) {
                   const size = sizeOf(viewport)
                   const [left, top] = transform.invert([0, 0])
@@ -579,15 +683,20 @@ export function Canvas({
               onClick={(event) => {
                 if (event.metaKey) pickInside(event.nativeEvent)
               }}
+              onMouseDownCapture={(event) => {
+                if (event.detail <= 1) {
+                  pressedOn.current = selectionStore.getState().element ?? null
+                }
+              }}
               // The label strip renames as F2 does, through its gates, and
-              // anywhere else a double-click picks inside the frame.
+              // anywhere else a double-click edits text or picks inside the frame.
               onDoubleClick={(event) => {
                 if (onLabel(event.nativeEvent)) {
                   const rename = findAction('frame.rename')
                   if (rename && isEnabled(rename)) rename.run()
                   return
                 }
-                pickInside(event.nativeEvent)
+                doubleClick(event.nativeEvent)
               }}
             />
           }

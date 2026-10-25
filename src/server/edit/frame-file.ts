@@ -11,6 +11,7 @@ import {
   scopeOf,
 } from './apply'
 import { type ElementSpan, relocate } from './element-span'
+import { type InsertedSpan, insertElement, type Placement } from './insert'
 
 export type FrameFileEdit =
   | {
@@ -79,15 +80,9 @@ export function editFrameFile(
   change: EditChange,
   sourceAt?: SourceAt,
 ): FrameFileEdit {
-  const bytes = readFileSync(path)
-  const source = bytes.toString('utf8')
-  if (!Buffer.from(source, 'utf8').equals(bytes)) {
-    return refuse(
-      'invalid-utf8',
-      `${basename(path)} is not valid UTF-8, so writing it back would change bytes outside the edit`,
-    )
-  }
-  const hash = contentHash(bytes)
+  const read = readSource(path)
+  if (!read.ok) return read
+  const { source, hash } = read
   let index = address.index
   if (address.hash !== undefined && address.hash !== hash) {
     const was = sourceAt?.(address.hash)
@@ -99,15 +94,7 @@ export function editFrameFile(
 
   const applied = applyEdit(source, { index }, change)
   if (!applied.ok) return applied
-
-  // A leading dot keeps the temporary file from reading as a frame.
-  const temp = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`)
-  writeFileSync(temp, applied.html)
-  if (contentHash(readFileSync(path)) !== hash) {
-    rmSync(temp, { force: true })
-    return stale(path)
-  }
-  renameSync(temp, path)
+  if (!replaceFile(path, hash, applied.html)) return stale(path)
   return {
     ok: true,
     hash: contentHash(applied.html),
@@ -115,4 +102,79 @@ export function editFrameFile(
     index,
     span: applied.span,
   }
+}
+
+export type FrameFileInsert =
+  | {
+      readonly ok: true
+      /** The file's hash after the insert, which the next write is made from. */
+      readonly hash: string
+      /** The new element's index in the file as written. */
+      readonly index: number
+      readonly span: InsertedSpan
+    }
+  | EditRefused
+
+/**
+ * Writes one new element into a frame file the way `editFrameFile` writes an
+ * edit, through a temporary file and a rename after reading the file again.
+ * A hash the file no longer has is refused as stale with no search, since the
+ * gap's indices name nothing once the file moved, which also lands a retried
+ * insert at most once.
+ */
+export function insertFrameFile(
+  path: string,
+  hash: string,
+  placement: Placement,
+  markup: string,
+): FrameFileInsert {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const inserted = insertElement(read.source, placement, markup)
+  if (!inserted.ok) return inserted
+  if (!replaceFile(path, hash, inserted.html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(inserted.html),
+    index: inserted.index,
+    span: inserted.span,
+  }
+}
+
+/**
+ * A frame file's text and hash. Bytes that do not survive a UTF-8 round trip
+ * are refused, since decoding would rewrite every invalid byte.
+ */
+function readSource(
+  path: string,
+):
+  | { readonly ok: true; readonly source: string; readonly hash: string }
+  | EditRefused {
+  const bytes = readFileSync(path)
+  const source = bytes.toString('utf8')
+  if (!Buffer.from(source, 'utf8').equals(bytes)) {
+    return refuse(
+      'invalid-utf8',
+      `${basename(path)} is not valid UTF-8, so writing it back would change bytes outside the edit`,
+    )
+  }
+  return { ok: true, source, hash: contentHash(bytes) }
+}
+
+/**
+ * Replaces the file with `html` while it still holds the bytes `hash` names,
+ * read again just before the rename. Answers false, leaving the newer bytes,
+ * when a write landed meanwhile.
+ */
+function replaceFile(path: string, hash: string, html: string): boolean {
+  // A leading dot keeps the temporary file from reading as a frame.
+  const temp = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`)
+  writeFileSync(temp, html)
+  if (contentHash(readFileSync(path)) !== hash) {
+    rmSync(temp, { force: true })
+    return false
+  }
+  renameSync(temp, path)
+  return true
 }

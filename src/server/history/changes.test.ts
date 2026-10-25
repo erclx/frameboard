@@ -10,7 +10,7 @@ import {
 import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
 import { contentHash } from '../edit/address'
-import { editFrameFile } from '../edit/frame-file'
+import { editFrameFile, insertFrameFile } from '../edit/frame-file'
 import { type Change, holds, restore, StepJournal } from './changes'
 
 describe('changes', () => {
@@ -324,6 +324,85 @@ describe('changes', () => {
       expect(read(HERO)).toContain(
         '<hr data-name="Rule" />\n    <h1 data-name="Headline">Welcome</h1>',
       )
+    })
+  })
+
+  describe('inserted', () => {
+    const HERO = 'webapp/home/hero.html'
+    const TEXT = '<p data-name="Text">Text</p>'
+    /** The body and its headline, by `querySelectorAll('*')` order. */
+    const BODY = 4
+    const HEADLINE = 5
+
+    /** Places a Text before the headline by hand, as the insert route does, and journals it. */
+    function placeText(): void {
+      const inserted = insertFrameFile(
+        at(HERO),
+        contentHash(readFileSync(at(HERO))),
+        { parent: BODY, before: HEADLINE },
+        TEXT,
+      )
+      if (!inserted.ok) throw new Error(inserted.detail)
+      journal.inserted(at(HERO), 'webapp/home/hero', inserted.span)
+    }
+
+    it('undoes an insert byte for byte', async () => {
+      const original = read(HERO)
+      placeText()
+
+      await restore(first(), 'before')
+
+      expect(read(HERO)).toBe(original)
+    })
+
+    it('redoes it under its parent, before the sibling it went before', async () => {
+      placeText()
+      const placed = read(HERO)
+      await restore(first(), 'before')
+
+      await restore(first(), 'after')
+
+      expect(read(HERO)).toBe(placed)
+    })
+
+    it('undoes it and keeps what an agent wrote elsewhere', async () => {
+      placeText()
+      writeFileSync(
+        at(HERO),
+        read(HERO).replace('</body>', '<footer>Agent</footer></body>'),
+      )
+
+      await restore(first(), 'before')
+
+      expect(read(HERO)).not.toContain(TEXT)
+      expect(read(HERO)).toContain('<footer>Agent</footer>')
+    })
+
+    it('answers the hash of the bytes it left', async () => {
+      placeText()
+
+      const hash = await restore(first(), 'before')
+
+      expect(hash).toBe(contentHash(readFileSync(at(HERO))))
+    })
+
+    it('fails once an agent changed the inserted element', async () => {
+      placeText()
+      writeFileSync(at(HERO), read(HERO).replace('>Text<', '>Agent<'))
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('refuses an undo once an agent changed the inserted element', async () => {
+      placeText()
+      const agent = read(HERO).replace('>Text<', '>Agent<')
+      writeFileSync(at(HERO), agent)
+
+      await expect(restore(first(), 'before')).rejects.toMatchObject({
+        code: 'undo-overtaken',
+        details: { change: 'inserted' },
+      })
+      expect(read(HERO)).toBe(agent)
     })
   })
 })

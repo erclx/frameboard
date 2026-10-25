@@ -339,4 +339,127 @@ describe('editRoutes', () => {
     expect(read()).toBe(original)
     expect(history.counts().undo).toBe(0)
   })
+
+  describe('POST /api/frames/insert', () => {
+    /** The hero's body, which a placed element goes into. */
+    const BODY = 4
+
+    function insert(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+        undefined,
+        (project) => ({
+          board: join(board.root, 'tokens.css'),
+          project: join(board.root, project, 'tokens.css'),
+        }),
+      ).request('/api/frames/insert', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    const rectangle = () => ({
+      ref: HERO,
+      hash: hash(),
+      parent: BODY,
+      before: CAPTION,
+      element: { kind: 'rectangle' },
+    })
+
+    it('writes the one tag before the named child and answers where it landed', async () => {
+      const original = read()
+
+      const response = await insert(rectangle())
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, index: CAPTION, hash: hash() },
+      })
+      expect(read()).toBe(
+        original.replace(
+          '<p data-name="Caption">',
+          '<div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted)"></div><p data-name="Caption">',
+        ),
+      )
+    })
+
+    it('records one step, which undo reverts byte for byte', async () => {
+      const original = read()
+      await insert(rectangle())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toBe(original)
+    })
+
+    it('refuses stale-address once the file moved, writing nothing', async () => {
+      const sent = rectangle()
+      agentWrites(read().replace('hero</h1>', 'Agent</h1>'))
+      const agent = read()
+
+      const response = await insert(sent)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a parent that cannot hold an element as invalid-container', async () => {
+      const response = await insert({ ...rectangle(), parent: 1, before: null })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-container' },
+      })
+    })
+
+    it('refuses a frame another session holds as frame-claimed', async () => {
+      const original = read()
+      await claim(
+        board.root,
+        {
+          frame: HERO,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await insert(rectangle())
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed' },
+      })
+      expect(read()).toBe(original)
+    })
+
+    it('refuses an element kind it does not know as usage', async () => {
+      const response = await insert({
+        ...rectangle(),
+        element: { kind: 'image' },
+      })
+
+      expect(response.status).toBe(400)
+    })
+  })
 })

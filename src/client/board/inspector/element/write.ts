@@ -46,7 +46,7 @@ export interface WriteDeps {
  * past an agent's write, after which an index the chain never edited may
  * name another element.
  */
-type Landed = {
+export type Landed = {
   from: readonly string[]
   to: string
   at: ReadonlyMap<number, number>
@@ -99,11 +99,25 @@ export function writeElement(
   change: ElementChange,
   deps: WriteDeps = {},
 ): Promise<boolean> {
-  const turn = editInTurn(queues.get(key.frame), page, key, change, deps)
-  queues.set(key.frame, turn)
-  return turn.then((landed) => {
-    if (queues.get(key.frame) === turn) queues.delete(key.frame)
-    return landed !== null
+  return inFrameTurn(key.frame, (prior) =>
+    editInTurn(prior, page, key, change, deps),
+  ).then((landed) => landed !== null)
+}
+
+/**
+ * Runs one write of `frame`'s file behind the element edits and inserts
+ * already queued on it, handing it what the one before it landed, so a
+ * write made from the hash that one started from is sent from the hash it
+ * answered, or not at all once it was refused.
+ */
+export function inFrameTurn(
+  frame: string,
+  write: (prior: Promise<Landed> | undefined) => Promise<Landed>,
+): Promise<Landed> {
+  const turn = write(queues.get(frame))
+  queues.set(frame, turn)
+  return turn.finally(() => {
+    if (queues.get(frame) === turn) queues.delete(frame)
   })
 }
 
@@ -230,7 +244,7 @@ export function shownHash(ref: string): string | null {
  * The writer's detail, which starts lowercase for the CLI's line, as a
  * sentence. A leading file name keeps its case, as it is spelled on disk.
  */
-function sentence(detail: string): string {
+export function sentence(detail: string): string {
   const fileFirst = /^\S+\.html\b/.test(detail)
   const text = fileFirst
     ? detail

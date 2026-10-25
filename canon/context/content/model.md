@@ -34,12 +34,12 @@ An entry's `hugWidth` and `hugHeight` read as fixed when absent. A running serve
 
 ### `src/server/edit/`
 
-Owns the edit writer, which parses a frame with parse5 and writes new bytes only inside the edited attribute value or text span. It never serializes the tree, which rewrites the file's formatting, and never uses Bun's `HTMLRewriter`, which Node lacks.
+Owns the edit writer, which parses a frame with parse5 and writes only inside the edited attribute value or text span, and `insert.ts`, which adds one placed element's tag at a sibling gap and refuses a hash the file left. Neither serializes the tree, which rewrites formatting, nor uses Bun's `HTMLRewriter`, which Node lacks.
 
 - Every reader addresses an element by its `querySelectorAll('*')` index plus the SHA-256 hex of the file's raw bytes, skipping in a live frame the `data-frameboard` elements spliced into `head`
 - An element's name is its `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else its tag, and `elementTree` returns each name and parent under `body`
 - A board edit on a hash the file has left lands where its element's bytes and all before them held, or read once before and after, else is refused as stale, as the CLI's `edit` always is
-- The writer parses its own output again and refuses `verify-failed` unless the tree differs only at the target, so an input the guards never met is refused rather than written corrupted
+- Each writer parses its output again and refuses `verify-failed` unless the tree differs only at the target or by the placed element, so an unmet input is refused rather than written corrupted
 - A note anchors to a frame or to an element by its address, and falls back to the frame when the file's hash has changed
 
 ### `src/server/notes/`
