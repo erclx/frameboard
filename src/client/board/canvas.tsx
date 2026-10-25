@@ -4,6 +4,7 @@ import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
+import { findAction, isEnabled } from '@/client/actions/registry'
 import { TAB_ID } from '@/client/live/socket'
 import { liveStore, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
@@ -25,7 +26,7 @@ import { readTree } from './element/tree'
 import { Frame } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
-import { frameAt } from './geometry/hit'
+import { drawnAt, frameAt } from './geometry/hit'
 import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
 import { GuideCard } from './guide/card'
@@ -443,6 +444,28 @@ export function Canvas({
     )
   }
 
+  /**
+   * Whether a double-click landed in a frame's label strip, off its theme
+   * and compare controls, which click on release and would click twice. The
+   * first click selected the frame, so the label renames only that frame.
+   */
+  const onLabel = (event: MouseEvent): boolean => {
+    const viewport = viewportRef.current
+    if (noting || hand || framing || !viewport || !layer) return false
+    if (drawnAt(layer, '[data-label-control]', event)) return false
+    const transform = zoomTransform(viewport)
+    const [x, y] = transform.invert(pointer(event, viewport))
+    const frame = frameAt(withDrawn(frames), { x, y }, transform.k)
+    const chosen = selectionStore.getState()
+    return (
+      frame !== null &&
+      y < frame.box.y &&
+      chosen.page === page.ref &&
+      chosen.frames.length === 1 &&
+      chosen.frames[0] === frame.ref
+    )
+  }
+
   const live = useMemo(
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
     [frames, settled],
@@ -545,7 +568,16 @@ export function Canvas({
               onClick={(event) => {
                 if (event.metaKey) pickInside(event.nativeEvent)
               }}
-              onDoubleClick={(event) => pickInside(event.nativeEvent)}
+              // The label strip renames as F2 does, through its gates, and
+              // anywhere else a double-click picks inside the frame.
+              onDoubleClick={(event) => {
+                if (onLabel(event.nativeEvent)) {
+                  const rename = findAction('frame.rename')
+                  if (rename && isEnabled(rename)) rename.run()
+                  return
+                }
+                pickInside(event.nativeEvent)
+              }}
             />
           }
         />

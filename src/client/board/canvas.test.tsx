@@ -6,6 +6,7 @@ import { Profiler } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
@@ -14,6 +15,13 @@ import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { endPreview, setPreview } from './preview/store'
+import { clear, selectionStore } from './selection'
+import {
+  createClipboardStore,
+  renamingFrame,
+  stopFrameRename,
+  structureActions,
+} from './structure/actions'
 import { canvasView } from './view'
 import { PAN_EASE_MS } from './wheel'
 
@@ -747,6 +755,87 @@ describe('Canvas', () => {
     await expect
       .poll(() => layerOf(container).style.transform)
       .toBe('translate(64px, 200px) scale(0.5)')
+  })
+})
+
+describe('double-clicking on the canvas', () => {
+  const HERO = frame('hero', { x: 0, y: 0, width: 400, height: 300 })
+  const unregisters: (() => void)[] = []
+
+  function renderWithRename(canWrite = true) {
+    liveStore.setState({ canWrite })
+    unregisters.push(
+      registerActions(
+        structureActions({
+          page: () => 'studio/home',
+          frames: () => [HERO],
+          selection: selectionStore,
+          mode: modeStore,
+          live: liveStore,
+          clipboard: createClipboardStore(),
+          calls: createStructure(async () => Response.json({ ok: true })),
+        }),
+      ),
+    )
+    const { container } = renderCanvas(page('studio/home', [HERO]))
+    const drawn = container
+      .querySelector(`[data-frame="${HERO.ref}"]`)
+      ?.getBoundingClientRect()
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!drawn || !hit) throw new Error('no drawn frame')
+    return { drawn, hit }
+  }
+
+  /** Two presses and releases, then the dblclick, as a mouse sends them to `d3-drag`. */
+  function doubleClick(hit: HTMLElement, clientX: number, clientY: number) {
+    const event = (type: string, detail: number) =>
+      new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX,
+        clientY,
+        detail,
+      })
+    act(() => {
+      for (const detail of [1, 2]) {
+        hit.dispatchEvent(event('mousedown', detail))
+        window.dispatchEvent(event('mouseup', detail))
+        hit.dispatchEvent(event('click', detail))
+      }
+      hit.dispatchEvent(event('dblclick', 2))
+    })
+  }
+
+  afterEach(() => {
+    while (unregisters.length > 0) unregisters.pop()?.()
+    stopFrameRename()
+    clear(selectionStore)
+    liveStore.setState({ canWrite: false })
+  })
+
+  it("opens the inspector's rename on the frame's label", async () => {
+    const { drawn, hit } = renderWithRename()
+
+    doubleClick(hit, drawn.left + 8, drawn.top - 8)
+
+    expect(renamingFrame()).toEqual({ ref: HERO.ref, surface: 'inspector' })
+  })
+
+  it('opens no rename inside the frame', async () => {
+    const { drawn, hit } = renderWithRename()
+
+    doubleClick(hit, drawn.left + 40, drawn.top + 40)
+
+    expect(renamingFrame().ref).toBeNull()
+  })
+
+  it('opens no rename in a tab that cannot write', async () => {
+    const { drawn, hit } = renderWithRename(false)
+
+    doubleClick(hit, drawn.left + 8, drawn.top - 8)
+
+    expect(renamingFrame().ref).toBeNull()
   })
 })
 
