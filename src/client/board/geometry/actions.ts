@@ -192,7 +192,11 @@ export function geometryActions(context: GeometryContext): Action[] {
       label: 'Clear selection',
       group: 'selection',
       keys: ['Escape'],
-      enabled: () => editing() && selection.getState().frames.length > 0,
+      // An armed tool takes Esc first, returning to Move.
+      enabled: () =>
+        editing() &&
+        mode.getState().tool === 'move' &&
+        selection.getState().frames.length > 0,
       run: () => clear(selection),
     },
     {

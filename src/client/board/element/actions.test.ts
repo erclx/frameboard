@@ -211,6 +211,15 @@ describe('elementActions', () => {
 
       expect(action('element.up').enabled?.()).toBe(false)
     })
+
+    it('stands aside with a tool armed, which Esc returns to Move first', () => {
+      const { mode, action, at } = setup()
+      at(7)
+
+      mode.setState({ tool: 'shape' })
+
+      expect(action('element.up').enabled?.()).toBe(false)
+    })
   })
 
   describe('Tab', () => {

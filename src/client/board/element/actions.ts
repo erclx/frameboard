@@ -133,8 +133,11 @@ export function elementActions(context: ElementContext): Action[] {
       // With a note card open, the card's own listener closes it and this
       // row holds the press, so the selection clear behind it never runs
       // on the same Esc.
+      // An armed tool takes Esc first, returning to Move.
       enabled: () =>
-        elementSelected() && (context.noteOpen() || escape.enabled()),
+        elementSelected() &&
+        (context.noteOpen() ||
+          (mode.getState().tool === 'move' && escape.enabled())),
       run: () => {
         if (!context.noteOpen()) escape.run()
       },

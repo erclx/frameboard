@@ -15,6 +15,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 import { useBoardActions } from './board-actions'
 import type { Box } from './geometry/box'
 import { modeStore } from './mode'
+import { closeNote, notesUi } from './notes/tool'
 import { clear, select, selectionStore } from './selection'
 import { attachCanvas } from './view'
 
@@ -41,6 +42,7 @@ const IDS = [
   'view.pan.rightFar',
   'view.zoomToSelection',
   'frame.copyPng',
+  'tool.disarm',
 ] as const
 
 function setup() {
@@ -88,7 +90,52 @@ describe('useBoardActions', () => {
   afterEach(() => {
     done()
     clear(selectionStore)
-    modeStore.setState({ mode: 'edit' })
+    modeStore.setState({ mode: 'edit', tool: 'move' })
+    closeNote()
+  })
+
+  describe('Esc with a tool armed', () => {
+    it.each(['hand', 'frame', 'note', 'text', 'shape'] as const)(
+      'returns %s to Move and keeps the selection',
+      (tool) => {
+        const board = setup()
+        done = board.done
+        select(selectionStore, 'studio/home', [HERO.ref])
+        modeStore.setState({ tool })
+
+        board.action('tool.disarm').run()
+
+        expect(modeStore.getState().tool).toBe('move')
+        expect(selectionStore.getState().frames).toEqual([HERO.ref])
+      },
+    )
+
+    it('stands aside with Move already on', () => {
+      const board = setup()
+      done = board.done
+
+      expect(isEnabled(board.action('tool.disarm'))).toBe(false)
+    })
+
+    it('stands aside while a note card is open, which Esc closes first', () => {
+      const board = setup()
+      done = board.done
+      modeStore.setState({ tool: 'text' })
+
+      notesUi.setState({
+        open: { kind: 'thread', page: 'studio/home', id: 'n1' },
+      })
+
+      expect(isEnabled(board.action('tool.disarm'))).toBe(false)
+    })
+
+    it('stands aside in Play, where Esc exits Play', () => {
+      const board = setup()
+      done = board.done
+      modeStore.setState({ tool: 'text', mode: 'play' })
+
+      expect(isEnabled(board.action('tool.disarm'))).toBe(false)
+    })
   })
 
   it('pans by 40 px on an arrow with nothing selected', () => {
