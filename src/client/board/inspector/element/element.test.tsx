@@ -496,6 +496,100 @@ describe('FillSection', () => {
     ])
   })
 
+  it('scrubs fill opacity from its number, previewing and writing once on release', () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={tokenValueOf('--primary', 50)}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(_property, css) => previews.push(css)}
+      />,
+    )
+
+    scrubBy(screen.getByRole('textbox', { name: 'Fill opacity' }), 3)
+
+    expect(previews.at(-1)).toBe(
+      'color-mix(in srgb, var(--primary) 56%, transparent)',
+    )
+    expect(changes).toEqual([
+      {
+        kind: 'style',
+        property: 'background-color',
+        value: 'color-mix(in srgb, var(--primary) 56%, transparent)',
+      },
+    ])
+  })
+
+  it('puts the stored fill back on Esc mid-scrub and writes nothing', async () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={tokenValueOf('--primary', 50)}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(_property, css) => previews.push(css)}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Fill opacity' })
+
+    act(() => {
+      field.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          pointerType: 'mouse',
+        }),
+      )
+    })
+    act(() => {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, movementX: 2 }),
+      )
+    })
+    await userEvent.keyboard('{Escape}')
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+    })
+
+    expect(previews.at(-1)).toBeNull()
+    expect(changes).toEqual([])
+  })
+
+  it('scrubs nothing on a fill opacity no color-mix() can carry', () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: 'red', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Fill opacity' })
+
+    scrubBy(field, 3)
+
+    expect(field).toBeDisabled()
+    expect(changes).toEqual([])
+  })
+
   it('writes a raw hex below 100 with an alpha pair', async () => {
     const { changes, write } = recorder()
     render(
@@ -635,6 +729,36 @@ describe('StrokeSection', () => {
       expect(changes).toEqual([{ kind: 'style', ...written }])
     },
   )
+
+  it('scrubs stroke opacity from its number, previewing the border color', () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <StrokeSection
+        bordered
+        borderColor={tokenValueOf('--border', 50)}
+        tokens={[PRIMARY, BORDER]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(property, css) => previews.push(`${property}: ${css}`)}
+      />,
+    )
+
+    scrubBy(screen.getByRole('textbox', { name: 'Stroke opacity' }), 1)
+
+    expect(previews.at(-1)).toBe(
+      'border-color: color-mix(in srgb, var(--border) 52%, transparent)',
+    )
+    expect(changes).toEqual([
+      {
+        kind: 'style',
+        property: 'border-color',
+        value: 'color-mix(in srgb, var(--border) 52%, transparent)',
+      },
+    ])
+  })
 
   it('adds a 1px border in the border token', async () => {
     const { changes, write } = recorder()

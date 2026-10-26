@@ -25,6 +25,11 @@ interface NumberFieldProps {
   prefix?: ReactNode
   /** The input's left padding, which clears the prefix's zone, 32px by default for a letter or icon. */
   inset?: string
+  /**
+   * Scrubs from a drag on the number itself, for a field with no room for a
+   * prefix. A click with no drag still focuses it to type, selecting all.
+   */
+  scrubValue?: boolean
   className?: string
   inputClassName?: string
   /** The stored value, null where the selection's values differ, which reads `Mixed`. */
@@ -76,6 +81,7 @@ export function NumberField({
   caption,
   prefix,
   inset = 'pl-[32px]',
+  scrubValue = false,
   className,
   inputClassName,
   value,
@@ -214,6 +220,35 @@ export function NumberField({
     [draft?.offset, format],
   )
 
+  const input = (
+    <Primitive.Input
+      aria-label={label}
+      placeholder={value === null ? 'Mixed' : undefined}
+      className={cn(
+        'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
+        prefix ? inset : undefined,
+        scrubValue && 'cursor-ew-resize',
+        scrubValue && !disabled && ZONE_LIT,
+        inputClassName,
+      )}
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => {
+        if (isStrayHistory(event)) event.preventBaseUIHandler()
+      }}
+      onKeyDown={onKeyDown}
+      onKeyUp={(event) => {
+        if (STEP_KEYS.has(event.key)) commit()
+      }}
+      onBlur={() => {
+        if (cancelled.current) {
+          cancelled.current = false
+          return
+        }
+        commit()
+      }}
+    />
+  )
+
   return (
     <Primitive.Root
       className={cn('group/number block', className)}
@@ -278,30 +313,17 @@ export function NumberField({
             {prefix}
           </Primitive.ScrubArea>
         ) : null}
-        <Primitive.Input
-          aria-label={label}
-          placeholder={value === null ? 'Mixed' : undefined}
-          className={cn(
-            'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
-            prefix ? inset : undefined,
-            inputClassName,
-          )}
-          onFocus={(event) => event.currentTarget.select()}
-          onChange={(event) => {
-            if (isStrayHistory(event)) event.preventBaseUIHandler()
-          }}
-          onKeyDown={onKeyDown}
-          onKeyUp={(event) => {
-            if (STEP_KEYS.has(event.key)) commit()
-          }}
-          onBlur={() => {
-            if (cancelled.current) {
-              cancelled.current = false
-              return
-            }
-            commit()
-          }}
-        />
+        {scrubValue ? (
+          <Primitive.ScrubArea
+            data-scrub
+            className="block"
+            onPointerDown={startScrub}
+          >
+            {input}
+          </Primitive.ScrubArea>
+        ) : (
+          input
+        )}
       </div>
     </Primitive.Root>
   )

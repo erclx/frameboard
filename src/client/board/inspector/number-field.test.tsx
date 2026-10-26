@@ -442,6 +442,66 @@ describe('NumberField', () => {
     expect(calls.writes).toEqual([])
   })
 
+  it('scrubs from the number itself when it scrubs its value', () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        value={40}
+        scrubValue
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    scrubBy(field(), 3)
+
+    expect(calls.writes).toHaveLength(1)
+    expect(calls.writes[0]).toBeGreaterThan(40)
+  })
+
+  it('types after a click on a number that scrubs its value', async () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        value={40}
+        scrubValue
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    await userEvent.click(field())
+
+    expect(field()).toHaveFocus()
+    expect(calls.writes).toEqual([])
+
+    await userEvent.keyboard('55{Enter}')
+
+    expect(calls.writes).toEqual([55])
+  })
+
+  it('scrubs a Mixed value from its zone as an offset from zero', () => {
+    const writes: number[][] = []
+    render(
+      <NumberField
+        label="X position"
+        prefix="X"
+        value={null}
+        disabled={false}
+        onCommit={async (change) => {
+          writes.push([10, 200].map(change))
+          return true
+        }}
+      />,
+    )
+
+    scrubBy(screen.getByText('X'), 1)
+
+    expect(writes).toEqual([[12, 202]])
+  })
+
   it('puts the stored value back on Esc during a scrub and writes nothing on release', async () => {
     const calls = recorder({ from: 40 })
     render(
