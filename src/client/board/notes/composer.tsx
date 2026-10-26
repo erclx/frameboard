@@ -5,7 +5,7 @@ import { useLive } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 
 import { modeStore } from '../mode'
-import { defaultSession, messageFor } from './form'
+import { addressee, defaultSession, messageFor, pickedSession } from './form'
 import type { NotePick } from './pick'
 import { ListeningCount, SessionPicker } from './session-picker'
 import { newNoteDraft, setDraft, useNotesUi } from './tool'
@@ -18,25 +18,23 @@ interface ComposerProps {
 /**
  * `New note on <frame>`, per `canon/design/notes/place`: the text, the
  * listening session it goes to, Save to pin it without sending, and Send to
- * pin it and queue it to that session.
+ * pin it and queue it to that session, or to start a new one with it.
  */
 export function Composer({ pick, onClose }: ComposerProps) {
   const listeners = useLive((state) => state.listeners)
   const holder = useLive((state) => state.claims[pick.frame.ref]?.session)
   const canWrite = useLive((state) => state.canWrite)
+  const dispatch = useLive((state) => state.dispatch)
   // Kept by frame, so a composer closed by a stray press reopens with it.
   const draftKey = newNoteDraft(pick.frame.ref)
   const text = useNotesUi((state) => state.drafts[draftKey] ?? '')
   const setText = (next: string) => setDraft(draftKey, next)
   const [session, setSession] = useState(() =>
-    defaultSession(listeners, holder),
+    defaultSession(listeners, holder, dispatch),
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  // A listener leaving takes the pick with it, and a sole one arriving is picked.
-  const picked = listeners.some((listener) => listener.session === session)
-    ? session
-    : defaultSession(listeners, holder)
+  const picked = pickedSession(session, listeners, holder, dispatch)
 
   const save = async (to: string | null) => {
     if (text.trim() === '') {
@@ -55,7 +53,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
         ...(pick.element === null
           ? {}
           : { element: pick.element, renderedAt: pick.renderedAt }),
-        ...(to === null ? {} : { to }),
+        ...(to === null ? {} : addressee(to)),
       })
       setText('')
       // One note per pick, as the Frame tool places one frame.
@@ -111,6 +109,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
               setError(null)
             }}
             disabled={!canWrite}
+            dispatch={dispatch}
           />
           <NoteButton
             variant="ghost"
@@ -123,7 +122,9 @@ export function Composer({ pick, onClose }: ComposerProps) {
           <NoteButton
             type="submit"
             variant="primary"
-            disabled={!canWrite || busy || listeners.length === 0}
+            disabled={
+              !canWrite || busy || (listeners.length === 0 && !dispatch)
+            }
           >
             Send
           </NoteButton>
