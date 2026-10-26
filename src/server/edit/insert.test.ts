@@ -412,6 +412,18 @@ describe('moveElement', () => {
     ).toMatchObject({ ok: false, reason: 'invalid-address' })
   })
 
+  it.each([4, 5])(
+    'should refuse its own gap with whitespace after it, named before %i',
+    (before) => {
+      expect(
+        moveElement('<main>\n  <h1>A</h1>\n  <p>B</p>\n</main>', 4, {
+          parent: FIRST,
+          before,
+        }),
+      ).toMatchObject({ ok: false, reason: 'invalid-address' })
+    },
+  )
+
   it('should refuse an element the file does not state', () => {
     expect(
       moveElement('<p>A</p><p>B</p>', BODY, { parent: FIRST, before: null }),
@@ -454,6 +466,17 @@ describe('relocateMoved', () => {
     if (!result.ok) throw new Error(result.detail)
 
     expect(relocateMoved(result.html, result.span, 'before')?.html).toBe(twins)
+  })
+
+  it('should put back the first of three identical elements ahead of its twin', () => {
+    const triplets =
+      '<main><div data-name="Rectangle"></div><div data-name="Rectangle"></div><div data-name="Rectangle"></div><p>B</p></main>'
+    const result = moveElement(triplets, 4, { parent: FIRST, before: null })
+    if (!result.ok) throw new Error(result.detail)
+
+    expect(relocateMoved(result.html, result.span, 'before')?.html).toBe(
+      triplets,
+    )
   })
 
   it('should refuse once an agent changed the moved element', () => {

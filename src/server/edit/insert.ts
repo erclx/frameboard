@@ -598,21 +598,23 @@ export function moveElement(
       `taking the <${element.tagName}> at ${index} out would change more than it, so nothing was written`,
     )
   }
-  const moved = insertElement(
-    taken.html,
-    {
-      parent: shift(placement.parent),
-      before: placement.before === null ? null : shift(placement.before),
-    },
-    taken.span.markup,
-  )
-  if (!moved.ok) return moved
-  if (moved.html === source) {
+  const target = {
+    parent: shift(placement.parent),
+    before: placement.before === null ? null : shift(placement.before),
+  }
+  // Read on the gaps, not the bytes, since whitespace after the element
+  // would otherwise move ahead of it and read as a change.
+  if (
+    target.parent === taken.span.placement.parent &&
+    target.before === taken.span.placement.before
+  ) {
     return refuse(
       'invalid-address',
       `the <${element.tagName}> at ${index} already sits in that gap`,
     )
   }
+  const moved = insertElement(taken.html, target, taken.span.markup)
+  if (!moved.ok) return moved
   return {
     ok: true,
     html: moved.html,
