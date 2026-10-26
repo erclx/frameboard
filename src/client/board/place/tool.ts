@@ -7,6 +7,7 @@ import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 
 import { modeStore } from '../mode'
+import type { BoardPoint } from '../notes/pick'
 import type { ElementKey } from '../selection'
 import type { PlacedKind } from './write'
 
@@ -55,6 +56,27 @@ export const shapeStore = createStore<{ shape: ShapeKind }>()(() => ({
 export const carriedStore = createStore<{ carried: ElementKey | null }>()(
   () => ({ carried: null }),
 )
+
+/** A Rectangle or Ellipse drag as it ended, where it started and the size it drew in CSS pixels. */
+export interface Draft {
+  from: BoardPoint
+  size: { width: number; height: number }
+}
+
+// Set on the release and taken by the click that follows it, and cleared on
+// the next press, so a press that never clicks leaves nothing for a later one.
+let finished: Draft | null = null
+
+export function finishDraft(draft: Draft | null): void {
+  finished = draft
+}
+
+/** The drag a Rectangle or Ellipse press just finished, taken once, else null. */
+export function takeDraft(): Draft | null {
+  const draft = finished
+  finished = null
+  return draft
+}
 
 export function shapeRow(kind: ShapeKind): ShapeRow {
   return SHAPES.find((row) => row.kind === kind) ?? SHAPES[0]
