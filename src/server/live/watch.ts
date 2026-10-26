@@ -206,6 +206,43 @@ export function reloadRefs(
   return named
 }
 
+/** A project or page folder the board's own rename moved to `path`, at `at` in epoch milliseconds. */
+export interface MovedFolder {
+  path: string
+  at: number
+}
+
+/**
+ * `refs` less each frame that only moved with a folder the board renamed,
+ * being one under a moved folder whose file is no newer than the move. It
+ * renders what it rendered under its old ref, so a reload would restart it
+ * for nothing, while a file written since still reloads.
+ */
+export function unmovedRefs(
+  refs: string[],
+  board: ListResult,
+  moved: readonly MovedFolder[],
+): string[] {
+  if (moved.length === 0) return refs
+  const onlyMoved = new Set<string>()
+  for (const project of board.projects) {
+    for (const page of project.pages) {
+      for (const frame of page.frames) {
+        const written = Date.parse(frame.modifiedAt)
+        if (
+          moved.some(
+            ({ path, at }) =>
+              frame.path.startsWith(`${path}${sep}`) && written <= at,
+          )
+        ) {
+          onlyMoved.add(frame.ref)
+        }
+      }
+    }
+  }
+  return refs.filter((ref) => !onlyMoved.has(ref))
+}
+
 /**
  * The frame a page-folder file belongs to: `hero.html` itself, or a temp file
  * an editor or atomic writer saves it through, such as `hero.html.swap`.

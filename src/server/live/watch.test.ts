@@ -1,4 +1,4 @@
-import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdirSync, renameSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +13,7 @@ import {
   type BoardWatcher,
   createBatcher,
   reloadRefs,
+  unmovedRefs,
   watchBoard,
 } from './watch'
 
@@ -358,5 +359,59 @@ describe('watchBoard with a sheet outside the board', () => {
     await expect
       .poll(() => batches.flat(), { timeout: SEEN_MS })
       .toContain(tokens)
+  })
+})
+
+describe('unmovedRefs', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('live')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const MOVED = ['studio/start/hero', 'studio/start/mobile']
+
+  function renameHome() {
+    renameSync(
+      join(board.root, 'studio/home'),
+      join(board.root, 'studio/start'),
+    )
+    return { path: join(board.root, 'studio/start'), at: Date.now() }
+  }
+
+  it('drops a frame that only moved with the folder the board renamed', async () => {
+    const moved = renameHome()
+
+    expect(unmovedRefs(MOVED, await scanBoard(board.root), [moved])).toEqual([])
+  })
+
+  it('keeps a frame written after the folder moved', async () => {
+    const moved = renameHome()
+    const later = new Date(moved.at + 1000)
+    utimesSync(join(board.root, 'studio/start/hero.html'), later, later)
+
+    expect(unmovedRefs(MOVED, await scanBoard(board.root), [moved])).toEqual([
+      'studio/start/hero',
+    ])
+  })
+
+  it('keeps a frame outside every moved folder', async () => {
+    const moved = { path: join(board.root, 'studio/pricing'), at: Date.now() }
+
+    expect(
+      unmovedRefs(['studio/home/hero'], await scanBoard(board.root), [moved]),
+    ).toEqual(['studio/home/hero'])
+  })
+
+  it('keeps a frame in a sibling folder whose name only starts the same', async () => {
+    const moved = { path: join(board.root, 'studio/hom'), at: Date.now() }
+
+    expect(
+      unmovedRefs(['studio/home/hero'], await scanBoard(board.root), [moved]),
+    ).toEqual(['studio/home/hero'])
   })
 })
