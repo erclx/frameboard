@@ -30,13 +30,15 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 
 ### `src/client/board/place/`
 
-Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element into a frame's layout at the click and move nothing else.
+Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element into a frame's layout at the click and move nothing else, and the drop of a selected element a Move drag carries.
 
 - `gap.ts` reads the container and the sibling gap under the pointer from the live DOM, along x in a flex row or a grid and along y otherwise, as the insert route's file indices
 - A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
-- `drop-line.tsx` draws a 2px line in the selection blue at that gap while either tool is on, and nothing over bare canvas or a loading frame
+- `drop-line.tsx` draws a 2px line in the selection blue at that gap while either tool is on or an element is carried, and nothing over bare canvas, a loading frame, or a carried element's own spot
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
+
+A Rectangle or Ellipse drag past 3 screen pixels draws a box through `shape-draft.tsx` and lands the shape at the gap the drag started in, at the size drawn. A shorter drag, a Divider, and Text stay a click. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
 
 ### `src/client/board/left-panel/`
 

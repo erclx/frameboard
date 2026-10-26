@@ -94,7 +94,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that
 - A placed element's undo takes out the one element its bytes match, and its redo puts it back under its parent, ahead of the sibling it preceded, both found by start tag
-- A deleted element is the same change run backwards, so its undo puts it back ahead of the sibling it preceded, with the whitespace beside it possibly on its other side
+- A deleted element is that change run backwards, its whitespace possibly landing on its other side, while a moved one holds both gaps with the bytes beside each, so its undo is byte for byte
 - A layout entry's undo compares and restores the size on an axis both it and the stored entry hug as whatever is stored, since the server measured that size and the developer never set it
 
 ## Gotchas
@@ -102,5 +102,5 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - Hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, because that would write `display` into the frame, which is layout
-- A press on a selected element's outline or corner marks does nothing, and the frame's corners take no resize while an element is selected, since their handles are hidden then
+- A drag on a selected element or its outline carries the element, so its frame moves by the label strip or after Esc, and takes no corner resize while its handles hide
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one
