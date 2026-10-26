@@ -5,7 +5,12 @@ import { tokenSheets } from '@/server/checks/tokens'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { parseFrame } from './address'
-import { elementLayouts, elementName, elementTree } from './elements'
+import {
+  elementLayouts,
+  elementName,
+  elementRounds,
+  elementTree,
+} from './elements'
 
 describe('elementTree', () => {
   it('lists each element under body with the index parseFrame gives it', () => {
@@ -22,6 +27,7 @@ describe('elementTree', () => {
         name: 'main',
         textOnly: false,
         layout: 'block',
+        round: false,
       },
       {
         index: 5,
@@ -30,6 +36,7 @@ describe('elementTree', () => {
         name: 'Hi',
         textOnly: true,
         layout: 'block',
+        round: false,
       },
       {
         index: 6,
@@ -38,6 +45,7 @@ describe('elementTree', () => {
         name: 'x',
         textOnly: true,
         layout: 'block',
+        round: false,
       },
       {
         index: 7,
@@ -46,6 +54,7 @@ describe('elementTree', () => {
         name: 'footer',
         textOnly: false,
         layout: 'block',
+        round: false,
       },
     ])
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
@@ -77,6 +86,22 @@ describe('elementTree', () => {
     ).toEqual([
       ['div', 'column'],
       ['p', 'block'],
+    ])
+  })
+
+  it('marks an empty element its read rounds as round', () => {
+    const tree = elementTree(
+      '<body><div></div><div><p>a</p></div></body>',
+      [],
+      [false, false, false, true, true],
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.index, row.round]),
+    ).toEqual([
+      [3, true],
+      [4, false],
+      [5, false],
     ])
   })
 
@@ -169,6 +194,58 @@ describe('elementLayouts', () => {
     )
 
     expect(layout).toBe('row')
+  })
+})
+
+describe('elementRounds', () => {
+  let board: TempBoard | undefined
+
+  afterEach(() => {
+    board?.cleanup()
+    board = undefined
+  })
+
+  /** Whether the element with `id="t"` reads as rounded to an ellipse. */
+  function roundOf(body: string, css = '') {
+    board = writeBoard({
+      'tokens.css': '',
+      'site/home/hero.html': `<!doctype html><html><head><style>${css}</style></head><body>${body}</body></html>`,
+    })
+    const source = readFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+    const rounds = elementRounds(source, tokenSheets(board.root, 'site'))
+    const index = source.elements.findIndex(
+      (candidate) => candidate.attribs.id === 't',
+    )
+    return rounds[index]
+  }
+
+  it.each([
+    ['a 50% radius', '<div id="t" style="border-radius: 50%"></div>', true],
+    [
+      'a radius past 50%',
+      '<div id="t" style="border-radius: 100%"></div>',
+      true,
+    ],
+    ['a pixel radius', '<div id="t" style="border-radius: 8px"></div>', false],
+    [
+      'a radius under 50%',
+      '<div id="t" style="border-radius: 25%"></div>',
+      false,
+    ],
+    ['no radius', '<div id="t"></div>', false],
+  ])('reads %s', (_case, body, expected) => {
+    expect(roundOf(body)).toBe(expected)
+  })
+
+  it('reads a radius a class sets', () => {
+    expect(
+      roundOf('<div id="t" class="dot"></div>', '.dot { border-radius: 50% }'),
+    ).toBe(true)
   })
 })
 

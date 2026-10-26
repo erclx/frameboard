@@ -27,6 +27,7 @@ const TREE: ElementTree = {
       name: 'main',
       textOnly: false,
       layout: 'block',
+      round: false,
     },
     {
       index: 7,
@@ -35,6 +36,7 @@ const TREE: ElementTree = {
       name: 'Hi',
       textOnly: true,
       layout: 'block',
+      round: false,
     },
     {
       index: 8,
@@ -43,6 +45,7 @@ const TREE: ElementTree = {
       name: 'x',
       textOnly: true,
       layout: 'block',
+      round: false,
     },
     {
       index: 9,
@@ -51,6 +54,7 @@ const TREE: ElementTree = {
       name: 'footer',
       textOnly: false,
       layout: 'block',
+      round: false,
     },
   ],
 }

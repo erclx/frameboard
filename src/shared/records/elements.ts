@@ -21,6 +21,8 @@ export const treeElementSchema = z.object({
   textOnly: z.boolean(),
   /** Its layout, which a culled frame's Layers rows draw from without an iframe. */
   layout: layoutSchema,
+  /** True when it holds nothing and its corners round by half or more, so it draws as an ellipse. */
+  round: z.boolean(),
 })
 
 export type TreeElement = z.infer<typeof treeElementSchema>

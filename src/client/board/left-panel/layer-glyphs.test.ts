@@ -19,6 +19,7 @@ function element(overrides: Partial<TreeElement>): TreeElement {
     name: 'div',
     textOnly: false,
     layout: 'block',
+    round: false,
     ...overrides,
   }
 }
