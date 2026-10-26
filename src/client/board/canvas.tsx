@@ -712,12 +712,13 @@ export function Canvas({
                 }
                 if (framing) {
                   // A drag draws the frame at its box, and one too small to
-                  // use places the picked size, as a click does.
+                  // use places the picked size, as a click does. The floor
+                  // reads on screen, so a short drag stays a click at any zoom.
                   const draft = takeDraft()
                   const drawn =
                     draft &&
-                    draft.size.width >= DRAWN_FRAME_MIN &&
-                    draft.size.height >= DRAWN_FRAME_MIN
+                    draft.size.width * transform.k >= DRAWN_FRAME_MIN &&
+                    draft.size.height * transform.k >= DRAWN_FRAME_MIN
                       ? { ...draft.at, ...draft.size }
                       : null
                   const size = sizeOf(viewport)

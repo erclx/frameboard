@@ -38,7 +38,7 @@ Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element i
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
 
-A Rectangle, Ellipse, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes land at the gap the drag started in, and a frame on a box of at least 40 by 40. Shorter drags, Dividers, and Text stay clicks. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
+A Rectangle, Ellipse, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
 
 ### `src/client/board/left-panel/`
 

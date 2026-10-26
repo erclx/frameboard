@@ -51,7 +51,7 @@ export interface PlaceContext {
   rename?: (ref: string) => void
 }
 
-/** The smallest box a Frame tool drag draws, below which the drag places as a click does. */
+/** The smallest box, in screen pixels, a Frame tool drag draws, below which the drag places as a click does. */
 export const DRAWN_FRAME_MIN = 40
 
 /** A drawn frame's name stem, since a drawn box has no size to be named for. */

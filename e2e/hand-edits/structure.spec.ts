@@ -429,7 +429,7 @@ test.describe('page structure by hand, and its undo', () => {
         .toBe(false)
     })
 
-    test('draws a frame at the box a Frame tool drag covers, and a 5px drag places the picked size', async ({
+    test('draws a frame at the box a Frame tool drag covers, and a 30px drag places the picked size at any zoom', async ({
       page,
     }) => {
       await openAsWriter(page)
@@ -438,6 +438,9 @@ test.describe('page structure by hand, and its undo', () => {
         .evaluate(
           (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
         )
+      // Zoomed out far enough that 30 screen px cover more than 40 board px,
+      // so the short drag below proves the floor reads on screen.
+      expect(zoom).toBeLessThan(0.75)
       const hit = await page.locator('[data-hit-layer]').boundingBox()
       if (!hit) throw new Error('The canvas draws no hit layer')
       const start = { x: hit.x + 40, y: hit.y + 40 }
@@ -460,7 +463,8 @@ test.describe('page structure by hand, and its undo', () => {
       await page.keyboard.press('f')
       await page.mouse.move(start.x, start.y)
       await page.mouse.down()
-      await page.mouse.move(start.x + 5, start.y)
+      await page.mouse.move(start.x + 30, start.y + 30, { steps: 4 })
+      await expect(page.locator('[data-shape-draft]')).toBeVisible()
       await page.mouse.up()
 
       await expect
