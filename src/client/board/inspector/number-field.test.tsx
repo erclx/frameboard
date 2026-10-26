@@ -384,6 +384,124 @@ describe('NumberField', () => {
     expect(calls.writes[0]).toBeGreaterThan(40)
   })
 
+  it('scrubs from a zone spanning the field height and at least 24px', () => {
+    render(
+      <NumberField
+        label="X position"
+        prefix="X"
+        value={40}
+        disabled={false}
+        {...recorder()}
+      />,
+    )
+
+    const zone = screen.getByText('X').getBoundingClientRect()
+    const input = field().getBoundingClientRect()
+
+    expect(zone.height).toBe(input.height)
+    expect(zone.top).toBe(input.top)
+    expect(zone.left).toBe(input.left)
+    expect(zone.width).toBeGreaterThanOrEqual(24)
+  })
+
+  it('scrubs from its caption, writing once on release', () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        caption="Position"
+        prefix="X"
+        value={40}
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    scrubBy(screen.getByText('Position'), 3)
+
+    expect(calls.writes).toHaveLength(1)
+    expect(calls.writes[0]).toBeGreaterThan(40)
+  })
+
+  it('focuses the field and writes nothing on a caption click', async () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        caption="Position"
+        prefix="X"
+        value={40}
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    await userEvent.click(screen.getByText('Position'))
+
+    expect(field()).toHaveFocus()
+    expect(calls.writes).toEqual([])
+  })
+
+  it('scrubs from the number itself when it scrubs its value', () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        value={40}
+        scrubValue
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    scrubBy(field(), 3)
+
+    expect(calls.writes).toHaveLength(1)
+    expect(calls.writes[0]).toBeGreaterThan(40)
+  })
+
+  it('types after a click on a number that scrubs its value', async () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        value={40}
+        scrubValue
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    await userEvent.click(field())
+
+    expect(field()).toHaveFocus()
+    expect(calls.writes).toEqual([])
+
+    await userEvent.keyboard('55{Enter}')
+
+    expect(calls.writes).toEqual([55])
+  })
+
+  it('scrubs a Mixed value from its zone as an offset from zero', () => {
+    const writes: number[][] = []
+    render(
+      <NumberField
+        label="X position"
+        prefix="X"
+        value={null}
+        disabled={false}
+        onCommit={async (change) => {
+          writes.push([10, 200].map(change))
+          return true
+        }}
+      />,
+    )
+
+    scrubBy(screen.getByText('X'), 1)
+
+    expect(writes).toEqual([[12, 202]])
+  })
+
   it('puts the stored value back on Esc during a scrub and writes nothing on release', async () => {
     const calls = recorder({ from: 40 })
     render(

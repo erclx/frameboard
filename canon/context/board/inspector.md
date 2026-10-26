@@ -17,7 +17,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Element:** name, opacity, radius, and typography size, weight, and alignment, plus its text when it holds text only. The name writes `data-name`, and an empty one falls back to the derived name.
+- **Appearance and typography:** captioned opacity and corner radius, then size, weight, and alignment, plus its text when it holds text only. Layers renames an element, so no name field shows here.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
@@ -31,8 +31,9 @@ The Frame section stays above an element's sections and hides its name row while
 - Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
 
-Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and dragging its prefix letter or icon scrubs it. A weight steps by 100, and a step on a `Mixed` frame value moves each frame by the step from its own.
+Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and a drag on its prefix zone or caption scrubs it. A weight steps by 100, and a step on a `Mixed` frame value moves each frame by the step from its own.
 
+- The prefix sits in a full-height zone at least 24px wide, and a fill or stroke opacity with no room for one scrubs from a drag on the number while a click still types
 - A step or a scrub previews first, a frame at its pending box and an element through an inline style on its live node, and writes once on the arrow's keyup or the scrub's release
 - Esc during either puts the stored value back and writes nothing, and a refused write puts back the preview too
 - The picker under `element/color-picker/` previews a custom color and writes it once as it closes or on Enter in its hex field

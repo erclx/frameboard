@@ -53,7 +53,7 @@ The layers tree lists the top of the stack first. A row click selects its frame 
 - Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
 - The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
 
-An element row renames on a double-click or F2 too, writing `data-name` as the inspector's Name does. Its F2 stops at the row, so the board's own F2 opens no second field.
+An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 
 ### `src/client/board/guide/`
 

@@ -213,7 +213,9 @@ test.describe('an element edit on a claimed frame', () => {
       await page.keyboard.down('Meta')
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
       await page.keyboard.up('Meta')
-      await expect(page.getByRole('heading', { name: 'Element' })).toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'Appearance' }),
+      ).toBeVisible({
         timeout: 1000,
       })
     }).toPass({ timeout: 10_000 })

@@ -1,7 +1,4 @@
-import { Circle, Square } from 'lucide-react'
-
 import { NumberField } from '../number-field'
-import { CommitField } from './field'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const PERCENT: Intl.NumberFormatOptions = {
@@ -11,9 +8,42 @@ const PERCENT: Intl.NumberFormatOptions = {
 }
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-interface LayerSectionProps {
-  /** The layer name, being `data-name` or the one the tree derives. */
-  name: string
+function OpacityIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3"
+    >
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function RadiusIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3"
+    >
+      <path d="M4 20V10a6 6 0 0 1 6-6h10" />
+    </svg>
+  )
+}
+
+interface AppearanceSectionProps {
   /** From 0 to 1, as the browser computed it. */
   opacity: number
   /** The corner radius in px. */
@@ -25,41 +55,31 @@ interface LayerSectionProps {
 }
 
 /**
- * The Element section of `inspector/text`: the layer name, written as
- * `data-name`, the opacity as a percent, and the corner radius in px, the
- * two numbers stepping and scrubbing. An empty name writes `data-name`
- * empty, so the layer falls back to its derived name.
+ * The Appearance section of `inspector/text`: the opacity as a percent and
+ * the corner radius in px, each captioned, stepping, and scrubbing. The layer name is
+ * renamed in Layers rather than here.
  */
-export function LayerSection({
-  name,
+export function AppearanceSection({
   opacity,
   radius,
   disabled,
   write,
   preview,
-}: LayerSectionProps) {
+}: AppearanceSectionProps) {
   const percent = Math.round(opacity * 100)
   return (
     <section
-      aria-labelledby="inspector-element"
+      aria-labelledby="inspector-appearance"
       className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
     >
-      <h2 id="inspector-element" className="mb-2 text-xs font-semibold">
-        Element
+      <h2 id="inspector-appearance" className="mb-2 text-xs font-semibold">
+        Appearance
       </h2>
-      <CommitField
-        label="Name"
-        className="mb-1.5"
-        shown={name}
-        disabled={disabled}
-        onCommit={(typed) =>
-          write({ kind: 'attribute', name: 'data-name', value: typed })
-        }
-      />
       <div className="grid grid-cols-2 gap-1.5">
         <NumberField
           label="Opacity"
-          prefix={<Circle className="size-1.5 fill-current" />}
+          caption="Opacity"
+          prefix={<OpacityIcon />}
           inset="pl-[28px]"
           value={percent}
           min={0}
@@ -76,7 +96,8 @@ export function LayerSection({
         />
         <NumberField
           label="Corner radius"
-          prefix={<Square className="size-3" />}
+          caption="Corner radius"
+          prefix={<RadiusIcon />}
           inset="pl-[28px]"
           value={radius}
           min={0}

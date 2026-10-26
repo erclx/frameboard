@@ -110,7 +110,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- The inspector edits a selected element's name, opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text, its numbers stepping on arrow keys and scrubbing from their label
+- The inspector edits a selected element's opacity, radius, type size, weight, alignment, fill, stroke color, shadow, and text, its numbers stepping on arrow keys and scrubbing from a label or caption
 - The layers panel selects, renames, restacks, hides, and locks frames, renames elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
