@@ -51,6 +51,10 @@ describe.skipIf(shell === null)(
           '<main style="min-height: 100vh">Hi</main>',
         ),
         'studio/home/skeleton.html': page(''),
+        'studio/home/spill.html': page(
+          '<p>one two three four</p>',
+          'p { width: 1px; height: 20px; margin: 0; line-height: 30px }',
+        ),
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -97,6 +101,12 @@ describe.skipIf(shell === null)(
       await expect(measure('screen', false)).rejects.toMatchObject({
         code: 'fit-unbounded',
       })
+    })
+
+    it('reads text spilling below a block shorter than it', async () => {
+      const size = await measure('spill', false)
+
+      expect(size.height).toBeGreaterThan(90)
     })
 
     it('reads an empty body as empty and keeps its box width', async () => {

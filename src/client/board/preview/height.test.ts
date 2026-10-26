@@ -43,6 +43,15 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBe(320)
   })
 
+  it('reads text spilling below a block shorter than it', async () => {
+    const iframe = await iframeOf(
+      '<p style="width:1px;height:20px;margin:0;line-height:30px">one two three four</p>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBeGreaterThan(90)
+  })
+
   it('reads nothing for a page sized off the viewport', async () => {
     const iframe = await iframeOf('<div style="height:100vh"></div>', {
       width: 390,

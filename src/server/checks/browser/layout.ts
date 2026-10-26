@@ -206,6 +206,28 @@ function readLayout(): LayoutRead {
     }
     return false
   }
+  // Text laid out past its own block widens no box, as a `nowrap` heading
+  // running out of a phone frame, so each element reaches as far as the text
+  // it holds directly. An element that crops itself hides that text. A Range
+  // reaches text nodes alone, so `::before` and `::after` content stays
+  // unmeasured. A copy of `textBottom` in `readContentSize`, so a change to
+  // one is a change to both.
+  const textReach = (element: Element) => {
+    let bottom = -Infinity
+    let right = -Infinity
+    if (crops(element)) return { bottom, right }
+    for (const child of element.childNodes) {
+      if (child.nodeType !== Node.TEXT_NODE) continue
+      const range = document.createRange()
+      range.selectNodeContents(child)
+      for (const rect of range.getClientRects()) {
+        if (rect.width === 0 && rect.height === 0) continue
+        bottom = Math.max(bottom, rect.bottom)
+        right = Math.max(right, rect.right)
+      }
+    }
+    return { bottom, right }
+  }
   const rootRect = root.getBoundingClientRect()
   let index = 0
   for (const node of document.querySelectorAll('*')) {
@@ -221,13 +243,16 @@ function readLayout(): LayoutRead {
       continue
     }
     const rect = node.getBoundingClientRect()
-    if (rect.width === 0 && rect.height === 0) continue
+    const text = textReach(node)
+    if (rect.width === 0 && rect.height === 0 && text.right === -Infinity) {
+      continue
+    }
     const tag = node.tagName.toLowerCase()
     boxes.push({
       index: own,
       tag,
-      bottom: Math.ceil(rect.bottom + window.scrollY),
-      right: Math.ceil(rect.right + window.scrollX),
+      bottom: Math.ceil(Math.max(rect.bottom, text.bottom) + window.scrollY),
+      right: Math.ceil(Math.max(rect.right, text.right) + window.scrollX),
       height: Math.round(rect.height),
       cropped: isCropped(node),
     })

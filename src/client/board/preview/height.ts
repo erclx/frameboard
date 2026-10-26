@@ -24,8 +24,9 @@ export function measureHeight(
   }
 }
 
-// The furthest bottom edge of any box, flow or out of flow, leaving out a box
-// an ancestor inside the body crops. It mirrors `readContentSize` in
+// The furthest bottom edge of any box, flow or out of flow, or of text
+// spilling below its own block, leaving out what an ancestor inside the body
+// or the block itself crops. It mirrors `readContentSize` in
 // `src/server/capture/fit.ts`, which runs inside a page and so cannot be
 // shared, and the two must agree.
 function contentBottom(document: Document): number {
@@ -45,10 +46,28 @@ function contentBottom(document: Document): number {
     }
     return false
   }
+  const textBottom = (element: Element) => {
+    let bottom = -Infinity
+    if (crops(element)) return bottom
+    for (const child of element.childNodes) {
+      if (child.nodeType !== view.Node.TEXT_NODE) continue
+      const range = document.createRange()
+      range.selectNodeContents(child)
+      for (const rect of range.getClientRects()) {
+        if (rect.width === 0 && rect.height === 0) continue
+        bottom = Math.max(bottom, rect.bottom)
+      }
+    }
+    return bottom
+  }
   let bottom = document.documentElement.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {
     if (isCropped(element)) continue
-    bottom = Math.max(bottom, element.getBoundingClientRect().bottom)
+    bottom = Math.max(
+      bottom,
+      element.getBoundingClientRect().bottom,
+      textBottom(element),
+    )
   }
   return Math.max(1, Math.ceil(bottom + view.scrollY))
 }

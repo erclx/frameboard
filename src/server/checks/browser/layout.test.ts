@@ -124,6 +124,47 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    it('reports unwrapped text running past the width though its block fits', async () => {
+      const findings = await checkHero(
+        'h1 { white-space: nowrap }',
+        '<h1>A heading far longer than the frame is wide</h1>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /px wide in its 400 px width, so the board cuts it off, <h1> at element 5 first past the box\./,
+          ),
+        },
+      ])
+    })
+
+    it('reports wrapped text spilling below a block shorter than it', async () => {
+      const findings = await checkHero(
+        'p { height: 20px; margin: 0 }',
+        `<p>${'Many words that wrap onto line after line '.repeat(30)}</p>`,
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /px tall in its 200 px height, so the board cuts it off, <p> at element 5 first past the box\./,
+          ),
+        },
+      ])
+    })
+
+    it('reads unwrapped text cropped by its own block as no finding', async () => {
+      const findings = await checkHero(
+        'p { width: 100px; overflow: hidden; white-space: nowrap }',
+        '<p>A line far longer than the paragraph holds, and longer than the frame is wide</p>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
     it('reads text cut by an ellipsis as no finding', async () => {
       const findings = await checkHero(
         'p { width: 100px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }',

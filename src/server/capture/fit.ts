@@ -150,8 +150,10 @@ function readFitWidth(): number {
 // Both readings take the furthest bottom edge of any box, flow or out of flow,
 // since `scrollHeight` never reads below the viewport and the root's own box
 // leaves out absolutely positioned content. A box an ancestor inside the body
-// crops is left out, since the frame never shows it. The cropping test is a
-// copy of `isCropped` in the layout check's `readLayout`, and the two must agree.
+// crops is left out, since the frame never shows it. Text spilling below its
+// own block reaches past that block's box, so it counts unless the block
+// crops it. The cropping test and `textBottom` are copies of `isCropped` and
+// `textReach` in the layout check's `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
   const crops = (element: Element) => {
@@ -168,10 +170,28 @@ export function readContentSize(): Reading {
     }
     return false
   }
+  const textBottom = (element: Element) => {
+    let bottom = -Infinity
+    if (crops(element)) return bottom
+    for (const child of element.childNodes) {
+      if (child.nodeType !== Node.TEXT_NODE) continue
+      const range = document.createRange()
+      range.selectNodeContents(child)
+      for (const rect of range.getClientRects()) {
+        if (rect.width === 0 && rect.height === 0) continue
+        bottom = Math.max(bottom, rect.bottom)
+      }
+    }
+    return bottom
+  }
   let bottom = root.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {
     if (isCropped(element)) continue
-    bottom = Math.max(bottom, element.getBoundingClientRect().bottom)
+    bottom = Math.max(
+      bottom,
+      element.getBoundingClientRect().bottom,
+      textBottom(element),
+    )
   }
   return {
     height: Math.max(1, Math.ceil(bottom + window.scrollY)),
