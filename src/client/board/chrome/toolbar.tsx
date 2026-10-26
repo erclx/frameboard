@@ -210,6 +210,8 @@ function ShapeTool({
                 <DropdownMenuRadioItem
                   key={row.id}
                   value={row.kind}
+                  // A radio row stays open by default, which spends the next canvas click on closing it.
+                  closeOnClick
                   disabled={!registered || !isEnabled(registered)}
                   className={cn(
                     MENU_ROW,

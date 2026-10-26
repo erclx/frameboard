@@ -143,6 +143,21 @@ test.describe('placing text and shapes into a frame', () => {
     ).toHaveText(['One', 'Rectangle', 'Text', 'Rectangle', 'Two'])
   })
 
+  test('a shape picked from the Shapes menu lands on the first click', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const one = await hero(page).locator('[data-name="One"]').boundingBox()
+    if (!one) throw new Error('The row draws no first child')
+
+    await tools(page).getByRole('button', { name: 'Shapes' }).click()
+    await page.getByRole('menuitemradio', { name: /Ellipse/ }).click()
+    await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
+
+    await expect.poll(read).toContain('data-name="Ellipse"')
+  })
+
   test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
     page,
   }) => {
