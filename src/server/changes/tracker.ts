@@ -216,6 +216,7 @@ function writtenPaths(step: Step): string[] {
     if (
       change.kind === 'element' ||
       change.kind === 'inserted' ||
+      change.kind === 'relocated' ||
       change.kind === 'path'
     )
       return [change.path]

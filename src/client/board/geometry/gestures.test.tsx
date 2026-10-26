@@ -8,9 +8,16 @@ import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
+import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
-import { clear, select, selectElement, selectionStore } from '../selection'
-import type { Box } from './box'
+import {
+  clear,
+  type ElementKey,
+  select,
+  selectElement,
+  selectionStore,
+} from '../selection'
+import type { Box, Point } from './box'
 import { attachGestures } from './gestures'
 import { SelectionOverlay } from './overlay'
 
@@ -69,6 +76,7 @@ function setup(
   }[] = []
   const opened: string[] = []
   const splits: number[] = []
+  const moves: { page: string; at: Point; key: ElementKey }[] = []
   const view = render(
     <Profiler id="canvas" onRender={onCommit}>
       <div
@@ -170,6 +178,10 @@ function setup(
       },
       openFindings: (ref) => opened.push(ref),
       splitAt: (clientX) => splits.push(clientX - origin.left),
+      moveElement: async (_layer, page, _frames, at, key) => {
+        moves.push({ page, at, key })
+        return null
+      },
     },
   )
   const pointer = new Pointer(part('[data-hit-layer]'), origin)
@@ -180,6 +192,7 @@ function setup(
     duplicates,
     opened,
     splits,
+    moves,
     part,
     pointer,
     detach,
@@ -623,31 +636,77 @@ describe('attachGestures', () => {
       return canvas
     }
 
-    it('moves nothing on a drag from the outline and keeps the element', () => {
+    it('moves the element to the drop, not the frame, on a drag from inside it', () => {
       const canvas = setupWithElement()
 
-      canvas.pointer.drag([200, 150], [240, 190])
+      canvas.pointer.drag([200, 175], [200, 260])
 
       expect(canvas.writes).toEqual([])
+      expect(canvas.moves).toEqual([
+        { page: PAGE, at: { x: 200, y: 260 }, key: ELEMENT },
+      ])
       expect(selectionStore.getState().element).toEqual(ELEMENT)
     })
 
     it.each([
+      [200, 150],
       [150, 150],
-      [250, 150],
-      [150, 200],
       [250, 200],
     ] as const)(
-      'moves nothing on a drag from the corner mark at %i, %i',
+      'moves the element on a drag from its outline at %i, %i',
       (x, y) => {
         const canvas = setupWithElement()
 
         canvas.pointer.drag([x, y], [x + 40, y + 30])
 
         expect(canvas.writes).toEqual([])
-        expect(selectionStore.getState().element).toEqual(ELEMENT)
+        expect(canvas.moves).toMatchObject([{ key: ELEMENT }])
       },
     )
+
+    it('marks the element carried while the drag runs and clears it on release', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.down(200, 175)
+      canvas.pointer.move(200, 260)
+
+      expect(carriedStore.getState().carried).toEqual(ELEMENT)
+
+      canvas.pointer.up(200, 260)
+
+      expect(carriedStore.getState().carried).toBeNull()
+    })
+
+    it('takes the frame out of the selection on a Shift-click inside the element', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.click(200, 175, { shiftKey: true })
+
+      expect(selectedRefs()).toEqual([])
+    })
+
+    it('moves no element while the tab may not write', () => {
+      const canvas = setup(undefined, {
+        elementBox: ELEMENT_BOX,
+        canWrite: false,
+      })
+      detach = canvas.detach
+      act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+      canvas.pointer.drag([200, 175], [200, 260])
+
+      expect(canvas.moves).toEqual([])
+      expect(canvas.writes).toEqual([])
+    })
+
+    it('still moves the frame on a drag from its label strip', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([150, 95], [190, 95])
+
+      expect(canvas.moves).toEqual([])
+      expect(canvas.writes).toHaveLength(1)
+    })
 
     it('keeps the element on a click on its outline', () => {
       const canvas = setupWithElement()

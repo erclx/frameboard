@@ -9,6 +9,7 @@ import { contentHash } from '@/server/edit/address'
 import {
   editFrameFile,
   insertFrameFile,
+  moveFrameFile,
   removeFrameFile,
 } from '@/server/edit/frame-file'
 import { elementMarkup, shapePaint, textFont } from '@/server/edit/insert'
@@ -17,6 +18,7 @@ import { readTokenTable } from '@/server/look/token-table'
 import type {
   EditResult,
   InsertResult,
+  MoveResult,
   RemoveResult,
 } from '@/shared/records/edit'
 
@@ -27,6 +29,8 @@ import type { FrameLook } from './frames'
 // Bounds the body alone. The writer refuses a value past its own limit as `invalid-edit`.
 const value = z.string().max(10_000)
 const name = z.string().min(1).max(256)
+/** A dragged shape's side in CSS pixels. */
+const side = z.int().min(1).max(10_000)
 
 const editSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -46,8 +50,16 @@ const insertSchema = z.object({
   before: z.int().min(0).nullable(),
   element: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('text') }),
-    z.object({ kind: z.literal('rectangle') }),
-    z.object({ kind: z.literal('ellipse') }),
+    z.object({
+      kind: z.literal('rectangle'),
+      width: side.optional(),
+      height: side.optional(),
+    }),
+    z.object({
+      kind: z.literal('ellipse'),
+      width: side.optional(),
+      height: side.optional(),
+    }),
     z.object({ kind: z.literal('divider'), vertical: z.boolean() }),
   ]),
 })
@@ -56,6 +68,14 @@ const removeSchema = z.object({
   ref: z.string().min(1).max(1024),
   index: z.int().min(0),
   hash: z.string().regex(/^[0-9a-f]{64}$/),
+})
+
+const moveSchema = z.object({
+  ref: z.string().min(1).max(1024),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  index: z.int().min(0),
+  parent: z.int().min(0),
+  before: z.int().min(0).nullable(),
 })
 
 /** The source a frame held under a hash an agent's write replaced, or null when none is kept. */
@@ -82,11 +102,18 @@ export type SettledVersion = (
  * the new element's index, and the hash written. A hash the file no longer
  * has answers 409 `stale-address` with nothing written, since the gap's
  * indices name nothing past an agent's write, and a retried insert lands once.
+ * A rectangle or an ellipse takes an optional width and height a drag drew.
  *
  * The remove takes out the element at `index`, with what it holds, from the
  * bytes `hash` names, and records it as one step whose undo puts it back
  * under its parent. It answers the frame and the hash written, and refuses a
  * moved file as `stale-address` the way the insert does.
+ *
+ * The move takes one element by index and the gap it goes into, both read
+ * in the frame as the hash names it, and records it as one step an undo
+ * puts back byte for byte. It answers the element's new index and the hash
+ * written, and refuses as the insert does, with `invalid-container` for a
+ * gap inside the element itself.
  */
 export function editRoutes(
   root: string,
@@ -215,6 +242,40 @@ export function editRoutes(
       frames: [ref],
     })
     const data: RemoveResult = { ref, hash: result.hash }
+    return c.json({ ok: true, data })
+  })
+
+  app.post('/api/frames/move', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, moveSchema)
+    const frame = await resolveFrameRef(root, body.ref, { cwd: root })
+    const ref = `${frame.project}/${frame.page}/${frame.name}`
+    await refuseClaimed(root, [ref], new Date())
+    const result = moveFrameFile(frame.path, body.hash, body.index, {
+      parent: body.parent,
+      before: body.before,
+    })
+    if (!result.ok) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: result.reason,
+            message: result.detail,
+            details: { ref, index: body.index, parent: body.parent },
+          },
+        },
+        409,
+      )
+    }
+    const journal = history.journal()
+    journal.relocated(frame.path, ref, result.span)
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: [ref],
+    })
+    const data: MoveResult = { ref, index: result.index, hash: result.hash }
     return c.json({ ok: true, data })
   })
 

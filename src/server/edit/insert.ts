@@ -15,10 +15,16 @@ import { spanText } from './element-span'
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type InsertKind =
   | { readonly kind: 'text' }
-  | { readonly kind: 'rectangle' }
-  | { readonly kind: 'ellipse' }
+  | ({ readonly kind: 'rectangle' } & ShapeSize)
+  | ({ readonly kind: 'ellipse' } & ShapeSize)
   /** `vertical` draws the line down the left, as a divider in a row does. */
   | { readonly kind: 'divider'; readonly vertical: boolean }
+
+/** A shape's size in CSS pixels as a drag drew it, each side 100 when left out. */
+export interface ShapeSize {
+  readonly width?: number
+  readonly height?: number
+}
 
 /** The colors a shape is painted in, each a `var()` of a token or a raw hex. */
 export interface ShapePaint {
@@ -56,6 +62,8 @@ export interface InsertedSpan {
   readonly parent: Anchor
   /** The start tag of the sibling it goes before, or null at the parent's end. */
   readonly next: string | null
+  /** The bytes between its end and that gap, empty for a placed element. */
+  readonly lead: string
 }
 
 export type Inserted =
@@ -67,7 +75,7 @@ export type Inserted =
     }
   | EditRefused
 
-const SHAPE_SIZE = '100px'
+const SHAPE_SIZE = 100
 const FILL_TOKENS = ['--muted', '--secondary', '--accent']
 const LINE_TOKEN = '--border'
 const TEXT_FONT_TOKEN = '--font-text'
@@ -132,7 +140,7 @@ export function textFont(tokens: readonly TokenRow[]): string {
     : STARTER_FONTS.geist.stack
 }
 
-/** Every byte an insert of `element` writes, with its `data-name` and default size. */
+/** Every byte an insert of `element` writes, with its `data-name` and size. */
 export function elementMarkup(
   element: InsertKind,
   paint: ShapePaint,
@@ -142,14 +150,19 @@ export function elementMarkup(
   if (!PAINT_VALUE.test(fill) || !PAINT_VALUE.test(line)) {
     throw new Error(`Unexpected shape paint ${fill} ${line}`)
   }
-  const box = `width: ${SHAPE_SIZE}; height: ${SHAPE_SIZE}; background: ${fill}`
+  const box = ({ width = SHAPE_SIZE, height = SHAPE_SIZE }: ShapeSize) => {
+    if (!Number.isInteger(width) || !Number.isInteger(height)) {
+      throw new Error(`Unexpected shape size ${width} ${height}`)
+    }
+    return `width: ${width}px; height: ${height}px; background: ${fill}`
+  }
   switch (element.kind) {
     case 'text':
       return `<p data-name="Text" style="font-family: ${font}">Text</p>`
     case 'rectangle':
-      return `<div data-name="Rectangle" style="${box}"></div>`
+      return `<div data-name="Rectangle" style="${box(element)}"></div>`
     case 'ellipse':
-      return `<div data-name="Ellipse" style="${box}; border-radius: 50%"></div>`
+      return `<div data-name="Ellipse" style="${box(element)}; border-radius: 50%"></div>`
     case 'divider': {
       const side = element.vertical ? 'border-left' : 'border-top'
       return `<hr data-name="Divider" style="align-self: stretch; margin: 0; border: 0; ${side}: 1px solid ${line}">`
@@ -223,16 +236,28 @@ function gapOffset(
  * the input's with that one element added under the parent, so a tag the
  * parser would move, as a `<div>` closing a `<p>`, is refused rather than
  * written somewhere else.
+ *
+ * A `lead` lands the element that many bytes ahead of the gap, once they
+ * read as given, so an element put back lands where it stood and not past
+ * the whitespace that followed it.
  */
 export function insertElement(
   source: string,
   placement: Placement,
   markup: string,
+  lead = '',
 ): Inserted {
   const before = parseFrame(source)
   const gap = gapOffset(before, placement)
   if ('ok' in gap) return gap
-  const { parent, offset } = gap
+  const { parent } = gap
+  const offset = gap.offset - lead.length
+  if (offset < 0 || source.slice(offset, gap.offset) !== lead) {
+    return refuse(
+      'address-mismatch',
+      `the bytes ahead of the gap in the <${parent.tagName}> at ${placement.parent} changed`,
+    )
+  }
   const written = source.slice(0, offset) + markup + source.slice(offset)
 
   const after = parseFrame(written)
@@ -253,7 +278,7 @@ export function insertElement(
     )
   }
   const next = children(parent).find(
-    (child) => child.sourceCodeLocation?.startOffset === offset,
+    (child) => child.sourceCodeLocation?.startOffset === gap.offset,
   )
   return {
     ok: true,
@@ -266,6 +291,7 @@ export function insertElement(
       placement,
       parent: { tagName: parent.tagName, tag: startTag(source, parent) },
       next: next ? startTag(source, next) : null,
+      lead,
     },
   }
 }
@@ -388,18 +414,35 @@ export function removeInserted(
 ): { html: string; span: InsertedSpan } | undefined {
   const tree = parseFrame(source)
   const index = locateInserted(source, tree, span)
-  const element = index === undefined ? undefined : tree.elements[index]
+  return index === undefined ? undefined : takeOut(source, tree, index)
+}
+
+/**
+ * Takes the element at `index` out with its descendants and answers the span
+ * that puts it back, holding the bytes that stood between it and its gap.
+ * Answers undefined when the element is not stated, or when putting it back
+ * would not give `source` again, since the removal then reached past it.
+ */
+function takeOut(
+  source: string,
+  tree: FrameTree,
+  index: number,
+): { html: string; span: InsertedSpan } | undefined {
+  const element = tree.elements[index]
   const at = element?.sourceCodeLocation
   const parent = element?.parentNode
-  if (index === undefined || !at || !parent || !hasTag(parent)) return undefined
+  if (!element || !at?.startTag || !parent || !hasTag(parent)) return undefined
   const removed = source.slice(0, at.startOffset) + source.slice(at.endOffset)
   const next = children(parent)[children(parent).indexOf(element) + 1]
   const placement = {
     parent: tree.elements.indexOf(parent),
     before: next ? index : null,
   }
-  // Putting it back has to give these bytes again, or the removal reached past it.
-  const back = insertElement(removed, placement, span.markup)
+  const gap = gapOffset(parseFrame(removed), placement)
+  if ('ok' in gap || gap.offset < at.startOffset) return undefined
+  const lead = removed.slice(at.startOffset, gap.offset)
+  const markup = source.slice(at.startOffset, at.endOffset)
+  const back = insertElement(removed, placement, markup, lead)
   if (!back.ok || back.html !== source) return undefined
   return { html: removed, span: back.span }
 }
@@ -493,6 +536,114 @@ export function restoreInserted(
 ): { html: string; span: InsertedSpan } | undefined {
   const placement = locateGap(source, parseFrame(source), span)
   if (!placement) return undefined
-  const inserted = insertElement(source, placement, span.markup)
+  const inserted = insertElement(source, placement, span.markup, span.lead)
   return inserted.ok ? { html: inserted.html, span: inserted.span } : undefined
+}
+
+/**
+ * An element a move took out of one gap and wrote into another, held as two
+ * inserted spans: `from` as it stood in its old gap, and `to` in its new one,
+ * each read in the frame without it.
+ */
+export interface MovedSpan {
+  readonly from: InsertedSpan
+  readonly to: InsertedSpan
+}
+
+export type Moved =
+  | {
+      readonly ok: true
+      readonly html: string
+      /** The element's index in its new gap. */
+      readonly index: number
+      readonly span: MovedSpan
+    }
+  | EditRefused
+
+/**
+ * Takes the element at `index` out by its bytes and writes them into the gap
+ * `placement` names, both read in the frame as it stands, leaving every other
+ * byte. A gap in the element or under it is refused as `invalid-container`,
+ * since the element would be written inside itself, and the gap it already
+ * sits in as `invalid-address`. Each half is checked as `insertElement`
+ * checks a placement, so a move the parser would rebuild is refused whole.
+ */
+export function moveElement(
+  source: string,
+  index: number,
+  placement: Placement,
+): Moved {
+  const tree = parseFrame(source)
+  const element = Number.isInteger(index) ? tree.elements[index] : undefined
+  if (!element?.sourceCodeLocation?.startTag) {
+    return refuse(
+      'invalid-address',
+      `${index} names no element the file states`,
+    )
+  }
+  // The element and its descendants run on from `index` in document order.
+  const end = index + 1 + descendants(element)
+  const shift = (at: number) => (at < end ? at : at - (end - index))
+  if (placement.parent >= index && placement.parent < end) {
+    return refuse(
+      'invalid-container',
+      `the <${element.tagName}> at ${index} cannot go inside itself`,
+    )
+  }
+
+  const taken = takeOut(source, tree, index)
+  if (!taken) {
+    return refuse(
+      'verify-failed',
+      `taking the <${element.tagName}> at ${index} out would change more than it, so nothing was written`,
+    )
+  }
+  const target = {
+    parent: shift(placement.parent),
+    before: placement.before === null ? null : shift(placement.before),
+  }
+  // Read on the gaps, not the bytes, since whitespace after the element
+  // would otherwise move ahead of it and read as a change.
+  if (
+    target.parent === taken.span.placement.parent &&
+    target.before === taken.span.placement.before
+  ) {
+    return refuse(
+      'invalid-address',
+      `the <${element.tagName}> at ${index} already sits in that gap`,
+    )
+  }
+  const moved = insertElement(taken.html, target, taken.span.markup)
+  if (!moved.ok) return moved
+  return {
+    ok: true,
+    html: moved.html,
+    index: moved.index,
+    span: { from: taken.span, to: moved.span },
+  }
+}
+
+/**
+ * Writes the moved element back to `side` of the move, taking it out of the
+ * other gap by its bytes and into this one by its anchors, and answers the
+ * span as the frame then stands. Answers undefined when either half is not
+ * found, so a step the frame no longer allows is refused rather than guessed.
+ */
+export function relocateMoved(
+  source: string,
+  span: MovedSpan,
+  side: 'before' | 'after',
+): { html: string; span: MovedSpan } | undefined {
+  const [leave, land] =
+    side === 'before' ? [span.to, span.from] : [span.from, span.to]
+  const removed = removeInserted(source, leave)
+  const written = removed && restoreInserted(removed.html, land)
+  if (!removed || !written) return undefined
+  return {
+    html: written.html,
+    span:
+      side === 'before'
+        ? { from: written.span, to: removed.span }
+        : { from: removed.span, to: written.span },
+  }
 }

@@ -53,7 +53,9 @@ import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { DropLine } from './place/drop-line'
+import { ShapeDraft } from './place/shape-draft'
 import { placedKind, usePlaceTools } from './place/tool'
+import { takeDraft } from './place/tool'
 import { placeElement } from './place/write'
 import {
   type ElementKey,
@@ -655,6 +657,7 @@ export function Canvas({
               frames={drawnFrames}
               toBoard={toBoard}
             />
+            <ShapeDraft viewport={viewportRef} toBoard={toBoard} />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>
@@ -692,12 +695,15 @@ export function Canvas({
                 )
                 const kind = placedKind()
                 if (kind) {
+                  // A Rectangle or Ellipse drag lands where it started, at the size drawn.
+                  const draft = takeDraft()
                   void placeElement(
                     layer,
                     page.ref,
                     withDrawn(frames),
-                    { x, y },
+                    draft?.from ?? { x, y },
                     kind,
+                    { size: draft?.size },
                   ).then((placed) => {
                     // A placed Text opens for typing once its frame shows it.
                     if (placed && kind === 'text') editText(placed, true)

@@ -158,6 +158,91 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toContain('data-name="Ellipse"')
   })
 
+  test('a Rectangle drag writes the size it drew, landing where it started, and a 2px drag stays a click', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const one = await hero(page).locator('[data-name="One"]').boundingBox()
+    if (!one) throw new Error('The row draws no first child')
+    const zoom = await page
+      .locator('[data-layer]')
+      .evaluate((layer) => Number(layer.style.getPropertyValue('--zoom')) || 1)
+    const start = { x: one.x + one.width + 20, y: one.y + one.height / 2 }
+
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.move(start.x, start.y)
+    const line = page.locator('[data-drop-line]')
+    await expect(line).toBeVisible()
+    const pressed = await line.boundingBox()
+    await page.mouse.down()
+    await page.mouse.move(start.x + 60, start.y + 30, { steps: 4 })
+    await expect(page.locator('[data-shape-draft]')).toBeVisible()
+    await page.mouse.move(start.x + 120, start.y + 60, { steps: 4 })
+    // The line stays at the gap the shape lands in, not under the pointer.
+    expect(await line.boundingBox()).toEqual(pressed)
+    await page.mouse.up()
+
+    await expect.poll(read).toMatch(/data-name="Rectangle" style="width: \d+px/)
+    const [, width, height] =
+      /data-name="Rectangle" style="width: (\d+)px; height: (\d+)px/.exec(
+        read(),
+      ) ?? []
+    expect(Number(width)).toBeCloseTo(120 / zoom, -0.5)
+    expect(Number(height)).toBeCloseTo(60 / zoom, -0.5)
+    expect(read()).toContain('></div><div data-name="Two"')
+    await expect(page.locator('[data-shape-draft]')).toHaveCount(0)
+
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(start.x + 2, start.y)
+    await page.mouse.up()
+
+    await expect
+      .poll(read)
+      .toContain(
+        '<div data-name="Rectangle" style="width: 100px; height: 100px;',
+      )
+  })
+
+  test('a drag on a selected element moves it past its sibling in the file, the frame stays, and undo moves it back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const layout = join(board.root, 'webapp/home/layout.json')
+    const placed = readFileSync(layout, 'utf8')
+    const one = await centerOf(page, '[data-name="One"]')
+    const two = await hero(page).locator('[data-name="Two"]').boundingBox()
+    if (!two) throw new Error('The row draws no second child')
+
+    await page.keyboard.down('Meta')
+    await page.mouse.click(one.x, one.y)
+    await page.keyboard.up('Meta')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.mouse.move(one.x, one.y)
+    await page.mouse.down()
+    // Past the second child's middle, so the gap is the row's end.
+    const drop = { x: two.x + two.width - 10, y: two.y + two.height / 2 }
+    await page.mouse.move(drop.x, drop.y, { steps: 8 })
+    await expect(page.locator('[data-drop-line]')).toBeVisible()
+    await page.mouse.up()
+
+    const ONE =
+      '<div data-name="One" style="width: 80px; height: 40px; background: var(--muted)"></div>'
+    const TWO =
+      '<div data-name="Two" style="width: 80px; height: 40px; background: var(--muted)"></div>'
+    await expect.poll(read).toContain(`${TWO}${ONE}</div>`)
+    expect(readFileSync(layout, 'utf8')).toBe(placed)
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(original)
+  })
+
   test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
     page,
   }) => {

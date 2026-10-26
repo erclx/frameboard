@@ -5,6 +5,8 @@ import type { TokenRow } from '@/shared/records/tokens'
 import {
   elementMarkup,
   insertElement,
+  moveElement,
+  relocateMoved,
   removeElement,
   removeInserted,
   restoreInserted,
@@ -34,6 +36,14 @@ describe('elementMarkup', () => {
   it('should write a 100 by 100 box in the fill for a rectangle', () => {
     expect(elementMarkup({ kind: 'rectangle' }, PAINT, FONT)).toBe(
       '<div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted)"></div>',
+    )
+  })
+
+  it('should write the size a drag gave a shape', () => {
+    expect(
+      elementMarkup({ kind: 'rectangle', width: 240, height: 48 }, PAINT, FONT),
+    ).toBe(
+      '<div data-name="Rectangle" style="width: 240px; height: 48px; background: var(--muted)"></div>',
     )
   })
 
@@ -335,5 +345,145 @@ describe('removeElement', () => {
       ok: false,
       reason: 'invalid-address',
     })
+  })
+})
+
+describe('moveElement', () => {
+  it('should move an element past its next sibling and leave every other byte', () => {
+    expect(
+      moveElement('<main><h1>A</h1>\n<p>B</p></main>', 4, {
+        parent: FIRST,
+        before: null,
+      }),
+    ).toMatchObject({
+      ok: true,
+      html: '<main>\n<p>B</p><h1>A</h1></main>',
+      index: 5,
+    })
+  })
+
+  it('should move an element into another container', () => {
+    expect(
+      moveElement('<div><p>A</p></div><section></section>', 4, {
+        parent: 5,
+        before: null,
+      }),
+    ).toMatchObject({
+      ok: true,
+      html: '<div></div><section><p>A</p></section>',
+      index: 5,
+    })
+  })
+
+  it('should carry the moved element with its children', () => {
+    expect(
+      moveElement('<main><p>A</p><div><span>B</span></div></main>', 5, {
+        parent: FIRST,
+        before: 4,
+      }),
+    ).toMatchObject({
+      ok: true,
+      html: '<main><div><span>B</span></div><p>A</p></main>',
+      index: 4,
+    })
+  })
+
+  it('should refuse a gap inside the moved element', () => {
+    expect(
+      moveElement('<div><section></section></div>', FIRST, {
+        parent: 4,
+        before: null,
+      }),
+    ).toMatchObject({ ok: false, reason: 'invalid-container' })
+  })
+
+  it('should refuse a gap in the moved element itself', () => {
+    expect(
+      moveElement('<div><p>A</p></div>', FIRST, { parent: FIRST, before: 4 }),
+    ).toMatchObject({ ok: false, reason: 'invalid-container' })
+  })
+
+  it('should refuse the gap the element already sits in', () => {
+    expect(
+      moveElement('<main><h1>A</h1><p>B</p></main>', 4, {
+        parent: FIRST,
+        before: 5,
+      }),
+    ).toMatchObject({ ok: false, reason: 'invalid-address' })
+  })
+
+  it.each([4, 5])(
+    'should refuse its own gap with whitespace after it, named before %i',
+    (before) => {
+      expect(
+        moveElement('<main>\n  <h1>A</h1>\n  <p>B</p>\n</main>', 4, {
+          parent: FIRST,
+          before,
+        }),
+      ).toMatchObject({ ok: false, reason: 'invalid-address' })
+    },
+  )
+
+  it('should refuse an element the file does not state', () => {
+    expect(
+      moveElement('<p>A</p><p>B</p>', BODY, { parent: FIRST, before: null }),
+    ).toMatchObject({ ok: false, reason: 'invalid-address' })
+  })
+
+  it('should refuse an index past the last element', () => {
+    expect(
+      moveElement('<p>A</p>', 9, { parent: BODY, before: null }),
+    ).toMatchObject({ ok: false, reason: 'invalid-address' })
+  })
+})
+
+describe('relocateMoved', () => {
+  const source = '<main>\n  <h1>A</h1>\n  <p>B</p>\n</main>'
+
+  function moved() {
+    const result = moveElement(source, 4, { parent: FIRST, before: null })
+    if (!result.ok) throw new Error(result.detail)
+    return result
+  }
+
+  it('should put the moved element back where it was', () => {
+    const { html, span } = moved()
+
+    expect(relocateMoved(html, span, 'before')?.html).toBe(source)
+  })
+
+  it('should move it again on a redo', () => {
+    const { html, span } = moved()
+    const back = relocateMoved(html, span, 'before')
+    if (!back) throw new Error('not moved back')
+
+    expect(relocateMoved(back.html, back.span, 'after')?.html).toBe(html)
+  })
+
+  it('should put back one of two identical elements', () => {
+    const twins = '<main><div></div><div></div><p>B</p></main>'
+    const result = moveElement(twins, 4, { parent: FIRST, before: null })
+    if (!result.ok) throw new Error(result.detail)
+
+    expect(relocateMoved(result.html, result.span, 'before')?.html).toBe(twins)
+  })
+
+  it('should put back the first of three identical elements ahead of its twin', () => {
+    const triplets =
+      '<main><div data-name="Rectangle"></div><div data-name="Rectangle"></div><div data-name="Rectangle"></div><p>B</p></main>'
+    const result = moveElement(triplets, 4, { parent: FIRST, before: null })
+    if (!result.ok) throw new Error(result.detail)
+
+    expect(relocateMoved(result.html, result.span, 'before')?.html).toBe(
+      triplets,
+    )
+  })
+
+  it('should refuse once an agent changed the moved element', () => {
+    const { html, span } = moved()
+
+    expect(
+      relocateMoved(html.replace('>A<', '>Hi<'), span, 'before'),
+    ).toBeUndefined()
   })
 })
