@@ -104,6 +104,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 
 - The agent answers in the note's thread through `notes reply` and closes it with `notes done`
 - The notes stay in each page's `notes.json`
+- With nobody listening, Send can start a session through a command you export before `serve`, such as `FRAMEBOARD_DISPATCH='claude --bg "$FRAMEBOARD_NOTE"'`, which gets the note in its environment
 
 ### Hand edits
 
