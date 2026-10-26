@@ -123,7 +123,7 @@ export function structureRoutes(
   /** Runs one verb with a fresh journal and records what it reported. */
   const recorded = async <T>(
     write: (journal: ReturnType<History['journal']>) => Promise<T>,
-    describe: (result: T) => Promise<Pick<Step, 'page' | 'frames'>>,
+    describe: (result: T) => Promise<Pick<Step, 'page' | 'frames' | 'renamed'>>,
   ): Promise<T> => {
     const journal = history.journal()
     const result = await write(journal)
@@ -200,6 +200,10 @@ export function structureRoutes(
           after: renamed.ref,
         },
         frames: [],
+        renamed: {
+          before: `${source.project}/${source.name}`,
+          after: renamed.ref,
+        },
       }),
     )
     return c.json({ ok: true, data: page })
@@ -422,10 +426,14 @@ export function structureRoutes(
 
   app.post('/api/project/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
-    await refuseHeld([(await resolveProject(root, body.ref)).name])
+    const source = await resolveProject(root, body.ref)
+    await refuseHeld([source.name])
     const project = await recorded(
       (journal) => renameProject(root, body.ref, body.name, { journal }),
-      onHome,
+      async (renamed) => ({
+        ...(await onHome()),
+        renamed: { before: source.name, after: renamed.name },
+      }),
     )
     return c.json({ ok: true, data: project })
   })

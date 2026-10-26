@@ -13,7 +13,7 @@ import {
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { TAB_ID } from '@/client/live/socket'
-import { liveStore, useLive } from '@/client/live/store'
+import { identityOf, liveStore, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
@@ -62,7 +62,12 @@ import {
   selectionStore,
 } from './selection'
 import { placeFrame } from './structure/tool'
-import { attachCanvas, reportHandMove, reportZoom } from './view'
+import {
+  attachCanvas,
+  type CanvasControls,
+  reportHandMove,
+  reportZoom,
+} from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
@@ -73,7 +78,7 @@ const SETTLE_MS = 150
 /** How long the view takes to travel to a shown frame. */
 const FOCUS_MS = 400
 
-/** Each page's view for the session, so leaving a page and coming back keeps it. */
+/** Each page's view for the session by its identity, so leaving a page and coming back keeps it, and so does a rename. */
 const pageViews = new Map<string, View>()
 /**
  * Each page whose view is still the empty start nobody has moved, so its
@@ -122,6 +127,11 @@ export function Canvas({
   // The markers read the live frames, so they render again once the layer exists.
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
+  const controlsRef = useRef<CanvasControls | null>(null)
+  // The page as this session first knew it, so a rename keeps the view and
+  // every frame while the code reading the ref follows the new one.
+  const aliases = useLive((state) => state.aliases)
+  const identity = identityOf(aliases, page.ref)
   const picks = useRef(0)
   // The element selected when a double-click's first press landed, since
   // that press selects the frame before the double-click arrives.
@@ -222,10 +232,10 @@ export function Canvas({
           moved.style.setProperty('--zoom', String(k))
         }
         markCrowded(layer, roomsRef.current, k)
-        pageViews.set(page.ref, { x, y, k })
+        pageViews.set(identity, { x, y, k })
         reportZoom(k)
         if (!travelling) {
-          untouchedEmpty.delete(page.ref)
+          untouchedEmpty.delete(identity)
           reportHandMove()
         }
       })
@@ -318,11 +328,11 @@ export function Canvas({
 
     // A page drawn on while away from its untouched empty start opens
     // fitted rather than at the start it was left at.
-    const stored = pageViews.get(page.ref)
-    const untouched = !stored || untouchedEmpty.has(page.ref)
+    const stored = pageViews.get(identity)
+    const untouched = !stored || untouchedEmpty.has(identity)
     const empty = framesRef.current.length === 0
-    if (empty && untouched) untouchedEmpty.add(page.ref)
-    else untouchedEmpty.delete(page.ref)
+    if (empty && untouched) untouchedEmpty.add(identity)
+    else untouchedEmpty.delete(identity)
     const start =
       stored && (empty || !untouched)
         ? stored
@@ -332,7 +342,7 @@ export function Canvas({
     settle(start)
 
     const resize = new ResizeObserver(() =>
-      settle(pageViews.get(page.ref) ?? start),
+      settle(pageViews.get(identity) ?? start),
     )
     resize.observe(viewport)
 
@@ -390,56 +400,49 @@ export function Canvas({
     viewport.addEventListener('pointermove', track)
     viewport.addEventListener('pointerleave', leave)
 
-    const detach = attachCanvas(
-      {
-        zoomBy: (factor) => zoomer.scaleBy(selection, factor),
-        zoomTo: (scale) => zoomer.scaleTo(selection, scale),
-        // The toolbar's fit is the developer's, though the canvas travels it.
-        fit: () => {
-          reportHandMove()
-          moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport)))
-        },
-        fitTo: (boxes) => {
-          reportHandMove()
-          moveToRef.current?.(
-            fitView(
-              boxes.map((box) => ({ box })),
-              sizeOf(viewport),
-            ),
-          )
-        },
-        panBy: (dx, dy) => {
-          const k = zoomTransform(viewport).k
-          zoomer.translateBy(selection, -dx / k, -dy / k)
-        },
-        centerOn: (box, scale) =>
-          moveToRef.current?.(
-            centerView(
-              box,
-              scale ?? zoomTransform(viewport).k,
-              sizeOf(viewport),
-            ),
-          ),
-        visible: () => {
-          const transform = zoomTransform(viewport)
-          const { width, height } = sizeOf(viewport)
-          const [x, y] = transform.invert([0, 0])
-          return {
-            x,
-            y,
-            width: width / transform.k,
-            height: height / transform.k,
-          }
-        },
+    controlsRef.current = {
+      zoomBy: (factor) => zoomer.scaleBy(selection, factor),
+      zoomTo: (scale) => zoomer.scaleTo(selection, scale),
+      // The toolbar's fit is the developer's, though the canvas travels it.
+      fit: () => {
+        reportHandMove()
+        moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport)))
       },
-      page.ref,
-    )
+      fitTo: (boxes) => {
+        reportHandMove()
+        moveToRef.current?.(
+          fitView(
+            boxes.map((box) => ({ box })),
+            sizeOf(viewport),
+          ),
+        )
+      },
+      panBy: (dx, dy) => {
+        const k = zoomTransform(viewport).k
+        zoomer.translateBy(selection, -dx / k, -dy / k)
+      },
+      centerOn: (box, scale) =>
+        moveToRef.current?.(
+          centerView(box, scale ?? zoomTransform(viewport).k, sizeOf(viewport)),
+        ),
+      visible: () => {
+        const transform = zoomTransform(viewport)
+        const { width, height } = sizeOf(viewport)
+        const [x, y] = transform.invert([0, 0])
+        return {
+          x,
+          y,
+          width: width / transform.k,
+          height: height / transform.k,
+        }
+      },
+    }
 
     return () => {
       viewport.removeEventListener('pointerdown', press, { capture: true })
       viewport.removeEventListener('pointermove', track)
       viewport.removeEventListener('pointerleave', leave)
-      detach()
+      controlsRef.current = null
       clearTimeout(timer)
       cancelAnimationFrame(animation)
       cancelAnimationFrame(glide)
@@ -447,7 +450,14 @@ export function Canvas({
       resize.disconnect()
       selection.on('.zoom', null)
     }
-  }, [page.ref])
+  }, [identity])
+
+  // Attached apart from the view, so a rename hands the controller the new
+  // ref without rebuilding the zoom.
+  useLayoutEffect(() => {
+    const controls = controlsRef.current
+    return controls ? attachCanvas(controls, page.ref) : undefined
+  }, [identity, page.ref])
 
   useEffect(() => {
     const stopSelection = followSelection(
@@ -487,7 +497,7 @@ export function Canvas({
   useEffect(() => {
     const viewport = viewportRef.current
     if (frames.length === 0 || !viewport || !moveToRef.current) return
-    if (!untouchedEmpty.delete(page.ref)) return
+    if (!untouchedEmpty.delete(identity)) return
     // A Frame tool click lands its frame in view, which a fit would slide
     // out from under the pointer.
     const transform = zoomTransform(viewport)
@@ -502,7 +512,7 @@ export function Canvas({
         box.y + box.height <= bottom,
     )
     if (!inView) moveToRef.current(fitView(frames, size))
-  }, [frames, page.ref])
+  }, [frames, identity])
 
   // Waits for the frame to reach this page's record, since a shown frame can
   // arrive a batch ahead of the board that holds it.
@@ -628,7 +638,7 @@ export function Canvas({
           <>
             {frames.map((frame) => (
               <Frame
-                key={frame.ref}
+                key={identityOf(aliases, frame.ref)}
                 frame={frame}
                 live={live?.has(frame.ref) ?? false}
                 version={reloads[frame.ref] ?? 0}

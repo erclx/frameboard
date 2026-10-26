@@ -8,6 +8,7 @@ import { relative, sep } from 'node:path'
 import { serve } from '@hono/node-server'
 
 import type { FrameChange } from '@/shared/records/changes'
+import type { ListResult } from '@/shared/records/list'
 import { THEMES } from '@/shared/theme'
 
 import { type Access } from './access/guard'
@@ -45,7 +46,13 @@ import {
   type RenderedFindings,
 } from './live/rendered-findings'
 import { createSelectionHolder } from './live/selection'
-import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
+import {
+  type BoardWatcher,
+  type MovedFolder,
+  reloadRefs,
+  unmovedRefs,
+  watchBoard,
+} from './live/watch'
 import { createDelivery, type Delivery } from './notes/delivery'
 import { createDispatcher } from './notes/dispatch'
 import {
@@ -67,6 +74,12 @@ const HOSTNAME = '127.0.0.1'
  * own rather than marked.
  */
 const OWN_GRACE_MS = 1000
+
+/**
+ * How long a folder the board's own rename moved keeps its unchanged frames
+ * from reloading, well past the watcher reporting the move under load.
+ */
+const MOVED_MS = 10_000
 
 export interface StartOptions {
   clientDir: string
@@ -214,18 +227,50 @@ async function listen({
     }, OWN_GRACE_MS)
     settling.add(timer)
   }
+  // The board the tabs last received, which a moved frame's stamp is read against.
+  const shown: { board: ListResult | null } = { board: null }
+  let moved: MovedFolder[] = []
+  const recentlyMoved = () => {
+    moved = moved.filter(({ at }) => Date.now() - at < MOVED_MS)
+    return moved
+  }
   // The board's own write rereads its frames in turn, so its batch reads as nothing new.
   const history = new History(
     root,
     (counts) => hub.broadcast({ type: 'history', ...counts }),
-    (step) => void inTurn(() => tracker.own(step)),
+    (step, side) => {
+      if (step.renamed) {
+        for (const change of step.changes) {
+          if (change.kind !== 'moved') continue
+          moved = [
+            ...recentlyMoved(),
+            {
+              from: side === 'after' ? change.from : change.to,
+              path: side === 'after' ? change.to : change.from,
+              at: Date.now(),
+            },
+          ]
+        }
+        const from = side === 'after' ? 'before' : 'after'
+        hub.broadcast({
+          type: 'renamed',
+          before: step.renamed[from],
+          after: step.renamed[side],
+        })
+      }
+      void inTurn(() => tracker.own(step))
+    },
   )
   const selection = createSelectionHolder(() => tabs.writers)
   const hub = createHub({
     tabs,
     port: boundPort,
     access,
-    snapshot: () => inTurn(() => scanBoard(root)),
+    snapshot: () =>
+      inTurn(async () => {
+        shown.board = await scanBoard(root)
+        return shown.board
+      }),
     findings: () => inTurn(async () => findings.all()),
     notes: () => inTurn(() => boardView(root)),
     delivery,
@@ -397,6 +442,8 @@ async function listen({
         thumbnails,
         hug,
         settleLater,
+        moved: recentlyMoved,
+        shown,
       }),
     )
   })
@@ -452,6 +499,8 @@ async function pushBatch(
     thumbnails,
     hug,
     settleLater,
+    moved,
+    shown,
   }: {
     hub: LiveHub
     findings: BoardFindings
@@ -463,6 +512,10 @@ async function pushBatch(
     hug: Hug
     /** Broadcasts the changes `own` has not withdrawn once the grace passes. */
     settleLater: (held: FrameChange[]) => void
+    /** The folders the board's own renames recently moved, whose unchanged frames keep their page. */
+    moved: () => readonly MovedFolder[]
+    /** The board the tabs last received, replaced by this batch's. */
+    shown: { board: ListResult | null }
   },
 ): Promise<void> {
   let board
@@ -480,6 +533,8 @@ async function pushBatch(
     return
   }
   hub.broadcast({ type: 'board', data: board })
+  const last = shown.board
+  shown.board = board
   const refs = reloadRefs(root, paths, board, tokens)
   // A token or asset change reloads every frame it reaches, so those are
   // measured after the push rather than holding it.
@@ -488,7 +543,8 @@ async function pushBatch(
     refs.filter((ref) => !own.includes(ref)),
   )
   if (refs.length > 0) {
-    hub.broadcast({ type: 'reload', refs })
+    const reloads = unmovedRefs(refs, board, moved(), last)
+    if (reloads.length > 0) hub.broadcast({ type: 'reload', refs: reloads })
     thumbnails.invalidate(refs)
     const stale = Object.fromEntries(refs.map((ref) => [ref, null]))
     for (const theme of THEMES) {

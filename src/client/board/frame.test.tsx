@@ -137,6 +137,38 @@ describe('Frame', () => {
     expect(untouched.getAttribute('src')).toMatch(/&v=0$/)
   })
 
+  it('keeps the page it loaded when only its ref is renamed', () => {
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+
+    rerender(
+      <Frame
+        frame={{ ...frame('a'), ref: 'studio/start/a', page: 'start' }}
+        live
+        version={0}
+      />,
+    )
+
+    expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
+      '/frames/studio/home/a.html?theme=light&v=0',
+    )
+  })
+
+  it('reloads a renamed frame from its new path', () => {
+    const renamed = { ...frame('a'), ref: 'studio/start/a', page: 'start' }
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    rerender(<Frame frame={renamed} live version={0} />)
+
+    rerender(<Frame frame={renamed} live version={1} />)
+
+    expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
+      '/frames/studio/start/a.html?theme=light&v=1',
+    )
+  })
+
   it('draws a placeholder rather than a page when not live', () => {
     const { container } = render(
       <Frame frame={frame('far')} live={false} version={0} />,

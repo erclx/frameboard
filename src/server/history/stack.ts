@@ -26,6 +26,8 @@ export interface Step {
   page: { before: string | null; after: string | null } | null
   /** The frame refs the step touched, as the board shows them. */
   frames: string[]
+  /** The project name or page ref on each side, when the step only renamed it, so the board keeps what it shows. */
+  renamed?: { before: string; after: string }
 }
 
 /** What an undo or redo answers, so the board can follow what it changed. */
@@ -63,8 +65,8 @@ export class History {
   constructor(
     readonly root: string,
     readonly onChange: (counts: HistoryCounts) => void = () => {},
-    /** Told each step once it is written, by a record, an undo, or a redo. */
-    readonly onWrite: (step: Step) => void = () => {},
+    /** Told each step once it is written, by a record, an undo, or a redo, with the side it left. */
+    readonly onWrite: (step: Step, side: Side) => void = () => {},
   ) {}
 
   counts(): HistoryCounts {
@@ -83,7 +85,7 @@ export class History {
     if (this.#undo.length > HISTORY_CAP) this.#undo.shift()
     this.#redo = []
     this.onChange(this.counts())
-    this.onWrite(step)
+    this.onWrite(step, 'after')
   }
 
   /**
@@ -182,7 +184,7 @@ export class History {
     }
     onto.push(step)
     this.onChange(this.counts())
-    this.onWrite(step)
+    this.onWrite(step, to)
     const answer: StepAnswer = {
       page: step.page?.[to] ?? null,
       frames: step.frames,
