@@ -16,8 +16,10 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 Owns the right panel, under a header of the avatar and the zoom level, and its controls. A control joins it only when the developer's edit beats asking the agent and leaves layout alone.
 
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
+- **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Appearance and typography:** captioned opacity and corner radius, then size, weight, and alignment, plus its text when it holds text only. Layers renames an element, so no name field shows here.
+- **Appearance and typography:** captioned opacity and corner radius, then size, weight, spacing, and alignment, plus its text when it holds text only. Layers renames an element, so no name field shows.
+- **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
@@ -48,7 +50,7 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 
 ## Gotchas
 
-- Element position, width, height, padding, flex, gap, border width, font family, line height, and letter spacing have no control. A placement tool sets a new element's place once, at the click.
+- Element position, width, height, padding, flex, gap, border width, and font family have no control. A placement tool sets a new element's place once, at the click.
 - Each of those is a layout call a prompt makes better, or a number that fights the layout when set by hand
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited

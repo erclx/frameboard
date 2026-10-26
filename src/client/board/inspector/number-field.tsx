@@ -35,6 +35,8 @@ interface NumberFieldProps {
   inputClassName?: string
   /** The stored value, null where the selection's values differ, which reads `Mixed`. */
   value: number | null
+  /** What a null value reads instead of `Mixed`, as `Auto` for a value the browser decides. */
+  empty?: string
   /** What an arrow press or a scrub step moves by, and ten times it with Shift. */
   step?: number
   min?: number
@@ -86,6 +88,7 @@ export function NumberField({
   className,
   inputClassName,
   value,
+  empty = 'Mixed',
   step = 1,
   min,
   max,
@@ -224,7 +227,7 @@ export function NumberField({
   const input = (
     <Primitive.Input
       aria-label={label}
-      placeholder={value === null ? 'Mixed' : undefined}
+      placeholder={value === null ? empty : undefined}
       className={cn(
         'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
         prefix ? inset : undefined,

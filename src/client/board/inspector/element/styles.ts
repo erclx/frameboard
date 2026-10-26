@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import type { FrameStyles } from '@/shared/records/elements'
 
-import { elementAt, renderedHash } from '../../frame-dom'
+import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
 import type { ElementKey } from '../../selection'
 
 /** What the inspector reads off the live element, as the browser computed it. */
@@ -13,6 +13,10 @@ export interface LiveElement {
   radius: number
   fontSize: number
   fontWeight: number
+  /** In px, null for `normal`, whose height the font decides. */
+  lineHeight: number | null
+  /** In px, 0 for `normal`. */
+  letterSpacing: number
   textAlign: string
   /** The computed text color, which a `currentcolor` paint shows. */
   color: string
@@ -72,6 +76,39 @@ export function useLiveElement(key: ElementKey | null): LiveElement | null {
   return held?.at === at ? held.live : null
 }
 
+/**
+ * A frame's `body` as an element key, read off its live iframe on every
+ * load, so a frame Fill writes through the element edit. Null until the
+ * frame shows stamped bytes, which a placeholder never does.
+ */
+export function useLiveBody(frame: string): ElementKey | null {
+  const [held, setHeld] = useState<ElementKey | null>(null)
+
+  useEffect(() => {
+    const scope = `[data-frame="${CSS.escape(frame)}"]`
+    const read = (iframe: HTMLIFrameElement | null) => {
+      const doc = iframe?.contentDocument
+      const hash = doc ? renderedHash(doc) : null
+      const index = doc?.body ? elementIndex(doc, doc.body) : null
+      if (hash !== null && index !== null) setHeld({ frame, index, hash })
+    }
+    // The canvas mounts a frame's iframe only once the view settles near it,
+    // and swaps it for a placeholder far off, so a load is caught wherever it
+    // lands rather than on the iframe present when the frame was selected.
+    const loaded = (event: Event) => {
+      const target = event.target
+      if (target instanceof HTMLIFrameElement && target.closest(scope)) {
+        read(target)
+      }
+    }
+    read(document.querySelector<HTMLIFrameElement>(`${scope} iframe`))
+    document.addEventListener('load', loaded, true)
+    return () => document.removeEventListener('load', loaded, true)
+  }, [frame])
+
+  return held?.frame === frame ? held : null
+}
+
 function readLive(element: Element, view: Window): LiveElement {
   const style = view.getComputedStyle(element)
   const text = element.textContent ?? ''
@@ -84,8 +121,12 @@ function readLive(element: Element, view: Window): LiveElement {
   return {
     opacity: Number(style.opacity),
     radius: Math.round(parseFloat(style.borderTopLeftRadius) || 0),
-    fontSize: Math.round(parseFloat(style.fontSize) * 100) / 100,
+    fontSize: hundredths(style.fontSize),
     fontWeight: Number(style.fontWeight),
+    lineHeight:
+      style.lineHeight === 'normal' ? null : hundredths(style.lineHeight),
+    letterSpacing:
+      style.letterSpacing === 'normal' ? 0 : hundredths(style.letterSpacing),
     textAlign: alignOf(style.textAlign, style.direction),
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
@@ -94,6 +135,11 @@ function readLive(element: Element, view: Window): LiveElement {
     text,
     inline: inlinePaints(element),
   }
+}
+
+/** A computed px length to two places. */
+function hundredths(length: string): number {
+  return Math.round(parseFloat(length) * 100) / 100
 }
 
 /** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */

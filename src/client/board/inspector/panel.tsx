@@ -28,6 +28,7 @@ import {
   fetchStyles,
   previewStyle,
   useFrameStyles,
+  useLiveBody,
   useLiveElement,
 } from './element/styles'
 import { TextSection } from './element/text'
@@ -92,7 +93,10 @@ export function InspectorPanel() {
           <FrameSection page={page} frames={frames} named={!inFrame} />
           {frames.length > 1 ? <ArrangeSection /> : null}
           {frames.length === 1 && !inFrame && frames[0] ? (
-            <ChecksSection frame={frames[0].ref} />
+            <>
+              <FrameFill page={page} frame={frames[0].ref} />
+              <ChecksSection frame={frames[0].ref} />
+            </>
           ) : null}
           {inFrame ? (
             <ElementSections page={page} element={inFrame} />
@@ -179,6 +183,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         <TypographySection
           fontSize={live.fontSize}
           fontWeight={live.fontWeight}
+          lineHeight={live.lineHeight}
+          letterSpacing={live.letterSpacing}
           textAlign={live.textAlign}
           disabled={disabled}
           write={write}
@@ -231,6 +237,37 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         theme={theme}
       />
     </>
+  )
+}
+
+/**
+ * One frame's Fill, the `background-color` of its `body` written as an
+ * element edit, so it waits under a claim and undoes like one. Nothing
+ * draws until the frame's live page shows its body. A file stating no
+ * `body` has no bytes to write, which the edit refuses with a toast.
+ */
+function FrameFill({ page, frame }: { page: string; frame: string }) {
+  const canWrite = useLive((state) => state.canWrite)
+  const theme = useFrameTheme(frame)
+  const body = useLiveBody(frame)
+  const live = useLiveElement(body)
+  const styles = useFrameStyles(frame, body?.index, body?.hash ?? '')
+  const { colors } = useProjectTokens(frame)
+  if (!body || !live) return null
+  return (
+    <FillSection
+      textOnly={false}
+      color={null}
+      backgroundColor={styles?.element?.backgroundColor ?? null}
+      tokens={colors}
+      theme={theme}
+      inline={live.inline.backgroundColor}
+      shorthand={live.inline.background}
+      disabled={!canWrite}
+      write={(change) => writeElement(page, body, change)}
+      preview={(property, value) => previewStyle(body, property, value)}
+      currentColor={live.color}
+    />
   )
 }
 

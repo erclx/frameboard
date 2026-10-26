@@ -232,6 +232,8 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
         disabled={false}
         write={write}
       />,
@@ -253,6 +255,8 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
         disabled={false}
         write={write}
       />,
@@ -274,6 +278,8 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
         disabled={false}
         write={write}
       />,
@@ -293,6 +299,8 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
         disabled={false}
         write={write}
       />,
@@ -313,6 +321,8 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
         disabled={false}
         write={write}
       />,
@@ -327,6 +337,119 @@ describe('TypographySection', () => {
     ).toHaveAttribute('aria-pressed', 'true')
     expect(changes).toEqual([
       { kind: 'style', property: 'text-align', value: 'center' },
+    ])
+  })
+
+  it('shows the computed line height and letter spacing', () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={36}
+        letterSpacing={-0.5}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Line height' })).toHaveValue(
+      '36',
+    )
+    expect(screen.getByRole('textbox', { name: 'Letter spacing' })).toHaveValue(
+      '-0.5',
+    )
+  })
+
+  it('reads a normal line height as Auto and writes nothing until changed', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Line height' })
+
+    await userEvent.click(field)
+    await userEvent.tab()
+
+    expect(field).toHaveValue('')
+    expect(field).toHaveAttribute('placeholder', 'Auto')
+    expect(changes).toEqual([])
+  })
+
+  it('writes a typed line height in px', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={36}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    const field = screen.getByRole('textbox', { name: 'Line height' })
+    await userEvent.clear(field)
+    await userEvent.type(field, '40{Enter}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'line-height', value: '40px' },
+    ])
+  })
+
+  it('steps an Auto line height from the normal one, 1.2 times the size', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Line height' }))
+    await userEvent.keyboard('{ArrowUp}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'line-height', value: '37px' },
+    ])
+  })
+
+  it('writes a typed letter spacing in px', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    const field = screen.getByRole('textbox', { name: 'Letter spacing' })
+    await userEvent.clear(field)
+    await userEvent.type(field, '-0.5{Enter}')
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'letter-spacing', value: '-0.5px' },
     ])
   })
 })
@@ -1787,6 +1910,28 @@ describe('InspectorPanel with an element selected', () => {
       background: true,
       border: true,
     })
+  })
+
+  it('reads a stated line height and letter spacing in px', async () => {
+    await mountFrame(
+      '<h1 style="font-size: 20px; line-height: 1.5; letter-spacing: 0.1em">Hi</h1>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current).toMatchObject({ lineHeight: 30, letterSpacing: 2 })
+  })
+
+  it('reads a normal line height as none and normal spacing as 0', async () => {
+    await mountFrame('<h1>Hi</h1>')
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current).toMatchObject({ lineHeight: null, letterSpacing: 0 })
   })
 
   it('leaves Typography out for an element holding no text', async () => {
