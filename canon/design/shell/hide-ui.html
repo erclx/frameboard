@@ -766,18 +766,29 @@
         top: 12px;
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 6px 4px 10px;
+        gap: 8px;
+        padding: 6px 8px 6px 6px;
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
         font-weight: 600;
         font-size: 13px;
         z-index: 5;
       }
       .floatname .ib {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
+      }
+      .fsep {
+        width: 1px;
+        height: 16px;
+        background: var(--border);
+      }
+      .fchev {
+        display: inline-flex;
+        color: var(--muted);
+        margin-left: -4px;
       }
       .floatzoom {
         position: absolute;
@@ -875,7 +886,34 @@
       </main>
     </div>
     <div class="floatname">
-      Diligent kite<button class="ib" title="Show UI ⌘\">
+      <a class="ib" title="Home"
+        ><svg
+          class="ic"
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 11l9-7 9 7" />
+          <path d="M5 10v10h14V10" /></svg></a
+      ><span class="fsep"></span>Diligent kite<span class="fchev"
+        ><svg
+          class="ic"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 9l6 6 6-6" /></svg></span
+      ><button class="ib" title="Show UI ⌘\">
         <svg
           class="ic"
           width="15"
