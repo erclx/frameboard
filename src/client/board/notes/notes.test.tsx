@@ -8,6 +8,7 @@ import { liveStore } from '@/client/live/store'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
+import { contrastOnPage } from '@/test/contrast'
 
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
@@ -293,6 +294,18 @@ describe('Thread', () => {
     expect(messages[0]).toHaveTextContent('Tighten the header')
     expect(messages[1]).toHaveTextContent('claude')
     expect(messages[1]).toHaveTextContent('Done. The third chip')
+  })
+
+  it("draws the agent's avatar at 4.5:1 or better on its tint under .dark", () => {
+    document.documentElement.classList.add('dark')
+
+    try {
+      render(<Thread notes={thread} onClose={() => {}} />)
+
+      expect(contrastOnPage(screen.getByText('C'))).toBeGreaterThanOrEqual(4.5)
+    } finally {
+      document.documentElement.classList.remove('dark')
+    }
   })
 
   it('signs a developer message with its author initials', () => {

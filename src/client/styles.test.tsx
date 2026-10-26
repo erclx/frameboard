@@ -48,7 +48,7 @@ describe('styles.css', () => {
     render(<span className="text-claim">claimed</span>)
 
     expect(getComputedStyle(screen.getByText('claimed')).color).toBe(
-      'rgb(224, 163, 255)',
+      'rgb(232, 180, 255)',
     )
   })
 })
