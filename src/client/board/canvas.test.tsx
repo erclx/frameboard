@@ -788,6 +788,133 @@ describe('Canvas', () => {
   })
 })
 
+describe('the first frame on an empty page', () => {
+  const wide = frame('wide', { x: 0, y: 0, width: 1344, height: 400 })
+  // 800 wide less 64 of padding each side, over 1344, is a scale of 0.5.
+  const fitted = 'translate(64px, 200px) scale(0.5)'
+
+  function sized(content: PageRecord) {
+    return (
+      <div style={{ width: 800, height: 600 }}>
+        <Canvas page={content} reloads={{}} />
+      </div>
+    )
+  }
+
+  it('fits the first frame when it arrives', async () => {
+    const { container, rerender } = render(sized(page('studio/first', [])))
+
+    rerender(sized(page('studio/first', [wide])))
+
+    await expect.poll(() => layerOf(container).style.transform).toBe(fitted)
+  })
+
+  it('leaves the view in place for a first frame already wholly in view', async () => {
+    const { container, rerender } = render(
+      sized(page('studio/first-in-view', [])),
+    )
+
+    rerender(
+      sized(
+        page('studio/first-in-view', [
+          frame('small', { x: 100, y: 100, width: 200, height: 200 }),
+        ]),
+      ),
+    )
+
+    await expect
+      .poll(() => holdsAcrossFrames(() => viewOf(container).x))
+      .toBe(true)
+    expect(layerOf(container).style.transform).toBe(
+      'translate(64px, 64px) scale(1)',
+    )
+  })
+
+  it('fits the first frame after a press, as the guide card sends one', async () => {
+    const { container, rerender } = render(
+      sized(page('studio/first-press', [])),
+    )
+    container
+      .querySelector('[data-hit-layer]')
+      ?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+
+    rerender(sized(page('studio/first-press', [wide])))
+
+    await expect.poll(() => layerOf(container).style.transform).toBe(fitted)
+  })
+
+  it('fits the first frame on a return to a page drawn on while away', () => {
+    render(sized(page('studio/first-away', []))).unmount()
+
+    const { container } = render(sized(page('studio/first-away', [wide])))
+
+    expect(layerOf(container).style.transform).toBe(fitted)
+  })
+
+  it('fits frames shown on a page whose frames were all hidden', async () => {
+    const hidden = { ...wide, hidden: true }
+    const { container, rerender } = render(
+      sized(page('studio/first-shown', [hidden])),
+    )
+
+    rerender(sized(page('studio/first-shown', [wide])))
+
+    await expect.poll(() => layerOf(container).style.transform).toBe(fitted)
+  })
+
+  it('keeps a view panned on the empty page when the first frame arrives', async () => {
+    const { container, rerender } = render(
+      sized(page('studio/first-panned', [])),
+    )
+    wheel(container, { deltaX: 30, deltaY: 40 })
+
+    rerender(sized(page('studio/first-panned', [wide])))
+
+    await expect
+      .poll(() => holdsAcrossFrames(() => viewOf(container).x))
+      .toBe(true)
+    expect(layerOf(container).style.transform).toBe(
+      'translate(34px, 24px) scale(1)',
+    )
+  })
+
+  it('keeps the view of a return to a page panned while empty', () => {
+    const first = render(sized(page('studio/first-panned-away', [])))
+    wheel(first.container, { deltaX: 30, deltaY: 40 })
+    first.unmount()
+
+    const { container } = render(
+      sized(page('studio/first-panned-away', [wide])),
+    )
+
+    expect(layerOf(container).style.transform).toBe(
+      'translate(34px, 24px) scale(1)',
+    )
+  })
+
+  it('leaves the view in place for a second frame', async () => {
+    const { container, rerender } = render(
+      sized(page('studio/first-second', [])),
+    )
+    rerender(sized(page('studio/first-second', [wide])))
+    await expect.poll(() => layerOf(container).style.transform).toBe(fitted)
+
+    rerender(
+      sized(
+        page('studio/first-second', [
+          wide,
+          frame('far', { x: 5000, y: 0, width: 200, height: 200 }),
+        ]),
+      ),
+    )
+
+    await expect
+      .poll(() => holdsAcrossFrames(() => viewOf(container).x))
+      .toBe(true)
+    expect(layerOf(container).style.transform).toBe(fitted)
+  })
+})
+
 describe('double-clicking on the canvas', () => {
   const HERO = frame('hero', { x: 0, y: 0, width: 400, height: 300 })
   const unregisters: (() => void)[] = []

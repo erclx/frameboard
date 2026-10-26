@@ -13,8 +13,9 @@ export type MeasureFrame = (frame: FrameRecord) => Promise<ContentSize>
 export interface Hug {
   /**
    * Measures every hugging frame among `refs` and writes the sizes that
-   * moved, answering whether any layout was written, so the batch rescans
-   * before it sends the board.
+   * moved, answering whether `board` now trails a stored size, so the batch
+   * rescans before it sends the board. That covers a size `later` stored
+   * after the scan, which leaves this call nothing to write.
    */
   now: (board: ListResult, refs: readonly string[]) => Promise<boolean>
   /** Measures and writes the same way on a queue of its own, holding no batch. */
@@ -46,6 +47,7 @@ export function createHug({
     refs: readonly string[],
   ): Promise<boolean> => {
     const pages = new Map<string, Record<string, ContentSize>>()
+    let stale = false
     for (const frame of huggingFrames(board, refs)) {
       if (closed) return false
       let size: ContentSize
@@ -61,6 +63,9 @@ export function createHug({
         continue
       }
       if (size.empty) continue
+      stale ||=
+        (frame.hugWidth && size.width !== frame.box.width) ||
+        (frame.hugHeight && size.height !== frame.box.height)
       const page = `${frame.project}/${frame.page}`
       pages.set(page, { ...pages.get(page), [frame.name]: size })
     }
@@ -76,7 +81,7 @@ export function createHug({
         if (!(error instanceof FrameboardError)) throw error
       }
     }
-    return written
+    return written || stale
   }
 
   return {
