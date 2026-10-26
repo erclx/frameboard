@@ -439,6 +439,17 @@ describe('InspectorPanel', () => {
       )
     })
 
+    it('shows the Fill once a frame selected as a placeholder mounts its page', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+      await screen.findByRole('button', { name: /Rename frame/ })
+      expect(screen.queryByRole('heading', { name: 'Fill' })).toBeNull()
+
+      await mountSwatches()
+
+      expect(await screen.findByRole('heading', { name: 'Fill' })).toBeVisible()
+    })
+
     it('draws no Fill for several frames', async () => {
       await mountSwatches()
       act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))

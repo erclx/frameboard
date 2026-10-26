@@ -85,19 +85,25 @@ export function useLiveBody(frame: string): ElementKey | null {
   const [held, setHeld] = useState<ElementKey | null>(null)
 
   useEffect(() => {
-    const iframe = document.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(frame)}"] iframe`,
-    )
-    if (!iframe) return
-    const read = () => {
-      const doc = iframe.contentDocument
+    const scope = `[data-frame="${CSS.escape(frame)}"]`
+    const read = (iframe: HTMLIFrameElement | null) => {
+      const doc = iframe?.contentDocument
       const hash = doc ? renderedHash(doc) : null
       const index = doc?.body ? elementIndex(doc, doc.body) : null
       if (hash !== null && index !== null) setHeld({ frame, index, hash })
     }
-    read()
-    iframe.addEventListener('load', read)
-    return () => iframe.removeEventListener('load', read)
+    // The canvas mounts a frame's iframe only once the view settles near it,
+    // and swaps it for a placeholder far off, so a load is caught wherever it
+    // lands rather than on the iframe present when the frame was selected.
+    const loaded = (event: Event) => {
+      const target = event.target
+      if (target instanceof HTMLIFrameElement && target.closest(scope)) {
+        read(target)
+      }
+    }
+    read(document.querySelector<HTMLIFrameElement>(`${scope} iframe`))
+    document.addEventListener('load', loaded, true)
+    return () => document.removeEventListener('load', loaded, true)
   }, [frame])
 
   return held?.frame === frame ? held : null
