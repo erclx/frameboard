@@ -33,6 +33,11 @@ export interface LiveState {
   claims: Readonly<Record<string, Claim>>
   /** Thumbnail stamps by theme then frame ref, absent meaning none rendered yet. */
   thumbnails: Readonly<Record<Theme, Readonly<Record<string, string>>>>
+  /**
+   * What each project or page this session renamed was first called, by its
+   * name now, which `identityOf` reads so a rename keeps what the board shows.
+   */
+  aliases: Readonly<Record<string, string>>
 }
 
 export type LiveStore = StoreApi<LiveState>
@@ -52,7 +57,137 @@ export function createLiveStore(): LiveStore {
     history: { undo: 0, redo: 0 },
     claims: {},
     thumbnails: { light: {}, dark: {} },
+    aliases: {},
   }))
+}
+
+/**
+ * The ref a project, page, or frame had before this session renamed it or
+ * what holds it, the same through every rename and its undo, so a key built
+ * on it keeps a rendered page or frame mounted.
+ */
+export function identityOf(
+  aliases: Readonly<Record<string, string>>,
+  ref: string,
+): string {
+  const parts = ref.split('/')
+  for (let held = parts.length; held > 0; held--) {
+    const alias = aliases[parts.slice(0, held).join('/')]
+    if (alias !== undefined) return [alias, ...parts.slice(held)].join('/')
+  }
+  return ref
+}
+
+/**
+ * Renames a project or page on the board in hand, ahead of the snapshot
+ * that will carry it, moving every count, finding, claim, note, and
+ * thumbnail to the new refs and recording the alias `identityOf` reads. A
+ * board that no longer holds `before`, or already holds `after`, carries the
+ * rename already and is left alone.
+ */
+export function receiveRename(
+  store: LiveStore,
+  before: string,
+  after: string,
+): void {
+  const state = store.getState()
+  const { board } = state
+  if (!board || !holdsRef(board, before) || holdsRef(board, after)) return
+  const move = (ref: string) =>
+    ref === before || ref.startsWith(`${before}/`)
+      ? `${after}${ref.slice(before.length)}`
+      : ref
+  const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
+    Object.fromEntries(
+      Object.entries(byRef).map(([ref, value]) => [move(ref), value]),
+    )
+  const aliases = moveKeys(state.aliases)
+  aliases[after] = identityOf(state.aliases, before)
+  store.setState({
+    board: renameOnBoard(board, before, after),
+    reloads: moveKeys(state.reloads),
+    findings: moveKeys(state.findings),
+    notes: moveKeys(state.notes),
+    claims: moveKeys(state.claims),
+    thumbnails: {
+      light: moveKeys(state.thumbnails.light),
+      dark: moveKeys(state.thumbnails.dark),
+    },
+    aliases: Object.fromEntries(
+      Object.entries(aliases).filter(([ref, first]) => ref !== first),
+    ),
+  })
+}
+
+function holdsRef(board: ListResult, ref: string): boolean {
+  return board.projects.some(
+    (project) =>
+      project.name === ref || project.pages.some((page) => page.ref === ref),
+  )
+}
+
+/** The board with one project or page renamed, its folder path and everything under it following. */
+function renameOnBoard(
+  board: ListResult,
+  before: string,
+  after: string,
+): ListResult {
+  const [project = '', page] = before.split('/')
+  const name = after.split('/').at(-1) ?? after
+  const repath = (from: string, to: string) => (path: string) =>
+    path === from || path.startsWith(`${from}/`)
+      ? `${to}${path.slice(from.length)}`
+      : path
+  return {
+    ...board,
+    projects: board.projects.map((held) => {
+      if (held.name !== project) return held
+      if (page === undefined) {
+        const path = repath(held.path, siblingPath(held.path, name))
+        return {
+          ...held,
+          name,
+          path: path(held.path),
+          pages: held.pages.map((each) => ({
+            ...each,
+            ref: `${name}/${each.name}`,
+            project: name,
+            path: path(each.path),
+            frames: each.frames.map((frame) => ({
+              ...frame,
+              ref: `${name}/${each.name}/${frame.name}`,
+              project: name,
+              path: path(frame.path),
+            })),
+          })),
+        }
+      }
+      return {
+        ...held,
+        pages: held.pages.map((each) => {
+          if (each.name !== page) return each
+          const path = repath(each.path, siblingPath(each.path, name))
+          return {
+            ...each,
+            ref: after,
+            name,
+            path: path(each.path),
+            frames: each.frames.map((frame) => ({
+              ...frame,
+              ref: `${after}/${frame.name}`,
+              page: name,
+              path: path(frame.path),
+            })),
+          }
+        }),
+      }
+    }),
+  }
+}
+
+/** The folder path beside `path` named `name`. */
+function siblingPath(path: string, name: string): string {
+  return `${path.slice(0, path.lastIndexOf('/') + 1)}${name}`
 }
 
 /**

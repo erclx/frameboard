@@ -15,6 +15,7 @@ import {
   receiveListeners,
   receiveNotes,
   receiveReload,
+  receiveRename,
   receiveThumbnails,
 } from './store'
 import {
@@ -76,7 +77,9 @@ export function connectLive(
       } else if (message.type === 'access') {
         receiveAccess(store, message.write, message.dispatch)
       } else if (message.type === 'reload') receiveReload(store, message.refs)
-      else if (message.type === 'findings') {
+      else if (message.type === 'renamed') {
+        receiveRename(store, message.before, message.after)
+      } else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
       } else if (message.type === 'notes') {
         receiveNotes(store, message.page, message.notes)
