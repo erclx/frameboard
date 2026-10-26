@@ -110,6 +110,39 @@ test.describe('placing text and shapes into a frame', () => {
       .toMatchObject({ width: 1440, height: 900, hugHeight: false })
   })
 
+  test('Layers lists a Text placed between two placed rectangles at once, highlighting it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const elements = page.getByRole('list', { name: 'Elements of hero' })
+    const rectangles = elements.getByRole('button', { name: 'Rectangle' })
+    /** The 40px row gap just past the hero's first element named `name`, level with One. */
+    async function gapAfter(name: string) {
+      const [box, one] = await Promise.all([
+        hero(page).locator(`[data-name="${name}"]`).first().boundingBox(),
+        hero(page).locator('[data-name="One"]').boundingBox(),
+      ])
+      if (!box || !one) throw new Error(`${name} has no box on screen`)
+      return { x: box.x + box.width + 20, y: one.y + one.height / 2 }
+    }
+    async function place(tool: string, at: { x: number; y: number }) {
+      await tools(page).getByRole('button', { name: tool }).click()
+      await page.mouse.click(at.x, at.y)
+    }
+
+    await place('Rectangle', await gapAfter('One'))
+    await expect(rectangles).toHaveCount(1)
+    await place('Rectangle', await gapAfter('Rectangle'))
+    await expect(rectangles).toHaveCount(2)
+    await place('Text', await gapAfter('Rectangle'))
+
+    await expect(elements.locator('[aria-current="true"]')).toHaveText('Text')
+    await expect(
+      elements.getByRole('button', { name: /^(One|Rectangle|Text|Two)$/ }),
+    ).toHaveText(['One', 'Rectangle', 'Text', 'Rectangle', 'Two'])
+  })
+
   test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
     page,
   }) => {

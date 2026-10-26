@@ -4,6 +4,7 @@ import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { InsertResult } from '@/shared/records/edit'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { catchUpTree } from '../element/tree'
 import { inFrameTurn, type Landed, sentence } from '../inspector/element/write'
 import { type ModeStore, modeStore } from '../mode'
 import type { BoardPoint } from '../notes/pick'
@@ -89,6 +90,7 @@ export async function placeElement(
         send,
       )
       rememberHash(ref, answer.hash)
+      void catchUpTree(ref, answer.hash)
       placed = { frame: ref, index: answer.index, hash: answer.hash }
       selectElement(selection, page, placed)
       mode.setState({ tool: 'move' })
