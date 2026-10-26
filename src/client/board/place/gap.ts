@@ -1,6 +1,6 @@
 import type { FrameRecord } from '@/shared/records/list'
 
-import { elementIndex, renderedHash } from '../frame-dom'
+import { elementAt, elementIndex, renderedHash } from '../frame-dom'
 import { type BoardPoint, pickAt } from '../notes/pick'
 
 /** A point inside a live frame, in its own viewport pixels. */
@@ -237,13 +237,45 @@ export function gapUnder(
   const pick = pickAt(container, frames, at)
   const frame = frames.find((candidate) => candidate.ref === pick?.frame.ref)
   if (!frame) return null
-  const shown = container.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
-  )?.contentDocument
+  const shown = shownDocument(container, frame.ref)
   const hash = shown ? renderedHash(shown) : null
   const gap =
     shown && hash
       ? gapAt(shown, { x: at.x - frame.box.x, y: at.y - frame.box.y })
       : null
   return hash && gap ? { frame, hash, gap } : null
+}
+
+/**
+ * The gap under a board point the element at `index` in frame `ref` could
+ * move to, or null where a move would change nothing or could not land: over
+ * another frame or bare canvas, inside the element itself, or in the gap it
+ * already sits in.
+ */
+export function moveGapUnder(
+  container: ParentNode,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+  { frame: ref, index }: { frame: string; index: number },
+): FrameGap | null {
+  const under = gapUnder(container, frames, at)
+  const shown = under?.frame.ref === ref ? shownDocument(container, ref) : null
+  const element = shown ? elementAt(shown, index) : null
+  const parent = shown && under ? elementAt(shown, under.gap.parent) : null
+  if (!under || !shown || !element || !parent) return null
+  if (element.contains(parent)) return null
+  const next = element.nextElementSibling
+  const sits =
+    parent === element.parentElement &&
+    (under.gap.before === index ||
+      under.gap.before === (next ? elementIndex(shown, next) : null))
+  return sits ? null : under
+}
+
+function shownDocument(container: ParentNode, ref: string): Document | null {
+  return (
+    container.querySelector<HTMLIFrameElement>(
+      `[data-frame="${CSS.escape(ref)}"] iframe`,
+    )?.contentDocument ?? null
+  )
 }

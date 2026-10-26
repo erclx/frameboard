@@ -1,7 +1,11 @@
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import type { InsertResult, RemoveResult } from '@/shared/records/edit'
+import type {
+  InsertResult,
+  MoveResult,
+  RemoveResult,
+} from '@/shared/records/edit'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { WaitDropped, whenFree } from '../claims/waiting'
@@ -18,7 +22,7 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
-import { gapUnder } from './gap'
+import { type FrameGap, gapUnder, moveGapUnder } from './gap'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider'
@@ -30,6 +34,8 @@ export interface PlaceDeps {
   send?: typeof fetch
   /** Shows a refusal, the kit's toast by default. */
   notify?: (refusal: { title: string; description: string }) => void
+  /** A rectangle's or an ellipse's size in CSS pixels as a drag drew it, else the default 100 by 100. */
+  size?: { width: number; height: number }
 }
 
 /**
@@ -56,51 +62,134 @@ export async function placeElement(
     live = liveStore,
     send = fetch,
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+    size,
   }: PlaceDeps = {},
 ): Promise<ElementKey | null> {
   const under = gapUnder(container, frames, at)
   if (!under) return null
-  const { frame, hash, gap } = under
+  const { gap } = under
+  const element =
+    kind === 'divider'
+      ? { kind, vertical: gap.row }
+      : kind === 'text' || !size
+        ? { kind }
+        : { kind, ...size }
+  return writeAtGap(
+    under,
+    'Nothing placed',
+    (from) => ({
+      url: '/api/frames/insert',
+      body: {
+        ref: under.frame.ref,
+        hash: from,
+        parent: gap.parent,
+        before: gap.before,
+        element,
+      },
+    }),
+    (placed) => {
+      selectElement(selection, page, placed)
+      mode.setState({ tool: 'move' })
+    },
+    { live, send, notify },
+  )
+}
+
+/**
+ * Moves the selected element into the gap under a board point in its own
+ * frame, then selects it where it landed, as a drag of the element released
+ * there. It answers the element as it now stands, or null when nothing was
+ * written, as over another frame, inside the element, or in the gap it
+ * already sits in, each of which sends nothing. It goes in the frame's turn
+ * as `placeElement` does, refused with nothing sent on a frame another
+ * session holds.
+ */
+export async function moveElement(
+  container: ParentNode,
+  page: string,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+  key: ElementKey,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+): Promise<ElementKey | null> {
+  const under = moveGapUnder(container, frames, at, key)
+  if (!under) return null
+  return writeAtGap(
+    under,
+    'Nothing moved',
+    (from) => ({
+      url: '/api/frames/move',
+      body: {
+        ref: key.frame,
+        hash: from,
+        index: key.index,
+        parent: under.gap.parent,
+        before: under.gap.before,
+      },
+    }),
+    (moved) => selectElement(selection, page, moved),
+    { live, send, notify },
+  )
+}
+
+/**
+ * Sends one write whose indices a gap read off the rendered frame, in the
+ * frame's turn behind any element edit still in flight, from the hash that
+ * edit answered, and hands the hash it answers to the selection before the
+ * frame reloads. A frame another session holds is refused with nothing
+ * sent, since its indices go stale when that session writes.
+ */
+async function writeAtGap(
+  { frame, hash }: FrameGap,
+  title: string,
+  request: (from: string) => { url: string; body: unknown },
+  land: (key: ElementKey) => void,
+  { live, send, notify }: Required<Pick<PlaceDeps, 'live' | 'send' | 'notify'>>,
+): Promise<ElementKey | null> {
   const ref = frame.ref
   const holder = live.getState().claims[ref]
   if (holder) {
     notify({
-      title: 'Nothing placed',
+      title,
       description: `${holder.tag} is editing ${frame.name}, so nothing was written.`,
     })
     return null
   }
 
-  const element = kind === 'divider' ? { kind, vertical: gap.row } : { kind }
-  let placed: ElementKey | null = null
+  let landed: ElementKey | null = null
   await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
     if (before === null) return null
     // An edit ahead that landed in place keeps every index, so the gap
     // holds on the bytes it answered. One found again past an agent's write
-    // may not, so the insert goes from its own hash and is refused as stale.
+    // may not, so the write goes from its own hash and is refused as stale.
     const rebased =
       before !== undefined && before.from.includes(hash) && !before.shifted
     const from = rebased ? before.to : hash
     const done = awaitHash(ref)
     rememberHash(ref, from)
     try {
-      const answer = await writeBoard<InsertResult>(
-        '/api/frames/insert',
-        { ref, hash: from, parent: gap.parent, before: gap.before, element },
+      const { url, body } = request(from)
+      const answer = await writeBoard<InsertResult | MoveResult>(
+        url,
+        body,
         'POST',
         send,
       )
       rememberHash(ref, answer.hash)
       void catchUpTree(ref, answer.hash)
-      placed = { frame: ref, index: answer.index, hash: answer.hash }
-      selectElement(selection, page, placed)
-      mode.setState({ tool: 'move' })
+      landed = { frame: ref, index: answer.index, hash: answer.hash }
+      land(landed)
       // Every index past the gap moved, so no edit queued behind keeps its own.
       return { from: [from], to: answer.hash, at: new Map(), shifted: true }
     } catch (error) {
       notify({
-        title: 'Nothing placed',
+        title,
         description:
           error instanceof BoardWriteError
             ? sentence(error.message)
@@ -111,7 +200,7 @@ export async function placeElement(
       done()
     }
   })
-  return placed
+  return landed
 }
 
 /**

@@ -5,7 +5,7 @@ import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
-import { deleteElement, placeElement } from './write'
+import { deleteElement, moveElement, placeElement } from './write'
 
 const HASH = 'c'.repeat(64)
 const ANSWERED = 'd'.repeat(64)
@@ -219,6 +219,137 @@ describe('placeElement', () => {
 
     expect(placed).toBeNull()
     expect(sent).toEqual([])
+  })
+
+  it('sends the size a drag gave a shape', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      'ellipse',
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        size: { width: 240, height: 48 },
+      },
+    )
+
+    expect(sent).toMatchObject([
+      { element: { kind: 'ellipse', width: 240, height: 48 } },
+    ])
+  })
+})
+
+describe('moveElement', () => {
+  /** The first of the column's two divs, as the selection holds it. */
+  const FIRST_DIV = { frame: HERO.ref, index: 4, hash: HASH }
+
+  it('sends the element and the gap under the point, then selects it where it landed', async () => {
+    const container = await mount(COLUMN)
+    const selection = createSelectionStore()
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    // Past the second div's middle, so the gap is the column's end.
+    const moved = await moveElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 70 },
+      FIRST_DIV,
+      { selection, live: createLiveStore(), send },
+    )
+
+    expect(sent).toEqual([
+      { ref: HERO.ref, hash: HASH, index: 4, parent: 3, before: null },
+    ])
+    expect(moved).toEqual({ frame: HERO.ref, index: 5, hash: ANSWERED })
+    expect(selection.getState().element).toEqual(moved)
+  })
+
+  it('sends nothing for the gap the element already sits in', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {})
+
+    // Past the first div's middle, ahead of the second: the gap it closes.
+    const moved = await moveElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      FIRST_DIV,
+      { selection: createSelectionStore(), live: createLiveStore(), send },
+    )
+
+    expect(moved).toBeNull()
+    expect(sent).toEqual([])
+  })
+
+  it('sends nothing released over bare canvas', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {})
+
+    const moved = await moveElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: 10, y: 10 },
+      FIRST_DIV,
+      { selection: createSelectionStore(), live: createLiveStore(), send },
+    )
+
+    expect(moved).toBeNull()
+    expect(sent).toEqual([])
+  })
+
+  it('refuses a frame another session holds and sends nothing', async () => {
+    const container = await mount(COLUMN)
+    const live = createLiveStore()
+    live.setState({
+      claims: {
+        [HERO.ref]: {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: '2026-10-15T00:00:00.000Z',
+          expiresAt: '2026-10-15T01:00:00.000Z',
+        },
+      },
+    })
+    const { sent, send } = server(200, {})
+    const told: string[] = []
+
+    const moved = await moveElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 70 },
+      FIRST_DIV,
+      {
+        selection: createSelectionStore(),
+        live,
+        send,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(moved).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([
+      'claude · studio is editing hero, so nothing was written.',
+    ])
   })
 })
 
