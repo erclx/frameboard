@@ -52,6 +52,7 @@
     "notes/thread": "design/13-agents/note-thread",
     "palette/commands": "design/14-overlays/palette",
     "palette/shortcuts": "design/14-overlays/shortcuts",
+    "palette/shortcuts-home": "design/14-overlays/shortcuts-home",
     "menus/avatar": "design/14-overlays/avatar-menu",
     "menus/home": "design/07-home/context-home",
     "menus/home-sort": "design/07-home/home-sort-menu",
