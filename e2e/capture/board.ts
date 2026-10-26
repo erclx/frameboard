@@ -5,8 +5,10 @@ import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
 import { claim, release } from '@/server/claims/store'
+import type { ServerMessage } from '@/shared/live-messages'
 import type { FrameChange } from '@/shared/records/changes'
 import type { ListResult } from '@/shared/records/list'
+import type { BoardNote } from '@/shared/records/notes'
 
 import type { CaptureCase } from './types'
 
@@ -985,6 +987,46 @@ function seededChanges(changes: FrameChange[]): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Hands the board seven long agent replies on the home page's Note 1 through
+ * the socket's notes message, so its thread outgrows the canvas with no note
+ * written into the fixture.
+ */
+async function longThread(page: Page): Promise<void> {
+  const body =
+    'The about card now opens with the outcome and gives the fold more room. '.repeat(
+      11,
+    )
+  const replies: BoardNote[] = [1, 2, 3, 4, 5, 6, 7].map((turn) => ({
+    id: `n_10ae0b0${turn}`,
+    number: null,
+    frame: 'about',
+    anchor: null,
+    text: `${turn}. ${body.trim()}`,
+    from: 'agent',
+    author: null,
+    session: LISTENING_SESSION,
+    to: null,
+    state: 'open',
+    thread: 'n_5e1a0b01',
+    createdAt: new Date(Date.UTC(2026, 9, 19, 16, 10 + turn)).toISOString(),
+    updatedAt: new Date(Date.UTC(2026, 9, 19, 16, 10 + turn)).toISOString(),
+    element: null,
+  }))
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as ServerMessage
+      socket.send(
+        parsed.type === 'notes' && parsed.page === 'webapp/home'
+          ? JSON.stringify({ ...parsed, notes: [...parsed.notes, ...replies] })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
 /** The toast once it has slid in. */
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
 
@@ -1530,6 +1572,17 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(pressOnLoad('^Note 2 on hero$')),
+      },
+      {
+        section: 'note-thread-long',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(longThread, asWriter, pressOnLoad('^Note 1 on about$')),
+        ),
       },
       {
         section: 'note-composer',
