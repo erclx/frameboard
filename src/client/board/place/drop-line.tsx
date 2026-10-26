@@ -8,7 +8,7 @@ import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import { type GapLine, gapUnder, moveGapUnder } from './gap'
-import { carriedStore } from './tool'
+import { carriedStore, placedKind } from './tool'
 
 interface DropLineProps {
   /** The canvas viewport, whose pointer moves the line follows. */
@@ -26,8 +26,8 @@ interface DropLineProps {
  * selection blue at a constant screen size, drawn while the Text or Shape
  * tool is on and the pointer is over a live frame. It draws nothing over
  * bare canvas or a frame still loading, where a click places nothing. While
- * the press is held it stays at the gap the press began in, where a drag
- * sized shape lands.
+ * a Rectangle or Ellipse press is held it stays at the gap the press began
+ * in, where the drag sized shape lands.
  *
  * While a Move drag carries the selected element, it draws the gap the
  * element would drop into instead, and nothing where a drop would leave it
@@ -51,9 +51,9 @@ export function DropLine({
     const target = viewport.current
     if (!placing || !target || !container) return
     const move = (event: PointerEvent) => {
-      // A placement tool lands at the gap its press began in, so a drag
-      // sizing a shape holds the line there rather than following it.
-      if (!carried && event.buttons & 1) return
+      // A Rectangle or Ellipse drag lands at the gap its press began in, so
+      // the line holds there, while Text and a Divider land under the release.
+      if (!carried && event.buttons & 1 && sizesByDrag()) return
       const at = toBoard(event)
       const under = carried
         ? moveGapUnder(container, frames(), at, carried)
@@ -91,6 +91,12 @@ export function DropLine({
       }}
     />
   )
+}
+
+/** Whether the tool on now sizes its shape by a drag, as `ShapeDraft` draws one. */
+function sizesByDrag(): boolean {
+  const kind = placedKind()
+  return kind === 'rectangle' || kind === 'ellipse'
 }
 
 function sameLine(a: GapLine | null, b: GapLine | null): boolean {
