@@ -21,13 +21,15 @@ Owns picking, walking, and outlining an element, and with the board folder's `se
 - Alt+A, D, W, S align, Alt+H and Alt+V center, and Ctrl+Alt+H and Ctrl+Alt+V distribute, each writing the page's layout alone
 - Cmd+Shift+H hides, Cmd+Shift+L locks, and Cmd+Shift+C copies a frame as a PNG in the theme on screen, rendered by the browser `capture` uses
 
-Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection.
+Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
 ### `src/client/board/menus/`
 
 Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together. Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for.
+
+The Element menu ends with Delete, which deletes the selected element with what it holds, as Delete and Backspace do. It posts to `POST /api/frames/remove` and waits under the claim card on a held frame.
 
 - A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts on the selection the way its key does
 - Paste here shows Paste's key, sends the right-clicked point with the paste to place the group's top left there, and New frame here and both Add a note rows act at that point too
@@ -38,6 +40,8 @@ Owns the right-click menus on a frame, the selected element, empty canvas, a pag
 ### `src/client/board/structure/`
 
 Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller.
+
+The Frame tool, New frame here, and the guide send the preset's width and height, so a hand-placed frame keeps its size and hugs neither axis. An agent's `frame add --size` still hugs its height.
 
 - Each acts in Edit while the tab may write, on the frames selected on the canvas's page, and none acts while an element is selected, so Backspace never deletes a frame the developer sees as an element
 - Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway. F2 renames one selected frame in the inspector.
@@ -89,6 +93,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element stays selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that
 - A placed element's undo takes out the one element its bytes match, and its redo puts it back under its parent, ahead of the sibling it preceded, both found by start tag
+- A deleted element is the same change run backwards, so its undo puts it back ahead of the sibling it preceded, with the whitespace beside it possibly on its other side
 - A layout entry's undo compares and restores the size on an axis both it and the stored entry hug as whatever is stored, since the server measured that size and the developer never set it
 
 ## Gotchas
