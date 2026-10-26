@@ -53,6 +53,8 @@ The layers tree lists the top of the stack first. A row click selects its frame 
 - Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
 - The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
 
+An element row draws `T` for text, an image glyph for media, and otherwise the layout `GET /api/frames/elements` reads from the static cascade, so a culled frame keeps its glyphs.
+
 An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 
 ### `src/client/board/guide/`
@@ -80,6 +82,7 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 
 - The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
+- The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
 ### `src/client/`
@@ -88,7 +91,7 @@ Owns the app shell and the controls around the canvas.
 
 - The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of git's `user.name`, which signs notes
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
-- Hide UI, through Cmd+\ or a button, hides both panels and keeps the project name, toolbar, avatar, and zoom level
+- Hide UI, through Cmd+\ or a button, hides both panels and keeps the way home, the project name with its menu, the toolbar, the avatar, and the zoom level
 
 ### `src/client/access/`
 

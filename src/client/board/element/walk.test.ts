@@ -9,7 +9,7 @@ function element(
   parent: number | null,
   tag = 'div',
 ): TreeElement {
-  return { index, parent, tag, name: tag, textOnly: false }
+  return { index, parent, tag, name: tag, textOnly: false, layout: 'block' }
 }
 
 // <main 6><h1 7/><p 8/><a 9/></main><footer 10/>
