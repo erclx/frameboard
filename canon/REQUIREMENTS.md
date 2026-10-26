@@ -23,13 +23,13 @@ This record holds at most 600 words.
 
 ### Hand edits
 
-- The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds phone, tablet, or desktop frames, selects several frames, and undoes their own changes
-- By hand, a developer sets a frame's position and size and an element's name, opacity, radius, type, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
-- A developer places text or a shape inside a frame, landing in the layout where clicked, and edits text in place on a double-click
+- The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame from a short phone, tablet, and desktop list or draws one to any size, selects several frames, and undoes their own changes
+- By hand, a developer sets a frame's position, size, and fill, and an element's name, opacity, radius, type, line height, letter spacing, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
+- A developer places text or a shape inside a frame, landing in the layout where clicked or sized by a drag, moves it to another spot in the layout or deletes it, and edits text in place on a double-click
 
 ### Working with the agent
 
-- The agent sees the developer's selection and works through notes pinned on frames, which reach a listening session at once or start one, and take its replies.
+- The agent sees the developer's selection and works through notes pinned on frames, carrying pasted or dropped images, which reach a listening session at once or start one, and take its replies.
 - The board shows which frame an agent is editing and tells a second session it is taken
 - A frame breaking a content rule is reported at once to its agent and on the board, and projects can add their own rules.
 - An agent screenshots a frame or page in either theme
@@ -50,22 +50,18 @@ This record holds at most 600 words.
 ### Never by hand
 
 - Vector editing, pen and path tools, or image editing
-- Layout editing, being flex, padding, or moving an element once placed
+- Layout editing, being flex, padding, or placing an element outside the layout's flow
 - Effects controls such as blending and filters
 - Components, constraints, or a plugin system
 
 ### Deferred
 
-- Motion review, being a scrubber, a timed screenshot, a filmstrip, or a recording
-- Home view search and archive, and present mode
-- A narrow-screen layout, past hiding the UI below 1024px while the canvas pans and zooms
 - Opening one frame on a phone over the local network
 - Skill and hook packaging for agents other than Claude Code
-- Windows
 
 ## Constraints
 
 - Runs on macOS and Linux
-- A hand control earns its place only when the edit beats asking the agent, and nothing by hand reshapes the layout around what it touches.
+- A hand control earns its place only when the edit beats asking the agent, and nothing by hand changes the layout of anything but what it touches.
 - Human and agent edits never silently overwrite each other.
 - Frameboard knows nothing about any one consumer, which hands it a board folder and token stylesheet.
