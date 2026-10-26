@@ -7,7 +7,7 @@ import { resolveFrameRef } from '@/server/board/refs'
 import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
 import { editFrameFile, insertFrameFile } from '@/server/edit/frame-file'
-import { elementMarkup, shapePaint } from '@/server/edit/insert'
+import { elementMarkup, shapePaint, textFont } from '@/server/edit/insert'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
 import type { EditResult, InsertResult } from '@/shared/records/edit'
@@ -141,7 +141,7 @@ export function editRoutes(
       frame.path,
       body.hash,
       { parent: body.parent, before: body.before },
-      elementMarkup(body.element, shapePaint(tokens)),
+      elementMarkup(body.element, shapePaint(tokens), textFont(tokens)),
     )
     if (!result.ok) {
       return c.json(

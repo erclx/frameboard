@@ -1,6 +1,7 @@
 import { type DefaultTreeAdapterTypes, html, serialize } from 'parse5'
 
 import type { TokenRow } from '@/shared/records/tokens'
+import { STARTER_FONTS } from '@/shared/starter-tokens'
 
 import { type Element, type FrameTree, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
@@ -64,6 +65,7 @@ export type Inserted =
 const SHAPE_SIZE = '100px'
 const FILL_TOKENS = ['--muted', '--secondary', '--accent']
 const LINE_TOKEN = '--border'
+const TEXT_FONT_TOKEN = '--font-text'
 /** Raw on purpose, so the check names it once the project sets no color token. */
 const RAW_GREY = '#d9d9d9'
 
@@ -115,8 +117,22 @@ export function shapePaint(tokens: readonly TokenRow[]): ShapePaint {
   }
 }
 
+/**
+ * The family placed text sets, being the project's text font token, else
+ * Geist, so a frame with no font of its own still passes `default-font`.
+ */
+export function textFont(tokens: readonly TokenRow[]): string {
+  return tokens.some((row) => row.name === TEXT_FONT_TOKEN)
+    ? `var(${TEXT_FONT_TOKEN})`
+    : STARTER_FONTS.geist.stack
+}
+
 /** Every byte an insert of `element` writes, with its `data-name` and default size. */
-export function elementMarkup(element: InsertKind, paint: ShapePaint): string {
+export function elementMarkup(
+  element: InsertKind,
+  paint: ShapePaint,
+  font: string,
+): string {
   const { fill, line } = paint
   if (!PAINT_VALUE.test(fill) || !PAINT_VALUE.test(line)) {
     throw new Error(`Unexpected shape paint ${fill} ${line}`)
@@ -124,7 +140,7 @@ export function elementMarkup(element: InsertKind, paint: ShapePaint): string {
   const box = `width: ${SHAPE_SIZE}; height: ${SHAPE_SIZE}; background: ${fill}`
   switch (element.kind) {
     case 'text':
-      return '<p data-name="Text">Text</p>'
+      return `<p data-name="Text" style="font-family: ${font}">Text</p>`
     case 'rectangle':
       return `<div data-name="Rectangle" style="${box}"></div>`
     case 'ellipse':

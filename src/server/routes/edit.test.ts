@@ -7,6 +7,8 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { skeleton } from '../board/frames'
+import { checkPage } from '../checks/run'
 import { claim, release } from '../claims/store'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
@@ -392,6 +394,26 @@ describe('editRoutes', () => {
           '<div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted)"></div><p data-name="Caption">',
         ),
       )
+    })
+
+    it('places text a new frame checks clean on default-font', async () => {
+      writeFileSync(path(), skeleton('hero'))
+
+      await insert({
+        ref: HERO,
+        hash: hash(),
+        parent: BODY,
+        before: null,
+        element: { kind: 'text' },
+      })
+
+      const { findings } = await checkPage(board.root, 'webapp', 'home')
+      expect(
+        findings.filter(
+          (finding) =>
+            finding.frame === HERO && finding.rule === 'default-font',
+        ),
+      ).toEqual([])
     })
 
     it('records one step, which undo reverts byte for byte', async () => {

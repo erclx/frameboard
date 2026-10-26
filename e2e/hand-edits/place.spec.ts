@@ -126,7 +126,9 @@ test.describe('placing text and shapes into a frame', () => {
 
     await expect
       .poll(read)
-      .toContain('</h1>\n    <p data-name="Text">Hello</p><div data-name="Row"')
+      .toContain(
+        '</h1>\n    <p data-name="Text" style="font-family: var(--font-text)">Hello</p><div data-name="Row"',
+      )
 
     // The pick vouches only for bytes the frame shows, so it waits out the reload.
     await expect
