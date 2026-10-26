@@ -15,7 +15,7 @@ Owns the browser app around the frames, being the board screen and canvas, its p
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool, key F, places a frame at the click at the chosen phone, tablet, or desktop preset, named for the preset, then selects it, opens its inspector name, and returns to Move
+- The Frame tool, key F, places the size picked from its list at the click, named for it, or draws a frame named `frame` at a dragged box, then selects it, opens its name, and returns to Move
 - A frame placed partly out of view moves the view to center it at the current zoom
 - An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
@@ -38,7 +38,7 @@ Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element i
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
 
-A Rectangle or Ellipse drag past 3 screen pixels draws a box through `shape-draft.tsx` and lands the shape at the gap the drag started in, at the size drawn. A shorter drag, a Divider, and Text stay a click. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
+A Rectangle, Ellipse, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes land at the gap the drag started in, and a frame on a box of at least 40 by 40. Shorter drags, Dividers, and Text stay clicks. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
 
 ### `src/client/board/left-panel/`
 

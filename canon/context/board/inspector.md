@@ -30,7 +30,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. One frame with findings lists them under Checks below it, the list its label's badge opens. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
-- Under the Frame tool it lists the three presets as radio rows in place of the selection, and the chosen one is what the next canvas click places
+- Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, and Desktop headings in place of the selection, and the chosen row is what the next click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
 
 Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and a drag on its prefix zone or caption scrubs it. A weight steps by 100, and a step on a `Mixed` frame value moves each frame by the step from its own.

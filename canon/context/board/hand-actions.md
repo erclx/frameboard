@@ -41,7 +41,7 @@ The Element menu ends with Delete, which deletes the selected element with what 
 
 Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller.
 
-The Frame tool, New frame here, and the guide send the preset's width and height, so a hand-placed frame keeps its size and hugs neither axis. An agent's `frame add --size` still hugs its height.
+The Frame tool, New frame here, and the guide send the picked size's width and height, and a Frame tool drag sends the box it drew, so a hand-placed frame keeps its size and hugs neither axis. An agent's `frame add --size` still hugs its height.
 
 - Each acts in Edit while the tab may write, on the frames selected on the canvas's page, and none acts while an element is selected, so Backspace never deletes a frame the developer sees as an element
 - Delete and cut stay disabled while a selected frame is locked, and the server refuses both with `frame-locked` if sent anyway. F2 renames one selected frame in the inspector.
