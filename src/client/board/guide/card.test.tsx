@@ -367,6 +367,24 @@ describe('GuideCard', () => {
     expect(screen.getByText('untitled/tokens.css')).toBeInTheDocument()
   })
 
+  it('holds the prompt inside the My agent card', async () => {
+    const user = userEvent.setup()
+    renderCard({ loadTokens: BOARD_SHEET })
+
+    await screen.findByText('1 of 3')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+
+    const card = (
+      await screen.findByRole('radio', { name: /My agent/ })
+    ).closest('label')
+    expect(
+      screen
+        .getByText('Draw a phone screen for untitled on frameboard')
+        .closest('label'),
+    ).toBe(card)
+  })
+
   it('offers the agent a prompt naming the size and the project', async () => {
     const user = userEvent.setup()
     renderCard({ loadTokens: BOARD_SHEET })

@@ -387,6 +387,7 @@ function Choice({
   className,
   children,
   label,
+  labelledBy,
   disabled = false,
 }: {
   group: string
@@ -395,6 +396,8 @@ function Choice({
   className: string
   children: ReactNode
   label?: string
+  /** Names the radio from these ids, so a control inside the card stays out of its name. */
+  labelledBy?: string
   disabled?: boolean
 }) {
   return (
@@ -411,6 +414,7 @@ function Choice({
         onChange={onSelect}
         disabled={disabled}
         aria-label={label}
+        aria-labelledby={labelledBy}
         className="peer sr-only"
       />
       {children}
@@ -600,40 +604,46 @@ function AgentStep({
           group="guide-drawer"
           checked={drawer === 'agent'}
           onSelect={() => onChange('agent')}
+          labelledBy="guide-agent-name guide-agent-hint"
           className={option}
         >
           <span aria-hidden className={dot} />
           <span className="min-w-0 flex-1">
-            <b className="mb-0.5 block font-semibold">My agent</b>
-            <span className="leading-[1.45] text-muted-foreground">
+            <b id="guide-agent-name" className="mb-0.5 block font-semibold">
+              My agent
+            </b>
+            <span
+              id="guide-agent-hint"
+              className="leading-[1.45] text-muted-foreground"
+            >
               Paste this into Claude Code opened in{' '}
               <Path className="inline-block max-w-full wrap-anywhere">
                 {folder}
               </Path>
             </span>
+            {drawer === 'agent' ? (
+              <span className="mt-2.5 flex items-center gap-2 rounded-lg bg-muted py-2 pr-2 pl-2.5">
+                <code className="min-w-0 flex-1 font-mono text-[11.5px] text-foreground">
+                  {prompt}
+                </code>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(prompt)
+                      .then(
+                        () => setCopied(prompt),
+                        reportRefusal("Couldn't copy the prompt"),
+                      )
+                  }
+                  className="h-6 rounded-md px-1.5 text-label font-normal text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {copied === prompt ? 'Copied' : 'Copy'}
+                </button>
+              </span>
+            ) : null}
           </span>
         </Choice>
-        {drawer === 'agent' ? (
-          <div className="-mt-1 flex items-center gap-2 rounded-lg bg-muted py-2 pr-2 pl-2.5">
-            <code className="min-w-0 flex-1 font-mono text-[11.5px] text-foreground">
-              {prompt}
-            </code>
-            <button
-              type="button"
-              onClick={() =>
-                void navigator.clipboard
-                  .writeText(prompt)
-                  .then(
-                    () => setCopied(prompt),
-                    reportRefusal("Couldn't copy the prompt"),
-                  )
-              }
-              className="h-6 rounded-md px-1.5 text-label font-normal text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {copied === prompt ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-        ) : null}
         <Choice
           group="guide-drawer"
           checked={drawer === 'self'}
