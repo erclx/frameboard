@@ -96,6 +96,18 @@ describe('createHug', () => {
     )
   })
 
+  it('answers true for a board scanned before another write stored the size', async () => {
+    board = boardOf({ card: { hugHeight: true } })
+    const scanned = await scanBoard(board.root)
+    const hug = createHug({
+      root: board.root,
+      measure: async () => sized(1440, 1232),
+    })
+    await hug.now(await scanBoard(board.root), [CARD])
+
+    await expect(hug.now(scanned, [CARD])).resolves.toBe(true)
+  })
+
   it.each([
     ['an empty body', async () => ({ ...sized(16, 16), empty: true })],
     [
