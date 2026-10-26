@@ -26,7 +26,7 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 - A project is a folder in the board folder, not a repository, a page is a folder in a project, and a frame is one `.html` file in a page
 - Each page holds `layout.json` keyed by frame name and a `notes.json` of pinned notes, both beside the frames, since writing a note into one would shift every element address after it
-- A frame file with no layout entry reads as unplaced at desktop size and 80 px past the last placed frame, and `frame add` places it through `placeNext` over the placed frames alone, so the page's other unplaced files take no slot ahead of it
+- A frame file with no layout entry reads as unplaced at desktop size and 80 px past the last placed frame, and `frame add` places it past the placed frames, ignoring other unplaced files
 - Frame order is stacking order, so reordering in the layers panel changes what draws on top and leaves positions alone, while pages reorder in the pages list
 - `board.json` lets a verb find a standalone board by walking up from the working folder, and a project's `project.json` lists its pages in display order and may hold `checks`
 

@@ -25,7 +25,7 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 - The server checks every frame at start and rechecks each batch's frames
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 
-`hug.ts` measures a hugging frame its own file reloaded before the batch sends the board, and one an asset or token sheet reloaded after the push, writing its size through the layout lock with no undo step. A hugging frame newly placed, as one written first and placed by `frame add` after, is measured in that same step against the board the last batch scanned, with no reload, since placing writes `layout.json` alone. At start only a frame written while no server ran holds the first board. The write's own batch reloads nothing, so nothing is measured twice.
+`hug.ts` measures a hugging frame its own file reloaded or `frame add` placed before the board is sent, and one an asset or token sheet reloaded after it, writing the size under the layout lock with no undo step. At start only a frame written with no server running holds the first board. Its own batch reloads nothing, so nothing measures twice.
 
 `selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
 
