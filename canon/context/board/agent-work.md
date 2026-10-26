@@ -15,7 +15,7 @@ Owns how an agent's work shows on the board and how the developer hands work bac
 
 Owns the Note tool, its markers, the composer, and the thread, which change together.
 
-- A Note tool pins a note on a frame or element, Send hands it to a listening session, and replies show in the note's thread
+- A Note tool pins a note on a frame or element, Send hands it to a listening session or, through the picker's New session, starts one, and replies show in the note's thread
 - The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection and marquee gestures bind only under the Move tool
 - A pick hit-tests inside the iframe, counting through `board/frame-dom.ts` past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
 - An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost, and hides in Play and once done

@@ -61,3 +61,6 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
 
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
+- `serve` reads `FRAMEBOARD_DISPATCH` from its environment once at start and never from a board file, so a cloned board cannot make Send run anything
+- Exporting `FRAMEBOARD_DISPATCH` under a running server changes nothing until it restarts
+- A dispatched note lands `delivered` to the session id the route minted, so the started session's inbox never prints it again, and a command exiting 0 inside 500 ms counts as started
