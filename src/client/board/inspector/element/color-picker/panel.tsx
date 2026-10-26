@@ -192,19 +192,10 @@ export function ColorPickerPanel({
           </DropdownMenu>
           {mode === 'hex' ? (
             <HexField hex={hex} onHex={setRgb} onSubmit={onSubmit} />
-          ) : mode === 'rgb' ? (
-            <Channels
-              values={[rgb.r, rgb.g, rgb.b].map(Math.round)}
-              names={['Red', 'Green', 'Blue']}
-              maxes={[255, 255, 255]}
-              onChange={([r = 0, g = 0, b = 0]) => setRgb({ r, g, b })}
-            />
-          ) : (
-            <HslChannels hsv={color.hsv} onChange={setRgb} />
-          )}
+          ) : null}
           <NumberField
             label={`${label} opacity`}
-            className="w-14 shrink-0"
+            className="ml-auto w-14 shrink-0"
             inputClassName="text-right"
             value={color.percent}
             min={0}
@@ -216,6 +207,18 @@ export function ColorPickerPanel({
             }
           />
         </div>
+        {/* A row of their own, since three channels beside the format and
+            opacity leave each too narrow for a 24px zone and three digits. */}
+        {mode === 'rgb' ? (
+          <Channels
+            values={[rgb.r, rgb.g, rgb.b].map(Math.round)}
+            names={['Red', 'Green', 'Blue']}
+            maxes={[255, 255, 255]}
+            onChange={([r = 0, g = 0, b = 0]) => setRgb({ r, g, b })}
+          />
+        ) : mode === 'hsl' ? (
+          <HslChannels hsv={color.hsv} onChange={setRgb} />
+        ) : null}
         {tokens.length > 0 ? (
           <div className="mt-2.5 border-t border-border pt-2">
             <p className="mb-1.5 text-label font-semibold text-muted-foreground">
@@ -361,7 +364,7 @@ interface ChannelsProps {
 /** One number field per channel, each stepping and scrubbing from its letter. */
 function Channels({ values, names, maxes, onChange }: ChannelsProps) {
   return (
-    <div className="grid flex-1 grid-cols-3 gap-1">
+    <div className="mt-1.5 grid grid-cols-3 gap-1">
       {names.map((name, at) => (
         <NumberField
           key={name}
