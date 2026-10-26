@@ -49,6 +49,7 @@ import { createSelectionHolder } from './live/selection'
 import {
   type BoardWatcher,
   type MovedFolder,
+  placedRefs,
   reloadRefs,
   unmovedRefs,
   watchBoard,
@@ -229,6 +230,10 @@ async function listen({
   }
   // The board the tabs last received, which a moved frame's stamp is read against.
   const shown: { board: ListResult | null } = { board: null }
+  // The board the last batch scanned, which a newly placed frame is read
+  // against. A tab's snapshot can scan a placement before its batch runs,
+  // so `shown` would read it as placed already.
+  const scanned: { board: ListResult | null } = { board: null }
   let moved: MovedFolder[] = []
   const recentlyMoved = () => {
     moved = moved.filter(({ at }) => Date.now() - at < MOVED_MS)
@@ -409,6 +414,7 @@ async function listen({
     if (await hug.now(board, stale).catch(() => false)) {
       board = await scanBoard(root)
     }
+    scanned.board = board
     await tracker.prime(board)
     findings.update(board, 'all')
     rendered.queue(board, [])
@@ -444,6 +450,7 @@ async function listen({
         settleLater,
         moved: recentlyMoved,
         shown,
+        scanned,
       }),
     )
   })
@@ -501,6 +508,7 @@ async function pushBatch(
     settleLater,
     moved,
     shown,
+    scanned,
   }: {
     hub: LiveHub
     findings: BoardFindings
@@ -516,17 +524,28 @@ async function pushBatch(
     moved: () => readonly MovedFolder[]
     /** The board the tabs last received, replaced by this batch's. */
     shown: { board: ListResult | null }
+    /** The board the last batch scanned, replaced by this batch's first scan. */
+    scanned: { board: ListResult | null }
   },
 ): Promise<void> {
   let board
   let own: string[]
+  let placed: string[]
   try {
     board = await scanBoard(root)
+    const previous = scanned.board
+    scanned.board = board
     own = ownFileRefs(board, paths)
+    // A frame written first and placed after changed only `layout.json`,
+    // which reloads nothing, so it is measured here without a reload.
+    placed = previous
+      ? placedRefs(previous, board, paths).filter((ref) => !own.includes(ref))
+      : []
     // A frame its own file reloaded is measured first, so the board never
     // shows it at its old size, and the write's own batch reloads nothing.
-    if (await hug.now(board, own).catch(() => false)) {
+    if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
       board = await scanBoard(root)
+      scanned.board = board
     }
   } catch {
     // A board folder mid-removal does not scan, and the next batch catches up.
@@ -540,7 +559,7 @@ async function pushBatch(
   // measured after the push rather than holding it.
   hug.later(
     board,
-    refs.filter((ref) => !own.includes(ref)),
+    refs.filter((ref) => !own.includes(ref) && !placed.includes(ref)),
   )
   if (refs.length > 0) {
     const reloads = unmovedRefs(refs, board, moved(), last)

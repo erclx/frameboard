@@ -603,7 +603,7 @@ describe('frames', () => {
   })
 
   describe('on the hand-made board', () => {
-    it('add places an unplaced file at its listed box without touching it', async () => {
+    it('add places an unplaced file past the placed frames without touching it', async () => {
       board = copyFixtureBoard('hand-made')
       const root = board.root
       const bytes = file('sketches/drafts/loose.html')
@@ -611,10 +611,24 @@ describe('frames', () => {
       const added = await addFrame(root, 'drafts/loose', { cwd: root })
 
       expect(added).toMatchObject({
-        box: { x: 2090, y: 0, width: 1440, height: 900 },
+        box: { x: 570, y: 0, width: 1440, height: 900 },
         placed: true,
       })
       expect(file('sketches/drafts/loose.html')).toBe(bytes)
+    })
+
+    it('add places one of two written files beside the first placed, past no other unplaced file', async () => {
+      board = copyFixtureBoard('hand-made')
+      const root = board.root
+      writeFileSync(join(root, 'sketches/ideas/third.html'), '<main></main>')
+      await addFrame(root, 'ideas/second', { cwd: root, size: 'phone' })
+
+      const added = await addFrame(root, 'ideas/third', {
+        cwd: root,
+        size: 'phone',
+      })
+
+      expect(added.box).toMatchObject({ x: 470, y: 0 })
     })
 
     it('keeps an orphan entry through a write', async () => {

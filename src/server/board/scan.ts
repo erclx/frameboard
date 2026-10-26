@@ -168,7 +168,8 @@ export function placeFrames(
 /**
  * Where a frame with no layout entry sits: desktop size at `y` 0, 80 past the
  * right edge of every frame already placed, on top of all of them. The board
- * draws what the scanner returns, and `frame add` persists the same box.
+ * draws what the scanner returns, and `frame add` persists the same box for
+ * the first unplaced file, placing any other past the placed frames alone.
  */
 export function placeNext(placed: Placement[]): Placement {
   const right = Math.max(

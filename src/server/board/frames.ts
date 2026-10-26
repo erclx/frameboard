@@ -50,8 +50,9 @@ export type FrameFlag = 'hidden' | 'locked'
 
 /**
  * Places a frame on its page, writing a skeleton file only when none exists.
- * A file with no entry keeps its bytes and takes the box `list` showed for it
- * unless a size or position is given. Every axis no size names hugs its
+ * A file with no entry keeps its bytes and lands 80 past the placed frames,
+ * as `placeNext` puts it, ignoring the page's other unplaced files, unless a
+ * size or position is given. Every axis no size names hugs its
  * content, a preset fixing the width alone, and the box stands in until the
  * server measures.
  */
@@ -80,7 +81,12 @@ export async function addFrame(
         )
       }
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
-      const computed = placeFrames(layout.file.frames, names).get(frame.name)
+      // Another unplaced file would take a slot ahead of this one, so the
+      // frame lands past the placed frames alone.
+      const slot = names.filter(
+        (name) => name === frame.name || layout.hasEntry(name),
+      )
+      const computed = placeFrames(layout.file.frames, slot).get(frame.name)
       if (!computed) throw new Error(`No placement computed for ${frame.name}.`)
       if (!exists) {
         await writeFile(frame.path, skeleton(frame.name), { flag: 'wx' })
