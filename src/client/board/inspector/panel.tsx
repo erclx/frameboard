@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useViewOnly } from '@/client/access/view-only'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
-import { FRAME_SIZES } from '@/shared/frame-sizes'
 import type { StyleValue } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
@@ -35,7 +34,7 @@ import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
 import { type ElementChange, writeElement } from './element/write'
 import { FrameSection } from './frame-section'
-import { PRESETS } from './presets'
+import { FRAME_TOOL_GROUPS } from './presets'
 import { SelectionColors } from './selection-colors'
 
 /**
@@ -318,7 +317,7 @@ function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
   )
 }
 
-/** The sizes the Frame tool places, one chosen at a time, the next canvas click placing it. */
+/** The sizes the Frame tool places, grouped under each preset, one chosen at a time, the next canvas click placing it. */
 function PresetSection() {
   const chosen = usePreset()
   return (
@@ -329,37 +328,45 @@ function PresetSection() {
       <h2 id="inspector-presets" className="mb-2 text-xs font-semibold">
         Frame
       </h2>
-      <div
-        role="radiogroup"
-        aria-labelledby="inspector-presets"
-        className="-mx-1.5 flex flex-col"
-      >
-        {PRESETS.map(({ preset, label, icon: Icon }) => {
-          const { width, height } = FRAME_SIZES[preset]
-          return (
-            <button
-              key={preset}
-              type="button"
-              role="radio"
-              aria-checked={preset === chosen}
-              onClick={() => choosePreset(preset)}
-              className={cn(
-                'flex h-[26px] items-center gap-1.5 rounded-md px-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50',
-                preset === chosen && 'bg-accent',
-              )}
+      <div className="-mx-1.5 flex flex-col">
+        {FRAME_TOOL_GROUPS.map(({ preset, label, icon: Icon, rows }) => (
+          <div
+            key={preset}
+            role="radiogroup"
+            aria-labelledby={`inspector-presets-${preset}`}
+            className="flex flex-col"
+          >
+            <h3
+              id={`inspector-presets-${preset}`}
+              className="px-1.5 pt-1.5 pb-0.5 text-label text-muted-foreground"
             >
-              <Icon
-                aria-hidden
-                className="size-[13px] text-muted-foreground"
-                strokeWidth={1.6}
-              />
-              <span className="flex-1">{label}</span>
-              <span className="text-muted-foreground tabular-nums">
-                {width} × {height}
-              </span>
-            </button>
-          )
-        })}
+              {label}
+            </h3>
+            {rows.map((row) => (
+              <button
+                key={row.name}
+                type="button"
+                role="radio"
+                aria-checked={row.name === chosen}
+                onClick={() => choosePreset(row.name)}
+                className={cn(
+                  'flex h-[26px] items-center gap-1.5 rounded-md px-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50',
+                  row.name === chosen && 'bg-accent',
+                )}
+              >
+                <Icon
+                  aria-hidden
+                  className="size-[13px] text-muted-foreground"
+                  strokeWidth={1.6}
+                />
+                <span className="flex-1">{row.label}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {row.width} × {row.height}
+                </span>
+              </button>
+            ))}
+          </div>
+        ))}
       </div>
       <p className="mt-2 text-muted-foreground">
         Click on the canvas to place it.

@@ -8,8 +8,8 @@ import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import {
   DEFAULT_FRAME_SIZE,
-  FRAME_SIZES,
-  type FrameSizePreset,
+  type FrameSizeName,
+  frameSizeOf,
 } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
@@ -21,18 +21,18 @@ import { select, type SelectionStore, selectionStore } from '../selection'
 import { canvasView } from '../view'
 import { startFrameRename } from './actions'
 
-/** The preset the Frame tool's next click places, chosen from the inspector's list. */
-export type PresetStore = StoreApi<{ preset: FrameSizePreset }>
+/** The size the Frame tool's next click places, chosen from the inspector's list. */
+export type PresetStore = StoreApi<{ preset: FrameSizeName }>
 
 export const presetStore: PresetStore = createStore<{
-  preset: FrameSizePreset
+  preset: FrameSizeName
 }>()(() => ({ preset: DEFAULT_FRAME_SIZE }))
 
-export function usePreset(): FrameSizePreset {
+export function usePreset(): FrameSizeName {
   return useStore(presetStore, (state) => state.preset)
 }
 
-export function choosePreset(preset: FrameSizePreset): void {
+export function choosePreset(preset: FrameSizeName): void {
   presetStore.setState({ preset })
 }
 
@@ -81,7 +81,7 @@ export async function placeFrame(
   try {
     const added = await calls.addFrame(
       `${page}/${name}`,
-      FRAME_SIZES[size],
+      frameSizeOf(size),
       Math.round(point.x),
       Math.round(point.y),
     )
