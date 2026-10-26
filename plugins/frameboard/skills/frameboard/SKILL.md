@@ -22,6 +22,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 ## Draw a frame
 
 1. Write the frame's file as `<frame>.html` in its page folder, whose path `frameboard list --json` reports, after `frameboard page add` for a page that does not exist yet. Keep everything it loads inside that folder, or in the project's `assets/` folder when two pages share a file.
+   - Check the page's frames in that `list` output first, and treat a name already there as an existing frame to claim before you rewrite it, since a write over it lands unclaimed
    - Write the file before placing it, since `frame add` writes an empty skeleton when none exists and the developer watches a blank box until your write lands
 2. Place it with `frameboard frame add <page>/<frame> --json` straight after the write. It places the file as written and touches nothing in it.
    - Pass the phone, tablet, or desktop size the screen calls for, so it lands at its device width at once instead of showing at desktop width until it is sized
