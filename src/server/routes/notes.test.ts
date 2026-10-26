@@ -34,13 +34,19 @@ describe('notesRoutes', () => {
     board.cleanup()
   })
 
-  const routes = () =>
-    notesRoutes(board.root, {
-      token: () => TOKEN,
-      key: KEY,
-      cookieName: COOKIE,
-      isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
-    })
+  const routes = (imageLimit?: number) =>
+    notesRoutes(
+      board.root,
+      {
+        token: () => TOKEN,
+        key: KEY,
+        cookieName: COOKIE,
+        isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
+      },
+      undefined,
+      undefined,
+      imageLimit,
+    )
 
   function post(
     path: string,
@@ -340,6 +346,139 @@ describe('notesRoutes', () => {
 
       expect(response.status).toBe(400)
       expect(existsSync(join(board.root, '.run/started.txt'))).toBe(false)
+    })
+  })
+
+  describe('note images', () => {
+    const PNG = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
+    ])
+    const SVG = new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    )
+
+    function upload(
+      files: [name: string, bytes: Uint8Array<ArrayBuffer>][],
+      { page = 'studio/home', limit = undefined as number | undefined } = {},
+    ) {
+      const form = new FormData()
+      form.append('page', page)
+      for (const [name, bytes] of files)
+        form.append('files', new File([bytes], name))
+      return routes(limit).request('/api/notes/images', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${TOKEN}` },
+        body: form,
+      })
+    }
+
+    async function uploaded(): Promise<string> {
+      const response = await upload([['shot.png', PNG]])
+      return (await response.json()).data.images[0]
+    }
+
+    it("saves an upload to the page's .notes and answers its path", async () => {
+      const response = await upload([['shot.png', PNG]])
+
+      const { images } = (await response.json()).data
+      expect(images).toEqual([
+        expect.stringMatching(/^\.notes\/[0-9a-f]{12}\.png$/),
+      ])
+      expect(readFileSync(join(board.root, 'studio/home', images[0]))).toEqual(
+        Buffer.from(PNG),
+      )
+    })
+
+    it('refuses an SVG and saves nothing', async () => {
+      const response = await upload([
+        ['shot.png', PNG],
+        ['logo.svg', SVG],
+      ])
+
+      expect(response.status).toBe(415)
+      expect((await response.json()).error.code).toBe('image-type-refused')
+      expect(existsSync(join(board.root, 'studio/home/.notes'))).toBe(false)
+    })
+
+    it('refuses an upload over the limit as asset-too-large', async () => {
+      const response = await upload([['shot.png', new Uint8Array(4096)]], {
+        limit: 1024,
+      })
+
+      expect(response.status).toBe(413)
+      expect((await response.json()).error.code).toBe('asset-too-large')
+    })
+
+    it('refuses an upload to a page the board does not hold', async () => {
+      const response = await upload([['shot.png', PNG]], {
+        page: 'studio/nope',
+      })
+
+      expect(response.status).toBe(404)
+    })
+
+    it('pins a note carrying an uploaded image', async () => {
+      const image = await uploaded()
+
+      await pinned({ images: [image] })
+
+      expect(onDisk()[0]?.images).toEqual([image])
+    })
+
+    it('refuses a note naming an image its page does not hold', async () => {
+      const response = await post('/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'x',
+        images: ['.notes/000000000000.png'],
+      })
+
+      expect(response.status).toBe(400)
+      expect(existsSync(notesFile)).toBe(false)
+    })
+
+    it('refuses an image path reaching out of .notes', async () => {
+      const response = await post('/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'x',
+        images: ['hero.html'],
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('threads a reply carrying its images', async () => {
+      const root = await pinned()
+      const image = await uploaded()
+
+      const response = await post(`/api/notes/${root.id}/replies`, {
+        text: 'Like this',
+        images: [image],
+      })
+
+      expect((await response.json()).data.note).toMatchObject({
+        thread: root.id,
+        images: [image],
+      })
+    })
+
+    it('serves a stored image with no writer check', async () => {
+      const image = await uploaded()
+
+      const response = await routes().request(
+        `/api/note-images/studio/home/${image.slice('.notes/'.length)}`,
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('image/png')
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(PNG)
+    })
+
+    it('answers 404 for a page file that is not a stored image', async () => {
+      const response = await routes().request(
+        '/api/note-images/studio/home/notes.json',
+      )
+
+      expect(response.status).toBe(404)
     })
   })
 

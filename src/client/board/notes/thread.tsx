@@ -7,7 +7,9 @@ import { writeBoard } from '@/client/live/write'
 import type { BoardNote } from '@/shared/records/notes'
 
 import { NoteButton, NoteCard } from './composer'
+import { carriesFiles, transferredImages, useDraftImages } from './draft-images'
 import { addressee, defaultSession, messageFor, pickedSession } from './form'
+import { DraftStrip, MessageImages } from './images'
 import { SessionPicker } from './session-picker'
 import { setDraft, useNotesUi } from './tool'
 
@@ -23,7 +25,8 @@ interface ThreadProps {
  * `Note <n>`, per `canon/design/notes/thread`: the developer's and the
  * agent's messages live from the store, and a reply box that answers in the
  * thread, hands the thread to the picked session with Send, or closes it
- * with Done.
+ * with Done. A reply takes pasted or dropped images as the composer does,
+ * and each message shows its own.
  */
 export function Thread({ notes, page, onClose }: ThreadProps) {
   const listeners = useLive((state) => state.listeners)
@@ -41,6 +44,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const images = useDraftImages()
   const messages = useRef<HTMLOListElement>(null)
   const followNewest = useNewestInView(messages, notes.length)
   const root = notes[0]
@@ -61,6 +65,10 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
 
   const send = () => {
     const reply = text.trim()
+    if (reply === '' && images.images.length > 0) {
+      setError('Write a reply to go with the images')
+      return
+    }
     if (reply === '' && picked === '') {
       setError(
         listeners.length > 1
@@ -76,12 +84,18 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
       return
     }
     void run(
-      () =>
-        writeBoard(`/api/notes/${root.id}/replies`, {
+      async () => {
+        const stored = page ? await images.upload(page) : []
+        await writeBoard(`/api/notes/${root.id}/replies`, {
           text: reply,
+          ...(stored.length === 0 ? {} : { images: stored }),
           ...addressee(picked),
-        }),
-      () => setText(''),
+        })
+      },
+      () => {
+        setText('')
+        images.clear()
+      },
     )
   }
 
@@ -106,7 +120,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
         className="min-h-0 overflow-y-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
       >
         {notes.map((note) => (
-          <Message key={note.id} note={note} />
+          <Message key={note.id} note={note} page={page} />
         ))}
       </ol>
       <form
@@ -114,6 +128,17 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
         onSubmit={(event) => {
           event.preventDefault()
           send()
+        }}
+        onDragOver={(event) => {
+          if (canWrite && page && carriesFiles(event.dataTransfer)) {
+            event.preventDefault()
+          }
+        }}
+        onDrop={(event) => {
+          if (!canWrite || !page || !carriesFiles(event.dataTransfer)) return
+          event.preventDefault()
+          event.stopPropagation()
+          images.add([...event.dataTransfer.files])
         }}
       >
         <textarea
@@ -125,6 +150,12 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
             setText(event.target.value)
             setError(null)
           }}
+          onPaste={(event) => {
+            const pasted = transferredImages(event.clipboardData)
+            if (!page || pasted.length === 0) return
+            event.preventDefault()
+            images.add(pasted)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
               event.currentTarget.form?.requestSubmit()
@@ -133,6 +164,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
           rows={1}
           className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-faint disabled:cursor-not-allowed"
         />
+        <DraftStrip images={images.images} onRemove={images.remove} />
         <div className="flex items-center gap-2">
           <SessionPicker
             listeners={listeners}
@@ -166,9 +198,9 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
             Send
           </NoteButton>
         </div>
-        {error ? (
+        {(error ?? images.refusal) ? (
           <p role="alert" className="mt-2 text-destructive">
-            {error}
+            {error ?? images.refusal}
           </p>
         ) : null}
       </form>
@@ -177,7 +209,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
 }
 
 /** One message, the developer's under their initials and the agent's under a purple C. */
-function Message({ note }: { note: BoardNote }) {
+function Message({ note, page }: { note: BoardNote; page?: string }) {
   const author = useAuthor()
   const agent = note.from === 'agent'
   return (
@@ -199,6 +231,9 @@ function Message({ note }: { note: BoardNote }) {
         <p className="mt-0.5 leading-[1.45] break-words whitespace-pre-wrap">
           {note.text}
         </p>
+        {page && note.images ? (
+          <MessageImages page={page} images={note.images} />
+        ) : null}
       </div>
     </li>
   )

@@ -5,7 +5,9 @@ import { useLive } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 
 import { modeStore } from '../mode'
+import { carriesFiles, transferredImages, useDraftImages } from './draft-images'
 import { addressee, defaultSession, messageFor, pickedSession } from './form'
+import { DraftStrip } from './images'
 import type { NotePick } from './pick'
 import { ListeningCount, SessionPicker } from './session-picker'
 import { newNoteDraft, setDraft, useNotesUi } from './tool'
@@ -18,7 +20,8 @@ interface ComposerProps {
 /**
  * `New note on <frame>`, per `canon/design/notes/place`: the text, the
  * listening session it goes to, Save to pin it without sending, and Send to
- * pin it and queue it to that session, or to start a new one with it.
+ * pin it and queue it to that session, or to start a new one with it. An
+ * image pasted or dropped in goes up with the note on Save or Send.
  */
 export function Composer({ pick, onClose }: ComposerProps) {
   const listeners = useLive((state) => state.listeners)
@@ -34,6 +37,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const images = useDraftImages()
   const picked = pickedSession(session, listeners, holder, dispatch)
 
   const save = async (to: string | null) => {
@@ -47,15 +51,19 @@ export function Composer({ pick, onClose }: ComposerProps) {
     }
     setBusy(true)
     try {
+      const page = pick.frame.ref.split('/').slice(0, -1).join('/')
+      const stored = await images.upload(page)
       await writeBoard('/api/notes', {
         frame: pick.frame.ref,
         text: text.trim(),
+        ...(stored.length === 0 ? {} : { images: stored }),
         ...(pick.element === null
           ? {}
           : { element: pick.element, renderedAt: pick.renderedAt }),
         ...(to === null ? {} : addressee(to)),
       })
       setText('')
+      images.clear()
       // One note per pick, as the Frame tool places one frame.
       if (modeStore.getState().tool === 'note') {
         modeStore.setState({ tool: 'move' })
@@ -80,6 +88,17 @@ export function Composer({ pick, onClose }: ComposerProps) {
           event.preventDefault()
           void save(picked)
         }}
+        onDragOver={(event) => {
+          if (canWrite && carriesFiles(event.dataTransfer)) {
+            event.preventDefault()
+          }
+        }}
+        onDrop={(event) => {
+          if (!canWrite || !carriesFiles(event.dataTransfer)) return
+          event.preventDefault()
+          event.stopPropagation()
+          images.add([...event.dataTransfer.files])
+        }}
       >
         <textarea
           aria-label={`Note on ${pick.frame.name}`}
@@ -92,6 +111,12 @@ export function Composer({ pick, onClose }: ComposerProps) {
             setText(event.target.value)
             setError(null)
           }}
+          onPaste={(event) => {
+            const pasted = transferredImages(event.clipboardData)
+            if (pasted.length === 0) return
+            event.preventDefault()
+            images.add(pasted)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
               event.currentTarget.form?.requestSubmit()
@@ -100,6 +125,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
           rows={2}
           className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-faint disabled:cursor-not-allowed"
         />
+        <DraftStrip images={images.images} onRemove={images.remove} />
         <div className="flex items-center gap-2">
           <SessionPicker
             listeners={listeners}
@@ -129,9 +155,9 @@ export function Composer({ pick, onClose }: ComposerProps) {
             Send
           </NoteButton>
         </div>
-        {error ? (
+        {(error ?? images.refusal) ? (
           <p role="alert" className="mt-2 text-destructive">
-            {error}
+            {error ?? images.refusal}
           </p>
         ) : null}
       </form>

@@ -44,6 +44,8 @@ export const EXIT_CODES = {
   // A drop into `assets/` that left a file out, or went over the body limit.
   'asset-type-refused': 2,
   'asset-too-large': 2,
+  // A note image that is not PNG, JPEG, GIF, or WebP, saving none of the upload.
+  'image-type-refused': 2,
   // An undo or redo refused, writing nothing.
   'undo-overtaken': 12,
   'nothing-to-undo': 12,

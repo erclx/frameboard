@@ -81,6 +81,29 @@ describe('notes', () => {
     })
   })
 
+  it('lists each image a note carries by an absolute path beside the record', async () => {
+    writeFileSync(
+      home,
+      JSON.stringify({
+        version: 1,
+        notes: [
+          note({ id: 'n_0000000a', images: ['.notes/0a1b2c3d4e5f.png'] }),
+        ],
+      }),
+    )
+
+    const result = await run('notes')
+
+    expect(result.json().data).toMatchObject({
+      notes: [
+        {
+          images: ['.notes/0a1b2c3d4e5f.png'],
+          imagePaths: [join(board.root, 'webapp/home/.notes/0a1b2c3d4e5f.png')],
+        },
+      ],
+    })
+  })
+
   it('lists the done threads too under --all', async () => {
     const result = await run('notes', '--all')
 

@@ -25,6 +25,7 @@
         "hash": "1e06b944f1061d1b09b2651ab3d4bdcae11b8cfd12e58a706860c9050a954184"
       },
       "text": "Make the heading say what the product does, and set it in the display face.",
+      "images": [".notes/5e1a0b02c0de.png"],
       "from": "developer",
       "author": "Ada Lovelace",
       "session": null,

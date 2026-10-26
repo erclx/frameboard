@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { FrameboardError } from '@/shared/errors'
 import {
@@ -120,6 +120,8 @@ export interface PinFields {
   frame: string
   anchor: NoteAnchor | null
   text: string
+  /** Page-relative paths of images already saved to the page's `.notes/`. */
+  images?: string[]
   author: string | null
   /** The session to send it to, or null to save it without sending. */
   to: string | null
@@ -139,6 +141,7 @@ export function addRoot(
     frame: fields.frame,
     anchor: fields.anchor,
     text: fields.text,
+    ...withImages(fields.images),
     from: 'developer',
     author: fields.author,
     session: null,
@@ -153,6 +156,8 @@ export function addRoot(
 
 export interface ReplyFields {
   text: string
+  /** Page-relative paths of images already saved to the page's `.notes/`. */
+  images?: string[]
   from: Note['from']
   author: string | null
   session: string | null
@@ -175,6 +180,7 @@ export function addReply(
     frame: root.frame,
     anchor: root.anchor,
     text: fields.text,
+    ...withImages(fields.images),
     from: fields.from,
     author: fields.author,
     session: fields.session,
@@ -190,6 +196,11 @@ export function addReply(
       : note,
   )
   return { ...file, notes: [...notes, reply] }
+}
+
+/** A note with no images carries no key, so it reads as one written before images. */
+function withImages(images: string[] | undefined): { images?: string[] } {
+  return images === undefined || images.length === 0 ? {} : { images }
 }
 
 /** Sets the state of the thread `id` belongs to, and its addressee when one is given. */
@@ -319,6 +330,8 @@ function toDelivery(
     )
     .at(-1)
   const { element, ...stored } = note
+  const message = newest ?? note
+  const pageDir = dirname(place.path)
   return {
     note: stored,
     ref,
@@ -326,7 +339,8 @@ function toDelivery(
       id: note.id,
       ref,
       element,
-      text: (newest ?? note).text,
+      text: message.text,
+      images: message.images?.map((image) => join(pageDir, image)),
     }),
   }
 }

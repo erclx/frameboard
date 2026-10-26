@@ -21,7 +21,9 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 - An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost, and hides in Play and once done
 - The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
 
-An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. It caps at the canvas height above the toolbar, scrolling a long thread's messages under its header and reply box. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it.
+An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. It caps at the canvas height above the toolbar, scrolling a long thread's messages under its header and reply box.
+
+Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
 
 ### `src/client/board/claims/`
 
