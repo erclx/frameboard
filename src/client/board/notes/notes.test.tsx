@@ -4,6 +4,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
@@ -452,6 +453,91 @@ describe('Thread', () => {
     )
 
     expect(closed).toBe(true)
+  })
+
+  describe('in a card capped shorter than its messages', () => {
+    const long = 'The hero copy now leads with the outcome. '.repeat(19)
+    const replies = (count: number) => [
+      note({ id: 'n_1', number: 2 }),
+      ...Array.from({ length: count }, (_, index) =>
+        note({
+          id: `n_r${index}`,
+          number: null,
+          thread: 'n_1',
+          from: 'agent',
+          author: null,
+          text: `${index + 1}. ${long}`,
+        }),
+      ),
+    ]
+
+    /** The thread inside a column capped at 400 px, as the popover holds it. */
+    function Capped({ notes }: { notes: readonly BoardNote[] }) {
+      return (
+        <div className="flex flex-col" style={{ maxHeight: 400 }}>
+          <Thread notes={notes} onClose={() => {}} />
+        </div>
+      )
+    }
+
+    function distanceFromEnd(list: HTMLElement): number {
+      return list.scrollHeight - list.scrollTop - list.clientHeight
+    }
+
+    it('follows a new reply while the list sits at its newest', async () => {
+      const { rerender } = render(<Capped notes={replies(4)} />)
+      const list = screen.getByRole('list', { name: 'Messages' })
+      await expect.poll(() => distanceFromEnd(list)).toBeLessThan(1)
+
+      rerender(<Capped notes={replies(5)} />)
+
+      expect(distanceFromEnd(list)).toBeLessThan(1)
+    })
+
+    it('stays on an older message when a reply lands', async () => {
+      const { rerender } = render(<Capped notes={replies(4)} />)
+      const list = screen.getByRole('list', { name: 'Messages' })
+      await expect.poll(() => distanceFromEnd(list)).toBeLessThan(1)
+      list.scrollTo({ top: 0 })
+      await new Promise((settled) =>
+        list.addEventListener('scroll', settled, { once: true }),
+      )
+
+      rerender(<Capped notes={replies(5)} />)
+
+      expect(list.scrollTop).toBe(0)
+    })
+
+    it('leaves an arrow key a board action also binds to the list, running no action', async () => {
+      let nudged = 0
+      const unregister = registerActions([
+        {
+          id: 'test.nudgeUp',
+          label: 'Nudge up',
+          group: 'test',
+          keys: ['ArrowUp'],
+          run: () => nudged++,
+        },
+      ])
+      const unbind = bindKeys(window)
+      const pressed: KeyboardEvent[] = []
+      try {
+        render(<Capped notes={replies(4)} />)
+        const list = screen.getByRole('list', { name: 'Messages' })
+        list.addEventListener('keydown', (event) => pressed.push(event))
+        list.focus()
+
+        await userEvent.keyboard('{ArrowUp}')
+
+        expect(pressed).toHaveLength(1)
+        // Read once the press has run its course, so a later handler counts.
+        expect(pressed[0]?.defaultPrevented).toBe(false)
+        expect(nudged).toBe(0)
+      } finally {
+        unbind()
+        unregister()
+      }
+    })
   })
 })
 
