@@ -8,6 +8,7 @@ import type { BoardNote } from '@/shared/records/notes'
 import { elementAt } from '../frame-dom'
 import { useMode } from '../mode'
 import { usePreviewedFrames } from '../preview/store'
+import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
 import { Thread } from './thread'
@@ -148,9 +149,9 @@ const EDGE_GAP = 12
 /**
  * Holds a note card beside its marker at screen size, on the marker's right
  * as the design sets it, or on its left when the right would run the card
- * under the inspector, and moved down or up to stay inside the canvas. A
- * press outside the card or focus leaving it dismisses it, a marker's press
- * aside, since that opens the card the marker names.
+ * under the inspector, capped at the canvas height and moved down or up to
+ * stay inside it. A press outside the card or focus leaving it dismisses it,
+ * a marker's press aside, since that opens the card the marker names.
  */
 function Popover({
   at,
@@ -162,7 +163,11 @@ function Popover({
   children: React.ReactNode
 }) {
   const card = useRef<HTMLDivElement>(null)
-  const [shift, setShift] = useState({ flip: false, y: 0 })
+  const [shift, setShift] = useState<{
+    flip: boolean
+    y: number
+    cap: number | null
+  }>({ flip: false, y: 0, cap: null })
   useEffect(() => {
     const press = (event: PointerEvent) => {
       const target = event.target
@@ -174,11 +179,31 @@ function Popover({
     document.addEventListener('pointerdown', press, true)
     return () => document.removeEventListener('pointerdown', press, true)
   }, [onDismiss])
+  // A zoom or a pan moves the marker on screen without moving `at`, so the
+  // card measures again on each.
+  const [moves, setMoves] = useState(0)
+  useEffect(() => {
+    const bump = () => setMoves((count) => count + 1)
+    const offZoom = canvasView.onZoom(bump)
+    const offHand = canvasView.onHandMove(bump)
+    return () => {
+      offZoom()
+      offHand()
+    }
+  }, [])
   useLayoutEffect(() => {
     const element = card.current
     const canvas = element?.closest('[data-canvas]')
     if (!element || !canvas) return
     const bounds = canvas.getBoundingClientRect()
+    // The toolbar floats over the canvas's foot, so the card ends above it.
+    const toolbar = document.querySelector(
+      '[role="toolbar"][aria-label="Tools"]',
+    )
+    const bottom = Math.min(
+      bounds.bottom,
+      toolbar?.getBoundingClientRect().top ?? bounds.bottom,
+    )
     const box = element.getBoundingClientRect()
     const right = shift.flip
       ? box.right + box.width + 2 * CARD_OFFSET.x
@@ -189,13 +214,21 @@ function Popover({
       y:
         top < bounds.top + EDGE_GAP
           ? bounds.top + EDGE_GAP - top
-          : Math.min(0, bounds.bottom - EDGE_GAP - (top + box.height)),
+          : Math.min(0, bottom - EDGE_GAP - (top + box.height)),
+      // Taken from the canvas and the toolbar, never the card, so the cap
+      // and the shift cannot chase each other. The card sits at screen size,
+      // so these screen measures need no zoom factor.
+      cap: bottom - bounds.top - 2 * EDGE_GAP,
     }
     // A shift moves the card it measured, so it settles once one repeats.
-    if (next.flip !== shift.flip || Math.abs(next.y - shift.y) > 0.5) {
+    if (
+      next.flip !== shift.flip ||
+      Math.abs(next.y - shift.y) > 0.5 ||
+      next.cap !== shift.cap
+    ) {
       setShift(next)
     }
-  }, [at.x, at.y, shift])
+  }, [at.x, at.y, shift, moves])
   return (
     <div
       className="absolute origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
@@ -203,7 +236,7 @@ function Popover({
     >
       <div
         ref={card}
-        className="absolute"
+        className="absolute flex flex-col"
         onBlur={(event) => {
           const next = event.relatedTarget
           if (next instanceof Node && !event.currentTarget.contains(next)) {
@@ -212,6 +245,7 @@ function Popover({
         }}
         style={{
           top: CARD_OFFSET.y + shift.y,
+          maxHeight: shift.cap ?? undefined,
           ...(shift.flip ? { right: CARD_OFFSET.x } : { left: CARD_OFFSET.x }),
         }}
       >

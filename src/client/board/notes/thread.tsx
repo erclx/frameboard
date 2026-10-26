@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { useState } from 'react'
+import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
 
 import { initials, useAuthor } from '@/client/board/chrome/author'
 import { useLive } from '@/client/live/store'
@@ -41,6 +41,8 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const messages = useRef<HTMLOListElement>(null)
+  const followNewest = useNewestInView(messages, notes.length)
   const root = notes[0]
   if (!root) return null
   const picked = pickedSession(session, listeners, holder, dispatch, false)
@@ -89,7 +91,20 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
       listeners={listeners}
       onClose={onClose}
     >
-      <ol aria-label="Messages">
+      <ol
+        ref={messages}
+        aria-label="Messages"
+        // Focusable so a keyboard scrolls it, since a message holds no control.
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
+        onScroll={followNewest}
+        onKeyDown={(event) => {
+          // The board binds the arrows to nudges on the window, which would
+          // swallow the keys that scroll this list.
+          if (SCROLL_KEYS.has(event.key)) event.stopPropagation()
+        }}
+        className="min-h-0 overflow-y-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+      >
         {notes.map((note) => (
           <Message key={note.id} note={note} />
         ))}
@@ -187,6 +202,49 @@ function Message({ note }: { note: BoardNote }) {
       </div>
     </li>
   )
+}
+
+/** The keys a focused list scrolls on, which stay with it. */
+const SCROLL_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+  ' ',
+])
+
+/**
+ * Keeps the list scrolled to its newest message as it opens, as the card's
+ * cap shrinks it, and as a message arrives, the last only while the list
+ * already sat at its newest, so a reader scrolled up stays where they are.
+ * Returns the list's scroll handler, which tracks where it sits.
+ */
+function useNewestInView(
+  list: RefObject<HTMLOListElement | null>,
+  count: number,
+): () => void {
+  const atNewest = useRef(true)
+  useLayoutEffect(() => {
+    const element = list.current
+    if (!element) return
+    const observer = new ResizeObserver(() => {
+      if (atNewest.current) element.scrollTo({ top: element.scrollHeight })
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [list])
+  useLayoutEffect(() => {
+    const element = list.current
+    if (atNewest.current) element?.scrollTo({ top: element.scrollHeight })
+  }, [list, count])
+  return () => {
+    const element = list.current
+    if (!element) return
+    atNewest.current =
+      element.scrollHeight - element.scrollTop - element.clientHeight < 1
+  }
 }
 
 /** A time as the design writes it, `4:12`, on a 12 hour clock without its half. */

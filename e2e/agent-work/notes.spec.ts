@@ -2,7 +2,7 @@ import { type ChildProcess, execFile, spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -96,5 +96,141 @@ test.describe('notes sent to a listening session', () => {
       page.getByRole('button', { name: /^Note \d+ on hero$/ }),
     ).toHaveCount(0)
     expect(printed).toHaveLength(1)
+  })
+})
+
+test.describe('a note thread longer than the canvas', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  /** The id of the board's only note, as `notes --json` lists it. */
+  async function onlyNote(): Promise<string> {
+    const { stdout } = await run('node', [
+      CLI,
+      'notes',
+      '--json',
+      '--root',
+      board.root,
+    ])
+    const [note] = (JSON.parse(stdout) as { data: { notes: { id: string }[] } })
+      .data.notes
+    if (!note) throw new Error('the saved note is not listed')
+    return note.id
+  }
+
+  /** Answers the note `count` times in turn, each reply about 800 characters and opening with its number. */
+  async function replyAtLength(id: string, count: number): Promise<void> {
+    const body = 'The hero copy now leads with the outcome. '.repeat(19)
+    for (let turn = 1; turn <= count; turn++) {
+      await run('node', [
+        CLI,
+        'notes',
+        'reply',
+        id,
+        `${turn}. ${body}`,
+        '--root',
+        board.root,
+      ])
+    }
+  }
+
+  /** Saves a note on the hero frame at 1280x720 and answers it 8 times at length, leaving its marker closed. */
+  async function longThreadOnHero(page: Page): Promise<void> {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+    const hero = page.locator('[data-frame="studio/home/hero"]')
+    await expect(hero.locator('iframe')).toBeVisible()
+    await page.getByRole('button', { name: 'Note', exact: true }).click()
+    const box = await hero.boundingBox()
+    if (!box) throw new Error('the hero frame has no box')
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    const composer = page.getByRole('region', { name: 'New note on hero' })
+    await composer.getByRole('textbox').fill('Rewrite the hero copy')
+    await composer.getByRole('button', { name: 'Save' }).click()
+    await expect(composer).toHaveCount(0)
+    await replyAtLength(await onlyNote(), 8)
+  }
+
+  /** How far the card's top sits below the canvas top and its foot above the toolbar, both 0 or more while it fits. */
+  async function clearance(
+    page: Page,
+  ): Promise<{ top: number; bottom: number }> {
+    const canvas = await page.locator('[data-canvas]').boundingBox()
+    const card = await page
+      .getByRole('region', { name: /^Note \d+$/ })
+      .boundingBox()
+    const toolbar = await page
+      .getByRole('toolbar', { name: 'Tools' })
+      .boundingBox()
+    if (!canvas || !card || !toolbar) {
+      throw new Error('the canvas, card, or toolbar has no box')
+    }
+    return {
+      top: card.y - canvas.y,
+      bottom: toolbar.y - (card.y + card.height),
+    }
+  }
+
+  test('holds its card inside the canvas with the header, the newest reply, and the reply box in view', async ({
+    page,
+  }) => {
+    await longThreadOnHero(page)
+
+    await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
+
+    const thread = page.getByRole('region', { name: /^Note \d+$/ })
+    const messages = thread.getByRole('list', { name: 'Messages' })
+    await expect(messages.getByRole('listitem')).toHaveCount(9)
+    const { top, bottom } = await clearance(page)
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(bottom).toBeGreaterThanOrEqual(0)
+    await expect(thread.getByRole('heading')).toBeInViewport()
+    await expect(
+      thread.getByRole('textbox', { name: 'Reply' }),
+    ).toBeInViewport()
+    await expect
+      .poll(() =>
+        messages.evaluate(
+          (list) => list.scrollHeight - list.scrollTop - list.clientHeight,
+        ),
+      )
+      .toBeLessThan(1)
+    expect(
+      await messages.evaluate((list) => list.scrollHeight > list.clientHeight),
+    ).toBe(true)
+  })
+
+  test('keeps its card inside the canvas as the board zooms out', async ({
+    page,
+  }) => {
+    await longThreadOnHero(page)
+    await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
+    const thread = page.getByRole('region', { name: /^Note \d+$/ })
+    await expect(thread).toBeVisible()
+    const zoom = page.getByRole('button', { name: 'Zoom', exact: true })
+    const before = await zoom.textContent()
+
+    await page.keyboard.press('ControlOrMeta+Minus')
+    await page.keyboard.press('ControlOrMeta+Minus')
+    await page.keyboard.press('ControlOrMeta+Minus')
+
+    await expect(zoom).not.toHaveText(before ?? '')
+    await expect
+      .poll(async () => {
+        const { top, bottom } = await clearance(page)
+        return Math.min(top, bottom)
+      })
+      .toBeGreaterThanOrEqual(0)
   })
 })
