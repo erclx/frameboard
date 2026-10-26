@@ -10,6 +10,7 @@ import type { History } from './history/stack'
 import type { MeasureFrame } from './live/hug'
 import type { SelectionHolder } from './live/selection'
 import type { Delivery } from './notes/delivery'
+import type { Dispatch } from './notes/dispatch'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
@@ -71,6 +72,8 @@ export interface AppOptions {
   tokens?: string
   /** The listener registry a note write offers its queue to. */
   delivery?: Delivery
+  /** Starts a session for a note, absent where `serve` holds no command. */
+  dispatch?: Dispatch
   /** The undo history the board's structure and box writes record into. */
   history: History
   /** What the writing tab last selected, which `GET /api/selection` answers. */
@@ -97,6 +100,7 @@ export function createApp({
   facesDir,
   tokens,
   delivery,
+  dispatch,
   history,
   selection,
   checks,
@@ -127,7 +131,7 @@ export function createApp({
   app.route('/', apiRoutes(root, actions, frames.look, history))
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
-  app.route('/', notesRoutes(root, actions.access, delivery))
+  app.route('/', notesRoutes(root, actions.access, delivery, dispatch))
   app.route('/', assetsRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))

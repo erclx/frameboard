@@ -221,7 +221,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       'listeners',
       'findings',
     ])
-    expect(hello[1]).toEqual({ type: 'access', write: false })
+    expect(hello[1]).toEqual({ type: 'access', write: false, dispatch: false })
     expect(hello[2]).toEqual({ type: 'history', undo: 0, redo: 0 })
     expect(hello[3]).toEqual({ type: 'claims', claims: [] })
     expect(hello[4]).toEqual({ type: 'changes', changes: [] })

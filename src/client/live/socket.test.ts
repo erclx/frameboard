@@ -45,11 +45,25 @@ describe('connectLive access', () => {
 
     expect(store.getState().canWrite).toBe(false)
 
-    socket?.receive({ type: 'access', write: true })
+    socket?.receive({ type: 'access', write: true, dispatch: false })
     expect(store.getState().canWrite).toBe(true)
 
     socket?.dispatchEvent(new Event('close'))
     expect(store.getState().canWrite).toBe(false)
+    stop()
+  })
+
+  it('follows whether a note can start a session and clears it when the socket drops', () => {
+    const store = createLiveStore()
+    const stop = connectLive(store)
+    const socket = FakeSocket.instances[0]
+    socket?.dispatchEvent(new Event('open'))
+
+    socket?.receive({ type: 'access', write: true, dispatch: true })
+    expect(store.getState().dispatch).toBe(true)
+
+    socket?.dispatchEvent(new Event('close'))
+    expect(store.getState().dispatch).toBe(false)
     stop()
   })
 

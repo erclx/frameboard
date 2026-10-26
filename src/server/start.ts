@@ -47,6 +47,7 @@ import {
 import { createSelectionHolder } from './live/selection'
 import { type BoardWatcher, reloadRefs, watchBoard } from './live/watch'
 import { createDelivery, type Delivery } from './notes/delivery'
+import { createDispatcher } from './notes/dispatch'
 import {
   boardView,
   markDelivered,
@@ -81,6 +82,8 @@ export interface StartOptions {
   openUrl: (url: string) => void
   /** Launches the warm browser, the headless shell unless a test stands in. */
   launch?: Launcher
+  /** The command a note starts a session with, from `FRAMEBOARD_DISPATCH`, run in `cwd`. */
+  dispatch?: { command: string; cwd: string; env: NodeJS.ProcessEnv }
 }
 
 /**
@@ -163,6 +166,7 @@ async function listen({
   port,
   openUrl,
   launch,
+  dispatch,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   const tickets = createTickets()
@@ -193,6 +197,9 @@ async function listen({
     onListeners: (listeners) => hub.broadcast({ type: 'listeners', listeners }),
     now: () => new Date(),
   })
+  const dispatcher = dispatch
+    ? createDispatcher({ ...dispatch, root })
+    : undefined
   // The history lives in memory, so a trash a previous server left holds nothing it can undo.
   await emptyTrash(root)
   const tracker = createChangeTracker(root)
@@ -226,6 +233,7 @@ async function listen({
     claims: () => inTurn(() => claims.read()),
     changes: () => inTurn(async () => tracker.log()),
     closeTab: selection.closeTab,
+    dispatch: dispatcher !== undefined,
   })
   const claims = createClaimsPush(root, {
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
@@ -293,6 +301,7 @@ async function listen({
     port: boundPort,
     tickets,
     delivery,
+    dispatch: dispatcher,
     history,
     selection,
     renderFrame,
