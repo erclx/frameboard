@@ -13,6 +13,10 @@ export interface LiveElement {
   radius: number
   fontSize: number
   fontWeight: number
+  /** In px, null for `normal`, whose height the font decides. */
+  lineHeight: number | null
+  /** In px, 0 for `normal`. */
+  letterSpacing: number
   textAlign: string
   /** The computed text color, which a `currentcolor` paint shows. */
   color: string
@@ -84,8 +88,12 @@ function readLive(element: Element, view: Window): LiveElement {
   return {
     opacity: Number(style.opacity),
     radius: Math.round(parseFloat(style.borderTopLeftRadius) || 0),
-    fontSize: Math.round(parseFloat(style.fontSize) * 100) / 100,
+    fontSize: hundredths(style.fontSize),
     fontWeight: Number(style.fontWeight),
+    lineHeight:
+      style.lineHeight === 'normal' ? null : hundredths(style.lineHeight),
+    letterSpacing:
+      style.letterSpacing === 'normal' ? 0 : hundredths(style.letterSpacing),
     textAlign: alignOf(style.textAlign, style.direction),
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
@@ -94,6 +102,11 @@ function readLive(element: Element, view: Window): LiveElement {
     text,
     inline: inlinePaints(element),
   }
+}
+
+/** A computed px length to two places. */
+function hundredths(length: string): number {
+  return Math.round(parseFloat(length) * 100) / 100
 }
 
 /** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */

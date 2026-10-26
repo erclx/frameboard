@@ -179,6 +179,8 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         <TypographySection
           fontSize={live.fontSize}
           fontWeight={live.fontWeight}
+          lineHeight={live.lineHeight}
+          letterSpacing={live.letterSpacing}
           textAlign={live.textAlign}
           disabled={disabled}
           write={write}

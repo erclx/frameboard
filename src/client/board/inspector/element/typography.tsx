@@ -3,6 +3,8 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  LetterSpacing,
+  LineHeight,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -22,6 +24,10 @@ const WEIGHT: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 interface TypographySectionProps {
   fontSize: number
   fontWeight: number
+  /** In px, null for `normal`, which reads Auto. */
+  lineHeight: number | null
+  /** In px. */
+  letterSpacing: number
   /** The computed alignment, `left`, `center`, or `right` lighting a button. */
   textAlign: string
   disabled: boolean
@@ -30,14 +36,20 @@ interface TypographySectionProps {
   preview?: PreviewStyle
 }
 
+/** Browsers draw `normal` near 1.2 times the size, where a step from Auto starts. */
+const NORMAL_LINE = 1.2
+
 /**
  * The Typography section of `inspector/text`: size in px, weight stepping
- * by 100, and three alignment buttons, each writing one declaration.
- * Family, line height, and letter spacing stay the agent's.
+ * by 100, line height and letter spacing in px, and three alignment
+ * buttons, each writing one declaration. A `normal` line height reads Auto
+ * and writes nothing until changed. Family stays the agent's.
  */
 export function TypographySection({
   fontSize,
   fontWeight,
+  lineHeight,
+  letterSpacing,
   textAlign,
   disabled,
   write,
@@ -79,6 +91,42 @@ export function TypographySection({
           format={WEIGHT}
           disabled={disabled}
           {...styleNumber('font-weight', fontWeight, String, write, preview)}
+        />
+        <NumberField
+          label="Line height"
+          prefix={
+            <LineHeight aria-hidden className="size-3" strokeWidth={1.6} />
+          }
+          inset="pl-[28px]"
+          value={lineHeight}
+          empty="Auto"
+          min={0}
+          format={SIZE}
+          disabled={disabled}
+          {...styleNumber(
+            'line-height',
+            lineHeight ?? Math.round(fontSize * NORMAL_LINE),
+            (value) => `${value}px`,
+            write,
+            preview,
+          )}
+        />
+        <NumberField
+          label="Letter spacing"
+          prefix={
+            <LetterSpacing aria-hidden className="size-3" strokeWidth={1.6} />
+          }
+          inset="pl-[28px]"
+          value={letterSpacing}
+          format={SIZE}
+          disabled={disabled}
+          {...styleNumber(
+            'letter-spacing',
+            letterSpacing,
+            (value) => `${value}px`,
+            write,
+            preview,
+          )}
         />
       </div>
       <div className="mt-1.5 flex w-max gap-0.5 rounded-md bg-input p-0.5">
