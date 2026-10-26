@@ -10,6 +10,7 @@ import type { ElementTree } from '@/shared/records/elements'
 
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
+import { deleteElement } from '../place/write'
 import {
   type ElementKey,
   select,
@@ -31,6 +32,10 @@ export interface ElementContext {
   noteOpen: () => boolean
   /** True while focus sits on the canvas or nowhere, so a focused control keeps Tab and Enter. */
   boardFocused: () => boolean
+  /** True while this tab may write. */
+  writable: () => boolean
+  /** Deletes an element, which `deleteElement` does on the board. */
+  remove: (page: string, key: ElementKey) => void
 }
 
 /**
@@ -143,6 +148,18 @@ export function elementActions(context: ElementContext): Action[] {
       },
     },
     {
+      id: 'element.delete',
+      label: 'Delete',
+      group: 'selection',
+      // The frame delete holds the same keys and stands aside while an element is selected.
+      keys: ['Backspace', 'Delete'],
+      enabled: () => elementSelected() && context.writable(),
+      run: () => {
+        const { page, element } = selection.getState()
+        if (page && element) context.remove(page, element)
+      },
+    },
+    {
       id: 'element.next',
       label: 'Select next sibling',
       group: 'selection',
@@ -170,6 +187,8 @@ export function useElementActions(page: string): void {
         treeOf,
         noteOpen: () => notesUi.getState().open !== null,
         boardFocused: focusOnBoard,
+        writable: () => liveStore.getState().canWrite,
+        remove: (at, key) => void deleteElement(at, key),
       }),
     )
     // The keys walk the one selected frame's tree, so it is fetched once
@@ -186,6 +205,9 @@ export function useElementActions(page: string): void {
       }),
       selectionStore.subscribe(refreshActions),
       modeStore.subscribe(refreshActions),
+      liveStore.subscribe((state, previous) => {
+        if (state.canWrite !== previous.canWrite) refreshActions()
+      }),
       notesUi.subscribe(refreshActions),
       trees.store.subscribe(refreshActions),
     ]

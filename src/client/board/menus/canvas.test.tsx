@@ -371,6 +371,32 @@ describe('CanvasMenu', () => {
     ]).toEqual([expect.anything(), 2])
   })
 
+  it('ends the element menu with Delete', async () => {
+    render(<Board page={PAGE} />)
+    selectElement(selectionStore, PAGE.ref, {
+      frame: A.ref,
+      index: 2,
+      hash: 'h',
+    })
+    const outline = document.createElement('div')
+    outline.dataset.elementSelection = ''
+    Object.assign(outline.style, {
+      position: 'absolute',
+      left: '100px',
+      top: '100px',
+      width: '100px',
+      height: '100px',
+    })
+    document.querySelector('[data-layer]')?.append(outline)
+
+    rightClick(centerOf(A.ref))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getAllByRole('menuitem').at(-1)).toHaveTextContent(
+      /^Delete/,
+    )
+  })
+
   it('selects the frame when the right-click lands in it outside the selected element', async () => {
     render(<Board page={PAGE} />)
     selectElement(selectionStore, PAGE.ref, {

@@ -1,9 +1,10 @@
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import type { InsertResult } from '@/shared/records/edit'
+import type { InsertResult, RemoveResult } from '@/shared/records/edit'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { WaitDropped, whenFree } from '../claims/waiting'
 import { catchUpTree } from '../element/tree'
 import { inFrameTurn, type Landed, sentence } from '../inspector/element/write'
 import { type ModeStore, modeStore } from '../mode'
@@ -12,6 +13,7 @@ import {
   awaitHash,
   type ElementKey,
   rememberHash,
+  select,
   selectElement,
   type SelectionStore,
   selectionStore,
@@ -110,4 +112,75 @@ export async function placeElement(
     }
   })
   return placed
+}
+
+/**
+ * Deletes the selected element, with what it holds, from the bytes it was
+ * selected at, then selects its frame, as Delete does with an element
+ * selected. It goes in the frame's turn like a placement, and a frame
+ * another session holds waits under the claim card, as an element edit
+ * does, rather than racing that session's write. Answers whether it landed.
+ */
+export async function deleteElement(
+  page: string,
+  key: ElementKey,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+  }: Omit<PlaceDeps, 'mode'> = {},
+): Promise<boolean> {
+  const ref = key.frame
+  const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
+    const before = prior ? await prior : undefined
+    if (before === null) return null
+    // An edit ahead that landed in place keeps every index, so the element
+    // holds on the bytes it answered, as a placement's gap does.
+    const rebased =
+      before !== undefined && before.from.includes(key.hash) && !before.shifted
+    const from = rebased ? before.to : key.hash
+    let done = () => {}
+    try {
+      const answer = await whenFree(
+        [ref],
+        'delete',
+        async () => {
+          // Held from the send, so a wait of minutes never skips the frame's hash check.
+          done = awaitHash(ref)
+          rememberHash(ref, from)
+          try {
+            return await writeBoard<RemoveResult>(
+              '/api/frames/remove',
+              { ref, index: key.index, hash: from },
+              'POST',
+              send,
+            )
+          } catch (error) {
+            done()
+            throw error
+          }
+        },
+        { live },
+      )
+      rememberHash(ref, answer.hash)
+      void catchUpTree(ref, answer.hash)
+      select(selection, page, [ref])
+      return { from: [from], to: answer.hash, at: new Map(), shifted: true }
+    } catch (error) {
+      if (!(error instanceof WaitDropped)) {
+        notify({
+          title: 'Nothing deleted',
+          description:
+            error instanceof BoardWriteError
+              ? sentence(error.message)
+              : 'The board could not be reached, so nothing was written.',
+        })
+      }
+      return null
+    } finally {
+      done()
+    }
+  })
+  return landed !== null
 }

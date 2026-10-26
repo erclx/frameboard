@@ -4,8 +4,8 @@ import { createLiveStore } from '@/client/live/store'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
-import { createSelectionStore } from '../selection'
-import { placeElement } from './write'
+import { createSelectionStore, selectElement } from '../selection'
+import { deleteElement, placeElement } from './write'
 
 const HASH = 'c'.repeat(64)
 const ANSWERED = 'd'.repeat(64)
@@ -219,5 +219,52 @@ describe('placeElement', () => {
 
     expect(placed).toBeNull()
     expect(sent).toEqual([])
+  })
+})
+
+describe('deleteElement', () => {
+  const KEY = { frame: HERO.ref, index: 4, hash: HASH }
+
+  it('sends the element and the hash it was selected at, then selects its frame', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, hash: ANSWERED },
+    })
+
+    const deleted = await deleteElement('studio/home', KEY, {
+      selection,
+      live: createLiveStore(),
+      send,
+    })
+
+    expect(deleted).toBe(true)
+    expect(sent).toEqual([{ ref: HERO.ref, index: 4, hash: HASH }])
+    expect(selection.getState()).toMatchObject({
+      frames: [HERO.ref],
+      element: null,
+    })
+  })
+
+  it('shows a refusal and keeps the element selected', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const notes: string[] = []
+    const { send } = server(409, {
+      ok: false,
+      error: { code: 'stale-address', message: 'the file moved' },
+    })
+
+    const deleted = await deleteElement('studio/home', KEY, {
+      selection,
+      live: createLiveStore(),
+      send,
+      notify: (refusal) => void notes.push(refusal.title),
+    })
+
+    expect(deleted).toBe(false)
+    expect(notes).toEqual(['Nothing deleted'])
+    expect(selection.getState().element).toEqual(KEY)
   })
 })
