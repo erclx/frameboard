@@ -114,7 +114,7 @@ dl.def dd { color: var(--ink-2); }
 .nl code { font-size: 22px; font-weight: 700; }
 .hand .nl code { font-weight: 400; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 20px 0 8px; font-size: 20px; color: var(--ink-2); }
-.legend .sq { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 8px; border: 2px solid var(--c); background: var(--cb); }
+.legend .sq { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 8px; border: 2px solid var(--c); }
 .legend .sq.dash { border-style: dashed; }
 .lane { display: block; }
 
