@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.14.0](https://github.com/erclx/frameboard/compare/v0.13.0...v0.14.0) (2026-10-26)
+
+
+### Features
+
+* **board:** delete elements by hand and fix nine hand tool faults ([#131](https://github.com/erclx/frameboard/issues/131)) ([1b3edeb](https://github.com/erclx/frameboard/commit/1b3edeb00c2c1f0b2dda4115d21263abda04b274))
+* **board:** keep frames live through page and project renames ([#128](https://github.com/erclx/frameboard/issues/128)) ([2bbc9f7](https://github.com/erclx/frameboard/commit/2bbc9f721ceec7ad086dd499daf38a376aa35616))
+* **canvas:** move a placed element and size a shape by a drag ([#130](https://github.com/erclx/frameboard/issues/130)) ([6cf1521](https://github.com/erclx/frameboard/commit/6cf1521008f7151ed0054b7b353048ad47fd8535))
+* **inspector:** add frame fill, line height, and letter spacing ([#127](https://github.com/erclx/frameboard/issues/127)) ([948184b](https://github.com/erclx/frameboard/commit/948184b9d7e257e1244ecdea9bf168c17a74144d))
+* **notes:** let a note carry a pasted or dropped image ([#129](https://github.com/erclx/frameboard/issues/129)) ([f550ef7](https://github.com/erclx/frameboard/commit/f550ef7769efb7f8beb44ad67cd42957e116acc2))
+* **notes:** scroll a long note thread inside the canvas ([#125](https://github.com/erclx/frameboard/issues/125)) ([92c0e6f](https://github.com/erclx/frameboard/commit/92c0e6f1f58c8dc40f3a20dcbec557e89690ea5d))
+* **notes:** start a session from a sent note when nobody listens ([#122](https://github.com/erclx/frameboard/issues/122)) ([64deff8](https://github.com/erclx/frameboard/commit/64deff8a819ac0293e31acffdff68dd187564189))
+
+
+### Bug Fixes
+
+* **palette:** widen the home shortcuts column and keep rows on one line ([#120](https://github.com/erclx/frameboard/issues/120)) ([3743d69](https://github.com/erclx/frameboard/commit/3743d694a0cbdcff139f6e433c28bcb86b131843))
+
 ## [0.13.0](https://github.com/erclx/frameboard/compare/v0.12.0...v0.13.0) (2026-10-26)
 
 
