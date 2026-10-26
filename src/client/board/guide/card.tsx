@@ -607,7 +607,9 @@ function AgentStep({
             <b className="mb-0.5 block font-semibold">My agent</b>
             <span className="leading-[1.45] text-muted-foreground">
               Paste this into Claude Code opened in{' '}
-              <Path className="break-all">{folder}</Path>:
+              <Path className="inline-block max-w-full wrap-anywhere">
+                {folder}
+              </Path>
             </span>
           </span>
         </Choice>
@@ -656,8 +658,7 @@ function AgentStep({
           )
         ) : drawer === 'agent' ? (
           <>
-            Finish writes <Path>{sheet}</Path>, then nothing until your agent
-            draws
+            Finish writes only <Path>{sheet}</Path>
           </>
         ) : (
           <>

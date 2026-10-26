@@ -351,7 +351,7 @@ describe('GuideCard', () => {
     expect(
       await screen.findByRole('radio', { name: /My agent/ }),
     ).toHaveAccessibleName(
-      'My agent Paste this into Claude Code opened in /home/dev/acme:',
+      'My agent Paste this into Claude Code opened in /home/dev/acme',
     )
   })
 
