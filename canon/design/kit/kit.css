@@ -6,7 +6,7 @@ html.kit {
   --signal: #4e92f6; --signal-bg: rgba(78, 146, 246, 0.16); --on-signal: #ffffff;
   --action: #3cc2c8; --action-bg: rgba(60, 194, 200, 0.14);
   --data: #5fc48a; --data-bg: rgba(95, 196, 138, 0.14);
-  --external: #e0a3ff; --external-bg: rgba(224, 163, 255, 0.14);
+  --external: #e8b4ff; --external-bg: rgba(232, 180, 255, 0.14);
   --warn: #f5b84a; --warn-bg: rgba(245, 184, 74, 0.16);
   --risk: #ff6b6b; --risk-bg: rgba(255, 107, 107, 0.14);
   --font: "Geist", "Geist Variable", "DejaVu Sans", sans-serif;
@@ -17,7 +17,7 @@ html.kit[data-theme="light"] {
   --signal: #2f7bf0; --signal-bg: rgba(47, 123, 240, 0.12); --on-signal: #ffffff;
   --action: #0f8a90; --action-bg: rgba(15, 138, 144, 0.10);
   --data: #1a7f45; --data-bg: rgba(26, 127, 69, 0.10);
-  --external: #9b3fd1; --external-bg: rgba(155, 63, 209, 0.10);
+  --external: #7f2db5; --external-bg: rgba(127, 45, 181, 0.10);
   --warn: #c77a00; --warn-bg: rgba(199, 122, 0, 0.14);
   --risk: #d92d2d; --risk-bg: rgba(217, 45, 45, 0.09);
 }
