@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.13.0](https://github.com/erclx/frameboard/compare/v0.12.0...v0.13.0) (2026-10-26)
+
+
+### Features
+
+* **board:** draw Layers glyphs by layout and lead the Hide UI pill home ([#114](https://github.com/erclx/frameboard/issues/114)) ([40752bd](https://github.com/erclx/frameboard/commit/40752bdc36735f394d7bc43069a09f31d632d7e9))
+* **canvas:** fit an empty page's first frames the moment they arrive ([#113](https://github.com/erclx/frameboard/issues/113)) ([808f30c](https://github.com/erclx/frameboard/commit/808f30cd0210e4e8e06319b8196e9500dfb2f0b5))
+* **guide:** open a new board on its guide and let Back re-pick the look ([#111](https://github.com/erclx/frameboard/issues/111)) ([3c096ff](https://github.com/erclx/frameboard/commit/3c096ff5c5c10553231ca95173aaf6d1df1af132))
+* **inspector:** relabel element fields and widen their scrub targets ([#116](https://github.com/erclx/frameboard/issues/116)) ([39cf1ab](https://github.com/erclx/frameboard/commit/39cf1ab0b45eea0a0d8e0248b13a0eed832516cb))
+
+
+### Bug Fixes
+
+* **board:** widen the shapes caret to a 24px target ([#110](https://github.com/erclx/frameboard/issues/110)) ([f47ae5f](https://github.com/erclx/frameboard/commit/f47ae5f190e9b019fe129390a58adf24ac689561))
+* **server:** hold the hug and lock tests under load ([#112](https://github.com/erclx/frameboard/issues/112)) ([fdc520d](https://github.com/erclx/frameboard/commit/fdc520d40b71b570e9afae04bccf37eb9a1653db))
+* **styles:** lift the dark claim to #e8b4ff for 4.5:1 on its tint ([#117](https://github.com/erclx/frameboard/issues/117)) ([0e13a6a](https://github.com/erclx/frameboard/commit/0e13a6a7e682aa511f4d2806c964d78825ddf975))
+
 ## [0.12.0](https://github.com/erclx/frameboard/compare/v0.11.0...v0.12.0) (2026-10-25)
 
 
