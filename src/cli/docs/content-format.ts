@@ -18,7 +18,9 @@ import { FACES } from '@/shared/faces'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_GAP,
+  FRAME_SIZE_NAMES,
   FRAME_SIZES,
+  frameSizeOf,
 } from '@/shared/frame-sizes'
 import {
   NAME_MAX_LENGTH,
@@ -46,7 +48,9 @@ export function contentFormat() {
       collision:
         'Two names collide when they match case-insensitively. A verb choosing a name itself takes the first free -2, -3, and onward.',
     },
-    frameSizes: FRAME_SIZES,
+    frameSizes: Object.fromEntries(
+      FRAME_SIZE_NAMES.map((name) => [name, frameSizeOf(name)]),
+    ),
     defaultFrameSize: DEFAULT_FRAME_SIZE,
     layout: [
       'x and y are integers, width and height integers of at least 1, and order an integer of at least 0, where a higher order draws on top.',

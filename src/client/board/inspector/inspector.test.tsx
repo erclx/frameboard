@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -77,21 +77,58 @@ describe('InspectorPanel', () => {
     it('chooses the preset the next click places', async () => {
       renderPanel()
 
-      await userEvent.click(screen.getByRole('radio', { name: /Phone/ }))
+      await userEvent.click(screen.getByRole('radio', { name: /^Phone/ }))
 
       expect(presetStore.getState().preset).toBe('phone')
-      expect(screen.getByRole('radio', { name: /Phone/ })).toHaveAttribute(
+      expect(screen.getByRole('radio', { name: /^Phone/ })).toHaveAttribute(
         'aria-checked',
         'true',
       )
     })
 
-    it('shows the presets over a selected frame', () => {
+    it('lists each device under its group', () => {
+      renderPanel()
+
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Phone' })).getByRole(
+          'radio',
+          { name: /iPhone 16 Pro Max/ },
+        ),
+      ).toHaveTextContent('440 × 956')
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Tablet' })).getByRole(
+          'radio',
+          { name: /iPad mini/ },
+        ),
+      ).toHaveTextContent('744 × 1133')
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Desktop' })).getByRole(
+          'radio',
+          { name: /Full HD/ },
+        ),
+      ).toHaveTextContent('1920 × 1080')
+    })
+
+    it('chooses a device the next click places', async () => {
+      renderPanel()
+
+      await userEvent.click(
+        screen.getByRole('radio', { name: /^iPhone 16\s*393/ }),
+      )
+
+      expect(presetStore.getState().preset).toBe('iphone-16')
+      expect(screen.getByRole('radio', { name: /Desktop/ })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+    })
+
+    it('shows the sizes over a selected frame', () => {
       act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(3)
+      expect(screen.getAllByRole('radio')).toHaveLength(11)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })

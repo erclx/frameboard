@@ -35,7 +35,7 @@ import type { MeasureFrame } from '@/server/live/hug'
 import { writeStarterSheet } from '@/server/look/starter'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import {
   DEFAULT_LOOK,
@@ -63,7 +63,7 @@ const refs = z.array(ref).min(1).max(1000)
 const coordinate = z.int()
 const frameAddSchema = z.object({
   ref,
-  size: z.enum(Object.keys(FRAME_SIZES) as [FrameSizePreset]).optional(),
+  size: z.enum(FRAME_SIZE_NAMES).optional(),
   width: z.int().min(1).optional(),
   height: z.int().min(1).optional(),
   x: coordinate.optional(),

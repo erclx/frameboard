@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createStore } from 'zustand/vanilla'
 
 import type { Structure } from '@/client/live/structure'
-import type { FrameSizePreset } from '@/shared/frame-sizes'
+import type { FrameSizeName } from '@/shared/frame-sizes'
 import { frameOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
@@ -26,7 +26,7 @@ function setup(answer: () => Promise<unknown>) {
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
   mode.setState({ tool: 'frame' })
-  const preset = createStore<{ preset: FrameSizePreset }>()(() => ({
+  const preset = createStore<{ preset: FrameSizeName }>()(() => ({
     preset: 'tablet',
   }))
   const centered: Box[] = []
@@ -59,6 +59,44 @@ describe('placeFrame', () => {
 
     expect(sent).toEqual([
       ['studio/home/tablet', { width: 834, height: 1194 }, 120, -41],
+    ])
+  })
+
+  it('adds a picked device at its size, named for it', async () => {
+    const { sent, calls, selection, mode, preset } = setup(async () =>
+      frameOf('iphone-16'),
+    )
+    preset.setState({ preset: 'iphone-16' })
+
+    await placeFrame(
+      { x: 0, y: 0 },
+      { page: PAGE, frames: [], calls, selection, mode, preset },
+    )
+
+    expect(sent).toEqual([
+      ['studio/home/iphone-16', { width: 393, height: 852 }, 0, 0],
+    ])
+  })
+
+  it('adds a drawn box at its size, named frame past the names taken', async () => {
+    const { sent, calls, selection, mode, preset } = setup(async () =>
+      frameOf('frame-2'),
+    )
+
+    await placeFrame(
+      { x: 10, y: 20, width: 300, height: 200 },
+      {
+        page: PAGE,
+        frames: [frameOf('frame')],
+        calls,
+        selection,
+        mode,
+        preset,
+      },
+    )
+
+    expect(sent).toEqual([
+      ['studio/home/frame-2', { width: 300, height: 200 }, 10, 20],
     ])
   })
 

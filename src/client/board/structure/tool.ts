@@ -8,8 +8,8 @@ import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import {
   DEFAULT_FRAME_SIZE,
-  FRAME_SIZES,
-  type FrameSizePreset,
+  type FrameSizeName,
+  frameSizeOf,
 } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
@@ -21,18 +21,18 @@ import { select, type SelectionStore, selectionStore } from '../selection'
 import { canvasView } from '../view'
 import { startFrameRename } from './actions'
 
-/** The preset the Frame tool's next click places, chosen from the inspector's list. */
-export type PresetStore = StoreApi<{ preset: FrameSizePreset }>
+/** The size the Frame tool's next click places, chosen from the inspector's list. */
+export type PresetStore = StoreApi<{ preset: FrameSizeName }>
 
 export const presetStore: PresetStore = createStore<{
-  preset: FrameSizePreset
+  preset: FrameSizeName
 }>()(() => ({ preset: DEFAULT_FRAME_SIZE }))
 
-export function usePreset(): FrameSizePreset {
+export function usePreset(): FrameSizeName {
   return useStore(presetStore, (state) => state.preset)
 }
 
-export function choosePreset(preset: FrameSizePreset): void {
+export function choosePreset(preset: FrameSizeName): void {
   presetStore.setState({ preset })
 }
 
@@ -51,16 +51,23 @@ export interface PlaceContext {
   rename?: (ref: string) => void
 }
 
+/** The smallest box, in screen pixels, a Frame tool drag draws, below which the drag places as a click does. */
+export const DRAWN_FRAME_MIN = 40
+
+/** A drawn frame's name stem, since a drawn box has no size to be named for. */
+const DRAWN_FRAME_NAME = 'frame'
+
 /**
- * Adds a frame at the chosen preset's width and height, hugging neither, with
- * its top left corner on a board point, named for the preset as duplicate and new page name theirs, then
+ * Adds a frame with its top left corner on a board point, hugging neither
+ * axis, at the chosen size's width and height and named for it as duplicate
+ * and new page name theirs, or at a drawn box's size and named `frame`, then
  * selects it, returns to Move, opens its name for editing, and centers the
- * view on it when it is not wholly in view, as one click of the Frame tool.
- * Resolves to the added frame, or null once a refusal is reported, so a
- * caller can act on its box before the live store carries it.
+ * view on it when it is not wholly in view, as one click or drag of the
+ * Frame tool. Resolves to the added frame, or null once a refusal is
+ * reported, so a caller can act on its box before the live store carries it.
  */
 export async function placeFrame(
-  point: { x: number; y: number },
+  point: { x: number; y: number; width?: number; height?: number },
   {
     page,
     frames,
@@ -73,15 +80,18 @@ export async function placeFrame(
     rename = (ref) => startFrameRename(ref, 'inspector'),
   }: PlaceContext,
 ): Promise<FrameRecord | null> {
-  const size = preset.getState().preset
+  const { width, height } = point
+  const drawn =
+    width === undefined || height === undefined ? null : { width, height }
+  const picked = preset.getState().preset
   const name = nextFreeName(
-    size,
+    drawn ? DRAWN_FRAME_NAME : picked,
     frames.map((frame) => frame.name),
   )
   try {
     const added = await calls.addFrame(
       `${page}/${name}`,
-      FRAME_SIZES[size],
+      drawn ?? frameSizeOf(picked),
       Math.round(point.x),
       Math.round(point.y),
     )

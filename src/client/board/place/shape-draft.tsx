@@ -17,17 +17,20 @@ interface ShapeDraftProps {
 }
 
 /**
- * The box a Rectangle or Ellipse drag draws, from the press to the pointer,
- * drawn as the marquee is once the press passes the click distance. On
- * release it leaves the size for `takeDraft`, so the click placing the
- * shape lands it at the gap the drag started in, at the size drawn. A
- * Divider and Text draw nothing, and their drag stays a click.
+ * The box a Rectangle, Ellipse, or Frame drag draws, from the press to the
+ * pointer, drawn as the marquee is once the press passes the click distance.
+ * On release it leaves the box for `takeDraft`, so the click placing a shape
+ * lands it at the gap the drag started in, at the size drawn, and the click
+ * placing a frame lands it on the box. A Divider and Text draw nothing, and
+ * their drag stays a click.
  */
 export function ShapeDraft({ viewport, toBoard }: ShapeDraftProps) {
   const shape = useStore(shapeStore, (state) => state.shape)
   const sizing = useMode(
     (state) =>
-      state.mode === 'edit' && state.tool === 'shape' && shape !== 'divider',
+      state.mode === 'edit' &&
+      (state.tool === 'frame' ||
+        (state.tool === 'shape' && shape !== 'divider')),
   )
   const [box, setBox] = useState<Box | null>(null)
   useEffect(() => {
@@ -57,6 +60,7 @@ export function ShapeDraft({ viewport, toBoard }: ShapeDraftProps) {
       if (press && drawn) {
         finishDraft({
           from: press.from,
+          at: { x: Math.round(drawn.x), y: Math.round(drawn.y) },
           size: {
             width: Math.max(1, Math.round(drawn.width)),
             height: Math.max(1, Math.round(drawn.height)),

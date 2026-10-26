@@ -46,7 +46,7 @@ Owns the frame verbs, and `project.ts` and `page.ts` reshape projects and pages 
 - `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
 - `project tokens` writes a starter token sheet the way the guide's look step does, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
-- `frame add` leaves every axis no size names hugging, a preset or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
+- `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
 
 ### `src/cli/inbox/`
