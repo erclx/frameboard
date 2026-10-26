@@ -1,4 +1,9 @@
-import { type DefaultTreeAdapterTypes, html, serialize } from 'parse5'
+import {
+  type DefaultTreeAdapterTypes,
+  html,
+  parseFragment,
+  serialize,
+} from 'parse5'
 
 import type { TokenRow } from '@/shared/records/tokens'
 import { STARTER_FONTS } from '@/shared/starter-tokens'
@@ -316,7 +321,8 @@ function locateGap(
     element !== undefined &&
     element.tagName === span.parent.tagName &&
     startTag(source, element) === span.parent.tag
-  const held = tree.elements.length === span.count - 1
+  // While every other element holds, the recorded indices still name the parent and the sibling.
+  const held = tree.elements.length === span.count - markupSize(span.markup)
   const candidates =
     held && reads(tree.elements[span.placement.parent])
       ? [span.placement.parent]
@@ -328,6 +334,18 @@ function locateGap(
     parentIndex === undefined ? undefined : tree.elements[parentIndex]
   if (parentIndex === undefined || !parent) return undefined
   if (span.next === null) return { parent: parentIndex, before: null }
+  const recorded =
+    span.placement.before === null
+      ? undefined
+      : tree.elements[span.placement.before]
+  if (
+    held &&
+    recorded &&
+    recorded.parentNode === parent &&
+    startTag(source, recorded) === span.next
+  ) {
+    return { parent: parentIndex, before: span.placement.before }
+  }
   const next = children(parent).filter(
     (child) => startTag(source, child) === span.next,
   )
@@ -335,6 +353,16 @@ function locateGap(
   return next.length === 1 && sibling
     ? { parent: parentIndex, before: tree.elements.indexOf(sibling) }
     : undefined
+}
+
+/** How many elements `markup` holds, itself and everything inside it. */
+function markupSize(markup: string): number {
+  const count = (node: DefaultTreeAdapterTypes.ParentNode): number =>
+    node.childNodes.reduce(
+      (total, child) => total + (hasTag(child) ? 1 + count(child) : 0),
+      0,
+    )
+  return count(parseFragment(markup))
 }
 
 /** Whether the frame stands as `side` of the insert left it, with the element or with its gap. */
@@ -431,6 +459,13 @@ export function removeElement(source: string, index: number): Removed {
     return refuse(
       'verify-failed',
       `taking out the <${element.tagName}> at ${index} would change more than it, so nothing was written`,
+    )
+  }
+  // A delete whose undo could not find the gap again would read as an agent's write.
+  if (!holdsInserted(removed, back.span, 'before')) {
+    return refuse(
+      'verify-failed',
+      `the <${element.tagName}> at ${index} could not be put back once taken out, so nothing was written`,
     )
   }
   return { ok: true, html: removed, span: back.span }

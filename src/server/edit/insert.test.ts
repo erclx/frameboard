@@ -305,6 +305,24 @@ describe('removeElement', () => {
     )
   })
 
+  it('should put back the first of several siblings sharing a start tag', () => {
+    const list = '<ul><li>a</li><li>b</li><li>c</li></ul>'
+    // <ul> is 3, its <li>s 4 to 6.
+    const removed = removeElement(list, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(list)
+  })
+
+  it('should put back an element holding children under a parent whose start tag repeats', () => {
+    const nested = '<div><div><p>a</p></div><div><p>b</p></div></div>'
+    // The outer <div> is 3, the inner ones 4 and 6, their <p>s 5 and 7.
+    const removed = removeElement(nested, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(nested)
+  })
+
   it('should refuse an index past the last element', () => {
     expect(removeElement(source, 9)).toMatchObject({
       ok: false,
