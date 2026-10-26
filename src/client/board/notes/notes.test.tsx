@@ -586,6 +586,27 @@ describe('images in a note', () => {
     })
   })
 
+  it('asks for a reply to go with images held and no text, sending nothing', async () => {
+    live({ canWrite: true })
+    const sent = boardStoring()
+    render(
+      <Thread
+        notes={[note({ id: 'n_1' })]}
+        page="studio/home"
+        onClose={() => {}}
+      />,
+    )
+    await userEvent.click(screen.getByRole('textbox'))
+    await userEvent.paste(clipboardOf(image()))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Write a reply to go with the images',
+    )
+    expect(sent).toEqual([])
+  })
+
   it("links each message image to its full size under the page's .notes", () => {
     render(
       <Thread

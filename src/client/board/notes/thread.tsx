@@ -63,16 +63,16 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
 
   const send = () => {
     const reply = text.trim()
+    if (reply === '' && images.images.length > 0) {
+      setError('Write a reply to go with the images')
+      return
+    }
     if (reply === '' && picked === '') {
       setError(
         listeners.length > 1
           ? 'Pick a session to send it to'
           : 'Write a reply first',
       )
-      return
-    }
-    if (reply === '' && images.images.length > 0) {
-      setError('Write a reply to go with the images')
       return
     }
     if (reply === '') {
