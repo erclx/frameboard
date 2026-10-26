@@ -468,15 +468,16 @@ describe('placedRefs', () => {
   }
 
   const TALL = { x: 1990, y: 0, width: 1440, height: 900, order: 2 }
+  const homeLayout = () => [at('studio/home/layout.json')]
 
   it('names a hugging frame written first and placed after', async () => {
     writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
     const previous = await scanBoard(board.root)
     writeHomeLayout({ tall: { ...TALL, hugHeight: true } })
 
-    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([
-      'studio/home/tall',
-    ])
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout()),
+    ).toEqual(['studio/home/tall'])
   })
 
   it('names a hugging frame written and placed in one batch', async () => {
@@ -484,9 +485,9 @@ describe('placedRefs', () => {
     writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
     writeHomeLayout({ tall: { ...TALL, hugWidth: true } })
 
-    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([
-      'studio/home/tall',
-    ])
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout()),
+    ).toEqual(['studio/home/tall'])
   })
 
   it('leaves out a hugging frame that only moved', async () => {
@@ -495,7 +496,9 @@ describe('placedRefs', () => {
     const previous = await scanBoard(board.root)
     writeHomeLayout({ tall: { ...TALL, x: 4000, hugHeight: true } })
 
-    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([])
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout()),
+    ).toEqual([])
   })
 
   it('leaves out a newly placed frame fixed on both axes', async () => {
@@ -503,13 +506,28 @@ describe('placedRefs', () => {
     const previous = await scanBoard(board.root)
     writeHomeLayout({ tall: TALL })
 
-    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([])
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout()),
+    ).toEqual([])
+  })
+
+  it('leaves out a hugging frame a page rename carried', async () => {
+    writeHomeLayout({ tall: { ...TALL, hugHeight: true } })
+    writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
+    const previous = await scanBoard(board.root)
+    renameSync(at('studio/home'), at('studio/start'))
+
+    expect(
+      placedRefs(previous, await scanBoard(board.root), [at('studio/start')]),
+    ).toEqual([])
   })
 
   it('leaves out a frame still unplaced', async () => {
     const previous = await scanBoard(board.root)
     writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
 
-    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([])
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout()),
+    ).toEqual([])
   })
 })

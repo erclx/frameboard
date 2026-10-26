@@ -539,7 +539,7 @@ async function pushBatch(
     // A frame written first and placed after changed only `layout.json`,
     // which reloads nothing, so it is measured here without a reload.
     placed = previous
-      ? placedRefs(previous, board).filter((ref) => !own.includes(ref))
+      ? placedRefs(previous, board, paths).filter((ref) => !own.includes(ref))
       : []
     // A frame its own file reloaded is measured first, so the board never
     // shows it at its old size, and the write's own batch reloads nothing.

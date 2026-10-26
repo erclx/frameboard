@@ -266,11 +266,18 @@ function frameNameOf(name: string): string | null {
 
 /**
  * The hugging frames `next` holds placed that `previous` held unplaced or
- * not at all, as one an agent wrote and then placed. Placing writes
- * `layout.json` alone, which reloads nothing, so these are measured without
- * a reload. A frame that only moved was placed in both and is left out.
+ * not at all, on a page whose `layout.json` is among `paths`, as one an
+ * agent wrote and then placed. Placing writes `layout.json` alone, which
+ * reloads nothing, so these are measured without a reload. A frame that only
+ * moved was placed in both, and one a folder rename carried has a new ref
+ * but a batch naming the folder alone, so both are left out.
  */
-export function placedRefs(previous: ListResult, next: ListResult): string[] {
+export function placedRefs(
+  previous: ListResult,
+  next: ListResult,
+  paths: readonly string[],
+): string[] {
+  const written = new Set(paths)
   const before = new Set(
     previous.projects.flatMap((project) =>
       project.pages.flatMap((page) =>
@@ -279,15 +286,17 @@ export function placedRefs(previous: ListResult, next: ListResult): string[] {
     ),
   )
   return next.projects.flatMap((project) =>
-    project.pages.flatMap((page) =>
-      page.frames
-        .filter(
-          (frame) =>
-            frame.placed &&
-            (frame.hugWidth || frame.hugHeight) &&
-            !before.has(frame.ref),
-        )
-        .map((frame) => frame.ref),
-    ),
+    project.pages
+      .filter((page) => written.has(join(page.path, LAYOUT_FILE)))
+      .flatMap((page) =>
+        page.frames
+          .filter(
+            (frame) =>
+              frame.placed &&
+              (frame.hugWidth || frame.hugHeight) &&
+              !before.has(frame.ref),
+          )
+          .map((frame) => frame.ref),
+      ),
   )
 }
