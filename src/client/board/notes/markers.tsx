@@ -148,9 +148,9 @@ const EDGE_GAP = 12
 /**
  * Holds a note card beside its marker at screen size, on the marker's right
  * as the design sets it, or on its left when the right would run the card
- * under the inspector, and moved down or up to stay inside the canvas. A
- * press outside the card or focus leaving it dismisses it, a marker's press
- * aside, since that opens the card the marker names.
+ * under the inspector, capped at the canvas height and moved down or up to
+ * stay inside it. A press outside the card or focus leaving it dismisses it,
+ * a marker's press aside, since that opens the card the marker names.
  */
 function Popover({
   at,
@@ -162,7 +162,11 @@ function Popover({
   children: React.ReactNode
 }) {
   const card = useRef<HTMLDivElement>(null)
-  const [shift, setShift] = useState({ flip: false, y: 0 })
+  const [shift, setShift] = useState<{
+    flip: boolean
+    y: number
+    cap: number | null
+  }>({ flip: false, y: 0, cap: null })
   useEffect(() => {
     const press = (event: PointerEvent) => {
       const target = event.target
@@ -190,9 +194,17 @@ function Popover({
         top < bounds.top + EDGE_GAP
           ? bounds.top + EDGE_GAP - top
           : Math.min(0, bounds.bottom - EDGE_GAP - (top + box.height)),
+      // Taken from the canvas alone, never the card, so the cap and the
+      // shift cannot chase each other. The card sits at screen size, so the
+      // canvas's screen height needs no zoom factor.
+      cap: bounds.height - 2 * EDGE_GAP,
     }
     // A shift moves the card it measured, so it settles once one repeats.
-    if (next.flip !== shift.flip || Math.abs(next.y - shift.y) > 0.5) {
+    if (
+      next.flip !== shift.flip ||
+      Math.abs(next.y - shift.y) > 0.5 ||
+      next.cap !== shift.cap
+    ) {
       setShift(next)
     }
   }, [at.x, at.y, shift])
@@ -203,7 +215,7 @@ function Popover({
     >
       <div
         ref={card}
-        className="absolute"
+        className="absolute flex flex-col"
         onBlur={(event) => {
           const next = event.relatedTarget
           if (next instanceof Node && !event.currentTarget.contains(next)) {
@@ -212,6 +224,7 @@ function Popover({
         }}
         style={{
           top: CARD_OFFSET.y + shift.y,
+          maxHeight: shift.cap ?? undefined,
           ...(shift.flip ? { right: CARD_OFFSET.x } : { left: CARD_OFFSET.x }),
         }}
       >

@@ -146,7 +146,11 @@ interface NoteCardProps {
   children: React.ReactNode
 }
 
-/** The card both the composer and the thread draw in, closing on Esc. */
+/**
+ * The card both the composer and the thread draw in, closing on Esc. It
+ * fills no more than the height its holder caps it at, so a child that
+ * scrolls takes the rest under the header.
+ */
 export function NoteCard({
   title,
   listeners,
@@ -167,7 +171,7 @@ export function NoteCard({
       // neither belongs to a press inside the card.
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
-      className="pointer-events-auto w-[300px] overflow-hidden rounded-xl border border-border bg-card text-body text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)]"
+      className="pointer-events-auto flex w-[300px] flex-col overflow-hidden rounded-xl border border-border bg-card text-body text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)]"
     >
       <header className="flex items-center gap-2 border-b border-border px-3 py-2.5 font-semibold">
         <h2 className="truncate">{title}</h2>
