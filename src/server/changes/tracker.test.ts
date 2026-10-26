@@ -164,6 +164,7 @@ describe('createChangeTracker', () => {
             placement: { parent: 4, before: 5 },
             parent: { tagName: 'body', tag: '<body>' },
             next: '<h1 data-name="Headline">',
+            lead: '',
           },
           present: 'after',
         },
