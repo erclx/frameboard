@@ -156,6 +156,31 @@ describe('placeFrame', () => {
     expect(renamed).toEqual(['studio/home/tablet'])
   })
 
+  it('resolves to the frame the server added', async () => {
+    const added = frameOf('tablet')
+    const { calls, selection, mode, preset } = setup(async () => added)
+
+    const placed = await placeFrame(
+      { x: 0, y: 0 },
+      { page: PAGE, frames: [], calls, selection, mode, preset },
+    )
+
+    expect(placed).toBe(added)
+  })
+
+  it('resolves to null when the add is refused', async () => {
+    const { calls, selection, mode, preset } = setup(async () => {
+      throw new Error('refused')
+    })
+
+    const placed = await placeFrame(
+      { x: 0, y: 0 },
+      { page: PAGE, frames: [], calls, selection, mode, preset },
+    )
+
+    expect(placed).toBeNull()
+  })
+
   it('stays on the Frame tool and selects nothing when the add is refused', async () => {
     const { calls, selection, mode, preset } = setup(async () => {
       throw new Error('refused')

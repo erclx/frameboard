@@ -14,8 +14,10 @@ import { SWATCH_RING } from '@/client/board/inspector/element/values'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
 import { useTokenTable } from '@/client/board/tokens'
+import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
+import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
@@ -30,6 +32,7 @@ import {
 } from '@/shared/starter-tokens'
 
 import {
+  agentFolder,
   agentPrompt,
   type Drawer,
   folderName,
@@ -79,6 +82,7 @@ export function GuideCard({
 }) {
   const state = useStore(guideStore)
   const table = useTokenTable(page.project, loadTokens)
+  const root = useLive((live) => live.board?.root ?? '')
   const [, navigate] = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -91,10 +95,6 @@ export function GuideCard({
     : ['name', 'size', 'agent']
   const at = Math.min(state.at, steps.length - 1)
   const step = steps[at] ?? 'name'
-  // The table lists the project's own sheet once one exists, so a sheet the
-  // guide wrote locks the look, and an Undo removing it unlocks it again.
-  const sheetWritten =
-    table?.sheets.some((sheet) => sheet.kind === 'project') ?? false
   const name = state.name ?? project
   const folder = folderName(name)
 
@@ -119,12 +119,31 @@ export function GuideCard({
   }
 
   const finish = async () => {
+    if (withLook) {
+      try {
+        await calls.projectTokens(project, {
+          accent: state.accent,
+          font: state.font,
+        })
+      } catch (error) {
+        // A sheet that reached the project meanwhile already gives it a look.
+        if (
+          !(error instanceof BoardWriteError && error.code === 'tokens-exist')
+        ) {
+          // The last step draws no refusal line, so the toast carries it.
+          set({ busy: false })
+          return reportRefusal(`Couldn't write ${project}/tokens.css`)(error)
+        }
+      }
+    }
     if (state.drawer === 'self') {
       choosePreset(state.size)
-      await placeFrame(
+      const added = await placeFrame(
         { x: 0, y: 0 },
         { page: page.ref, frames: page.frames, calls },
       )
+      // An empty page opens at 100%, which clips a desktop frame.
+      if (added) canvasView.fitTo([added.box])
     }
     set({ phase: 'done', busy: false })
     toast.add({
@@ -154,22 +173,6 @@ export function GuideCard({
       movePin(project, folder)
       set({ project: folder, name: null })
       navigate(boardUrl(folder, page.name), { replace: true })
-      return advance()
-    }
-    if (step === 'look' && !sheetWritten) {
-      try {
-        await calls.projectTokens(project, {
-          accent: state.accent,
-          font: state.font,
-        })
-      } catch (error) {
-        // A sheet that reached the project meanwhile already gives it a look.
-        if (
-          !(error instanceof BoardWriteError && error.code === 'tokens-exist')
-        ) {
-          return refuse(error, `Couldn't write ${project}/tokens.css`)
-        }
-      }
       return advance()
     }
     if (step === 'agent') return finish()
@@ -234,13 +237,14 @@ export function GuideCard({
               accent={state.accent}
               font={state.font}
               project={project}
-              written={sheetWritten}
               refusal={state.refusal}
               onChange={(look) => set(look)}
             />
           ) : (
             <AgentStep
               drawer={state.drawer}
+              folder={agentFolder(root)}
+              sheet={withLook ? `${project}/tokens.css` : null}
               prompt={agentPrompt(state.size, project)}
               size={state.size}
               page={page.name}
@@ -300,9 +304,20 @@ function Writes({ children }: { children: ReactNode }) {
   )
 }
 
-function Path({ children }: { children: ReactNode }) {
+function Path({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <code className="rounded bg-muted px-[5px] py-px font-mono text-[10.5px]">
+    <code
+      className={cn(
+        'rounded bg-muted px-[5px] py-px font-mono text-[10.5px]',
+        className,
+      )}
+    >
       {children}
     </code>
   )
@@ -372,6 +387,7 @@ function Choice({
   className,
   children,
   label,
+  labelledBy,
   disabled = false,
 }: {
   group: string
@@ -380,12 +396,14 @@ function Choice({
   className: string
   children: ReactNode
   label?: string
+  /** Names the radio from these ids, so a control inside the card stays out of its name. */
+  labelledBy?: string
   disabled?: boolean
 }) {
   return (
     <label
       className={cn(
-        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-disabled:opacity-60',
+        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-[input:focus-visible]:ring-3 has-[input:focus-visible]:ring-ring/50 has-disabled:opacity-60',
         className,
       )}
     >
@@ -396,6 +414,7 @@ function Choice({
         onChange={onSelect}
         disabled={disabled}
         aria-label={label}
+        aria-labelledby={labelledBy}
         className="peer sr-only"
       />
       {children}
@@ -457,14 +476,12 @@ function LookStep({
   accent,
   font,
   project,
-  written,
   refusal,
   onChange,
 }: {
   accent: StarterAccent
   font: StarterFont
   project: string
-  written: boolean
   refusal: string | null
   onChange: (look: { accent: StarterAccent; font: StarterFont }) => void
 }) {
@@ -495,7 +512,6 @@ function LookStep({
                 group="guide-accent"
                 label={ACCENT_LABELS[each]}
                 checked={accent === each}
-                disabled={written}
                 onSelect={() => onChange({ accent: each, font })}
                 className="size-5 overflow-hidden rounded-[5px] has-checked:shadow-[0_0_0_2px_var(--muted),0_0_0_3.5px_var(--foreground)]"
               >
@@ -523,7 +539,6 @@ function LookStep({
           <span className="relative block">
             <select
               value={font}
-              disabled={written}
               onChange={(event) =>
                 onChange({ accent, font: event.target.value as StarterFont })
               }
@@ -544,16 +559,7 @@ function LookStep({
       </div>
       {refusal ? <Refusal id="guide-refusal">{refusal}</Refusal> : null}
       <Writes>
-        {written ? (
-          <>
-            Wrote <Path>{project}/tokens.css</Path>, so Undo takes it back to
-            pick again
-          </>
-        ) : (
-          <>
-            Writes <Path>{project}/tokens.css</Path>
-          </>
-        )}
+        Finish writes <Path>{project}/tokens.css</Path>
       </Writes>
     </>
   )
@@ -561,12 +567,18 @@ function LookStep({
 
 function AgentStep({
   drawer,
+  folder,
+  sheet,
   prompt,
   size,
   page,
   onChange,
 }: {
   drawer: Drawer
+  /** Where Claude Code opens to find this board. */
+  folder: string
+  /** The token sheet Finish writes first, null where the look step dropped out. */
+  sheet: string | null
   prompt: string
   size: FrameSizePreset
   page: string
@@ -592,37 +604,46 @@ function AgentStep({
           group="guide-drawer"
           checked={drawer === 'agent'}
           onSelect={() => onChange('agent')}
+          labelledBy="guide-agent-name guide-agent-hint"
           className={option}
         >
           <span aria-hidden className={dot} />
           <span className="min-w-0 flex-1">
-            <b className="mb-0.5 block font-semibold">My agent</b>
-            <span className="leading-[1.45] text-muted-foreground">
-              Paste this into Claude Code in this folder:
+            <b id="guide-agent-name" className="mb-0.5 block font-semibold">
+              My agent
+            </b>
+            <span
+              id="guide-agent-hint"
+              className="leading-[1.45] text-muted-foreground"
+            >
+              Paste this into Claude Code opened in{' '}
+              <Path className="inline-block max-w-full wrap-anywhere">
+                {folder}
+              </Path>
             </span>
+            {drawer === 'agent' ? (
+              <span className="mt-2.5 flex items-center gap-2 rounded-lg bg-muted py-2 pr-2 pl-2.5">
+                <code className="min-w-0 flex-1 font-mono text-[11.5px] text-foreground">
+                  {prompt}
+                </code>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void navigator.clipboard
+                      .writeText(prompt)
+                      .then(
+                        () => setCopied(prompt),
+                        reportRefusal("Couldn't copy the prompt"),
+                      )
+                  }
+                  className="h-6 rounded-md px-1.5 text-label font-normal text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {copied === prompt ? 'Copied' : 'Copy'}
+                </button>
+              </span>
+            ) : null}
           </span>
         </Choice>
-        {drawer === 'agent' ? (
-          <div className="-mt-1 flex items-center gap-2 rounded-lg bg-muted py-2 pr-2 pl-2.5">
-            <code className="min-w-0 flex-1 font-mono text-[11.5px] text-foreground">
-              {prompt}
-            </code>
-            <button
-              type="button"
-              onClick={() =>
-                void navigator.clipboard
-                  .writeText(prompt)
-                  .then(
-                    () => setCopied(prompt),
-                    reportRefusal("Couldn't copy the prompt"),
-                  )
-              }
-              className="h-6 rounded-md px-1.5 text-label font-normal text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {copied === prompt ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-        ) : null}
         <Choice
           group="guide-drawer"
           checked={drawer === 'self'}
@@ -639,9 +660,21 @@ function AgentStep({
         </Choice>
       </div>
       <Writes>
-        {drawer === 'agent'
-          ? 'Writes nothing until your agent draws'
-          : 'Writes one frame file'}
+        {sheet === null ? (
+          drawer === 'agent' ? (
+            'Writes nothing until your agent draws'
+          ) : (
+            'Writes one frame file'
+          )
+        ) : drawer === 'agent' ? (
+          <>
+            Finish writes only <Path>{sheet}</Path>
+          </>
+        ) : (
+          <>
+            Finish writes <Path>{sheet}</Path> and one frame file
+          </>
+        )}
       </Writes>
     </>
   )
