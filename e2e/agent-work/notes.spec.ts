@@ -169,9 +169,14 @@ test.describe('a note thread longer than the canvas', () => {
     await expect(messages.getByRole('listitem')).toHaveCount(9)
     const canvas = await page.locator('[data-canvas]').boundingBox()
     const card = await thread.boundingBox()
-    if (!canvas || !card) throw new Error('the canvas or card has no box')
+    const toolbar = await page
+      .getByRole('toolbar', { name: 'Tools' })
+      .boundingBox()
+    if (!canvas || !card || !toolbar) {
+      throw new Error('the canvas, card, or toolbar has no box')
+    }
     expect(card.y).toBeGreaterThanOrEqual(canvas.y)
-    expect(card.y + card.height).toBeLessThanOrEqual(canvas.y + canvas.height)
+    expect(card.y + card.height).toBeLessThanOrEqual(toolbar.y)
     await expect(thread.getByRole('heading')).toBeInViewport()
     await expect(
       thread.getByRole('textbox', { name: 'Reply' }),

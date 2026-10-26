@@ -183,6 +183,14 @@ function Popover({
     const canvas = element?.closest('[data-canvas]')
     if (!element || !canvas) return
     const bounds = canvas.getBoundingClientRect()
+    // The toolbar floats over the canvas's foot, so the card ends above it.
+    const toolbar = document.querySelector(
+      '[role="toolbar"][aria-label="Tools"]',
+    )
+    const bottom = Math.min(
+      bounds.bottom,
+      toolbar?.getBoundingClientRect().top ?? bounds.bottom,
+    )
     const box = element.getBoundingClientRect()
     const right = shift.flip
       ? box.right + box.width + 2 * CARD_OFFSET.x
@@ -193,11 +201,11 @@ function Popover({
       y:
         top < bounds.top + EDGE_GAP
           ? bounds.top + EDGE_GAP - top
-          : Math.min(0, bounds.bottom - EDGE_GAP - (top + box.height)),
-      // Taken from the canvas alone, never the card, so the cap and the
-      // shift cannot chase each other. The card sits at screen size, so the
-      // canvas's screen height needs no zoom factor.
-      cap: bounds.height - 2 * EDGE_GAP,
+          : Math.min(0, bottom - EDGE_GAP - (top + box.height)),
+      // Taken from the canvas and the toolbar, never the card, so the cap
+      // and the shift cannot chase each other. The card sits at screen size,
+      // so these screen measures need no zoom factor.
+      cap: bottom - bounds.top - 2 * EDGE_GAP,
     }
     // A shift moves the card it measured, so it settles once one repeats.
     if (
