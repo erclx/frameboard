@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
@@ -201,7 +201,7 @@ describe('GuideCard', () => {
     expect(sent).toEqual([])
   })
 
-  it('writes the starter sheet with the accent and font picked', async () => {
+  it('writes nothing on the look step, and the accent and font picked on Finish', async () => {
     const user = userEvent.setup()
     const { sent, calls } = server()
     renderCard({ calls })
@@ -211,6 +211,9 @@ describe('GuideCard', () => {
     await user.click(await screen.findByRole('radio', { name: 'Purple' }))
     await user.selectOptions(screen.getByRole('combobox'), 'Geist Mono')
     await user.click(screen.getByRole('button', { name: 'Next' }))
+    await screen.findByRole('heading', { name: 'Who draws the first frame?' })
+    expect(sent).toEqual([])
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
 
     await expect
       .poll(() => sent)
@@ -222,38 +225,66 @@ describe('GuideCard', () => {
       ])
   })
 
-  it('locks the look on Back once the guide has written the sheet', async () => {
+  it('re-picks the look on Back, and Finish writes the last pick', async () => {
     const user = userEvent.setup()
     const { sent, calls } = server()
-    let written = false
-    const loadTokens = async (): Promise<TokenTable> => ({
-      sheets: written
-        ? [{ path: 'untitled/tokens.css', kind: 'project', error: null }]
-        : [],
-      tokens: [],
-    })
-    renderCard({ calls, loadTokens })
+    renderCard({ calls })
 
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(await screen.findByRole('button', { name: 'Next' }))
-    await user.click(await screen.findByRole('button', { name: 'Next' }))
-    await screen.findByRole('heading', { name: 'Who draws the first frame?' })
-    written = true
-    act(() => receiveBoard(liveStore, startBoard()))
-    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('radio', { name: 'Purple' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('radio', { name: 'Green' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Finish' }))
 
-    await waitFor(() =>
-      expect(screen.getByRole('radio', { name: 'Purple' })).toBeDisabled(),
+    await expect
+      .poll(() => sent)
+      .toEqual([
+        {
+          path: '/api/project/tokens',
+          body: { ref: 'untitled', accent: 'green', font: 'geist' },
+        },
+      ])
+  })
+
+  it('adds the frame on Finish past a sheet that reached the project meanwhile', async () => {
+    const user = userEvent.setup()
+    const { sent, calls } = server((path) =>
+      path === '/api/project/tokens'
+        ? Response.json(
+            {
+              ok: false,
+              error: {
+                code: 'tokens-exist',
+                message: 'untitled/tokens.css already exists.',
+                details: {},
+              },
+            },
+            { status: 409 },
+          )
+        : Response.json({
+            ok: true,
+            data: {
+              ref: 'untitled/page-1/phone',
+              box: { x: 0, y: 0, width: 390, height: 844 },
+            },
+          }),
     )
+    renderCard({ calls })
+
     await user.click(screen.getByRole('button', { name: 'Next' }))
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Who draws the first frame?',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      sent.filter((each) => each.path === '/api/project/tokens'),
-    ).toHaveLength(1)
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.click(
+      await screen.findByRole('radio', { name: /I’ll start myself/ }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+
+    await expect
+      .poll(() => sent.map((each) => each.path))
+      .toEqual(['/api/project/tokens', '/api/frame/add'])
   })
 
   it('drops the look step where a token sheet already reaches the project', async () => {
@@ -303,6 +334,55 @@ describe('GuideCard', () => {
           body: { ref: 'untitled/page-1/tablet', size: 'tablet', x: 0, y: 0 },
         },
       ])
+  })
+
+  it('names the folder holding .frameboard as where to open Claude Code', async () => {
+    const user = userEvent.setup()
+    receiveBoard(liveStore, {
+      ...startBoard(),
+      root: '/home/dev/acme/.frameboard',
+    })
+    renderCard({ loadTokens: BOARD_SHEET })
+
+    await screen.findByText('1 of 3')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+
+    expect(
+      await screen.findByRole('radio', { name: /My agent/ }),
+    ).toHaveAccessibleName(
+      'My agent Paste this into Claude Code opened in /home/dev/acme',
+    )
+  })
+
+  it('names the sheet Finish writes on the agent step after the look step', async () => {
+    const user = userEvent.setup()
+    renderCard()
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await screen.findByRole('heading', { name: 'Who draws the first frame?' })
+
+    expect(screen.getByText('untitled/tokens.css')).toBeInTheDocument()
+  })
+
+  it('holds the prompt inside the My agent card', async () => {
+    const user = userEvent.setup()
+    renderCard({ loadTokens: BOARD_SHEET })
+
+    await screen.findByText('1 of 3')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+
+    const card = (
+      await screen.findByRole('radio', { name: /My agent/ })
+    ).closest('label')
+    expect(
+      screen
+        .getByText('Draw a phone screen for untitled on frameboard')
+        .closest('label'),
+    ).toBe(card)
   })
 
   it('offers the agent a prompt naming the size and the project', async () => {

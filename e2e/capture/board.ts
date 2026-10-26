@@ -129,6 +129,30 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Chooses the menu item named `label` once an earlier press has opened its
+ * menu, waiting in an init script as `pressOnLoad` does.
+ */
+function chooseOnLoad(label: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ name, frames }) => {
+        let left = frames
+        const choose = () => {
+          const item = [
+            ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+          ].find((candidate) => candidate.textContent?.trim().match(name))
+          if (item) item.click()
+          else if (--left > 0) requestAnimationFrame(choose)
+          else console.error(`No menu item named ${name} to choose`)
+        }
+        document.addEventListener('DOMContentLoaded', choose)
+      },
+      { name: label, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Opens an overlay, or the left panel's find, with its key once the board has
  * drawn, and types `query` into its search. Like `pressOnLoad`, it waits in an
  * init script, since `setup` runs before the harness navigates, and it reads
@@ -1716,6 +1740,25 @@ export const BOARD_CASES: CaptureCase[] = [
             headlineOnHero,
             pressOnLoad('^Fill color$'),
             readyWhen('[data-slot="popover-content"] [role="slider"]'),
+          ),
+        ),
+      },
+      {
+        // The channels sit on a row of their own, which Hex mode never shows.
+        section: 'color-picker-rgb',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            pressOnLoad('^Fill color$'),
+            pressOnLoad('^Color format$'),
+            chooseOnLoad('^RGB$'),
+            readyWhen('[data-slot="popover-content"] [aria-label="Blue"]'),
           ),
         ),
       },

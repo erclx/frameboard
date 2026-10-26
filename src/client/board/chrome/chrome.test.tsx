@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { type Action, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import type { ProjectRecord } from '@/shared/records/list'
 
 import { reportZoom } from '../view'
 import { initials } from './author'
@@ -96,17 +97,52 @@ describe('ZoomControl', () => {
 })
 
 describe('HiddenPills', () => {
+  const studio: ProjectRecord = {
+    name: 'studio',
+    path: '/board/studio',
+    modifiedAt: '2026-10-15T00:00:00.000Z',
+    createdAt: null,
+    projectFileError: null,
+    pages: [],
+  }
+
+  function renderPills() {
+    render(
+      <TooltipProvider>
+        <HiddenPills project={studio} page="home" />
+      </TooltipProvider>,
+    )
+  }
+
   it('brings the panels back from the project pill', async () => {
     const hideUi = counted('view.hideUi', 'Hide UI')
     register(hideUi)
-    render(
-      <TooltipProvider>
-        <HiddenPills project="studio" />
-      </TooltipProvider>,
-    )
+    renderPills()
 
     await userEvent.click(screen.getByRole('button', { name: 'Show UI' }))
 
     expect(hideUi.runs).toBe(1)
+  })
+
+  it('links home from the project pill', () => {
+    renderPills()
+
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+  })
+
+  it("opens the project's menu from the project pill", async () => {
+    const home = counted('nav.home', 'All projects')
+    register(home)
+    renderPills()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Project menu' }))
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'All projects' }),
+    )
+
+    expect(home.runs).toBe(1)
   })
 })

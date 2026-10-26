@@ -1,10 +1,5 @@
 import { cn } from 'cn'
-import {
-  ChevronDown,
-  ChevronRight,
-  RectangleHorizontal,
-  Type,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
@@ -16,6 +11,7 @@ import { useElementTree } from '../element/tree'
 import { writeElement } from '../inspector/element/write'
 import { ElementRowMenu } from '../menus/layers'
 import { selectElement, selectionStore } from '../selection'
+import { elementGlyph } from './layer-glyphs'
 
 /** How far each level of nesting moves a row in, past the frame row's own 8 px. */
 const INDENT = 14
@@ -36,12 +32,11 @@ interface ElementRowsProps {
 
 /**
  * One frame's element rows, read from the server's tree so a culled frame
- * lists them too, each indented by depth, with a `Type` icon for an element
- * holding text alone, a chevron on one with children, and a click selecting
- * the element. The selected row is tinted deeper than the rest of its
+ * lists them too, each indented by depth, with the glyph `elementGlyph`
+ * picks by text, media, and layout, a chevron on one with children, and a
+ * click selecting the element. The selected row is tinted deeper than the rest of its
  * frame's band, as `layers/edit` and `inspector/text` draw them. A
- * double-click or F2 renames the element in place, writing `data-name` as
- * the inspector's Name does.
+ * double-click or F2 renames the element in place, writing `data-name`.
  */
 export function ElementRows({
   frame,
@@ -73,7 +68,7 @@ export function ElementRows({
       {rows.map(({ element, depth }) => {
         const open = isOpen(element.index)
         const isSelected = element.index === selected
-        const Icon = element.textOnly ? Type : RectangleHorizontal
+        const Icon = elementGlyph(element)
         const key = {
           frame: frame.ref,
           index: element.index,

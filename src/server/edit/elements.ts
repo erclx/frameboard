@@ -1,6 +1,8 @@
 import type { DefaultTreeAdapterTypes } from 'parse5'
 
-import type { TreeElement } from '@/shared/records/elements'
+import { buildCascade, type Cascade } from '@/server/checks/cascade'
+import type { FrameSource, Sheet } from '@/server/checks/frame-source'
+import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
@@ -8,13 +10,25 @@ import { type EditRefused, refuse } from './apply'
 /** How long a text-only element's text may run as its name. */
 const NAME_LENGTH = 40
 
+/** What the layout read takes from the cascade, with the shorthand that sets the direction. */
+const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
+  'display',
+  'flex-direction',
+  'flex-flow',
+])
+
 /**
  * A frame's elements under `body` in index order, each with its parent and
  * name, read from the same parse and the same index `edit` addresses. A
  * frame where the browser builds an element the file does not state is
  * refused, since every index after it would name another element.
+ * `layouts` is `elementLayouts`'s read by the same index, and an element it
+ * does not reach reads as `block`.
  */
-export function elementTree(source: string): TreeElement[] | EditRefused {
+export function elementTree(
+  source: string,
+  layouts: readonly Layout[] = [],
+): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
     return refuse(
@@ -38,9 +52,44 @@ export function elementTree(source: string): TreeElement[] | EditRefused {
       tag: element.tagName,
       name: elementName(element),
       textOnly: ownText(element) !== null,
+      layout: layouts[at] ?? 'block',
     })
   }
   return listed
+}
+
+/**
+ * Every element's layout by the edit index, read from the static cascade
+ * over the token sheets and the frame's own, as `frameStyles` reads colors,
+ * so a culled frame with no iframe still answers. Every media query counts
+ * as applying, so a frame that flips its direction at a breakpoint reads as
+ * whichever rule wins statically.
+ */
+export function elementLayouts(source: FrameSource, tokens: Sheet[]): Layout[] {
+  const cascade = buildCascade(source, tokens, {
+    properties: LAYOUT_PROPERTIES,
+  })
+  return source.elements.map((element) => layoutOf(cascade, element))
+}
+
+function layoutOf(
+  cascade: Cascade,
+  element: FrameSource['elements'][number],
+): Layout {
+  const display = words(cascade.specified(element, 'display')?.value)
+  if (display.includes('grid') || display.includes('inline-grid')) {
+    return 'grid'
+  }
+  if (!display.includes('flex') && !display.includes('inline-flex')) {
+    return 'block'
+  }
+  // `flex-flow` resets the direction to `row` when it names none.
+  const direction = words(cascade.specified(element, 'flex-direction')?.value)
+  return direction.some((word) => word.startsWith('column')) ? 'column' : 'row'
+}
+
+function words(value: string | undefined): string[] {
+  return value?.trim().toLowerCase().split(/\s+/) ?? []
 }
 
 /**

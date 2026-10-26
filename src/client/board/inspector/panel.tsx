@@ -13,7 +13,6 @@ import { useAuthor } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
-import { useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
@@ -21,8 +20,8 @@ import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
 import { ArrangeSection } from './arrange-section'
 import { ChecksSection } from './checks-section'
+import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
-import { LayerSection } from './element/layer'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
 import {
@@ -153,12 +152,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
-  const tree = useElementTree(element.frame)
   const { colors, shadows } = useProjectTokens(element.frame)
-  const row =
-    tree?.status === 'ready'
-      ? tree.tree.elements.find(({ index }) => index === element.index)
-      : undefined
 
   if (!live) {
     return (
@@ -174,8 +168,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const own = styles?.element
   return (
     <>
-      <LayerSection
-        name={row?.name ?? ''}
+      <AppearanceSection
         opacity={live.opacity}
         radius={live.radius}
         disabled={disabled}

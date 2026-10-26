@@ -2,6 +2,7 @@ import { NumberField as Primitive } from '@base-ui/react/number-field'
 import { cn } from 'cn'
 import {
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
   useMemo,
   useRef,
@@ -15,10 +16,20 @@ export type NumberChange = (from: number) => number
 
 interface NumberFieldProps {
   label: string
-  /** The key letter or icon over the left padding, which scrubs the value when dragged. */
+  /** A caption above the field, which scrubs the value as the prefix does. */
+  caption?: string
+  /**
+   * The key letter or icon centered in a full-height zone at the field's
+   * left, at least 24px wide, which scrubs the value when dragged.
+   */
   prefix?: ReactNode
-  /** The input's left padding, which clears the prefix, 26px by default for a letter. */
+  /** The input's left padding, which clears the prefix's zone, 26px by default for a letter. */
   inset?: string
+  /**
+   * Scrubs from a drag on the number itself, for a field with no room for a
+   * prefix. A click with no drag still focuses it to type, selecting all.
+   */
+  scrubValue?: boolean
   className?: string
   inputClassName?: string
   /** The stored value, null where the selection's values differ, which reads `Mixed`. */
@@ -47,9 +58,15 @@ interface Draft {
 
 const STEP_KEYS = new Set(['ArrowUp', 'ArrowDown'])
 
+// Hovering either scrub area, or scrubbing from one, lights both.
+const ZONE_LIT =
+  'group-has-[[data-scrub]:hover]/number:bg-foreground/10 group-has-[[data-scrub]:hover]/number:text-foreground group-data-[scrubbing]/number:bg-foreground/10 group-data-[scrubbing]/number:text-foreground'
+const CAPTION_LIT =
+  'group-has-[[data-scrub]:hover]/number:text-foreground group-data-[scrubbing]/number:text-foreground'
+
 /**
  * One inspector number on base-ui's `NumberField`. ArrowUp and ArrowDown step
- * it, Shift by ten, and dragging the prefix scrubs it, each previewing as it
+ * it, Shift by ten, and dragging the prefix or the caption scrubs it, each previewing as it
  * goes and writing once, on the arrow's keyup or the scrub's release. A typed
  * value writes on Enter or blur, and Esc puts the stored value back and
  * writes nothing.
@@ -61,8 +78,10 @@ const STEP_KEYS = new Set(['ArrowUp', 'ArrowDown'])
  */
 export function NumberField({
   label,
+  caption,
   prefix,
   inset = 'pl-[26px]',
+  scrubValue = false,
   className,
   inputClassName,
   value,
@@ -181,6 +200,16 @@ export function NumberField({
     }
   }
 
+  const startScrub = (event: PointerEvent<HTMLElement>) => {
+    if (disabled || event.button !== 0) return
+    scrubbing.current = true
+    scrubCancelled.current = false
+    // A Mixed field scrubs an offset from zero, since base-ui seeds an empty one at zero.
+    if (value === null && !latest.current) {
+      setDraft({ value: 0, offset: true })
+    }
+  }
+
   // Grouping would show a 1440 px frame as 1,440, which reads as two numbers.
   const shownFormat = useMemo<Intl.NumberFormatOptions>(
     () => ({
@@ -191,9 +220,38 @@ export function NumberField({
     [draft?.offset, format],
   )
 
+  const input = (
+    <Primitive.Input
+      aria-label={label}
+      placeholder={value === null ? 'Mixed' : undefined}
+      className={cn(
+        'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
+        prefix ? inset : undefined,
+        scrubValue && 'cursor-ew-resize',
+        scrubValue && !disabled && ZONE_LIT,
+        inputClassName,
+      )}
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => {
+        if (isStrayHistory(event)) event.preventBaseUIHandler()
+      }}
+      onKeyDown={onKeyDown}
+      onKeyUp={(event) => {
+        if (STEP_KEYS.has(event.key)) commit()
+      }}
+      onBlur={() => {
+        if (cancelled.current) {
+          cancelled.current = false
+          return
+        }
+        commit()
+      }}
+    />
+  )
+
   return (
     <Primitive.Root
-      className={cn('relative block', className)}
+      className={cn('group/number block', className)}
       value={draft ? draft.value : (held ?? value)}
       step={step}
       largeStep={step * 10}
@@ -228,47 +286,45 @@ export function NumberField({
         commit()
       }}
     >
-      {prefix ? (
+      {caption ? (
         <Primitive.ScrubArea
           aria-hidden
-          className="absolute top-1/2 left-2 flex -translate-y-1/2 cursor-ew-resize items-center text-xs text-faint select-none"
-          onPointerDown={(event) => {
-            if (disabled || event.button !== 0) return
-            scrubbing.current = true
-            scrubCancelled.current = false
-            // A Mixed field scrubs an offset from zero, since base-ui seeds an empty one at zero.
-            if (value === null && !latest.current) {
-              setDraft({ value: 0, offset: true })
-            }
-          }}
+          data-scrub
+          className={cn(
+            'mb-1 ml-0.5 block w-max cursor-ew-resize text-label font-normal text-muted-foreground select-none',
+            !disabled && CAPTION_LIT,
+          )}
+          onPointerDown={startScrub}
         >
-          {prefix}
+          {caption}
         </Primitive.ScrubArea>
       ) : null}
-      <Primitive.Input
-        aria-label={label}
-        placeholder={value === null ? 'Mixed' : undefined}
-        className={cn(
-          'h-[26px] w-full min-w-0 rounded-md border-0 bg-input px-2 text-xs text-foreground tabular-nums outline-none placeholder:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
-          prefix ? inset : undefined,
-          inputClassName,
+      <div className="relative">
+        {prefix ? (
+          <Primitive.ScrubArea
+            aria-hidden
+            data-scrub
+            className={cn(
+              'absolute inset-y-0 left-0 flex min-w-6 cursor-ew-resize items-center justify-center rounded-l-md px-1.5 text-xs text-faint select-none',
+              !disabled && ZONE_LIT,
+            )}
+            onPointerDown={startScrub}
+          >
+            {prefix}
+          </Primitive.ScrubArea>
+        ) : null}
+        {scrubValue ? (
+          <Primitive.ScrubArea
+            data-scrub
+            className="block"
+            onPointerDown={startScrub}
+          >
+            {input}
+          </Primitive.ScrubArea>
+        ) : (
+          input
         )}
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => {
-          if (isStrayHistory(event)) event.preventBaseUIHandler()
-        }}
-        onKeyDown={onKeyDown}
-        onKeyUp={(event) => {
-          if (STEP_KEYS.has(event.key)) commit()
-        }}
-        onBlur={() => {
-          if (cancelled.current) {
-            cancelled.current = false
-            return
-          }
-          commit()
-        }}
-      />
+      </div>
     </Primitive.Root>
   )
 }

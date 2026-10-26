@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { File, Plus, Search, TriangleAlert } from 'lucide-react'
+import { Plus, Search, TriangleAlert } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
@@ -193,22 +193,11 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
     index: page.index,
     enabled: canWrite && !needle && !renaming,
   })
-  const icon = (
-    <>
-      <span aria-hidden className="w-2.5 shrink-0" />
-      <File
-        aria-hidden
-        className="size-[13px] shrink-0 text-muted-foreground"
-      />
-    </>
-  )
-
   return (
     <li ref={row} className="relative">
       <DropLine edge={edge} />
       {renaming ? (
         <div className={cn(ROW, page.name === current && 'bg-accent')}>
-          {icon}
           <RenameField
             name={page.name}
             label={`Rename page ${page.name}`}
@@ -249,7 +238,6 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
                 'outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset aria-[current=page]:bg-accent',
               )}
             >
-              {icon}
               <span className="min-w-0 flex-1 truncate" title={page.name}>
                 <Highlighted name={page.name} needle={needle} />
               </span>

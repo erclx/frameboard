@@ -7,7 +7,7 @@ import { resolveFrameRef } from '@/server/board/refs'
 import { readFrame } from '@/server/checks/frame-source'
 import { tokenSheets } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
-import { elementTree } from '@/server/edit/elements'
+import { elementLayouts, elementTree } from '@/server/edit/elements'
 import type { SelectionHolder } from '@/server/live/selection'
 import { frameStyles } from '@/server/look/colors'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
@@ -32,7 +32,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
 
 /**
  * A frame's element tree, read from the file rather than a live iframe so a
- * culled frame lists the indices `edit` addresses, and the selection the
+ * culled frame lists the indices `edit` addresses, with each element's
+ * layout read from the static cascade over `tokens`, and the selection the
  * writing tab last reported, which `POST /api/selection` takes behind
  * `requireWriter` and `GET /api/selection` answers as the `selection` record.
  * `GET /api/frames/styles` answers a frame's or an element's colors from the
@@ -50,7 +51,11 @@ export function elementsRoutes(
   const readTree = async (ref: string): Promise<ElementTree> => {
     const frame = await resolveFrameRef(root, ref, { cwd: root })
     const bytes = await readFile(frame.path)
-    const elements = elementTree(bytes.toString('utf8'))
+    const layouts = elementLayouts(
+      readFrame(frame),
+      tokenSheets(root, frame.project, tokens),
+    )
+    const elements = elementTree(bytes.toString('utf8'), layouts)
     if (!Array.isArray(elements)) {
       throw new FrameboardError(elements.reason, elements.detail, { ref })
     }

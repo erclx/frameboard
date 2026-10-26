@@ -27,8 +27,8 @@ import {
 } from '../../selection'
 import { InspectorPanel } from '../panel'
 import { SelectionColors } from '../selection-colors'
+import { AppearanceSection } from './appearance'
 import { FillSection } from './fill'
-import { LayerSection } from './layer'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
 import { useLiveElement } from './styles'
@@ -83,12 +83,73 @@ function browserHistory(
   })
 }
 
-describe('LayerSection', () => {
+/**
+ * Drags a scrub area right by `moves` steps of base-ui's default two
+ * pixels, as a locked pointer reports them, and releases it.
+ */
+function scrubBy(area: HTMLElement, moves: number) {
+  act(() => {
+    area.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        pointerType: 'mouse',
+      }),
+    )
+  })
+  for (let move = 0; move < moves; move++) {
+    act(() => {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, movementX: 2 }),
+      )
+    })
+  }
+  act(() => {
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+  })
+}
+
+describe('AppearanceSection', () => {
+  it('scrubs the opacity from its caption, writing once on release', () => {
+    const { changes, write } = recorder()
+    render(
+      <AppearanceSection
+        opacity={0.5}
+        radius={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Opacity'), 3)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'opacity', value: '0.56' },
+    ])
+  })
+
+  it('scrubs the radius from its caption', () => {
+    const { changes, write } = recorder()
+    render(
+      <AppearanceSection
+        opacity={1}
+        radius={4}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Corner radius'), 1)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'border-radius', value: '6px' },
+    ])
+  })
+
   it.each(['50', '50%'])('writes opacity 0.5 for %s', async (typed) => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
-        name="Headline"
+      <AppearanceSection
         opacity={1}
         radius={0}
         disabled={false}
@@ -105,31 +166,10 @@ describe('LayerSection', () => {
     ])
   })
 
-  it('writes data-name empty for an emptied name', async () => {
-    const { changes, write } = recorder()
-    render(
-      <LayerSection
-        name="Headline"
-        opacity={1}
-        radius={0}
-        disabled={false}
-        write={write}
-      />,
-    )
-
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }))
-    await userEvent.tab()
-
-    expect(changes).toEqual([
-      { kind: 'attribute', name: 'data-name', value: '' },
-    ])
-  })
-
   it('writes the radius in px', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
-        name="Headline"
+      <AppearanceSection
         opacity={1}
         radius={0}
         disabled={false}
@@ -149,8 +189,7 @@ describe('LayerSection', () => {
   it('writes a held opacity step once, as a fraction', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
-        name="Headline"
+      <AppearanceSection
         opacity={0.5}
         radius={0}
         disabled={false}
@@ -169,8 +208,7 @@ describe('LayerSection', () => {
   it('writes nothing for an opacity that is not a number', async () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
-        name="Headline"
+      <AppearanceSection
         opacity={1}
         radius={0}
         disabled={false}
@@ -226,6 +264,25 @@ describe('TypographySection', () => {
 
     expect(changes).toEqual([
       { kind: 'style', property: 'font-weight', value: '500' },
+    ])
+  })
+
+  it('scrubs the weight from its Weight zone by 100 a step', () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    scrubBy(screen.getByText('Weight'), 1)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-weight', value: '600' },
     ])
   })
 
@@ -439,6 +496,100 @@ describe('FillSection', () => {
     ])
   })
 
+  it('scrubs fill opacity from its number, previewing and writing once on release', () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={tokenValueOf('--primary', 50)}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(_property, css) => previews.push(css)}
+      />,
+    )
+
+    scrubBy(screen.getByRole('textbox', { name: 'Fill opacity' }), 3)
+
+    expect(previews.at(-1)).toBe(
+      'color-mix(in srgb, var(--primary) 56%, transparent)',
+    )
+    expect(changes).toEqual([
+      {
+        kind: 'style',
+        property: 'background-color',
+        value: 'color-mix(in srgb, var(--primary) 56%, transparent)',
+      },
+    ])
+  })
+
+  it('puts the stored fill back on Esc mid-scrub and writes nothing', async () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={tokenValueOf('--primary', 50)}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(_property, css) => previews.push(css)}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Fill opacity' })
+
+    act(() => {
+      field.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          pointerType: 'mouse',
+        }),
+      )
+    })
+    act(() => {
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, movementX: 2 }),
+      )
+    })
+    await userEvent.keyboard('{Escape}')
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+    })
+
+    expect(previews.at(-1)).toBeNull()
+    expect(changes).toEqual([])
+  })
+
+  it('scrubs nothing on a fill opacity no color-mix() can carry', () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: 'red', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Fill opacity' })
+
+    scrubBy(field, 3)
+
+    expect(field).toBeDisabled()
+    expect(changes).toEqual([])
+  })
+
   it('writes a raw hex below 100 with an alpha pair', async () => {
     const { changes, write } = recorder()
     render(
@@ -578,6 +729,36 @@ describe('StrokeSection', () => {
       expect(changes).toEqual([{ kind: 'style', ...written }])
     },
   )
+
+  it('scrubs stroke opacity from its number, previewing the border color', () => {
+    const { changes, write } = recorder()
+    const previews: (string | null)[] = []
+    render(
+      <StrokeSection
+        bordered
+        borderColor={tokenValueOf('--border', 50)}
+        tokens={[PRIMARY, BORDER]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+        preview={(property, css) => previews.push(`${property}: ${css}`)}
+      />,
+    )
+
+    scrubBy(screen.getByRole('textbox', { name: 'Stroke opacity' }), 1)
+
+    expect(previews.at(-1)).toBe(
+      'border-color: color-mix(in srgb, var(--border) 52%, transparent)',
+    )
+    expect(changes).toEqual([
+      {
+        kind: 'style',
+        property: 'border-color',
+        value: 'color-mix(in srgb, var(--border) 52%, transparent)',
+      },
+    ])
+  })
 
   it('adds a 1px border in the border token', async () => {
     const { changes, write } = recorder()
@@ -767,6 +948,7 @@ describe('TextSection', () => {
     )
 
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull()
   })
 
   it('keeps the typed text as a draft once the agent changed the element', async () => {
@@ -951,12 +1133,11 @@ describe('TextSection', () => {
   })
 })
 
-describe('LayerSection commit field', () => {
+describe('AppearanceSection commit field', () => {
   it('drops a historyUndo while the field is unfocused', () => {
     const { changes, write } = recorder()
     render(
-      <LayerSection
-        name="Headline"
+      <AppearanceSection
         opacity={1}
         radius={0}
         disabled={false}
@@ -1510,7 +1691,7 @@ describe('InspectorPanel with an element selected', () => {
     const headings = await screen.findAllByRole('heading')
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',
-      'Element',
+      'Appearance',
       'Typography',
       'Fill',
       'Text',
@@ -1576,7 +1757,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     expect(screen.queryByRole('heading', { name: 'Typography' })).toBeNull()
   })
 
@@ -1676,7 +1857,7 @@ describe('InspectorPanel with an element selected', () => {
     it('offers a shadow token in the Shadow menu and not in the Fill or Stroke menus', async () => {
       await mountFrame('<h1 style="border:1px solid">Hello</h1>')
       renderWith(3)
-      await screen.findByRole('heading', { name: 'Element' })
+      await screen.findByRole('heading', { name: 'Appearance' })
 
       await userEvent.click(
         await screen.findByRole('button', { name: 'Fill token' }),
@@ -1712,7 +1893,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     expect(screen.queryByText('hero')).toBeNull()
   })
 
@@ -1731,7 +1912,7 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
-    await screen.findByRole('heading', { name: 'Element' })
+    await screen.findByRole('heading', { name: 'Appearance' })
     const controls = [
       ...screen.getAllByRole('textbox'),
       ...screen

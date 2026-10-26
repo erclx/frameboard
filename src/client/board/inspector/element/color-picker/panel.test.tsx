@@ -164,6 +164,20 @@ describe('the color picker', () => {
     ).toEqual(['243', '75', '59'])
   })
 
+  it('fits a three-digit channel beside its scrub zone', async () => {
+    renderRow({ ...RAW, value: '#f9f9f9' })
+    await openCustom()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Color format' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'RGB' }))
+    const red = screen.getByRole('textbox', { name: 'Red' }) as HTMLInputElement
+
+    expect(red.value).toBe('249')
+    expect(red.scrollWidth).toBeLessThanOrEqual(red.clientWidth)
+    // The layout width, since the popover's open animation scales its box.
+    expect(screen.getByText('R').offsetWidth).toBeGreaterThanOrEqual(24)
+  })
+
   it('moves the hue from its bar', async () => {
     renderRow({ ...RAW, value: '#ff0000' })
     await openCustom()

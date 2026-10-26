@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { registerActions } from '@/client/actions/registry'
+import { useGuideLanding } from '@/client/board/guide/state'
 import type { Structure } from '@/client/live/structure'
 import {
   focusedProject,
@@ -30,6 +31,7 @@ interface HomeProps {
  */
 export function Home({ projects, calls }: HomeProps) {
   const [now] = useState(Date.now)
+  const holding = useGuideLanding()
   const layout = useHomeLayout()
   const sort = useHomeSort()
   const pins = usePins()
@@ -37,6 +39,7 @@ export function Home({ projects, calls }: HomeProps) {
   useProjectActions(focusedProject, { calls })
   useCardKeys()
   useThumbnails()
+  if (holding) return null
   return (
     <div className="flex min-h-full flex-col text-body">
       <HomeHeader hasProjects={projects.length > 0} />

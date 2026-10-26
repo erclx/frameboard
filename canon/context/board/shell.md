@@ -53,16 +53,19 @@ The layers tree lists the top of the stack first. A row click selects its frame 
 - Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
 - The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
 
-An element row renames on a double-click or F2 too, writing `data-name` as the inspector's Name does. Its F2 stops at the row, so the board's own F2 opens no second field.
+An element row draws `T` for text, an image glyph for media, and otherwise the layout `GET /api/frames/elements` reads from the static cascade, so a culled frame keeps its glyphs.
+
+An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 
 ### `src/client/board/guide/`
 
-Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame.
+Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.
 
 - `untouched.ts` holds while the board is the start project alone with its one empty start page and the tab writes, so nothing on disk records the guide
 - `state.ts` keeps the guide's step in the tab, so it outlives the canvas a rename remounts under the new route, and Skip or Finish ends it until reload
+- A tab `main.tsx` booted on `/` lands on the start page while the board is untouched, once per tab, so a later way home shows home. Home renders nothing until access is known.
 - Each answer goes through a write the board already makes, being the project rename, `POST /api/project/tokens`, and the Frame tool's add, so Undo takes each back
-- The look step drops out where the token table names any sheet, and the agent choice writes nothing and hands the developer a prompt
+- Finish writes the sheet and then the frame, and fits the view to it. The look step writes nothing, since the sheet is create-only, and drops out where the token table names any sheet.
 
 ### `src/client/board/find/`
 
@@ -79,6 +82,7 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 
 - The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
+- The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
 ### `src/client/`
@@ -87,7 +91,7 @@ Owns the app shell and the controls around the canvas.
 
 - The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of git's `user.name`, which signs notes
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
-- Hide UI, through Cmd+\ or a button, hides both panels and keeps the project name, toolbar, avatar, and zoom level
+- Hide UI, through Cmd+\ or a button, hides both panels and keeps the way home, the project name with its menu, the toolbar, the avatar, and the zoom level
 
 ### `src/client/access/`
 
