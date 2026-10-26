@@ -35,14 +35,15 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   const rootId = notes[0]?.id ?? ''
   const text = useNotesUi((state) => state.drafts[rootId] ?? '')
   const setText = (next: string) => setDraft(rootId, next)
+  // A reply never starts a session unless New session is picked by hand.
   const [session, setSession] = useState(() =>
-    defaultSession(listeners, holder, dispatch),
+    defaultSession(listeners, holder),
   )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const root = notes[0]
   if (!root) return null
-  const picked = pickedSession(session, listeners, holder, dispatch)
+  const picked = pickedSession(session, listeners, holder, dispatch, false)
 
   const run = async (write: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -127,6 +128,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
             }}
             disabled={!canWrite}
             dispatch={dispatch}
+            optional
           />
           <NoteButton
             variant="ghost"

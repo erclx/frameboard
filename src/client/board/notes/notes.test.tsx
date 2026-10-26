@@ -357,11 +357,31 @@ describe('Thread', () => {
     ).toHaveDisplayValue('codex · frameboard')
   })
 
-  it('hands a reply to a new session when nobody listens and serve can start one', async () => {
+  it('keeps a reply plain when nobody listens and serve can start a session', async () => {
+    live({ canWrite: true, dispatch: true })
+    const sent = boardRecording()
+    render(<Thread notes={thread} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Looks good')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(
+      screen.getByRole('combobox', { name: 'Send to' }),
+    ).toHaveDisplayValue('No session')
+    expect(sent).toEqual([
+      { path: '/api/notes/n_1/replies', body: { text: 'Looks good' } },
+    ])
+  })
+
+  it('hands a reply to a new session once New session is picked', async () => {
     live({ canWrite: true, dispatch: true })
     const sent = boardRecording()
     render(<Thread notes={thread} onClose={() => {}} />)
     await userEvent.type(screen.getByRole('textbox'), 'Make it bolder')
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Send to' }),
+      'New session',
+    )
 
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
 

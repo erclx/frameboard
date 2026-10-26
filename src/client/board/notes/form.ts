@@ -26,18 +26,22 @@ export function defaultSession(
 /**
  * The pick a picker shows: the developer's while the picker still offers it,
  * so a listener leaving takes its pick with it and a sole one arriving is
- * picked.
+ * picked. `startByDefault` false keeps New session offered but never picked
+ * for the developer, as a thread does, so a reply stays a plain reply.
  */
 export function pickedSession(
   session: string,
   listeners: readonly Listener[],
   holder: string | undefined,
   dispatch: boolean,
+  startByDefault = dispatch,
 ): string {
   const offered =
     (session === NEW_SESSION && dispatch) ||
     listeners.some((listener) => listener.session === session)
-  return offered ? session : defaultSession(listeners, holder, dispatch)
+  return offered
+    ? session
+    : defaultSession(listeners, holder, dispatch && startByDefault)
 }
 
 /** The body fields that address a write to the picked session, none for no pick. */

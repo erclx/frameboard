@@ -28,6 +28,8 @@ interface SessionPickerProps {
   disabled?: boolean
   /** Whether `serve` can start a session, offered as New session after the listeners. */
   dispatch?: boolean
+  /** Offers No session beside New session while nobody listens, so a reply can stay a plain reply. */
+  optional?: boolean
 }
 
 /**
@@ -41,8 +43,10 @@ export function SessionPicker({
   onChange,
   disabled,
   dispatch = false,
+  optional = false,
 }: SessionPickerProps) {
   const none = listeners.length === 0 && !dispatch
+  const unsent = listeners.length === 0 && (none || optional)
   return (
     <label className="relative flex h-[26px] min-w-0 items-center gap-1.5 rounded-md bg-muted pr-6 pl-2 text-foreground has-[select:disabled]:opacity-60 has-[select:focus-visible]:ring-3 has-[select:focus-visible]:ring-ring/50">
       <span aria-hidden className="size-[7px] shrink-0 rounded-full bg-claim" />
@@ -53,7 +57,7 @@ export function SessionPicker({
         onChange={(event) => onChange(event.target.value)}
         className="min-w-0 appearance-none truncate bg-transparent outline-none disabled:cursor-not-allowed"
       >
-        {none ? <option value="">No session</option> : null}
+        {unsent ? <option value="">No session</option> : null}
         {listeners.length > 1 ? (
           <option value="" disabled>
             Pick a session
