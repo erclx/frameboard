@@ -21,13 +21,7 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 - An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost, and hides in Play and once done
 - The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
 
-A note or a reply takes a pasted or dropped PNG, JPEG, GIF, or WebP image, held as a thumbnail with a remove control and uploaded on Save or Send.
-
-- An upload saves to the page's `.notes/` under a random name, which the content format leaves out of content, so the frames route never serves it and `/api/note-images/` reads it back
-- The note records each image relative to its page, so a page rename keeps it, and the inbox line names each by absolute path between the text and the hints
-- SVG is refused, since it can carry script and the thumbnails render in the board's own page
-
-An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it.
+An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it.
 
 ### `src/client/board/claims/`
 
