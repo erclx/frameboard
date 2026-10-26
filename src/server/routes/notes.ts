@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod'
@@ -6,12 +8,16 @@ import { readAuthor } from '@/server/author'
 import { resolveFrameRef } from '@/server/board/refs'
 import { anchorFor } from '@/server/notes/anchor'
 import type { Delivery } from '@/server/notes/delivery'
+import { type Dispatch, DISPATCH_ENV } from '@/server/notes/dispatch'
 import {
   addReply,
   addRoot,
+  deliveryOf,
   findNote,
   newNoteId,
   notesPath,
+  type PageNotes,
+  removeNote,
   setState,
   updateNotes,
 } from '@/server/notes/store'
@@ -28,7 +34,9 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'frame-not-found': 404,
   'note-not-found': 404,
   'stale-address': 409,
+  'dispatch-unavailable': 409,
   'notes-invalid': 422,
+  'dispatch-failed': 502,
   'lock-timeout': 503,
 }
 
@@ -38,19 +46,37 @@ const TEXT_MAX = 100_000
 
 const text = z.string().trim().min(1).max(TEXT_MAX)
 const session = z.string().min(1).max(256)
+/** Asks for a new session in place of `to`. */
+const dispatch = z.literal(true).optional()
 
-const pinSchema = z.object({
-  /** The frame ref, `<project>/<page>/<frame>`. */
-  frame: z.string().min(1).max(1024),
-  text,
-  /** The element's index, given with the `modifiedAt` the board rendered it at. */
-  element: z.int().min(0).optional(),
-  renderedAt: z.string().optional(),
-  to: session.optional(),
-})
+const oneAddressee = {
+  check: (body: { to?: string; dispatch?: true }) =>
+    body.to === undefined || body.dispatch === undefined,
+  message: { message: 'names a session or asks to start one, never both' },
+}
 
-const replySchema = z.object({ text, to: session.optional() })
-const sendSchema = z.object({ to: session })
+const pinSchema = z
+  .object({
+    /** The frame ref, `<project>/<page>/<frame>`. */
+    frame: z.string().min(1).max(1024),
+    text,
+    /** The element's index, given with the `modifiedAt` the board rendered it at. */
+    element: z.int().min(0).optional(),
+    renderedAt: z.string().optional(),
+    to: session.optional(),
+    dispatch,
+  })
+  .refine(oneAddressee.check, oneAddressee.message)
+
+const replySchema = z
+  .object({ text, to: session.optional(), dispatch })
+  .refine(oneAddressee.check, oneAddressee.message)
+
+const sendSchema = z
+  .object({ to: session.optional(), dispatch })
+  .refine((body) => (body.to === undefined) !== (body.dispatch === undefined), {
+    message: 'names a session to send to or asks to start one',
+  })
 
 /**
  * The board's note writes, each behind `requireWriter`: pin a note, reply in
@@ -58,11 +84,18 @@ const sendSchema = z.object({ to: session })
  * the CLI's `{ ok, data }` envelope with the note it wrote, and a refusal its
  * `{ ok, error }`. A write offers the queue to delivery at once rather than
  * waiting on the watcher.
+ *
+ * Pin, reply, and send take `dispatch: true` in place of `to`, which starts a
+ * session through `dispatch` under an id minted here and marks the thread's
+ * root delivered to it, so the started session's inbox never prints it a
+ * second time. A failed start takes back the message the request added, and
+ * no `dispatch` refuses before anything is written.
  */
 export function notesRoutes(
   root: string,
   access: Access,
   delivery?: Delivery,
+  dispatch?: Dispatch,
 ): Hono {
   const app = new Hono()
   app.use('/api/notes', requireWriter(access))
@@ -78,8 +111,48 @@ export function notesRoutes(
     return file.notes.find((note) => note.id === id)
   }
 
+  const dispatcher = (asked: true | undefined): Dispatch | undefined => {
+    if (asked === undefined) return undefined
+    if (!dispatch) {
+      throw new FrameboardError(
+        'dispatch-unavailable',
+        `No session can be started, since serve was started without ${DISPATCH_ENV}.`,
+      )
+    }
+    return dispatch
+  }
+
+  /**
+   * Starts a session on a thread already on disk, then hands the root to it
+   * as delivered, answering the note `answer` names.
+   */
+  const startSession = async (
+    run: Dispatch,
+    place: PageNotes,
+    rootId: string,
+    added: string | null,
+    answer: string,
+  ): Promise<Note | undefined> => {
+    const minted = randomUUID()
+    try {
+      const { line } = await deliveryOf(root, place, rootId)
+      await run({ session: minted, id: rootId, line })
+    } catch (error) {
+      if (added !== null) {
+        await updateNotes(place.path, (file) => removeNote(file, added))
+      }
+      throw error
+    }
+    return write(
+      place.path,
+      (file) => setState(file, rootId, 'delivered', new Date(), minted),
+      answer,
+    )
+  }
+
   app.post('/api/notes', async (c) => {
     const body = await parseBody(c.req.raw, pinSchema)
+    const run = dispatcher(body.dispatch)
     const frame = await resolveFrameRef(root, body.frame, { cwd: root })
     if (body.element !== undefined && body.renderedAt === undefined) {
       throw new FrameboardError(
@@ -93,8 +166,13 @@ export function notesRoutes(
         : await anchorFor(frame.path, body.element, body.renderedAt ?? '')
     const id = newNoteId()
     const author = await readAuthor(root)
+    const place = {
+      project: frame.project,
+      page: frame.page,
+      path: notesPath(root, frame.project, frame.page),
+    }
     const note = await write(
-      notesPath(root, frame.project, frame.page),
+      place.path,
       (file) =>
         addRoot(
           file,
@@ -109,12 +187,16 @@ export function notesRoutes(
         ),
       id,
     )
-    return c.json({ ok: true, data: { note } })
+    if (!run) return c.json({ ok: true, data: { note } })
+    const started = await startSession(run, place, id, id, id)
+    return c.json({ ok: true, data: { note: started } })
   })
 
   app.post('/api/notes/:id/replies', async (c) => {
     const body = await parseBody(c.req.raw, replySchema)
+    const run = dispatcher(body.dispatch)
     const found = await findNote(root, c.req.param('id'))
+    const rootId = found.note.thread ?? found.note.id
     const id = newNoteId()
     const author = await readAuthor(root)
     const note = await write(
@@ -134,13 +216,20 @@ export function notesRoutes(
         ),
       id,
     )
-    return c.json({ ok: true, data: { note } })
+    if (!run) return c.json({ ok: true, data: { note } })
+    const started = await startSession(run, found, rootId, id, id)
+    return c.json({ ok: true, data: { note: started } })
   })
 
   app.post('/api/notes/:id/send', async (c) => {
     const body = await parseBody(c.req.raw, sendSchema)
+    const run = dispatcher(body.dispatch)
     const found = await findNote(root, c.req.param('id'))
     const rootId = found.note.thread ?? found.note.id
+    if (run) {
+      const note = await startSession(run, found, rootId, null, rootId)
+      return c.json({ ok: true, data: { note } })
+    }
     const note = await write(
       found.path,
       (file) => setState(file, rootId, 'queued', new Date(), body.to),

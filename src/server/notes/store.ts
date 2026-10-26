@@ -216,6 +216,11 @@ export function setState(
   }
 }
 
+/** Takes one message out, for a write whose send failed after it landed. */
+export function removeNote(file: NotesFile, id: string): NotesFile {
+  return { ...file, notes: file.notes.filter((note) => note.id !== id) }
+}
+
 /** A thread's messages in the order they were written, root first. */
 export function threadOf(file: NotesFile, rootId: string): Note[] {
   return file.notes.filter(

@@ -1,8 +1,10 @@
-import { readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { createDispatcher } from '@/server/notes/dispatch'
+import { queuedFor } from '@/server/notes/store'
 import type { Note } from '@/shared/records/notes'
 
 import {
@@ -166,6 +168,164 @@ describe('notesRoutes', () => {
       await post(`/api/notes/${root.id}/done`, {})
 
       expect(onDisk()[0]?.state).toBe('done')
+    })
+  })
+
+  describe('dispatch: true', () => {
+    // Writes the session and the note line it was handed, then exits 0.
+    const STUB =
+      'printf "%s\\n%s" "$FRAMEBOARD_SESSION" "$FRAMEBOARD_NOTE" > "$FRAMEBOARD_ROOT/.run/started.txt"'
+
+    const starting = (command = STUB) =>
+      notesRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: KEY,
+          cookieName: COOKIE,
+          isOwnOrigin: () => false,
+        },
+        undefined,
+        createDispatcher({
+          command,
+          cwd: board.root,
+          root: board.root,
+          env: { PATH: process.env.PATH },
+        }),
+      )
+
+    function postTo(
+      app: ReturnType<typeof starting>,
+      path: string,
+      body: unknown,
+    ) {
+      return app.request(path, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    function started(): { session: string; line: string } {
+      const [session = '', line = ''] = readFileSync(
+        join(board.root, '.run/started.txt'),
+        'utf8',
+      ).split('\n')
+      return { session, line }
+    }
+
+    it('starts the command with the note when nobody listens', async () => {
+      await postTo(starting(), '/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        dispatch: true,
+      })
+
+      expect(started().line).toMatch(
+        /^frameboard note n_[0-9a-f]{8} on studio\/home\/hero: Tighten the header /,
+      )
+    })
+
+    it('marks the note delivered to the session it minted', async () => {
+      const response = await postTo(starting(), '/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        dispatch: true,
+      })
+
+      const { session } = started()
+      expect(session).toMatch(/^[0-9a-f-]{36}$/)
+      expect(onDisk()[0]).toMatchObject({ state: 'delivered', to: session })
+      expect((await response.json()).data.note.state).toBe('delivered')
+    })
+
+    it('leaves nothing queued for a follower of the minted session', async () => {
+      await postTo(starting(), '/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        dispatch: true,
+      })
+
+      await expect(queuedFor(board.root, started().session)).resolves.toEqual(
+        [],
+      )
+    })
+
+    it('hands a saved note to a new session through send', async () => {
+      const root = await pinned()
+
+      await postTo(starting(), `/api/notes/${root.id}/send`, { dispatch: true })
+
+      expect(onDisk()[0]).toMatchObject({
+        state: 'delivered',
+        to: started().session,
+      })
+    })
+
+    it('starts the session on the reply that hands the thread on', async () => {
+      const root = await pinned()
+
+      await postTo(starting(), `/api/notes/${root.id}/replies`, {
+        text: 'Make it bolder',
+        dispatch: true,
+      })
+
+      expect(started().line).toContain(
+        `${root.id} on studio/home/hero: Make it bolder`,
+      )
+      expect(onDisk()).toMatchObject([
+        { id: root.id, state: 'delivered' },
+        { thread: root.id, text: 'Make it bolder' },
+      ])
+    })
+
+    it('refuses with no command configured as dispatch-unavailable, writing nothing', async () => {
+      const response = await post('/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        dispatch: true,
+      })
+
+      expect(response.status).toBe(409)
+      expect((await response.json()).error.code).toBe('dispatch-unavailable')
+      expect(existsSync(notesFile)).toBe(false)
+    })
+
+    it('takes back a pin whose command failed at once', async () => {
+      const response = await postTo(starting('exit 3'), '/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        dispatch: true,
+      })
+
+      expect(response.status).toBe(502)
+      expect((await response.json()).error.code).toBe('dispatch-failed')
+      expect(onDisk()).toEqual([])
+    })
+
+    it('leaves a sent note open when its command failed at once', async () => {
+      const root = await pinned()
+
+      await postTo(starting('exit 3'), `/api/notes/${root.id}/send`, {
+        dispatch: true,
+      })
+
+      expect(onDisk()[0]).toMatchObject({ state: 'open', to: null })
+    })
+
+    it('refuses a session and dispatch together as usage', async () => {
+      const response = await postTo(starting(), '/api/notes', {
+        frame: 'studio/home/hero',
+        text: 'Tighten the header',
+        to: 'sess-1',
+        dispatch: true,
+      })
+
+      expect(response.status).toBe(400)
+      expect(existsSync(join(board.root, '.run/started.txt'))).toBe(false)
     })
   })
 
