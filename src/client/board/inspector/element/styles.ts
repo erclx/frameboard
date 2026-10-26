@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import type { FrameStyles } from '@/shared/records/elements'
 
-import { elementAt, renderedHash } from '../../frame-dom'
+import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
 import type { ElementKey } from '../../selection'
 
 /** What the inspector reads off the live element, as the browser computed it. */
@@ -74,6 +74,33 @@ export function useLiveElement(key: ElementKey | null): LiveElement | null {
   }, [frame, index, hash, at])
 
   return held?.at === at ? held.live : null
+}
+
+/**
+ * A frame's `body` as an element key, read off its live iframe on every
+ * load, so a frame Fill writes through the element edit. Null until the
+ * frame shows stamped bytes, which a placeholder never does.
+ */
+export function useLiveBody(frame: string): ElementKey | null {
+  const [held, setHeld] = useState<ElementKey | null>(null)
+
+  useEffect(() => {
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `[data-frame="${CSS.escape(frame)}"] iframe`,
+    )
+    if (!iframe) return
+    const read = () => {
+      const doc = iframe.contentDocument
+      const hash = doc ? renderedHash(doc) : null
+      const index = doc?.body ? elementIndex(doc, doc.body) : null
+      if (hash !== null && index !== null) setHeld({ frame, index, hash })
+    }
+    read()
+    iframe.addEventListener('load', read)
+    return () => iframe.removeEventListener('load', read)
+  }, [frame])
+
+  return held?.frame === frame ? held : null
 }
 
 function readLive(element: Element, view: Window): LiveElement {

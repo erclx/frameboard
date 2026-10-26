@@ -261,3 +261,55 @@ test.describe('editing a selected element by hand', () => {
     })
   }
 })
+
+test.describe('filling a selected frame by hand', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+  let original: string
+
+  const path = () => join(board.root, `${HERO}.html`)
+  const read = () => readFileSync(path(), 'utf8')
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    original = read()
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('a token picked for the frame’s Fill lands on its body, and undo restores the bytes', async ({
+    page,
+  }) => {
+    const headline = page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toBeVisible()
+    // As for the headline above, a click before the canvas fits lands beside the frame.
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Rename frame hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+
+    await page.getByRole('button', { name: 'Fill token' }).click()
+    await page
+      .getByRole('list', { name: 'Fill tokens' })
+      .getByRole('button', { name: 'accent' })
+      .click()
+
+    await expect.poll(read).toContain('background-color: var(--accent)')
+    const [, body = ''] = /<body([^>]*)>/.exec(read()) ?? []
+    expect(body).toContain('background-color: var(--accent)')
+    expect(read().split('<h1')[1]).toBe(original.split('<h1')[1])
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.poll(read).toBe(original)
+  })
+})

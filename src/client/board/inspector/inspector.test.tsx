@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -339,6 +339,114 @@ describe('InspectorPanel', () => {
       renderPanel()
 
       expect(screen.queryByRole('region', { name: /Checks/ })).toBeNull()
+    })
+  })
+
+  describe('Fill', () => {
+    const HASH = 'b'.repeat(64)
+    const PRIMARY = {
+      name: '--primary',
+      group: 'color',
+      light: '#4f46e5',
+      dark: '#818cf8',
+      sheet: 'tokens.css',
+    }
+    let layer: HTMLElement | undefined
+    let edits: unknown[] = []
+
+    /** Mounts the swatches frame's live iframe, whose `body` sits at index 2. */
+    async function mountSwatches(): Promise<void> {
+      layer = document.createElement('div')
+      const frame = document.createElement('div')
+      frame.dataset.frame = SWATCHES.ref
+      const iframe = document.createElement('iframe')
+      const loaded = new Promise((resolve) =>
+        iframe.addEventListener('load', resolve, { once: true }),
+      )
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1></body></html>`
+      frame.append(iframe)
+      layer.append(frame)
+      document.body.append(layer)
+      await loaded
+    }
+
+    beforeEach(() => {
+      edits = []
+      vi.stubGlobal(
+        'fetch',
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input)
+          if (url.includes('/tokens')) {
+            return Response.json({
+              ok: true,
+              data: { sheets: [], tokens: [PRIMARY] },
+            })
+          }
+          if (url.includes('/edit')) {
+            edits.push(JSON.parse(String(init?.body)))
+            return Response.json({
+              ok: true,
+              data: { ref: SWATCHES.ref, index: 2, hash: 'c'.repeat(64) },
+            })
+          }
+          return Response.json({
+            ok: true,
+            data: {
+              ref: SWATCHES.ref,
+              hash: HASH,
+              element: {
+                color: null,
+                backgroundColor: null,
+                borderColor: null,
+                borderWidth: null,
+                boxShadow: null,
+              },
+              colors: [],
+            },
+          })
+        },
+      )
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      layer?.remove()
+      layer = undefined
+    })
+
+    it('adds the first color token to one frame’s body', async () => {
+      await mountSwatches()
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+
+      const add = await screen.findByRole('button', { name: 'Add fill' })
+      await waitFor(() => expect(add).toBeEnabled())
+      await userEvent.click(add)
+
+      await waitFor(() =>
+        expect(edits).toEqual([
+          {
+            ref: SWATCHES.ref,
+            index: 2,
+            hash: HASH,
+            change: {
+              kind: 'style',
+              property: 'background-color',
+              value: 'var(--primary)',
+            },
+          },
+        ]),
+      )
+    })
+
+    it('draws no Fill for several frames', async () => {
+      await mountSwatches()
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+      renderPanel()
+
+      await screen.findByRole('heading', { name: '2 frames' })
+      expect(screen.queryByRole('heading', { name: 'Fill' })).toBeNull()
     })
   })
 
