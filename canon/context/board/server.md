@@ -19,7 +19,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports.
 
-- A frame's own `.html`, or a temp file it is saved through such as `hero.html.swap`, reloads that frame, and any other page-folder file reloads the page
+- A frame's own `.html` or a temp file such as `hero.html.swap` reloads that frame, unless the board's own rename only moved it, and any other page-folder file reloads the page
 - A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - The server checks every frame at start and rechecks each batch's frames
