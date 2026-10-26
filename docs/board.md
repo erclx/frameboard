@@ -1,0 +1,39 @@
+---
+title: On the board
+description: Selecting, notes, and every hand edit, including undo
+---
+
+# On the board
+
+What you can do by hand on the board, from picking an element to undoing an edit.
+
+## Selecting
+
+On the board, Cmd-click or double-click selects an element inside a frame.
+
+- Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements
+- `selection` prints what you picked, with the element's index and hash ready for `edit`
+
+## Notes
+
+Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board.
+
+- The agent answers in the note's thread through `notes reply` and closes it with `notes done`
+- Paste or drop a PNG, JPEG, GIF, or WebP image into a note or a reply, and the agent gets its path to open
+- The notes stay in each page's `notes.json`, and their images in its `.notes/` folder
+- With nobody listening, Send can start a session through a command you export before `serve`, such as `FRAMEBOARD_DISPATCH='claude --bg "$FRAMEBOARD_NOTE"'`, which gets the note in its environment
+- The command runs in the folder `serve` started in, and `claude --bg` starts only once Claude Code trusts that folder
+
+## Hand edits
+
+In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
+
+- On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
+- The inspector edits a frame's fill and an element's opacity, radius, type, line height, letter spacing, fill, stroke, shadow, and text, its numbers stepping on arrows and scrubbing from a label
+- The layers panel selects, renames, restacks, hides, and locks frames, renames elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
+- Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
+- Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
+
+The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected element to move it, Delete to take it out, or double-click text to retype it. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
+
+Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.

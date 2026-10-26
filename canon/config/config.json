@@ -60,7 +60,7 @@
       "dispositions": {
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
-          "reason": "The README shows .github/social-card.png and commits no capture under assets/evidence/readme"
+          "reason": "The README shows the .github/readme-hero-light.png and .github/readme-hero-dark.png pair and commits no capture under assets/evidence/readme"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
