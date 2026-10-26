@@ -55,6 +55,10 @@ describe.skipIf(shell === null)(
           '<h1>Heading</h1>',
           'h1 { margin: 0; font-size: 48px; line-height: 1 }',
         ),
+        'studio/home/tight-link.html': page(
+          '<h1><a href="#">Heading</a></h1>',
+          'h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        ),
         'studio/home/spill.html': page(
           '<p>one two three four</p>',
           'p { width: 1px; height: 20px; margin: 0; line-height: 30px }',
@@ -115,6 +119,12 @@ describe.skipIf(shell === null)(
 
     it('reads a tight line height block at its own height', async () => {
       const size = await measure('tight', false)
+
+      expect(size.height).toBe(48)
+    })
+
+    it('reads a tight line height heading wrapping its text in a link at its own height', async () => {
+      const size = await measure('tight-link', false)
 
       expect(size.height).toBe(48)
     })

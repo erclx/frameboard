@@ -153,9 +153,10 @@ function readFitWidth(): number {
 // crops is left out, since the frame never shows it. Text spilling below its
 // own block reaches past that block's box, so it counts unless the block
 // crops it, to its line box, since a line height below the font's content area
-// leaves the text rect hanging out of the block on both sides. The cropping
-// test and `textBottom` are copies of `isCropped` and
-// `textReach` in the layout check's `readLayout`, and the two must agree.
+// leaves the text rect hanging out of the block on both sides, and a plain
+// inline element's box hangs the same way. The cropping test, `textBottom`,
+// and `ownBottom` are copies of `isCropped`, `textReach`, and `ownBottom` in
+// the layout check's `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
   const crops = (element: Element) => {
@@ -172,6 +173,8 @@ export function readContentSize(): Reading {
     }
     return false
   }
+  const hangOf = (lineHeight: number, height: number) =>
+    lineHeight < height ? (height - lineHeight) / 2 : 0
   const textBottom = (element: Element) => {
     let bottom = -Infinity
     if (crops(element)) return bottom
@@ -182,21 +185,33 @@ export function readContentSize(): Reading {
       range.selectNodeContents(child)
       for (const rect of range.getClientRects()) {
         if (rect.width === 0 && rect.height === 0) continue
-        const hang =
-          lineHeight < rect.height ? (rect.height - lineHeight) / 2 : 0
-        bottom = Math.max(bottom, rect.bottom - hang)
+        bottom = Math.max(bottom, rect.bottom - hangOf(lineHeight, rect.height))
       }
     }
     return bottom
   }
+  const replaced = [
+    'img',
+    'video',
+    'canvas',
+    'iframe',
+    'object',
+    'embed',
+    'audio',
+  ]
+  const ownBottom = (element: Element) => {
+    const rect = element.getBoundingClientRect()
+    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml')
+      return rect.bottom
+    if (replaced.includes(element.localName)) return rect.bottom
+    const style = getComputedStyle(element)
+    if (style.display !== 'inline') return rect.bottom
+    return rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height)
+  }
   let bottom = root.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {
     if (isCropped(element)) continue
-    bottom = Math.max(
-      bottom,
-      element.getBoundingClientRect().bottom,
-      textBottom(element),
-    )
+    bottom = Math.max(bottom, ownBottom(element), textBottom(element))
   }
   return {
     height: Math.max(1, Math.ceil(bottom + window.scrollY)),

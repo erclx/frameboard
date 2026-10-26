@@ -214,6 +214,8 @@ function readLayout(): LayoutRead {
   // below it leaves hanging out of the line box on both sides, so the bottom
   // reads to the line box. A copy of `textBottom` in `readContentSize`, so a
   // change to one is a change to both.
+  const hangOf = (lineHeight: number, height: number) =>
+    lineHeight < height ? (height - lineHeight) / 2 : 0
   const textReach = (element: Element) => {
     let bottom = -Infinity
     let right = -Infinity
@@ -225,13 +227,32 @@ function readLayout(): LayoutRead {
       range.selectNodeContents(child)
       for (const rect of range.getClientRects()) {
         if (rect.width === 0 && rect.height === 0) continue
-        const hang =
-          lineHeight < rect.height ? (rect.height - lineHeight) / 2 : 0
-        bottom = Math.max(bottom, rect.bottom - hang)
+        bottom = Math.max(bottom, rect.bottom - hangOf(lineHeight, rect.height))
         right = Math.max(right, rect.right)
       }
     }
     return { bottom, right }
+  }
+  // A plain inline element's box is the font's content area too, so a heading
+  // wrapping its text in a link hangs out of its line box the way bare text
+  // does. A replaced element's box is its own, so it reads as laid out. A copy
+  // of `ownBottom` in `readContentSize`, so a change to one is a change to both.
+  const replaced = [
+    'img',
+    'video',
+    'canvas',
+    'iframe',
+    'object',
+    'embed',
+    'audio',
+  ]
+  const ownBottom = (element: Element, rect: DOMRect) => {
+    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml')
+      return rect.bottom
+    if (replaced.includes(element.localName)) return rect.bottom
+    const style = getComputedStyle(element)
+    if (style.display !== 'inline') return rect.bottom
+    return rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height)
   }
   const rootRect = root.getBoundingClientRect()
   let index = 0
@@ -256,7 +277,9 @@ function readLayout(): LayoutRead {
     boxes.push({
       index: own,
       tag,
-      bottom: Math.ceil(Math.max(rect.bottom, text.bottom) + window.scrollY),
+      bottom: Math.ceil(
+        Math.max(ownBottom(node, rect), text.bottom) + window.scrollY,
+      ),
       right: Math.ceil(Math.max(rect.right, text.right) + window.scrollX),
       height: Math.round(rect.height),
       cropped: isCropped(node),

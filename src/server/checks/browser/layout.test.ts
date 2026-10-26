@@ -165,6 +165,15 @@ describe.skipIf(shell === null)(
       expect(findings).toEqual([])
     })
 
+    it('reads a tight line height heading wrapping its text in a link as no finding', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        '<div></div><h1><a href="#">Heading</a></h1>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
     it('reads unwrapped text cropped by its own block as no finding', async () => {
       const findings = await checkHero(
         'p { width: 100px; overflow: hidden; white-space: nowrap }',

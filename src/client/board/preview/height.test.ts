@@ -61,6 +61,24 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBe(48)
   })
 
+  it('reads a tight line height heading wrapping its text in a link at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><a href="#">Heading</a></h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBe(48)
+  })
+
+  it('reads an image inside a tight line height heading at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><img alt="" width="10" height="200" style="display:inline"></h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBeGreaterThanOrEqual(200)
+  })
+
   it('reads nothing for a page sized off the viewport', async () => {
     const iframe = await iframeOf('<div style="height:100vh"></div>', {
       width: 390,
