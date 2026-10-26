@@ -30,6 +30,17 @@ export async function openSheetAtDesktop(page: Page): Promise<{
   )
   expect(wrapped.map((cell) => cell.text)).toEqual([])
 
+  // With the label and chips unable to wrap, a row too wide for its column
+  // keeps one line and spills past it, which no height reads.
+  const spilled = await sheet
+    .locator('li')
+    .evaluateAll((rows) =>
+      rows
+        .filter((row) => row.scrollWidth > row.clientWidth)
+        .map((row) => row.textContent ?? ''),
+    )
+  expect(spilled).toEqual([])
+
   const [first, second, third] = await sheet
     .locator('section')
     .evaluateAll((nodes) =>
