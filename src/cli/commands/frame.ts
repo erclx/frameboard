@@ -67,7 +67,7 @@ export function registerFrame(
       withSize(
         verb(
           'add',
-          'Place a frame past every frame, writing a skeleton file when none exists. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
+          'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
         ),
       ),
     ),
