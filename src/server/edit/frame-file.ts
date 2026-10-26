@@ -11,7 +11,12 @@ import {
   scopeOf,
 } from './apply'
 import { type ElementSpan, relocate } from './element-span'
-import { type InsertedSpan, insertElement, type Placement } from './insert'
+import {
+  type InsertedSpan,
+  insertElement,
+  type Placement,
+  removeElement,
+} from './insert'
 
 export type FrameFileEdit =
   | {
@@ -140,6 +145,35 @@ export function insertFrameFile(
     index: inserted.index,
     span: inserted.span,
   }
+}
+
+export type FrameFileRemove =
+  | {
+      readonly ok: true
+      /** The file's hash after the delete, which the next write is made from. */
+      readonly hash: string
+      /** The deleted element as `restoreInserted` puts it back. */
+      readonly span: InsertedSpan
+    }
+  | EditRefused
+
+/**
+ * Takes one element out of a frame file the way `insertFrameFile` writes one
+ * in, refusing a hash the file no longer has as stale, so a retried delete
+ * takes out at most one element.
+ */
+export function removeFrameFile(
+  path: string,
+  hash: string,
+  index: number,
+): FrameFileRemove {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const removed = removeElement(read.source, index)
+  if (!removed.ok) return removed
+  if (!replaceFile(path, hash, removed.html)) return stale(path)
+  return { ok: true, hash: contentHash(removed.html), span: removed.span }
 }
 
 /**

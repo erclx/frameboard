@@ -237,7 +237,7 @@ export function insertElement(
   const added = after.elements[index]
   if (
     !added ||
-    after.elements.length !== before.elements.length + 1 ||
+    after.elements.length !== before.elements.length + 1 + descendants(added) ||
     added.parentNode !== after.elements[placement.parent] ||
     spanText(written, added, 'element') !== markup ||
     !addsOnly(before, after, added)
@@ -263,6 +263,14 @@ export function insertElement(
       next: next ? startTag(source, next) : null,
     },
   }
+}
+
+/** How many elements `element` holds, at any depth. */
+function descendants(element: Element): number {
+  return children(element).reduce(
+    (count, child) => count + 1 + descendants(child),
+    0,
+  )
 }
 
 /** Whether `after` is `before` with `added` alone added, compared once it is taken out. */
@@ -366,6 +374,77 @@ export function removeInserted(
   const back = insertElement(removed, placement, span.markup)
   if (!back.ok || back.html !== source) return undefined
   return { html: removed, span: back.span }
+}
+
+export type Removed =
+  | { readonly ok: true; readonly html: string; readonly span: InsertedSpan }
+  | EditRefused
+
+/**
+ * Takes out the element at `index`, with everything it holds, and answers
+ * the span `restoreInserted` puts it back by, so a delete is an insert run
+ * backwards. Only an element under `body` is taken, and the removal is
+ * refused as `verify-failed` unless the result parses as the source with
+ * that element alone gone, and its bytes go back as that one element.
+ * Putting it back lands it
+ * before the same sibling, so the whitespace around it may sit on its other
+ * side.
+ */
+export function removeElement(source: string, index: number): Removed {
+  const tree = parseFrame(source)
+  if (tree.unstated) {
+    return refuse(
+      'address-mismatch',
+      `the browser builds a <${tree.unstated.tagName}> the file does not state, so indices after it disagree`,
+    )
+  }
+  const element = tree.elements[index]
+  if (!element || !underBody(element)) {
+    return refuse(
+      'invalid-address',
+      `${index} names no element under the frame's body`,
+    )
+  }
+  const at = element.sourceCodeLocation
+  const parent = element.parentNode
+  if (!at || !parent || !hasTag(parent)) {
+    return refuse(
+      'address-mismatch',
+      `the <${element.tagName}> at ${index} is not stated in the file`,
+    )
+  }
+  const removed = source.slice(0, at.startOffset) + source.slice(at.endOffset)
+  const next = children(parent)[children(parent).indexOf(element) + 1]
+  const placement = {
+    parent: tree.elements.indexOf(parent),
+    before: next ? index : null,
+  }
+  const back = insertElement(
+    removed,
+    placement,
+    source.slice(at.startOffset, at.endOffset),
+  )
+  parent.childNodes = parent.childNodes.filter((node) => node !== element)
+  const removesOnly =
+    serialize(tree.document) === serialize(parseFrame(removed).document)
+  if (!back.ok || !removesOnly) {
+    return refuse(
+      'verify-failed',
+      `taking out the <${element.tagName}> at ${index} would change more than it, so nothing was written`,
+    )
+  }
+  return { ok: true, html: removed, span: back.span }
+}
+
+function underBody(element: Element): boolean {
+  for (
+    let node = element.parentNode;
+    node && hasTag(node);
+    node = node.parentNode
+  ) {
+    if (node.tagName === 'body') return true
+  }
+  return false
 }
 
 /**

@@ -10,7 +10,11 @@ import {
 import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
 import { contentHash } from '../edit/address'
-import { editFrameFile, insertFrameFile } from '../edit/frame-file'
+import {
+  editFrameFile,
+  insertFrameFile,
+  removeFrameFile,
+} from '../edit/frame-file'
 import { type Change, holds, restore, StepJournal } from './changes'
 
 describe('changes', () => {
@@ -401,6 +405,59 @@ describe('changes', () => {
       await expect(restore(first(), 'before')).rejects.toMatchObject({
         code: 'undo-overtaken',
         details: { change: 'inserted' },
+      })
+      expect(read(HERO)).toBe(agent)
+    })
+  })
+
+  describe('removed', () => {
+    const HERO = 'webapp/home/hero.html'
+    /** The headline, by `querySelectorAll('*')` order. */
+    const HEADLINE = 5
+
+    /** Deletes the headline by hand, as the remove route does, and journals it. */
+    function deleteHeadline(): void {
+      const removed = removeFrameFile(
+        at(HERO),
+        contentHash(readFileSync(at(HERO))),
+        HEADLINE,
+      )
+      if (!removed.ok) throw new Error(removed.detail)
+      journal.deletedElement(at(HERO), 'webapp/home/hero', removed.span)
+    }
+
+    it('undoes a delete, putting the element back under its parent', async () => {
+      deleteHeadline()
+
+      await restore(first(), 'before')
+
+      expect(read(HERO)).toContain('<h1 data-name="Headline">')
+    })
+
+    it('redoes it, taking the element out again', async () => {
+      deleteHeadline()
+      const deleted = read(HERO)
+      await restore(first(), 'before')
+
+      await restore(first(), 'after')
+
+      expect(read(HERO)).toBe(deleted)
+    })
+
+    it('holds on each side as the delete left it', async () => {
+      deleteHeadline()
+
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+      await expect(holds(first(), 'before')).resolves.toBe(false)
+    })
+
+    it('refuses an undo once an agent took out the sibling it went before', async () => {
+      deleteHeadline()
+      const agent = read(HERO).replace(/<p data-name="Caption">.*?<\/p>/s, '')
+      writeFileSync(at(HERO), agent)
+
+      await expect(restore(first(), 'before')).rejects.toMatchObject({
+        code: 'undo-overtaken',
       })
       expect(read(HERO)).toBe(agent)
     })

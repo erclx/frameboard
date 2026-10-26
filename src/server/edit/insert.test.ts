@@ -5,6 +5,7 @@ import type { TokenRow } from '@/shared/records/tokens'
 import {
   elementMarkup,
   insertElement,
+  removeElement,
   removeInserted,
   restoreInserted,
   shapePaint,
@@ -270,5 +271,51 @@ describe('removeInserted and restoreInserted', () => {
     expect(
       restoreInserted(removed.html.replace('<h1>A</h1>', ''), removed.span),
     ).toBeUndefined()
+  })
+})
+
+describe('removeElement', () => {
+  const source = '<main>\n  <h1>A</h1>\n  <p>B <b>C</b></p>\n</main>'
+  // <main> is 3, <h1> 4, <p> 5, <b> 6.
+
+  it('should take out the element at the index with everything it holds', () => {
+    expect(removeElement(source, 5)).toMatchObject({
+      ok: true,
+      html: '<main>\n  <h1>A</h1>\n  \n</main>',
+    })
+  })
+
+  it('should answer a span that puts the element back before the same sibling', () => {
+    const removed = removeElement(source, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(
+      '<main>\n  \n  <h1>A</h1><p>B <b>C</b></p>\n</main>',
+    )
+  })
+
+  it('should answer a span a redo takes the element out by again', () => {
+    const removed = removeElement(source, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+    const restored = restoreInserted(removed.html, removed.span)
+    if (!restored) throw new Error('not restored')
+
+    expect(removeInserted(restored.html, restored.span)?.html).toBe(
+      removed.html,
+    )
+  })
+
+  it('should refuse an index past the last element', () => {
+    expect(removeElement(source, 9)).toMatchObject({
+      ok: false,
+      reason: 'invalid-address',
+    })
+  })
+
+  it('should refuse the body, which is no element under it', () => {
+    expect(removeElement(source, BODY)).toMatchObject({
+      ok: false,
+      reason: 'invalid-address',
+    })
   })
 })

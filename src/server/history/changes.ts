@@ -77,12 +77,19 @@ export type Change =
    */
   | { kind: 'element'; path: string; ref: string; span: ElementSpan }
   /**
-   * The one element a placement tool wrote into a frame file, present on the
-   * after side alone. An undo takes out the element its bytes match, and a
-   * redo puts it back under its parent, so an agent's write elsewhere in the
-   * file neither blocks either nor is reverted.
+   * The one element a placement tool wrote into a frame file, or a hand
+   * delete took out of one, present on the `present` side alone. Moving to
+   * the other side takes out the element its bytes match, and moving back
+   * puts it under its parent, so an agent's write elsewhere in the file
+   * neither blocks either nor is reverted.
    */
-  | { kind: 'inserted'; path: string; ref: string; span: InsertedSpan }
+  | {
+      kind: 'inserted'
+      path: string
+      ref: string
+      span: InsertedSpan
+      present: Side
+    }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -145,7 +152,11 @@ async function reads(change: Change, side: Side): Promise<boolean> {
     case 'inserted':
       return (
         (await exists(change.path)) &&
-        holdsInserted(await readFile(change.path, 'utf8'), change.span, side)
+        holdsInserted(
+          await readFile(change.path, 'utf8'),
+          change.span,
+          side === change.present ? 'after' : 'before',
+        )
       )
   }
 }
@@ -220,9 +231,9 @@ export async function restore(
     case 'inserted':
       return rewriteFrame(change, (source) => {
         const written =
-          side === 'before'
-            ? removeInserted(source, change.span)
-            : restoreInserted(source, change.span)
+          side === change.present
+            ? restoreInserted(source, change.span)
+            : removeInserted(source, change.span)
         return (
           written && {
             html: written.html,
@@ -320,7 +331,12 @@ export class StepJournal implements Journal {
 
   /** The element a placement tool wrote into a frame file, which this journal does not write. */
   inserted(path: string, ref: string, span: InsertedSpan): void {
-    this.changes.push({ kind: 'inserted', path, ref, span })
+    this.changes.push({ kind: 'inserted', path, ref, span, present: 'after' })
+  }
+
+  /** The element a hand delete took out of a frame file, which this journal does not write. */
+  deletedElement(path: string, ref: string, span: InsertedSpan): void {
+    this.changes.push({ kind: 'inserted', path, ref, span, present: 'before' })
   }
 
   async created(path: string): Promise<void> {
