@@ -646,6 +646,44 @@ describe.skipIf(shell === null)(
       )
       expect(clipped).toEqual([])
     })
+
+    it('measures a frame written first and placed after, reloading nothing', async () => {
+      writeFileSync(
+        join(board.root, 'studio/home/tall.html'),
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 1200px"></div></body></html>',
+      )
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'board' &&
+                message.data.projects[0]?.pages.some((page) =>
+                  page.frames.some((frame) => frame.ref === 'studio/home/tall'),
+                ),
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      messages = []
+
+      await cli(['frame', 'add', 'studio/home/tall', '--size', 'desktop'], {
+        cwd: board.root,
+      })
+
+      const tallHeight = () =>
+        JSON.parse(
+          readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+        ).frames.tall?.height
+      await expect.poll(tallHeight, { timeout: 10_000 }).toBe(1200)
+      expect(
+        messages.some(
+          (message) =>
+            message.type === 'reload' &&
+            message.refs.includes('studio/home/tall'),
+        ),
+      ).toBe(false)
+    })
   },
 )
 
