@@ -1,3 +1,8 @@
+---
+title: For your agent
+description: Commands, content checks, claims, change marks, and the Claude Code plugin
+---
+
 # For your agent
 
 The commands, checks, claims, and plugin a coding agent works with on the board.

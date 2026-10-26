@@ -1,3 +1,8 @@
+---
+title: How it works
+description: The board folder, tokens, and themes, and what serve creates in a folder with no board
+---
+
 # How it works
 
 How a board folder, its tokens, and its themes fit together, for anyone setting up a board for an agent.

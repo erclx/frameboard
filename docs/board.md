@@ -1,3 +1,8 @@
+---
+title: On the board
+description: Selecting, notes, and every hand edit, including undo
+---
+
 # On the board
 
 What you can do by hand on the board, from picking an element to undoing an edit.
