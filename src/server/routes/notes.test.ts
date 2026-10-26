@@ -316,6 +316,20 @@ describe('notesRoutes', () => {
       expect(onDisk()[0]).toMatchObject({ state: 'open', to: null })
     })
 
+    it('takes back a reply whose command failed at once', async () => {
+      const root = await pinned()
+
+      const response = await postTo(
+        starting('exit 3'),
+        `/api/notes/${root.id}/replies`,
+        { text: 'Make it bolder', dispatch: true },
+      )
+
+      expect(response.status).toBe(502)
+      expect(onDisk()).toMatchObject([{ id: root.id, state: 'open' }])
+      expect(onDisk()).toHaveLength(1)
+    })
+
     it('refuses a session and dispatch together as usage', async () => {
       const response = await postTo(starting(), '/api/notes', {
         frame: 'studio/home/hero',
