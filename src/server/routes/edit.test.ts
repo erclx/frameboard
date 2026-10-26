@@ -483,6 +483,153 @@ describe('editRoutes', () => {
 
       expect(response.status).toBe(400)
     })
+
+    it('writes the width and height a drag gave a shape', async () => {
+      await insert({
+        ...rectangle(),
+        element: { kind: 'ellipse', width: 240, height: 48 },
+      })
+
+      expect(read()).toContain(
+        '<div data-name="Ellipse" style="width: 240px; height: 48px; background: var(--muted); border-radius: 50%"></div>',
+      )
+    })
+
+    it('refuses a size under one pixel as usage', async () => {
+      const response = await insert({
+        ...rectangle(),
+        element: { kind: 'rectangle', width: 0, height: 48 },
+      })
+
+      expect(response.status).toBe(400)
+    })
+  })
+
+  describe('POST /api/frames/move', () => {
+    const BODY = 4
+
+    function move(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+      ).request('/api/frames/move', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    const headlineToEnd = () => ({
+      ref: HERO,
+      hash: hash(),
+      index: HEADLINE,
+      parent: BODY,
+      before: null,
+    })
+
+    it('moves the element into the gap and answers where it landed', async () => {
+      const original = read()
+
+      const response = await move(headlineToEnd())
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, index: 7, hash: hash() },
+      })
+      expect(read()).toBe(
+        original
+          .replace('<h1 data-name="Headline">hero</h1>', '')
+          .replace(
+            '\n  </body>',
+            '\n  <h1 data-name="Headline">hero</h1></body>',
+          ),
+      )
+    })
+
+    it('records one step, which undo reverts byte for byte', async () => {
+      const original = read()
+      await move(headlineToEnd())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toBe(original)
+    })
+
+    it('moves the element again on a redo', async () => {
+      await move(headlineToEnd())
+      const moved = read()
+      await history.undo()
+
+      await history.redo()
+
+      expect(read()).toBe(moved)
+    })
+
+    it('refuses stale-address once the file moved, writing nothing', async () => {
+      const sent = headlineToEnd()
+      agentWrites(read().replace('hero</h1>', 'Agent</h1>'))
+      const agent = read()
+
+      const response = await move(sent)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a gap inside the moved element as invalid-container', async () => {
+      const original = read()
+
+      const response = await move({
+        ...headlineToEnd(),
+        index: CAPTION,
+        parent: CAPTION,
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-container' },
+      })
+      expect(read()).toBe(original)
+    })
+
+    it('refuses a frame another session holds as frame-claimed', async () => {
+      const original = read()
+      await claim(
+        board.root,
+        {
+          frame: HERO,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await move(headlineToEnd())
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed' },
+      })
+      expect(read()).toBe(original)
+    })
   })
 
   describe('POST /api/frames/remove', () => {

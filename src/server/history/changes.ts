@@ -34,6 +34,8 @@ import {
 import {
   holdsInserted,
   type InsertedSpan,
+  type MovedSpan,
+  relocateMoved,
   removeInserted,
   restoreInserted,
 } from '@/server/edit/insert'
@@ -90,6 +92,12 @@ export type Change =
       span: InsertedSpan
       present: Side
     }
+  /**
+   * The one element a hand move took from one gap of a frame file to
+   * another. Each side holds it in its own gap, so an undo takes it out of
+   * the new one by its bytes and puts it back by its old gap's anchors.
+   */
+  | { kind: 'relocated'; path: string; ref: string; span: MovedSpan }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -157,6 +165,16 @@ async function reads(change: Change, side: Side): Promise<boolean> {
           change.span,
           side === change.present ? 'after' : 'before',
         )
+      )
+    case 'relocated':
+      // The frame stands at this side while the move to the other still finds both gaps.
+      return (
+        (await exists(change.path)) &&
+        relocateMoved(
+          await readFile(change.path, 'utf8'),
+          change.span,
+          OTHER[side],
+        ) !== undefined
       )
   }
 }
@@ -243,6 +261,18 @@ export async function restore(
           }
         )
       })
+    case 'relocated':
+      return rewriteFrame(change, (source) => {
+        const written = relocateMoved(source, change.span, side)
+        return (
+          written && {
+            html: written.html,
+            keep: () => {
+              change.span = written.span
+            },
+          }
+        )
+      })
   }
 }
 
@@ -256,7 +286,7 @@ export async function restore(
  * the element was found, through `keep`, so the next side lands on it.
  */
 async function rewriteFrame(
-  change: Extract<Change, { kind: 'element' | 'inserted' }>,
+  change: Extract<Change, { kind: 'element' | 'inserted' | 'relocated' }>,
   rewrite: (source: string) => { html: string; keep: () => void } | undefined,
 ): Promise<string> {
   // A leading dot keeps the temporary file from reading as a frame.
@@ -337,6 +367,11 @@ export class StepJournal implements Journal {
   /** The element a hand delete took out of a frame file, which this journal does not write. */
   deletedElement(path: string, ref: string, span: InsertedSpan): void {
     this.changes.push({ kind: 'inserted', path, ref, span, present: 'before' })
+  }
+
+  /** The element a hand move took to another gap of a frame file, which this journal does not write. */
+  relocated(path: string, ref: string, span: MovedSpan): void {
+    this.changes.push({ kind: 'relocated', path, ref, span })
   }
 
   async created(path: string): Promise<void> {

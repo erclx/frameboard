@@ -14,6 +14,8 @@ import { type ElementSpan, relocate } from './element-span'
 import {
   type InsertedSpan,
   insertElement,
+  type MovedSpan,
+  moveElement,
   type Placement,
   removeElement,
 } from './insert'
@@ -174,6 +176,41 @@ export function removeFrameFile(
   if (!removed.ok) return removed
   if (!replaceFile(path, hash, removed.html)) return stale(path)
   return { ok: true, hash: contentHash(removed.html), span: removed.span }
+}
+
+export type FrameFileMove =
+  | {
+      readonly ok: true
+      readonly hash: string
+      /** The moved element's index in the file as written. */
+      readonly index: number
+      readonly span: MovedSpan
+    }
+  | EditRefused
+
+/**
+ * Moves one element of a frame file into another gap, written as
+ * `insertFrameFile` writes, and refused as stale on a hash the file no longer
+ * has, since both indices name nothing once the file moved.
+ */
+export function moveFrameFile(
+  path: string,
+  hash: string,
+  index: number,
+  placement: Placement,
+): FrameFileMove {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const moved = moveElement(read.source, index, placement)
+  if (!moved.ok) return moved
+  if (!replaceFile(path, hash, moved.html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(moved.html),
+    index: moved.index,
+    span: moved.span,
+  }
 }
 
 /**

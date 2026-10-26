@@ -30,3 +30,12 @@ export const removeResultSchema = z.object({
 })
 
 export type RemoveResult = z.infer<typeof removeResultSchema>
+
+/** What `POST /api/frames/move` returns: the frame it wrote, the moved element's new index, and the hash the next write is made from. */
+export const moveResultSchema = z.object({
+  ref: z.string(),
+  index: z.int().min(0),
+  hash,
+})
+
+export type MoveResult = z.infer<typeof moveResultSchema>

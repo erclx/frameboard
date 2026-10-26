@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { scanBoard } from '../board/scan'
+import { moveElement } from '../edit/insert'
 import type { Step } from '../history/stack'
 import { createChangeTracker } from './tracker'
 
@@ -167,6 +168,26 @@ describe('createChangeTracker', () => {
             lead: '',
           },
           present: 'after',
+        },
+      ]),
+    )
+
+    expect(tracker.settle(held)).toEqual([])
+  })
+
+  it('withdraws a held change the history then tells it moved an element in', async () => {
+    const moved = moveElement(hero(), 5, { parent: 4, before: null })
+    if (!moved.ok) throw new Error(moved.detail)
+    writeFileSync(at('webapp/home/hero.html'), moved.html)
+    const held = await batch(['webapp/home/hero.html'])
+
+    await tracker.own(
+      stepOn(['webapp/home/hero'], null, [
+        {
+          kind: 'relocated',
+          path: at('webapp/home/hero.html'),
+          ref: 'webapp/home/hero',
+          span: moved.span,
         },
       ]),
     )
