@@ -263,3 +263,31 @@ function frameNameOf(name: string): string | null {
   const temp = name.lastIndexOf(`${FRAME_EXTENSION}.`)
   return temp > 0 ? name.slice(0, temp) : null
 }
+
+/**
+ * The hugging frames `next` holds placed that `previous` held unplaced or
+ * not at all, as one an agent wrote and then placed. Placing writes
+ * `layout.json` alone, which reloads nothing, so these are measured without
+ * a reload. A frame that only moved was placed in both and is left out.
+ */
+export function placedRefs(previous: ListResult, next: ListResult): string[] {
+  const before = new Set(
+    previous.projects.flatMap((project) =>
+      project.pages.flatMap((page) =>
+        page.frames.filter((frame) => frame.placed).map((frame) => frame.ref),
+      ),
+    ),
+  )
+  return next.projects.flatMap((project) =>
+    project.pages.flatMap((page) =>
+      page.frames
+        .filter(
+          (frame) =>
+            frame.placed &&
+            (frame.hugWidth || frame.hugHeight) &&
+            !before.has(frame.ref),
+        )
+        .map((frame) => frame.ref),
+    ),
+  )
+}
