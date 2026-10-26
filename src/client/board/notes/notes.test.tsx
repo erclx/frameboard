@@ -455,6 +455,152 @@ describe('Thread', () => {
   })
 })
 
+describe('images in a note', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+  function image(name = 'shot.png', type = 'image/png'): File {
+    return new File([PNG], name, { type })
+  }
+
+  function clipboardOf(...files: File[]): DataTransfer {
+    const transfer = new DataTransfer()
+    for (const file of files) transfer.items.add(file)
+    return transfer
+  }
+
+  /** The board storing each upload as one image and answering every other write empty. */
+  function boardStoring(): { path: string; body: unknown }[] {
+    const sent: { path: string; body: unknown }[] = []
+    vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+      if (init.body instanceof FormData) {
+        sent.push({
+          path,
+          body: {
+            page: init.body.get('page'),
+            files: init.body.getAll('files').map((file) => (file as File).name),
+          },
+        })
+        return Response.json({
+          ok: true,
+          data: { images: ['.notes/0a1b2c3d4e5f.png'] },
+        })
+      }
+      sent.push({ path, body: JSON.parse(String(init.body)) })
+      return Response.json({ ok: true, data: {} })
+    })
+    return sent
+  }
+
+  it('shows a pasted image as a thumbnail and uploads it with the note on Save', async () => {
+    live({ canWrite: true })
+    const sent = boardStoring()
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Like this')
+    await userEvent.paste(clipboardOf(image()))
+
+    expect(screen.getByRole('img', { name: /shot\.png/ })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(sent).toEqual([
+      {
+        path: '/api/notes/images',
+        body: { page: 'studio/home', files: ['shot.png'] },
+      },
+      {
+        path: '/api/notes',
+        body: {
+          frame: 'studio/home/hero',
+          text: 'Like this',
+          images: ['.notes/0a1b2c3d4e5f.png'],
+        },
+      },
+    ])
+  })
+
+  it('lands a pasted text as text and uploads nothing', async () => {
+    live({ canWrite: true })
+    const sent = boardStoring()
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.click(screen.getByRole('textbox'))
+    await userEvent.paste('Warmer sky')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(screen.queryByRole('list', { name: 'Images' })).toBeNull()
+    expect(sent).toEqual([
+      {
+        path: '/api/notes',
+        body: { frame: 'studio/home/hero', text: 'Warmer sky' },
+      },
+    ])
+  })
+
+  it('refuses an SVG with a sentence and saves the note without it', async () => {
+    live({ canWrite: true })
+    const sent = boardStoring()
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Logo')
+    await userEvent.paste(clipboardOf(image('logo.svg', 'image/svg+xml')))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Only PNG, JPEG, GIF, and WebP images go in a note.',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(sent.map((each) => each.path)).toEqual(['/api/notes'])
+  })
+
+  it('takes an image back out on its remove control', async () => {
+    live({ canWrite: true })
+    render(<Composer pick={PICK} onClose={() => {}} />)
+    await userEvent.click(screen.getByRole('textbox'))
+    await userEvent.paste(clipboardOf(image()))
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Remove image 1' }),
+    )
+
+    expect(screen.queryByRole('img', { name: /shot\.png/ })).toBeNull()
+  })
+
+  it('sends a reply carrying a pasted image', async () => {
+    live({ canWrite: true })
+    const sent = boardStoring()
+    render(
+      <Thread
+        notes={[note({ id: 'n_1' })]}
+        page="studio/home"
+        onClose={() => {}}
+      />,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'And this')
+    await userEvent.paste(clipboardOf(image()))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(sent.at(-1)).toEqual({
+      path: '/api/notes/n_1/replies',
+      body: { text: 'And this', images: ['.notes/0a1b2c3d4e5f.png'] },
+    })
+  })
+
+  it("links each message image to its full size under the page's .notes", () => {
+    render(
+      <Thread
+        notes={[note({ id: 'n_1', images: ['.notes/0a1b2c3d4e5f.png'] })]}
+        page="studio/home"
+        onClose={() => {}}
+      />,
+    )
+
+    expect(
+      screen.getByRole('link', { name: 'Open image 1 full size' }),
+    ).toHaveAttribute('href', '/api/note-images/studio/home/0a1b2c3d4e5f.png')
+  })
+})
+
 describe('NotesLayer', () => {
   function renderLayer() {
     return render(
