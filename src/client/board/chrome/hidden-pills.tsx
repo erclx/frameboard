@@ -30,7 +30,7 @@ export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
   const name = useAuthor() ?? null
   return (
     <>
-      <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-10rem)] items-center gap-1.5 rounded-lg border border-border bg-card py-1 pr-1.5 pl-2.5 shadow-[0_2px_8px_rgba(0,0,0,.12)]">
+      <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-10rem)] items-center gap-2 rounded-[10px] border border-border bg-card py-1.5 pr-2 pl-1.5 shadow-[0_2px_8px_rgba(0,0,0,.12)]">
         <ActionTooltip label="Home" side="bottom">
           <Link href="/" aria-label="Home" className={ICON_BUTTON}>
             <House aria-hidden className="size-[15px]" />
@@ -58,4 +58,4 @@ export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
 }
 
 const ICON_BUTTON =
-  'grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'
+  'grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'
