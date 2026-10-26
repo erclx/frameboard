@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.68.0",
-      "syncedAt": "2026-10-26T14:25:23.598Z",
+      "version": "5.69.0",
+      "syncedAt": "2026-10-26T22:06:07.600Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -12,6 +12,7 @@
         ".claude/rules/canon/canon/scratch.md": "sha256:940835df2698ade3927435fde3b4fe7d4cc2df9465e58f778ba5113a054cc8fd",
         ".claude/rules/canon/canon/tasks.md": "sha256:8d9d98149b24e84fd8ee0be45cd8beafb223396a2de9eb1a82aca5ce382846f4",
         ".claude/rules/canon/canon/worktrees.md": "sha256:05b1de4dd0ac1adeef083f37bd6b798ff436990889abc036a6e5bb614dea6e68",
+        ".claude/rules/canon/claude/background.md": "sha256:4cd427cca2bc7ac0726d8822b0b28e7abd107603905e52c679d88cb68bc5dfa9",
         ".claude/rules/canon/claude/output.md": "sha256:9fe3963c8af61f896fc4c6b8a34a490d2e5977941e7e6c0fc5cb29e944ab74ca",
         ".claude/rules/canon/code/routing.md": "sha256:dc34ede1f1b839199fb933c5f8f88b3639f76468c2565dc6223ecea24658379e",
         ".claude/rules/canon/code/testing.md": "sha256:76e9ff5e862a1ef36db10f0cbc549b246fbe1bb403bf869aefefa74bbb7c7d65",
