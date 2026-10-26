@@ -25,7 +25,9 @@ interface DropLineProps {
  * The 2px line at the gap a placement tool's click would land in, in the
  * selection blue at a constant screen size, drawn while the Text or Shape
  * tool is on and the pointer is over a live frame. It draws nothing over
- * bare canvas or a frame still loading, where a click places nothing.
+ * bare canvas or a frame still loading, where a click places nothing. While
+ * the press is held it stays at the gap the press began in, where a drag
+ * sized shape lands.
  *
  * While a Move drag carries the selected element, it draws the gap the
  * element would drop into instead, and nothing where a drop would leave it
@@ -49,6 +51,9 @@ export function DropLine({
     const target = viewport.current
     if (!placing || !target || !container) return
     const move = (event: PointerEvent) => {
+      // A placement tool lands at the gap its press began in, so a drag
+      // sizing a shape holds the line there rather than following it.
+      if (!carried && event.buttons & 1) return
       const at = toBoard(event)
       const under = carried
         ? moveGapUnder(container, frames(), at, carried)

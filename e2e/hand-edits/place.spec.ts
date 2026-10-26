@@ -172,10 +172,15 @@ test.describe('placing text and shapes into a frame', () => {
 
     await tools(page).getByRole('button', { name: 'Rectangle' }).click()
     await page.mouse.move(start.x, start.y)
+    const line = page.locator('[data-drop-line]')
+    await expect(line).toBeVisible()
+    const pressed = await line.boundingBox()
     await page.mouse.down()
     await page.mouse.move(start.x + 60, start.y + 30, { steps: 4 })
     await expect(page.locator('[data-shape-draft]')).toBeVisible()
     await page.mouse.move(start.x + 120, start.y + 60, { steps: 4 })
+    // The line stays at the gap the shape lands in, not under the pointer.
+    expect(await line.boundingBox()).toEqual(pressed)
     await page.mouse.up()
 
     await expect.poll(read).toMatch(/data-name="Rectangle" style="width: \d+px/)
