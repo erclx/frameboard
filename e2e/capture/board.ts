@@ -636,6 +636,29 @@ function onHomeCard(act: 'menu' | 'rename'): (page: Page) => Promise<void> {
 }
 
 /**
+ * Tells the board `serve` holds a dispatch command, so a note can start a
+ * session. Faked on the access message, since the capture server runs with
+ * no `FRAMEBOARD_DISPATCH`.
+ */
+async function canStartSessions(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        write?: boolean
+      }
+      socket.send(
+        parsed.type === 'access'
+          ? JSON.stringify({ ...parsed, dispatch: parsed.write })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
  * Shows the server holding one step to undo, answers the undo with the
  * refusal an agent's later write causes, and presses Undo once it lights.
  * The step is faked, since a real one would rewrite the committed fixture.
@@ -1510,6 +1533,15 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, listening, noteOnHero)),
+      },
+      {
+        section: 'note-composer-new-session',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, canStartSessions, noteOnHero)),
       },
       {
         section: 'claimed-frame',
