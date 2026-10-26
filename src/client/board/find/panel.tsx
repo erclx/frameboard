@@ -1,16 +1,14 @@
 import { cn } from 'cn'
-import {
-  type LucideIcon,
-  RectangleHorizontal,
-  Search,
-  Square,
-  Type,
-  X,
-} from 'lucide-react'
+import { Frame, type LucideIcon, Search, Type, X } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { useStore } from 'zustand'
 
+import { useLive } from '@/client/live/store'
+import type { TreeElement } from '@/shared/records/elements'
 import type { FindHit } from '@/shared/records/find'
 
+import { type Trees, trees as boardTrees } from '../element/tree'
+import { BlockGlyph, elementGlyph } from '../left-panel/layer-glyphs'
 import { closeFind, useFind } from './actions'
 import { pickHit } from './pick'
 import { type LoadFind, useFindAnswer } from './query'
@@ -24,9 +22,10 @@ const FILTERS: readonly { value: Filter; label: string }[] = [
   { value: 'text', label: 'Text' },
 ]
 
-const ICONS: Record<FindHit['kind'], LucideIcon> = {
-  frame: Square,
-  element: RectangleHorizontal,
+/** What a hit draws with no tree row: the Frame `#` for a frame, else until its frame's tree at its hash arrives. */
+const FALLBACK: Record<FindHit['kind'], LucideIcon> = {
+  frame: Frame,
+  element: BlockGlyph,
   text: Type,
 }
 
@@ -44,6 +43,8 @@ interface FindPanelProps {
   load?: LoadFind
   /** What a picked hit runs, the board's jump when absent. */
   pick?: (project: string, hit: FindHit) => void
+  /** Where each hit's frame tree is read for its glyph, the board's cache when absent. */
+  trees?: Trees
 }
 
 /**
@@ -57,6 +58,7 @@ export function FindPanel({
   page,
   load,
   pick = pickHit,
+  trees = boardTrees,
 }: FindPanelProps) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -205,6 +207,7 @@ export function FindPanel({
                 query={query}
                 active={hit === active}
                 onPick={() => run(hit)}
+                trees={trees}
               />
             ))}
           </div>
@@ -230,10 +233,11 @@ interface HitRowProps {
   query: string
   active: boolean
   onPick: () => void
+  trees: Trees
 }
 
-function HitRow({ id, hit, query, active, onPick }: HitRowProps) {
-  const Icon = ICONS[hit.kind]
+function HitRow({ id, hit, query, active, onPick, trees }: HitRowProps) {
+  const row = useHitRow(hit, trees)
   const title =
     hit.kind === 'text' ? (
       `Text in ${hit.frame}`
@@ -263,10 +267,7 @@ function HitRow({ id, hit, query, active, onPick }: HitRowProps) {
         active && 'bg-accent',
       )}
     >
-      <Icon
-        aria-hidden
-        className="mt-px size-[13px] shrink-0 text-muted-foreground"
-      />
+      <HitGlyph icon={row ? elementGlyph(row) : FALLBACK[hit.kind]} />
       <div className="min-w-0 flex-1">
         <div className="truncate">{title}</div>
         <div className="truncate text-[11px] text-muted-foreground">
@@ -275,6 +276,33 @@ function HitRow({ id, hit, query, active, onPick }: HitRowProps) {
       </div>
     </div>
   )
+}
+
+function HitGlyph({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <Icon
+      aria-hidden
+      className="mt-px size-[13px] shrink-0 text-muted-foreground"
+    />
+  )
+}
+
+/**
+ * The Layers row of an element hit, from its frame's tree read at the hash
+ * the hit was found at, since another hash's index may name another element.
+ * Null for a frame hit, and until a tree at that hash arrives.
+ */
+function useHitRow(hit: FindHit, trees: Trees): TreeElement | null {
+  const ref = hit.kind === 'frame' ? null : hit.ref
+  const version = useLive((state) => (ref ? (state.reloads[ref] ?? 0) : 0))
+  useEffect(() => {
+    if (ref) trees.request(ref, version)
+  }, [ref, version, trees])
+  const entry = useStore(trees.store, (state) =>
+    ref ? state.byRef[ref] : undefined,
+  )
+  if (entry?.status !== 'ready' || entry.tree.hash !== hit.hash) return null
+  return entry.tree.elements.find(({ index }) => index === hit.index) ?? null
 }
 
 interface StatusProps {
