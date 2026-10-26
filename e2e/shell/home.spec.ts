@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { openSheetAtDesktop } from '../support/shortcuts-sheet'
 
 const UNDO = 'ControlOrMeta+KeyZ'
 
@@ -27,6 +28,22 @@ test('reduced motion reaches the page', async ({ page }) => {
   )
   expect(isReduced).toBe(true)
 })
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test.describe(`the home shortcuts sheet in ${colorScheme}`, () => {
+    test.use({ colorScheme })
+
+    test('keeps every label and chip on one line in a wider first column', async ({
+      page,
+    }) => {
+      await page.goto('/')
+
+      const { first, second } = await openSheetAtDesktop(page)
+
+      expect(first / second).toBeCloseTo(1.3, 1)
+    })
+  })
+}
 
 test.describe('projects by hand from the home view', () => {
   let board: FixtureBoard

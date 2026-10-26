@@ -258,6 +258,14 @@
         background: var(--primary);
         color: var(--primary-foreground);
       }
+      .caret {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 30px;
+        margin-left: -2px;
+        color: var(--muted-foreground);
+      }
       .sep {
         width: 1px;
         height: 18px;
@@ -463,7 +471,7 @@
         padding: 2px 8px 2px 3px;
         border-radius: 999px;
         background: color-mix(in srgb, var(--claim) 18%, transparent);
-        color: color-mix(in srgb, var(--claim) 70%, var(--text));
+        color: color-mix(in srgb, var(--claim) 70%, var(--foreground));
         font-weight: 500;
       }
       .ain {
@@ -471,14 +479,14 @@
         height: 16px;
         border-radius: 8px;
         background: var(--claim);
-        color: var(--panel);
+        color: var(--background);
         display: grid;
         place-items: center;
         font-size: 9px;
         font-weight: 700;
       }
       .ast {
-        color: color-mix(in srgb, var(--muted) 60%, var(--text));
+        color: color-mix(in srgb, var(--muted) 60%, var(--foreground));
         font-weight: 400;
       }
     </style>
@@ -561,6 +569,45 @@
               stroke-linejoin="round"
             >
               <path d="M7 3v18M17 3v18M3 7h18M3 17h18" /></svg></span
+          ><span class="tb"
+            ><svg
+              class="ic"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg></span
+          ><span class="tb"
+            ><svg
+              class="ic"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="4" y="5" width="16" height="14" rx="1.5" /></svg></span
+          ><span class="caret"
+            ><svg
+              class="ic"
+              width="9"
+              height="9"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" /></svg></span
           ><span class="tb"
             ><svg
               class="ic"
