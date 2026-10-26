@@ -355,6 +355,18 @@ describe('GuideCard', () => {
     )
   })
 
+  it('names the sheet Finish writes on the agent step after the look step', async () => {
+    const user = userEvent.setup()
+    renderCard()
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await screen.findByRole('heading', { name: 'Who draws the first frame?' })
+
+    expect(screen.getByText('untitled/tokens.css')).toBeInTheDocument()
+  })
+
   it('offers the agent a prompt naming the size and the project', async () => {
     const user = userEvent.setup()
     renderCard({ loadTokens: BOARD_SHEET })

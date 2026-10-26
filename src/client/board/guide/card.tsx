@@ -244,6 +244,7 @@ export function GuideCard({
             <AgentStep
               drawer={state.drawer}
               folder={agentFolder(root)}
+              sheet={withLook ? `${project}/tokens.css` : null}
               prompt={agentPrompt(state.size, project)}
               size={state.size}
               page={page.name}
@@ -563,6 +564,7 @@ function LookStep({
 function AgentStep({
   drawer,
   folder,
+  sheet,
   prompt,
   size,
   page,
@@ -571,6 +573,8 @@ function AgentStep({
   drawer: Drawer
   /** Where Claude Code opens to find this board. */
   folder: string
+  /** The token sheet Finish writes first, null where the look step dropped out. */
+  sheet: string | null
   prompt: string
   size: FrameSizePreset
   page: string
@@ -644,9 +648,22 @@ function AgentStep({
         </Choice>
       </div>
       <Writes>
-        {drawer === 'agent'
-          ? 'Writes nothing until your agent draws'
-          : 'Writes one frame file'}
+        {sheet === null ? (
+          drawer === 'agent' ? (
+            'Writes nothing until your agent draws'
+          ) : (
+            'Writes one frame file'
+          )
+        ) : drawer === 'agent' ? (
+          <>
+            Finish writes <Path>{sheet}</Path>, then nothing until your agent
+            draws
+          </>
+        ) : (
+          <>
+            Finish writes <Path>{sheet}</Path> and one frame file
+          </>
+        )}
       </Writes>
     </>
   )
