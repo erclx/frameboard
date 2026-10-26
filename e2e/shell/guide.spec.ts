@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { expect, type Locator, test } from '@playwright/test'
 
+import { cli } from '../../test/support/cli'
 import { type BoardServer, serveBoard } from '../support/board-server'
 
 const UNDO = 'ControlOrMeta+KeyZ'
@@ -67,5 +68,44 @@ test.describe('a new board guided to its first frame', () => {
       .toBe(false)
     await page.keyboard.press(UNDO)
     await expect.poll(() => existsSync(at('untitled/page-1'))).toBe(true)
+  })
+
+  test("fits the agent's first frame wholly inside the canvas", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/untitled/page-1`)
+    const guide = page.getByRole('region', { name: 'Set up your board' })
+
+    await guide.getByRole('textbox').fill('Acme web')
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await choose(guide.getByRole('radio', { name: /Desktop/ }))
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await guide.getByRole('button', { name: 'Next' }).click()
+    await choose(guide.getByRole('radio', { name: /My agent/ }))
+    await guide.getByRole('button', { name: 'Finish' }).click()
+    await expect(guide).toBeHidden()
+
+    await cli(['frame', 'add', 'acme-web/page-1/home', '--size', 'desktop'], {
+      cwd: root,
+    })
+
+    const canvas = await page.locator('[data-canvas]').boundingBox()
+    const frame = page.locator('[data-frame="acme-web/page-1/home"]')
+    await expect(frame).toBeVisible()
+    await expect
+      .poll(async () => {
+        const box = await frame.boundingBox()
+        return (
+          canvas !== null &&
+          box !== null &&
+          box.x >= canvas.x &&
+          box.y >= canvas.y &&
+          box.x + box.width <= canvas.x + canvas.width &&
+          box.y + box.height <= canvas.y + canvas.height
+        )
+      })
+      .toBe(true)
   })
 })
