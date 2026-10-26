@@ -52,6 +52,15 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBeGreaterThan(90)
   })
 
+  it('reads a tight line height block at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1">Heading</h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBe(48)
+  })
+
   it('reads nothing for a page sized off the viewport', async () => {
     const iframe = await iframeOf('<div style="height:100vh"></div>', {
       width: 390,

@@ -210,19 +210,24 @@ function readLayout(): LayoutRead {
   // running out of a phone frame, so each element reaches as far as the text
   // it holds directly. An element that crops itself hides that text. A Range
   // reaches text nodes alone, so `::before` and `::after` content stays
-  // unmeasured. A copy of `textBottom` in `readContentSize`, so a change to
-  // one is a change to both.
+  // unmeasured. A text rect is the font's content area, which a line height
+  // below it leaves hanging out of the line box on both sides, so the bottom
+  // reads to the line box. A copy of `textBottom` in `readContentSize`, so a
+  // change to one is a change to both.
   const textReach = (element: Element) => {
     let bottom = -Infinity
     let right = -Infinity
     if (crops(element)) return { bottom, right }
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
     for (const child of element.childNodes) {
       if (child.nodeType !== Node.TEXT_NODE) continue
       const range = document.createRange()
       range.selectNodeContents(child)
       for (const rect of range.getClientRects()) {
         if (rect.width === 0 && rect.height === 0) continue
-        bottom = Math.max(bottom, rect.bottom)
+        const hang =
+          lineHeight < rect.height ? (rect.height - lineHeight) / 2 : 0
+        bottom = Math.max(bottom, rect.bottom - hang)
         right = Math.max(right, rect.right)
       }
     }

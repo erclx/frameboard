@@ -156,6 +156,15 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    it('reads a tight line height flush with the bottom edge as no finding', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        '<div></div><h1>Heading</h1>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
     it('reads unwrapped text cropped by its own block as no finding', async () => {
       const findings = await checkHero(
         'p { width: 100px; overflow: hidden; white-space: nowrap }',

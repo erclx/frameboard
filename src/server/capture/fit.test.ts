@@ -51,6 +51,10 @@ describe.skipIf(shell === null)(
           '<main style="min-height: 100vh">Hi</main>',
         ),
         'studio/home/skeleton.html': page(''),
+        'studio/home/tight.html': page(
+          '<h1>Heading</h1>',
+          'h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        ),
         'studio/home/spill.html': page(
           '<p>one two three four</p>',
           'p { width: 1px; height: 20px; margin: 0; line-height: 30px }',
@@ -107,6 +111,12 @@ describe.skipIf(shell === null)(
       const size = await measure('spill', false)
 
       expect(size.height).toBeGreaterThan(90)
+    })
+
+    it('reads a tight line height block at its own height', async () => {
+      const size = await measure('tight', false)
+
+      expect(size.height).toBe(48)
     })
 
     it('reads an empty body as empty and keeps its box width', async () => {

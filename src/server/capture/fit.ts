@@ -152,7 +152,9 @@ function readFitWidth(): number {
 // leaves out absolutely positioned content. A box an ancestor inside the body
 // crops is left out, since the frame never shows it. Text spilling below its
 // own block reaches past that block's box, so it counts unless the block
-// crops it. The cropping test and `textBottom` are copies of `isCropped` and
+// crops it, to its line box, since a line height below the font's content area
+// leaves the text rect hanging out of the block on both sides. The cropping
+// test and `textBottom` are copies of `isCropped` and
 // `textReach` in the layout check's `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
@@ -173,13 +175,16 @@ export function readContentSize(): Reading {
   const textBottom = (element: Element) => {
     let bottom = -Infinity
     if (crops(element)) return bottom
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
     for (const child of element.childNodes) {
       if (child.nodeType !== Node.TEXT_NODE) continue
       const range = document.createRange()
       range.selectNodeContents(child)
       for (const rect of range.getClientRects()) {
         if (rect.width === 0 && rect.height === 0) continue
-        bottom = Math.max(bottom, rect.bottom)
+        const hang =
+          lineHeight < rect.height ? (rect.height - lineHeight) / 2 : 0
+        bottom = Math.max(bottom, rect.bottom - hang)
       }
     }
     return bottom
