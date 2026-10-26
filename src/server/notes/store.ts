@@ -276,28 +276,54 @@ export async function queuedFor(
     for (const note of notes) {
       if (note.thread !== null || note.state !== 'queued') continue
       if (note.to !== session) continue
-      const ref = `${place.project}/${place.page}/${note.frame}`
-      const newest = notes
-        .filter(
-          (each) =>
-            (each.id === note.id || each.thread === note.id) &&
-            each.from === 'developer',
-        )
-        .at(-1)
-      const { element, ...stored } = note
-      deliveries.push({
-        note: stored,
-        ref,
-        line: noteLine({
-          id: note.id,
-          ref,
-          element,
-          text: (newest ?? note).text,
-        }),
-      })
+      deliveries.push(toDelivery(place, notes, note))
     }
   }
   return deliveries
+}
+
+/** A root note as a follower would receive it, read from its page whatever its state. */
+export async function deliveryOf(
+  root: string,
+  place: PageNotes,
+  rootId: string,
+): Promise<NoteDelivery> {
+  const notes = await pageView(root, place)
+  const note = notes.find((each) => each.id === rootId && each.thread === null)
+  if (!note) {
+    throw new FrameboardError(
+      'note-not-found',
+      `No note ${rootId} in this page.`,
+      { id: rootId },
+    )
+  }
+  return toDelivery(place, notes, note)
+}
+
+function toDelivery(
+  place: PageNotes,
+  notes: BoardNote[],
+  note: BoardNote,
+): NoteDelivery {
+  const ref = `${place.project}/${place.page}/${note.frame}`
+  const newest = notes
+    .filter(
+      (each) =>
+        (each.id === note.id || each.thread === note.id) &&
+        each.from === 'developer',
+    )
+    .at(-1)
+  const { element, ...stored } = note
+  return {
+    note: stored,
+    ref,
+    line: noteLine({
+      id: note.id,
+      ref,
+      element,
+      text: (newest ?? note).text,
+    }),
+  }
 }
 
 /** Marks a root note delivered, while it is still queued to that session. */
