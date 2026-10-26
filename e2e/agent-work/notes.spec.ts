@@ -2,7 +2,7 @@ import { type ChildProcess, execFile, spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -144,9 +144,8 @@ test.describe('a note thread longer than the canvas', () => {
     }
   }
 
-  test('holds its card inside the canvas with the header, the newest reply, and the reply box in view', async ({
-    page,
-  }) => {
+  /** Saves a note on the hero frame at 1280x720 and answers it 8 times at length, leaving its marker closed. */
+  async function longThreadOnHero(page: Page): Promise<void> {
     await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/studio/home`)
@@ -161,22 +160,41 @@ test.describe('a note thread longer than the canvas', () => {
     await composer.getByRole('button', { name: 'Save' }).click()
     await expect(composer).toHaveCount(0)
     await replyAtLength(await onlyNote(), 8)
+  }
 
-    await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
-
-    const thread = page.getByRole('region', { name: /^Note \d+$/ })
-    const messages = thread.getByRole('list', { name: 'Messages' })
-    await expect(messages.getByRole('listitem')).toHaveCount(9)
+  /** How far the card's top sits below the canvas top and its foot above the toolbar, both 0 or more while it fits. */
+  async function clearance(
+    page: Page,
+  ): Promise<{ top: number; bottom: number }> {
     const canvas = await page.locator('[data-canvas]').boundingBox()
-    const card = await thread.boundingBox()
+    const card = await page
+      .getByRole('region', { name: /^Note \d+$/ })
+      .boundingBox()
     const toolbar = await page
       .getByRole('toolbar', { name: 'Tools' })
       .boundingBox()
     if (!canvas || !card || !toolbar) {
       throw new Error('the canvas, card, or toolbar has no box')
     }
-    expect(card.y).toBeGreaterThanOrEqual(canvas.y)
-    expect(card.y + card.height).toBeLessThanOrEqual(toolbar.y)
+    return {
+      top: card.y - canvas.y,
+      bottom: toolbar.y - (card.y + card.height),
+    }
+  }
+
+  test('holds its card inside the canvas with the header, the newest reply, and the reply box in view', async ({
+    page,
+  }) => {
+    await longThreadOnHero(page)
+
+    await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
+
+    const thread = page.getByRole('region', { name: /^Note \d+$/ })
+    const messages = thread.getByRole('list', { name: 'Messages' })
+    await expect(messages.getByRole('listitem')).toHaveCount(9)
+    const { top, bottom } = await clearance(page)
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(bottom).toBeGreaterThanOrEqual(0)
     await expect(thread.getByRole('heading')).toBeInViewport()
     await expect(
       thread.getByRole('textbox', { name: 'Reply' }),
@@ -191,5 +209,28 @@ test.describe('a note thread longer than the canvas', () => {
     expect(
       await messages.evaluate((list) => list.scrollHeight > list.clientHeight),
     ).toBe(true)
+  })
+
+  test('keeps its card inside the canvas as the board zooms out', async ({
+    page,
+  }) => {
+    await longThreadOnHero(page)
+    await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
+    const thread = page.getByRole('region', { name: /^Note \d+$/ })
+    await expect(thread).toBeVisible()
+    const zoom = page.getByRole('button', { name: 'Zoom', exact: true })
+    const before = await zoom.textContent()
+
+    await page.keyboard.press('ControlOrMeta+Minus')
+    await page.keyboard.press('ControlOrMeta+Minus')
+    await page.keyboard.press('ControlOrMeta+Minus')
+
+    await expect(zoom).not.toHaveText(before ?? '')
+    await expect
+      .poll(async () => {
+        const { top, bottom } = await clearance(page)
+        return Math.min(top, bottom)
+      })
+      .toBeGreaterThanOrEqual(0)
   })
 })

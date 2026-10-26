@@ -8,6 +8,7 @@ import type { BoardNote } from '@/shared/records/notes'
 import { elementAt } from '../frame-dom'
 import { useMode } from '../mode'
 import { usePreviewedFrames } from '../preview/store'
+import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
 import { Thread } from './thread'
@@ -178,6 +179,18 @@ function Popover({
     document.addEventListener('pointerdown', press, true)
     return () => document.removeEventListener('pointerdown', press, true)
   }, [onDismiss])
+  // A zoom or a pan moves the marker on screen without moving `at`, so the
+  // card measures again on each.
+  const [moves, setMoves] = useState(0)
+  useEffect(() => {
+    const bump = () => setMoves((count) => count + 1)
+    const offZoom = canvasView.onZoom(bump)
+    const offHand = canvasView.onHandMove(bump)
+    return () => {
+      offZoom()
+      offHand()
+    }
+  }, [])
   useLayoutEffect(() => {
     const element = card.current
     const canvas = element?.closest('[data-canvas]')
@@ -215,7 +228,7 @@ function Popover({
     ) {
       setShift(next)
     }
-  }, [at.x, at.y, shift])
+  }, [at.x, at.y, shift, moves])
   return (
     <div
       className="absolute origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
