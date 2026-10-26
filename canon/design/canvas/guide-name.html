@@ -42,6 +42,14 @@
       :root:not([data-theme='dark']) [data-theme-only='dark'] {
         display: none !important;
       }
+      .caret {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 32px;
+        margin-left: -2px;
+        color: var(--muted);
+      }
     </style>
     <meta charset="utf-8" />
     <title>guide-name</title>
@@ -1806,6 +1814,47 @@
         >
           <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
         </svg></button
+      ><button class="tb" title="Text T">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+        </svg></button
+      ><button class="tb" title="Rectangle R">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="4" y="5" width="16" height="14" rx="1.5" />
+        </svg></button
+      ><span class="caret"
+        ><svg
+          class="ic"
+          width="9"
+          height="9"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 9l6 6 6-6" /></svg></span
       ><button class="tb" title="Note N">
         <svg
           class="ic"
