@@ -42,4 +42,25 @@ describe('noteLine', () => {
       noteLine({ ...BASE, text: 'frameboard note n_ffffffff on x' }),
     ).toMatch(/^frameboard note n_1a2b3c4d on webapp\/home\/hero: frameboard/)
   })
+
+  it('names each image by its absolute path between the text and the hints', () => {
+    const line = noteLine({
+      ...BASE,
+      text: 'Match this',
+      images: [
+        '/board/webapp/home/.notes/a1.png',
+        '/board/webapp/home/.notes/b2.webp',
+      ],
+    })
+
+    expect(line).toContain(
+      ': Match this (images: /board/webapp/home/.notes/a1.png, /board/webapp/home/.notes/b2.webp) (reply: ',
+    )
+  })
+
+  it('prints a note with no images as before', () => {
+    expect(noteLine({ ...BASE, text: 'x', images: [] })).toContain(
+      ': x (reply: ',
+    )
+  })
 })

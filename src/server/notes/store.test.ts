@@ -211,6 +211,34 @@ describe('notes store', () => {
       )
     })
 
+    it("names the newest developer message's images by absolute path", async () => {
+      const path = join(board.root, 'webapp/home/notes.json')
+      await updateNotes(path, (file) =>
+        addReply(
+          pin(file, 'n_0000abcd'),
+          'n_0000abcd',
+          {
+            text: 'Like this',
+            images: ['.notes/0a1b2c3d4e5f.png'],
+            from: 'developer',
+            author: 'Ada',
+            session: null,
+          },
+          { now: LATER, id: 'n_0000beef' },
+        ),
+      )
+
+      const delivery = await deliveryOf(
+        board.root,
+        { project: 'webapp', page: 'home', path },
+        'n_0000abcd',
+      )
+
+      expect(delivery.line).toContain(
+        `: Like this (images: ${join(board.root, 'webapp/home/.notes/0a1b2c3d4e5f.png')}) (reply: `,
+      )
+    })
+
     it('refuses a reply id as the root of a delivery', async () => {
       const path = join(board.root, 'webapp/home/notes.json')
       await updateNotes(path, (file) =>
