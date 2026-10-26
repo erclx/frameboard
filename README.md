@@ -25,8 +25,8 @@ To keep it around, install it with `npm install -g frameboard` or `bun add -g fr
 
 ## How it works
 
-| 1. Your agent writes | 2. The board shows it | 3. You steer |
-| --- | --- | --- |
+| 1. Your agent writes                                                                             | 2. The board shows it                                                                                      | 3. You steer                                                                       |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Each frame is one HTML file in a page folder, so your agent draws with the tools it already has. | A frame reloads the moment its file changes, in light and dark, and a broken rule is flagged on the frame. | Move, restyle, and retype by hand, or pin a note your agent answers in its thread. |
 
 ## For you
