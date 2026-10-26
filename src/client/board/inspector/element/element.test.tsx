@@ -951,6 +951,43 @@ describe('TextSection', () => {
     expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull()
   })
 
+  it('holds its height as the field takes and loses focus, so the sections below stay still', async () => {
+    render(
+      <TextSection
+        text="Hello"
+        disabled={false}
+        write={recorder().write}
+        element={AT}
+      />,
+    )
+    const section = screen.getByRole('region', { name: 'Text' })
+    const before = section.getBoundingClientRect().height
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Text' }))
+
+    expect(screen.getByText(/to apply/)).toBeVisible()
+    expect(section.getBoundingClientRect().height).toBe(before)
+  })
+
+  it('sets the key hint clear of the focused field’s 3px ring', async () => {
+    render(
+      <TextSection
+        text="Hello"
+        disabled={false}
+        write={recorder().write}
+        element={AT}
+      />,
+    )
+    const area = screen.getByRole('textbox', { name: 'Text' })
+
+    await userEvent.click(area)
+
+    const hint = screen.getByText(/to apply/).getBoundingClientRect()
+    expect(
+      hint.top - area.getBoundingClientRect().bottom,
+    ).toBeGreaterThanOrEqual(8)
+  })
+
   it('keeps the typed text as a draft once the agent changed the element', async () => {
     render(
       <TextSection
@@ -1062,7 +1099,7 @@ describe('TextSection', () => {
       <TextSection text="Hello" disabled={false} write={write} element={AT} />,
     )
 
-    expect(screen.queryByText('to apply', { exact: false })).toBeNull()
+    expect(screen.getByText('to apply', { exact: false })).not.toBeVisible()
     await userEvent.click(screen.getByRole('textbox', { name: 'Text' }))
 
     expect(screen.getByText('to apply', { exact: false })).toBeVisible()
