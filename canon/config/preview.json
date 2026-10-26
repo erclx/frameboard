@@ -1,1 +1,4 @@
-{ "writes": ["test/fixtures/boards/basic"] }
+{
+  "writes": ["test/fixtures/boards/basic"],
+  "keep": ["test/fixtures/boards/basic/.run"]
+}

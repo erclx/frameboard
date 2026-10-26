@@ -124,6 +124,6 @@ These catch the toolchain out.
 
 These catch a running `preview` out.
 
-- `canon pr drive-copy` rebuilds the copy and drops its `.run/`, so a `preview` already serving it loses its address file and board key, and a rebuild belongs at the start of a pass
+- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` lists it under `keep`, so a running `preview` keeps its address file and board key
 - The edit link from `preview` works once and lives two minutes, so a late reader mints another with the `open --no-open` command the script prints beside it
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
