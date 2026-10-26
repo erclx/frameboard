@@ -104,6 +104,15 @@ describe('frameStyles', () => {
     ])
   })
 
+  it('reads a background color stated after a background shorthand', () => {
+    const { element } = stylesOf(
+      '<p id="t" style="background: var(--border); background-color: var(--primary)">x</p>',
+      't',
+    )
+
+    expect(element?.backgroundColor?.token).toBe('--primary')
+  })
+
   it('answers null for a property nothing sets', () => {
     const { element } = stylesOf('<p id="t">x</p>', 't')
 

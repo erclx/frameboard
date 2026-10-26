@@ -389,7 +389,9 @@ function inlineDeclarations(
       important: node.important,
       inline: true,
       specificity: [0, 0, 0],
-      order: Number.MAX_SAFE_INTEGER,
+      // `inline` already beats every rule, so the order ranks the attribute's
+      // own declarations, where a later longhand overrides an earlier shorthand.
+      order: declarations.length,
     })
   })
   return declarations
