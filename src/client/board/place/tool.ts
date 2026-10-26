@@ -7,6 +7,7 @@ import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 
 import { modeStore } from '../mode'
+import type { ElementKey } from '../selection'
 import type { PlacedKind } from './write'
 
 export type ShapeKind = Exclude<PlacedKind, 'text'>
@@ -49,6 +50,11 @@ export const SHAPES = [
 export const shapeStore = createStore<{ shape: ShapeKind }>()(() => ({
   shape: 'rectangle',
 }))
+
+/** The selected element a Move drag carries, which the drop line follows, null while none is dragged. */
+export const carriedStore = createStore<{ carried: ElementKey | null }>()(
+  () => ({ carried: null }),
+)
 
 export function shapeRow(kind: ShapeKind): ShapeRow {
   return SHAPES.find((row) => row.kind === kind) ?? SHAPES[0]

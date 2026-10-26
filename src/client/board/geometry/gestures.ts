@@ -10,9 +10,12 @@ import { splitAt } from '../changes/compare'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
+import { carriedStore } from '../place/tool'
+import { moveElement } from '../place/write'
 import { endPreview } from '../preview/store'
 import {
   clear,
+  type ElementKey,
   select,
   type SelectionStore,
   selectionStore,
@@ -59,6 +62,8 @@ export interface GestureStores {
   openFindings: (ref: string) => void
   /** Moves a compared frame's split divider to a screen x. */
   splitAt: (clientX: number) => void
+  /** Moves the selected element into the gap under a canvas point, a drag of it released there. */
+  moveElement: typeof moveElement
 }
 
 const STORES: GestureStores = {
@@ -69,6 +74,7 @@ const STORES: GestureStores = {
   duplicate: structure.duplicateFrames,
   openFindings,
   splitAt,
+  moveElement,
 }
 
 type Gesture =
@@ -82,6 +88,13 @@ type Gesture =
   | { kind: 'marquee'; shift: boolean; base: readonly string[] }
   | { kind: 'resize'; corner: Corner; boxes: Record<string, Box>; bounds: Box }
   | { kind: 'move'; boxes: Record<string, Box>; bounds: Box }
+  /**
+   * A press on the selected element, which a drag turns into a move of it
+   * and a click leaves as a press on `frame`, or as nothing on its outline.
+   */
+  | { kind: 'element'; key: ElementKey; frame: FrameRecord | null }
+  /** A drag carrying the selected element, dropped into the gap under release. */
+  | { kind: 'carry'; key: ElementKey }
   /** A drag that may not change anything, such as one on a locked frame. */
   | { kind: 'none' }
 
@@ -154,14 +167,19 @@ export function attachGestures(
       gesture = { kind: 'badge', ref: badge }
       return
     }
-    // A press on the selected element's outline or a corner mark does
-    // nothing, since an element's size is never set by hand, and the frame's
-    // handles are hidden while an element is selected, so they take no press.
+    // A press on the selected element, its outline and corner marks
+    // included, carries it on a drag, since an element moves between gaps
+    // but its size is never set by hand. The frame's handles are hidden
+    // while an element is selected, so they take no press.
     const element = selection.getState().element
     const outline = element ? selectedElementBox(target.layer) : null
-    if (outline && onOutline(outline, point, zoom())) {
-      gesture = { kind: 'none' }
-      return
+    if (element && outline) {
+      const edge = onOutline(outline, point, zoom())
+      if (edge || inBox(outline, point)) {
+        const frame = edge ? null : frameAt(drawn, point, zoom())
+        gesture = { kind: 'element', key: element, frame }
+        return
+      }
     }
     const shown = boundsOf(selected(drawn).map((frame) => frame.box))
     const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
@@ -191,6 +209,15 @@ export function attachGestures(
 
   /** Turns a press into the drag it starts once it passes the click distance. */
   const begin = () => {
+    if (gesture.kind === 'element') {
+      gesture = stores.canWrite()
+        ? { kind: 'carry', key: gesture.key }
+        : { kind: 'none' }
+      if (gesture.kind === 'carry') {
+        carriedStore.setState({ carried: gesture.key })
+      }
+      return
+    }
     if (gesture.kind !== 'press' && gesture.kind !== 'resize') return
     if (gesture.kind === 'press') {
       const { frame, shift } = gesture
@@ -351,6 +378,8 @@ export function attachGestures(
       } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
+      } else if (gesture.kind === 'element' && gesture.frame) {
+        select(selection, target.page, [gesture.frame.ref])
       } else if (gesture.kind === 'marquee' && !gesture.shift) {
         clear(selection)
       }
@@ -365,6 +394,15 @@ export function attachGestures(
         rectFrom(from, point),
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
+    } else if (gesture.kind === 'carry') {
+      carriedStore.setState({ carried: null })
+      void stores.moveElement(
+        target.layer,
+        target.page,
+        withDrawn(target.frames()),
+        point,
+        gesture.key,
+      )
     } else if (gesture.kind === 'move' && event.altKey) {
       dropCopies(gesture.boxes)
     } else if (gesture.kind === 'move' || gesture.kind === 'resize') {
@@ -476,6 +514,15 @@ function inspectorField(): HTMLElement | null {
     active.closest('[data-inspector]')
     ? active
     : null
+}
+
+function inBox(box: Box, point: Point): boolean {
+  return (
+    point.x >= box.x &&
+    point.x <= box.x + box.width &&
+    point.y >= box.y &&
+    point.y <= box.y + box.height
+  )
 }
 
 function rectFrom(a: Point, b: Point): Box {

@@ -1,4 +1,5 @@
 import { type RefObject, useEffect, useState } from 'react'
+import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -6,7 +7,8 @@ import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
 import type { BoardPoint } from '../notes/pick'
-import { type GapLine, gapUnder } from './gap'
+import { type GapLine, gapUnder, moveGapUnder } from './gap'
+import { carriedStore } from './tool'
 
 interface DropLineProps {
   /** The canvas viewport, whose pointer moves the line follows. */
@@ -24,6 +26,10 @@ interface DropLineProps {
  * selection blue at a constant screen size, drawn while the Text or Shape
  * tool is on and the pointer is over a live frame. It draws nothing over
  * bare canvas or a frame still loading, where a click places nothing.
+ *
+ * While a Move drag carries the selected element, it draws the gap the
+ * element would drop into instead, and nothing where a drop would leave it
+ * where it is.
  */
 export function DropLine({
   viewport,
@@ -31,17 +37,22 @@ export function DropLine({
   frames,
   toBoard,
 }: DropLineProps) {
-  const placing = useMode(
+  const tool = useMode(
     (state) =>
       state.mode === 'edit' &&
       (state.tool === 'text' || state.tool === 'shape'),
   )
+  const carried = useStore(carriedStore, (state) => state.carried)
+  const placing = tool || carried !== null
   const [line, setLine] = useState<GapLine | null>(null)
   useEffect(() => {
     const target = viewport.current
     if (!placing || !target || !container) return
     const move = (event: PointerEvent) => {
-      const under = gapUnder(container, frames(), toBoard(event))
+      const at = toBoard(event)
+      const under = carried
+        ? moveGapUnder(container, frames(), at, carried)
+        : gapUnder(container, frames(), at)
       const next = under && {
         ...under.gap.line,
         x: under.frame.box.x + under.gap.line.x,
@@ -57,7 +68,7 @@ export function DropLine({
       target.removeEventListener('pointerleave', leave)
       setLine(null)
     }
-  }, [placing, viewport, container, frames, toBoard])
+  }, [placing, carried, viewport, container, frames, toBoard])
   if (!placing || !line) return null
   const across = line.height === 0
   return (
