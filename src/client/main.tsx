@@ -10,6 +10,7 @@ import {
   receiveShow,
   startBusyWatch,
 } from './board/changes/show'
+import { armGuideLanding } from './board/guide/state'
 import { registerHistoryActions } from './history/actions'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
@@ -20,6 +21,7 @@ import { connectTheme, themeStore, windowThemeHost } from './theme/store'
 const root = document.getElementById('root')
 if (!root) throw new Error('Missing #root element')
 
+armGuideLanding(window.location.pathname)
 startBusyWatch()
 connectLive(liveStore, {
   onShow: receiveShow,

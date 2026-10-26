@@ -1437,6 +1437,16 @@
         border-radius: 4px;
         font-size: 10.5px;
       }
+      code.path {
+        font-family: 'DejaVu Sans Mono', monospace;
+        background: var(--raised);
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        display: inline-block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
       .gfoot {
         display: flex;
         align-items: center;
@@ -1732,7 +1742,10 @@
                   <span class="rad"></span>
                   <div>
                     <b>My agent</b
-                    ><span>Paste this into Claude Code in this folder:</span>
+                    ><span
+                      >Paste this into Claude Code opened in
+                      <code class="path">/home/dev/acme-mobile</code></span
+                    >
                     <div class="cmd">
                       <code
                         >Draw a phone screen for acme-mobile on frameboard</code
@@ -1749,7 +1762,7 @@
                 </div>
               </div>
               <div class="writes">
-                Writes nothing until your agent draws, or one frame file
+                Finish writes only <code>acme-mobile/tokens.css</code>
               </div>
             </div>
             <div class="gfoot">

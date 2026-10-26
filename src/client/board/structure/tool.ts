@@ -52,6 +52,8 @@ export interface PlaceContext {
  * point, named for the preset as duplicate and new page name theirs, then
  * selects it, returns to Move, opens its name for editing, and centers the
  * view on it when it is not wholly in view, as one click of the Frame tool.
+ * Resolves to the added frame, or null once a refusal is reported, so a
+ * caller can act on its box before the live store carries it.
  */
 export async function placeFrame(
   point: { x: number; y: number },
@@ -66,7 +68,7 @@ export async function placeFrame(
     view = canvasView,
     rename = (ref) => startFrameRename(ref, 'inspector'),
   }: PlaceContext,
-): Promise<void> {
+): Promise<FrameRecord | null> {
   const size = preset.getState().preset
   const name = nextFreeName(
     size,
@@ -83,8 +85,10 @@ export async function placeFrame(
     mode.setState({ tool: 'move' })
     rename(added.ref)
     if (visible && !within(added.box, visible)) view.centerOn(added.box)
+    return added
   } catch (error) {
     reportRefusal("Couldn't add a frame")(error)
+    return null
   }
 }
 

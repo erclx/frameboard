@@ -59,12 +59,13 @@ An element row renames on a double-click or F2 too, writing `data-name`, which i
 
 ### `src/client/board/guide/`
 
-Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame.
+Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.
 
 - `untouched.ts` holds while the board is the start project alone with its one empty start page and the tab writes, so nothing on disk records the guide
 - `state.ts` keeps the guide's step in the tab, so it outlives the canvas a rename remounts under the new route, and Skip or Finish ends it until reload
+- A tab `main.tsx` booted on `/` lands on the start page while the board is untouched, once per tab, so a later way home shows home. Home renders nothing until access is known.
 - Each answer goes through a write the board already makes, being the project rename, `POST /api/project/tokens`, and the Frame tool's add, so Undo takes each back
-- The look step drops out where the token table names any sheet, and the agent choice writes nothing and hands the developer a prompt
+- Finish writes the sheet and then the frame, and fits the view to it. The look step writes nothing, since the sheet is create-only, and drops out where the token table names any sheet.
 
 ### `src/client/board/find/`
 
