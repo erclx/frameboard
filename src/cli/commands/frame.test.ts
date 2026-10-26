@@ -111,6 +111,25 @@ describe('frame', () => {
     ).toBe(before)
   })
 
+  it.each([
+    ['iphone-16', 393, 852],
+    ['phone', 390, 844],
+    ['tablet', 834, 1194],
+    ['desktop', 1440, 900],
+  ])('add --size %s places %i x %i', async (size, width, height) => {
+    const run = on('basic')
+
+    const result = await run(
+      'frame',
+      'add',
+      'webapp/home/pricing',
+      '--size',
+      size,
+    )
+
+    expect(result.json().data).toMatchObject({ box: { width, height } })
+  })
+
   it('fails usage, exit 2, on an unknown size preset', async () => {
     const run = on('basic')
 

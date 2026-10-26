@@ -6,8 +6,8 @@ import { isDeepStrictEqual } from 'node:util'
 import { FrameboardError } from '@/shared/errors'
 import {
   FRAME_GAP,
-  FRAME_SIZES,
-  type FrameSizePreset,
+  type FrameSizeName,
+  frameSizeOf,
 } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { LayoutFile } from '@/shared/records/board'
@@ -36,7 +36,7 @@ import {
 } from './scan'
 
 export interface SizeOptions {
-  size?: FrameSizePreset
+  size?: FrameSizeName
   width?: number
   height?: number
 }
@@ -510,7 +510,7 @@ export function sizeOf({ size, width, height }: SizeOptions): {
       { size, width, height },
     )
   }
-  if (size !== undefined) return { ...FRAME_SIZES[size] }
+  if (size !== undefined) return frameSizeOf(size)
   return {
     ...(width === undefined ? {} : { width }),
     ...(height === undefined ? {} : { height }),

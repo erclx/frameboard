@@ -15,7 +15,7 @@ import {
 } from '@/server/board/frames'
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
-import { FRAME_SIZES } from '@/shared/frame-sizes'
+import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
 import {
@@ -47,8 +47,8 @@ export function registerFrame(
   const withSize = (command: Command) =>
     command
       .addOption(
-        new Option('--size <preset>', 'a size preset').choices(
-          Object.keys(FRAME_SIZES),
+        new Option('--size <preset>', 'a size preset or device').choices(
+          FRAME_SIZE_NAMES,
         ),
       )
       .option('--width <n>', 'width in px', parseInteger(1))
