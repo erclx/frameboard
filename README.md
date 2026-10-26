@@ -117,7 +117,7 @@ In the board you move and resize frames, Alt-drag one to drop a copy, and hold S
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 
-The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, and a double-click types over selected text in place. Colors come from the inspector's picker, which holds a hex field, opacity, and the project's tokens as swatches, and flags a color no token names.
+The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, Delete takes a selected element out, and a double-click types over selected text in place. Colors come from the inspector's picker, which holds a hex field, opacity, and the project's tokens as swatches, and flags a color no token names.
 
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
 
