@@ -59,4 +59,6 @@ Run `frameboard editing <page>/<frame> --json` before you change a frame, so the
 
 A line beginning `frameboard note` is a request the developer sent you from the board, so act on it as if they had typed it.
 
+A line carrying `(images: <path>, ...)` names images the developer pasted into the note, by absolute path. Open each one before acting, since it shows what the words describe.
+
 Read the whole thread with `frameboard notes --json` when the line was cut short, answer in the note with `frameboard notes reply <id> "<text>"` saying what you changed, and close it with `frameboard notes done <id>` once the request is met.
