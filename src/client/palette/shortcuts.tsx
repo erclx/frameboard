@@ -188,7 +188,12 @@ export function ShortcutsSheet() {
           <CharacterKeysSwitch />
           <span className="text-muted-foreground">Esc</span>
         </div>
-        <div className="grid grid-cols-3 gap-x-7 gap-y-[18px] px-5 pt-4 pb-5">
+        <div
+          className={cn(
+            'grid gap-x-7 gap-y-[18px] px-5 pt-4 pb-5',
+            home ? 'grid-cols-[1.3fr_1fr_1fr]' : 'grid-cols-3',
+          )}
+        >
           {sections.map((section) => (
             <section key={section.title}>
               <h3 className="pb-1.5 text-label text-muted-foreground">
@@ -196,7 +201,12 @@ export function ShortcutsSheet() {
               </h3>
               <ul>
                 {section.rows.map((row) => (
-                  <ShortcutRow key={row.label} row={row} byId={byId} />
+                  <ShortcutRow
+                    key={row.label}
+                    row={row}
+                    byId={byId}
+                    spaced={home}
+                  />
                 ))}
               </ul>
             </section>
@@ -235,12 +245,15 @@ function CharacterKeysSwitch() {
   )
 }
 
+/** `spaced` sets a gap between the label and its chips, which home draws and the board's tighter rows have no room for. */
 function ShortcutRow({
   row,
   byId,
+  spaced,
 }: {
   row: Row
   byId: ReadonlyMap<string, Action | undefined>
+  spaced: boolean
 }) {
   const keysOn = useCharacterKeysOn()
   const chips = [
@@ -259,15 +272,18 @@ function ShortcutRow({
   return (
     <li
       aria-disabled={waiting || undefined}
-      className="flex h-[26px] items-center justify-between aria-disabled:text-faint"
+      className={cn(
+        'flex h-[26px] items-center justify-between aria-disabled:text-faint',
+        spaced && 'gap-3.5',
+      )}
     >
-      <span>{row.label}</span>
+      <span className="whitespace-nowrap">{row.label}</span>
       <KbdGroup>
         {chips.map((chip) => (
           <Kbd
             key={chip.text}
             data-off={chip.off || undefined}
-            className="px-1.5 text-label font-normal data-off:text-faint"
+            className="px-1.5 text-label font-normal whitespace-nowrap data-off:text-faint"
           >
             {chip.text}
           </Kbd>

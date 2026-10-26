@@ -156,15 +156,17 @@ function chooseOnLoad(label: string): (page: Page) => Promise<void> {
  * Opens an overlay, or the left panel's find, with its key once the board has
  * drawn, and types `query` into its search. Like `pressOnLoad`, it waits in an
  * init script, since `setup` runs before the harness navigates, and it reads
- * the platform to send the modifier `$mod` means there.
+ * the platform to send the modifier `$mod` means there. `drawn` names what
+ * the route draws first, which is a board's frame unless the route is home.
  */
 function openOverlayOnLoad(
   overlay: 'commands' | 'shortcuts' | 'find',
   query = '',
+  drawn = '[data-layer] [data-frame]',
 ): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ kind, text, frames }) => {
+      ({ kind, text, frames, target }) => {
         let left = frames
         const key = (init: KeyboardEventInit) =>
           window.dispatchEvent(
@@ -186,9 +188,9 @@ function openOverlayOnLoad(
           field.dispatchEvent(new Event('input', { bubbles: true }))
         }
         const open = () => {
-          if (!document.querySelector('[data-layer] [data-frame]')) {
+          if (!document.querySelector(target)) {
             if (--left > 0) requestAnimationFrame(open)
-            else console.error('No canvas to open the overlay over')
+            else console.error(`${target} never drew to open the overlay over`)
             return
           }
           if (kind === 'shortcuts') {
@@ -204,7 +206,7 @@ function openOverlayOnLoad(
           requestAnimationFrame(open),
         )
       },
-      { kind: overlay, text: query, frames: GESTURE_FRAMES },
+      { kind: overlay, text: query, frames: GESTURE_FRAMES, target: drawn },
     )
   }
 }
@@ -1195,6 +1197,19 @@ export const BOARD_CASES: CaptureCase[] = [
       setup: both(
         chosenTheme(theme),
         readyWhen(CARD_CAPTURED, CARD_UNCAPTURED),
+      ),
+    },
+    {
+      section: 'shortcuts-home',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        readyWhen(CARD_CAPTURED, CARD_UNCAPTURED),
+        openOverlayOnLoad('shortcuts', '', 'main li'),
       ),
     },
     {
