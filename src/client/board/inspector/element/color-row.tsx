@@ -97,9 +97,9 @@ const PERCENT: Intl.NumberFormatOptions = {
 
 /**
  * The token-first color row of `inspector/text`. The swatch opens the
- * picker on Custom and the chip or hex on Tokens, the percent writes fill
- * opacity and steps, and the link detaches a token to its value in the
- * frame's theme. A raw value carries the raw flag in place of the link, and
+ * picker on Custom and the chip or hex on Tokens, the percent writes the
+ * paint's opacity, stepping and scrubbing from a drag on the number with a
+ * preview, and the link detaches a token to its value in the frame's theme. A raw value carries the raw flag in place of the link, and
  * the minus after either removes the paint.
  *
  * The picker previews a custom color while open and writes it once as it
@@ -217,12 +217,16 @@ export function ColorRow({
       <NumberField
         label={`${label} opacity`}
         className="ml-auto w-12 shrink-0"
-        inputClassName="h-6 px-0 text-right text-muted-foreground focus-visible:text-foreground"
+        inputClassName="h-5 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
         value={value.percent}
         min={0}
         max={100}
         format={PERCENT}
         disabled={disabled || !mixable}
+        scrubValue
+        onPreview={(change) =>
+          onPreview?.(change ? colorCss(source, change(value.percent)) : null)
+        }
         onCommit={(change) => onWrite(colorCss(source, change(value.percent)))}
       />
       {value.token ? (

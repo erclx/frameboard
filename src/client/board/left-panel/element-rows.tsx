@@ -33,11 +33,10 @@ interface ElementRowsProps {
 /**
  * One frame's element rows, read from the server's tree so a culled frame
  * lists them too, each indented by depth, with the glyph `elementGlyph`
- * picks by text, media, and layout, a chevron on one with children, and a click selecting
- * the element. The selected row is tinted deeper than the rest of its
+ * picks by text, media, and layout, a chevron on one with children, and a
+ * click selecting the element. The selected row is tinted deeper than the rest of its
  * frame's band, as `layers/edit` and `inspector/text` draw them. A
- * double-click or F2 renames the element in place, writing `data-name` as
- * the inspector's Name does.
+ * double-click or F2 renames the element in place, writing `data-name`.
  */
 export function ElementRows({
   frame,
