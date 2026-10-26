@@ -15,6 +15,12 @@ import { structureRoutes } from './structure'
 
 const TOKEN = 'a'.repeat(64)
 const BEARER = { authorization: `Bearer ${TOKEN}` }
+const ACCESS = {
+  token: () => TOKEN,
+  key: 'b'.repeat(64),
+  cookieName: 'frameboard-key-111111111111',
+  isOwnOrigin: () => false,
+}
 
 describe('structureRoutes', () => {
   let board: FixtureBoard
@@ -24,16 +30,7 @@ describe('structureRoutes', () => {
   beforeEach(() => {
     board = copyFixtureBoard('live')
     history = new History(board.root)
-    app = structureRoutes(
-      board.root,
-      {
-        token: () => TOKEN,
-        key: 'b'.repeat(64),
-        cookieName: 'frameboard-key-111111111111',
-        isOwnOrigin: () => false,
-      },
-      history,
-    )
+    app = structureRoutes(board.root, ACCESS, history)
   })
 
   afterEach(() => {
@@ -122,6 +119,30 @@ describe('structureRoutes', () => {
 
     expect(answer.page).toBe('studio/home')
     expect(pageOrder()).toEqual(['home', 'pricing'])
+  })
+
+  it('records a page rename as a rename, for the board to keep its frames', async () => {
+    const wrote: unknown[] = []
+    history = new History(board.root, undefined, (step) =>
+      wrote.push(step.renamed),
+    )
+    app = structureRoutes(board.root, ACCESS, history)
+
+    await post('/api/page/rename', { ref: 'studio/home', name: 'start' })
+
+    expect(wrote).toEqual([{ before: 'studio/home', after: 'studio/start' }])
+  })
+
+  it('records no rename for a page duplicate', async () => {
+    const wrote: unknown[] = []
+    history = new History(board.root, undefined, (step) =>
+      wrote.push(step.renamed),
+    )
+    app = structureRoutes(board.root, ACCESS, history)
+
+    await post('/api/page/duplicate', { ref: 'studio/home' })
+
+    expect(wrote).toEqual([undefined])
   })
 
   it('moves a page and undoes the order', async () => {
@@ -503,6 +524,18 @@ describe('structureRoutes', () => {
 
       expect(existsSync(join(board.root, 'studio/home/hero.html'))).toBe(true)
       expect(existsSync(join(board.root, 'atelier'))).toBe(false)
+    })
+
+    it('records a project rename as a rename, for the board to follow its route', async () => {
+      const wrote: unknown[] = []
+      history = new History(board.root, undefined, (step) =>
+        wrote.push(step.renamed),
+      )
+      app = structureRoutes(board.root, ACCESS, history)
+
+      await post('/api/project/rename', { ref: 'studio', name: 'atelier' })
+
+      expect(wrote).toEqual([{ before: 'studio', after: 'atelier' }])
     })
 
     it('renames a project to its own name in another case', async () => {

@@ -218,7 +218,17 @@ async function listen({
   const history = new History(
     root,
     (counts) => hub.broadcast({ type: 'history', ...counts }),
-    (step) => void inTurn(() => tracker.own(step)),
+    (step, side) => {
+      if (step.renamed) {
+        const from = side === 'after' ? 'before' : 'after'
+        hub.broadcast({
+          type: 'renamed',
+          before: step.renamed[from],
+          after: step.renamed[side],
+        })
+      }
+      void inTurn(() => tracker.own(step))
+    },
   )
   const selection = createSelectionHolder(() => tabs.writers)
   const hub = createHub({
