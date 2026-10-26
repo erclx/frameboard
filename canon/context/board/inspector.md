@@ -18,8 +18,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Appearance and typography:** captioned opacity and corner radius, then size, weight, line height, letter spacing, and alignment, plus its text when it holds text only.
-- **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size. Layers renames an element, so no name field shows here.
+- **Appearance and typography:** captioned opacity and corner radius, then size, weight, spacing, and alignment, plus its text when it holds text only. Layers renames an element, so no name field shows.
+- **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
