@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
 import {
@@ -85,13 +85,22 @@ export const Frame = memo(function Frame({
   useEffect(() => {
     modifiedAt.current = frame.modifiedAt
   }, [frame.modifiedAt])
+  // The ref is taken when the iframe mounts, reloads, or comes live, never on
+  // a rename alone, which moves the file the iframe already shows. A reload
+  // after one asks for the new path.
+  const [loaded, setLoaded] = useState({ ref: frame.ref, version, live })
+  if (loaded.version !== version || loaded.live !== live) {
+    setLoaded({ ref: frame.ref, version, live })
+  }
   // The theme is read when the iframe mounts or reloads, never on a theme
   // change, so a switch rewrites the frame's root below rather than
   // reloading it and restarting its animation and video.
   const src = useMemo(
     () =>
-      live ? frameThemeUrl(frame.ref, frameTheme(frame.ref), version) : null,
-    [frame.ref, version, live],
+      loaded.live
+        ? frameThemeUrl(loaded.ref, frameTheme(loaded.ref), loaded.version)
+        : null,
+    [loaded],
   )
 
   useEffect(() => {

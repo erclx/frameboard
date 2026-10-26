@@ -20,6 +20,7 @@ import {
   receiveReload,
   receiveRename,
   receiveThumbnails,
+  renamedRef,
 } from './store'
 
 function boardWith(...names: string[]): ListResult {
@@ -447,6 +448,43 @@ describe('receiveRename', () => {
 
     expect(store.getState().board).toBe(board)
     expect(store.getState().aliases).toBe(aliases)
+  })
+})
+
+describe('renamedRef', () => {
+  it('follows a page through its rename', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    const previous = store.getState()
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(renamedRef(previous, store.getState(), 'studio/home')).toBe(
+      'studio/start',
+    )
+  })
+
+  it('follows a page through its project rename and its undo', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio', 'atelier')
+    const previous = store.getState()
+
+    receiveRename(store, 'atelier', 'studio')
+
+    expect(renamedRef(previous, store.getState(), 'atelier/home')).toBe(
+      'studio/home',
+    )
+  })
+
+  it('reads no rename for a page another write removed', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    const previous = store.getState()
+
+    receiveBoard(store, { ...boardWith('hero'), projects: [] })
+
+    expect(renamedRef(previous, store.getState(), 'studio/home')).toBeNull()
   })
 })
 

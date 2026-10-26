@@ -119,6 +119,27 @@ export function receiveRename(
   })
 }
 
+/**
+ * The page ref a rename moved `ref` to between two states, or null when the
+ * page was not renamed. A route following it in the same update as the board
+ * never shows the old name missing.
+ */
+export function renamedRef(
+  previous: LiveState,
+  next: LiveState,
+  ref: string,
+): string | null {
+  if (next.aliases === previous.aliases || !previous.board || !next.board) {
+    return null
+  }
+  if (!holdsRef(previous.board, ref) || holdsRef(next.board, ref)) return null
+  const identity = identityOf(previous.aliases, ref)
+  const page = next.board.projects
+    .flatMap((project) => project.pages)
+    .find((candidate) => identityOf(next.aliases, candidate.ref) === identity)
+  return page?.ref ?? null
+}
+
 function holdsRef(board: ListResult, ref: string): boolean {
   return board.projects.some(
     (project) =>

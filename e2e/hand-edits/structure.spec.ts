@@ -96,6 +96,152 @@ test.describe('page structure by hand, and its undo', () => {
     expect(pageOrder()).toEqual(['home', 'pricing'])
   })
 
+  /**
+   * Marks the window inside every frame on the canvas, resolving how many it
+   * marked, so a later read tells a kept iframe from one that loaded again.
+   */
+  async function markFrames(page: Page): Promise<number> {
+    const frames = page.locator('[data-frame] iframe')
+    await expect(frames).toHaveCount(2)
+    await expect
+      .poll(() =>
+        frames.evaluateAll((all) =>
+          all.every(
+            (frame) =>
+              (frame as HTMLIFrameElement).contentDocument?.readyState ===
+              'complete',
+          ),
+        ),
+      )
+      .toBe(true)
+    return frames.evaluateAll((all) => {
+      for (const frame of all) {
+        const view = (frame as HTMLIFrameElement).contentWindow
+        if (view) Object.assign(view, { kept: true })
+      }
+      return all.length
+    })
+  }
+
+  /** How many frames on the canvas still hold the mark `markFrames` set. */
+  function keptFrames(page: Page): Promise<number> {
+    return page
+      .locator('[data-frame] iframe')
+      .evaluateAll(
+        (all) =>
+          all.filter(
+            (frame) =>
+              (frame as HTMLIFrameElement).contentWindow &&
+              'kept' in ((frame as HTMLIFrameElement).contentWindow ?? {}),
+          ).length,
+      )
+  }
+
+  /** The `src` of every frame on the canvas, which a reload changes at once. */
+  function frameSources(page: Page): Promise<(string | null)[]> {
+    return page
+      .locator('[data-frame] iframe')
+      .evaluateAll((all) => all.map((frame) => frame.getAttribute('src')))
+  }
+
+  /**
+   * Records each live message as the page reads it, ahead of the board's own
+   * listener, so a test can wait until the board has handled a whole batch.
+   */
+  async function recordLive(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+      const read: string[] = []
+      Object.assign(window, { liveRead: read })
+      window.WebSocket = class extends window.WebSocket {
+        constructor(...args: ConstructorParameters<typeof WebSocket>) {
+          super(...args)
+          this.addEventListener('message', (event) => {
+            read.push(String(event.data))
+          })
+        }
+      }
+    })
+  }
+
+  /**
+   * Waits for the findings a rename's batch sends for the frame at its new
+   * ref, which follow the batch's board and reloads, so every reload it sent
+   * has reached the canvas by then.
+   */
+  async function batchHandled(page: Page, ref: string): Promise<void> {
+    const from = await page.evaluate(
+      () => (window as unknown as { liveRead: string[] }).liveRead.length,
+    )
+    await expect
+      .poll(() =>
+        page.evaluate(
+          ([since, frame]) =>
+            (window as unknown as { liveRead: string[] }).liveRead
+              .slice(since)
+              .some(
+                (text) =>
+                  text.startsWith('{"type":"findings"') &&
+                  text.includes(`"${frame}"`),
+              ),
+          [from, ref] as const,
+        ),
+      )
+      .toBe(true)
+  }
+
+  test('renames the page on the canvas without reloading its frames', async ({
+    page,
+  }) => {
+    await recordLive(page)
+    await openAsWriter(page)
+    const marked = await markFrames(page)
+    const sources = await frameSources(page)
+
+    await pageLink(page, 'home').dblclick()
+    await page.keyboard.type('start')
+    await page.keyboard.press('Enter')
+
+    await expect(page).toHaveURL(/\/p\/studio\/start$/)
+    await batchHandled(page, 'studio/start/hero')
+    await expect(
+      page.locator('[data-frame="studio/start/hero"] iframe'),
+    ).toBeAttached()
+    expect(await frameSources(page)).toEqual(sources)
+    expect(await keptFrames(page)).toBe(marked)
+  })
+
+  test('renames the project without reloading its frames, and undo moves the route back', async ({
+    page,
+  }) => {
+    await recordLive(page)
+    await openAsWriter(page)
+    const marked = await markFrames(page)
+    const sources = await frameSources(page)
+
+    await page.getByTitle('Rename studio').click()
+    await page.keyboard.press('ControlOrMeta+KeyA')
+    await page.keyboard.type('atelier')
+    await page.keyboard.press('Enter')
+
+    await expect(page).toHaveURL(/\/p\/atelier\/home$/)
+    await batchHandled(page, 'atelier/home/hero')
+    await expect(
+      page.locator('[data-frame="atelier/home/hero"] iframe'),
+    ).toBeAttached()
+    expect(await frameSources(page)).toEqual(sources)
+    expect(await keptFrames(page)).toBe(marked)
+
+    await undo(page)
+
+    await expect(page).toHaveURL(/\/p\/studio\/home$/)
+    await batchHandled(page, 'studio/home/hero')
+    await expect(
+      page.locator('[data-frame="studio/home/hero"] iframe'),
+    ).toBeAttached()
+    expect(await frameSources(page)).toEqual(sources)
+    expect(await keptFrames(page)).toBe(marked)
+  })
+
   test('drags a page above another, and undo restores the order', async ({
     page,
   }) => {
