@@ -360,7 +360,15 @@ function PresetSection() {
                   strokeWidth={1.6}
                 />
                 <span className="flex-1">{row.label}</span>
-                <span className="text-muted-foreground tabular-nums">
+                {/* The accent fill under a chosen row drops muted text below 4.5:1. */}
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    row.name === chosen
+                      ? 'text-accent-foreground'
+                      : 'text-muted-foreground',
+                  )}
+                >
                   {row.width} × {row.height}
                 </span>
               </button>
