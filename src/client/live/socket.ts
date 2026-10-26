@@ -73,8 +73,9 @@ export function connectLive(
         const { board } = store.getState()
         // A replayed change can name a frame the board already lost.
         if (board) pruneUnseen(unseen, board)
-      } else if (message.type === 'access') receiveAccess(store, message.write)
-      else if (message.type === 'reload') receiveReload(store, message.refs)
+      } else if (message.type === 'access') {
+        receiveAccess(store, message.write, message.dispatch)
+      } else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
       } else if (message.type === 'notes') {

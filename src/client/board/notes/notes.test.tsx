@@ -83,6 +83,7 @@ afterEach(() => {
   act(() => {
     liveStore.setState({
       canWrite: false,
+      dispatch: false,
       listeners: [],
       notes: {},
       claims: {},
@@ -98,6 +99,16 @@ function boardAnswering(envelope: unknown): void {
   vi.stubGlobal('fetch', async () => Response.json(envelope))
 }
 
+/** The board answering every write with an empty success, keeping each path and body it was sent. */
+function boardRecording(): { path: string; body: unknown }[] {
+  const sent: { path: string; body: unknown }[] = []
+  vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+    sent.push({ path, body: JSON.parse(String(init.body)) })
+    return Response.json({ ok: true, data: {} })
+  })
+  return sent
+}
+
 describe('Composer', () => {
   it('says no session is listening and holds Send', () => {
     live({ canWrite: true })
@@ -107,6 +118,67 @@ describe('Composer', () => {
     expect(screen.getByText('No session listening')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  describe('when serve can start a session', () => {
+    it('starts on New session with Send enabled when nobody listens', () => {
+      live({ canWrite: true, dispatch: true })
+
+      render(<Composer pick={PICK} onClose={() => {}} />)
+
+      expect(
+        screen.getByRole('combobox', { name: 'Send to' }),
+      ).toHaveDisplayValue('New session')
+      expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
+    })
+
+    it('sends to New session by asking the board to start one', async () => {
+      live({ canWrite: true, dispatch: true })
+      const sent = boardRecording()
+      render(<Composer pick={PICK} onClose={() => {}} />)
+      await userEvent.type(screen.getByRole('textbox'), 'Warmer sky')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(sent).toEqual([
+        {
+          path: '/api/notes',
+          body: {
+            frame: 'studio/home/hero',
+            text: 'Warmer sky',
+            dispatch: true,
+          },
+        },
+      ])
+    })
+
+    it('keeps the only listener picked and offers New session after it', () => {
+      live({
+        canWrite: true,
+        dispatch: true,
+        listeners: [listener('a', 'claude · frameboard')],
+      })
+
+      render(<Composer pick={PICK} onClose={() => {}} />)
+
+      const picker = screen.getByRole('combobox', { name: 'Send to' })
+      expect(picker).toHaveDisplayValue('claude · frameboard')
+      expect(
+        screen.getAllByRole('option').map((option) => option.textContent),
+      ).toEqual(['claude · frameboard', 'New session'])
+    })
+
+    it('sends to a listener picked over New session by naming it', async () => {
+      live({ canWrite: true, dispatch: true, listeners: [listener('a')] })
+      const sent = boardRecording()
+      render(<Composer pick={PICK} onClose={() => {}} />)
+      await userEvent.type(screen.getByRole('textbox'), 'Warmer sky')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+      expect(sent[0]?.body).toMatchObject({ to: 'a' })
+      expect(sent[0]?.body).not.toHaveProperty('dispatch')
+    })
   })
 
   it('picks the only listening session', () => {
@@ -283,6 +355,42 @@ describe('Thread', () => {
     expect(
       screen.getByRole('combobox', { name: 'Send to' }),
     ).toHaveDisplayValue('codex · frameboard')
+  })
+
+  it('keeps a reply plain when nobody listens and serve can start a session', async () => {
+    live({ canWrite: true, dispatch: true })
+    const sent = boardRecording()
+    render(<Thread notes={thread} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Looks good')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(
+      screen.getByRole('combobox', { name: 'Send to' }),
+    ).toHaveDisplayValue('No session')
+    expect(sent).toEqual([
+      { path: '/api/notes/n_1/replies', body: { text: 'Looks good' } },
+    ])
+  })
+
+  it('hands a reply to a new session once New session is picked', async () => {
+    live({ canWrite: true, dispatch: true })
+    const sent = boardRecording()
+    render(<Thread notes={thread} onClose={() => {}} />)
+    await userEvent.type(screen.getByRole('textbox'), 'Make it bolder')
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Send to' }),
+      'New session',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(sent).toEqual([
+      {
+        path: '/api/notes/n_1/replies',
+        body: { text: 'Make it bolder', dispatch: true },
+      },
+    ])
   })
 
   it("shows the developer's and the agent's messages in order", () => {

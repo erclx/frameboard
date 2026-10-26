@@ -114,7 +114,7 @@ describe('createHub', () => {
 
       const { access: message } = await helloAsBoard(socket)
 
-      expect(message).toEqual({ type: 'access', write: true })
+      expect(message).toEqual({ type: 'access', write: true, dispatch: false })
       expect(tabs.writers).toBe(1)
     })
 
@@ -126,9 +126,42 @@ describe('createHub', () => {
 
       const { access: message } = await helloAsBoard(socket)
 
-      expect(message).toEqual({ type: 'access', write: false })
+      expect(message).toEqual({ type: 'access', write: false, dispatch: false })
       expect(tabs.count).toBe(1)
       expect(tabs.writers).toBe(0)
+    })
+
+    describe('with a dispatch command', () => {
+      beforeEach(async () => {
+        await hub.close()
+        hub = createHub({
+          tabs,
+          port: () => port,
+          access,
+          snapshot: async () => SNAPSHOT,
+          dispatch: true,
+        })
+      })
+
+      it('tells a writing tab it can start a session', async () => {
+        const socket = connect({ origin: own(), cookie: `${COOKIE}=${KEY}` })
+
+        const { access: message } = await helloAsBoard(socket)
+
+        expect(message).toEqual({ type: 'access', write: true, dispatch: true })
+      })
+
+      it('tells a reading tab it cannot', async () => {
+        const { access: message } = await helloAsBoard(
+          connect({ origin: own() }),
+        )
+
+        expect(message).toEqual({
+          type: 'access',
+          write: false,
+          dispatch: false,
+        })
+      })
     })
 
     it('stops counting a writer when its socket closes', async () => {
@@ -185,7 +218,7 @@ describe('createHub', () => {
       .poll(() => received)
       .toEqual([
         { type: 'board', data: SNAPSHOT },
-        { type: 'access', write: false },
+        { type: 'access', write: false, dispatch: false },
         { type: 'findings', findings },
       ])
     await withFindings.close()
@@ -224,7 +257,7 @@ describe('createHub', () => {
       .poll(() => received)
       .toEqual([
         { type: 'board', data: SNAPSHOT },
-        { type: 'access', write: false },
+        { type: 'access', write: false, dispatch: false },
         { type: 'history', undo: 0, redo: 0 },
         { type: 'claims', claims },
       ])
@@ -267,7 +300,7 @@ describe('createHub', () => {
       .poll(() => received)
       .toEqual([
         { type: 'board', data: SNAPSHOT },
-        { type: 'access', write: false },
+        { type: 'access', write: false, dispatch: false },
         { type: 'claims', claims: [] },
         { type: 'changes', changes },
       ])
@@ -296,7 +329,7 @@ describe('createHub', () => {
       .poll(() => received)
       .toEqual([
         { type: 'board', data: SNAPSHOT },
-        { type: 'access', write: false },
+        { type: 'access', write: false, dispatch: false },
         { type: 'history', undo: 2, redo: 1 },
       ])
     await withHistory.close()

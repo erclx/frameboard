@@ -54,6 +54,10 @@ export const EXIT_CODES = {
   'client-not-built': 3,
   // A starter token sheet refused, since a sheet already reaches the project.
   'tokens-exist': 4,
+  // A note asking for a new session where `serve` was started with no command.
+  'dispatch-unavailable': 3,
+  // The command a note dispatched failed to start, leaving the note as it was.
+  'dispatch-failed': 13,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

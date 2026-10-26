@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import WebSocket from 'ws'
 
 import { cli } from '../../../test/support/cli'
@@ -171,6 +171,46 @@ describe('serve', () => {
 
     expect(run.json().data).toMatchObject({ opened: true })
     expect(run.opened).toEqual([expect.stringMatching(REDEEM_URL)])
+  })
+
+  describe('FRAMEBOARD_DISPATCH', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    async function accessOf(): Promise<unknown> {
+      const run = await serve('--no-open')
+      const url = (run.json().data as { url: string }).url
+      const { token } = JSON.parse(
+        readFileSync(join(cwd, '.frameboard/.run/address.json'), 'utf8'),
+      )
+      const tab = new WebSocket(`${url.replace('http', 'ws')}/api/live`, {
+        headers: { authorization: `Bearer ${token}` },
+      })
+      await new Promise((resolve) => tab.once('open', resolve))
+      const access = new Promise((resolve) =>
+        tab.on('message', (data) => {
+          const message = JSON.parse(String(data))
+          if (message.type === 'access') resolve(message)
+        }),
+      )
+      tab.send(JSON.stringify({ type: 'hello', role: 'board' }))
+      const message = await access
+      tab.terminate()
+      return message
+    }
+
+    it('tells a writing tab a note can start a session once it is set', async () => {
+      vi.stubEnv('FRAMEBOARD_DISPATCH', 'true')
+
+      await expect(accessOf()).resolves.toMatchObject({ dispatch: true })
+    })
+
+    it('tells it no session can be started while it is blank', async () => {
+      vi.stubEnv('FRAMEBOARD_DISPATCH', '  ')
+
+      await expect(accessOf()).resolves.toMatchObject({ dispatch: false })
+    })
   })
 
   it('keeps the ticket and the key out of the envelope', async () => {

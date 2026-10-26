@@ -53,6 +53,8 @@ export interface HubOptions {
   changes?: () => Promise<FrameChange[]>
   /** Told the id a board tab said hello with once its socket closes. */
   closeTab?: (tab: string) => void
+  /** Whether `serve` holds a command a note can start a session with. */
+  dispatch?: boolean
 }
 
 /**
@@ -74,6 +76,7 @@ export function createHub({
   claims,
   changes,
   closeTab,
+  dispatch = false,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Map<WebSocket, boolean>()
@@ -122,7 +125,11 @@ export function createHub({
       void snapshot()
         .then(async (board) => {
           send(socket, { type: 'board', data: board })
-          send(socket, { type: 'access', write: writer })
+          send(socket, {
+            type: 'access',
+            write: writer,
+            dispatch: writer && dispatch,
+          })
           if (history) send(socket, { type: 'history', ...history() })
           if (claims) send(socket, { type: 'claims', claims: await claims() })
           if (changes) {

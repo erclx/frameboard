@@ -7,7 +7,7 @@ import { writeBoard } from '@/client/live/write'
 import type { BoardNote } from '@/shared/records/notes'
 
 import { NoteButton, NoteCard } from './composer'
-import { defaultSession, messageFor } from './form'
+import { addressee, defaultSession, messageFor, pickedSession } from './form'
 import { SessionPicker } from './session-picker'
 import { setDraft, useNotesUi } from './tool'
 
@@ -31,9 +31,11 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
     page ? state.claims[`${page}/${notes[0]?.frame}`]?.session : undefined,
   )
   const canWrite = useLive((state) => state.canWrite)
+  const dispatch = useLive((state) => state.dispatch)
   const rootId = notes[0]?.id ?? ''
   const text = useNotesUi((state) => state.drafts[rootId] ?? '')
   const setText = (next: string) => setDraft(rootId, next)
+  // A reply never starts a session unless New session is picked by hand.
   const [session, setSession] = useState(() =>
     defaultSession(listeners, holder),
   )
@@ -41,9 +43,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   const [busy, setBusy] = useState(false)
   const root = notes[0]
   if (!root) return null
-  const picked = listeners.some((listener) => listener.session === session)
-    ? session
-    : defaultSession(listeners, holder)
+  const picked = pickedSession(session, listeners, holder, dispatch, false)
 
   const run = async (write: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -68,14 +68,16 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
       return
     }
     if (reply === '') {
-      void run(() => writeBoard(`/api/notes/${root.id}/send`, { to: picked }))
+      void run(() =>
+        writeBoard(`/api/notes/${root.id}/send`, addressee(picked)),
+      )
       return
     }
     void run(
       () =>
         writeBoard(`/api/notes/${root.id}/replies`, {
           text: reply,
-          ...(picked === '' ? {} : { to: picked }),
+          ...addressee(picked),
         }),
       () => setText(''),
     )
@@ -125,6 +127,8 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
               setError(null)
             }}
             disabled={!canWrite}
+            dispatch={dispatch}
+            optional
           />
           <NoteButton
             variant="ghost"

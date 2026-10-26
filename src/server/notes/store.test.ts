@@ -9,6 +9,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import {
   addReply,
   addRoot,
+  deliveryOf,
   findNote,
   readNotes,
   setState,
@@ -177,6 +178,57 @@ describe('notes store', () => {
         page: 'settings',
         note: { id: 'n_0000abcd' },
       })
+    })
+
+    it("reads an open thread's line with its newest developer message", async () => {
+      const path = join(board.root, 'webapp/home/notes.json')
+      await updateNotes(path, (file) =>
+        addReply(
+          pin(file, 'n_0000abcd'),
+          'n_0000abcd',
+          {
+            text: 'Make it bolder',
+            from: 'developer',
+            author: 'Ada',
+            session: null,
+          },
+          { now: LATER, id: 'n_0000beef' },
+        ),
+      )
+
+      const delivery = await deliveryOf(
+        board.root,
+        { project: 'webapp', page: 'home', path },
+        'n_0000abcd',
+      )
+
+      expect(delivery).toMatchObject({
+        ref: 'webapp/home/hero',
+        note: { id: 'n_0000abcd', state: 'open' },
+      })
+      expect(delivery.line).toContain(
+        'n_0000abcd on webapp/home/hero: Make it bolder',
+      )
+    })
+
+    it('refuses a reply id as the root of a delivery', async () => {
+      const path = join(board.root, 'webapp/home/notes.json')
+      await updateNotes(path, (file) =>
+        addReply(
+          pin(file, 'n_0000abcd'),
+          'n_0000abcd',
+          { text: 'More', from: 'developer', author: 'Ada', session: null },
+          { now: LATER, id: 'n_0000beef' },
+        ),
+      )
+
+      await expect(
+        deliveryOf(
+          board.root,
+          { project: 'webapp', page: 'home', path },
+          'n_0000beef',
+        ),
+      ).rejects.toMatchObject({ code: 'note-not-found' })
     })
 
     it('refuses an id no page holds as note-not-found', async () => {

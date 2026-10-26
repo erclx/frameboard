@@ -15,6 +15,8 @@ export interface LiveState {
   connected: boolean
   /** Whether this tab may write, false until the server's `access` answer and again whenever the socket drops. */
   canWrite: boolean
+  /** Whether a note this tab sends can start a session, cleared with `canWrite`. */
+  dispatch: boolean
   /** Whether the server has answered `canWrite` since the socket last opened, so a reading tab can tell "not yet" from "no". */
   accessKnown: boolean
   /** The frame `show` last named, until its page's canvas brings it into view. */
@@ -41,6 +43,7 @@ export function createLiveStore(): LiveStore {
     reloads: {},
     connected: false,
     canWrite: false,
+    dispatch: false,
     accessKnown: false,
     focus: null,
     findings: {},
@@ -135,6 +138,7 @@ export function receiveDisconnect(store: LiveStore): void {
   store.setState({
     connected: false,
     canWrite: false,
+    dispatch: false,
     accessKnown: false,
     notes: {},
     listeners: [],
@@ -152,9 +156,13 @@ export function receiveFindings(
   store.setState({ findings: { ...store.getState().findings, ...findings } })
 }
 
-/** Records the server's answer on whether this tab may write. */
-export function receiveAccess(store: LiveStore, write: boolean): void {
-  store.setState({ canWrite: write, accessKnown: true })
+/** Records the server's answer on whether this tab may write, and whether its notes can start a session. */
+export function receiveAccess(
+  store: LiveStore,
+  write: boolean,
+  dispatch = false,
+): void {
+  store.setState({ canWrite: write, dispatch, accessKnown: true })
 }
 
 /** Bumps each frame's counter, which reloads its iframe alone. */

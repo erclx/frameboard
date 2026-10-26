@@ -11,7 +11,7 @@ This record holds at most 600 words.
 - An agent draws by writing an HTML file and running commands with machine-readable output and no prompts
 - The files are the design, with no private copy, and a hand edit changes only its target.
 - Frames render as real web pages, so animation, video, and interaction work
-- A board folder lives inside a repository or anywhere on disk, with or without git
+- A board folder lives in a repository or anywhere, with or without git
 - An empty folder starts with one command
 - A new board's first page asks for a name, first screen size, and look, writing each answer to files
 
@@ -29,7 +29,7 @@ This record holds at most 600 words.
 
 ### Working with the agent
 
-- The agent sees the developer's selection and works through notes pinned on frames, which reach a listening session at once and take its replies.
+- The agent sees the developer's selection and works through notes pinned on frames, which reach a listening session at once or start one, and take its replies.
 - The board shows which frame an agent is editing and tells a second session it is taken
 - A frame breaking a content rule is reported at once to its agent and on the board, and projects can add their own rules.
 - An agent screenshots a frame or page in either theme
@@ -58,7 +58,7 @@ This record holds at most 600 words.
 
 - Motion review, being a scrubber, a timed screenshot, a filmstrip, or a recording
 - Home view search and archive, and present mode
-- A narrow-screen layout, past hiding the UI below about 1024px while the canvas pans and zooms
+- A narrow-screen layout, past hiding the UI below 1024px while the canvas pans and zooms
 - Opening one frame on a phone over the local network
 - Skill and hook packaging for agents other than Claude Code
 - Windows

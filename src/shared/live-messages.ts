@@ -50,8 +50,11 @@ export type ServerMessage =
    * batch's `board` the frames it rechecked, where an empty list clears one.
    */
   | { type: 'findings'; findings: Record<string, Finding[]> }
-  /** Whether this tab may write, sent after each hello's board. */
-  | { type: 'access'; write: boolean }
+  /**
+   * Whether this tab may write, and whether a note it sends can start a
+   * session, sent after each hello's board.
+   */
+  | { type: 'access'; write: boolean; dispatch: boolean }
   /**
    * One page's notes by its `<project>/<page>` ref: every page holding notes
    * after hello, and after each batch the pages it touched.

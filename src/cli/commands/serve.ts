@@ -11,6 +11,7 @@ import {
 } from '@/server/address'
 import { resolveBoard, startBoard } from '@/server/board/root'
 import { openBoard } from '@/server/live/open-board'
+import { DISPATCH_ENV } from '@/server/notes/dispatch'
 import { startServer } from '@/server/start'
 import { FrameboardError } from '@/shared/errors'
 
@@ -41,7 +42,7 @@ export function registerServe(
   const command = addVerb(
     program,
     'serve',
-    'Serve the board in a local browser',
+    `Serve the board in a local browser. A note sent to a new session runs the shell command in ${DISPATCH_ENV}, read once at start, with the note in FRAMEBOARD_NOTE, FRAMEBOARD_NOTE_ID, FRAMEBOARD_SESSION, and FRAMEBOARD_ROOT`,
   )
     .option(
       '-p, --port <port>',
@@ -114,6 +115,7 @@ export function registerServe(
       port: options.port,
       strictPort: self.getOptionValueSource('port') !== 'default',
       openUrl: io.openUrl,
+      dispatch: dispatchCommand(io.cwd),
     })
     const address = newAddress({
       root,
@@ -152,6 +154,18 @@ export function registerServe(
       human: `Frameboard is serving ${root} on ${address.url}`,
     }
   })
+}
+
+/**
+ * The developer's dispatch command, read from this process's environment
+ * alone, never from a file a repository carries, so a cloned board cannot
+ * make Send run anything.
+ */
+function dispatchCommand(
+  cwd: string,
+): { command: string; cwd: string; env: NodeJS.ProcessEnv } | undefined {
+  const command = process.env[DISPATCH_ENV]?.trim()
+  return command ? { command, cwd, env: process.env } : undefined
 }
 
 /** True for a file, and false for a folder or a path that does not exist. */
