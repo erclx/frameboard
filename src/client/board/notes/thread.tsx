@@ -98,6 +98,11 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}
         onScroll={followNewest}
+        onKeyDown={(event) => {
+          // The board binds the arrows to nudges on the window, which would
+          // swallow the keys that scroll this list.
+          if (SCROLL_KEYS.has(event.key)) event.stopPropagation()
+        }}
         className="min-h-0 overflow-y-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
       >
         {notes.map((note) => (
@@ -198,6 +203,17 @@ function Message({ note }: { note: BoardNote }) {
     </li>
   )
 }
+
+/** The keys a focused list scrolls on, which stay with it. */
+const SCROLL_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+  ' ',
+])
 
 /**
  * Keeps the list scrolled to its newest message as it opens, as the card's

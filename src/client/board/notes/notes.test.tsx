@@ -4,6 +4,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
@@ -505,6 +506,37 @@ describe('Thread', () => {
       rerender(<Capped notes={replies(5)} />)
 
       expect(list.scrollTop).toBe(0)
+    })
+
+    it('leaves an arrow key a board action also binds to the list, running no action', async () => {
+      let nudged = 0
+      const unregister = registerActions([
+        {
+          id: 'test.nudgeUp',
+          label: 'Nudge up',
+          group: 'test',
+          keys: ['ArrowUp'],
+          run: () => nudged++,
+        },
+      ])
+      const unbind = bindKeys(window)
+      const pressed: KeyboardEvent[] = []
+      try {
+        render(<Capped notes={replies(4)} />)
+        const list = screen.getByRole('list', { name: 'Messages' })
+        list.addEventListener('keydown', (event) => pressed.push(event))
+        list.focus()
+
+        await userEvent.keyboard('{ArrowUp}')
+
+        expect(pressed).toHaveLength(1)
+        // Read once the press has run its course, so a later handler counts.
+        expect(pressed[0]?.defaultPrevented).toBe(false)
+        expect(nudged).toBe(0)
+      } finally {
+        unbind()
+        unregister()
+      }
     })
   })
 })
