@@ -63,7 +63,7 @@ import {
   selectElement,
   selectionStore,
 } from './selection'
-import { placeFrame } from './structure/tool'
+import { DRAWN_FRAME_MIN, placeFrame } from './structure/tool'
 import {
   attachCanvas,
   type CanvasControls,
@@ -711,21 +711,27 @@ export function Canvas({
                   return
                 }
                 if (framing) {
+                  // A drag draws the frame at its box, and one too small to
+                  // use places the picked size, as a click does.
+                  const draft = takeDraft()
+                  const drawn =
+                    draft &&
+                    draft.size.width >= DRAWN_FRAME_MIN &&
+                    draft.size.height >= DRAWN_FRAME_MIN
+                      ? { ...draft.at, ...draft.size }
+                      : null
                   const size = sizeOf(viewport)
                   const [left, top] = transform.invert([0, 0])
-                  void placeFrame(
-                    { x, y },
-                    {
-                      page: page.ref,
-                      frames: page.frames,
-                      visible: {
-                        x: left,
-                        y: top,
-                        width: size.width / transform.k,
-                        height: size.height / transform.k,
-                      },
+                  void placeFrame(drawn ?? { x, y }, {
+                    page: page.ref,
+                    frames: page.frames,
+                    visible: {
+                      x: left,
+                      y: top,
+                      width: size.width / transform.k,
+                      height: size.height / transform.k,
                     },
-                  )
+                  })
                   return
                 }
                 const pick = pickAt(layer, withDrawn(frames), { x, y })

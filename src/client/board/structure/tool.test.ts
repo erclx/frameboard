@@ -78,6 +78,28 @@ describe('placeFrame', () => {
     ])
   })
 
+  it('adds a drawn box at its size, named frame past the names taken', async () => {
+    const { sent, calls, selection, mode, preset } = setup(async () =>
+      frameOf('frame-2'),
+    )
+
+    await placeFrame(
+      { x: 10, y: 20, width: 300, height: 200 },
+      {
+        page: PAGE,
+        frames: [frameOf('frame')],
+        calls,
+        selection,
+        mode,
+        preset,
+      },
+    )
+
+    expect(sent).toEqual([
+      ['studio/home/frame-2', { width: 300, height: 200 }, 10, 20],
+    ])
+  })
+
   it('selects the new frame and returns to Move', async () => {
     const { calls, selection, mode, preset } = setup(async () =>
       frameOf('tablet'),

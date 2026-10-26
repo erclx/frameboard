@@ -395,36 +395,77 @@ test.describe('page structure by hand, and its undo', () => {
       await expect.poll(() => layout().hero?.order).toBe(0)
     })
 
-    test('adds a tablet frame where the Frame tool clicks, and undo takes it away', async ({
+    test('adds a picked device where the Frame tool clicks, and undo takes it away', async ({
       page,
     }) => {
       await openAsWriter(page)
 
       await page.keyboard.press('f')
-      await page.getByRole('radio', { name: /Tablet/ }).click()
+      await page.getByRole('radio', { name: /iPhone 16 Pro Max/ }).click()
       await page
         .locator('[data-hit-layer]')
         .click({ position: { x: 40, y: 40 } })
 
       await expect
-        .poll(() => layout().tablet)
+        .poll(() => layout()['iphone-16-pro-max'])
         .toMatchObject({
-          width: 834,
-          height: 1194,
+          width: 440,
+          height: 956,
         })
-      await expect(layerRow(page, 'tablet')).toBeVisible()
+      await expect(layerRow(page, 'iphone-16-pro-max')).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Move', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
-      const name = page.getByRole('textbox', { name: 'Rename frame tablet' })
+      const name = page.getByRole('textbox', {
+        name: 'Rename frame iphone-16-pro-max',
+      })
       await expect(name).toBeFocused()
       await name.press('Escape')
 
       await undo(page)
 
       await expect
-        .poll(() => existsSync(at('studio/home/tablet.html')))
+        .poll(() => existsSync(at('studio/home/iphone-16-pro-max.html')))
         .toBe(false)
+    })
+
+    test('draws a frame at the box a Frame tool drag covers, and a 5px drag places the picked size', async ({
+      page,
+    }) => {
+      await openAsWriter(page)
+      const zoom = await page
+        .locator('[data-layer]')
+        .evaluate(
+          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+        )
+      const hit = await page.locator('[data-hit-layer]').boundingBox()
+      if (!hit) throw new Error('The canvas draws no hit layer')
+      const start = { x: hit.x + 40, y: hit.y + 40 }
+
+      await page.keyboard.press('f')
+      await page.mouse.move(start.x, start.y)
+      await page.mouse.down()
+      await page.mouse.move(start.x + 100, start.y + 80, { steps: 4 })
+      await expect(page.locator('[data-shape-draft]')).toBeVisible()
+      await page.mouse.move(start.x + 200, start.y + 150, { steps: 4 })
+      await page.mouse.up()
+
+      await expect.poll(() => layout().frame).toBeDefined()
+      expect(layout().frame?.width).toBeCloseTo(200 / zoom, -0.5)
+      expect(layout().frame?.height).toBeCloseTo(150 / zoom, -0.5)
+      await page
+        .getByRole('textbox', { name: 'Rename frame frame' })
+        .press('Escape')
+
+      await page.keyboard.press('f')
+      await page.mouse.move(start.x, start.y)
+      await page.mouse.down()
+      await page.mouse.move(start.x + 5, start.y)
+      await page.mouse.up()
+
+      await expect
+        .poll(() => layout().desktop)
+        .toMatchObject({ width: 1440, height: 900 })
     })
 
     test("cuts a frame and pastes it into another project's page, undoing both", async ({

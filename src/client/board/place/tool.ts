@@ -57,9 +57,13 @@ export const carriedStore = createStore<{ carried: ElementKey | null }>()(
   () => ({ carried: null }),
 )
 
-/** A Rectangle or Ellipse drag as it ended, where it started and the size it drew in CSS pixels. */
+/**
+ * A Rectangle, Ellipse, or Frame drag as it ended, where it started, the top
+ * left corner of the box it drew, and that box's size in CSS pixels.
+ */
 export interface Draft {
   from: BoardPoint
+  at: BoardPoint
   size: { width: number; height: number }
 }
 
