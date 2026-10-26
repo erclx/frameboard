@@ -24,6 +24,8 @@ export const noteSchema = z.looseObject({
   /** Null for a note on the whole frame. */
   anchor: noteAnchorSchema.nullable(),
   text: z.string(),
+  /** Images saved with the message, relative to its page, as `.notes/<file>`. Absent on a note with none. */
+  images: z.array(z.string()).optional(),
   from: z.enum(['developer', 'agent']),
   /** Who signed it, as git names them, stamped by the server. */
   author: z.string().nullable(),

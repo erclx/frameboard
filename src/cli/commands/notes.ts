@@ -38,6 +38,8 @@ export interface ListedNote extends Note {
   ref: string
   /** The element index while the anchor holds, else null for the frame. */
   element: number | null
+  /** Each of `images` by absolute path, so a caller anywhere opens it. Absent with no images. */
+  imagePaths?: string[]
 }
 
 interface ListOptions extends CommonOptions {
@@ -81,15 +83,16 @@ export function registerNotes(program: Command, context: ProgramContext): void {
           (options.all || !done.has(note.thread ?? note.id)) &&
           (!frame || note.frame === frame.name),
       )
-      const elements = await resolveAnchors(
-        join(root, place.project, place.page),
-        kept,
-      )
+      const pageDir = join(root, place.project, place.page)
+      const elements = await resolveAnchors(pageDir, kept)
       listed.push(
         ...kept.map((note) => ({
           ...note,
           ref: `${place.project}/${place.page}/${note.frame}`,
           element: elements[note.id] ?? null,
+          ...(note.images?.length
+            ? { imagePaths: note.images.map((image) => join(pageDir, image)) }
+            : {}),
         })),
       )
     }
@@ -205,7 +208,11 @@ function describe(notes: ListedNote[]): string {
   if (notes.length === 0) return 'No open notes'
   return notes
     .map((note) => {
-      const text = note.text.replace(/\s+/g, ' ').trim()
+      const text = `${note.text.replace(/\s+/g, ' ').trim()}${(
+        note.imagePaths ?? []
+      )
+        .map((path) => `\n      image: ${path}`)
+        .join('')}`
       if (note.thread) {
         return `    ${note.from === 'agent' ? 'agent' : (note.author ?? 'developer')}: ${text}`
       }

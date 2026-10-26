@@ -31,8 +31,8 @@ import {
   scanPage,
 } from './scan'
 
-/** Notes belong to the page they were pinned on, so a copy starts without them. */
-const NOT_COPIED = new Set(['notes.json'])
+/** Notes and their images belong to the page they were pinned on, so a copy starts without them. */
+const NOT_COPIED = new Set(['notes.json', '.notes'])
 
 export async function addPage(
   root: string,

@@ -67,6 +67,12 @@ export function messageFor(failure: unknown): string {
     if (failure.code === 'dispatch-unavailable') {
       return 'Restart serve with FRAMEBOARD_DISPATCH set to start a session.'
     }
+    if (failure.code === 'image-type-refused') {
+      return 'Only PNG, JPEG, GIF, and WebP images go in a note.'
+    }
+    if (failure.code === 'asset-too-large') {
+      return 'The images are too large to send. Remove one and try again.'
+    }
     if (failure.code === 'dispatch-failed') {
       return 'The session did not start. Check .run/dispatch.log and try again.'
     }

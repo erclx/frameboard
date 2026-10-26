@@ -103,7 +103,8 @@ On the board, Cmd-click or double-click selects an element inside a frame.
 Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board.
 
 - The agent answers in the note's thread through `notes reply` and closes it with `notes done`
-- The notes stay in each page's `notes.json`
+- Paste or drop a PNG, JPEG, GIF, or WebP image into a note or a reply, and the agent gets its path to open
+- The notes stay in each page's `notes.json`, and their images in its `.notes/` folder
 - With nobody listening, Send can start a session through a command you export before `serve`, such as `FRAMEBOARD_DISPATCH='claude --bg "$FRAMEBOARD_NOTE"'`, which gets the note in its environment
 - The command runs in the folder `serve` started in, and `claude --bg` starts only once Claude Code trusts that folder
 
