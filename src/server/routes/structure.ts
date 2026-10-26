@@ -64,6 +64,8 @@ const coordinate = z.int()
 const frameAddSchema = z.object({
   ref,
   size: z.enum(Object.keys(FRAME_SIZES) as [FrameSizePreset]).optional(),
+  width: z.int().min(1).optional(),
+  height: z.int().min(1).optional(),
   x: coordinate.optional(),
   y: coordinate.optional(),
 })

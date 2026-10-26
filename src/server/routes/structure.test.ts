@@ -238,6 +238,23 @@ describe('structureRoutes', () => {
       expect(layout().card).toBeUndefined()
     })
 
+    it('adds a frame at a width and height that hugs neither axis', async () => {
+      await post('/api/frame/add', {
+        ref: 'studio/home/card',
+        width: 1440,
+        height: 900,
+        x: 0,
+        y: 0,
+      })
+
+      expect(layout().card).toMatchObject({
+        width: 1440,
+        height: 900,
+        hugWidth: false,
+        hugHeight: false,
+      })
+    })
+
     it('duplicates several frames as one step', async () => {
       const response = await post('/api/frame/duplicate', {
         refs: ['studio/home/hero', 'studio/home/mobile'],

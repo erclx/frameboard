@@ -214,7 +214,7 @@ describe('menuActions', () => {
         [
           'addFrame',
           `studio/home/${DEFAULT_FRAME_SIZE}`,
-          DEFAULT_FRAME_SIZE,
+          { width: 1440, height: 900 },
           300,
           41,
         ],

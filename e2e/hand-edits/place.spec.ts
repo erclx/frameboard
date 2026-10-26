@@ -78,6 +78,38 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a desktop frame placed by hand keeps its 900 height once a rectangle lands in it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const below = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
+    if (!below) throw new Error('The hero draws no box')
+
+    await tools(page).getByRole('button', { name: 'Frame' }).click()
+    await page.mouse.click(below.x + 10, below.y + below.height + 80)
+    await page.keyboard.press('Enter')
+    const desktop = page.frameLocator(
+      '[data-frame="webapp/home/desktop"] iframe',
+    )
+    const body = await desktop.locator('body').boundingBox()
+    if (!body) throw new Error('The new frame draws no body')
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.click(body.x + 40, body.y + 40)
+
+    const added = join(board.root, 'webapp/home/desktop.html')
+    await expect
+      .poll(() => readFileSync(added, 'utf8'))
+      .toContain('data-name="Rectangle"')
+    const layout = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+      ).frames.desktop
+    await expect
+      .poll(layout)
+      .toMatchObject({ width: 1440, height: 900, hugHeight: false })
+  })
+
   test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
     page,
   }) => {
