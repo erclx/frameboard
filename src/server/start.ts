@@ -8,6 +8,7 @@ import { relative, sep } from 'node:path'
 import { serve } from '@hono/node-server'
 
 import type { FrameChange } from '@/shared/records/changes'
+import type { ListResult } from '@/shared/records/list'
 import { THEMES } from '@/shared/theme'
 
 import { type Access } from './access/guard'
@@ -226,6 +227,8 @@ async function listen({
     }, OWN_GRACE_MS)
     settling.add(timer)
   }
+  // The board the tabs last received, which a moved frame's stamp is read against.
+  const shown: { board: ListResult | null } = { board: null }
   let moved: MovedFolder[] = []
   const recentlyMoved = () => {
     moved = moved.filter(({ at }) => Date.now() - at < MOVED_MS)
@@ -242,6 +245,7 @@ async function listen({
           moved = [
             ...recentlyMoved(),
             {
+              from: side === 'after' ? change.from : change.to,
               path: side === 'after' ? change.to : change.from,
               at: Date.now(),
             },
@@ -262,7 +266,11 @@ async function listen({
     tabs,
     port: boundPort,
     access,
-    snapshot: () => inTurn(() => scanBoard(root)),
+    snapshot: () =>
+      inTurn(async () => {
+        shown.board = await scanBoard(root)
+        return shown.board
+      }),
     findings: () => inTurn(async () => findings.all()),
     notes: () => inTurn(() => boardView(root)),
     delivery,
@@ -435,6 +443,7 @@ async function listen({
         hug,
         settleLater,
         moved: recentlyMoved,
+        shown,
       }),
     )
   })
@@ -491,6 +500,7 @@ async function pushBatch(
     hug,
     settleLater,
     moved,
+    shown,
   }: {
     hub: LiveHub
     findings: BoardFindings
@@ -504,6 +514,8 @@ async function pushBatch(
     settleLater: (held: FrameChange[]) => void
     /** The folders the board's own renames recently moved, whose unchanged frames keep their page. */
     moved: () => readonly MovedFolder[]
+    /** The board the tabs last received, replaced by this batch's. */
+    shown: { board: ListResult | null }
   },
 ): Promise<void> {
   let board
@@ -521,6 +533,8 @@ async function pushBatch(
     return
   }
   hub.broadcast({ type: 'board', data: board })
+  const last = shown.board
+  shown.board = board
   const refs = reloadRefs(root, paths, board, tokens)
   // A token or asset change reloads every frame it reaches, so those are
   // measured after the push rather than holding it.
@@ -529,7 +543,7 @@ async function pushBatch(
     refs.filter((ref) => !own.includes(ref)),
   )
   if (refs.length > 0) {
-    const reloads = unmovedRefs(refs, board, moved())
+    const reloads = unmovedRefs(refs, board, moved(), last)
     if (reloads.length > 0) hub.broadcast({ type: 'reload', refs: reloads })
     thumbnails.invalidate(refs)
     const stale = Object.fromEntries(refs.map((ref) => [ref, null]))

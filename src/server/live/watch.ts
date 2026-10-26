@@ -206,35 +206,44 @@ export function reloadRefs(
   return named
 }
 
-/** A project or page folder the board's own rename moved to `path`, at `at` in epoch milliseconds. */
+/** A project or page folder the board's own rename moved from `from` to `path`, at `at` in epoch milliseconds. */
 export interface MovedFolder {
+  from: string
   path: string
   at: number
 }
 
 /**
  * `refs` less each frame that only moved with a folder the board renamed,
- * being one under a moved folder whose file is no newer than the move. It
- * renders what it rendered under its old ref, so a reload would restart it
- * for nothing, while a file written since still reloads.
+ * being one under a moved folder whose file carries the stamp `last`, the
+ * board sent before the move, showed at its old path. It renders what the
+ * tab already shows, so a reload would restart it for nothing, while a file
+ * written before or after the move that `last` never showed still reloads.
  */
 export function unmovedRefs(
   refs: string[],
   board: ListResult,
   moved: readonly MovedFolder[],
+  last: ListResult | null,
 ): string[] {
-  if (moved.length === 0) return refs
+  if (moved.length === 0 || !last) return refs
+  const shown = new Map(
+    last.projects.flatMap((project) =>
+      project.pages.flatMap((page) =>
+        page.frames.map((frame) => [frame.path, frame.modifiedAt] as const),
+      ),
+    ),
+  )
   const onlyMoved = new Set<string>()
   for (const project of board.projects) {
     for (const page of project.pages) {
       for (const frame of page.frames) {
-        const written = Date.parse(frame.modifiedAt)
-        if (
-          moved.some(
-            ({ path, at }) =>
-              frame.path.startsWith(`${path}${sep}`) && written <= at,
-          )
-        ) {
+        const folder = moved.find(({ path }) =>
+          frame.path.startsWith(`${path}${sep}`),
+        )
+        const before =
+          folder && `${folder.from}${frame.path.slice(folder.path.length)}`
+        if (before && shown.get(before) === frame.modifiedAt) {
           onlyMoved.add(frame.ref)
         }
       }

@@ -374,44 +374,67 @@ describe('unmovedRefs', () => {
   })
 
   const MOVED = ['studio/start/hero', 'studio/start/mobile']
+  const at = (path: string) => join(board.root, path)
 
   function renameHome() {
-    renameSync(
-      join(board.root, 'studio/home'),
-      join(board.root, 'studio/start'),
-    )
-    return { path: join(board.root, 'studio/start'), at: Date.now() }
+    renameSync(at('studio/home'), at('studio/start'))
+    return { from: at('studio/home'), path: at('studio/start'), at: Date.now() }
   }
 
   it('drops a frame that only moved with the folder the board renamed', async () => {
+    const last = await scanBoard(board.root)
     const moved = renameHome()
 
-    expect(unmovedRefs(MOVED, await scanBoard(board.root), [moved])).toEqual([])
+    expect(
+      unmovedRefs(MOVED, await scanBoard(board.root), [moved], last),
+    ).toEqual([])
   })
 
   it('keeps a frame written after the folder moved', async () => {
+    const last = await scanBoard(board.root)
     const moved = renameHome()
-    const later = new Date(moved.at + 1000)
-    utimesSync(join(board.root, 'studio/start/hero.html'), later, later)
-
-    expect(unmovedRefs(MOVED, await scanBoard(board.root), [moved])).toEqual([
-      'studio/start/hero',
-    ])
-  })
-
-  it('keeps a frame outside every moved folder', async () => {
-    const moved = { path: join(board.root, 'studio/pricing'), at: Date.now() }
+    const later = new Date(Date.now() + 1000)
+    utimesSync(at('studio/start/hero.html'), later, later)
 
     expect(
-      unmovedRefs(['studio/home/hero'], await scanBoard(board.root), [moved]),
-    ).toEqual(['studio/home/hero'])
+      unmovedRefs(MOVED, await scanBoard(board.root), [moved], last),
+    ).toEqual(['studio/start/hero'])
+  })
+
+  it('keeps a frame written before the move that the last board never showed', async () => {
+    const last = await scanBoard(board.root)
+    const written = new Date(Date.now() + 1000)
+    utimesSync(at('studio/home/hero.html'), written, written)
+    const moved = renameHome()
+
+    expect(
+      unmovedRefs(MOVED, await scanBoard(board.root), [moved], last),
+    ).toEqual(['studio/start/hero'])
+  })
+
+  it('keeps every moved frame when no board was sent before the move', async () => {
+    const moved = renameHome()
+
+    expect(
+      unmovedRefs(MOVED, await scanBoard(board.root), [moved], null),
+    ).toEqual(MOVED)
   })
 
   it('keeps a frame in a sibling folder whose name only starts the same', async () => {
-    const moved = { path: join(board.root, 'studio/hom'), at: Date.now() }
+    const last = await scanBoard(board.root)
+    const moved = {
+      from: at('studio/pricing'),
+      path: at('studio/hom'),
+      at: Date.now(),
+    }
 
     expect(
-      unmovedRefs(['studio/home/hero'], await scanBoard(board.root), [moved]),
+      unmovedRefs(
+        ['studio/home/hero'],
+        await scanBoard(board.root),
+        [moved],
+        last,
+      ),
     ).toEqual(['studio/home/hero'])
   })
 })

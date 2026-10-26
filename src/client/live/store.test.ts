@@ -488,6 +488,62 @@ describe('renamedRef', () => {
   })
 })
 
+describe('a name renamed away and taken again', () => {
+  /** The board with one more page in `studio`, holding the same frames. */
+  function withPage(board: ListResult, name: string): ListResult {
+    return {
+      ...board,
+      projects: board.projects.map((project) => {
+        const [first] = project.pages
+        if (!first) return project
+        const added = {
+          ...first,
+          ref: `studio/${name}`,
+          name,
+          path: `/board/studio/${name}`,
+          frames: first.frames.map((frame) => ({
+            ...frame,
+            ref: `studio/${name}/${frame.name}`,
+            page: name,
+          })),
+        }
+        return { ...project, pages: [...project.pages, added] }
+      }),
+    }
+  }
+
+  it('gives a new page under the old name an identity of its own', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio/home', 'studio/start')
+    const renamed = store.getState().board
+    if (!renamed) throw new Error('No board after the rename')
+
+    receiveBoard(store, withPage(renamed, 'home'))
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'studio/home/hero')).toBe('studio/home/hero')
+    expect(identityOf(aliases, 'studio/start/hero')).toBe('studio/start/hero')
+  })
+
+  it('gives a new project under the old name an identity of its own', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio', 'atelier')
+    const renamed = store.getState().board
+    if (!renamed) throw new Error('No board after the rename')
+
+    receiveBoard(store, {
+      ...renamed,
+      projects: [...renamed.projects, ...boardWith('hero').projects],
+    })
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'atelier/home')).toBe('atelier/home')
+    expect(identityOf(aliases, 'studio/home')).toBe('studio/home')
+  })
+})
+
 describe('identityOf', () => {
   it('reads a ref no rename touched as itself', () => {
     expect(identityOf({}, 'studio/home/hero')).toBe('studio/home/hero')

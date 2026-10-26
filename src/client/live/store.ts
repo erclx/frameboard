@@ -103,8 +103,9 @@ export function receiveRename(
     )
   const aliases = moveKeys(state.aliases)
   aliases[after] = identityOf(state.aliases, before)
+  const renamed = renameOnBoard(board, before, after)
   store.setState({
-    board: renameOnBoard(board, before, after),
+    board: renamed,
     reloads: moveKeys(state.reloads),
     findings: moveKeys(state.findings),
     notes: moveKeys(state.notes),
@@ -113,10 +114,25 @@ export function receiveRename(
       light: moveKeys(state.thumbnails.light),
       dark: moveKeys(state.thumbnails.dark),
     },
-    aliases: Object.fromEntries(
-      Object.entries(aliases).filter(([ref, first]) => ref !== first),
-    ),
+    aliases: liveAliases(aliases, renamed),
   })
+}
+
+/**
+ * The aliases still naming an identity nothing else holds. One whose first
+ * name the board now holds again, such as a page added under a name renamed
+ * away, is dropped, so the two never share a canvas or a frame.
+ */
+function liveAliases(
+  aliases: Readonly<Record<string, string>>,
+  board: ListResult,
+): Readonly<Record<string, string>> {
+  const kept = Object.entries(aliases).filter(
+    ([ref, first]) => ref !== first && !holdsRef(board, first),
+  )
+  return kept.length === Object.keys(aliases).length
+    ? aliases
+    : Object.fromEntries(kept)
 }
 
 /**
@@ -223,13 +239,14 @@ export function receiveBoard(store: LiveStore, board: ListResult): void {
   const pageRefs = new Set(pages.map((page) => page.ref))
   const held = <T>(byRef: Readonly<Record<string, T>>, keep: Set<string>) =>
     Object.fromEntries(Object.entries(byRef).filter(([ref]) => keep.has(ref)))
-  const { reloads, findings, notes, claims } = store.getState()
+  const { reloads, findings, notes, claims, aliases } = store.getState()
   store.setState({
     board,
     reloads: held(reloads, refs),
     findings: held(findings, refs),
     notes: held(notes, pageRefs),
     claims: held(claims, refs),
+    aliases: liveAliases(aliases, board),
   })
 }
 

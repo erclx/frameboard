@@ -163,15 +163,24 @@ test.describe('page structure by hand, and its undo', () => {
     })
   }
 
-  /**
-   * Waits for the findings a rename's batch sends for the frame at its new
-   * ref, which follow the batch's board and reloads, so every reload it sent
-   * has reached the canvas by then.
-   */
-  async function batchHandled(page: Page, ref: string): Promise<void> {
-    const from = await page.evaluate(
+  /** How many live messages the page has read, taken before an action so its batch is never missed. */
+  function liveRead(page: Page): Promise<number> {
+    return page.evaluate(
       () => (window as unknown as { liveRead: string[] }).liveRead.length,
     )
+  }
+
+  /**
+   * Waits for the board a rename's batch sends with the frame at its new ref,
+   * read after `from`, then holds while any reload that batch sent would
+   * land. The server sends a batch's reloads straight after its board, so a
+   * frame the rename reloaded shows a new `src` inside the hold.
+   */
+  async function batchHandled(
+    page: Page,
+    from: number,
+    ref: string,
+  ): Promise<void> {
     await expect
       .poll(() =>
         page.evaluate(
@@ -180,13 +189,15 @@ test.describe('page structure by hand, and its undo', () => {
               .slice(since)
               .some(
                 (text) =>
-                  text.startsWith('{"type":"findings"') &&
-                  text.includes(`"${frame}"`),
+                  text.startsWith('{"type":"board"') &&
+                  text.includes(`"ref":"${frame}"`),
               ),
           [from, ref] as const,
         ),
       )
       .toBe(true)
+    // The window a reload would land in, asserting nothing happened across it.
+    await page.waitForTimeout(500)
   }
 
   test('renames the page on the canvas without reloading its frames', async ({
@@ -196,13 +207,14 @@ test.describe('page structure by hand, and its undo', () => {
     await openAsWriter(page)
     const marked = await markFrames(page)
     const sources = await frameSources(page)
+    const before = await liveRead(page)
 
     await pageLink(page, 'home').dblclick()
     await page.keyboard.type('start')
     await page.keyboard.press('Enter')
 
     await expect(page).toHaveURL(/\/p\/studio\/start$/)
-    await batchHandled(page, 'studio/start/hero')
+    await batchHandled(page, before, 'studio/start/hero')
     await expect(
       page.locator('[data-frame="studio/start/hero"] iframe'),
     ).toBeAttached()
@@ -217,6 +229,7 @@ test.describe('page structure by hand, and its undo', () => {
     await openAsWriter(page)
     const marked = await markFrames(page)
     const sources = await frameSources(page)
+    const beforeRename = await liveRead(page)
 
     await page.getByTitle('Rename studio').click()
     await page.keyboard.press('ControlOrMeta+KeyA')
@@ -224,17 +237,18 @@ test.describe('page structure by hand, and its undo', () => {
     await page.keyboard.press('Enter')
 
     await expect(page).toHaveURL(/\/p\/atelier\/home$/)
-    await batchHandled(page, 'atelier/home/hero')
+    await batchHandled(page, beforeRename, 'atelier/home/hero')
     await expect(
       page.locator('[data-frame="atelier/home/hero"] iframe'),
     ).toBeAttached()
     expect(await frameSources(page)).toEqual(sources)
     expect(await keptFrames(page)).toBe(marked)
 
+    const beforeUndo = await liveRead(page)
     await undo(page)
 
     await expect(page).toHaveURL(/\/p\/studio\/home$/)
-    await batchHandled(page, 'studio/home/hero')
+    await batchHandled(page, beforeUndo, 'studio/home/hero')
     await expect(
       page.locator('[data-frame="studio/home/hero"] iframe'),
     ).toBeAttached()
