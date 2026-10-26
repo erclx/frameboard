@@ -453,6 +453,60 @@ describe('Thread', () => {
 
     expect(closed).toBe(true)
   })
+
+  describe('in a card capped shorter than its messages', () => {
+    const long = 'The hero copy now leads with the outcome. '.repeat(19)
+    const replies = (count: number) => [
+      note({ id: 'n_1', number: 2 }),
+      ...Array.from({ length: count }, (_, index) =>
+        note({
+          id: `n_r${index}`,
+          number: null,
+          thread: 'n_1',
+          from: 'agent',
+          author: null,
+          text: `${index + 1}. ${long}`,
+        }),
+      ),
+    ]
+
+    /** The thread inside a column capped at 400 px, as the popover holds it. */
+    function Capped({ notes }: { notes: readonly BoardNote[] }) {
+      return (
+        <div className="flex flex-col" style={{ maxHeight: 400 }}>
+          <Thread notes={notes} onClose={() => {}} />
+        </div>
+      )
+    }
+
+    function distanceFromEnd(list: HTMLElement): number {
+      return list.scrollHeight - list.scrollTop - list.clientHeight
+    }
+
+    it('follows a new reply while the list sits at its newest', async () => {
+      const { rerender } = render(<Capped notes={replies(4)} />)
+      const list = screen.getByRole('list', { name: 'Messages' })
+      await expect.poll(() => distanceFromEnd(list)).toBeLessThan(1)
+
+      rerender(<Capped notes={replies(5)} />)
+
+      expect(distanceFromEnd(list)).toBeLessThan(1)
+    })
+
+    it('stays on an older message when a reply lands', async () => {
+      const { rerender } = render(<Capped notes={replies(4)} />)
+      const list = screen.getByRole('list', { name: 'Messages' })
+      await expect.poll(() => distanceFromEnd(list)).toBeLessThan(1)
+      list.scrollTo({ top: 0 })
+      await new Promise((settled) =>
+        list.addEventListener('scroll', settled, { once: true }),
+      )
+
+      rerender(<Capped notes={replies(5)} />)
+
+      expect(list.scrollTop).toBe(0)
+    })
+  })
 })
 
 describe('NotesLayer', () => {
