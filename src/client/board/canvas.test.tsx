@@ -809,6 +809,27 @@ describe('the first frame on an empty page', () => {
     await expect.poll(() => layerOf(container).style.transform).toBe(fitted)
   })
 
+  it('leaves the view in place for a first frame already wholly in view', async () => {
+    const { container, rerender } = render(
+      sized(page('studio/first-in-view', [])),
+    )
+
+    rerender(
+      sized(
+        page('studio/first-in-view', [
+          frame('small', { x: 100, y: 100, width: 200, height: 200 }),
+        ]),
+      ),
+    )
+
+    await expect
+      .poll(() => holdsAcrossFrames(() => viewOf(container).x))
+      .toBe(true)
+    expect(layerOf(container).style.transform).toBe(
+      'translate(64px, 64px) scale(1)',
+    )
+  })
+
   it('fits the first frame after a press, as the guide card sends one', async () => {
     const { container, rerender } = render(
       sized(page('studio/first-press', [])),

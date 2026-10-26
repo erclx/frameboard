@@ -17,7 +17,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 - The Frame tool, key F, places a frame at the click at the chosen phone, tablet, or desktop preset, named for the preset, then selects it, opens its inspector name, and returns to Move
 - A frame placed partly out of view moves the view to center it at the current zoom
-- An empty page nobody has panned or zoomed fits its first frames when they arrive, on a return as well, and a press on the guide card counts as no move
+- An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
 

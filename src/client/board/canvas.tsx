@@ -488,7 +488,20 @@ export function Canvas({
     const viewport = viewportRef.current
     if (frames.length === 0 || !viewport || !moveToRef.current) return
     if (!untouchedEmpty.delete(page.ref)) return
-    moveToRef.current(fitView(frames, sizeOf(viewport)))
+    // A Frame tool click lands its frame in view, which a fit would slide
+    // out from under the pointer.
+    const transform = zoomTransform(viewport)
+    const size = sizeOf(viewport)
+    const [left, top] = transform.invert([0, 0])
+    const [right, bottom] = transform.invert([size.width, size.height])
+    const inView = frames.every(
+      ({ box }) =>
+        box.x >= left &&
+        box.y >= top &&
+        box.x + box.width <= right &&
+        box.y + box.height <= bottom,
+    )
+    if (!inView) moveToRef.current(fitView(frames, size))
   }, [frames, page.ref])
 
   // Waits for the frame to reach this page's record, since a shown frame can
