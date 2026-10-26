@@ -6,7 +6,12 @@
 
 A local design board that coding agents draw on as plain HTML files, and you review and tweak.
 
-![Frameboard, a local design board for agents and developers](.github/social-card.png)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme-hero-dark.png">
+    <img src=".github/readme-hero-light.png" alt="The Frameboard canvas showing a plant care app's landing page and two phone screens" width="880">
+  </picture>
+</p>
 
 ## Quick start
 
@@ -14,113 +19,31 @@ A local design board that coding agents draw on as plain HTML files, and you rev
 npx frameboard serve
 ```
 
-In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project and opens it at `http://127.0.0.1:4173` in a tab that can edit, where a first page asks for a project name, a screen size, and a look. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
+`serve` opens a board in your browser, in a tab that can edit. Point your coding agent at the same folder, and each frame it writes shows up as soon as the file lands.
 
-Install it with `npm install -g frameboard` or `bun add -g frameboard`.
-
-## What you get
-
-- Agents draw by writing HTML files and running commands that print JSON, exit with stable codes, and never prompt
-- Frames render as real web pages, so animation, video, and interaction work
-- Every frame reloads the moment its file changes, in light and dark
-- The files are the design, so Frameboard keeps no private copy and a hand edit touches only what changed
-- The server binds to `127.0.0.1`, with no hosted service and no MCP server
+To keep it around, install it with `npm install -g frameboard` or `bun add -g frameboard`.
 
 ## How it works
 
-### Board folder
-
-A board folder holds projects, a project holds pages, and a page holds frames.
-
-- Each frame is one `.html` file beside a `layout.json` that records where it sits
-
-### Tokens and themes
-
-Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides.
-
-- `serve --tokens <path>` takes a sheet another tool manages instead
-- `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
-- The server puts the sheets and three faces, Geist, Geist Mono, and Caveat, ahead of each frame's own styles as it serves the frame
-- The file on disk stays as written
-- One toggle switches the board and every frame between light and dark
-
-## For agents
-
-### Commands
-
-The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it.
-
-- `edit` changes one style, attribute, or text on one element without touching another byte
-- `show` points the open board at a frame, or offers Go while you are mid-action or it sits in another project, and `capture` writes PNGs of a frame or page in either theme
-- `frame add` with no size makes a frame that hugs its content, which a running server measures after each write, and `frame fit` sets a height to its content and keeps it hugging
-- `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
-- `frameboard docs` prints every command, flag, record shape, and exit code
-
-### Content checks
-
-`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
-
-- The board runs the same rules on each change, and a frame's findings badge opens the list, which the inspector shows too
-- A running server adds the rules only a browser can see, being clipped content, an inner scrollbar, content sized off the viewport, text under a project's minimum size, and dropped CSS
-
-### Claims
-
-An agent runs `editing` on a frame before rewriting it.
-
-- The board then outlines the frame and tags it with the agent and how long it has held it, and a second session that tries to claim it is told it is taken
-- A claim lapses five minutes after the agent last ran `editing`, and a note sent from a claimed frame goes to the session holding it
-- When you move, resize, edit, rename, or delete a claimed frame, your edit waits until the claim ends, under a card naming the agent
-- A move or resize then goes only if the agent left the frame as you saw it, and a rename or delete goes once the claim ends
-- An element edit goes if the agent left that element alone, and otherwise comes back, with typed text kept in the Text field to apply again
-
-### Change marks and following
-
-When an agent writes a frame, the board marks it with a dot and counts it on its page and project until you look at it.
-
-- A toast names the agent and offers Show, which takes you to the change and makes the edited elements glow, and Next, or `]`, steps to the next one
-- The compare button on a changed frame's label flips it to the version before the agent's run, or splits it at a divider you drag
-- The server keeps that version until it restarts or 200 later changes land
-- Click a listening agent's initial in the inspector header to follow it
-- The board then pans to each frame it claims or writes, across pages, until you pan, zoom, or click the canvas yourself
-
-### Plugin
-
-The Claude Code plugin in `plugins/frameboard/` runs the static checks after each agent write and hands the findings back in the same turn.
-
-- Its monitor runs `inbox --follow` for the session, so a sent note reaches the agent at once
+| 1. Your agent writes | 2. The board shows it | 3. You steer |
+| --- | --- | --- |
+| Each frame is one HTML file in a page folder, so your agent draws with the tools it already has. | A frame reloads the moment its file changes, in light and dark, and a broken rule is flagged on the frame. | Move, restyle, and retype by hand, or pin a note your agent answers in its thread. |
 
 ## For you
 
-### Selecting
+- You arrange pages, frames, and layers, and copy, paste, or undo across all of them
+- You change text, shapes, color, and type by hand, picking colors from your project's tokens
+- A note you pin on a frame or an element reaches your agent straight away
 
-On the board, Cmd-click or double-click selects an element inside a frame.
+[Everything you can do on the board](docs/board.md)
 
-- Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements
-- `selection` prints what you picked, with the element's index and hash ready for `edit`
+## For your agent
 
-### Notes
+- Commands print JSON and never prompt, so an agent can run them unattended
+- `frameboard check` flags what breaks a frame, such as clipped text or a color set for one theme only
+- The Claude Code plugin checks each frame the agent writes and hands it your notes as they arrive
 
-Pin a note on a frame or one element with the Note tool, and Send hands it to a Claude Code session listening on the board.
-
-- The agent answers in the note's thread through `notes reply` and closes it with `notes done`
-- Paste or drop a PNG, JPEG, GIF, or WebP image into a note or a reply, and the agent gets its path to open
-- The notes stay in each page's `notes.json`, and their images in its `.notes/` folder
-- With nobody listening, Send can start a session through a command you export before `serve`, such as `FRAMEBOARD_DISPATCH='claude --bg "$FRAMEBOARD_NOTE"'`, which gets the note in its environment
-- The command runs in the folder `serve` started in, and `claude --bg` starts only once Claude Code trusts that folder
-
-### Hand edits
-
-In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages, and add a frame at a phone, tablet, or desktop size with the Frame tool. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
-
-- On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- The inspector edits a frame's fill and an element's opacity, radius, type, line height, letter spacing, fill, stroke, shadow, and text, its numbers stepping on arrows and scrubbing from a label
-- The layers panel selects, renames, restacks, hides, and locks frames, renames elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
-- Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
-- Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
-
-The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected element to move it, Delete to take it out, or double-click text to retype it. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
-
-Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
+[The command and check reference](docs/agents.md)
 
 ## Requirements
 
@@ -130,6 +53,7 @@ Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows s
 
 ## Links
 
+- [How it works](docs/how-it-works.md) for the board folder, tokens, and themes
 - [Contributing guide](CONTRIBUTING.md) for setup, tests, and the commit rules
 - [Security policy](SECURITY.md) for reporting a vulnerability privately
 - [Issue tracker](https://github.com/erclx/frameboard/issues)
