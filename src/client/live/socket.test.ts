@@ -27,6 +27,32 @@ class FakeSocket extends EventTarget {
   }
 }
 
+function boardWithHome() {
+  return {
+    root: '/board',
+    projects: [
+      {
+        name: 'studio',
+        path: '/board/studio',
+        modifiedAt: '2026-10-15T00:00:00.000Z',
+        createdAt: null,
+        projectFileError: null,
+        pages: [
+          {
+            ref: 'studio/home',
+            project: 'studio',
+            name: 'home',
+            path: '/board/studio/home',
+            index: 0,
+            layoutError: null,
+            frames: [],
+          },
+        ],
+      },
+    ],
+  }
+}
+
 describe('connectLive access', () => {
   beforeEach(() => {
     FakeSocket.instances = []
@@ -78,6 +104,24 @@ describe('connectLive access', () => {
 
     socket?.dispatchEvent(new Event('close'))
     expect(store.getState().history).toEqual({ undo: 0, redo: 0 })
+    stop()
+  })
+
+  it('renames the page the renamed message names on the board in hand', () => {
+    const store = createLiveStore()
+    const stop = connectLive(store)
+    const socket = FakeSocket.instances[0]
+    socket?.receive({ type: 'board', data: boardWithHome() })
+
+    socket?.receive({
+      type: 'renamed',
+      before: 'studio/home',
+      after: 'studio/start',
+    })
+
+    expect(store.getState().board?.projects[0]?.pages[0]?.ref).toBe(
+      'studio/start',
+    )
     stop()
   })
 

@@ -7,6 +7,8 @@ import type { BoardNote } from '@/shared/records/notes'
 
 import {
   createLiveStore,
+  identityOf,
+  type LiveStore,
   receiveAccess,
   receiveBoard,
   receiveClaims,
@@ -16,7 +18,9 @@ import {
   receiveListeners,
   receiveNotes,
   receiveReload,
+  receiveRename,
   receiveThumbnails,
+  renamedRef,
 } from './store'
 
 function boardWith(...names: string[]): ListResult {
@@ -344,5 +348,240 @@ describe('receiveThumbnails', () => {
     receiveDisconnect(store)
 
     expect(store.getState().thumbnails).toEqual({ light: {}, dark: {} })
+  })
+})
+
+describe('receiveRename', () => {
+  const pageRefs = (store: LiveStore) =>
+    store
+      .getState()
+      .board?.projects.flatMap((project) =>
+        project.pages.map((page) => page.ref),
+      )
+
+  it('renames a page on the board it holds, frames and paths included', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    const page = store.getState().board?.projects[0]?.pages[0]
+    expect(page).toMatchObject({
+      ref: 'studio/start',
+      name: 'start',
+      path: '/board/studio/start',
+    })
+    expect(page?.frames[0]).toMatchObject({
+      ref: 'studio/start/hero',
+      page: 'start',
+      path: '/board/studio/start/hero.html',
+    })
+  })
+
+  it('renames a project on the board it holds, pages and frames included', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio', 'atelier')
+
+    const project = store.getState().board?.projects[0]
+    expect(project).toMatchObject({ name: 'atelier', path: '/board/atelier' })
+    expect(project?.pages[0]).toMatchObject({
+      ref: 'atelier/home',
+      project: 'atelier',
+      path: '/board/atelier/home',
+    })
+    expect(project?.pages[0]?.frames[0]).toMatchObject({
+      ref: 'atelier/home/hero',
+      project: 'atelier',
+      path: '/board/atelier/home/hero.html',
+    })
+  })
+
+  it('carries each frame counter to its new ref, so the frame does not reload', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveReload(store, ['studio/home/hero'])
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().reloads).toEqual({ 'studio/start/hero': 1 })
+  })
+
+  it('carries findings, claims, notes, and thumbnails to the new refs', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveFindings(store, { 'studio/home/hero': [] })
+    receiveClaims(store, [claimOn('studio/home/hero')])
+    receiveNotes(store, 'studio/home', [boardNote('n1')])
+    receiveThumbnails(store, 'light', { 'studio/home/hero': 'r-0-390x844' })
+
+    receiveRename(store, 'studio', 'atelier')
+
+    const state = store.getState()
+    expect(Object.keys(state.findings)).toEqual(['atelier/home/hero'])
+    expect(Object.keys(state.claims)).toEqual(['atelier/home/hero'])
+    expect(Object.keys(state.notes)).toEqual(['atelier/home'])
+    expect(state.thumbnails.light).toEqual({
+      'atelier/home/hero': 'r-0-390x844',
+    })
+  })
+
+  it('leaves a sibling page whose name only starts the same', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveReload(store, ['studio/home/hero'])
+
+    receiveRename(store, 'studio/hom', 'studio/start')
+
+    expect(pageRefs(store)).toEqual(['studio/home'])
+    expect(store.getState().reloads).toEqual({ 'studio/home/hero': 1 })
+  })
+
+  it('ignores a rename the board already carries', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio/home', 'studio/start')
+    const { board, aliases } = store.getState()
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().board).toBe(board)
+    expect(store.getState().aliases).toBe(aliases)
+  })
+})
+
+describe('renamedRef', () => {
+  it('follows a page through its rename', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    const previous = store.getState()
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(renamedRef(previous, store.getState(), 'studio/home')).toBe(
+      'studio/start',
+    )
+  })
+
+  it('follows a page through its project rename and its undo', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio', 'atelier')
+    const previous = store.getState()
+
+    receiveRename(store, 'atelier', 'studio')
+
+    expect(renamedRef(previous, store.getState(), 'atelier/home')).toBe(
+      'studio/home',
+    )
+  })
+
+  it('reads no rename for a page another write removed', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    const previous = store.getState()
+
+    receiveBoard(store, { ...boardWith('hero'), projects: [] })
+
+    expect(renamedRef(previous, store.getState(), 'studio/home')).toBeNull()
+  })
+})
+
+describe('a name renamed away and taken again', () => {
+  /** The board with one more page in `studio`, holding the same frames. */
+  function withPage(board: ListResult, name: string): ListResult {
+    return {
+      ...board,
+      projects: board.projects.map((project) => {
+        const [first] = project.pages
+        if (!first) return project
+        const added = {
+          ...first,
+          ref: `studio/${name}`,
+          name,
+          path: `/board/studio/${name}`,
+          frames: first.frames.map((frame) => ({
+            ...frame,
+            ref: `studio/${name}/${frame.name}`,
+            page: name,
+          })),
+        }
+        return { ...project, pages: [...project.pages, added] }
+      }),
+    }
+  }
+
+  it('gives a new page under the old name an identity of its own', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio/home', 'studio/start')
+    const renamed = store.getState().board
+    if (!renamed) throw new Error('No board after the rename')
+
+    receiveBoard(store, withPage(renamed, 'home'))
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'studio/home/hero')).toBe('studio/home/hero')
+    expect(identityOf(aliases, 'studio/start/hero')).toBe('studio/start/hero')
+  })
+
+  it('gives a new project under the old name an identity of its own', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio', 'atelier')
+    const renamed = store.getState().board
+    if (!renamed) throw new Error('No board after the rename')
+
+    receiveBoard(store, {
+      ...renamed,
+      projects: [...renamed.projects, ...boardWith('hero').projects],
+    })
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'atelier/home')).toBe('atelier/home')
+    expect(identityOf(aliases, 'studio/home')).toBe('studio/home')
+  })
+})
+
+describe('identityOf', () => {
+  it('reads a ref no rename touched as itself', () => {
+    expect(identityOf({}, 'studio/home/hero')).toBe('studio/home/hero')
+  })
+
+  it('keeps a page and its frames the same through a chain of renames', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio/home', 'studio/start')
+    receiveRename(store, 'studio/start', 'studio/intro')
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'studio/intro')).toBe('studio/home')
+    expect(identityOf(aliases, 'studio/intro/hero')).toBe('studio/home/hero')
+  })
+
+  it('keeps a renamed page the same when its project is renamed after it', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio/home', 'studio/start')
+    receiveRename(store, 'studio', 'atelier')
+
+    expect(identityOf(store.getState().aliases, 'atelier/start/hero')).toBe(
+      'studio/home/hero',
+    )
+  })
+
+  it('reads a rename and its undo back as the page it started as', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio', 'atelier')
+    receiveRename(store, 'atelier', 'studio')
+
+    const { aliases } = store.getState()
+    expect(identityOf(aliases, 'studio/home')).toBe('studio/home')
+    expect(aliases).toEqual({})
   })
 })

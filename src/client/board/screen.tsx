@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
 import { Link, Redirect, useLocation } from 'wouter'
 
@@ -8,7 +8,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/client/components/ui/resizable'
-import { liveStore, useLive } from '@/client/live/store'
+import { identityOf, liveStore, renamedRef, useLive } from '@/client/live/store'
 import { structure } from '@/client/live/structure'
 import {
   useHomeAction,
@@ -76,7 +76,23 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     storage: panelStorage,
   })
   const current = record?.pages.find((candidate) => candidate.name === page)
+  // A rename keeps the canvas, so its view and frames stay, and a page
+  // switch still mounts a fresh one.
+  const canvasKey = useLive((state) =>
+    current ? identityOf(state.aliases, current.ref) : '',
+  )
   const [, navigate] = useLocation()
+  // Follows a rename in the same update that renames the board, whether this
+  // tab, another, or an undo made it, so the old name never shows missing.
+  useEffect(() => {
+    if (page === undefined) return
+    return liveStore.subscribe((state, previous) => {
+      const moved = renamedRef(previous, state, `${project}/${page}`)
+      if (moved === null) return
+      const [nextProject = '', nextPage = ''] = moved.split('/')
+      navigate(boardUrl(nextProject, nextPage), { replace: true })
+    })
+  }, [project, page, navigate])
   const openProject = useCallback(() => project, [project])
   const goHome = useCallback(() => navigate('/'), [navigate])
   useProjectActions(openProject, { onDeleted: goHome })
@@ -130,7 +146,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
           {current ? (
             <>
               <Canvas
-                key={current.ref}
+                key={canvasKey}
                 page={current}
                 reloads={reloads}
                 findings={findings}

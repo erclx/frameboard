@@ -296,6 +296,19 @@ describe('History', () => {
       ])
     })
 
+    it('tells the side each write left', async () => {
+      const sides: string[] = []
+      history = new History(board.root, undefined, (_, side) =>
+        sides.push(side),
+      )
+
+      await renameHome('start')
+      await history.undo()
+      await history.redo()
+
+      expect(sides).toEqual(['after', 'before', 'after'])
+    })
+
     it('tells nothing for a step that recorded nothing', () => {
       history.record({ id: 1, changes: [], page: null, frames: ['x/y/z'] })
 
