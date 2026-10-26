@@ -131,15 +131,10 @@ describe('json-record', () => {
 
       await Promise.all(
         ['hero', 'about'].map((name, index) =>
-          updateRecord(
-            path,
-            layoutSpec,
-            (layout) => ({
-              ...layout,
-              frames: { ...layout.frames, [name]: box(index) },
-            }),
-            { timeoutMs: 500 },
-          ),
+          updateRecord(path, layoutSpec, (layout) => ({
+            ...layout,
+            frames: { ...layout.frames, [name]: box(index) },
+          })),
         ),
       )
 
