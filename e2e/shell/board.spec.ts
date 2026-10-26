@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { openSheetAtDesktop } from '../support/shortcuts-sheet'
 
 test.describe('the board', () => {
   let board: FixtureBoard
@@ -60,6 +61,18 @@ test.describe('the board', () => {
 
     await page.getByRole('link', { name: 'Home', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
+  })
+
+  test('keeps every shortcut label and chip on one line in three equal columns', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/home`)
+    await expect(page.locator('[data-frame]')).toHaveCount(2)
+
+    const { first, second, third } = await openSheetAtDesktop(page)
+
+    expect(first).toBeCloseTo(second, 0)
+    expect(third).toBeCloseTo(second, 0)
   })
 
   test("loads a frame's page stylesheet and project asset", async ({
