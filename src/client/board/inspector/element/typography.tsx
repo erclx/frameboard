@@ -55,7 +55,7 @@ export function TypographySection({
         <NumberField
           label="Font size"
           prefix="Size"
-          inset="pl-[44px]"
+          inset="pl-[40px]"
           value={fontSize}
           min={1}
           format={SIZE}
@@ -71,7 +71,7 @@ export function TypographySection({
         <NumberField
           label="Font weight"
           prefix="Weight"
-          inset="pl-[60px]"
+          inset="pl-[56px]"
           value={fontWeight}
           step={100}
           min={1}

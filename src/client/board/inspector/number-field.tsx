@@ -23,7 +23,7 @@ interface NumberFieldProps {
    * left, at least 24px wide, which scrubs the value when dragged.
    */
   prefix?: ReactNode
-  /** The input's left padding, which clears the prefix's zone, 32px by default for a letter or icon. */
+  /** The input's left padding, which clears the prefix's zone, 26px by default for a letter. */
   inset?: string
   /**
    * Scrubs from a drag on the number itself, for a field with no room for a
@@ -80,7 +80,7 @@ export function NumberField({
   label,
   caption,
   prefix,
-  inset = 'pl-[32px]',
+  inset = 'pl-[26px]',
   scrubValue = false,
   className,
   inputClassName,

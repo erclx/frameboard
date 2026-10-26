@@ -80,6 +80,7 @@ export function AppearanceSection({
           label="Opacity"
           caption="Opacity"
           prefix={<OpacityIcon />}
+          inset="pl-[28px]"
           value={percent}
           min={0}
           max={100}
@@ -97,6 +98,7 @@ export function AppearanceSection({
           label="Corner radius"
           caption="Corner radius"
           prefix={<RadiusIcon />}
+          inset="pl-[28px]"
           value={radius}
           min={0}
           format={WHOLE}
