@@ -84,6 +84,19 @@ describe('createDispatcher', () => {
     })
   })
 
+  it('refuses a command failing as late as claude --bg refusing a folder', async () => {
+    const dispatch = createDispatcher({
+      command: 'sleep 0.7; exit 1',
+      cwd: board.root,
+      root: board.root,
+      env: { PATH: process.env.PATH },
+    })
+
+    await expect(dispatch(NOTE)).rejects.toMatchObject({
+      code: 'dispatch-failed',
+    })
+  })
+
   it('counts a command still running past the window as started', async () => {
     const dispatch = dispatcher('sleep 1; exit 7', 50)
 

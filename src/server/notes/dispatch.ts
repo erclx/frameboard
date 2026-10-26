@@ -14,8 +14,10 @@ const DISPATCH_LOG = 'dispatch.log'
 /**
  * How long a command has to fail before it counts as started. A command that
  * backgrounds its session and exits 0, as `claude --bg` does, counts at once.
+ * `claude --bg` refusing an untrusted folder exits 1 near 700 ms, so the
+ * window sits well past that.
  */
-const START_WINDOW_MS = 500
+const START_WINDOW_MS = 2000
 
 /** A note handed to a session the dispatch starts. */
 export interface DispatchedNote {
