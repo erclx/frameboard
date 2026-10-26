@@ -78,6 +78,86 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a desktop frame placed by hand keeps its 900 height once a rectangle lands in it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const below = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
+    if (!below) throw new Error('The hero draws no box')
+
+    await tools(page).getByRole('button', { name: 'Frame' }).click()
+    await page.mouse.click(below.x + 10, below.y + below.height + 80)
+    await page.keyboard.press('Enter')
+    const desktop = page.frameLocator(
+      '[data-frame="webapp/home/desktop"] iframe',
+    )
+    const body = await desktop.locator('body').boundingBox()
+    if (!body) throw new Error('The new frame draws no body')
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.click(body.x + 40, body.y + 40)
+
+    const added = join(board.root, 'webapp/home/desktop.html')
+    await expect
+      .poll(() => readFileSync(added, 'utf8'))
+      .toContain('data-name="Rectangle"')
+    const layout = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+      ).frames.desktop
+    await expect
+      .poll(layout)
+      .toMatchObject({ width: 1440, height: 900, hugHeight: false })
+  })
+
+  test('Layers lists a Text placed between two placed rectangles at once, highlighting it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const elements = page.getByRole('list', { name: 'Elements of hero' })
+    const rectangles = elements.getByRole('button', { name: 'Rectangle' })
+    /** The 40px row gap just past the hero's first element named `name`, level with One. */
+    async function gapAfter(name: string) {
+      const [box, one] = await Promise.all([
+        hero(page).locator(`[data-name="${name}"]`).first().boundingBox(),
+        hero(page).locator('[data-name="One"]').boundingBox(),
+      ])
+      if (!box || !one) throw new Error(`${name} has no box on screen`)
+      return { x: box.x + box.width + 20, y: one.y + one.height / 2 }
+    }
+    async function place(tool: string, at: { x: number; y: number }) {
+      await tools(page).getByRole('button', { name: tool }).click()
+      await page.mouse.click(at.x, at.y)
+    }
+
+    await place('Rectangle', await gapAfter('One'))
+    await expect(rectangles).toHaveCount(1)
+    await place('Rectangle', await gapAfter('Rectangle'))
+    await expect(rectangles).toHaveCount(2)
+    await place('Text', await gapAfter('Rectangle'))
+
+    await expect(elements.locator('[aria-current="true"]')).toHaveText('Text')
+    await expect(
+      elements.getByRole('button', { name: /^(One|Rectangle|Text|Two)$/ }),
+    ).toHaveText(['One', 'Rectangle', 'Text', 'Rectangle', 'Two'])
+  })
+
+  test('a shape picked from the Shapes menu lands on the first click', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const one = await hero(page).locator('[data-name="One"]').boundingBox()
+    if (!one) throw new Error('The row draws no first child')
+
+    await tools(page).getByRole('button', { name: 'Shapes' }).click()
+    await page.getByRole('menuitemradio', { name: /Ellipse/ }).click()
+    await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
+
+    await expect.poll(read).toContain('data-name="Ellipse"')
+  })
+
   test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
     page,
   }) => {
@@ -94,7 +174,9 @@ test.describe('placing text and shapes into a frame', () => {
 
     await expect
       .poll(read)
-      .toContain('</h1>\n    <p data-name="Text">Hello</p><div data-name="Row"')
+      .toContain(
+        '</h1>\n    <p data-name="Text" style="font-family: var(--font-text)">Hello</p><div data-name="Row"',
+      )
 
     // The pick vouches only for bytes the frame shows, so it waits out the reload.
     await expect

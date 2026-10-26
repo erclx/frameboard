@@ -469,4 +469,42 @@ test.describe('page structure by hand, and its undo', () => {
       expect(readFileSync(at('studio/home/hero.html'))).toEqual(hero)
     })
   })
+
+  test('a double-click on a frame label opens its rename every time, after a load and after a cancelled rename', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+    const label = page
+      .locator('[data-frame="studio/home/hero"]')
+      .getByText('hero', { exact: true })
+    const name = page.getByRole('textbox', { name: 'Rename frame hero' })
+    const box = await label.boundingBox()
+    if (!box) throw new Error('The hero label draws no box')
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    const opened: boolean[] = []
+
+    for (let round = 0; round < 20; round += 1) {
+      if (round === 10) {
+        await page.reload()
+        await expect(label).toBeVisible()
+      }
+      // A hand's double-click drifts a pixel or two between press and release.
+      await page.mouse.move(at.x, at.y)
+      await page.mouse.down()
+      await page.mouse.move(at.x + 2, at.y + 1)
+      await page.mouse.up()
+      await page.mouse.down({ clickCount: 2 })
+      await page.mouse.up({ clickCount: 2 })
+      opened.push(
+        await name.waitFor({ timeout: 2000 }).then(
+          () => true,
+          () => false,
+        ),
+      )
+      await page.keyboard.press('Escape')
+      await expect(name).toBeHidden()
+    }
+
+    expect(opened).toEqual(Array(20).fill(true))
+  })
 })

@@ -1,6 +1,12 @@
-import { type DefaultTreeAdapterTypes, html, serialize } from 'parse5'
+import {
+  type DefaultTreeAdapterTypes,
+  html,
+  parseFragment,
+  serialize,
+} from 'parse5'
 
 import type { TokenRow } from '@/shared/records/tokens'
+import { STARTER_FONTS } from '@/shared/starter-tokens'
 
 import { type Element, type FrameTree, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
@@ -64,6 +70,7 @@ export type Inserted =
 const SHAPE_SIZE = '100px'
 const FILL_TOKENS = ['--muted', '--secondary', '--accent']
 const LINE_TOKEN = '--border'
+const TEXT_FONT_TOKEN = '--font-text'
 /** Raw on purpose, so the check names it once the project sets no color token. */
 const RAW_GREY = '#d9d9d9'
 
@@ -115,8 +122,22 @@ export function shapePaint(tokens: readonly TokenRow[]): ShapePaint {
   }
 }
 
+/**
+ * The family placed text sets, being the project's text font token, else
+ * Geist, so a frame with no font of its own still passes `default-font`.
+ */
+export function textFont(tokens: readonly TokenRow[]): string {
+  return tokens.some((row) => row.name === TEXT_FONT_TOKEN)
+    ? `var(${TEXT_FONT_TOKEN})`
+    : STARTER_FONTS.geist.stack
+}
+
 /** Every byte an insert of `element` writes, with its `data-name` and default size. */
-export function elementMarkup(element: InsertKind, paint: ShapePaint): string {
+export function elementMarkup(
+  element: InsertKind,
+  paint: ShapePaint,
+  font: string,
+): string {
   const { fill, line } = paint
   if (!PAINT_VALUE.test(fill) || !PAINT_VALUE.test(line)) {
     throw new Error(`Unexpected shape paint ${fill} ${line}`)
@@ -124,7 +145,7 @@ export function elementMarkup(element: InsertKind, paint: ShapePaint): string {
   const box = `width: ${SHAPE_SIZE}; height: ${SHAPE_SIZE}; background: ${fill}`
   switch (element.kind) {
     case 'text':
-      return '<p data-name="Text">Text</p>'
+      return `<p data-name="Text" style="font-family: ${font}">Text</p>`
     case 'rectangle':
       return `<div data-name="Rectangle" style="${box}"></div>`
     case 'ellipse':
@@ -221,7 +242,7 @@ export function insertElement(
   const added = after.elements[index]
   if (
     !added ||
-    after.elements.length !== before.elements.length + 1 ||
+    after.elements.length !== before.elements.length + 1 + descendants(added) ||
     added.parentNode !== after.elements[placement.parent] ||
     spanText(written, added, 'element') !== markup ||
     !addsOnly(before, after, added)
@@ -247,6 +268,14 @@ export function insertElement(
       next: next ? startTag(source, next) : null,
     },
   }
+}
+
+/** How many elements `element` holds, at any depth. */
+function descendants(element: Element): number {
+  return children(element).reduce(
+    (count, child) => count + 1 + descendants(child),
+    0,
+  )
 }
 
 /** Whether `after` is `before` with `added` alone added, compared once it is taken out. */
@@ -292,7 +321,8 @@ function locateGap(
     element !== undefined &&
     element.tagName === span.parent.tagName &&
     startTag(source, element) === span.parent.tag
-  const held = tree.elements.length === span.count - 1
+  // While every other element holds, the recorded indices still name the parent and the sibling.
+  const held = tree.elements.length === span.count - markupSize(span.markup)
   const candidates =
     held && reads(tree.elements[span.placement.parent])
       ? [span.placement.parent]
@@ -304,6 +334,18 @@ function locateGap(
     parentIndex === undefined ? undefined : tree.elements[parentIndex]
   if (parentIndex === undefined || !parent) return undefined
   if (span.next === null) return { parent: parentIndex, before: null }
+  const recorded =
+    span.placement.before === null
+      ? undefined
+      : tree.elements[span.placement.before]
+  if (
+    held &&
+    recorded &&
+    recorded.parentNode === parent &&
+    startTag(source, recorded) === span.next
+  ) {
+    return { parent: parentIndex, before: span.placement.before }
+  }
   const next = children(parent).filter(
     (child) => startTag(source, child) === span.next,
   )
@@ -311,6 +353,16 @@ function locateGap(
   return next.length === 1 && sibling
     ? { parent: parentIndex, before: tree.elements.indexOf(sibling) }
     : undefined
+}
+
+/** How many elements `markup` holds, itself and everything inside it. */
+function markupSize(markup: string): number {
+  const count = (node: DefaultTreeAdapterTypes.ParentNode): number =>
+    node.childNodes.reduce(
+      (total, child) => total + (hasTag(child) ? 1 + count(child) : 0),
+      0,
+    )
+  return count(parseFragment(markup))
 }
 
 /** Whether the frame stands as `side` of the insert left it, with the element or with its gap. */
@@ -350,6 +402,84 @@ export function removeInserted(
   const back = insertElement(removed, placement, span.markup)
   if (!back.ok || back.html !== source) return undefined
   return { html: removed, span: back.span }
+}
+
+export type Removed =
+  | { readonly ok: true; readonly html: string; readonly span: InsertedSpan }
+  | EditRefused
+
+/**
+ * Takes out the element at `index`, with everything it holds, and answers
+ * the span `restoreInserted` puts it back by, so a delete is an insert run
+ * backwards. Only an element under `body` is taken, and the removal is
+ * refused as `verify-failed` unless the result parses as the source with
+ * that element alone gone, and its bytes go back as that one element.
+ * Putting it back lands it
+ * before the same sibling, so the whitespace around it may sit on its other
+ * side.
+ */
+export function removeElement(source: string, index: number): Removed {
+  const tree = parseFrame(source)
+  if (tree.unstated) {
+    return refuse(
+      'address-mismatch',
+      `the browser builds a <${tree.unstated.tagName}> the file does not state, so indices after it disagree`,
+    )
+  }
+  const element = tree.elements[index]
+  if (!element || !underBody(element)) {
+    return refuse(
+      'invalid-address',
+      `${index} names no element under the frame's body`,
+    )
+  }
+  const at = element.sourceCodeLocation
+  const parent = element.parentNode
+  if (!at || !parent || !hasTag(parent)) {
+    return refuse(
+      'address-mismatch',
+      `the <${element.tagName}> at ${index} is not stated in the file`,
+    )
+  }
+  const removed = source.slice(0, at.startOffset) + source.slice(at.endOffset)
+  const next = children(parent)[children(parent).indexOf(element) + 1]
+  const placement = {
+    parent: tree.elements.indexOf(parent),
+    before: next ? index : null,
+  }
+  const back = insertElement(
+    removed,
+    placement,
+    source.slice(at.startOffset, at.endOffset),
+  )
+  parent.childNodes = parent.childNodes.filter((node) => node !== element)
+  const removesOnly =
+    serialize(tree.document) === serialize(parseFrame(removed).document)
+  if (!back.ok || !removesOnly) {
+    return refuse(
+      'verify-failed',
+      `taking out the <${element.tagName}> at ${index} would change more than it, so nothing was written`,
+    )
+  }
+  // A delete whose undo could not find the gap again would read as an agent's write.
+  if (!holdsInserted(removed, back.span, 'before')) {
+    return refuse(
+      'verify-failed',
+      `the <${element.tagName}> at ${index} could not be put back once taken out, so nothing was written`,
+    )
+  }
+  return { ok: true, html: removed, span: back.span }
+}
+
+function underBody(element: Element): boolean {
+  for (
+    let node = element.parentNode;
+    node && hasTag(node);
+    node = node.parentNode
+  ) {
+    if (node.tagName === 'body') return true
+  }
+  return false
 }
 
 /**

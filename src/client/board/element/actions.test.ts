@@ -27,6 +27,7 @@ const TREE: ElementTree = {
       name: 'main',
       textOnly: false,
       layout: 'block',
+      round: false,
     },
     {
       index: 7,
@@ -35,6 +36,7 @@ const TREE: ElementTree = {
       name: 'Hi',
       textOnly: true,
       layout: 'block',
+      round: false,
     },
     {
       index: 8,
@@ -43,6 +45,7 @@ const TREE: ElementTree = {
       name: 'x',
       textOnly: true,
       layout: 'block',
+      round: false,
     },
     {
       index: 9,
@@ -51,6 +54,7 @@ const TREE: ElementTree = {
       name: 'footer',
       textOnly: false,
       layout: 'block',
+      round: false,
     },
   ],
 }
@@ -59,9 +63,11 @@ function setup({
   noteOpen = false,
   tree = TREE as ElementTree | null,
   boardFocused = (): boolean => true,
+  writable = true,
 } = {}) {
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
+  const deleted: unknown[][] = []
   const actions = elementActions({
     page: () => PAGE,
     selection,
@@ -69,6 +75,8 @@ function setup({
     treeOf: () => tree,
     noteOpen: () => noteOpen,
     boardFocused,
+    writable: () => writable,
+    remove: (...args) => void deleted.push(args),
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -77,7 +85,7 @@ function setup({
   }
   const at = (index: number) =>
     selectElement(selection, PAGE, { frame: HERO, index, hash: HASH })
-  return { selection, mode, action, at, actions }
+  return { selection, mode, action, at, actions, deleted }
 }
 
 const cleanups: (() => void)[] = []
@@ -211,6 +219,15 @@ describe('elementActions', () => {
 
       expect(action('element.up').enabled?.()).toBe(false)
     })
+
+    it('stands aside with a tool armed, which Esc returns to Move first', () => {
+      const { mode, action, at } = setup()
+      at(7)
+
+      mode.setState({ tool: 'shape' })
+
+      expect(action('element.up').enabled?.()).toBe(false)
+    })
   })
 
   describe('Tab', () => {
@@ -256,5 +273,47 @@ describe('elementActions', () => {
 
       expect(action('element.next').enabled?.()).toBe(false)
     })
+  })
+})
+
+describe('element.delete', () => {
+  it('binds Delete and Backspace', () => {
+    const { action } = setup()
+
+    expect(action('element.delete').keys).toEqual(['Backspace', 'Delete'])
+  })
+
+  it('deletes the selected element at the hash it was selected at', () => {
+    const { action, at, deleted } = setup()
+    at(7)
+
+    action('element.delete').run()
+
+    expect(deleted).toEqual([[PAGE, { frame: HERO, index: 7, hash: HASH }]])
+  })
+
+  it('stands aside with a frame selected, so the frame delete runs', () => {
+    const { selection, action } = setup()
+
+    select(selection, PAGE, [HERO])
+
+    expect(action('element.delete').enabled?.()).toBe(false)
+  })
+
+  it('stands aside while the tab may not write', () => {
+    const { action, at } = setup({ writable: false })
+
+    at(7)
+
+    expect(action('element.delete').enabled?.()).toBe(false)
+  })
+
+  it('stands aside in Play', () => {
+    const { mode, action, at } = setup()
+    at(7)
+
+    mode.setState({ mode: 'play' })
+
+    expect(action('element.delete').enabled?.()).toBe(false)
   })
 })

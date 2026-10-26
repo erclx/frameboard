@@ -6,7 +6,11 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
-import { DEFAULT_FRAME_SIZE, type FrameSizePreset } from '@/shared/frame-sizes'
+import {
+  DEFAULT_FRAME_SIZE,
+  FRAME_SIZES,
+  type FrameSizePreset,
+} from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -48,8 +52,8 @@ export interface PlaceContext {
 }
 
 /**
- * Adds a frame at the chosen preset with its top left corner on a board
- * point, named for the preset as duplicate and new page name theirs, then
+ * Adds a frame at the chosen preset's width and height, hugging neither, with
+ * its top left corner on a board point, named for the preset as duplicate and new page name theirs, then
  * selects it, returns to Move, opens its name for editing, and centers the
  * view on it when it is not wholly in view, as one click of the Frame tool.
  * Resolves to the added frame, or null once a refusal is reported, so a
@@ -77,7 +81,7 @@ export async function placeFrame(
   try {
     const added = await calls.addFrame(
       `${page}/${name}`,
-      size,
+      FRAME_SIZES[size],
       Math.round(point.x),
       Math.round(point.y),
     )

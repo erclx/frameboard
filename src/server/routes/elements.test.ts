@@ -78,6 +78,7 @@ describe('elementsRoutes', () => {
               name: 'Studio',
               textOnly: true,
               layout: 'block',
+              round: false,
             },
             {
               index: 7,
@@ -86,6 +87,7 @@ describe('elementsRoutes', () => {
               name: 'dot',
               textOnly: false,
               layout: 'block',
+              round: false,
             },
           ],
         },

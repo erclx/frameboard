@@ -331,7 +331,13 @@ describe('GuideCard', () => {
       .toEqual([
         {
           path: '/api/frame/add',
-          body: { ref: 'untitled/page-1/tablet', size: 'tablet', x: 0, y: 0 },
+          body: {
+            ref: 'untitled/page-1/tablet',
+            width: 834,
+            height: 1194,
+            x: 0,
+            y: 0,
+          },
         },
       ])
   })

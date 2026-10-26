@@ -64,6 +64,47 @@ describe('read', () => {
   })
 })
 
+describe('catchUp', () => {
+  it('fetches again when the tree it waited on predates the written bytes', async () => {
+    const { trees, loads } = deferred()
+    trees.request(HERO, 0)
+
+    const caught = trees.catchUp(HERO, 'b'.repeat(64), 0)
+    loads[0]?.resolve(treeAt('a'))
+    await expect.poll(() => loads.length).toBe(2)
+    loads[1]?.resolve(treeAt('b'))
+    await caught
+
+    expect(trees.store.getState().byRef[HERO]).toMatchObject({
+      status: 'ready',
+      tree: treeAt('b'),
+    })
+  })
+
+  it('fetches nothing more when the held tree already shows the written bytes', async () => {
+    const { trees, loads } = deferred()
+    trees.request(HERO, 0)
+    loads[0]?.resolve(treeAt('b'))
+
+    await trees.catchUp(HERO, 'b'.repeat(64), 0)
+
+    expect(loads).toHaveLength(1)
+  })
+
+  it('leaves a frame that reloaded since to the newer fetch', async () => {
+    const { trees, loads } = deferred()
+    trees.request(HERO, 0)
+
+    const caught = trees.catchUp(HERO, 'b'.repeat(64), 0)
+    trees.request(HERO, 1)
+    loads[0]?.resolve(treeAt('a'))
+    loads[1]?.resolve(treeAt('b'))
+    await caught
+
+    expect(loads).toHaveLength(2)
+  })
+})
+
 describe('fetchTree', () => {
   it("throws the server's refusal message", async () => {
     const send: typeof fetch = async () =>

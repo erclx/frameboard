@@ -57,7 +57,9 @@ describe('placeFrame', () => {
       { page: PAGE, frames: [], calls, selection, mode, preset },
     )
 
-    expect(sent).toEqual([['studio/home/tablet', 'tablet', 120, -41]])
+    expect(sent).toEqual([
+      ['studio/home/tablet', { width: 834, height: 1194 }, 120, -41],
+    ])
   })
 
   it('selects the new frame and returns to Move', async () => {

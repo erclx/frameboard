@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
-import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -116,5 +117,25 @@ test.describe('selecting an element inside a frame', () => {
     await expect(outline).toBeHidden()
     await expect.poll(async () => (await selection()).element).toBeNull()
     expect((await selection()).frames).toEqual([HERO])
+  })
+
+  test('Delete takes the selected element out of the file, and undo brings it back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+
+    await cmdClick(page, 'h1')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.keyboard.press('Delete')
+
+    await expect.poll(read).not.toContain('data-name="Headline"')
+    expect(read()).toContain('data-name="Caption"')
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toContain('<h1 data-name="Headline">hero</h1>')
   })
 })

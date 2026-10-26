@@ -53,7 +53,7 @@ The layers tree lists the top of the stack first. A row click selects its frame 
 - Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
 - The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
 
-An element row draws `T` for text, an image glyph for media, and otherwise the layout `GET /api/frames/elements` reads from the static cascade, so a culled frame keeps its glyphs.
+An element row draws `T` for text, an image glyph for media, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout and the rounding from the static cascade, so a culled frame keeps its glyphs.
 
 An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 
@@ -75,6 +75,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 - A hidden frame is left out, and an element named by its own text hits as text alone, so it is listed once
 - Hits group by page, the page on the canvas when they arrived first, and a pick runs `board/jump.ts`, shared with the palette, selecting by the index and hash the search read
 - The field owns Esc, since the registry skips keys typed in a field, and Cmd+F turns Hide UI off
+- A hit draws the glyph its Layers row draws, read from the frame's cached tree at the hash the search read, and a frame hit draws the Frame `#`
 
 ### `src/client/board/chrome/`
 

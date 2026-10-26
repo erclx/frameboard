@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import { type KeyboardEvent, useRef, useState } from 'react'
 
 import { Kbd } from '@/client/components/ui/kbd'
@@ -20,7 +21,8 @@ interface TextSectionProps {
 
 /**
  * Text, for an element holding text alone: a text area applying on Enter or
- * blur and cancelling on Esc, with the keys hinted while it has focus. Text
+ * blur and cancelling on Esc, with the keys hinted on a line kept for them
+ * while it has focus. Text
  * is one line, since a `<br>` would end the text-only state that shows this
  * field, so a newline, typed with Shift or pasted, becomes a space. The
  * written text stays shown until the frame reloads with it. Text an agent's
@@ -96,11 +98,15 @@ export function TextSection({
         onKeyDown={onKeyDown}
         className="max-h-28 min-h-11 resize-none overflow-y-auto rounded-md border-0 bg-input px-2 py-1.5 text-xs leading-[1.4] md:text-xs dark:bg-input"
       />
-      {focused ? (
-        <p className="mt-1.5 flex items-center gap-1 text-label font-normal text-muted-foreground">
-          <Kbd>Enter</Kbd> to apply, <Kbd>Esc</Kbd> to cancel
-        </p>
-      ) : null}
+      {/* The line is kept while hidden, so focusing the field moves no section below. */}
+      <p
+        className={cn(
+          'mt-2.5 flex items-center gap-1 text-label font-normal text-muted-foreground',
+          !focused && 'invisible',
+        )}
+      >
+        <Kbd>Enter</Kbd> to apply, <Kbd>Esc</Kbd> to cancel
+      </p>
     </section>
   )
 }

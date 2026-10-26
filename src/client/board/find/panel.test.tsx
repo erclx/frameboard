@@ -8,6 +8,7 @@ import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FindHit, FindResult } from '@/shared/records/find'
 
+import { createTrees, type Trees } from '../element/tree'
 import { createModeStore } from '../mode'
 import {
   closeFind,
@@ -57,11 +58,40 @@ function answering(hits: FindHit[], truncated = false) {
   })
 }
 
+/** Every frame's tree, read at `HASH`, holding a row flex at 7 and an ellipse at 8. */
+function heldTrees(): Trees {
+  return createTrees(async (ref) => ({
+    ref,
+    hash: HASH,
+    elements: [
+      {
+        index: 7,
+        parent: null,
+        tag: 'div',
+        name: 'Get started',
+        textOnly: false,
+        layout: 'row',
+        round: false,
+      },
+      {
+        index: 8,
+        parent: null,
+        tag: 'div',
+        name: 'Dot',
+        textOnly: false,
+        layout: 'block',
+        round: true,
+      },
+    ],
+  }))
+}
+
 function renderFind({
   page = 'home',
   hits = HITS,
   truncated = false,
   picked = [] as FindHit[],
+  trees = heldTrees(),
 } = {}) {
   render(
     <div className="h-[600px]">
@@ -70,6 +100,7 @@ function renderFind({
         page={page}
         load={answering(hits, truncated)}
         pick={(_project, picking) => picked.push(picking)}
+        trees={trees}
       />
     </div>,
   )
@@ -132,6 +163,28 @@ describe('FindPanel', () => {
       'Get startedin hello',
       'Getting startedframe',
     ])
+  })
+
+  it('draws the Frame glyph for a frame hit and the Layers glyph for an element hit', async () => {
+    renderFind({
+      hits: [
+        hit('element', 'home', { index: 7 }),
+        hit('element', 'home', { index: 8, name: 'Dot started' }),
+        hit('frame', 'home', {
+          frame: 'Getting started',
+          name: 'Getting started',
+        }),
+      ],
+    })
+
+    await search('started')
+
+    const options = within(groupNamed('home')).getAllByRole('option')
+    await expect
+      .poll(() =>
+        options.map((option) => option.querySelector('svg')?.classList[1]),
+      )
+      .toEqual(['lucide-layout-row-glyph', 'lucide-circle', 'lucide-frame'])
   })
 
   it('marks the match in each row', async () => {

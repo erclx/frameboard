@@ -7,6 +7,8 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { skeleton } from '../board/frames'
+import { checkPage } from '../checks/run'
 import { claim, release } from '../claims/store'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
@@ -394,6 +396,26 @@ describe('editRoutes', () => {
       )
     })
 
+    it('places text a new frame checks clean on default-font', async () => {
+      writeFileSync(path(), skeleton('hero'))
+
+      await insert({
+        ref: HERO,
+        hash: hash(),
+        parent: BODY,
+        before: null,
+        element: { kind: 'text' },
+      })
+
+      const { findings } = await checkPage(board.root, 'webapp', 'home')
+      expect(
+        findings.filter(
+          (finding) =>
+            finding.frame === HERO && finding.rule === 'default-font',
+        ),
+      ).toEqual([])
+    })
+
     it('records one step, which undo reverts byte for byte', async () => {
       const original = read()
       await insert(rectangle())
@@ -460,6 +482,96 @@ describe('editRoutes', () => {
       })
 
       expect(response.status).toBe(400)
+    })
+  })
+
+  describe('POST /api/frames/remove', () => {
+    function remove(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+      ).request('/api/frames/remove', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    it('takes out the element and answers the hash it wrote', async () => {
+      const response = await remove({ ref: HERO, index: CAPTION, hash: hash() })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, hash: hash() },
+      })
+      expect(read()).not.toContain('data-name="Caption"')
+    })
+
+    it('records one step, which undo brings the element back by', async () => {
+      await remove({ ref: HERO, index: CAPTION, hash: hash() })
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toContain('data-name="Caption"')
+    })
+
+    it('refuses stale-address once the file moved, writing nothing', async () => {
+      const sent = { ref: HERO, index: CAPTION, hash: hash() }
+      agentWrites(read().replace('hero</h1>', 'Agent</h1>'))
+      const agent = read()
+
+      const response = await remove(sent)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses an index outside the body as invalid-address', async () => {
+      const response = await remove({ ref: HERO, index: 1, hash: hash() })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-address' },
+      })
+    })
+
+    it('refuses a frame another session holds as frame-claimed', async () => {
+      const original = read()
+      await claim(
+        board.root,
+        {
+          frame: HERO,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await remove({ ref: HERO, index: CAPTION, hash: hash() })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed' },
+      })
+      expect(read()).toBe(original)
     })
   })
 })

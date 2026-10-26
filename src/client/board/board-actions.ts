@@ -24,6 +24,7 @@ import { copyFrameImage } from './copy-image'
 import { withPending } from './geometry/write'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
+import { notesUi } from './notes/tool'
 import { selectionStore } from './selection'
 import { canvasView } from './view'
 
@@ -131,6 +132,19 @@ function boardActions(): Action[] {
         }
         set({ mode: 'edit' })
       },
+    },
+    {
+      id: 'tool.disarm',
+      label: 'Back to Move',
+      group: 'tool',
+      keys: ['Escape'],
+      // The selection's Esc keys stand aside while a tool is armed, so the
+      // selection stays, and an open note card takes the press to close.
+      enabled: () =>
+        read().mode === 'edit' &&
+        read().tool !== 'move' &&
+        notesUi.getState().open === null,
+      run: () => set({ tool: 'move' }),
     },
     {
       id: 'view.hideUi',

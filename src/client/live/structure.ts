@@ -1,5 +1,5 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
-import type { FrameSizePreset } from '@/shared/frame-sizes'
+import type { FrameSize } from '@/shared/frame-sizes'
 import type { FitResult } from '@/shared/records/capture'
 import type {
   FrameRecord,
@@ -62,8 +62,9 @@ export function createStructure(send: typeof fetch = fetch) {
       post<PageRecord>('/api/page/move', { ref, index }),
     deletePage: (ref: string) =>
       held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
-    addFrame: (ref: string, size: FrameSizePreset, x: number, y: number) =>
-      post<FrameRecord>('/api/frame/add', { ref, size, x, y }),
+    /** Sends a width and height rather than a preset, since a preset hugs its height and a hand-placed frame keeps its size. */
+    addFrame: (ref: string, size: FrameSize, x: number, y: number) =>
+      post<FrameRecord>('/api/frame/add', { ref, ...size, x, y }),
     /** Copies beside each source, or `offset` away from it when given, as an Alt-drag drops them. */
     duplicateFrames: (
       refs: readonly string[],

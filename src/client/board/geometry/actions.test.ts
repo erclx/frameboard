@@ -129,6 +129,15 @@ describe('geometryActions', () => {
 
       expect(action('selection.clear').enabled?.()).toBe(false)
     })
+
+    it('stands aside with a tool armed, which Esc returns to Move first', () => {
+      const { selection, mode, action } = setup()
+      select(selection, PAGE, [A.ref])
+
+      mode.setState({ tool: 'text' })
+
+      expect(action('selection.clear').enabled?.()).toBe(false)
+    })
   })
 
   it('selects every shown frame on the page on Cmd+A', () => {

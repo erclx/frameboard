@@ -1,5 +1,6 @@
 import { NumberField as Primitive } from '@base-ui/react/number-field'
 import { cn } from 'cn'
+import { MoveHorizontal } from 'lucide-react'
 import {
   type KeyboardEvent,
   type PointerEvent,
@@ -297,6 +298,7 @@ export function NumberField({
           onPointerDown={startScrub}
         >
           {caption}
+          <ScrubCursor />
         </Primitive.ScrubArea>
       ) : null}
       <div className="relative">
@@ -311,6 +313,7 @@ export function NumberField({
             onPointerDown={startScrub}
           >
             {prefix}
+            <ScrubCursor />
           </Primitive.ScrubArea>
         ) : null}
         {scrubValue ? (
@@ -320,11 +323,29 @@ export function NumberField({
             onPointerDown={startScrub}
           >
             {input}
+            <ScrubCursor />
           </Primitive.ScrubArea>
         ) : (
           input
         )}
       </div>
     </Primitive.Root>
+  )
+}
+
+/**
+ * The east-west glyph drawn in place of the pointer while a scrub holds it,
+ * since pointer lock hides the native `ew-resize` cursor. Base UI renders it
+ * only during a scrub and moves it to the pointer, so it is offset by half its
+ * size to stay centered there.
+ */
+function ScrubCursor() {
+  return (
+    <Primitive.ScrubAreaCursor className="z-50">
+      <MoveHorizontal
+        aria-hidden
+        className="-mt-2 -ml-2 size-4 text-foreground drop-shadow-[0_0_1px_var(--background)]"
+      />
+    </Primitive.ScrubAreaCursor>
   )
 }

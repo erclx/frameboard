@@ -176,6 +176,7 @@ function heroTree(): void {
               name: 'Card',
               textOnly: false,
               layout: 'block',
+              round: false,
             },
             {
               index: 7,
@@ -184,6 +185,7 @@ function heroTree(): void {
               name: 'Headline',
               textOnly: true,
               layout: 'block',
+              round: false,
             },
             {
               index: 8,
@@ -192,6 +194,7 @@ function heroTree(): void {
               name: 'footer',
               textOnly: false,
               layout: 'block',
+              round: false,
             },
           ],
         },

@@ -22,3 +22,11 @@ export const insertResultSchema = z.object({
 })
 
 export type InsertResult = z.infer<typeof insertResultSchema>
+
+/** What `POST /api/frames/remove` returns: the frame it wrote and the hash the next write is made from. */
+export const removeResultSchema = z.object({
+  ref: z.string(),
+  hash,
+})
+
+export type RemoveResult = z.infer<typeof removeResultSchema>

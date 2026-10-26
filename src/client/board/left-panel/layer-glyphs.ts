@@ -1,4 +1,11 @@
-import { createLucideIcon, Image, type LucideIcon, Type } from 'lucide-react'
+import {
+  Circle,
+  createLucideIcon,
+  Image,
+  type LucideIcon,
+  Minus,
+  Type,
+} from 'lucide-react'
 
 import type { TreeElement } from '@/shared/records/elements'
 
@@ -34,9 +41,14 @@ const LAYOUT_GLYPHS: Record<TreeElement['layout'], LucideIcon> = {
   block: BlockGlyph,
 }
 
-/** The glyph a Layers row draws for an element: text, then media, then its layout. */
+/**
+ * The glyph a Layers row draws for an element: text, then media, then the
+ * divider and ellipse the Shapes menu draws, then its layout.
+ */
 export function elementGlyph(element: TreeElement): LucideIcon {
   if (element.textOnly) return Type
   if (element.tag === 'img' || element.tag === 'video') return Image
+  if (element.tag === 'hr') return Minus
+  if (element.round) return Circle
   return LAYOUT_GLYPHS[element.layout]
 }

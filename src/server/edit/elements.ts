@@ -17,17 +17,21 @@ const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
   'flex-flow',
 ])
 
+const ROUND_PROPERTIES: ReadonlySet<string> = new Set(['border-radius'])
+
 /**
  * A frame's elements under `body` in index order, each with its parent and
  * name, read from the same parse and the same index `edit` addresses. A
  * frame where the browser builds an element the file does not state is
  * refused, since every index after it would name another element.
  * `layouts` is `elementLayouts`'s read by the same index, and an element it
- * does not reach reads as `block`.
+ * does not reach reads as `block`. `rounds` is `elementRounds`'s read, which
+ * marks an element round only while it holds nothing.
  */
 export function elementTree(
   source: string,
   layouts: readonly Layout[] = [],
+  rounds: readonly boolean[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -53,6 +57,7 @@ export function elementTree(
       name: elementName(element),
       textOnly: ownText(element) !== null,
       layout: layouts[at] ?? 'block',
+      round: (rounds[at] ?? false) && isEmpty(element),
     })
   }
   return listed
@@ -70,6 +75,21 @@ export function elementLayouts(source: FrameSource, tokens: Sheet[]): Layout[] {
     properties: LAYOUT_PROPERTIES,
   })
   return source.elements.map((element) => layoutOf(cascade, element))
+}
+
+/**
+ * Whether each element's corners round by half its size or more, read from
+ * the same static cascade by the edit index, as a placed ellipse sets them.
+ */
+export function elementRounds(source: FrameSource, tokens: Sheet[]): boolean[] {
+  const cascade = buildCascade(source, tokens, {
+    properties: ROUND_PROPERTIES,
+  })
+  return source.elements.map((element) => {
+    const radius = cascade.specified(element, 'border-radius')?.value.trim()
+    const percent = radius?.match(/^(\d+(?:\.\d+)?)%$/)?.[1]
+    return percent !== undefined && Number(percent) >= 50
+  })
 }
 
 function layoutOf(
@@ -119,6 +139,13 @@ function ownText(element: Element): string | null {
     .replace(/\s+/g, ' ')
     .trim()
   return text === '' ? null : text
+}
+
+/** True when the element holds no element and no text past whitespace. */
+function isEmpty(element: Element): boolean {
+  return element.childNodes.every(
+    (node) => isText(node) && node.value.trim() === '',
+  )
 }
 
 function isText(

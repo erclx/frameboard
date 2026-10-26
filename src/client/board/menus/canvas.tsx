@@ -178,6 +178,7 @@ const ELEMENT_IDS = [
   'element.up',
   'view.zoomToSelection',
   'frame.copyPng',
+  'element.delete',
 ] as const
 
 /**
@@ -185,27 +186,32 @@ const ELEMENT_IDS = [
  * leaves out Add a note here, which needs the point the canvas was clicked at.
  */
 export function ElementItems({ noteable }: { noteable: boolean }) {
-  const [note, noteTool, parent, zoom, copyPng] = useActions(ELEMENT_IDS)
+  const [note, noteTool, parent, zoom, copyPng, remove] =
+    useActions(ELEMENT_IDS)
   const element = useSelection((state) => state.element ?? null)
   const tree = element ? treeOf(element.frame) : null
   // Esc from an element sitting directly in `body` selects the frame itself.
   const atTop =
     element && tree ? up(tree.elements, element.index) === null : true
   return (
-    <ContextMenuGroup>
-      <MenuTitle>Element</MenuTitle>
-      {noteable ? (
-        <MenuRow action={note} binding={noteTool?.keys?.[0]}>
-          Add a note here
+    <>
+      <ContextMenuGroup>
+        <MenuTitle>Element</MenuTitle>
+        {noteable ? (
+          <MenuRow action={note} binding={noteTool?.keys?.[0]}>
+            Add a note here
+          </MenuRow>
+        ) : null}
+        <MenuRow action={parent}>
+          {atTop ? 'Select frame' : 'Select parent'}
         </MenuRow>
-      ) : null}
-      <MenuRow action={parent}>
-        {atTop ? 'Select frame' : 'Select parent'}
-      </MenuRow>
-      <MenuRow action={zoom}>Zoom to selection</MenuRow>
+        <MenuRow action={zoom}>Zoom to selection</MenuRow>
+        <ContextMenuSeparator />
+        <MenuRow action={copyPng}>Copy frame as PNG</MenuRow>
+      </ContextMenuGroup>
       <ContextMenuSeparator />
-      <MenuRow action={copyPng}>Copy frame as PNG</MenuRow>
-    </ContextMenuGroup>
+      <DeleteRow action={remove} />
+    </>
   )
 }
 

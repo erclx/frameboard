@@ -5,13 +5,17 @@ import type { TokenRow } from '@/shared/records/tokens'
 import {
   elementMarkup,
   insertElement,
+  removeElement,
   removeInserted,
   restoreInserted,
   shapePaint,
+  textFont,
 } from './insert'
 
 const PAINT = { fill: 'var(--muted)', line: 'var(--border)' }
-const TEXT = '<p data-name="Text">Text</p>'
+const FONT = 'var(--font-text)'
+const TEXT =
+  '<p data-name="Text" style="font-family: var(--font-text)">Text</p>'
 
 // In a bare fragment the implied html, head, and body take 0 to 2, so the
 // first stated element is 3.
@@ -23,30 +27,34 @@ function token(name: string, group: TokenRow['group'] = 'color'): TokenRow {
 }
 
 describe('elementMarkup', () => {
-  it('should write a paragraph for text', () => {
-    expect(elementMarkup({ kind: 'text' }, PAINT)).toBe(TEXT)
+  it('should write a paragraph in the font for text', () => {
+    expect(elementMarkup({ kind: 'text' }, PAINT, FONT)).toBe(TEXT)
   })
 
   it('should write a 100 by 100 box in the fill for a rectangle', () => {
-    expect(elementMarkup({ kind: 'rectangle' }, PAINT)).toBe(
+    expect(elementMarkup({ kind: 'rectangle' }, PAINT, FONT)).toBe(
       '<div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted)"></div>',
     )
   })
 
   it('should round the box for an ellipse', () => {
-    expect(elementMarkup({ kind: 'ellipse' }, PAINT)).toBe(
+    expect(elementMarkup({ kind: 'ellipse' }, PAINT, FONT)).toBe(
       '<div data-name="Ellipse" style="width: 100px; height: 100px; background: var(--muted); border-radius: 50%"></div>',
     )
   })
 
   it('should draw a divider along the top', () => {
-    expect(elementMarkup({ kind: 'divider', vertical: false }, PAINT)).toBe(
+    expect(
+      elementMarkup({ kind: 'divider', vertical: false }, PAINT, FONT),
+    ).toBe(
       '<hr data-name="Divider" style="align-self: stretch; margin: 0; border: 0; border-top: 1px solid var(--border)">',
     )
   })
 
   it('should draw a divider in a row down the left', () => {
-    expect(elementMarkup({ kind: 'divider', vertical: true }, PAINT)).toBe(
+    expect(
+      elementMarkup({ kind: 'divider', vertical: true }, PAINT, FONT),
+    ).toBe(
       '<hr data-name="Divider" style="align-self: stretch; margin: 0; border: 0; border-left: 1px solid var(--border)">',
     )
   })
@@ -74,6 +82,18 @@ describe('shapePaint', () => {
     expect(shapePaint([token('--brand'), token('--border')]).line).toBe(
       'var(--border)',
     )
+  })
+})
+
+describe('textFont', () => {
+  it('should name the text font token when the project sets it', () => {
+    expect(
+      textFont([token('--font-mono', 'font'), token('--font-text', 'font')]),
+    ).toBe('var(--font-text)')
+  })
+
+  it('should fall back to Geist when the project sets no text font token', () => {
+    expect(textFont([token('--font-mono', 'font')])).toBe('Geist, sans-serif')
   })
 })
 
@@ -189,7 +209,7 @@ describe('insertElement', () => {
       insertElement(
         '<p>A</p>',
         { parent: FIRST, before: null },
-        elementMarkup({ kind: 'rectangle' }, PAINT),
+        elementMarkup({ kind: 'rectangle' }, PAINT, FONT),
       ),
     ).toMatchObject({ ok: false, reason: 'verify-failed' })
   })
@@ -251,5 +271,69 @@ describe('removeInserted and restoreInserted', () => {
     expect(
       restoreInserted(removed.html.replace('<h1>A</h1>', ''), removed.span),
     ).toBeUndefined()
+  })
+})
+
+describe('removeElement', () => {
+  const source = '<main>\n  <h1>A</h1>\n  <p>B <b>C</b></p>\n</main>'
+  // <main> is 3, <h1> 4, <p> 5, <b> 6.
+
+  it('should take out the element at the index with everything it holds', () => {
+    expect(removeElement(source, 5)).toMatchObject({
+      ok: true,
+      html: '<main>\n  <h1>A</h1>\n  \n</main>',
+    })
+  })
+
+  it('should answer a span that puts the element back before the same sibling', () => {
+    const removed = removeElement(source, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(
+      '<main>\n  \n  <h1>A</h1><p>B <b>C</b></p>\n</main>',
+    )
+  })
+
+  it('should answer a span a redo takes the element out by again', () => {
+    const removed = removeElement(source, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+    const restored = restoreInserted(removed.html, removed.span)
+    if (!restored) throw new Error('not restored')
+
+    expect(removeInserted(restored.html, restored.span)?.html).toBe(
+      removed.html,
+    )
+  })
+
+  it('should put back the first of several siblings sharing a start tag', () => {
+    const list = '<ul><li>a</li><li>b</li><li>c</li></ul>'
+    // <ul> is 3, its <li>s 4 to 6.
+    const removed = removeElement(list, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(list)
+  })
+
+  it('should put back an element holding children under a parent whose start tag repeats', () => {
+    const nested = '<div><div><p>a</p></div><div><p>b</p></div></div>'
+    // The outer <div> is 3, the inner ones 4 and 6, their <p>s 5 and 7.
+    const removed = removeElement(nested, 4)
+    if (!removed.ok) throw new Error(removed.detail)
+
+    expect(restoreInserted(removed.html, removed.span)?.html).toBe(nested)
+  })
+
+  it('should refuse an index past the last element', () => {
+    expect(removeElement(source, 9)).toMatchObject({
+      ok: false,
+      reason: 'invalid-address',
+    })
+  })
+
+  it('should refuse the body, which is no element under it', () => {
+    expect(removeElement(source, BODY)).toMatchObject({
+      ok: false,
+      reason: 'invalid-address',
+    })
   })
 })

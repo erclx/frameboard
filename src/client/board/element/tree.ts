@@ -22,6 +22,12 @@ export interface Trees {
   request: (ref: string, version: number) => void
   /** Requests a frame's tree and resolves it once it is held, or null when the server refused it. */
   read: (ref: string, version: number) => Promise<ElementTree | null>
+  /**
+   * Waits for the tree at this reload count and fetches it once more when it
+   * shows other bytes than `hash`, which the board just wrote, since the
+   * reload's fetch can read the file before the write lands.
+   */
+  catchUp: (ref: string, hash: string, version: number) => Promise<void>
 }
 
 /**
@@ -44,6 +50,9 @@ export function createTrees(
   const request = (ref: string, version: number) => {
     const held = store.getState().byRef[ref]
     if (held && held.version >= version) return
+    fetchAt(ref, version)
+  }
+  const fetchAt = (ref: string, version: number) => {
     put(ref, { status: 'loading' }, version)
     load(ref).then(
       (tree) => put(ref, { status: 'ready', tree }, version),
@@ -73,7 +82,14 @@ export function createTrees(
       })
     })
   }
-  return { store, request, read }
+  const catchUp = async (ref: string, hash: string, version: number) => {
+    const tree = await read(ref, version)
+    const held = store.getState().byRef[ref]
+    if (!tree || tree.hash === hash || !held || held.version > version) return
+    fetchAt(ref, version)
+    await read(ref, version)
+  }
+  return { store, request, read, catchUp }
 }
 
 /** Reads a tree from the board's server, throwing the refusal's message. */
@@ -116,6 +132,11 @@ export function useElementTree(ref: string | null): TreeEntry | null {
 /** Asks for a frame's tree at its current reload count, outside React. */
 export function requestTree(ref: string): void {
   trees.request(ref, liveStore.getState().reloads[ref] ?? 0)
+}
+
+/** Brings a frame's tree up to bytes the board just wrote, at its current reload count. */
+export function catchUpTree(ref: string, hash: string): Promise<void> {
+  return trees.catchUp(ref, hash, liveStore.getState().reloads[ref] ?? 0)
 }
 
 /** Reads a frame's tree at its current reload count, waiting for it when it has not arrived. */
