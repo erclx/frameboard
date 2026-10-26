@@ -677,6 +677,14 @@ describe('attachGestures', () => {
       expect(carriedStore.getState().carried).toBeNull()
     })
 
+    it('takes the frame out of the selection on a Shift-click inside the element', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.click(200, 175, { shiftKey: true })
+
+      expect(selectedRefs()).toEqual([])
+    })
+
     it('moves no element while the tab may not write', () => {
       const canvas = setup(undefined, {
         elementBox: ELEMENT_BOX,

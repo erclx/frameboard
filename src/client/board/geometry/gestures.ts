@@ -92,7 +92,12 @@ type Gesture =
    * A press on the selected element, which a drag turns into a move of it
    * and a click leaves as a press on `frame`, or as nothing on its outline.
    */
-  | { kind: 'element'; key: ElementKey; frame: FrameRecord | null }
+  | {
+      kind: 'element'
+      key: ElementKey
+      frame: FrameRecord | null
+      shift: boolean
+    }
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
   /** A drag that may not change anything, such as one on a locked frame. */
@@ -177,7 +182,12 @@ export function attachGestures(
       const edge = onOutline(outline, point, zoom())
       if (edge || inBox(outline, point)) {
         const frame = edge ? null : frameAt(drawn, point, zoom())
-        gesture = { kind: 'element', key: element, frame }
+        gesture = {
+          kind: 'element',
+          key: element,
+          frame,
+          shift: event.shiftKey,
+        }
         return
       }
     }
@@ -379,7 +389,8 @@ export function attachGestures(
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
       } else if (gesture.kind === 'element' && gesture.frame) {
-        select(selection, target.page, [gesture.frame.ref])
+        if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
+        else select(selection, target.page, [gesture.frame.ref])
       } else if (gesture.kind === 'marquee' && !gesture.shift) {
         clear(selection)
       }
