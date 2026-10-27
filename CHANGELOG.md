@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.0](https://github.com/erclx/frameboard/compare/v0.14.0...v0.15.0) (2026-10-27)
+
+
+### Features
+
+* **board:** add device frame sizes and draw a frame by a drag ([#135](https://github.com/erclx/frameboard/issues/135)) ([7a7f69a](https://github.com/erclx/frameboard/commit/7a7f69a26db1cd9462101bd25db8a4221b59e2b2))
+* **web:** add the landing page and deploy it to Cloudflare Pages ([#139](https://github.com/erclx/frameboard/issues/139)) ([419c193](https://github.com/erclx/frameboard/commit/419c193d958fc245dd69b7f542430db78c4e3501))
+
+
+### Bug Fixes
+
+* **checks:** count text running past its block as clipped ([#137](https://github.com/erclx/frameboard/issues/137)) ([82c365e](https://github.com/erclx/frameboard/commit/82c365ef853f80a49b5a0478a5e42ce2f3c19a41))
+* **live:** measure and slot a frame written first and placed after ([#134](https://github.com/erclx/frameboard/issues/134)) ([3cd8a3b](https://github.com/erclx/frameboard/commit/3cd8a3b8f0bb151fdfaad8b4e72f1eac99f63713))
+
 ## [0.14.0](https://github.com/erclx/frameboard/compare/v0.13.0...v0.14.0) (2026-10-26)
 
 
