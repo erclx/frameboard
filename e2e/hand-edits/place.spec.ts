@@ -47,9 +47,15 @@ test.describe('placing text and shapes into a frame', () => {
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
   }
 
-  test('a rectangle lands between two children of a row as one tag, is selected, and undoes', async ({
+  test('a rectangle lands between two children of a row as one tag, is selected, and undoes to its frame', async ({
     page,
   }) => {
+    // The inspector asks for the styles of what is selected, which a stale index refuses.
+    const refused: string[] = []
+    page.on('response', (response) => {
+      if (response.url().includes('/api/frames/') && response.status() >= 400)
+        refused.push(`${response.status()} ${response.url()}`)
+    })
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
     const original = read()
@@ -76,6 +82,12 @@ test.describe('placing text and shapes into a frame', () => {
     await page.keyboard.press('ControlOrMeta+z')
 
     await expect.poll(read).toBe(original)
+    await expect(page.locator('[data-element-selection]')).toBeHidden()
+    await expect(page.locator(`[data-frame="${HERO}"]`)).toHaveAttribute(
+      'data-selected',
+      'true',
+    )
+    expect(refused).toEqual([])
   })
 
   test('a desktop frame placed by hand keeps its 900 height once a rectangle lands in it', async ({
