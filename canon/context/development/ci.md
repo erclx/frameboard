@@ -23,6 +23,9 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 | CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                               | the bundle runs on both runtimes from outside the checkout                                                           |
 | Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes                                      |
 | macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`   | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
+| Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                 | the landing page typechecks, lints, formats, passes its unit tests, and builds                                       |
+
+### Ownership and releases
 
 Ownership and the workflows the table leaves out sit below.
 
@@ -36,6 +39,14 @@ Releases run through three further bullets.
 - `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
 - The release job runs `scripts/check-npm-credential.sh` before it cuts a tag, so an unset or revoked `NPM_TOKEN` fails the run early
 - The publish job builds the tag and refuses one whose `dist/cli.js --version` differs, so a mismatched tarball never reaches npm, and a `tag` input publishes that tag alone
+
+### `deploy.yml`
+
+Owns publishing the landing page to Cloudflare Pages.
+
+- It builds `web/` on every push touching it and publishes `web/dist` to the `frameboard` Pages project under the branch's name
+- The deploy skips with a notice until `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist, and a closed pull request deletes its branch's previews
+- `canon/config/config.json` records `deploy.yml` as customized, since a re-sync of the cloudflare stack restores a root build and a placeholder project name
 
 ## Gotchas
 

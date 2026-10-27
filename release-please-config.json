@@ -9,6 +9,7 @@
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.0.1",
       "bump-minor-pre-major": true,
+      "exclude-paths": ["web"],
       "extra-files": [
         {
           "type": "json",

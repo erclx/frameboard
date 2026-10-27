@@ -1,0 +1,85 @@
+---
+import { getImage, Image } from 'astro:assets'
+
+import poster from '../assets/film-poster.jpg'
+
+const posterForVideo = await getImage({ src: poster, width: 1920 })
+---
+
+<section class="sec" id="film">
+  <div class="wrap">
+    <div class="film">
+      <h2>Watch the whole thing</h2>
+      <p>Seventy seconds, from an empty board to a finished one.</p>
+      <div class="shot" data-film data-poster={posterForVideo.src}>
+        <Image
+          src={poster}
+          alt="The launch film's closing frame"
+          sizes="(min-width: 1040px) 960px, 100vw"
+        />
+        <a class="play" href="/film.mp4" aria-label="Play the film"></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .film {
+    max-width: 960px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .shot {
+    margin-top: 32px;
+    position: relative;
+  }
+
+  .play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .play::after {
+    content: '';
+    border-left: 20px solid currentColor;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    margin-left: 5px;
+  }
+
+  .play:hover {
+    filter: brightness(1.08);
+  }
+</style>
+
+<script>
+  // The play control is a link to the file, so with scripts off it still
+  // opens the film. With them on, it swaps the poster for an inline player.
+  const shot = document.querySelector<HTMLElement>('[data-film]')
+  const play = shot?.querySelector('.play')
+  play?.addEventListener('click', (event) => {
+    if (!shot) return
+    event.preventDefault()
+    const video = document.createElement('video')
+    video.src = '/film.mp4'
+    video.poster = shot.dataset.poster ?? ''
+    video.controls = true
+    video.playsInline = true
+    video.muted = true
+    video.setAttribute('aria-label', 'The Frameboard launch film')
+    shot.replaceChildren(video)
+    video.focus()
+    void video.play()
+  })
+</script>

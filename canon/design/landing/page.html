@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>landing-style-1-workbench</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: Geist, sans-serif;
+        font-size: 18px;
+        line-height: 1.55;
+      }
+      img {
+        display: block;
+        width: 100%;
+      }
+      .tag {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        background: var(--note-bg);
+        color: var(--note);
+        padding: 12px 64px;
+        font-size: 15px;
+        font-family: Geist, sans-serif;
+      }
+      .tag b {
+        font-family: Caveat, cursive;
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 40px;
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 72px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 17px;
+      }
+      .brand img {
+        width: 26px;
+        height: 26px;
+      }
+      .links {
+        display: flex;
+        gap: 28px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+      ul {
+        margin: 0 0 24px;
+        padding-left: 20px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      li + li {
+        margin-top: 6px;
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: 5fr 7fr;
+        gap: 56px;
+        align-items: center;
+        padding: 72px 0 104px;
+      }
+      .lead {
+        font-size: 20px;
+        max-width: 30em;
+        margin-bottom: 28px;
+      }
+      .cmd {
+        display: inline-flex;
+        align-items: center;
+        gap: 18px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 16px;
+      }
+      .cmd span {
+        font-family: Geist, sans-serif;
+        font-size: 13px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        font-size: 15px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .sec {
+        padding: 104px 0;
+      }
+      .walk {
+        display: grid;
+        grid-template-columns: 5fr 7fr;
+        gap: 64px;
+        margin-top: 48px;
+      }
+      .steps > div {
+        padding: 22px 0 22px 22px;
+      }
+      .steps h3 {
+        margin: 0 0 6px;
+        font-size: 20px;
+        line-height: 1.3;
+      }
+      .steps p {
+        margin: 0;
+        font-size: 16px;
+      }
+      .steps > div:not(.on) h3,
+      .steps > div:not(.on) p {
+        opacity: 0.42;
+      }
+      .stick {
+        position: sticky;
+        top: 32px;
+        align-self: start;
+      }
+      .film {
+        max-width: 960px;
+        margin: 0 auto;
+        text-align: center;
+      }
+      .film .shot {
+        margin-top: 32px;
+        position: relative;
+      }
+      .play {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .play::after {
+        content: '';
+        border-left: 20px solid currentColor;
+        border-top: 12px solid transparent;
+        border-bottom: 12px solid transparent;
+        margin-left: 5px;
+      }
+      .agent {
+        display: grid;
+        grid-template-columns: 5fr 7fr;
+        gap: 64px;
+        align-items: center;
+      }
+      .agent .lead {
+        font-size: 18px;
+      }
+      .agent ul {
+        margin: 0;
+      }
+      .term {
+        padding: 24px 28px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        white-space: pre-wrap;
+        line-height: 1.7;
+        overflow: hidden;
+      }
+      .term b {
+        font-weight: 600;
+      }
+      .term .dim {
+        color: var(--muted);
+      }
+      .close {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 48px;
+      }
+      .close .actions {
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+      }
+      .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 28px;
+        margin: 20px 0 0;
+        font-size: 15px;
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 14px;
+        padding: 32px 0 48px;
+      }
+      .why {
+        margin: 0 64px 48px;
+        border: 1px dashed var(--note);
+        border-radius: 8px;
+        padding: 14px 18px;
+        color: var(--muted);
+        font-size: 15px;
+        font-family: Geist, sans-serif;
+      }
+      .why b {
+        color: var(--note);
+      }
+      .why ul {
+        margin: 4px 0 0;
+      }
+      :root {
+        --bg: #ececec;
+        --fg: #1a1a1a;
+        --muted: #6e6e6e;
+        --panel: #ffffff;
+        --line: #e4e4e4;
+        --accent: #2f7bf0;
+        --on-accent: #ffffff;
+        --note: #8250df;
+        --note-bg: #fbefff;
+      }
+      [data-theme='dark'] {
+        --bg: #1f1f1f;
+        --fg: #e6e6e6;
+        --muted: #949494;
+        --panel: #2a2a2a;
+        --line: #353535;
+        --accent: #4e92f6;
+        --on-accent: #ffffff;
+        --note: #b88cff;
+        --note-bg: #231a35;
+      }
+      h1 {
+        font-size: 60px;
+        line-height: 1.04;
+        letter-spacing: -0.025em;
+        font-weight: 600;
+        margin: 0 0 20px;
+      }
+      h2 {
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+        margin: 0 0 12px;
+      }
+      .shot {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 8px;
+        box-shadow: 0 1px 2px rgba(26, 26, 26, 0.06);
+      }
+      .shot img {
+        border-radius: 6px;
+      }
+      .cmd {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-radius: 8px;
+        padding: 14px 18px;
+      }
+      .cmd span {
+        color: var(--on-accent);
+        opacity: 0.8;
+      }
+      .btn {
+        height: 50px;
+        padding: 0 18px;
+        border-radius: 8px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+      }
+      .steps > div {
+        border-left: 2px solid var(--line);
+      }
+      .steps > div.on {
+        border-left-color: var(--accent);
+      }
+      .sec {
+        border-top: 1px solid var(--line);
+      }
+      .term {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: var(--fg);
+      }
+      .pr {
+        color: var(--accent);
+      }
+      .play {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .foot {
+        border-top: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tag" data-name="Candidate tag">
+      <b>1 · Workbench</b
+      ><span
+        >The board's own chrome, grey canvas and white panels, blue as the one
+        accent</span
+      >
+    </div>
+    <div class="wrap">
+      <div class="nav" data-name="Nav">
+        <div class="brand">
+          <img src="../assets/icon.svg" alt="Frameboard logo" />Frameboard
+        </div>
+        <div class="links"><span>Docs</span><span>GitHub</span></div>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="hero" data-name="Hero">
+        <div>
+          <h1>The design board your agent draws on</h1>
+          <p class="lead">
+            Your agent writes each screen as a plain HTML file. Frameboard shows
+            it the moment the file lands, and you review it and tweak it by
+            hand.
+          </p>
+          <div class="actions">
+            <div class="cmd" data-name="Install command">
+              npx frameboard serve<span>Copy</span>
+            </div>
+            <span class="btn" data-name="GitHub button">GitHub</span>
+          </div>
+        </div>
+        <div class="shot" data-name="Footage">
+          <img
+            src="../assets/landing/hero-loop.webp"
+            alt="The board canvas as an agent draws a landing page and two phone screens"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="sec" data-name="Walkthrough">
+      <div class="wrap">
+        <h2>From a file to a screen you signed off</h2>
+        <p class="lead">
+          One take per step, playing beside the step you are reading.
+        </p>
+        <div class="walk">
+          <div class="steps">
+            <div class="on" data-name="Step 1">
+              <h3>Every frame is a plain HTML file</h3>
+              <p>
+                The moment your agent writes one, it is on the board, so it
+                draws with the tools it already has.
+              </p>
+            </div>
+            <div class="" data-name="Step 2">
+              <h3>Break a rule, and the agent hears at once</h3>
+              <p>
+                Clipped text, a missing font, or a color set for one theme only
+                is flagged on the frame and reported to the agent that wrote it.
+              </p>
+            </div>
+            <div class="" data-name="Step 3">
+              <h3>Small things, you just fix</h3>
+              <p>
+                Change text, color, and type by hand, picking colors from your
+                own tokens. Only what you touch changes.
+              </p>
+            </div>
+            <div class="" data-name="Step 4">
+              <h3>Bigger things, you ask</h3>
+              <p>
+                Pin a note on a frame or an element, and it reaches your agent
+                straight away. Its reply lands in the thread.
+              </p>
+            </div>
+            <div class="" data-name="Step 5">
+              <h3>See exactly what it changed</h3>
+              <p>
+                Compare a frame with the version before the agent touched it.
+              </p>
+            </div>
+            <div class="" data-name="Step 6">
+              <h3>Every frame, in light and dark</h3>
+              <p>
+                Flip one frame or the whole board, and capture either theme as a
+                PNG.
+              </p>
+            </div>
+          </div>
+          <div class="stick">
+            <div class="shot" data-name="Footage">
+              <img
+                src="../assets/landing/step-1.jpg"
+                alt="The agent drawing the plant screen, its outline marking the frame it holds"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sec" data-name="Film">
+      <div class="wrap">
+        <div class="film">
+          <h2>Watch the whole thing</h2>
+          <p>Seventy seconds, from an empty board to a finished one.</p>
+          <div class="shot" data-name="Film poster">
+            <img
+              src="../assets/landing/film-poster.jpg"
+              alt="The launch film's closing frame"
+            /><span class="play" aria-label="Play the film"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sec" data-name="Agent">
+      <div class="wrap">
+        <div class="agent">
+          <div>
+            <h2>Built for an agent to run</h2>
+            <p class="lead">
+              Every command prints JSON on request, never stops to ask, and
+              exits with a code an agent branches on.
+            </p>
+            <ul>
+              <li>
+                The check names the rule, the frame, and the element that broke
+                it
+              </li>
+              <li>
+                A Claude Code plugin checks each frame the agent writes and
+                hands it your notes as they arrive
+              </li>
+            </ul>
+          </div>
+          <div class="term" data-name="Check output">
+            <span class="pr">$</span> frameboard check sprout/app/home
+            <span class="dim">sprout/app/home.html</span>
+            <b>clipped</b> sprout/app/home is 442 px wide in its 390 px width,
+            so the board cuts it off, &lt;div&gt; at element 8 first past the
+            box and 1 more element is. Reflow or shorten the content to fit its
+            390 px width, since frame fit sets the height alone.
+            <span class="dim">frameboard: Checked 1 frame, 1 finding.</span>
+
+            <span class="dim"
+              ># the agent narrows the list and writes the frame again</span
+            >
+
+            <span class="pr">$</span> frameboard check sprout/app/home
+            <span class="dim">Checked 1 frame, no findings.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sec" data-name="Close">
+      <div class="wrap">
+        <div class="close">
+          <div>
+            <h2>Start a board in an empty folder</h2>
+            <p>Runs on macOS and Linux, with Node 22 or later or with Bun.</p>
+            <p class="facts" data-name="Facts">
+              <span>No account</span><span>No hosted service or MCP server</span
+              ><span>Any folder, with or without git</span
+              ><span>MIT licensed</span>
+            </p>
+          </div>
+          <div class="actions">
+            <div class="cmd">npx frameboard serve<span>Copy</span></div>
+            <span class="btn">GitHub</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="foot" data-name="Footer">
+        <span>Frameboard · MIT license</span
+        ><span>Docs · GitHub · Changelog</span>
+      </div>
+    </div>
+    <div class="why" data-name="Why">
+      <b>Trade-off</b>
+      <ul>
+        <li>
+          Reads as the tool you will open, so the page and the product agree on
+          first launch
+        </li>
+        <li>
+          The quietest of the three, so it leans on the footage to carry any
+          energy
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

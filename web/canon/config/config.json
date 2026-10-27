@@ -1,0 +1,33 @@
+{
+  "covers": ["tooling"],
+  "domains": {
+    "tooling": {
+      "version": "5.69.0",
+      "syncedAt": "2026-10-27T01:43:16.642Z",
+      "files": {
+        ".oxfmtrc.json": "sha256:bff2a348476448733c3b1e888add60ffc776faa9d778c9ffa33a0e1ba8088dc9",
+        ".oxlintrc.json": "sha256:89fffa9c7742952bdb5500ef24cf7e4132be3f819121e32071dfe58af75133b5",
+        ".prettierrc": "sha256:b90ed7d374d2063403605fb29d287bed8d40fee793e1f5ba5cb5687c4f3bdc44",
+        "astro.config.mjs": "sha256:7f39932b76b76ed30b1053ad20e76295c7d4e4e85633fec1eb32e0920f8bb61d",
+        "card-src/pages/og-card.astro": "sha256:d4f07a593e2400cc3c1ca497911af20b99f72fd352bbd175ffda8f20a48a7d2f",
+        "card.config.mjs": "sha256:f447fa6d883bd5a17e59318d78257d029d999b0bd2be24941e8b22583328b35b",
+        "e2e/capture-types.ts": "sha256:38e736ce0be4040cc8e4887e863ed8d6762fdce9f70a3f58ddd4e5e02434f496",
+        "e2e/screenshot.ts": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b",
+        "eslint.config.js": "sha256:3e8e4799dfdec37c53e78c3a6db47785e5ceee357e7e99b35b996a2792fcb877",
+        "playwright.config.ts": "sha256:d9c8805a586b130466c83ee2c74453d5d9f17e2f6682d443085ee9d5e2c9960a",
+        "scripts/check-card-exclusion.sh": "sha256:764c9adb0693134364c7e649cab5993a55543cdecd95ed1c218973081a2319ad",
+        "scripts/lib/preview-server.sh": "sha256:5e1d0ea671970ba5a4c6a83c0c656f86e4e9e5caa45c6636487793cc6f17c20b",
+        "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
+        "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
+        "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
+        "scripts/verify.ts": "sha256:d8e397f6dff3378551a9f22b4754f2e17dd3ff1beb7e30608ea1932feaf75e39",
+        "scripts/worktree-port.sh": "sha256:3d0f0a5e01f796bda1b8591103aef0509c1c077d160d15dfff565edc4d3a30cb",
+        "src/components/dev/scenarios.astro": "sha256:c2f6a892fce2803a6ef52eeb38b38c68604cd18e796cd2764e264f01a3cd8187",
+        "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d",
+        "tsconfig.json": "sha256:ddc737073d68b79b667bc94f6489e6884f934dac968bf1f63fa0ec93010beca3",
+        "vitest.config.ts": "sha256:86cea8770fd07cb6757e73c70913a49ab042494f719f4b49337e03639ccfb754"
+      },
+      "chain": ["astro", "web"]
+    }
+  }
+}
