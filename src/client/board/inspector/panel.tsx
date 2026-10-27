@@ -123,10 +123,11 @@ export function InspectorPanel() {
 
 const SHADOW = '--shadow'
 
-/** The project's color tokens and its `--shadow*` tokens, empty until the table reads. */
+/** The project's color tokens, its `--shadow*` tokens, and its font tokens, empty until the table reads. */
 function useProjectTokens(frame: string): {
   colors: TokenRow[]
   shadows: TokenRow[]
+  fonts: TokenRow[]
 } {
   const table = useTokenTable(frame.split('/')[0] ?? '')
   const tokens = table?.tokens ?? []
@@ -136,6 +137,7 @@ function useProjectTokens(frame: string): {
       (row) => row.group === 'color' && !row.name.startsWith(SHADOW),
     ),
     shadows: tokens.filter((row) => row.name.startsWith(SHADOW)),
+    fonts: tokens.filter((row) => row.group === 'font'),
   }
 }
 
@@ -155,7 +157,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
-  const { colors, shadows } = useProjectTokens(element.frame)
+  const { colors, shadows, fonts } = useProjectTokens(element.frame)
 
   if (!live) {
     return (
@@ -180,6 +182,9 @@ function ElementSections({ page, element }: ElementSectionsProps) {
       />
       {live.holdsText ? (
         <TypographySection
+          fonts={fonts}
+          fontFamily={live.fontFamily}
+          fontToken={own?.fontFamily?.token ?? null}
           fontSize={live.fontSize}
           fontWeight={live.fontWeight}
           lineHeight={live.lineHeight}

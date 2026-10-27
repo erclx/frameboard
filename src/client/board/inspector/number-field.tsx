@@ -4,12 +4,14 @@ import { MoveHorizontal } from 'lucide-react'
 import {
   type KeyboardEvent,
   type PointerEvent,
+  type ReactElement,
   type ReactNode,
   useMemo,
   useRef,
   useState,
 } from 'react'
 
+import { ActionTooltip } from '../chrome/action-tooltip'
 import { isStrayHistory } from './element/stray-history'
 
 /** Maps each stored value to the one a gesture asks for, so several frames can move by one step from their own values. */
@@ -21,7 +23,8 @@ interface NumberFieldProps {
   caption?: string
   /**
    * The key letter or icon centered in a full-height zone at the field's
-   * left, at least 24px wide, which scrubs the value when dragged.
+   * left, at least 24px wide, which scrubs the value when dragged. An icon
+   * names the field in a tooltip, since it shows no word.
    */
   prefix?: ReactNode
   /** The input's left padding, which clears the prefix's zone, 26px by default for a letter. */
@@ -253,6 +256,14 @@ export function NumberField({
     />
   )
 
+  // An icon prefix shows no word, so the field names itself on hover and focus.
+  const named = (field: ReactElement) =>
+    prefix && typeof prefix !== 'string' ? (
+      <ActionTooltip label={label}>{field}</ActionTooltip>
+    ) : (
+      field
+    )
+
   return (
     <Primitive.Root
       className={cn('group/number block', className)}
@@ -304,34 +315,36 @@ export function NumberField({
           <ScrubCursor />
         </Primitive.ScrubArea>
       ) : null}
-      <div className="relative">
-        {prefix ? (
-          <Primitive.ScrubArea
-            aria-hidden
-            data-scrub
-            className={cn(
-              'absolute inset-y-0 left-0 flex min-w-6 cursor-ew-resize items-center justify-center rounded-l-md px-1.5 text-xs text-faint select-none',
-              !disabled && ZONE_LIT,
-            )}
-            onPointerDown={startScrub}
-          >
-            {prefix}
-            <ScrubCursor />
-          </Primitive.ScrubArea>
-        ) : null}
-        {scrubValue ? (
-          <Primitive.ScrubArea
-            data-scrub
-            className="block"
-            onPointerDown={startScrub}
-          >
-            {input}
-            <ScrubCursor />
-          </Primitive.ScrubArea>
-        ) : (
-          input
-        )}
-      </div>
+      {named(
+        <div className="relative">
+          {prefix ? (
+            <Primitive.ScrubArea
+              aria-hidden
+              data-scrub
+              className={cn(
+                'absolute inset-y-0 left-0 flex min-w-6 cursor-ew-resize items-center justify-center rounded-l-md px-1.5 text-xs text-faint select-none',
+                !disabled && ZONE_LIT,
+              )}
+              onPointerDown={startScrub}
+            >
+              {prefix}
+              <ScrubCursor />
+            </Primitive.ScrubArea>
+          ) : null}
+          {scrubValue ? (
+            <Primitive.ScrubArea
+              data-scrub
+              className="block"
+              onPointerDown={startScrub}
+            >
+              {input}
+              <ScrubCursor />
+            </Primitive.ScrubArea>
+          ) : (
+            input
+          )}
+        </div>,
+      )}
     </Primitive.Root>
   )
 }

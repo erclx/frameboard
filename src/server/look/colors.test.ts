@@ -113,6 +113,28 @@ describe('frameStyles', () => {
     expect(element?.backgroundColor?.token).toBe('--primary')
   })
 
+  it('names the font token an ancestor states, through inheritance', () => {
+    const { element } = stylesOf(
+      '<div style="font-family: var(--font-text)"><p id="t">x</p></div>',
+      't',
+    )
+
+    expect(element?.fontFamily).toEqual({
+      value: 'var(--font-text)',
+      token: '--font-text',
+      percent: 100,
+    })
+  })
+
+  it('answers a raw family as having no token', () => {
+    const { element } = stylesOf(
+      '<p id="t" style="font-family: Geist, sans-serif">x</p>',
+      't',
+    )
+
+    expect(element?.fontFamily?.token).toBeNull()
+  })
+
   it('answers null for a property nothing sets', () => {
     const { element } = stylesOf('<p id="t">x</p>', 't')
 

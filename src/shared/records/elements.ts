@@ -48,13 +48,15 @@ export const styleValueSchema = z.object({
 
 export type StyleValue = z.infer<typeof styleValueSchema>
 
-/** The selected element's colors, border, and shadow, each null when no author rule sets it. */
+/** The selected element's colors, border, shadow, and font family, each null when no author rule sets it. */
 export const elementStylesSchema = z.object({
   color: styleValueSchema.nullable(),
   backgroundColor: styleValueSchema.nullable(),
   borderColor: styleValueSchema.nullable(),
   borderWidth: styleValueSchema.nullable(),
   boxShadow: styleValueSchema.nullable(),
+  /** The family as written, inherited from an ancestor when the element states none, null for one a `font` shorthand sets. */
+  fontFamily: styleValueSchema.nullable(),
 })
 
 export type ElementStyles = z.infer<typeof elementStylesSchema>

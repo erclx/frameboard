@@ -11,6 +11,8 @@ export interface LiveElement {
   opacity: number
   /** The top-left corner's radius in px. */
   radius: number
+  /** The computed stack, which names the families and never the token behind them. */
+  fontFamily: string
   fontSize: number
   fontWeight: number
   /** In px, null for `normal`, whose height the font decides. */
@@ -121,6 +123,7 @@ function readLive(element: Element, view: Window): LiveElement {
   return {
     opacity: Number(style.opacity),
     radius: Math.round(parseFloat(style.borderTopLeftRadius) || 0),
+    fontFamily: style.fontFamily,
     fontSize: hundredths(style.fontSize),
     fontWeight: Number(style.fontWeight),
     lineHeight:

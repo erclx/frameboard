@@ -119,6 +119,25 @@ test.describe('editing a selected element by hand', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a family and a named weight picked in Typography land in the headline’s span', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Font family' }).click()
+    await page.getByRole('menuitemradio', { name: 'Geist Mono' }).click()
+    await expect.poll(read).toContain("font-family: 'Geist Mono'")
+
+    const weight = page.getByRole('button', { name: 'Font weight' })
+    // The frame reloads after the family write, and the weights offered follow its face.
+    await expect(page.getByRole('button', { name: 'Font family' })).toHaveText(
+      'Geist Mono',
+    )
+    await weight.click()
+    await page.getByRole('menuitemradio', { name: /^Medium/ }).click()
+
+    await expect.poll(read).toContain('font-weight: 500')
+    expect(changedLines(original, read())).toHaveLength(1)
+  })
+
   test('undo on a focused toast runs the board undo, not the browser one', async ({
     page,
   }) => {
