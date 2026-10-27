@@ -60,23 +60,24 @@ export const canvasView = {
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
   centerOn: (box: Box, scale?: number): void => controls?.centerOn(box, scale),
   /**
-   * Centers the box at the current zoom when it lies wholly outside the
-   * view, and leaves a view showing any of it. The developer asked for it,
-   * so it reports as a hand move, which stops Follow.
+   * Centers the box at the current zoom unless it lies wholly inside the
+   * view, so a frame half under a panel comes into view too, and a box larger
+   * than the view is fitted. The developer asked for it, so it reports as a
+   * hand move, which stops Follow.
    */
   reveal: (box: Box): void => {
-    if (!controls || overlaps(box, controls.visible())) return
+    if (!controls || contains(controls.visible(), box)) return
     reportHandMove()
     controls.centerOn(box)
   },
 }
 
-function overlaps(a: Box, b: Box): boolean {
+function contains(outer: Box, inner: Box): boolean {
   return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
   )
 }
 
