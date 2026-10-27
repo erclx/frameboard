@@ -202,6 +202,40 @@ describe('createHug', () => {
     await expect.poll(() => entries().hero.height).toBe(1300)
     expect(entries().card.height).toBe(900)
   })
+
+  it('stores no size for a frame whose file changed while a later frame measured', async () => {
+    board = boardOf({
+      card: { hugHeight: true },
+      hero: { hugHeight: true },
+    })
+    let reached: () => void = () => {}
+    const heroMeasuring = new Promise<void>((resolve) => {
+      reached = resolve
+    })
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const hug = createHug({
+      root: board.root,
+      measure: async (frame: FrameRecord) => {
+        if (frame.ref === CARD) return sized(1440, 1232)
+        reached()
+        await gate
+        return sized(1440, 1300)
+      },
+    })
+    hug.later(await scanBoard(board.root), [CARD, HERO])
+    await heroMeasuring
+    const card = join(board.root, 'studio/home/card.html')
+    writeFileSync(card, '<p>card, rewritten</p>')
+    const later = new Date(Date.now() + 60_000)
+    utimesSync(card, later, later)
+    release()
+
+    await expect.poll(() => entries().hero.height).toBe(1300)
+    expect(entries().card.height).toBe(900)
+  })
 })
 
 describe('writtenSinceLayout', () => {
