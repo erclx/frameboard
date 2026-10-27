@@ -5,6 +5,7 @@ import {
   createSelectionStore,
   followSelection,
   select,
+  selectElement,
 } from '@/client/board/selection'
 import { createThemeStore, flipFrame } from '@/client/theme/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
@@ -161,6 +162,91 @@ describe('connectLive access', () => {
 
     expect(selection.getState().frames).toEqual(['studio/start/hero'])
     expect(theme.getState().flipped).toEqual(new Set(['studio/start/hero']))
+    unfollow()
+    stop()
+  })
+
+  it('keeps a selected frame, its flip, and its unseen mark through a frame rename', () => {
+    const store = createLiveStore()
+    const selection = createSelectionStore()
+    const theme = createThemeStore()
+    const unseen = createUnseenStore(null)
+    const stop = connectLive(store, { selection, theme, unseen })
+    const socket = FakeSocket.instances[0]
+    socket?.receive({
+      type: 'board',
+      data: boardOf(pageOf([frameOf('hero'), frameOf('footer')])),
+    })
+    socket?.receive({
+      type: 'changes',
+      changes: [
+        {
+          id: 'c1',
+          frame: 'studio/home/hero',
+          at: '2026-10-19T12:00:00.000Z',
+          hash: 'h1',
+          author: null,
+          elements: [],
+          removed: 0,
+          whole: true,
+          created: true,
+        },
+      ],
+    })
+    const unfollow = followSelection(
+      selection,
+      'studio/home',
+      store,
+      createModeStore(1280),
+    )
+    select(selection, 'studio/home', ['studio/home/hero'])
+    flipFrame('studio/home/hero', theme)
+
+    socket?.receive({
+      type: 'renamed',
+      before: 'studio/home/hero',
+      after: 'studio/home/lead',
+    })
+
+    expect(selection.getState().frames).toEqual(['studio/home/lead'])
+    expect(theme.getState().flipped).toEqual(new Set(['studio/home/lead']))
+    expect(Object.keys(unseen.getState().unseen)).toEqual(['studio/home/lead'])
+    unfollow()
+    stop()
+  })
+
+  it('keeps a selected element through a rename of its frame', () => {
+    const store = createLiveStore()
+    const selection = createSelectionStore()
+    const stop = connectLive(store, { selection })
+    const socket = FakeSocket.instances[0]
+    socket?.receive({
+      type: 'board',
+      data: boardOf(pageOf([frameOf('hero')])),
+    })
+    const unfollow = followSelection(
+      selection,
+      'studio/home',
+      store,
+      createModeStore(1280),
+    )
+    selectElement(selection, 'studio/home', {
+      frame: 'studio/home/hero',
+      index: 2,
+      hash: 'h1',
+    })
+
+    socket?.receive({
+      type: 'renamed',
+      before: 'studio/home/hero',
+      after: 'studio/home/lead',
+    })
+
+    expect(selection.getState().element).toEqual({
+      frame: 'studio/home/lead',
+      index: 2,
+      hash: 'h1',
+    })
     unfollow()
     stop()
   })

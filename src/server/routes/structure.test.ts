@@ -348,6 +348,32 @@ describe('structureRoutes', () => {
       expect(existsSync(frameFile('top'))).toBe(false)
     })
 
+    it('records a frame rename as a rename, for the board to keep its state', async () => {
+      const wrote: unknown[] = []
+      history = new History(board.root, undefined, (step) =>
+        wrote.push(step.renamed),
+      )
+      app = structureRoutes(board.root, ACCESS, history)
+
+      await post('/api/frame/rename', { ref: 'studio/home/hero', name: 'top' })
+
+      expect(wrote).toEqual([
+        { before: 'studio/home/hero', after: 'studio/home/top' },
+      ])
+    })
+
+    it('records no rename for a frame renamed to its own name', async () => {
+      const wrote: unknown[] = []
+      history = new History(board.root, undefined, (step) =>
+        wrote.push(step.renamed),
+      )
+      app = structureRoutes(board.root, ACCESS, history)
+
+      await post('/api/frame/rename', { ref: 'studio/home/hero', name: 'hero' })
+
+      expect(wrote).toEqual([undefined])
+    })
+
     it('orders a frame to the bottom of the stack', async () => {
       await post('/api/frame/order', { ref: 'studio/home/mobile', index: 0 })
 

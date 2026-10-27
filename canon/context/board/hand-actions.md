@@ -88,7 +88,7 @@ Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - A page or project rename, its undo, and its redo each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route to the new name
 
-On `renamed` the socket moves the selection, the flipped frames, and the unseen marks ahead of the live store, since the renamed board prunes a selection it no longer holds. A frame rename sends no `renamed`, so it still drops all three.
+On `renamed` the socket moves the selection, the flipped frames, and the unseen marks ahead of the live store, since the renamed board prunes a selection it no longer holds. A frame rename broadcasts it too, and its frame takes all three along but no alias, so it remounts from its new file.
 
 Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history.
 

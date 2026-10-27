@@ -79,9 +79,10 @@ export function identityOf(
 }
 
 /**
- * Renames a project or page on the board in hand, ahead of the snapshot
- * that will carry it, moving every count, finding, claim, note, and
- * thumbnail to the new refs and recording the alias `identityOf` reads. A
+ * Renames a project, page, or frame on the board in hand, ahead of the
+ * snapshot that will carry it, moving every count, finding, claim, note, and
+ * thumbnail to the new refs and recording the alias `identityOf` reads for a
+ * project or page. A
  * board that no longer holds `before`, or already holds `after`, carries the
  * rename already and is left alone.
  */
@@ -95,8 +96,15 @@ export function receiveRename(
   if (!board || !takesRename(store, before, after)) return
   const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
     movedKeys(byRef, before, after)
-  const aliases = { ...moveKeys(state.aliases) }
-  aliases[after] = identityOf(state.aliases, before)
+  // A frame keeps no alias, since its file moved and a key held across the
+  // rename would keep its iframe on a path that no longer exists.
+  const isFrame = before.split('/').length === 3
+  const aliases = isFrame
+    ? state.aliases
+    : {
+        ...moveKeys(state.aliases),
+        [after]: identityOf(state.aliases, before),
+      }
   const renamed = renameOnBoard(board, before, after)
   store.setState({
     board: renamed,
@@ -196,17 +204,24 @@ export function renamedRef(
 function holdsRef(board: ListResult, ref: string): boolean {
   return board.projects.some(
     (project) =>
-      project.name === ref || project.pages.some((page) => page.ref === ref),
+      project.name === ref ||
+      project.pages.some(
+        (page) =>
+          page.ref === ref || page.frames.some((frame) => frame.ref === ref),
+      ),
   )
 }
 
-/** The board with one project or page renamed, its folder path and everything under it following. */
+/**
+ * The board with one project, page, or frame renamed, its path and
+ * everything under it following.
+ */
 function renameOnBoard(
   board: ListResult,
   before: string,
   after: string,
 ): ListResult {
-  const [project = '', page] = before.split('/')
+  const [project = '', page, frame] = before.split('/')
   const name = after.split('/').at(-1) ?? after
   const repath = (from: string, to: string) => (path: string) =>
     path === from || path.startsWith(`${from}/`)
@@ -216,6 +231,28 @@ function renameOnBoard(
     ...board,
     projects: board.projects.map((held) => {
       if (held.name !== project) return held
+      if (frame !== undefined) {
+        return {
+          ...held,
+          pages: held.pages.map((each) =>
+            each.name !== page
+              ? each
+              : {
+                  ...each,
+                  frames: each.frames.map((one) =>
+                    one.ref !== before
+                      ? one
+                      : {
+                          ...one,
+                          ref: after,
+                          name,
+                          path: siblingPath(one.path, `${name}.html`),
+                        },
+                  ),
+                },
+          ),
+        }
+      }
       if (page === undefined) {
         const path = repath(held.path, siblingPath(held.path, name))
         return {
