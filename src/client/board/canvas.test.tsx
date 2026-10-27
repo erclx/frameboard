@@ -971,12 +971,12 @@ describe('double-clicking on the canvas', () => {
     liveStore.setState({ canWrite: false })
   })
 
-  it("opens the inspector's rename on the frame's label", async () => {
+  it("opens the rename on the frame's own label", async () => {
     const { drawn, hit } = renderWithRename()
 
     doubleClick(hit, drawn.left + 8, drawn.top - 8)
 
-    expect(renamingFrame()).toEqual({ ref: HERO.ref, surface: 'inspector' })
+    expect(renamingFrame()).toEqual({ ref: HERO.ref, surface: 'canvas' })
   })
 
   it('opens no rename inside the frame', async () => {

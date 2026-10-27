@@ -35,7 +35,7 @@ import {
   overElement,
 } from './element/text-in-place'
 import { readTree } from './element/tree'
-import { Frame } from './frame'
+import { Frame, LabelRename } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
 import { drawnAt, frameAt } from './geometry/hit'
@@ -63,6 +63,7 @@ import {
   selectElement,
   selectionStore,
 } from './selection'
+import { startFrameRename } from './structure/actions'
 import { DRAWN_FRAME_MIN, placeFrame } from './structure/tool'
 import {
   attachCanvas,
@@ -749,12 +750,15 @@ export function Canvas({
                   pressedOn.current = selectionStore.getState().element ?? null
                 }
               }}
-              // The label strip renames as F2 does, through its gates, and
+              // The label strip renames in place, through F2's gates, and
               // anywhere else a double-click edits text or picks inside the frame.
               onDoubleClick={(event) => {
                 if (onLabel(event.nativeEvent)) {
                   const rename = findAction('frame.rename')
-                  if (rename && isEnabled(rename)) rename.run()
+                  const [ref] = selectionStore.getState().frames
+                  if (rename && isEnabled(rename) && ref) {
+                    startFrameRename(ref, 'canvas')
+                  }
                   return
                 }
                 doubleClick(event.nativeEvent)
@@ -769,6 +773,8 @@ export function Canvas({
         className="pointer-events-none absolute top-0 left-0 origin-top-left"
       >
         <NotesLayer page={page.ref} frames={frames} container={layer} />
+        {/* Here rather than on the label, since the hit layer covers the frames' layer. */}
+        <LabelRename frames={frames} />
       </div>
       <WaitingDock frames={frames} />
       {page.layoutError ? (

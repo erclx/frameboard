@@ -5,14 +5,20 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
+import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { openFindings } from './findings-open'
-import { Frame } from './frame'
+import { Frame, LabelRename } from './frame'
 import { modeStore } from './mode'
 import { endPreview, setPreview } from './preview/store'
+import {
+  renamingFrame,
+  startFrameRename,
+  stopFrameRename,
+} from './structure/actions'
 
 function frame(name: string): FrameRecord {
   return {
@@ -806,5 +812,84 @@ describe('Frame preview', () => {
     const root = container.querySelector<HTMLElement>('[data-frame]')
     expect(root?.style.width).toBe('390px')
     expect(container.querySelector('[data-preview-chip]')).toBeNull()
+  })
+})
+
+describe('LabelRename', () => {
+  const HERO = frame('hero')
+
+  /** A server answering each rename with the frame under its new name, recording each body. */
+  function server() {
+    const sent: unknown[] = []
+    const calls = createStructure(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { name: string }
+      sent.push(body)
+      return Response.json({ ...HERO, name: body.name })
+    })
+    return { calls, sent }
+  }
+
+  afterEach(() => act(() => stopFrameRename()))
+
+  it('opens a field holding the name while the canvas renames the frame', () => {
+    const { calls } = server()
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+
+    act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    expect(
+      view.getByRole('textbox', { name: 'Rename frame hero' }),
+    ).toHaveValue('hero')
+  })
+
+  it('opens no field while another surface renames the frame', () => {
+    const { calls } = server()
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+
+    act(() => startFrameRename(HERO.ref, 'inspector'))
+
+    expect(view.queryByRole('textbox')).toBeNull()
+  })
+
+  it('renames the frame on Enter and closes the field', async () => {
+    const { calls, sent } = server()
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+    act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    await userEvent.keyboard('cover{Enter}')
+
+    expect(sent).toEqual([{ ref: HERO.ref, name: 'cover' }])
+    expect(view.queryByRole('textbox')).toBeNull()
+  })
+
+  it('closes on Esc with nothing sent and the key kept from the board', async () => {
+    const { calls, sent } = server()
+    let reached = false
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') reached = true
+    }
+    window.addEventListener('keydown', onKey)
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+    act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    await userEvent.keyboard('cover{Escape}')
+    window.removeEventListener('keydown', onKey)
+
+    expect([sent, renamingFrame().ref, reached]).toEqual([[], null, false])
+    expect(view.queryByRole('textbox')).toBeNull()
+  })
+})
+
+describe('Frame label while the canvas renames it', () => {
+  afterEach(() => act(() => stopFrameRename()))
+
+  it('hides the label the field draws over', () => {
+    const { getByTitle } = render(
+      <Frame frame={frame('hero')} live={false} version={0} />,
+    )
+
+    act(() => startFrameRename('studio/home/hero', 'canvas'))
+
+    expect(getByTitle('hero')).not.toBeVisible()
   })
 })

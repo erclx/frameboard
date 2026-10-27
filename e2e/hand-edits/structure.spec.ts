@@ -552,4 +552,34 @@ test.describe('page structure by hand, and its undo', () => {
 
     expect(opened).toEqual(Array(20).fill(true))
   })
+
+  test('renames a frame in a field on its label, which takes a click to place the caret', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+    const label = page
+      .locator('[data-frame="studio/home/hero"]')
+      .getByText('hero', { exact: true })
+    const box = await label.boundingBox()
+    if (!box) throw new Error('The hero label draws no box')
+    // The hit layer covers the label, so the mouse goes by coordinates.
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+    const name = page.getByRole('textbox', { name: 'Rename frame hero' })
+    await expect(name).toBeFocused()
+    const field = await name.boundingBox()
+    if (!field) throw new Error('The rename field draws no box')
+
+    await page.mouse.click(
+      field.x + field.width - 4,
+      field.y + field.height / 2,
+    )
+    await expect(name).toBeFocused()
+    await page.keyboard.type('-v2')
+    await page.keyboard.press('Enter')
+
+    await expect
+      .poll(() => existsSync(at('studio/home/hero-v2.html')))
+      .toBe(true)
+    await expect(name).toBeHidden()
+  })
 })

@@ -3,12 +3,14 @@ import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
+import { RenameField } from '@/client/components/rename-field'
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import {
   flipFrame,
@@ -33,6 +35,11 @@ import { useMode } from './mode'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
+import {
+  renameFrame,
+  stopFrameRename,
+  useRenamingFrame,
+} from './structure/actions'
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
@@ -70,6 +77,7 @@ export const Frame = memo(function Frame({
   const { x, y, width, height } = useDrawnBox(frame)
   const storedWidth = (usePendingBox(frame.ref) ?? frame.box).width
   const preview = usePreview(frame.ref)
+  const renaming = useRenamingFrame('canvas') === frame.ref
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
@@ -204,6 +212,8 @@ export const Frame = memo(function Frame({
           // it, it is selected, or its findings are open.
           '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:hidden',
           claimed ? 'text-claim' : 'text-muted-foreground',
+          // `LabelRename` draws the field over it.
+          renaming && 'invisible',
         )}
         // A preview narrower than the stored box leaves that box's room above
         // it, so the name and the Preview chip may use it.
@@ -277,6 +287,56 @@ export const Frame = memo(function Frame({
     </div>
   )
 })
+
+interface LabelRenameProps {
+  /** The page's shown frames, which the renamed frame is found among. */
+  frames: readonly FrameRecord[]
+  /** The server calls the rename writes through, the board's own when absent. */
+  calls?: Structure
+}
+
+/**
+ * The rename field a frame's label opens, drawn over the label it hides at
+ * the label's constant screen size. It mounts above the hit layer rather
+ * than in the label, so a click inside it places the caret instead of
+ * pressing the canvas. Its width follows the frame's within a readable range.
+ */
+export function LabelRename({ frames, calls = structure }: LabelRenameProps) {
+  const ref = useRenamingFrame('canvas')
+  const frame = frames.find((candidate) => candidate.ref === ref)
+  if (!frame) return null
+  return <LabelRenameAt frame={frame} calls={calls} />
+}
+
+function LabelRenameAt({
+  frame,
+  calls,
+}: {
+  frame: FrameRecord
+  calls: Structure
+}) {
+  const { x, y, width } = useDrawnBox(frame)
+  return (
+    <div className="absolute" style={{ left: x, top: y }}>
+      <div
+        className="pointer-events-auto absolute bottom-0 left-0 flex origin-bottom-left pb-0.5 text-label [transform:scale(calc(1/var(--zoom,1)))]"
+        style={{
+          width: `clamp(160px, calc(${width}px * var(--zoom, 1)), 240px)`,
+        }}
+      >
+        <RenameField
+          name={frame.name}
+          label={`Rename frame ${frame.name}`}
+          onCommit={(name) => {
+            stopFrameRename()
+            void renameFrame(frame, name, calls)
+          }}
+          onCancel={stopFrameRename}
+        />
+      </div>
+    </div>
+  )
+}
 
 /**
  * The frame's theme on its label: a sun while it follows the board, shown
