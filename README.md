@@ -9,7 +9,8 @@ A local design board that coding agents draw on as plain HTML files, and you rev
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/readme-hero-dark.png">
-    <img src=".github/readme-hero-light.png" alt="The Frameboard canvas showing a plant care app's landing page and two phone screens" width="880">
+    <source media="(prefers-reduced-motion: reduce)" srcset=".github/readme-hero-light.png">
+    <img src=".github/readme-hero-loop-light.webp" alt="The Frameboard canvas showing a plant care app's landing page and two phone screens" width="880">
   </picture>
 </p>
 
