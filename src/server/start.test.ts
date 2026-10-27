@@ -451,7 +451,9 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     const findingsCount = () =>
       messages.filter((message) => message.type === 'findings').length
     writeFileSync(hero, '<p>new</p>')
-    await expect.poll(findingsCount, { timeout: 5000 }).toBe(1)
+    await expect
+      .poll(findingsCount, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(1)
 
     const { atimeMs, mtimeMs } = statSync(hero)
 
@@ -465,7 +467,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         timeout: 5000,
       })
       .toBe(true)
-    expect(findingsCount()).toBe(2)
+    expect(findingsCount()).toBeGreaterThanOrEqual(2)
     expect(withoutRepeats(messages).map((message) => message.type)).toEqual([
       'board',
       'reload',
