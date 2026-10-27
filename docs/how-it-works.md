@@ -21,6 +21,6 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 
 - `serve --tokens <path>` takes a sheet another tool manages instead
 - `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
-- The server puts the sheets and three faces, Geist, Geist Mono, and Caveat, ahead of each frame's own styles as it serves the frame
+- The server puts the sheets and five faces, Geist, Geist Mono, Inter, Source Serif 4, and Caveat, ahead of each frame's own styles as it serves the frame
 - The file on disk stays as written
 - One toggle switches the board and every frame between light and dark
