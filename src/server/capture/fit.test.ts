@@ -85,6 +85,25 @@ describe.skipIf(shell === null)(
         hugWidth,
       })
 
+    // The bottom edge the first `span` paints to, read straight off a page
+    // laid out at the frame's width, so a test names the edge without the
+    // reader under test.
+    async function paintedBottom(html: string) {
+      const probe = await browser.newPage({
+        viewport: { width: 1440, height: 900 },
+      })
+      try {
+        await probe.setContent(html)
+        return await probe.evaluate(() =>
+          Math.ceil(
+            document.querySelector('span')?.getBoundingClientRect().bottom ?? 0,
+          ),
+        )
+      } finally {
+        await probe.close()
+      }
+    }
+
     it('hugs a width to the content and reads the height at it', async () => {
       const size = await measure('card', true)
 
@@ -133,10 +152,16 @@ describe.skipIf(shell === null)(
       expect(size.height).toBe(48)
     })
 
-    it('reads a padded inline badge under a tight line height past the block', async () => {
+    it('reads a padded inline badge under a tight line height to its painted bottom', async () => {
+      const painted = await paintedBottom(
+        page(
+          '<h1><span>Heading</span></h1>',
+          'h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }',
+        ),
+      )
       const size = await measure('tight-badge', false)
 
-      expect(size.height).toBeGreaterThan(55)
+      expect(size.height).toBe(painted)
     })
 
     it('reads an empty body as empty and keeps its box width', async () => {

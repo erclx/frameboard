@@ -13,10 +13,14 @@ import { checkRendered } from './rendered'
 
 const REF = 'studio/home/hero'
 
+function heroPage(css: string, body: string): string {
+  return `<!doctype html><html lang="en"><head><title>hero</title><style>${css}</style></head><body>${body}</body></html>`
+}
+
 /** One frame at 400 by 200 whose body is `body`, styled by `css`. */
 function heroBoard(css: string, body: string): Record<string, string> {
   return {
-    'studio/home/hero.html': `<!doctype html><html lang="en"><head><title>hero</title><style>${css}</style></head><body>${body}</body></html>`,
+    'studio/home/hero.html': heroPage(css, body),
     'studio/home/layout.json': JSON.stringify({
       version: 1,
       frames: { hero: { x: 0, y: 0, width: 400, height: 200, order: 0 } },
@@ -57,6 +61,24 @@ describe.skipIf(shell === null)(
         })
       } finally {
         await served.close()
+      }
+    }
+
+    // The bottom edge the first `span` paints to, read straight off a page at
+    // the frame's box, so a test names the edge without the reader under test.
+    async function paintedBottom(css: string, body: string) {
+      const probe = await browser.newPage({
+        viewport: { width: 400, height: 200 },
+      })
+      try {
+        await probe.setContent(heroPage(css, body))
+        return await probe.evaluate(() =>
+          Math.ceil(
+            document.querySelector('span')?.getBoundingClientRect().bottom ?? 0,
+          ),
+        )
+      } finally {
+        await probe.close()
       }
     }
 
@@ -174,16 +196,19 @@ describe.skipIf(shell === null)(
       expect(findings).toEqual([])
     })
 
-    it('reports a padded inline badge painting past the bottom edge under a tight line height', async () => {
-      const findings = await checkHero(
-        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }',
-        '<div></div><h1><span>Heading</span></h1>',
-      )
+    it('reports a padded inline badge painting past the bottom edge to its painted bottom', async () => {
+      const css =
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }'
+      const body = '<div></div><h1><span>Heading</span></h1>'
+      const painted = await paintedBottom(css, body)
+      const findings = await checkHero(css, body)
 
       expect(findings).toMatchObject([
         {
           rule: 'clipped',
-          message: expect.stringContaining('<span> at element 7 first past'),
+          message: expect.stringContaining(
+            `${painted} px tall in its 200 px height, so the board cuts it off, <span> at element 7 first past`,
+          ),
         },
       ])
     })

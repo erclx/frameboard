@@ -70,13 +70,15 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBe(48)
   })
 
-  it('reads a padded inline badge under a tight line height past the block', async () => {
+  it('reads a padded inline badge under a tight line height to its painted bottom', async () => {
     const iframe = await iframeOf(
       '<h1 style="margin:0;font-size:48px;line-height:1"><span style="padding:12px 0;background:red">Heading</span></h1>',
       { width: 390, height: 900 },
     )
+    const badge = iframe.contentDocument?.querySelector('span')
+    const painted = Math.ceil(badge?.getBoundingClientRect().bottom ?? 0)
 
-    expect(measureHeight(iframe, 900)).toBeGreaterThan(55)
+    expect(measureHeight(iframe, 900)).toBe(painted)
   })
 
   it('reads an image inside a tight line height heading at its own height', async () => {

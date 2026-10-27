@@ -206,13 +206,13 @@ export function readContentSize(): Reading {
     if (replaced.includes(element.localName)) return rect.bottom
     const style = getComputedStyle(element)
     if (style.display !== 'inline') return rect.bottom
-    const edges =
-      parseFloat(style.paddingTop) +
-      parseFloat(style.paddingBottom) +
-      parseFloat(style.borderTopWidth) +
-      parseFloat(style.borderBottomWidth)
+    const below =
+      parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth)
+    if (below > 0) return rect.bottom
+    const above =
+      parseFloat(style.paddingTop) + parseFloat(style.borderTopWidth)
     return (
-      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - edges)
+      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - above)
     )
   }
   let bottom = root.getBoundingClientRect().bottom

@@ -235,9 +235,11 @@ function readLayout(): LayoutRead {
   }
   // A plain inline element's box is the font's content area too, so a heading
   // wrapping its text in a link hangs out of its line box the way bare text
-  // does, less its vertical padding and border, which paint where they sit. A
-  // replaced element's box is its own, so it reads as laid out. A copy of
-  // `ownBottom` in `readContentSize`, so a change to one is a change to both.
+  // does. Padding and border paint outward from the content edge, so an
+  // element with a bottom edge reads to its full box, and a top edge only
+  // shortens the content height the hang comes from. A replaced element's box
+  // is its own, so it reads as laid out. A copy of `ownBottom` in
+  // `readContentSize`, so a change to one is a change to both.
   const replaced = [
     'img',
     'video',
@@ -253,13 +255,13 @@ function readLayout(): LayoutRead {
     if (replaced.includes(element.localName)) return rect.bottom
     const style = getComputedStyle(element)
     if (style.display !== 'inline') return rect.bottom
-    const edges =
-      parseFloat(style.paddingTop) +
-      parseFloat(style.paddingBottom) +
-      parseFloat(style.borderTopWidth) +
-      parseFloat(style.borderBottomWidth)
+    const below =
+      parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth)
+    if (below > 0) return rect.bottom
+    const above =
+      parseFloat(style.paddingTop) + parseFloat(style.borderTopWidth)
     return (
-      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - edges)
+      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - above)
     )
   }
   const rootRect = root.getBoundingClientRect()
