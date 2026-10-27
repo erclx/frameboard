@@ -3,9 +3,9 @@ import '../../styles.css'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cdp } from 'vitest/browser'
 
 import { contrastOnPage } from '@/test/contrast'
+import { emulateReducedMotion } from '@/test/motion'
 
 import {
   Tooltip,
@@ -45,13 +45,11 @@ describe('TooltipContent', () => {
 
   describe('under reduced motion', () => {
     beforeEach(async () => {
-      await cdp().send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
-      })
+      await emulateReducedMotion(true)
     })
 
     afterEach(async () => {
-      await cdp().send('Emulation.setEmulatedMedia', { features: [] })
+      await emulateReducedMotion(false)
     })
 
     // A sweep sampling the popup the moment it mounts reads its resting
