@@ -8,9 +8,11 @@ import {
   dropBase,
   markSeen,
   nextUnseen,
+  pointAt,
   previousUnseen,
   pruneUnseen,
   receiveChanges,
+  renameUnseen,
   SEEN_KEY,
   unseenUnder,
 } from './unseen'
@@ -277,6 +279,63 @@ describe('markSeen', () => {
     markSeen(store, 'studio/home/hero')
 
     expect(Object.keys(store.getState().unseen)).toEqual(['studio/home/about'])
+  })
+})
+
+describe('renameUnseen', () => {
+  it('keeps an unseen mark under the new ref through a page rename', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+
+    renameUnseen(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().unseen).toEqual({
+      'studio/start/hero': change('studio/home/hero', 'h1', {
+        frame: 'studio/start/hero',
+      }),
+    })
+  })
+
+  it('keeps an unseen mark under the new ref through a project rename', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+
+    renameUnseen(store, 'studio', 'atelier')
+
+    expect(Object.keys(store.getState().unseen)).toEqual(['atelier/home/hero'])
+  })
+
+  it('carries the base and the toast to the new ref', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/home/hero', 'h2', { before: 'h1' })])
+    pointAt(store, 'studio/home/hero')
+
+    renameUnseen(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().base).toEqual({ 'studio/start/hero': 'h1' })
+    expect(store.getState().cursor).toBe('studio/start/hero')
+  })
+
+  it('keeps a seen hash across the rename and a reload', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+    markSeen(store, 'studio/home/hero')
+
+    renameUnseen(store, 'studio/home', 'studio/start')
+    const reloaded = createUnseenStore(storage)
+    receiveChanges(reloaded, [change('studio/start/hero', 'h1')])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
+  it('drops a mark a page gone before the rename left under the new name', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/start/hero', 's1')])
+
+    renameUnseen(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().unseen).toEqual({})
   })
 })
 

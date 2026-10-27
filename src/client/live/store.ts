@@ -92,16 +92,10 @@ export function receiveRename(
 ): void {
   const state = store.getState()
   const { board } = state
-  if (!board || !holdsRef(board, before) || holdsRef(board, after)) return
-  const move = (ref: string) =>
-    ref === before || ref.startsWith(`${before}/`)
-      ? `${after}${ref.slice(before.length)}`
-      : ref
+  if (!board || !takesRename(store, before, after)) return
   const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
-    Object.fromEntries(
-      Object.entries(byRef).map(([ref, value]) => [move(ref), value]),
-    )
-  const aliases = moveKeys(state.aliases)
+    movedKeys(byRef, before, after)
+  const aliases = { ...moveKeys(state.aliases) }
   aliases[after] = identityOf(state.aliases, before)
   const renamed = renameOnBoard(board, before, after)
   store.setState({
@@ -116,6 +110,49 @@ export function receiveRename(
     },
     aliases: liveAliases(aliases, renamed),
   })
+}
+
+/**
+ * Whether the board in hand still waits on a rename, holding `before` and
+ * not yet `after`, so the stores keyed by frame ref outside this one move
+ * theirs only for a rename `receiveRename` carries.
+ */
+export function takesRename(
+  store: LiveStore,
+  before: string,
+  after: string,
+): boolean {
+  const { board } = store.getState()
+  return !!board && holdsRef(board, before) && !holdsRef(board, after)
+}
+
+/**
+ * Where a rename of the project or page `before` to `after` moves `ref`,
+ * being the ref itself and anything under `before/`.
+ */
+export function movedRef(ref: string, before: string, after: string): string {
+  return isUnder(ref, before) ? `${after}${ref.slice(before.length)}` : ref
+}
+
+/**
+ * `byRef` with its keys moved across a rename. A key already under `after`
+ * names what the board stopped holding before the rename, so it is dropped
+ * rather than left on the frames that move there.
+ */
+export function movedKeys<T>(
+  byRef: Readonly<Record<string, T>>,
+  before: string,
+  after: string,
+): Readonly<Record<string, T>> {
+  return Object.fromEntries(
+    Object.entries(byRef)
+      .filter(([ref]) => !isUnder(ref, after))
+      .map(([ref, value]) => [movedRef(ref, before, after), value]),
+  )
+}
+
+function isUnder(ref: string, prefix: string): boolean {
+  return ref === prefix || ref.startsWith(`${prefix}/`)
 }
 
 /**

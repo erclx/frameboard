@@ -1,7 +1,7 @@
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import type { LiveStore } from '@/client/live/store'
+import { type LiveStore, movedRef } from '@/client/live/store'
 import type { ListResult } from '@/shared/records/list'
 
 import type { ModeStore } from './mode'
@@ -74,6 +74,25 @@ export function clear(store: SelectionStore): void {
   const { page, frames, element } = store.getState()
   if (page === null && frames.length === 0 && !element) return
   store.setState({ page: null, frames: [], element: null })
+}
+
+/**
+ * Moves the selection under a renamed project or page to its new refs. It
+ * runs ahead of the renamed board, whose prune drops any ref it does not hold.
+ */
+export function renameSelection(
+  store: SelectionStore,
+  before: string,
+  after: string,
+): void {
+  const { page, frames, element } = store.getState()
+  if (page === null) return
+  const move = (ref: string) => movedRef(ref, before, after)
+  store.setState({
+    page: move(page),
+    frames: frames.map(move),
+    element: element ? { ...element, frame: move(element.frame) } : element,
+  })
 }
 
 /**

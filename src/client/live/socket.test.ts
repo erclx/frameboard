@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createModeStore } from '@/client/board/mode'
+import {
+  createSelectionStore,
+  followSelection,
+  select,
+} from '@/client/board/selection'
+import { createThemeStore, flipFrame } from '@/client/theme/store'
+import { boardOf, frameOf, pageOf } from '@/test/board'
+
 import { connectLive } from './socket'
 import { createLiveStore } from './store'
 import { createUnseenStore } from './unseen'
@@ -122,6 +131,58 @@ describe('connectLive access', () => {
     expect(store.getState().board?.projects[0]?.pages[0]?.ref).toBe(
       'studio/start',
     )
+    stop()
+  })
+
+  it('keeps a followed selection and a flip through a renamed message', () => {
+    const store = createLiveStore()
+    const selection = createSelectionStore()
+    const theme = createThemeStore()
+    const stop = connectLive(store, { selection, theme })
+    const socket = FakeSocket.instances[0]
+    socket?.receive({
+      type: 'board',
+      data: boardOf(pageOf([frameOf('hero')])),
+    })
+    const unfollow = followSelection(
+      selection,
+      'studio/home',
+      store,
+      createModeStore(1280),
+    )
+    select(selection, 'studio/home', ['studio/home/hero'])
+    flipFrame('studio/home/hero', theme)
+
+    socket?.receive({
+      type: 'renamed',
+      before: 'studio/home',
+      after: 'studio/start',
+    })
+
+    expect(selection.getState().frames).toEqual(['studio/start/hero'])
+    expect(theme.getState().flipped).toEqual(new Set(['studio/start/hero']))
+    unfollow()
+    stop()
+  })
+
+  it('moves nothing for a rename the board already carries', () => {
+    const store = createLiveStore()
+    const selection = createSelectionStore()
+    const stop = connectLive(store, { selection })
+    const socket = FakeSocket.instances[0]
+    socket?.receive({
+      type: 'board',
+      data: boardOf(pageOf([], 'start')),
+    })
+    select(selection, 'studio/start', ['studio/start/hero'])
+
+    socket?.receive({
+      type: 'renamed',
+      before: 'studio/home',
+      after: 'studio/start',
+    })
+
+    expect(selection.getState().frames).toEqual(['studio/start/hero'])
     stop()
   })
 

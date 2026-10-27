@@ -12,6 +12,7 @@ import {
   followSelection,
   pruneSelection,
   rememberHash,
+  renameSelection,
   select,
   selectElement,
   type SelectionStore,
@@ -165,6 +166,43 @@ describe('pruneSelection', () => {
     pruneSelection(store, boardOf(pageOf([frameOf('hero')], 'pricing')))
 
     expect(store.getState()).toEqual({ page: null, frames: [], element: null })
+  })
+})
+
+describe('renameSelection', () => {
+  it('keeps a selected frame selected under the new page ref', () => {
+    const store = createSelectionStore()
+    select(store, 'studio/home', [HERO, ABOUT])
+
+    renameSelection(store, 'studio/home', 'studio/start')
+
+    expect(store.getState()).toEqual({
+      page: 'studio/start',
+      frames: ['studio/start/hero', 'studio/start/about'],
+      element: null,
+    })
+  })
+
+  it('keeps a selected element selected under the new project ref', () => {
+    const store = createSelectionStore()
+    selectElement(store, 'studio/home', { frame: HERO, index: 3, hash: 'h1' })
+
+    renameSelection(store, 'studio', 'atelier')
+
+    expect(store.getState()).toEqual({
+      page: 'atelier/home',
+      frames: ['atelier/home/hero'],
+      element: { frame: 'atelier/home/hero', index: 3, hash: 'h1' },
+    })
+  })
+
+  it('leaves a selection on another page alone', () => {
+    const store = createSelectionStore()
+    select(store, 'studio/pricing', ['studio/pricing/plans'])
+
+    renameSelection(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().page).toBe('studio/pricing')
   })
 })
 

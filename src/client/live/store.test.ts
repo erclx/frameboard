@@ -21,6 +21,7 @@ import {
   receiveRename,
   receiveThumbnails,
   renamedRef,
+  takesRename,
 } from './store'
 
 function boardWith(...names: string[]): ListResult {
@@ -427,6 +428,16 @@ describe('receiveRename', () => {
     })
   })
 
+  it('drops a stamp a page gone before the rename left under the new name', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveThumbnails(store, 'light', { 'studio/start/hero': 'r-0-1x1' })
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().thumbnails.light).toEqual({})
+  })
+
   it('leaves a sibling page whose name only starts the same', () => {
     const store = createLiveStore()
     receiveBoard(store, boardWith('hero'))
@@ -448,6 +459,23 @@ describe('receiveRename', () => {
 
     expect(store.getState().board).toBe(board)
     expect(store.getState().aliases).toBe(aliases)
+  })
+})
+
+describe('takesRename', () => {
+  it('waits on a rename the board does not carry yet', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    expect(takesRename(store, 'studio/home', 'studio/start')).toBe(true)
+  })
+
+  it('refuses a rename the board already carries', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(takesRename(store, 'studio/home', 'studio/start')).toBe(false)
   })
 })
 
