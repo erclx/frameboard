@@ -468,11 +468,12 @@ export function attachGestures(
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
     } else if (gesture.kind === 'shape-resize') {
-      const { box, resize, size } = gesture
+      const { box, corner, resize, size } = gesture
+      // The size a drag of nothing draws, which rounds a fractional box as the drag does.
+      const start = shapeSize(box, corner, 0, 0, false)
       if (
         size &&
-        (size.width !== Math.round(box.width) ||
-          size.height !== Math.round(box.height))
+        (size.width !== start.width || size.height !== start.height)
       ) {
         void resize.commit(size)
       } else {

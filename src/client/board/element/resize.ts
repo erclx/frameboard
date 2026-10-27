@@ -40,7 +40,10 @@ export function shapeSize(
   keepRatio: boolean,
 ): ShapeSize {
   const { width, height } = resizeBox(start, corner, dx, dy)
-  if (!keepRatio) return { width, height }
+  // A side drawn at 0 px has no ratio to keep.
+  if (!keepRatio || start.width <= 0 || start.height <= 0) {
+    return { width, height }
+  }
   const scale = Math.max(width / start.width, height / start.height)
   return {
     width: Math.max(1, Math.round(start.width * scale)),

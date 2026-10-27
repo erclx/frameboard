@@ -810,6 +810,23 @@ describe('attachGestures', () => {
         expect(canvas.resizes[0]?.cancelled).toBe(true)
       })
 
+      it('writes nothing on a drag back to the start of a shape drawn at a fractional box', () => {
+        const canvas = setup(undefined, {
+          elementBox: { x: 150.4, y: 150, width: 100.2, height: 50 },
+          shape: 'free',
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(250, 200)
+        canvas.pointer.move(290, 200)
+        canvas.pointer.move(250, 200)
+        canvas.pointer.up(250, 200)
+
+        expect(canvas.resizes[0]?.commits).toEqual([])
+        expect(canvas.resizes[0]?.cancelled).toBe(true)
+      })
+
       it('previews nothing and writes nothing on a frame another session holds', () => {
         const canvas = setupWithShape('held')
 

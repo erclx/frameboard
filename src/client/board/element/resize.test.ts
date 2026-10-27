@@ -33,6 +33,12 @@ describe('shapeSize', () => {
     })
   })
 
+  it('drops the ratio for a shape drawn with a side at 0 px', () => {
+    expect(
+      shapeSize({ x: 0, y: 0, width: 200, height: 0 }, 'se', 20, 30, true),
+    ).toEqual({ width: 220, height: 30 })
+  })
+
   it('keeps the ratio at no less than 1 px a side', () => {
     expect(shapeSize(BOX, 'se', -500, -500, true)).toEqual({
       width: 2,
