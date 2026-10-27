@@ -26,6 +26,7 @@ import type {
   PageRecord,
   ProjectRecord,
 } from '@/shared/records/list'
+import { contrastOnPage } from '@/test/contrast'
 
 import { trees } from '../element/tree'
 import { closeFind, findStore } from '../find/actions'
@@ -618,6 +619,52 @@ describe('LeftPanel', () => {
       }
     })
 
+    describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+      beforeEach(() => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+      })
+
+      afterEach(() => {
+        document.documentElement.classList.remove('dark')
+      })
+
+      it('reads No elements at 4.5:1 or better on the sidebar', async () => {
+        trees.store.setState({
+          byRef: {
+            [HERO]: {
+              status: 'ready',
+              version: 0,
+              tree: { ref: HERO, hash: HASH, elements: [] },
+            },
+          },
+        })
+        renderPanel(project([page('home', [frame('hero')])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Show the elements of hero' }),
+        )
+
+        expect(
+          contrastOnPage(screen.getByText('No elements')),
+        ).toBeGreaterThanOrEqual(4.5)
+      })
+
+      it('reads an element chevron at 3:1 or better on the sidebar', async () => {
+        heroTree()
+        renderPanel(project([page('home', [frame('hero')])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Show the elements of hero' }),
+        )
+
+        expect(
+          contrastOnPage(
+            screen.getByRole('button', { name: 'Show what Card holds' }),
+          ),
+        ).toBeGreaterThanOrEqual(3)
+      })
+    })
+
     it("lists a frame's elements once its row opens", async () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))
@@ -981,6 +1028,44 @@ describe('LeftPanel', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Select hero' }))
 
       expect(selectionStore.getState().frames).toEqual([])
+    })
+
+    describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+      beforeEach(() => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+      })
+
+      afterEach(() => {
+        document.documentElement.classList.remove('dark')
+      })
+
+      it('reads the frame chevron at 3:1 or better on the sidebar', () => {
+        renderPanel(project([page('home', [frame('hero')])]))
+
+        expect(
+          contrastOnPage(
+            screen.getByRole('button', { name: 'Show the elements of hero' }),
+          ),
+        ).toBeGreaterThanOrEqual(3)
+      })
+
+      it("reads a hidden row's frame glyph at 3:1 or better on the sidebar", () => {
+        renderPanel(project([page('home', [frame('hero', { hidden: true })])]))
+        const glyph = screen
+          .getByRole('listitem', { name: 'hero, hidden' })
+          .querySelector('.lucide-frame')
+        if (!glyph) throw new Error('no frame glyph')
+
+        expect(contrastOnPage(glyph)).toBeGreaterThanOrEqual(3)
+      })
+
+      it("reads a hidden row's eye-off button at 3:1 or better on the sidebar", () => {
+        renderPanel(project([page('home', [frame('hero', { hidden: true })])]))
+
+        expect(
+          contrastOnPage(screen.getByRole('button', { name: 'Show hero' })),
+        ).toBeGreaterThanOrEqual(3)
+      })
     })
 
     it('renames a frame on a double-click', async () => {

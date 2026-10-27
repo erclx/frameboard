@@ -77,9 +77,9 @@ function luminance([r, g, b]: Rgb): number {
  * any fade has finished. A `pseudo` such as `::placeholder` reads that
  * pseudo-element's text over the element's own background.
  */
-export function contrastOnPage(element: HTMLElement, pseudo?: string): number {
+export function contrastOnPage(element: Element, pseudo?: string): number {
   const layers: Color[] = []
-  for (let at: HTMLElement | null = element; at; at = at.parentElement) {
+  for (let at: Element | null = element; at; at = at.parentElement) {
     const fill = parse(getComputedStyle(at).backgroundColor)
     if (fill.alpha > 0) layers.push(fill)
     if (fill.alpha === 1) break
