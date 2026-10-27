@@ -1067,6 +1067,52 @@ function actWhen(
   }
 }
 
+/**
+ * Once the server grants writes, double-clicks the canvas label of the frame
+ * `ref` through the hit layer, as a mouse sends it, so its rename field
+ * opens on the label.
+ */
+function labelRename(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ ready, ref, frames }) => {
+        let left = frames
+        const act = () => {
+          const hit = document.querySelector('[data-hit-layer]')
+          const label = document.querySelector(
+            `[data-frame="${ref}"] > [title]`,
+          )
+          if (!document.querySelector(ready) || !hit || !label) {
+            if (--left > 0) requestAnimationFrame(act)
+            else console.error(`The ${ref} label never drew`)
+            return
+          }
+          const box = label.getBoundingClientRect()
+          const send = (target: EventTarget, type: string, detail: number) =>
+            target.dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: box.left + 8,
+                clientY: box.top + box.height / 2,
+                detail,
+              }),
+            )
+          for (const detail of [1, 2]) {
+            send(hit, 'mousedown', detail)
+            send(window, 'mouseup', detail)
+            send(hit, 'click', detail)
+          }
+          send(hit, 'dblclick', 2)
+        }
+        document.addEventListener('DOMContentLoaded', act)
+      },
+      { ready: WRITES_GRANTED, ref, frames: ROW_FRAMES },
+    )
+  }
+}
+
 /** The unlocked about row's lock button enables once the server grants writes, so it marks a tab that may write. */
 const WRITES_GRANTED = 'button[aria-label="Lock about"]:not([disabled])'
 
@@ -1546,6 +1592,23 @@ export const BOARD_CASES: CaptureCase[] = [
             asWriter,
             actWhen(WRITES_GRANTED, 'Select hero', 'dblclick'),
             readyWhen('input[aria-label="Rename frame hero"]'),
+          ),
+        ),
+      },
+      {
+        section: 'label-rename',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            labelRename('webapp/home/hero'),
+            readyWhen(
+              '[data-notes-layer] input[aria-label="Rename frame hero"]',
+            ),
           ),
         ),
       },
