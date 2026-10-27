@@ -132,7 +132,7 @@ test.describe('editing a selected element by hand', () => {
       'Geist Mono',
     )
     await weight.click()
-    await page.getByRole('menuitemradio', { name: 'Medium' }).click()
+    await page.getByRole('menuitemradio', { name: /^Medium/ }).click()
 
     await expect.poll(read).toContain('font-weight: 500')
     expect(changedLines(original, read())).toHaveLength(1)

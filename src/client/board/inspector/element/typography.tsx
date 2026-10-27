@@ -117,11 +117,19 @@ export function TypographySection({
         />
         <TypePicker
           label="Font weight"
-          shown={weightLabel(fontWeight, weights)}
+          shown={
+            <>
+              {weightLabel(fontWeight, weights)}
+              {weights.some(({ value }) => value === fontWeight) ? (
+                <WeightNumber value={fontWeight} />
+              ) : null}
+            </>
+          }
           current={String(fontWeight)}
           options={weights.map(({ value, name }) => ({
             value: String(value),
             name,
+            hint: <WeightNumber value={value} />,
           }))}
           disabled={disabled}
           onPick={(value) =>
@@ -220,9 +228,20 @@ export function TypographySection({
   )
 }
 
+/** A named weight's number, muted after its name. */
+function WeightNumber({ value }: { value: number }) {
+  return (
+    <span className="ml-auto pl-2 text-muted-foreground tabular-nums">
+      {value}
+    </span>
+  )
+}
+
 interface TypeOption {
   value: string
   name: string
+  /** Shown after the name, such as a weight's number. */
+  hint?: ReactNode
   /** The stack the option's row renders in, as a preview of the face. */
   font?: string
 }
@@ -260,7 +279,9 @@ function TypePicker({
           className,
         )}
       >
-        <span className="flex-1 truncate">{shown}</span>
+        <span className="flex min-w-0 flex-1 items-center truncate">
+          {shown}
+        </span>
         <ChevronDown
           aria-hidden
           className="size-2.5 shrink-0 text-muted-foreground"
@@ -285,6 +306,7 @@ function TypePicker({
               style={option.font ? { fontFamily: option.font } : undefined}
             >
               {option.name}
+              {option.hint}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

@@ -411,10 +411,10 @@ describe('TypographySection', () => {
     )
 
     const trigger = screen.getByRole('button', { name: 'Font weight' })
-    expect(trigger).toHaveTextContent('Bold')
+    expect(trigger).toHaveTextContent('Bold700')
     await userEvent.click(trigger)
     await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Medium' }),
+      await screen.findByRole('menuitemradio', { name: /^Medium/ }),
     )
 
     expect(changes).toEqual([
@@ -439,7 +439,7 @@ describe('TypographySection', () => {
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'Font weight' }))
-    const bold = await screen.findByRole('menuitemradio', { name: 'Bold' })
+    const bold = await screen.findByRole('menuitemradio', { name: /^Bold/ })
     expect(bold).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(bold)
 
@@ -466,10 +466,10 @@ describe('TypographySection', () => {
     const items = await screen.findAllByRole('menuitemradio')
 
     expect(items.map((item) => item.textContent)).toEqual([
-      'Regular',
-      'Medium',
-      'Semi Bold',
-      'Bold',
+      'Regular400',
+      'Medium500',
+      'Semi Bold600',
+      'Bold700',
     ])
   })
 
