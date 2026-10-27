@@ -131,9 +131,8 @@
         margin: 0;
         font-size: 16px;
       }
-      .steps > div:not(.on) h3,
-      .steps > div:not(.on) p {
-        opacity: 0.42;
+      .steps > div:not(.on) h3 {
+        color: var(--muted);
       }
       .stick {
         position: sticky;
@@ -236,10 +235,10 @@
       :root {
         --bg: #ececec;
         --fg: #1a1a1a;
-        --muted: #6e6e6e;
+        --muted: #666666;
         --panel: #ffffff;
         --line: #e4e4e4;
-        --accent: #2f7bf0;
+        --accent: #2a6fdb;
         --on-accent: #ffffff;
         --note: #8250df;
         --note-bg: #fbefff;
@@ -251,7 +250,7 @@
         --panel: #2a2a2a;
         --line: #353535;
         --accent: #4e92f6;
-        --on-accent: #ffffff;
+        --on-accent: #1a1a1a;
         --note: #b88cff;
         --note-bg: #231a35;
       }
@@ -287,7 +286,6 @@
       }
       .cmd span {
         color: var(--on-accent);
-        opacity: 0.8;
       }
       .btn {
         height: 50px;
