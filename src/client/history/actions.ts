@@ -8,11 +8,13 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
+import { catchUpTree, readTree, treeOf } from '@/client/board/element/tree'
 import { dropPending } from '@/client/board/geometry/write'
 import { shownHash } from '@/client/board/inspector/element/write'
 import {
   awaitHash,
   rememberHash,
+  select,
   selectElement,
   type SelectionStore,
   selectionStore,
@@ -24,6 +26,7 @@ import { type LiveStore, liveStore } from '@/client/live/store'
 import { type StepAnswer, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
+import type { ElementTree } from '@/shared/records/elements'
 
 export interface HistoryDeps {
   store?: LiveStore
@@ -35,6 +38,31 @@ export interface HistoryDeps {
   notify?: (refusal: { title: string; description: string }) => void
   /** Whether the board runs on a Mac, where Ctrl+Y is not redo. */
   mac?: boolean
+  /** A frame's held element tree, and its tree once it shows the bytes at `hash`. */
+  trees?: {
+    held: (ref: string) => ElementTree | null
+    at: (ref: string, hash: string) => Promise<ElementTree | null>
+  }
+}
+
+/**
+ * Whether the element at `index` is still the one picked: the step left the
+ * frame's element count alone and the index still holds the same tag. A
+ * placement or a delete shifts every index past it, so a changed count drops
+ * the element even where its index survives.
+ */
+function keepsElement(
+  before: ElementTree | null,
+  after: ElementTree | null,
+  index: number,
+): boolean {
+  const now = after?.elements[index]
+  if (!now) return false
+  if (!before) return true
+  return (
+    before.elements.length === after.elements.length &&
+    before.elements[index]?.tag === now.tag
+  )
 }
 
 /**
@@ -42,7 +70,8 @@ export interface HistoryDeps {
  * off a Mac, which the toolbar draws, each lit while the tab may write and the server holds a
  * step. A step that renamed, added, or removed a page answers the page to
  * show, which the board follows, a hand edit answers its frame's hash, which
- * keeps the selected element, and a refused step raises a toast. Returns
+ * keeps the selected element while the frame's new tree still holds it and
+ * selects the frame otherwise, and a refused step raises a toast. Returns
  * the function that removes them.
  */
 export function registerHistoryActions({
@@ -54,18 +83,37 @@ export function registerHistoryActions({
     // It leaves after Base UI's 5 s default, which hover or focus pauses.
     toast.add({ ...refusal, type: 'warning' }),
   mac = IS_MAC,
+  trees = {
+    held: treeOf,
+    at: async (ref, hash) => {
+      await catchUpTree(ref, hash)
+      // The frame's reload can land meanwhile, whose own fetch holds the tree then.
+      const tree = await readTree(ref)
+      return tree?.hash === hash ? tree : null
+    },
+  },
 }: HistoryDeps = {}): () => void {
-  const follow = (answer: StepAnswer) => {
+  const follow = (answer: StepAnswer, before: ElementTree | null) => {
     dropPending(answer.frames)
-    // An undone hand edit leaves the element where it was, so the selection
-    // takes the restored hash before the reload would drop it to the frame.
+    // The frame's reload of the restored bytes keeps the element until the
+    // check below settles it, rather than dropping it to the frame first.
     for (const [ref, written] of Object.entries(answer.hashes ?? {})) {
       rememberHash(ref, written)
     }
-    const held = selection.getState()
-    const hash = held.element ? answer.hashes?.[held.element.frame] : undefined
-    if (held.page && held.element && hash) {
-      selectElement(selection, held.page, { ...held.element, hash })
+    const { page: shown, element } = selection.getState()
+    const hash = element ? answer.hashes?.[element.frame] : undefined
+    if (shown && element && hash) {
+      // An undone style edit leaves the element where it was, but an undone
+      // placement or delete removes or restores one, so the element takes
+      // the restored hash only while the frame's new tree still holds it.
+      void trees.at(element.frame, hash).then((after) => {
+        if (selection.getState().element !== element) return
+        if (keepsElement(before, after, element.index)) {
+          selectElement(selection, shown, { ...element, hash })
+        } else {
+          select(selection, shown, [element.frame])
+        }
+      })
     }
     if (answer.page === null) return
     const [project = '', page = ''] = answer.page.split('/')
@@ -76,6 +124,10 @@ export function registerHistoryActions({
   const step =
     (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
       let done = () => {}
+      // The tree the selected element was picked from, which the answer's tree is checked against.
+      const picked = selection.getState().element
+      const held = picked ? trees.held(picked.frame) : null
+      const before = held && held.hash === picked?.hash ? held : null
       // A step landing during the wait would be the one a bare undo takes, so it ends the wait.
       const counts = store.getState().history
       const moved = ({ history }: { history: typeof counts }) =>
@@ -95,7 +147,7 @@ export function registerHistoryActions({
       ).then(
         (answer) => {
           done()
-          follow(answer)
+          follow(answer, before)
           settleLanded(selection, shownHash)
         },
         (error: unknown) => {

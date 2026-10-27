@@ -20,6 +20,7 @@ import {
 } from '@/client/live/store'
 import type { StepAnswer } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
+import type { ElementTree } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { type HistoryDeps, registerHistoryActions } from './actions'
@@ -38,6 +39,23 @@ const HERO: FrameRecord = {
   hugHeight: false,
   placed: true,
   modifiedAt: '2026-10-19T00:00:00.000Z',
+}
+
+/** A hero tree at `hash` holding one element per tag, in index order. */
+function treeOf(hash: string, tags: string[]): ElementTree {
+  return {
+    ref: HERO.ref,
+    hash,
+    elements: tags.map((tag, index) => ({
+      index,
+      parent: null,
+      tag,
+      name: tag,
+      textOnly: false,
+      layout: 'block',
+      round: false,
+    })),
+  }
 }
 
 describe('registerHistoryActions', () => {
@@ -345,10 +363,14 @@ describe('registerHistoryActions', () => {
 
   it('keeps the selected element through an undo of its hand edit', async () => {
     const selection = createSelectionStore()
-    const element = { frame: HERO.ref, index: 5, hash: 'a'.repeat(64) }
+    const element = { frame: HERO.ref, index: 1, hash: 'a'.repeat(64) }
     selectElement(selection, 'studio/home', element)
     const { undo } = register(writableWith(1, 0), {
       selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div']),
+        at: async () => treeOf('b'.repeat(64), ['h1', 'div']),
+      },
       calls: {
         undo: async () => ({
           page: null,
@@ -367,6 +389,176 @@ describe('registerHistoryActions', () => {
         hash: 'b'.repeat(64),
       }),
     )
+  })
+
+  it('selects the frame when an undo removes the selected element it placed', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', {
+      frame: HERO.ref,
+      index: 2,
+      hash: 'a'.repeat(64),
+    })
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div', 'div']),
+        at: async () => treeOf('b'.repeat(64), ['h1', 'div']),
+      },
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+
+    await vi.waitFor(() =>
+      expect(selection.getState()).toMatchObject({
+        frames: [HERO.ref],
+        element: null,
+      }),
+    )
+  })
+
+  it('selects the frame when a placement before the selected element undoes, though its index survives', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', {
+      frame: HERO.ref,
+      index: 1,
+      hash: 'a'.repeat(64),
+    })
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div', 'p']),
+        at: async () => treeOf('b'.repeat(64), ['h1', 'p']),
+      },
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+
+    await vi.waitFor(() =>
+      expect(selection.getState()).toMatchObject({
+        frames: [HERO.ref],
+        element: null,
+      }),
+    )
+  })
+
+  it('selects the frame rather than an element a redo placed back', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', {
+      frame: HERO.ref,
+      index: 1,
+      hash: 'a'.repeat(64),
+    })
+    const { redo } = register(writableWith(0, 1), {
+      selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div']),
+        at: async () => treeOf('b'.repeat(64), ['h1', 'div', 'div']),
+      },
+      calls: {
+        undo: async () => ({ page: null, frames: [] }),
+        redo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+      },
+    })
+
+    act(redo)
+
+    await vi.waitFor(() =>
+      expect(selection.getState()).toMatchObject({
+        frames: [HERO.ref],
+        element: null,
+      }),
+    )
+  })
+
+  it('selects the frame when the tree for the answered bytes cannot be read', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', {
+      frame: HERO.ref,
+      index: 1,
+      hash: 'a'.repeat(64),
+    })
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div']),
+        at: async () => null,
+      },
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+
+    act(undo)
+
+    await vi.waitFor(() =>
+      expect(selection.getState()).toMatchObject({
+        frames: [HERO.ref],
+        element: null,
+      }),
+    )
+  })
+
+  it('leaves a selection the user changed while the tree loaded', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', {
+      frame: HERO.ref,
+      index: 1,
+      hash: 'a'.repeat(64),
+    })
+    let answer: (tree: ElementTree) => void = () => {}
+    const asked = vi.fn()
+    const picked = { frame: HERO.ref, index: 0, hash: 'a'.repeat(64) }
+    const { undo } = register(writableWith(1, 0), {
+      selection,
+      trees: {
+        held: () => treeOf('a'.repeat(64), ['h1', 'div']),
+        at: () => {
+          asked()
+          return new Promise((resolve) => (answer = resolve))
+        },
+      },
+      calls: {
+        undo: async () => ({
+          page: null,
+          frames: [HERO.ref],
+          hashes: { [HERO.ref]: 'b'.repeat(64) },
+        }),
+        redo: async () => ({ page: null, frames: [] }),
+      },
+    })
+    act(undo)
+    await vi.waitFor(() => expect(asked).toHaveBeenCalled())
+
+    selectElement(selection, 'studio/home', picked)
+    answer(treeOf('b'.repeat(64), ['h1']))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(selection.getState().element).toEqual(picked)
   })
 
   it('leaves the selection as it is for an undo answering no hashes', async () => {
