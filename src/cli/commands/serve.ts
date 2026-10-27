@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import type { Command } from 'commander'
+import { type Command, Option } from 'commander'
 
 import {
   findLiveServer,
@@ -32,6 +32,7 @@ interface ServeOptions extends CommonOptions {
   port: number
   open: boolean
   tokens?: string
+  openRoute: boolean
 }
 
 export function registerServe(
@@ -54,6 +55,16 @@ export function registerServe(
     .option(
       '--tokens <path>',
       "a token sheet another tool manages, standing in for the board's tokens.css",
+    )
+    // Hidden, since it makes any local browser a writer: only a throwaway
+    // preview server should pass it.
+    .addOption(
+      new Option(
+        '--open-route',
+        'answer /api/access/open with a fresh edit link per request',
+      )
+        .default(false)
+        .hideHelp(),
     )
 
   act<ServeOptions>(command, context, async (_args, options, self) => {
@@ -116,6 +127,7 @@ export function registerServe(
       strictPort: self.getOptionValueSource('port') !== 'default',
       openUrl: io.openUrl,
       dispatch: dispatchCommand(io.cwd),
+      openRoute: options.openRoute,
     })
     const address = newAddress({
       root,

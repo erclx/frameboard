@@ -64,6 +64,8 @@ export interface AppOptions {
   actions: BoardActions
   /** The single-use tickets the redeem route trades for the board's cookie. */
   tickets: Tickets
+  /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
+  openRoute?: boolean
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
   /** The folder holding the faces every frame imports. */
@@ -96,6 +98,7 @@ export function createApp({
   port,
   actions,
   tickets,
+  openRoute,
   renderFrame,
   facesDir,
   tokens,
@@ -127,7 +130,7 @@ export function createApp({
   // A second serve reads the root back to tell this board's server from
   // another, and the sheet to report the one this server was started with.
   app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
-  app.route('/', accessRoutes(actions.access, tickets))
+  app.route('/', accessRoutes(actions.access, tickets, { openRoute }))
   app.route('/', apiRoutes(root, actions, frames.look, history))
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
