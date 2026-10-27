@@ -60,20 +60,28 @@ export function useReorderRow(
 }
 
 /**
- * Calls `onMove` with a row's index and where it lands when one of the
- * list's rows drops on another, never for a drop that leaves it in place.
+ * Calls `onMove` with a row's index, where it lands, and its list when one
+ * of the list's rows drops on another, never for a drop that leaves it in
+ * place. A test in place of a list watches every list it passes, as one per
+ * parent of a frame's element rows, and a row still drops only within its own.
  */
 export function useReorderMonitor(
-  list: string,
-  onMove: (from: number, to: number) => void,
+  list: string | ((list: string) => boolean),
+  onMove: (from: number, to: number, list: string) => void,
 ): void {
   useEffect(
     () =>
       monitorForElements({
-        canMonitor: ({ source }) => isRow(source.data, list),
+        canMonitor: ({ source }) =>
+          typeof list === 'string'
+            ? isRow(source.data, list)
+            : typeof source.data.list === 'string' &&
+              list(source.data.list) &&
+              isRow(source.data, source.data.list),
         onDrop: ({ source, location }) => {
           const target = location.current.dropTargets[0]
-          if (!target || !isRow(target.data, list)) return
+          const of = source.data.list as string
+          if (!target || !isRow(target.data, of)) return
           const from = source.data.index as number
           const to = getReorderDestinationIndex({
             startIndex: from,
@@ -81,7 +89,7 @@ export function useReorderMonitor(
             closestEdgeOfTarget: extractClosestEdge(target.data),
             axis: 'vertical',
           })
-          if (to !== from) onMove(from, to)
+          if (to !== from) onMove(from, to, of)
         },
       }),
     [list, onMove],
