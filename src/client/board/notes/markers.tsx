@@ -71,7 +71,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
             key={note.id}
             number={note.number}
             at={at}
-            frame={note.frame}
+            frame={framesByName.get(note.frame)?.ref}
             active={open?.kind === 'thread' && open.id === note.id}
             label={`Note ${note.number} on ${note.frame}`}
             onOpen={() =>

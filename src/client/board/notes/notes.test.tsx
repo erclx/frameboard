@@ -775,6 +775,16 @@ describe('NotesLayer', () => {
     })
   })
 
+  it("tags a marker with its frame's ref, which a frame drag matches", () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+
+    renderLayer()
+
+    expect(
+      screen.getByRole('button', { name: 'Note 1 on hero' }),
+    ).toHaveAttribute('data-note-frame', 'studio/home/hero')
+  })
+
   describe('on a previewed frame', () => {
     afterEach(() => {
       act(() => endPreview([HERO.ref]))
