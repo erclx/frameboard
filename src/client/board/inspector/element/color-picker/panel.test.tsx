@@ -47,6 +47,16 @@ async function openCustom() {
   return screen.findByRole('slider', { name: 'Saturation and brightness' })
 }
 
+/** Picks a channel format, then waits out the menu's close animation. */
+async function pickFormat(name: 'RGB' | 'HSL') {
+  await userEvent.click(screen.getByRole('button', { name: 'Color format' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name }))
+  // The closing popup stays mounted with pointer-events off, so a reopen under load would click it.
+  await vi.waitFor(() => expect(screen.queryByRole('menu')).toBeNull(), {
+    timeout: 5000,
+  })
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -145,8 +155,7 @@ describe('the color picker', () => {
     renderRow({ ...RAW, value: '#4f46e5' })
     await openCustom()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Color format' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'RGB' }))
+    await pickFormat('RGB')
     expect(
       ['Red', 'Green', 'Blue'].map(
         (name) =>
@@ -154,8 +163,7 @@ describe('the color picker', () => {
       ),
     ).toEqual(['79', '70', '229'])
 
-    await userEvent.click(screen.getByRole('button', { name: 'Color format' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'HSL' }))
+    await pickFormat('HSL')
     expect(
       ['Hue', 'Saturation', 'Lightness'].map(
         (name) =>
