@@ -562,9 +562,9 @@ describe('TypographySection', () => {
     )
 
     expect(regular).toHaveAttribute('aria-checked', 'true')
-    if (!check) throw new Error('the checked row renders no check')
+    expect(check).not.toBeNull()
     expect(number.getBoundingClientRect().right).toBeLessThanOrEqual(
-      check.getBoundingClientRect().left,
+      check?.getBoundingClientRect().left ?? Number.NEGATIVE_INFINITY,
     )
   })
 
