@@ -26,7 +26,7 @@ export interface Step {
   page: { before: string | null; after: string | null } | null
   /** The frame refs the step touched, as the board shows them. */
   frames: string[]
-  /** The project name or page ref on each side, when the step only renamed it, so the board keeps what it shows. */
+  /** The project name, page ref, or frame ref on each side, when the step only renamed it, so the board keeps what it shows. */
   renamed?: { before: string; after: string }
 }
 

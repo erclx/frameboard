@@ -295,10 +295,16 @@ export function structureRoutes(
 
   app.post('/api/frame/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
-    await refuseHeldFrames([body.ref])
+    const source = await readFrame(root, body.ref, { cwd })
+    await refuseHeld([source.ref])
     const frame = await recorded(
       (journal) => renameFrame(root, body.ref, body.name, { cwd, journal }),
-      (renamed) => onFrames([renamed.ref]),
+      async (renamed) => ({
+        ...(await onFrames([renamed.ref])),
+        ...(renamed.ref === source.ref
+          ? {}
+          : { renamed: { before: source.ref, after: renamed.ref } }),
+      }),
     )
     return c.json({ ok: true, data: frame })
   })
