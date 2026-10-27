@@ -4,6 +4,8 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import { createServer } from 'node:http'
@@ -407,10 +409,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
     // The watcher can report the write in two batches under load, and the
-    // second only repeats board, reload, and thumbnails. This reads the pushes
-    // without those repeats, so a reorder or a repeated findings or changes
-    // still fails. A batch still pending is not seen, since absence cannot be
-    // awaited without a fixed pause.
+    // second repeats board, reload, thumbnails, and findings, all with the
+    // first batch's data. This reads the pushes without those repeats, so a
+    // reorder, a changed payload, or a repeated changes still fails. A batch
+    // still pending is not seen, since absence cannot be awaited without a
+    // fixed pause.
     await expect
       .poll(() => withoutRepeats(messages).map((message) => message.type), {
         timeout: 5000,
@@ -441,6 +444,36 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
+  })
+
+  it('reads a second write of the same frame as the same pushes', async () => {
+    const hero = join(board.root, 'studio/home/hero.html')
+    const findingsCount = () =>
+      messages.filter((message) => message.type === 'findings').length
+    writeFileSync(hero, '<p>new</p>')
+    await expect.poll(findingsCount, { timeout: 5000 }).toBe(1)
+
+    const { atimeMs, mtimeMs } = statSync(hero)
+
+    // A split batch scans one write, so the second scan carries the first's
+    // mtime. The restore follows the write in the same tick, ahead of any scan.
+    writeFileSync(hero, '<p>new</p>')
+    utimesSync(hero, atimeMs / 1000, mtimeMs / 1000)
+
+    await expect
+      .poll(() => messages.some((message) => message.type === 'changes'), {
+        timeout: 5000,
+      })
+      .toBe(true)
+    expect(findingsCount()).toBe(2)
+    expect(withoutRepeats(messages).map((message) => message.type)).toEqual([
+      'board',
+      'reload',
+      'thumbnails',
+      'thumbnails',
+      'findings',
+      'changes',
+    ])
   })
 
   it('answers a home view with no stamps and sends none when no browser launches', async () => {
@@ -838,8 +871,27 @@ describe('withoutRepeats', () => {
     expect(withoutRepeats(swapped)).toEqual(swapped)
   })
 
-  it('keeps a repeated findings or changes', () => {
-    const doubled = [findings, changes, findings, changes]
+  it('drops a repeated findings that carries the same data', () => {
+    const found: ServerMessage = {
+      type: 'findings',
+      findings: { 'studio/home/hero': [] },
+    }
+
+    expect(withoutRepeats([found, found])).toEqual([found])
+  })
+
+  it('keeps a repeated findings that carries different data', () => {
+    const other: ServerMessage = {
+      type: 'findings',
+      findings: { 'studio/home/nav': [] },
+    }
+    const differing = [findings, other]
+
+    expect(withoutRepeats(differing)).toEqual(differing)
+  })
+
+  it('keeps a repeated changes', () => {
+    const doubled = [changes, changes]
 
     expect(withoutRepeats(doubled)).toEqual(doubled)
   })
