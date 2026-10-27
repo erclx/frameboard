@@ -77,7 +77,7 @@ export function CommitField({
       {prefix ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1/2 left-2 flex -translate-y-1/2 items-center text-xs text-faint"
+          className="pointer-events-none absolute top-1/2 left-2 flex -translate-y-1/2 items-center text-xs text-muted-foreground"
         >
           {prefix}
         </span>
