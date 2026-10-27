@@ -155,6 +155,31 @@ describe('editRoutes', () => {
     )
   })
 
+  it('writes several declarations as one step an undo puts back', async () => {
+    const original = read()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: {
+        kind: 'styles',
+        declarations: [
+          { property: 'width', value: '240px' },
+          { property: 'height', value: '120px' },
+        ],
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(read()).toContain(
+      '<h1 data-name="Headline" style="width: 240px; height: 120px">',
+    )
+    expect(history.counts().undo).toBe(1)
+    await history.undo()
+    expect(read()).toBe(original)
+  })
+
   it('writes one attribute', async () => {
     const original = read()
 

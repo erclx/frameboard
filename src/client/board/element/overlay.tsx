@@ -29,7 +29,8 @@ interface ElementOverlayProps {
  * them. It is placed from the live element's box inside the frame's iframe
  * and follows that element as it resizes, so it draws nothing while the
  * frame is a placeholder or shows other bytes than the selection names. The
- * corner marks are inert, since an element's size is never set by hand.
+ * marks take no pointer events, since the gestures find a press on one by
+ * where it draws, and a shape's corner drag resizes it there.
  */
 export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)

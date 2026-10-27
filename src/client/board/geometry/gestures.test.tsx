@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
+import type { ShapeSize } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
@@ -56,6 +57,7 @@ function setup(
     badge,
     control,
     divider,
+    shape,
   }: {
     canWrite?: boolean
     onCommit?: () => void
@@ -66,6 +68,8 @@ function setup(
     control?: { box: Box; onClick: () => void }
     /** A compared frame's split divider, at a canvas box. */
     divider?: Box
+    /** The selected element is a shape, in a frame free to write or held by another session. */
+    shape?: 'free' | 'held'
   } = {},
 ) {
   const mode = createModeStore(1280)
@@ -77,6 +81,13 @@ function setup(
   const opened: string[] = []
   const splits: number[] = []
   const moves: { page: string; at: Point; key: ElementKey }[] = []
+  const resizes: {
+    page: string
+    key: ElementKey
+    previews: ShapeSize[]
+    commits: ShapeSize[]
+    cancelled: boolean
+  }[] = []
   const view = render(
     <Profiler id="canvas" onRender={onCommit}>
       <div
@@ -182,6 +193,28 @@ function setup(
         moves.push({ page, at, key })
         return null
       },
+      isShape: () => shape !== undefined,
+      resizeShape: (page, key) => {
+        if (shape !== 'free') return null
+        const resize = {
+          page,
+          key,
+          previews: [] as ShapeSize[],
+          commits: [] as ShapeSize[],
+          cancelled: false,
+        }
+        resizes.push(resize)
+        return {
+          preview: (size) => resize.previews.push(size),
+          commit: async (size) => {
+            resize.commits.push(size)
+            return true
+          },
+          cancel: () => {
+            resize.cancelled = true
+          },
+        }
+      },
     },
   )
   const pointer = new Pointer(part('[data-hit-layer]'), origin)
@@ -193,6 +226,7 @@ function setup(
     opened,
     splits,
     moves,
+    resizes,
     part,
     pointer,
     detach,
@@ -726,6 +760,104 @@ describe('attachGestures', () => {
       canvas.pointer.drag([150, 95], [190, 125])
 
       expect(canvas.part('[data-element-selection]').style.transform).toBe('')
+    })
+
+    describe('that is a shape', () => {
+      function setupWithShape(shape: 'free' | 'held' = 'free') {
+        const canvas = setup(undefined, { elementBox: ELEMENT_BOX, shape })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        return canvas
+      }
+
+      it('resizes from its south-east corner and writes the size once on release', () => {
+        const canvas = setupWithShape()
+
+        canvas.pointer.down(250, 200)
+        canvas.pointer.move(290, 230)
+
+        expect(canvas.resizes).toMatchObject([
+          { page: PAGE, key: ELEMENT, previews: [{ width: 140, height: 80 }] },
+        ])
+        expect(canvas.resizes[0]?.commits).toEqual([])
+
+        canvas.pointer.up(290, 230)
+
+        expect(canvas.resizes[0]?.commits).toEqual([{ width: 140, height: 80 }])
+        expect(canvas.moves).toEqual([])
+        expect(canvas.writes).toEqual([])
+      })
+
+      it('keeps the starting ratio while Shift is held', () => {
+        const canvas = setupWithShape()
+
+        canvas.pointer.drag([250, 200], [350, 210], { shiftKey: true })
+
+        expect(canvas.resizes[0]?.commits).toEqual([
+          { width: 200, height: 100 },
+        ])
+      })
+
+      it('writes nothing on a drag that ends at the size it started', () => {
+        const canvas = setupWithShape()
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(110, 150)
+        canvas.pointer.move(150, 150)
+        canvas.pointer.up(150, 150)
+
+        expect(canvas.resizes[0]?.commits).toEqual([])
+        expect(canvas.resizes[0]?.cancelled).toBe(true)
+      })
+
+      it('writes nothing on a drag back to the start of a shape drawn at a fractional box', () => {
+        const canvas = setup(undefined, {
+          elementBox: { x: 150.4, y: 150, width: 100.2, height: 50 },
+          shape: 'free',
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(250, 200)
+        canvas.pointer.move(290, 200)
+        canvas.pointer.move(250, 200)
+        canvas.pointer.up(250, 200)
+
+        expect(canvas.resizes[0]?.commits).toEqual([])
+        expect(canvas.resizes[0]?.cancelled).toBe(true)
+      })
+
+      it('previews nothing and writes nothing on a frame another session holds', () => {
+        const canvas = setupWithShape('held')
+
+        canvas.pointer.drag([250, 200], [290, 230])
+
+        expect(canvas.resizes).toEqual([])
+        expect(canvas.moves).toEqual([])
+      })
+
+      it('still moves the shape on a drag from inside it', () => {
+        const canvas = setupWithShape()
+
+        canvas.pointer.drag([200, 175], [200, 260])
+
+        expect(canvas.resizes).toEqual([])
+        expect(canvas.moves).toMatchObject([{ key: ELEMENT }])
+      })
+
+      it('resizes nothing while the tab may not write', () => {
+        const canvas = setup(undefined, {
+          elementBox: ELEMENT_BOX,
+          shape: 'free',
+          canWrite: false,
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([250, 200], [290, 230])
+
+        expect(canvas.resizes).toEqual([])
+      })
     })
 
     it('keeps the element on a click on its outline', () => {

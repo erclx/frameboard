@@ -40,6 +40,10 @@ const editSchema = z.object({
     z.object({ kind: z.literal('style'), property: name, value }),
     z.object({ kind: z.literal('attribute'), name, value }),
     z.object({ kind: z.literal('text'), value }),
+    z.object({
+      kind: z.literal('styles'),
+      declarations: z.array(z.object({ property: name, value })).max(16),
+    }),
   ]),
 })
 
@@ -90,7 +94,8 @@ export type SettledVersion = (
  *
  * The edit's body mirrors
  * `edit`'s flags with the hash required, since the board always holds the
- * one it rendered. It writes through `editFrameFile`, which finds the element
+ * one it rendered, plus a `styles` change the CLI never sends, which writes
+ * several declarations as one step. It writes through `editFrameFile`, which finds the element
  * again in a frame an agent wrote since from the source `version` kept, and
  * records the edited element's span as one step. It answers the `edit`
  * record with the index written and the hash written over. Each refusal the

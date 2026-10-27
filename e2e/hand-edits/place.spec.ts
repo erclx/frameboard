@@ -218,6 +218,48 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
+  test('a corner drag on a placed Ellipse writes its width and height, and one undo puts both back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const one = await hero(page).locator('[data-name="One"]').boundingBox()
+    if (!one) throw new Error('The row draws no first child')
+    const zoom = await page
+      .locator('[data-layer]')
+      .evaluate((layer) => Number(layer.style.getPropertyValue('--zoom')) || 1)
+    await tools(page).getByRole('button', { name: 'Shapes' }).click()
+    await page.getByRole('menuitemradio', { name: /Ellipse/ }).click()
+    await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
+    const PLACED =
+      'data-name="Ellipse" style="width: 100px; height: 100px; background: var(--muted); border-radius: 50%"'
+    await expect.poll(read).toContain(PLACED)
+    const placed = read()
+    const outline = page.locator('[data-element-selection]')
+    await expect(outline).toBeVisible()
+    await expect(hero(page).locator('[data-name="Ellipse"]')).toBeVisible()
+    const box = await outline.boundingBox()
+    if (!box) throw new Error('The Ellipse draws no outline')
+    const corner = { x: box.x + box.width, y: box.y + box.height }
+
+    await page.mouse.move(corner.x, corner.y)
+    await page.mouse.down()
+    await page.mouse.move(corner.x + 80, corner.y + 40, { steps: 8 })
+    await page.mouse.up()
+
+    await expect.poll(read).not.toBe(placed)
+    const [, width, height] =
+      /data-name="Ellipse" style="width: (\d+)px; height: (\d+)px/.exec(
+        read(),
+      ) ?? []
+    expect(Number(width)).toBeCloseTo(100 + 80 / zoom, -0.5)
+    expect(Number(height)).toBeCloseTo(100 + 40 / zoom, -0.5)
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(placed)
+  })
+
   test('a drag on a selected element moves it past its sibling in the file, the frame stays, and undo moves it back', async ({
     page,
   }) => {

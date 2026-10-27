@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 
-import type { EditChange } from './apply'
+import type { SingleChange } from './apply'
 
 // Test-only. Generates frames shaped to reach every guard the writer carries:
 // line endings, entities, every attribute quoting, duplicated and mixed-case
@@ -200,7 +200,7 @@ export const frameArbitrary = fc
     return kind === 'bom' ? `\uFEFF${document}` : document
   })
 
-export const changeArbitrary: fc.Arbitrary<EditChange> = fc.oneof(
+export const changeArbitrary: fc.Arbitrary<SingleChange> = fc.oneof(
   fc.record({
     kind: fc.constant('style' as const),
     property: fc.constantFrom(

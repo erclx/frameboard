@@ -25,7 +25,7 @@ This record holds at most 600 words.
 
 - The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame from a short phone, tablet, and desktop list or draws one to any size, selects several frames, and undoes their own changes
 - By hand, a developer sets a frame's position, size, and fill, and an element's name, opacity, radius, type, line height, letter spacing, fill, stroke color, shadow, and text. Colors are picked beside their token names, and number fields scrub.
-- A developer places text or a shape inside a frame, landing in the layout where clicked or sized by a drag, moves it to another spot in the layout or deletes it, and edits text in place on a double-click
+- A developer places text or a shape inside a frame, landing in the layout where clicked, sized by a drag or its corners, moves it to another spot in the layout or deletes it, and edits text in place on a double-click
 
 ### Working with the agent
 
@@ -51,7 +51,7 @@ This record holds at most 600 words.
 
 - Vector editing, pen and path tools, or image editing
 - Layout editing, being flex, padding, or placing an element outside the layout's flow
-- Effects controls such as blending and filters
+- Blending and filter effects
 - Components, constraints, or a plugin system
 
 ### Deferred

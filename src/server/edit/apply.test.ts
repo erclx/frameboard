@@ -125,6 +125,80 @@ describe('applyEdit', () => {
     })
   })
 
+  describe('styles', () => {
+    const SHAPE =
+      '<div data-name="Ellipse" style="width: 100px; height: 100px; border-radius: 50%"></div>'
+
+    it('should set every declaration and record one start tag span', () => {
+      const result = applyEdit(SHAPE, FIRST, {
+        kind: 'styles',
+        declarations: [
+          { property: 'Width', value: '240px' },
+          { property: 'height', value: '120px' },
+        ],
+      })
+
+      expect(result).toEqual({
+        ok: true,
+        html: '<div data-name="Ellipse" style="width: 240px; height: 120px; border-radius: 50%"></div>',
+        span: {
+          scope: 'start-tag',
+          index: 3,
+          count: 4,
+          before:
+            '<div data-name="Ellipse" style="width: 100px; height: 100px; border-radius: 50%">',
+          after:
+            '<div data-name="Ellipse" style="width: 240px; height: 120px; border-radius: 50%">',
+        },
+      })
+    })
+
+    it('should add the declarations an element lacks', () => {
+      expect(
+        applyEdit('<div style="width: 50%"></div>', FIRST, {
+          kind: 'styles',
+          declarations: [
+            { property: 'width', value: '300px' },
+            { property: 'height', value: '80px' },
+          ],
+        }),
+      ).toMatchObject({
+        ok: true,
+        html: '<div style="width: 300px; height: 80px"></div>',
+      })
+    })
+
+    it('should refuse no declarations', () => {
+      expect(
+        applyEdit(SHAPE, FIRST, { kind: 'styles', declarations: [] }),
+      ).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    })
+
+    it('should refuse one property named twice', () => {
+      expect(
+        applyEdit(SHAPE, FIRST, {
+          kind: 'styles',
+          declarations: [
+            { property: 'width', value: '1px' },
+            { property: 'WIDTH', value: '2px' },
+          ],
+        }),
+      ).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    })
+
+    it('should refuse the whole change when one declaration breaks out', () => {
+      expect(
+        applyEdit(SHAPE, FIRST, {
+          kind: 'styles',
+          declarations: [
+            { property: 'width', value: '240px' },
+            { property: 'height', value: '1px; color: red' },
+          ],
+        }),
+      ).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    })
+  })
+
   describe('attribute', () => {
     it('should set an attribute and escape its value', () => {
       expect(
