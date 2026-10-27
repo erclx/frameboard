@@ -184,12 +184,18 @@ test.describe('a note card in a read-only tab', () => {
     ).toHaveCount(9)
     await expect
       .poll(async () => {
-        const [card, notice] = await Promise.all([
+        const [card, notice, toolbar] = await Promise.all([
           thread.boundingBox(),
           pill.boundingBox(),
+          reader.getByRole('toolbar', { name: 'Tools' }).boundingBox(),
         ])
-        if (!card || !notice) throw new Error('the card or the pill has no box')
-        return card.y - (notice.y + notice.height)
+        if (!card || !notice || !toolbar) {
+          throw new Error('the card, the pill, or the toolbar has no box')
+        }
+        return Math.min(
+          card.y - (notice.y + notice.height),
+          toolbar.y - (card.y + card.height),
+        )
       })
       .toBeGreaterThanOrEqual(0)
     await expect(thread.getByRole('heading')).toBeInViewport()
