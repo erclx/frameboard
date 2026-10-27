@@ -3,6 +3,7 @@ cli = ["src/cli/"]
 server = ["src/server/"]
 client = ["src/client/"]
 shared = ["src/shared/"]
+web = ["web/"]
 plugin = [
   "plugins/frameboard/skills/",
   "plugins/frameboard/hooks/",
