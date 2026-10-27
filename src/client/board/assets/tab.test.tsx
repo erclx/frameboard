@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import { contrastOnPage } from '@/test/contrast'
 
 import { AssetsTab } from './tab'
 
@@ -65,6 +66,24 @@ describe('AssetsTab', () => {
     expect(screen.getByText('font · 98 KB')).toBeVisible()
     expect(screen.getByText('video · 4.1 MB')).toBeVisible()
     expect(screen.getByText('stylesheet · 3 KB')).toBeVisible()
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads a tile caption at 4.5:1 or better on the tile', async () => {
+      render(<AssetsTab project="studio" load={listing(FILES)} />)
+
+      expect(
+        contrastOnPage(await screen.findByText('image · 1.2 MB')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   it('draws an image tile as a lazy thumbnail of the served file', async () => {
