@@ -232,6 +232,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -255,6 +256,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -265,19 +267,46 @@ describe('TypographySection', () => {
       />,
     )
 
-    const field = screen.getByRole('textbox', { name: 'Font weight' })
-    await userEvent.clear(field)
-    await userEvent.type(field, '500{Enter}')
+    const trigger = screen.getByRole('button', { name: 'Font weight' })
+    expect(trigger).toHaveTextContent('Bold')
+    await userEvent.click(trigger)
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Medium' }),
+    )
 
     expect(changes).toEqual([
       { kind: 'style', property: 'font-weight', value: '500' },
     ])
   })
 
-  it('scrubs the weight from its Weight zone by 100 a step', () => {
+  it('writes nothing for the weight already set', async () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font weight' }))
+    const bold = await screen.findByRole('menuitemradio', { name: 'Bold' })
+    expect(bold).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(bold)
+
+    expect(changes).toEqual([])
+  })
+
+  it('offers only the weights the face ships', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fontFamily="Caveat, cursive"
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -288,19 +317,24 @@ describe('TypographySection', () => {
       />,
     )
 
-    scrubBy(screen.getByText('Weight'), 1)
+    await userEvent.click(screen.getByRole('button', { name: 'Font weight' }))
+    const items = await screen.findAllByRole('menuitemradio')
 
-    expect(changes).toEqual([
-      { kind: 'style', property: 'font-weight', value: '600' },
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Regular',
+      'Medium',
+      'Semi Bold',
+      'Bold',
     ])
   })
 
-  it('steps the weight by 100', async () => {
-    const { changes, write } = recorder()
+  it('shows a weight the face lacks as its number', () => {
+    const { write } = recorder()
     render(
       <TypographySection
+        fontFamily="Caveat, cursive"
         fontSize={30}
-        fontWeight={700}
+        fontWeight={900}
         textAlign="left"
         lineHeight={null}
         letterSpacing={0}
@@ -309,18 +343,16 @@ describe('TypographySection', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('textbox', { name: 'Font weight' }))
-    await userEvent.keyboard('{ArrowUp}')
-
-    expect(changes).toEqual([
-      { kind: 'style', property: 'font-weight', value: '800' },
-    ])
+    expect(
+      screen.getByRole('button', { name: 'Font weight' }),
+    ).toHaveTextContent('900')
   })
 
   it('writes the alignment a button names and lights the computed one', async () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -347,6 +379,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -368,6 +401,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -391,6 +425,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -412,6 +447,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -434,6 +470,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -457,6 +494,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -480,6 +518,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -502,6 +541,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
         textAlign="left"

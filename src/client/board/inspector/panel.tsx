@@ -180,6 +180,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
       />
       {live.holdsText ? (
         <TypographySection
+          fontFamily={live.fontFamily}
           fontSize={live.fontSize}
           fontWeight={live.fontWeight}
           lineHeight={live.lineHeight}

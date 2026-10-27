@@ -8,6 +8,8 @@ export interface Face {
   packageFamily: string
   /** The folder under the faces folder, and under the URL the frames import it from. */
   folder: string
+  /** The weights the package's variable face spans, both ends included. */
+  weights: { min: number; max: number }
 }
 
 export const FACES: readonly Face[] = [
@@ -16,18 +18,21 @@ export const FACES: readonly Face[] = [
     package: '@fontsource-variable/geist',
     packageFamily: 'Geist Variable',
     folder: 'geist',
+    weights: { min: 100, max: 900 },
   },
   {
     family: 'Geist Mono',
     package: '@fontsource-variable/geist-mono',
     packageFamily: 'Geist Mono Variable',
     folder: 'geist-mono',
+    weights: { min: 100, max: 900 },
   },
   {
     family: 'Caveat',
     package: '@fontsource-variable/caveat',
     packageFamily: 'Caveat Variable',
     folder: 'caveat',
+    weights: { min: 400, max: 700 },
   },
 ]
 
