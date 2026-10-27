@@ -23,7 +23,10 @@ const FILE_REFERENCE = /url\(\s*(['"]?)\.\/files\/([^'")\s]+)\1\s*\)/g
 
 /** The distinct file names a package sheet loads from its `files` folder. */
 export function referencedFiles(sheet: string): string[] {
-  return [...new Set([...sheet.matchAll(FILE_REFERENCE)].map((m) => m[2]))]
+  const names = [...sheet.matchAll(FILE_REFERENCE)].flatMap((m) =>
+    m[2] ? [m[2]] : [],
+  )
+  return [...new Set(names)]
 }
 
 /**
