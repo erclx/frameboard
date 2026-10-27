@@ -19,7 +19,7 @@ export function wireCopyCommands(root: ParentNode = document): void {
         await navigator.clipboard.writeText(command)
       } catch {
         selectText(block.querySelector('code'))
-        label = 'Press Ctrl+C'
+        label = /mac/i.test(navigator.platform) ? 'Press Cmd+C' : 'Press Ctrl+C'
       }
       button.textContent = label
       if (status)

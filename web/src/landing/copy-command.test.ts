@@ -24,6 +24,7 @@ function stubClipboard(writeText: (text: string) => Promise<void>): void {
 afterEach(() => {
   if (vi.isFakeTimers()) vi.runOnlyPendingTimers()
   vi.useRealTimers()
+  vi.restoreAllMocks()
   document.body.innerHTML = ''
 })
 
@@ -66,6 +67,20 @@ describe('wireCopyCommands', () => {
     })
 
     expect(window.getSelection()?.toString()).toBe('npx frameboard serve')
+  })
+
+  it('names the macOS copy key when the clipboard refuses on a Mac', async () => {
+    const root = renderCommand()
+    const user = userEvent.setup()
+    stubClipboard(() => Promise.reject(new Error('denied')))
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel')
+    wireCopyCommands(root)
+
+    await user.click(screen.getByRole('button', { name: 'Copy' }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button')).toHaveTextContent('Press Cmd+C')
+    })
   })
 
   it('puts the label back after two seconds', async () => {
