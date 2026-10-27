@@ -18,7 +18,11 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Appearance and typography:** captioned opacity and corner radius, then size, weight, spacing, and alignment, plus its text when it holds text only. Layers renames an element, so no name field shows.
+- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment, plus its text when it holds text only. Layers renames an element.
+- **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
+- **Reading the family:** the computed stack never names a token, so `element/families.ts` matches it to a font token by value, then to a face by its first family, and reads any other as written
+- **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
+- **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
 - **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
@@ -33,7 +37,7 @@ The Frame section stays above an element's sections and hides its name row while
 - Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, and Desktop headings in place of the selection, and the chosen row is what the next click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
 
-Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and a drag on its prefix zone or caption scrubs it. A weight steps by 100, and a step on a `Mixed` frame value moves each frame by the step from its own.
+Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and a drag on its prefix zone or caption scrubs it. A step on a `Mixed` frame value moves each frame by the step from its own.
 
 - The prefix sits in a full-height zone at least 24px wide, and a fill or stroke opacity with no room for one scrubs from a drag on the number while a click still types
 - A step or a scrub previews first, a frame at its pending box and an element through an inline style on its live node, and writes once on the arrow's keyup or the scrub's release
@@ -50,7 +54,7 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 
 ## Gotchas
 
-- Element position, width, height, padding, flex, gap, border width, and font family have no control. A placement tool sets a new element's place once.
+- Element position, width, height, padding, flex, gap, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
 - Each of those is a layout call a prompt makes better, or a number that fights the layout when set by hand
 - A Rectangle or Ellipse drag sets a new shape's size, and a drag on the selected element moves it to another gap in its layout
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
