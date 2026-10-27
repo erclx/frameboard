@@ -17,6 +17,9 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   testIgnore: 'perf/**',
   fullyParallel: true,
+  // Locally, the default of half the cores spawns a `serve` child and its board
+  // watcher per worker, and runs lost specs to EMFILE. CI keeps its default.
+  workers: process.env.CI ? undefined : '25%',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
