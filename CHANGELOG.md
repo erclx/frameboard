@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0](https://github.com/erclx/frameboard/compare/v0.17.0...v0.18.0) (2026-10-27)
+
+
+### Features
+
+* **access:** mint a fresh edit link per open on preview servers ([#163](https://github.com/erclx/frameboard/issues/163)) ([828c75f](https://github.com/erclx/frameboard/commit/828c75fb2578714d4706042ef1090410287bf412))
+* **canvas:** shift note pins with their frame during a drag ([#159](https://github.com/erclx/frameboard/issues/159)) ([a2c6ebd](https://github.com/erclx/frameboard/commit/a2c6ebdcadf043ef42f884ba36f6c4012244ea10))
+
+
+### Bug Fixes
+
+* **chrome:** lift quiet captions and chevrons past the faint token ([#162](https://github.com/erclx/frameboard/issues/162)) ([a241ad6](https://github.com/erclx/frameboard/commit/a241ad662a3282634139cc5b1ee7a3dc4045b322))
+
 ## [0.17.0](https://github.com/erclx/frameboard/compare/v0.16.0...v0.17.0) (2026-10-27)
 
 
