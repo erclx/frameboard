@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FindHit, FindResult } from '@/shared/records/find'
+import { contrastOnPage } from '@/test/contrast'
 
 import { createTrees, type Trees } from '../element/tree'
 import { createModeStore } from '../mode'
@@ -94,7 +95,7 @@ function renderFind({
   trees = heldTrees(),
 } = {}) {
   render(
-    <div className="h-[600px]">
+    <div className="h-[600px] bg-sidebar">
       <FindPanel
         project="studio"
         page={page}
@@ -300,6 +301,34 @@ describe('FindPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Close find' }))
 
     expect([cleared, findStore.getState().open]).toEqual(['', false])
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads each page heading at 4.5:1 or better on the sidebar', async () => {
+      renderFind()
+
+      await search('started')
+
+      expect(
+        contrastOnPage(within(groupNamed('home')).getByText('home')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it('reads the Esc hint at 4.5:1 or better on the sidebar', () => {
+      renderFind()
+
+      expect(
+        contrastOnPage(screen.getByText('Esc goes back to the layers')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 })
 

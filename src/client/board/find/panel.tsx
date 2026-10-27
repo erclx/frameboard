@@ -195,7 +195,7 @@ export function FindPanel({
             role="group"
             aria-labelledby={`${listId}-${group.page}`}
           >
-            <div className="flex justify-between px-3 pt-2 pb-0.5 text-[11px] font-semibold text-faint">
+            <div className="flex justify-between px-3 pt-2 pb-0.5 text-[11px] font-semibold text-muted-foreground">
               <span id={`${listId}-${group.page}`}>{group.page}</span>
               <span>{group.hits.length}</span>
             </div>
@@ -220,7 +220,7 @@ export function FindPanel({
         filter={filter}
         onShowAll={() => setFilter('all')}
       />
-      <p className="shrink-0 px-3 pt-2 pb-3 text-[11px] text-faint">
+      <p className="shrink-0 px-3 pt-2 pb-3 text-[11px] text-muted-foreground">
         Esc goes back to the layers
       </p>
     </div>
