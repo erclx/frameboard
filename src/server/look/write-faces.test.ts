@@ -12,7 +12,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { FACES } from '@/shared/faces'
+import { type Face, FACES } from '@/shared/faces'
 
 import { referencedFiles, writeFaces } from './write-faces'
 
@@ -79,6 +79,29 @@ describe('writeFaces', () => {
       expect(copied).toEqual(referencedFiles(sheet).sort())
     },
   )
+
+  it('throws on a referenced file the package lacks and leaves no folder', () => {
+    const pkg = join(out, 'pkg')
+    mkdirSync(join(pkg, 'files'), { recursive: true })
+    writeFileSync(join(pkg, 'package.json'), '{}')
+    writeFileSync(join(pkg, 'LICENSE'), 'x')
+    writeFileSync(
+      join(pkg, 'index.css'),
+      "font-family: 'Fake Variable'; src: url(./files/gone.woff2);",
+    )
+    const fake: Face = {
+      ...FACES[0]!,
+      family: 'Fake',
+      package: pkg,
+      packageFamily: 'Fake Variable',
+      folder: 'fake',
+    }
+    const target = join(out, 'faces')
+
+    expect(() => writeFaces(target, { faces: [fake] })).toThrow(/gone\.woff2/)
+
+    expect(readdirSync(out).sort()).toEqual(['pkg'])
+  })
 
   it('leaves an unreferenced italic file out', () => {
     writeFaces(out)
