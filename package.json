@@ -51,8 +51,8 @@
     "check": "bun scripts/verify.ts",
     "check:format": "oxfmt --check .",
     "format": "oxfmt .",
-    "lint": "oxlint --max-warnings 0",
-    "lint:fix": "oxlint --fix --max-warnings 0",
+    "lint": "oxlint --max-warnings 0 --disable-nested-config",
+    "lint:fix": "oxlint --fix --max-warnings 0 --disable-nested-config",
     "screenshot": "PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) && export PREVIEW_PORT && bash scripts/screenshot.sh",
     "screenshot:compare": "bun run build && bun scripts/screenshot-compare.ts",
     "readme-screenshot": "PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) && export PREVIEW_PORT && bash scripts/readme-screenshot.sh"
