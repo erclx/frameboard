@@ -36,9 +36,10 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.63.0",
-      "syncedAt": "2026-10-24T18:06:13.583Z",
+      "version": "5.69.0",
+      "syncedAt": "2026-10-27T02:01:21.223Z",
       "files": {
+        ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:a4dd2f6e78751e22d2d9ecd8bc4a66f42e7e1022c04d4038a4f6689c791ed64f",
         ".github/workflows/pr-local-preview.yml": "sha256:29a3541db02f1ffb0e7fbe6ae84e49462c6900728584398c28fe4fb8fa8f5b2d",
         ".github/workflows/verify.yml": "sha256:0b6e3c9d3f347cf9c732886abbf6d08fbd78a0572568c8d30eb2703dbcc8ce35",
@@ -48,6 +49,7 @@
         ".husky/pre-commit": "sha256:a7e3ee0be7554bb60837cd7a414e61aa6a51db987390e325a3799cbdc254ddd8",
         ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
         ".oxfmtrc.json": "sha256:3a1ed5ccecff4b639cda0dc20231f9e92a1511c463b0b5800aa0dea45b9c4dfe",
+        "scripts/delete-previews.sh": "sha256:bffa40f5391deff970c5c813c7e1ed7c9b3db15925cc6400acfc187b4e50b283",
         "scripts/lib/preview-server.sh": "sha256:5e1d0ea671970ba5a4c6a83c0c656f86e4e9e5caa45c6636487793cc6f17c20b",
         "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
@@ -56,8 +58,12 @@
         "scripts/worktree-port.sh": "sha256:3d0f0a5e01f796bda1b8591103aef0509c1c077d160d15dfff565edc4d3a30cb",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
-      "chain": ["web", "base"],
+      "chain": ["web", "base", "cloudflare"],
       "dispositions": {
+        ".github/workflows/deploy.yml": {
+          "disposition": "customized",
+          "base": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2"
+        },
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
           "reason": "The README shows the .github/readme-hero-loop-light.webp loop and the .github/readme-hero-dark.png still, with .github/readme-hero-light.png as the reduced-motion fallback, and commits no capture under assets/evidence/readme"
