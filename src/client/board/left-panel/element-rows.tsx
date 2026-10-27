@@ -190,7 +190,7 @@ function ElementRow({
               aria-label={`${open ? 'Hide' : 'Show'} what ${element.name} holds`}
               aria-expanded={open}
               onClick={toggle}
-              className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               {open ? (
                 <ChevronDown aria-hidden className="size-2.5" />
@@ -277,7 +277,7 @@ function Notice({
   return (
     <p
       title={title}
-      className="flex h-[26px] items-center truncate pr-2 text-faint"
+      className="flex h-[26px] items-center truncate pr-2 text-muted-foreground"
       style={{ paddingLeft: FRAME_INSET + depth * INDENT + 16 }}
     >
       {children}

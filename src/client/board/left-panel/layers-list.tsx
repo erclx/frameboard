@@ -154,7 +154,7 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
                     aria-label={`${open ? 'Hide' : 'Show'} the elements of ${frame.name}`}
                     aria-expanded={open}
                     onClick={() => toggle(frame.ref)}
-                    className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-faint outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {open ? (
                       <ChevronDown aria-hidden className="size-2.5" />
@@ -200,6 +200,13 @@ interface FrameRowProps {
 /** A 24px target drawing the 20px fill the references draw, through `ROW_FILL`. */
 const ROW_BUTTON =
   'group/target grid size-6 shrink-0 place-items-center outline-none hover:text-foreground disabled:pointer-events-none'
+
+/**
+ * A hidden row's name and glyphs, dimmed yet past 4.5:1 on a hovered row,
+ * since a hidden row still renames and restacks.
+ */
+const HIDDEN_TEXT =
+  'text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground))]'
 
 const ROW_FILL =
   'grid size-5 place-items-center rounded-[5px] group-hover/target:bg-accent group-focus-visible/target:ring-2 group-focus-visible/target:ring-ring/50'
@@ -253,7 +260,7 @@ function FrameRow({
       aria-hidden
       className={cn(
         'size-[13px] shrink-0',
-        frame.hidden ? 'text-faint' : 'text-muted-foreground',
+        frame.hidden ? HIDDEN_TEXT : 'text-muted-foreground',
       )}
     />
   )
@@ -274,10 +281,7 @@ function FrameRow({
             <div
               className={cn(
                 'group flex h-[26px] items-center gap-1.5 pr-1 pl-2 text-foreground',
-                // Dimmed, yet past 4.5:1 on a hovered row, since a hidden
-                // row still renames and restacks.
-                frame.hidden &&
-                  'text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground))]',
+                frame.hidden && HIDDEN_TEXT,
                 tint ?? 'hover:bg-accent',
               )}
             >
@@ -334,7 +338,7 @@ function FrameRow({
                 className={cn(
                   ROW_BUTTON,
                   frame.hidden
-                    ? 'text-faint'
+                    ? HIDDEN_TEXT
                     : cn('text-muted-foreground', ON_HOVER),
                 )}
               >

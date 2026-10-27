@@ -74,11 +74,12 @@ function luminance([r, g, b]: Rgb): number {
  * An element's text against its background as WCAG measures it, each
  * translucent background up its ancestors laid over the ones beneath, on
  * white when none is opaque. Element opacity is not read, so measure once
- * any fade has finished.
+ * any fade has finished. A `pseudo` such as `::placeholder` reads that
+ * pseudo-element's text over the element's own background.
  */
-export function contrastOnPage(element: HTMLElement): number {
+export function contrastOnPage(element: Element, pseudo?: string): number {
   const layers: Color[] = []
-  for (let at: HTMLElement | null = element; at; at = at.parentElement) {
+  for (let at: Element | null = element; at; at = at.parentElement) {
     const fill = parse(getComputedStyle(at).backgroundColor)
     if (fill.alpha > 0) layers.push(fill)
     if (fill.alpha === 1) break
@@ -86,7 +87,7 @@ export function contrastOnPage(element: HTMLElement): number {
   const ground = layers
     .reverse()
     .reduce<Rgb>((under, top) => over(top, under), [255, 255, 255])
-  const text = over(parse(getComputedStyle(element).color), ground)
+  const text = over(parse(getComputedStyle(element, pseudo).color), ground)
   const [light, dark] = [luminance(text), luminance(ground)].sort(
     (a, b) => b - a,
   )

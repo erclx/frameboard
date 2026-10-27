@@ -1,11 +1,12 @@
 import '../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { ListResult } from '@/shared/records/list'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
+import { contrastOnPage } from '@/test/contrast'
 
 import { ThemeTab } from './theme-tab'
 
@@ -85,6 +86,31 @@ describe('ThemeTab', () => {
         name: 'Dark: #818cf8',
       }),
     ).toBeInTheDocument()
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads the L and D column header at 4.5:1 or better on the sidebar', async () => {
+      render(
+        <div className="bg-sidebar">
+          <ThemeTab
+            project="studio"
+            load={async () => table([row('--primary')])}
+          />
+        </div>,
+      )
+
+      expect(
+        contrastOnPage(await screen.findByText('L')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   it('marks a side a color does not set', async () => {

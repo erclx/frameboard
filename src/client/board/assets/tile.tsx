@@ -52,7 +52,7 @@ export function Tile({ project, file }: TileProps) {
         </span>
         <span className="block truncate px-[7px] py-[5px] text-label font-normal">
           <span title={file.path}>{file.path}</span>
-          <span className="block text-[10px] text-faint">
+          <span className="block text-[10px] text-muted-foreground">
             {describeAsset(file)}
           </span>
         </span>

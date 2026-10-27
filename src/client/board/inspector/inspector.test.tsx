@@ -9,6 +9,7 @@ import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard, receiveFindings } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { contrastOnPage } from '@/test/contrast'
 
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
@@ -606,6 +607,32 @@ describe('FrameSection', () => {
     )
 
     expect(writes[0]?.boxes[SWATCHES.ref]?.width).toBe(1)
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads a field key letter at 4.5:1 or better on the field fill', () => {
+      // The letter overlays its input, a sibling rather than an ancestor, so
+      // the wrapper stands in for the fill behind it.
+      render(
+        <div className="bg-input">
+          <FrameSection
+            page={PAGE}
+            frames={[SWATCHES]}
+            write={async () => true}
+          />
+        </div>,
+      )
+
+      expect(contrastOnPage(screen.getByText('X'))).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   describe('Preview row', () => {

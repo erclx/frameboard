@@ -25,7 +25,7 @@
         --sel: #3d3d3d;
         --border: #353535;
         --text: #e6e6e6;
-        --muted: #949494;
+        --muted: #a0a0a0;
         --faint: #6b6b6b;
         --accent: #4e92f6;
         --accentfg: #ffffff;
@@ -168,7 +168,7 @@
       }
       .row .tw {
         width: 10px;
-        color: var(--faint);
+        color: var(--muted);
       }
       .row .ic {
         color: var(--muted);
@@ -235,7 +235,7 @@
         color: color-mix(in srgb, var(--muted) 70%, var(--text));
       }
       .row.hidden .ic {
-        color: var(--faint);
+        color: color-mix(in srgb, var(--muted) 70%, var(--text));
       }
       .acts {
         display: flex;
@@ -554,7 +554,7 @@
         margin-bottom: 6px;
       }
       .fld .k {
-        color: var(--faint);
+        color: var(--muted);
         min-width: 10px;
       }
       .fld .v {

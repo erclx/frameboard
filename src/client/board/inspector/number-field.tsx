@@ -322,7 +322,7 @@ export function NumberField({
               aria-hidden
               data-scrub
               className={cn(
-                'absolute inset-y-0 left-0 flex min-w-6 cursor-ew-resize items-center justify-center rounded-l-md px-1.5 text-xs text-faint select-none',
+                'absolute inset-y-0 left-0 flex min-w-6 cursor-ew-resize items-center justify-center rounded-l-md px-1.5 text-xs text-muted-foreground select-none',
                 !disabled && ZONE_LIT,
               )}
               onPointerDown={startScrub}
