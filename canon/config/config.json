@@ -60,7 +60,7 @@
       "dispositions": {
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-light.png and .github/readme-hero-dark.png pair and commits no capture under assets/evidence/readme"
+          "reason": "The README shows the .github/readme-hero-loop-light.webp loop and the .github/readme-hero-dark.png still, with .github/readme-hero-light.png as the reduced-motion fallback, and commits no capture under assets/evidence/readme"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
