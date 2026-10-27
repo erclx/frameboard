@@ -14,9 +14,29 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { FACES } from '@/shared/faces'
 
-import { writeFaces } from './write-faces'
+import { referencedFiles, writeFaces } from './write-faces'
 
 const CASES = FACES.map((face) => [face.family, face] as const)
+
+describe('referencedFiles', () => {
+  it('reads unquoted and quoted references', () => {
+    const sheet = `src: url(./files/a.woff2) format('woff2');
+src: url("./files/b.woff2");
+src: url('./files/c.woff2');`
+
+    expect(referencedFiles(sheet)).toEqual(['a.woff2', 'b.woff2', 'c.woff2'])
+  })
+
+  it('lists a file referenced twice once', () => {
+    const sheet = 'a{src:url(./files/a.woff2)} b{src:url(./files/a.woff2)}'
+
+    expect(referencedFiles(sheet)).toEqual(['a.woff2'])
+  })
+
+  it('ignores a reference outside the files folder', () => {
+    expect(referencedFiles('src: url(https://x.test/a.woff2)')).toEqual([])
+  })
+})
 
 describe('writeFaces', () => {
   let out: string
@@ -48,6 +68,25 @@ describe('writeFaces', () => {
       expect(existsSync(join(out, face.folder, 'LICENSE'))).toBe(true)
     },
   )
+
+  it.each(CASES)(
+    'copies exactly the files the sheet references for %s',
+    (_family, face) => {
+      writeFaces(out)
+
+      const sheet = readFileSync(join(out, face.folder, 'index.css'), 'utf8')
+      const copied = readdirSync(join(out, face.folder, 'files')).sort()
+      expect(copied).toEqual(referencedFiles(sheet).sort())
+    },
+  )
+
+  it('leaves an unreferenced italic file out', () => {
+    writeFaces(out)
+
+    expect(readdirSync(join(out, 'geist', 'files'))).not.toContain(
+      'geist-latin-wght-italic.woff2',
+    )
+  })
 
   it('replaces what the folder held', () => {
     writeFaces(out)

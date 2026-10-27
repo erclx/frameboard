@@ -2,7 +2,6 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -20,9 +19,17 @@ export function hasFaces(dir: string): boolean {
   return FACES.every((face) => existsSync(join(dir, face.folder, 'index.css')))
 }
 
+const FILE_REFERENCE = /url\(\s*(['"]?)\.\/files\/([^'")\s]+)\1\s*\)/g
+
+/** The distinct file names a package sheet loads from its `files` folder. */
+export function referencedFiles(sheet: string): string[] {
+  return [...new Set([...sheet.matchAll(FILE_REFERENCE)].map((m) => m[2]))]
+}
+
 /**
  * Copies each face every frame imports from its package into `outDir`,
- * replacing what was there. The faces fill a sibling folder first and rename
+ * replacing what was there. Only the files a package sheet references are
+ * copied, and a reference to a file the package lacks throws. The faces fill a sibling folder first and rename
  * into place, so `outDir` holds every file or does not exist, and an
  * interrupted write leaves no half-filled face behind. Each sheet is
  * rewritten to declare the plain family a frame names, such as Geist, rather
@@ -47,10 +54,8 @@ export function writeFaces(
         sheet.replaceAll(`'${face.packageFamily}'`, `'${face.family}'`),
       )
       copyFileSync(join(from, 'LICENSE'), join(to, 'LICENSE'))
-      for (const file of readdirSync(join(from, 'files'))) {
-        if (file.endsWith('.woff2')) {
-          copyFileSync(join(from, 'files', file), join(to, 'files', file))
-        }
+      for (const file of referencedFiles(sheet)) {
+        copyFileSync(join(from, 'files', file), join(to, 'files', file))
       }
     }
     if (keepComplete && hasFaces(outDir)) return
