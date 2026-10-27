@@ -8,7 +8,7 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
-import { catchUpTree, readTree, treeOf } from '@/client/board/element/tree'
+import { catchUpTree, readTree } from '@/client/board/element/tree'
 import { dropPending } from '@/client/board/geometry/write'
 import { shownHash } from '@/client/board/inspector/element/write'
 import {
@@ -38,30 +38,34 @@ export interface HistoryDeps {
   notify?: (refusal: { title: string; description: string }) => void
   /** Whether the board runs on a Mac, where Ctrl+Y is not redo. */
   mac?: boolean
-  /** A frame's held element tree, and its tree once it shows the bytes at `hash`. */
-  trees?: {
-    held: (ref: string) => ElementTree | null
-    at: (ref: string, hash: string) => Promise<ElementTree | null>
-  }
+  /** A frame's element tree once it shows the bytes at `hash`, null when those bytes cannot be read. */
+  treeAt?: (ref: string, hash: string) => Promise<ElementTree | null>
 }
 
 /**
- * Whether the element at `index` is still the one picked: the step left the
- * frame's element count alone and the index still holds the same tag. A
- * placement or a delete shifts every index past it, so a changed count drops
- * the element even where its index survives.
+ * Whether the element at file index `index` is still the one picked: every
+ * element keeps its index, parent, and tag, and every other element its
+ * name. A placement, a delete, or a move shifts indices, so even where the
+ * picked index survives it would name another element. The picked element's
+ * own name may change, as an undone text or name edit changes it.
  */
 function keepsElement(
-  before: ElementTree | null,
-  after: ElementTree | null,
+  before: ElementTree,
+  after: ElementTree,
   index: number,
 ): boolean {
-  const now = after?.elements[index]
-  if (!now) return false
-  if (!before) return true
+  if (before.elements.length !== after.elements.length) return false
   return (
-    before.elements.length === after.elements.length &&
-    before.elements[index]?.tag === now.tag
+    before.elements.every((was, at) => {
+      const now = after.elements[at]
+      return (
+        now !== undefined &&
+        now.index === was.index &&
+        now.parent === was.parent &&
+        now.tag === was.tag &&
+        (was.index === index || now.name === was.name)
+      )
+    }) && after.elements.some((now) => now.index === index)
   )
 }
 
@@ -83,14 +87,11 @@ export function registerHistoryActions({
     // It leaves after Base UI's 5 s default, which hover or focus pauses.
     toast.add({ ...refusal, type: 'warning' }),
   mac = IS_MAC,
-  trees = {
-    held: treeOf,
-    at: async (ref, hash) => {
-      await catchUpTree(ref, hash)
-      // The frame's reload can land meanwhile, whose own fetch holds the tree then.
-      const tree = await readTree(ref)
-      return tree?.hash === hash ? tree : null
-    },
+  treeAt = async (ref, hash) => {
+    await catchUpTree(ref, hash)
+    // The frame's reload can land meanwhile, whose own fetch holds the tree then.
+    const tree = await readTree(ref)
+    return tree?.hash === hash ? tree : null
   },
 }: HistoryDeps = {}): () => void {
   const follow = (answer: StepAnswer, before: ElementTree | null) => {
@@ -106,9 +107,13 @@ export function registerHistoryActions({
       // An undone style edit leaves the element where it was, but an undone
       // placement or delete removes or restores one, so the element takes
       // the restored hash only while the frame's new tree still holds it.
-      void trees.at(element.frame, hash).then((after) => {
+      void treeAt(element.frame, hash).then((after) => {
         if (selection.getState().element !== element) return
-        if (keepsElement(before, after, element.index)) {
+        if (
+          before?.hash === element.hash &&
+          after &&
+          keepsElement(before, after, element.index)
+        ) {
           selectElement(selection, shown, { ...element, hash })
         } else {
           select(selection, shown, [element.frame])
@@ -124,10 +129,9 @@ export function registerHistoryActions({
   const step =
     (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
       let done = () => {}
-      // The tree the selected element was picked from, which the answer's tree is checked against.
-      const picked = selection.getState().element
-      const held = picked ? trees.held(picked.frame) : null
-      const before = held && held.hash === picked?.hash ? held : null
+      // The tree the selected element was picked from, read before the step
+      // rewrites those bytes, which the answer's tree is checked against.
+      let before: ElementTree | null = null
       // A step landing during the wait would be the one a bare undo takes, so it ends the wait.
       const counts = store.getState().history
       const moved = ({ history }: { history: typeof counts }) =>
@@ -135,9 +139,11 @@ export function registerHistoryActions({
       whenFree(
         [],
         label,
-        () => {
+        async () => {
           // An undo can rewrite any frame, whose reload may land before the answer names its hash.
           done = awaitHash(null)
+          const picked = selection.getState().element
+          before = picked ? await treeAt(picked.frame, picked.hash) : null
           return run().catch((error: unknown) => {
             done()
             throw error

@@ -25,8 +25,8 @@ Enter at a frame selects the first child of its `body`, and Esc at a child of `b
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
-- An undo or redo keeps the element only while the frame's tree at the answered hash holds as many elements and the same tag at its index, and selects the frame otherwise
-- A placement or a delete shifts every index past it, so a kept index would name another element or none, which the styles read refuses
+- An undo or redo keeps the element only while the tree at the answered hash matches the picked tree in each index, parent, and tag, and in every name but the element's own
+- A placement, a delete, or a move shifts indices, so a kept index would name another element or none, which the styles read refuses
 
 ### `src/client/board/menus/`
 
