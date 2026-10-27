@@ -27,6 +27,9 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 
 `hug.ts` measures a hugging frame its own file reloaded or `frame add` placed before the board is sent, and one an asset or token sheet reloaded after it, writing the size under the layout lock with no undo step. At start only a frame written with no server running holds the first board. Its own batch reloads nothing, so nothing measures twice.
 
+- A frame placed while a batch measured is in that batch's rescan, so the batch measures it once more before sending the board
+- A size whose frame file changed since the scan it was measured from is dropped, since that write's own batch measures it again
+
 `selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
 
 ### `src/server/claims/`
