@@ -116,7 +116,7 @@ function SwatchHeader() {
   return (
     <div
       aria-hidden
-      className="grid grid-cols-[1fr_18px_18px] gap-1.5 px-3 py-1 text-center text-[10px] text-faint"
+      className="grid grid-cols-[1fr_18px_18px] gap-1.5 px-3 py-1 text-center text-[10px] text-muted-foreground"
     >
       <span />
       <span>L</span>
