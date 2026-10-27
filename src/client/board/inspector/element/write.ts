@@ -21,6 +21,11 @@ export type ElementChange =
   | { kind: 'style'; property: string; value: string }
   | { kind: 'attribute'; name: string; value: string }
   | { kind: 'text'; value: string }
+  /** Several declarations written as one edit, which one undo puts back. */
+  | {
+      kind: 'styles'
+      declarations: readonly { property: string; value: string }[]
+    }
 
 /** Sends one change for the selected element and answers whether it was written. */
 export type WriteElement = (change: ElementChange) => Promise<boolean>

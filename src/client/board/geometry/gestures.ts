@@ -7,6 +7,13 @@ import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
+import {
+  isShownShape,
+  type ShapeResize,
+  type ShapeSize,
+  shapeSize,
+  startShapeResize,
+} from '../element/resize'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
@@ -64,6 +71,10 @@ export interface GestureStores {
   splitAt: (clientX: number) => void
   /** Moves the selected element into the gap under a canvas point, a drag of it released there. */
   moveElement: typeof moveElement
+  /** Whether the selected element is a shape, whose corners resize it. */
+  isShape: typeof isShownShape
+  /** Starts a corner drag of the selected shape, null when its frame is held. */
+  resizeShape: typeof startShapeResize
 }
 
 const STORES: GestureStores = {
@@ -75,6 +86,8 @@ const STORES: GestureStores = {
   openFindings,
   splitAt,
   moveElement,
+  isShape: isShownShape,
+  resizeShape: startShapeResize,
 }
 
 type Gesture =
@@ -100,6 +113,16 @@ type Gesture =
     }
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
+  /** A press on a corner of the selected shape, which a drag turns into a resize of it. */
+  | { kind: 'shape'; key: ElementKey; corner: Corner; box: Box }
+  /** A corner drag of the selected shape, written as its width and height on release. */
+  | {
+      kind: 'shape-resize'
+      corner: Corner
+      box: Box
+      resize: ShapeResize
+      size: ShapeSize | null
+    }
   /** A drag that may not change anything, such as one on a locked frame. */
   | { kind: 'none' }
 
@@ -183,12 +206,18 @@ export function attachGestures(
       gesture = { kind: 'badge', ref: badge }
       return
     }
-    // A press on the selected element, its outline and corner marks
-    // included, carries it on a drag, since an element moves between gaps
-    // but its size is never set by hand. The frame's handles are hidden
-    // while an element is selected, so they take no press.
+    // A press on a shape's corner mark resizes it. Any other press on the
+    // selected element, its outline and other corner marks included,
+    // carries it on a drag, since text and a divider are sized by what they
+    // hold. The frame's handles are hidden while an element is selected, so
+    // they take no press.
     const element = selection.getState().element
     const outline = element ? selectedElementBox(target.layer) : null
+    const mark = outline ? cornerAt(outline, point, zoom()) : null
+    if (element && outline && mark && stores.isShape(target.layer, element)) {
+      gesture = { kind: 'shape', key: element, corner: mark, box: outline }
+      return
+    }
     if (element && outline) {
       const edge = onOutline(outline, point, zoom())
       if (edge || inBox(outline, point)) {
@@ -230,6 +259,15 @@ export function attachGestures(
 
   /** Turns a press into the drag it starts once it passes the click distance. */
   const begin = () => {
+    if (gesture.kind === 'shape') {
+      const resize = stores.canWrite()
+        ? stores.resizeShape(target.page, gesture.key)
+        : null
+      gesture = resize
+        ? { ...gesture, kind: 'shape-resize', resize, size: null }
+        : { kind: 'none' }
+      return
+    }
     if (gesture.kind === 'element') {
       gesture = stores.canWrite()
         ? { kind: 'carry', key: gesture.key }
@@ -334,6 +372,17 @@ export function attachGestures(
         drawGuides(root, snap.guides, snap.gaps)
         return
       }
+      case 'shape-resize': {
+        gesture.size = shapeSize(
+          gesture.box,
+          gesture.corner,
+          dx,
+          dy,
+          event.shiftKey,
+        )
+        gesture.resize.preview(gesture.size)
+        return
+      }
       case 'marquee': {
         const rect = rectFrom(from, point)
         const touched = framesIn(withDrawn(target.frames()), rect)
@@ -418,6 +467,17 @@ export function attachGestures(
         rectFrom(from, point),
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
+    } else if (gesture.kind === 'shape-resize') {
+      const { box, resize, size } = gesture
+      if (
+        size &&
+        (size.width !== Math.round(box.width) ||
+          size.height !== Math.round(box.height))
+      ) {
+        void resize.commit(size)
+      } else {
+        resize.cancel()
+      }
     } else if (gesture.kind === 'carry') {
       carriedStore.setState({ carried: null })
       void stores.moveElement(
