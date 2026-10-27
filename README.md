@@ -1,10 +1,17 @@
-<p align="center">
-  <img src="src/client/public/icon.svg" alt="Frameboard logo" width="64" height="64">
-</p>
+<div align="center">
+
+<img src="src/client/public/icon.svg" alt="Frameboard logo" width="64" height="64">
 
 # Frameboard
 
 A local design board that coding agents draw on as plain HTML files, and you review and tweak.
+
+[![npm](https://img.shields.io/npm/v/frameboard)](https://www.npmjs.com/package/frameboard)
+[![Verify](https://img.shields.io/github/actions/workflow/status/erclx/frameboard/verify.yml?branch=main&label=Verify)](https://github.com/erclx/frameboard/actions/workflows/verify.yml)
+[![Node](https://img.shields.io/node/v/frameboard)](package.json)
+[![License](https://img.shields.io/npm/l/frameboard)](LICENSE)
+
+</div>
 
 <p align="center">
   <picture>

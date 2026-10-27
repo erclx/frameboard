@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all must pass, a push to `main` runs the release workflow, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all must pass, a push to `main` runs the release workflow and Verify, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
 
 ## Layout
 
@@ -29,7 +29,8 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 
 Ownership and the workflows the table leaves out sit below.
 
-- `verify.yml` owns the golden verify jobs, which a `canon tooling sync` rewrites, and `frameboard-checks.yml` owns the project's own jobs, which a sync never touches
+- `verify.yml` owns the golden verify jobs and runs on pushes to `main` for the README's Verify badge, and `frameboard-checks.yml` owns the project's own jobs, which a sync leaves alone
+- `config.json` records `verify.yml` as customized, so a sync keeps its trigger, and a push or dispatch run keys its group on `github.run_id`, since a shared group cancels its pending run
 - The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
 - `phase-label-gate.yml` runs `canon labels scan`, failing a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
 - `canon/config/pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
@@ -50,7 +51,7 @@ Owns publishing the landing page to Cloudflare Pages.
 
 ## Gotchas
 
-- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser, and a hand edit to `verify.yml` is reverted by the next sync
+- The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser
 - No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand
 - `initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`
 - `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump, and `bootstrap-sha` is the root commit so the first release pull request opens
