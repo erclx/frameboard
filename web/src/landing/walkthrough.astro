@@ -135,14 +135,12 @@ const SIZES = '(min-width: 1024px) 680px, 100vw'
     font-size: 16px;
   }
 
-  .walk[data-ready] .step:not(.on) h3,
-  .walk[data-ready] .step:not(.on) p {
-    opacity: 0.42;
+  .walk[data-ready] .step:not(.on) h3 {
+    color: var(--muted);
   }
 
-  .step h3,
-  .step p {
-    transition: opacity 0.2s;
+  .step h3 {
+    transition: color 0.2s;
   }
 
   .stick {
@@ -160,8 +158,7 @@ const SIZES = '(min-width: 1024px) 680px, 100vw'
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .step h3,
-    .step p {
+    .step h3 {
       transition: none;
     }
   }
@@ -186,9 +183,8 @@ const SIZES = '(min-width: 1024px) 680px, 100vw'
       border-left: 0;
     }
 
-    .walk[data-ready] .step:not(.on) h3,
-    .walk[data-ready] .step:not(.on) p {
-      opacity: 1;
+    .walk[data-ready] .step:not(.on) h3 {
+      color: inherit;
     }
   }
 </style>

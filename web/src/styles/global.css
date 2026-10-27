@@ -3,10 +3,10 @@
 :root {
   --bg: #ececec;
   --fg: #1a1a1a;
-  --muted: #6e6e6e;
+  --muted: #666666;
   --panel: #ffffff;
   --line: #e4e4e4;
-  --accent: #2f7bf0;
+  --accent: #2a6fdb;
   --on-accent: #ffffff;
   --font-sans: 'Geist Variable', Geist, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
@@ -21,7 +21,7 @@
     --panel: #2a2a2a;
     --line: #353535;
     --accent: #4e92f6;
-    --on-accent: #ffffff;
+    --on-accent: #1a1a1a;
     color-scheme: dark;
   }
 }

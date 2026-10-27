@@ -29,14 +29,15 @@
     padding: 0;
     background: none;
     color: var(--on-accent);
-    opacity: 0.8;
     font-family: var(--font-sans);
     font-size: 13px;
     cursor: pointer;
   }
 
-  button:hover {
-    opacity: 1;
+  button:hover,
+  button:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   button:focus-visible {
