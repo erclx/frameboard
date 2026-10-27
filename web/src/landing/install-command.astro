@@ -1,0 +1,51 @@
+<div class="cmd" data-copy>
+  <code>npx frameboard serve</code>
+  <button type="button" hidden>
+    Copy
+  </button>
+  <span class="visually-hidden" role="status"></span>
+</div>
+
+<style>
+  .cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 16px;
+  }
+
+  code {
+    font-family: inherit;
+    user-select: all;
+  }
+
+  button {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--on-accent);
+    opacity: 0.8;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    opacity: 1;
+  }
+
+  button:focus-visible {
+    outline-color: var(--on-accent);
+  }
+</style>
+
+<script>
+  import { wireCopyCommands } from './copy-command'
+
+  wireCopyCommands()
+</script>

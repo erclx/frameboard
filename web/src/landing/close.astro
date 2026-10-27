@@ -1,0 +1,67 @@
+---
+import InstallCommand from './install-command.astro'
+import { REPO_URL } from './links'
+---
+
+<section class="sec" id="close">
+  <div class="wrap">
+    <div class="close">
+      <div>
+        <h2>Start a board in an empty folder</h2>
+        <p>Runs on macOS and Linux, with Node 22 or later or with Bun.</p>
+        <ul class="facts">
+          <li>No account</li>
+          <li>No hosted service or MCP server</li>
+          <li>Any folder, with or without git</li>
+          <li>MIT licensed</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <InstallCommand />
+        <a class="btn" href={REPO_URL}>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .close {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 48px;
+  }
+
+  .actions {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 15px;
+  }
+
+  .facts li + li {
+    margin-top: 0;
+  }
+
+  @media (max-width: 1023px) {
+    .close {
+      flex-direction: column;
+      align-items: start;
+      gap: 32px;
+    }
+
+    .actions {
+      flex-wrap: wrap;
+    }
+  }
+</style>

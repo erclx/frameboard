@@ -9,21 +9,10 @@ export const EVIDENCE_ROOT = 'e2e/evidence'
  * than on one image of the whole page.
  */
 const HOME_SECTIONS: CaptureSection[] = [
-  { name: 'top', selector: '#top' },
-  { name: 'proof', selector: '#proof' },
-  { name: 'ask', selector: '#ask' },
-  { name: 'rules', selector: '#rules' },
-  { name: 'skills', selector: '#skills' },
-  { name: 'plan', selector: '#plan' },
-  { name: 'dispatch', selector: '#dispatch' },
-  { name: 'workers', selector: '#workers' },
-  { name: 'gate', selector: '#gate' },
-  { name: 'evidence', selector: '#evidence' },
-  { name: 'loop', selector: '#loop' },
-  { name: 'merge', selector: '#merge' },
-  { name: 'provenance', selector: '#provenance' },
-  { name: 'start', selector: '#start' },
-  { name: 'field', selector: '#field' },
+  { name: 'hero', selector: '#hero' },
+  { name: 'walkthrough', selector: '#walkthrough' },
+  { name: 'film', selector: '#film' },
+  { name: 'agent', selector: '#agent' },
   { name: 'close', selector: '#close' },
 ]
 
@@ -33,14 +22,12 @@ export const CASES: CaptureCase[] = [
     theme: 'default',
     route: '/',
     evidence: true,
-    mask: ['.version'],
     sections: HOME_SECTIONS,
   },
   {
     section: 'home',
     theme: 'dark',
     route: '/',
-    mask: ['.version'],
     sections: HOME_SECTIONS,
     setup: (page) => page.emulateMedia({ colorScheme: 'dark' }),
   },

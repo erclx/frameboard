@@ -1,0 +1,118 @@
+---
+import InstallCommand from './install-command.astro'
+import { REPO_URL } from './links'
+---
+
+<section class="wrap" id="hero">
+  <div class="hero">
+    <div>
+      <h1>The design board your agent draws on</h1>
+      <p class="lead">
+        Your agent writes each screen as a plain HTML file. Frameboard shows it
+        the moment the file lands, and you review it and tweak it by hand.
+      </p>
+      <div class="actions">
+        <InstallCommand />
+        <a class="btn" href={REPO_URL}>
+          GitHub
+        </a>
+      </div>
+    </div>
+    <div class="shot footage">
+      <picture>
+        <source
+          media="(prefers-reduced-motion: reduce)"
+          srcset="/hero-still.png"
+        />
+        <img
+          src="/hero-loop.webp"
+          width="880"
+          height="587"
+          alt="The board canvas as an agent draws a landing page and two phone screens"
+          data-loop
+        />
+      </picture>
+      <button type="button" class="pause" hidden aria-pressed="false">
+        Pause
+      </button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 56px;
+    align-items: center;
+    padding: 72px 0 104px;
+  }
+
+  .footage {
+    position: relative;
+  }
+
+  .footage img {
+    aspect-ratio: 880 / 587;
+    object-fit: cover;
+  }
+
+  .pause {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--fg);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .footage:hover .pause,
+  .pause:focus-visible,
+  .pause[aria-pressed='true'] {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .pause {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pause {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 40px;
+      padding: 48px 0 72px;
+    }
+  }
+</style>
+
+<script>
+  // An animated WebP has no pause of its own, so pausing swaps in the still
+  // the reduced-motion source already serves.
+  const button = document.querySelector<HTMLButtonElement>('#hero .pause')
+  const loop = document.querySelector<HTMLImageElement>('#hero [data-loop]')
+  if (button && loop) {
+    button.hidden = false
+    button.addEventListener('click', () => {
+      const paused = button.getAttribute('aria-pressed') === 'true'
+      loop.src = paused ? '/hero-loop.webp' : '/hero-still.png'
+      button.setAttribute('aria-pressed', String(!paused))
+      button.textContent = paused ? 'Pause' : 'Play'
+    })
+  }
+</script>

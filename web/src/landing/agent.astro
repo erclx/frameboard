@@ -1,0 +1,90 @@
+<section class="sec" id="agent">
+  <div class="wrap">
+    <div class="agent">
+      <div>
+        <h2>Built for an agent to run</h2>
+        <p class="lead">
+          Every command prints JSON on request, never stops to ask, and exits
+          with a code an agent branches on.
+        </p>
+        <ul>
+          <li>
+            The check names the rule, the frame, and the element that broke it
+          </li>
+          <li>
+            A Claude Code plugin checks each frame the agent writes and hands it
+            your notes as they arrive
+          </li>
+        </ul>
+      </div>
+      <pre
+        class="term"
+        aria-label="frameboard check output"
+      ><span class="pr">$</span> frameboard check sprout/app/home
+<span class="dim">sprout/app/home.html</span>  <b>clipped</b>  sprout/app/home is 442 px wide in its 390 px width, so the board cuts it off, &lt;div&gt; at element 8 first past the box and 1 more element is. Reflow or shorten the content to fit its 390 px width, since frame fit sets the height alone.
+<span class="dim">frameboard: Checked 1 frame, 1 finding.</span>
+
+<span class="dim"># the agent narrows the list and writes the frame again</span>
+
+<span class="pr">$</span> frameboard check sprout/app/home
+<span class="dim">Checked 1 frame, no findings.</span></pre>
+    </div>
+  </div>
+</section>
+
+<style>
+  .agent {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 64px;
+    align-items: center;
+  }
+
+  .lead {
+    font-size: 18px;
+  }
+
+  ul {
+    margin: 0;
+  }
+
+  .term {
+    margin: 0;
+    padding: 24px 28px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.7;
+  }
+
+  .term b {
+    font-weight: 600;
+  }
+
+  .dim {
+    color: var(--muted);
+  }
+
+  .pr {
+    color: var(--accent);
+  }
+
+  @media (max-width: 1023px) {
+    .agent {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .term {
+      padding: 18px 16px;
+      font-size: 13px;
+    }
+  }
+</style>

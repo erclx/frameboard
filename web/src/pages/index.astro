@@ -1,16 +1,110 @@
 ---
+import '@fontsource-variable/geist'
+import '@fontsource-variable/geist-mono'
+import '../styles/global.css'
+
+import Agent from '../landing/agent.astro'
+import Close from '../landing/close.astro'
+import Film from '../landing/film.astro'
+import Hero from '../landing/hero.astro'
+import { CHANGELOG_URL, DOCS_URL, REPO_URL } from '../landing/links'
+import Walkthrough from '../landing/walkthrough.astro'
+
+const description =
+  'A local design board that coding agents draw on as plain HTML files, and you review and tweak.'
+const canonical = new URL(Astro.url.pathname, Astro.site)
 ---
 
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Astro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frameboard: the design board your agent draws on</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta property="og:title" content="Frameboard" />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="color-scheme" content="light dark" />
   </head>
   <body>
-    <h1>Astro</h1>
+    <header class="wrap">
+      <nav class="nav" aria-label="Main">
+        <a class="brand" href="/">
+          <img src="/icon.svg" alt="" width="26" height="26" />
+          Frameboard
+        </a>
+        <div class="links">
+          <a href={DOCS_URL}>Docs</a>
+          <a href={REPO_URL}>GitHub</a>
+        </div>
+      </nav>
+    </header>
+    <main>
+      <Hero />
+      <Walkthrough />
+      <Film />
+      <Agent />
+      <Close />
+    </main>
+    <footer class="wrap">
+      <div class="foot">
+        <span>Frameboard · MIT license</span>
+        <span class="foot-links">
+          <a href={DOCS_URL}>Docs</a>
+          <span aria-hidden="true">·</span>
+          <a href={REPO_URL}>GitHub</a>
+          <span aria-hidden="true">·</span>
+          <a href={CHANGELOG_URL}>Changelog</a>
+        </span>
+      </div>
+    </footer>
   </body>
 </html>
+
+<style>
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 17px;
+  }
+
+  .brand img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .links {
+    display: flex;
+    gap: 28px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 32px 0 48px;
+    border-top: 1px solid var(--line);
+  }
+
+  .foot-links {
+    display: flex;
+    gap: 0.3em;
+  }
+</style>
