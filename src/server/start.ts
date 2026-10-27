@@ -98,6 +98,8 @@ export interface StartOptions {
   launch?: Launcher
   /** The command a note starts a session with, from `FRAMEBOARD_DISPATCH`, run in `cwd`. */
   dispatch?: { command: string; cwd: string; env: NodeJS.ProcessEnv }
+  /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
+  openRoute?: boolean
 }
 
 /**
@@ -181,6 +183,7 @@ async function listen({
   openUrl,
   launch,
   dispatch,
+  openRoute,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   const tickets = createTickets()
@@ -350,6 +353,7 @@ async function listen({
     root,
     port: boundPort,
     tickets,
+    openRoute,
     delivery,
     dispatch: dispatcher,
     history,

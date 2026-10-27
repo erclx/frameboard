@@ -109,7 +109,7 @@ describe('startServer access', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function start() {
+  async function start(options: { openRoute?: boolean } = {}) {
     const server = await startServer({
       clientDir,
       facesDir: clientDir,
@@ -117,6 +117,7 @@ describe('startServer access', () => {
       port: 0,
       openUrl: () => {},
       launch: noBrowser,
+      ...options,
     })
     servers.push(server)
     return server
@@ -171,6 +172,35 @@ describe('startServer access', () => {
     expect(
       (await show({ origin: `http://127.0.0.1:${server.port + 1}` })).status,
     ).toBe(401)
+  })
+  it('sets the cookie through the open route when the server opts in', async () => {
+    const server = await start({ openRoute: true })
+    const origin = `http://127.0.0.1:${server.port}`
+
+    const opened = await fetch(`${origin}/api/access/open`, {
+      redirect: 'manual',
+    })
+    const redeemed = await fetch(
+      `${origin}${opened.headers.get('location') ?? ''}`,
+      { redirect: 'manual' },
+    )
+
+    expect(opened.status).toBe(303)
+    expect(redeemed.headers.get('location')).toBe('/')
+    expect(redeemed.headers.get('set-cookie')).toContain(
+      JSON.parse(keyFile()).key,
+    )
+  })
+
+  it('answers 404 on the open route by default', async () => {
+    const server = await start()
+
+    const response = await fetch(
+      `http://127.0.0.1:${server.port}/api/access/open`,
+      { redirect: 'manual' },
+    )
+
+    expect(response.status).toBe(404)
   })
 })
 
