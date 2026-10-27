@@ -34,6 +34,14 @@ The home view, the overlays, and the agent's marks follow.
 | `agents`  | An agent's claim on a frame, its unseen changes, compare, and the offer to jump to a shown frame | `src/client/board/claims/`, `changes/`              | Claim held, claim pulsing, one or many unseen, compare flipped and split, a show offered |
 | `notes`   | Notes pinned on frames and their threads                                                         | `src/client/board/notes/`                           | Placing a note, a thread open                                                            |
 
+## Landing
+
+The public page in `web/` follows, a separate project from the board.
+
+| Group     | What the user sees                                                     | Code               | States                 |
+| --------- | ---------------------------------------------------------------------- | ------------------ | ---------------------- |
+| `landing` | The landing page, from the hero through the walkthrough to the install | `web/src/landing/` | The whole page at once |
+
 ## Writing the folder
 
 A frame is drawn on the design board at `.canon/board` in the main worktree. Only `bun run design:sync` writes it here, capturing each frame `frames.json` maps.

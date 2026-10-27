@@ -58,6 +58,7 @@
     "menus/home-sort": "design/07-home/home-sort-menu",
     "menus/home-pin": "design/07-home/context-home-pin",
     "menus/toast": "design/14-overlays/menu-toast",
-    "menus/context": "design/14-overlays/context-menus"
+    "menus/context": "design/14-overlays/context-menus",
+    "landing/page": "launch/landing/picked-landing-style-1-workbench"
   }
 }
