@@ -117,6 +117,8 @@ describe('frameRoutes', () => {
       expect(importsOf(served)).toEqual([
         '/frameboard/faces/geist/index.css',
         '/frameboard/faces/geist-mono/index.css',
+        '/frameboard/faces/inter/index.css',
+        '/frameboard/faces/source-serif-4/index.css',
         '/frameboard/faces/caveat/index.css',
         '/frameboard/tokens.css',
         '/frames/studio/tokens.css',

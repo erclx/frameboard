@@ -225,6 +225,52 @@ describe('GuideCard', () => {
       ])
   })
 
+  it('offers every face a look may start from, each in its own face', async () => {
+    const user = userEvent.setup()
+    const { calls } = server()
+    renderCard({ calls })
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    const options = await screen.findAllByRole('option')
+
+    expect(
+      options.map((option) => [
+        option.textContent,
+        getComputedStyle(option).fontFamily,
+      ]),
+    ).toEqual([
+      ['Geist', 'Geist, sans-serif'],
+      ['Geist Mono', '"Geist Mono", monospace'],
+      ['Inter', 'Inter, sans-serif'],
+      ['Source Serif 4', '"Source Serif 4", serif'],
+    ])
+  })
+
+  it('posts the key of a new face picked on Finish', async () => {
+    const user = userEvent.setup()
+    const { sent, calls } = server()
+    renderCard({ calls })
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    await user.selectOptions(
+      await screen.findByRole('combobox'),
+      'Source Serif 4',
+    )
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Finish' }))
+
+    await expect
+      .poll(() => sent)
+      .toEqual([
+        {
+          path: '/api/project/tokens',
+          body: { ref: 'untitled', accent: 'blue', font: 'source-serif-4' },
+        },
+      ])
+  })
+
   it('re-picks the look on Back, and Finish writes the last pick', async () => {
     const user = userEvent.setup()
     const { sent, calls } = server()

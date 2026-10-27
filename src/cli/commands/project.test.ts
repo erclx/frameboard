@@ -101,6 +101,16 @@ describe('project', () => {
       expect(result.exitCode).toBe(2)
       expect(existsSync(join(bare.root, 'acme', 'tokens.css'))).toBe(false)
     })
+
+    it('fails usage with exit 2 on a served face that starts no look', async () => {
+      const result = await cli(
+        ['project', 'tokens', 'acme', '--font', 'caveat', '--json'],
+        { cwd: bare.root },
+      )
+
+      expect(result.exitCode).toBe(2)
+      expect(existsSync(join(bare.root, 'acme', 'tokens.css'))).toBe(false)
+    })
   })
 
   it('fails usage with exit 2 on a missing argument', async () => {
