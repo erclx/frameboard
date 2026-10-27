@@ -2,7 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
@@ -415,6 +415,37 @@ describe('Thread', () => {
     } finally {
       document.documentElement.classList.remove('dark')
     }
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads each message time at 4.5:1 or better on the card', () => {
+      const { container } = render(<Thread notes={thread} onClose={() => {}} />)
+      const time = container.querySelector('time')
+      if (!time) throw new Error('no message time')
+
+      expect(contrastOnPage(time)).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it('reads the reply placeholder at 4.5:1 or better on the card', () => {
+      live({ canWrite: true })
+
+      render(<Thread notes={thread} onClose={() => {}} />)
+
+      expect(
+        contrastOnPage(
+          screen.getByRole('textbox', { name: 'Reply' }),
+          '::placeholder',
+        ),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   it('signs a developer message with its author initials', () => {

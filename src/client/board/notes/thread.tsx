@@ -162,7 +162,7 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
             }
           }}
           rows={1}
-          className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-faint disabled:cursor-not-allowed"
+          className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
         <DraftStrip images={images.images} onRemove={images.remove} />
         <div className="flex items-center gap-2">
@@ -225,7 +225,10 @@ function Message({ note, page }: { note: BoardNote; page?: string }) {
       </span>
       <div className="min-w-0">
         <b className="font-semibold">{agent ? 'claude' : 'You'}</b>
-        <time dateTime={note.createdAt} className="ml-1.5 text-faint">
+        <time
+          dateTime={note.createdAt}
+          className="ml-1.5 text-muted-foreground"
+        >
           {clock(note.createdAt)}
         </time>
         <p className="mt-0.5 leading-[1.45] break-words whitespace-pre-wrap">

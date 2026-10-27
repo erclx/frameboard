@@ -123,7 +123,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
             }
           }}
           rows={2}
-          className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-faint disabled:cursor-not-allowed"
+          className="block min-h-7 w-full resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
         <DraftStrip images={images.images} onRemove={images.remove} />
         <div className="flex items-center gap-2">
