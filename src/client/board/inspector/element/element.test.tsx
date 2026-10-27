@@ -399,6 +399,8 @@ describe('TypographySection', () => {
       'font-text',
       'Geist',
       'Geist Mono',
+      'Inter',
+      'Source Serif 4',
       'Caveat',
     ])
   })
