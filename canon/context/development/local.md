@@ -76,7 +76,7 @@ Owns the shell scripts and the verify runner the commands above call, and every 
 - `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
-- `preview.ts` backs `bun run preview`, running the built CLI's `serve` and then `open --no-open`, so the line it prints is a link that edits, and it exits with its server's code
+- `preview.ts` backs `bun run preview`, running the built CLI's `serve --open-route` and then `open --no-open`, so it prints a once-only edit link and one fresh per open, and exits as its server does
 - `design-sync.ts` writes `canon/design/` and nothing in `src/` imports it, so it is a dev script outside the gate, and `.prettierignore` and `.oxlintrc.json` keep the folder out of format and lint
 
 ### `.husky/`
@@ -145,5 +145,6 @@ These catch a running `preview` out.
 
 - `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` lists it under `keep`, so a running `preview` keeps its address file and board key
 - `canon/config/app-drive.toml` carries the launch, data, and personas a drive reads, so a drive stops asking for them, and the skills read it and never write it
-- The edit link from `preview` works once and lives two minutes, so a late reader mints another with the `open --no-open` command the script prints beside it
+- The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
+- A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
