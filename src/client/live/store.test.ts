@@ -427,6 +427,24 @@ describe('receiveRename', () => {
     })
   })
 
+  it('drops a stamp a page gone before the rename left under the new name', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveThumbnails(store, 'light', { 'studio/start/hero': 'r-0-1x1' })
+
+    receiveRename(store, 'studio/home', 'studio/start')
+
+    expect(store.getState().thumbnails.light).toEqual({})
+  })
+
+  it('answers whether it moved anything', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    expect(receiveRename(store, 'studio/home', 'studio/start')).toBe(true)
+    expect(receiveRename(store, 'studio/home', 'studio/start')).toBe(false)
+  })
+
   it('leaves a sibling page whose name only starts the same', () => {
     const store = createLiveStore()
     receiveBoard(store, boardWith('hero'))
