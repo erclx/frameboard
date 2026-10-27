@@ -21,8 +21,8 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 | field      | `--input`            | number fields and color rows, which carry no outline  |
 | hover      | `--accent`           | hover fill on buttons, menu items, and rows           |
 | line       | `--border`           | dividers, panel edges, pill and popover outlines      |
-| quiet text | `--muted-foreground` | section labels, frame labels, field keys              |
-| faint      | `--faint`            | hidden layers, tree chevrons, field key letters       |
+| quiet text | `--muted-foreground` | labels, captions, chevrons, field key letters         |
+| faint      | `--faint`            | inactive marks and decoration, never text to be read  |
 | selected   | `--primary`          | selection outline and handles, the active tool, focus |
 | agent      | `--claim`            | an agent's dashed outline and session tag             |
 | note       | `--note`             | note pins and anything flagged for a look             |
