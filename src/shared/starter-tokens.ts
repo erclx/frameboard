@@ -1,3 +1,5 @@
+import { FACES, faceStack } from '@/shared/faces'
+
 /**
  * The looks a new project can start from, each accent paired by hand with a
  * dark value, so both themes hold without a derived color. The keys are the
@@ -13,13 +15,17 @@ export const STARTER_ACCENTS = {
 
 export type StarterAccent = keyof typeof STARTER_ACCENTS
 
-/** The served faces a starter sheet may name, keyed by their face folder. */
-export const STARTER_FONTS = {
-  geist: { family: 'Geist', stack: 'Geist, sans-serif' },
-  'geist-mono': { family: 'Geist Mono', stack: "'Geist Mono', monospace" },
-} as const
+type StarterFace = Extract<(typeof FACES)[number], { startsLook: true }>
 
-export type StarterFont = keyof typeof STARTER_FONTS
+export type StarterFont = StarterFace['folder']
+
+/** The served faces a starter sheet may name, keyed by their face folder. */
+export const STARTER_FONTS = Object.fromEntries(
+  FACES.filter((face): face is StarterFace => face.startsLook).map((face) => [
+    face.folder,
+    { family: face.family, stack: faceStack(face) },
+  ]),
+) as Record<StarterFont, { family: string; stack: string }>
 
 export interface StarterLook {
   accent: StarterAccent

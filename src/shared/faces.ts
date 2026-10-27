@@ -71,3 +71,9 @@ export const FACES_URL = '/frameboard/faces'
 export function faceSheetUrl(face: Face): string {
   return `${FACES_URL}/${face.folder}/index.css`
 }
+
+/** The stack naming a face then its fallback, as `'Geist Mono', monospace`. */
+export function faceStack(face: Face): string {
+  const family = /\s/.test(face.family) ? `'${face.family}'` : face.family
+  return `${family}, ${face.fallback}`
+}

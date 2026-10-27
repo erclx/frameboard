@@ -46,6 +46,23 @@ describe('writeStarterSheet', () => {
     )
   })
 
+  it.each([
+    ['inter', 'Inter, sans-serif'],
+    ['source-serif-4', "'Source Serif 4', serif"],
+  ] as const)('writes the %s stack as the text font', async (font, stack) => {
+    board = writeBoard(PROJECT)
+
+    await writeStarterSheet(board.root, 'acme', { accent: 'blue', font })
+
+    const table = readTokenTable(
+      board.root,
+      tokenSheetPaths(board.root, 'acme', null),
+    )
+    expect(table.tokens).toContainEqual(
+      expect.objectContaining({ name: '--font-text', light: stack }),
+    )
+  })
+
   it('answers the sheet it wrote and the look it holds', async () => {
     board = writeBoard(PROJECT)
 
