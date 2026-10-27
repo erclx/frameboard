@@ -43,6 +43,53 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBe(320)
   })
 
+  it('reads text spilling below a block shorter than it', async () => {
+    const iframe = await iframeOf(
+      '<p style="width:1px;height:20px;margin:0;line-height:30px">one two three four</p>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBeGreaterThan(90)
+  })
+
+  it('reads a tight line height block at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1">Heading</h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBe(48)
+  })
+
+  it('reads a tight line height heading wrapping its text in a link at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><a href="#">Heading</a></h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBe(48)
+  })
+
+  it('reads a padded inline badge under a tight line height to its painted bottom', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><span style="padding:12px 0;background:red">Heading</span></h1>',
+      { width: 390, height: 900 },
+    )
+    const badge = iframe.contentDocument?.querySelector('span')
+    const painted = Math.ceil(badge?.getBoundingClientRect().bottom ?? 0)
+
+    expect(measureHeight(iframe, 900)).toBe(painted)
+  })
+
+  it('reads an image inside a tight line height heading at its own height', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><img alt="" width="10" height="200" style="display:inline"></h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBeGreaterThanOrEqual(200)
+  })
+
   it('reads nothing for a page sized off the viewport', async () => {
     const iframe = await iframeOf('<div style="height:100vh"></div>', {
       width: 390,

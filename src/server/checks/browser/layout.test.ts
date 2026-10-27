@@ -13,10 +13,14 @@ import { checkRendered } from './rendered'
 
 const REF = 'studio/home/hero'
 
+function heroPage(css: string, body: string): string {
+  return `<!doctype html><html lang="en"><head><title>hero</title><style>${css}</style></head><body>${body}</body></html>`
+}
+
 /** One frame at 400 by 200 whose body is `body`, styled by `css`. */
 function heroBoard(css: string, body: string): Record<string, string> {
   return {
-    'studio/home/hero.html': `<!doctype html><html lang="en"><head><title>hero</title><style>${css}</style></head><body>${body}</body></html>`,
+    'studio/home/hero.html': heroPage(css, body),
     'studio/home/layout.json': JSON.stringify({
       version: 1,
       frames: { hero: { x: 0, y: 0, width: 400, height: 200, order: 0 } },
@@ -57,6 +61,24 @@ describe.skipIf(shell === null)(
         })
       } finally {
         await served.close()
+      }
+    }
+
+    // The bottom edge the first `span` paints to, read straight off a page at
+    // the frame's box, so a test names the edge without the reader under test.
+    async function paintedBottom(css: string, body: string) {
+      const probe = await browser.newPage({
+        viewport: { width: 400, height: 200 },
+      })
+      try {
+        await probe.setContent(heroPage(css, body))
+        return await probe.evaluate(() =>
+          Math.ceil(
+            document.querySelector('span')?.getBoundingClientRect().bottom ?? 0,
+          ),
+        )
+      } finally {
+        await probe.close()
       }
     }
 
@@ -122,6 +144,82 @@ describe.skipIf(shell === null)(
           ),
         },
       ])
+    })
+
+    it('reports unwrapped text running past the width though its block fits', async () => {
+      const findings = await checkHero(
+        'h1 { white-space: nowrap }',
+        '<h1>A heading far longer than the frame is wide</h1>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /px wide in its 400 px width, so the board cuts it off, <h1> at element 5 first past the box\./,
+          ),
+        },
+      ])
+    })
+
+    it('reports wrapped text spilling below a block shorter than it', async () => {
+      const findings = await checkHero(
+        'p { height: 20px; margin: 0 }',
+        `<p>${'Many words that wrap onto line after line '.repeat(30)}</p>`,
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringMatching(
+            /px tall in its 200 px height, so the board cuts it off, <p> at element 5 first past the box\./,
+          ),
+        },
+      ])
+    })
+
+    it('reads a tight line height flush with the bottom edge as no finding', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        '<div></div><h1>Heading</h1>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
+    it('reads a tight line height heading wrapping its text in a link as no finding', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 }',
+        '<div></div><h1><a href="#">Heading</a></h1>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
+    it('reports a padded inline badge painting past the bottom edge to its painted bottom', async () => {
+      const css =
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }'
+      const body = '<div></div><h1><span>Heading</span></h1>'
+      const painted = await paintedBottom(css, body)
+      const findings = await checkHero(css, body)
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringContaining(
+            `${painted} px tall in its 200 px height, so the board cuts it off, <span> at element 7 first past`,
+          ),
+        },
+      ])
+    })
+
+    it('reads unwrapped text cropped by its own block as no finding', async () => {
+      const findings = await checkHero(
+        'p { width: 100px; overflow: hidden; white-space: nowrap }',
+        '<p>A line far longer than the paragraph holds, and longer than the frame is wide</p>',
+      )
+
+      expect(findings).toEqual([])
     })
 
     it('reads text cut by an ellipsis as no finding', async () => {

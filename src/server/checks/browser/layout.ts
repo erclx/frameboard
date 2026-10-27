@@ -206,6 +206,64 @@ function readLayout(): LayoutRead {
     }
     return false
   }
+  // Text laid out past its own block widens no box, as a `nowrap` heading
+  // running out of a phone frame, so each element reaches as far as the text
+  // it holds directly. An element that crops itself hides that text. A Range
+  // reaches text nodes alone, so `::before` and `::after` content stays
+  // unmeasured. A text rect is the font's content area, which a line height
+  // below it leaves hanging out of the line box on both sides, so the bottom
+  // reads to the line box. A copy of `textBottom` in `readContentSize`, so a
+  // change to one is a change to both.
+  const hangOf = (lineHeight: number, height: number) =>
+    lineHeight < height ? (height - lineHeight) / 2 : 0
+  const textReach = (element: Element) => {
+    let bottom = -Infinity
+    let right = -Infinity
+    if (crops(element)) return { bottom, right }
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+    for (const child of element.childNodes) {
+      if (child.nodeType !== Node.TEXT_NODE) continue
+      const range = document.createRange()
+      range.selectNodeContents(child)
+      for (const rect of range.getClientRects()) {
+        if (rect.width === 0 && rect.height === 0) continue
+        bottom = Math.max(bottom, rect.bottom - hangOf(lineHeight, rect.height))
+        right = Math.max(right, rect.right)
+      }
+    }
+    return { bottom, right }
+  }
+  // A plain inline element's box is the font's content area too, so a heading
+  // wrapping its text in a link hangs out of its line box the way bare text
+  // does. Padding and border paint outward from the content edge, so an
+  // element with a bottom edge reads to its full box, and a top edge only
+  // shortens the content height the hang comes from. A replaced element's box
+  // is its own, so it reads as laid out. A copy of `ownBottom` in
+  // `readContentSize`, so a change to one is a change to both.
+  const replaced = [
+    'img',
+    'video',
+    'canvas',
+    'iframe',
+    'object',
+    'embed',
+    'audio',
+  ]
+  const ownBottom = (element: Element, rect: DOMRect) => {
+    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml')
+      return rect.bottom
+    if (replaced.includes(element.localName)) return rect.bottom
+    const style = getComputedStyle(element)
+    if (style.display !== 'inline') return rect.bottom
+    const below =
+      parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth)
+    if (below > 0) return rect.bottom
+    const above =
+      parseFloat(style.paddingTop) + parseFloat(style.borderTopWidth)
+    return (
+      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - above)
+    )
+  }
   const rootRect = root.getBoundingClientRect()
   let index = 0
   for (const node of document.querySelectorAll('*')) {
@@ -221,13 +279,18 @@ function readLayout(): LayoutRead {
       continue
     }
     const rect = node.getBoundingClientRect()
-    if (rect.width === 0 && rect.height === 0) continue
+    const text = textReach(node)
+    if (rect.width === 0 && rect.height === 0 && text.right === -Infinity) {
+      continue
+    }
     const tag = node.tagName.toLowerCase()
     boxes.push({
       index: own,
       tag,
-      bottom: Math.ceil(rect.bottom + window.scrollY),
-      right: Math.ceil(rect.right + window.scrollX),
+      bottom: Math.ceil(
+        Math.max(ownBottom(node, rect), text.bottom) + window.scrollY,
+      ),
+      right: Math.ceil(Math.max(rect.right, text.right) + window.scrollX),
       height: Math.round(rect.height),
       cropped: isCropped(node),
     })

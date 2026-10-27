@@ -50,7 +50,7 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 
 - `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'` so a missing face is measured in the fallback the board shows
 - Each rule reports at most one finding per frame, naming the first offending element by its edit index and how many more, and opens with the theme when only one theme trips it
-- `clipped` measures the boxes no ancestor crops, so an ellipsis or a crop is no finding, and `scrollbar` takes one pixel of slack
+- `clipped` measures uncropped boxes grown to their text's line box, against the frame's box and not the block's, so a `nowrap` heading counts past the frame only. `scrollbar` takes 1 px of slack
 - `viewport` rereads the content at twice the viewport height through `fit`'s `readContentSize`, which leaves out what a cropping ancestor hides, as `clipped` does
 - `min-font-size` runs only when `project.json` sets `checks.minFontSize` to a positive number of pixels, and picks text elements the way capture's font check does
 
