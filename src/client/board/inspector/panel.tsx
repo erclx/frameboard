@@ -184,6 +184,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         <TypographySection
           fonts={fonts}
           fontFamily={live.fontFamily}
+          fontToken={own?.fontFamily?.token ?? null}
           fontSize={live.fontSize}
           fontWeight={live.fontWeight}
           lineHeight={live.lineHeight}

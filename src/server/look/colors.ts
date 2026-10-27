@@ -17,6 +17,8 @@ const PROPERTIES: ReadonlySet<string> = new Set([
   'border-width',
   'border',
   'box-shadow',
+  'font-family',
+  'font',
 ])
 
 /** The colors Selection colors lists, each a property every element may set. */
@@ -89,6 +91,12 @@ export function frameStyles(
       : found.value
     return part === null ? null : styleValue(part)
   }
+  // A `font` shorthand states more than the family, so it names no token here.
+  const family = (element: Element): StyleValue | null => {
+    const found = cascade.specified(element, 'font-family')
+    if (!found || found.userAgent || found.shorthand) return null
+    return styleValue(found.value)
+  }
 
   const element: ElementStyles | null = target
     ? {
@@ -97,6 +105,7 @@ export function frameStyles(
         borderColor: read(target, 'border-color'),
         borderWidth: read(target, 'border-width'),
         boxShadow: read(target, 'box-shadow'),
+        fontFamily: family(target),
       }
     : null
 

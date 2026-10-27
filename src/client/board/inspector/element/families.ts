@@ -49,34 +49,30 @@ export function familyOptions(fonts: readonly TokenRow[]): FamilyOption[] {
 }
 
 /**
- * The option a computed stack shows as: a token whose stack it equals, since
- * the computed value never names the token, else the face it starts with,
- * else null for a family the menu does not hold.
+ * The option an element shows as: the token its source names, read from the
+ * static cascade since the computed stack never names one, else the face
+ * the computed stack starts with, else null for a family the menu does not
+ * hold. A token the menu does not list, such as one holding another
+ * token's `var()`, still shows by its name.
  */
 export function familyIn(
   stack: string,
+  token: string | null,
   options: readonly FamilyOption[],
 ): FamilyOption | null {
-  const computed = normalized(stack)
-  const token = options.find(
-    (option) => option.token && normalized(option.stack) === computed,
-  )
-  if (token) return token
+  if (token) {
+    return (
+      options.find((option) => option.token === token) ?? {
+        value: `var(${token})`,
+        name: token.replace(/^--/, ''),
+        token,
+        stack,
+      }
+    )
+  }
   const face = faceOf(stack)
   return (
     options.find((option) => !option.token && option.name === face?.family) ??
     null
   )
-}
-
-function normalized(stack: string): string {
-  return stack
-    .split(',')
-    .map((family) =>
-      family
-        .trim()
-        .replace(/^["']|["']$/g, '')
-        .toLowerCase(),
-    )
-    .join(',')
 }

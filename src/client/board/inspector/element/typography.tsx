@@ -39,8 +39,10 @@ const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
 interface TypographySectionProps {
   /** The project's `font` tokens, listed in Family ahead of the served faces. */
   fonts: readonly TokenRow[]
-  /** The computed stack, which Family matches back to a token and whose face picks the weights offered. */
+  /** The computed stack, whose face picks the weights offered and names a family no token sets. */
   fontFamily: string
+  /** The font token the source names, read from the static cascade, null for a raw family or before it reads. */
+  fontToken: string | null
   fontSize: number
   fontWeight: number
   /** In px, null for `normal`, which reads Auto. */
@@ -70,6 +72,7 @@ const NORMAL_LINE = 1.2
 export function TypographySection({
   fonts,
   fontFamily,
+  fontToken,
   fontSize,
   fontWeight,
   lineHeight,
@@ -81,7 +84,7 @@ export function TypographySection({
 }: TypographySectionProps) {
   const weights = weightsOf(faceOf(fontFamily))
   const families = familyOptions(fonts)
-  const family = familyIn(fontFamily, families)
+  const family = familyIn(fontFamily, fontToken, families)
   return (
     <section
       aria-labelledby="inspector-typography"

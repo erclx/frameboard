@@ -20,7 +20,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment, plus its text when it holds text only. Layers renames an element.
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
-- **Reading the family:** the computed stack never names a token, so `element/families.ts` matches it to a font token by value, then to a face by its first family, and reads any other as written
+- **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
 - **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
 - **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.

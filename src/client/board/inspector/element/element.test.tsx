@@ -243,12 +243,64 @@ describe('TypographySection', () => {
     sheet: 'tokens.css',
   }
 
+  it('binds a raw family equal to a token’s stack to that token on a pick', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Font family' })
+    expect(trigger).toHaveTextContent('Geist')
+    await userEvent.click(trigger)
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'font-text' }),
+    )
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-family', value: 'var(--font-text)' },
+    ])
+  })
+
+  it('shows a token the menu does not list by its name', () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontToken="--font-heading"
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Font family' }),
+    ).toHaveTextContent('font-heading')
+  })
+
   it('shows a family a token sets by the token, and writes nothing for that token', async () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
         fonts={[FONT_TEXT]}
         fontFamily="Geist, sans-serif"
+        fontToken="--font-text"
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -275,6 +327,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[FONT_TEXT]}
         fontFamily="Caveat, cursive"
+        fontToken={null}
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -301,6 +354,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[FONT_TEXT]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -327,6 +381,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[FONT_SIZE, FONT_TEXT]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -354,6 +409,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[FONT_TEXT]}
         fontFamily='"Inter Tight", sans-serif'
+        fontToken={null}
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -375,6 +431,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -400,6 +457,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -428,6 +486,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -452,6 +511,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Caveat, cursive"
+        fontToken={null}
         fontSize={30}
         fontWeight={400}
         textAlign="left"
@@ -479,6 +539,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Caveat, cursive"
+        fontToken={null}
         fontSize={30}
         fontWeight={900}
         textAlign="left"
@@ -500,6 +561,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -528,6 +590,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -551,6 +614,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -576,6 +640,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -599,6 +664,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -623,6 +689,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -648,6 +715,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -673,6 +741,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -697,6 +766,7 @@ describe('TypographySection', () => {
       <TypographySection
         fonts={[]}
         fontFamily="Geist, sans-serif"
+        fontToken={null}
         fontSize={30}
         fontWeight={700}
         textAlign="left"
@@ -2231,6 +2301,7 @@ describe('InspectorPanel with an element selected', () => {
               borderColor: tokenValueOf('--primary'),
               borderWidth: null,
               boxShadow: null,
+              fontFamily: null,
             },
             colors: [],
           },
@@ -2280,6 +2351,7 @@ describe('InspectorPanel with an element selected', () => {
                   borderColor: null,
                   borderWidth: null,
                   boxShadow: null,
+                  fontFamily: null,
                 },
                 colors: [],
               },

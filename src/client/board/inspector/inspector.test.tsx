@@ -437,6 +437,7 @@ describe('InspectorPanel', () => {
                 borderColor: null,
                 borderWidth: null,
                 boxShadow: null,
+                fontFamily: null,
               },
               colors: [],
             },
