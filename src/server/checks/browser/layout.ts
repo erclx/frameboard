@@ -235,8 +235,9 @@ function readLayout(): LayoutRead {
   }
   // A plain inline element's box is the font's content area too, so a heading
   // wrapping its text in a link hangs out of its line box the way bare text
-  // does. A replaced element's box is its own, so it reads as laid out. A copy
-  // of `ownBottom` in `readContentSize`, so a change to one is a change to both.
+  // does, less its vertical padding and border, which paint where they sit. A
+  // replaced element's box is its own, so it reads as laid out. A copy of
+  // `ownBottom` in `readContentSize`, so a change to one is a change to both.
   const replaced = [
     'img',
     'video',
@@ -252,7 +253,14 @@ function readLayout(): LayoutRead {
     if (replaced.includes(element.localName)) return rect.bottom
     const style = getComputedStyle(element)
     if (style.display !== 'inline') return rect.bottom
-    return rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height)
+    const edges =
+      parseFloat(style.paddingTop) +
+      parseFloat(style.paddingBottom) +
+      parseFloat(style.borderTopWidth) +
+      parseFloat(style.borderBottomWidth)
+    return (
+      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - edges)
+    )
   }
   const rootRect = root.getBoundingClientRect()
   let index = 0

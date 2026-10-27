@@ -59,6 +59,10 @@ describe.skipIf(shell === null)(
           '<h1><a href="#">Heading</a></h1>',
           'h1 { margin: 0; font-size: 48px; line-height: 1 }',
         ),
+        'studio/home/tight-badge.html': page(
+          '<h1><span>Heading</span></h1>',
+          'h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }',
+        ),
         'studio/home/spill.html': page(
           '<p>one two three four</p>',
           'p { width: 1px; height: 20px; margin: 0; line-height: 30px }',
@@ -127,6 +131,12 @@ describe.skipIf(shell === null)(
       const size = await measure('tight-link', false)
 
       expect(size.height).toBe(48)
+    })
+
+    it('reads a padded inline badge under a tight line height past the block', async () => {
+      const size = await measure('tight-badge', false)
+
+      expect(size.height).toBeGreaterThan(55)
     })
 
     it('reads an empty body as empty and keeps its box width', async () => {

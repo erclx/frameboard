@@ -79,7 +79,14 @@ function contentBottom(document: Document): number {
     if (replaced.includes(element.localName)) return rect.bottom
     const style = view.getComputedStyle(element)
     if (style.display !== 'inline') return rect.bottom
-    return rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height)
+    const edges =
+      parseFloat(style.paddingTop) +
+      parseFloat(style.paddingBottom) +
+      parseFloat(style.borderTopWidth) +
+      parseFloat(style.borderBottomWidth)
+    return (
+      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - edges)
+    )
   }
   let bottom = document.documentElement.getBoundingClientRect().bottom
   for (const element of document.querySelectorAll('body *')) {

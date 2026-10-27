@@ -70,6 +70,15 @@ describe('measureHeight', () => {
     expect(measureHeight(iframe, 900)).toBe(48)
   })
 
+  it('reads a padded inline badge under a tight line height past the block', async () => {
+    const iframe = await iframeOf(
+      '<h1 style="margin:0;font-size:48px;line-height:1"><span style="padding:12px 0;background:red">Heading</span></h1>',
+      { width: 390, height: 900 },
+    )
+
+    expect(measureHeight(iframe, 900)).toBeGreaterThan(55)
+  })
+
   it('reads an image inside a tight line height heading at its own height', async () => {
     const iframe = await iframeOf(
       '<h1 style="margin:0;font-size:48px;line-height:1"><img alt="" width="10" height="200" style="display:inline"></h1>',

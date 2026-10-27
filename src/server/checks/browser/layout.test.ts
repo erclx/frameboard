@@ -174,6 +174,20 @@ describe.skipIf(shell === null)(
       expect(findings).toEqual([])
     })
 
+    it('reports a padded inline badge painting past the bottom edge under a tight line height', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 } div { height: 152px } h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }',
+        '<div></div><h1><span>Heading</span></h1>',
+      )
+
+      expect(findings).toMatchObject([
+        {
+          rule: 'clipped',
+          message: expect.stringContaining('<span> at element 7 first past'),
+        },
+      ])
+    })
+
     it('reads unwrapped text cropped by its own block as no finding', async () => {
       const findings = await checkHero(
         'p { width: 100px; overflow: hidden; white-space: nowrap }',
