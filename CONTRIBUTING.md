@@ -47,6 +47,7 @@ After changing a manifest, check it. `claude plugin validate .` reads the market
 - `bun run test:run` runs Vitest once across two projects. The `node` project covers `src/cli/`, `src/server/`, and `src/shared/`, and the `browser` project runs `src/client/` in headless Chromium.
 - `bun run test:e2e` builds the CLI and runs Playwright against it
 - `bun run check:full` runs the whole gate followed by the end to end suite
+- `test:run` and the two e2e runs share one lock across every checkout on the machine, so a second run waits for the first and prints a line naming it, such as `[test-lock 10:59:15] waiting on pid 3974197 in /repo/.claude/worktrees/other running 'vitest run'`
 
 Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/` or `src/server/` should start under both. After `bun run build`, run `node dist/cli.js serve` and `bun dist/cli.js serve` and open the board each time.
 
