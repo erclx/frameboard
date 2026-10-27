@@ -27,6 +27,8 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked tree in each index, parent, and tag, and in every name but the element's own
 - A placement, a delete, or a move shifts indices, so a kept index would name another element or none, which the styles read refuses
+- Alt+Shift+ArrowUp and ArrowDown move the selected element among its siblings, because Alt+ArrowUp alone is `nav.home` and the registry gives a shared key to whichever action registered first
+- A move key reads the tree inside the frame's turn rather than at the press, so a press queued behind a move in flight goes from the index and hash that move answered
 
 ### `src/client/board/menus/`
 

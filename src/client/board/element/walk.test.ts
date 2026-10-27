@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { TreeElement } from '@/shared/records/elements'
 
-import { down, sibling, up } from './walk'
+import { down, sibling, siblingGap, up } from './walk'
 
 function element(
   index: number,
@@ -80,5 +80,48 @@ describe('sibling', () => {
 
   it('stays on an only child', () => {
     expect(sibling([element(6, null), element(7, 6)], 7, 1)).toBe(7)
+  })
+})
+
+describe('siblingGap', () => {
+  it('goes before the previous sibling one place up', () => {
+    expect(siblingGap(TREE, 8, (at) => at - 1)).toEqual({
+      parent: 6,
+      before: 7,
+    })
+  })
+
+  it("goes to the parent's end from the next-to-last place down", () => {
+    expect(siblingGap(TREE, 8, (at) => at + 1)).toEqual({
+      parent: 6,
+      before: null,
+    })
+  })
+
+  it('goes before the sibling that holds the place a drop names', () => {
+    expect(siblingGap(TREE, 9, () => 0)).toEqual({ parent: 6, before: 7 })
+  })
+
+  it("names body by the index just before its first child's", () => {
+    expect(siblingGap(TREE, 10, (at) => at - 1)).toEqual({
+      parent: 5,
+      before: 6,
+    })
+  })
+
+  it('has nowhere to go above the first child', () => {
+    expect(siblingGap(TREE, 7, (at) => at - 1)).toBeUndefined()
+  })
+
+  it('has nowhere to go below the last child', () => {
+    expect(siblingGap(TREE, 9, (at) => at + 1)).toBeUndefined()
+  })
+
+  it('has nowhere to go for the place it already holds', () => {
+    expect(siblingGap(TREE, 8, () => 1)).toBeUndefined()
+  })
+
+  it('has nowhere to go for an index the tree does not hold', () => {
+    expect(siblingGap(TREE, 99, (at) => at + 1)).toBeUndefined()
   })
 })

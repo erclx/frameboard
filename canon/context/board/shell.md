@@ -60,6 +60,9 @@ An element row draws `T` for text, an image glyph for media, a dash for an `hr`,
 
 An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 
+- An element row drags to another place among its siblings and never into another parent, which stays a canvas drag
+- Each parent's rows share one `reorder.ts` list keyed by frame and parent, and the drop sends `moveElementTo`'s index move
+
 ### `src/client/board/guide/`
 
 Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.

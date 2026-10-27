@@ -68,6 +68,8 @@ function setup({
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
   const deleted: unknown[][] = []
+  /** Each move asked for, with the place it lands an element holding place 1 on. */
+  const moved: unknown[][] = []
   const actions = elementActions({
     page: () => PAGE,
     selection,
@@ -77,6 +79,7 @@ function setup({
     boardFocused,
     writable: () => writable,
     remove: (...args) => void deleted.push(args),
+    move: (at, key, to) => void moved.push([at, key, to(1)]),
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -85,7 +88,7 @@ function setup({
   }
   const at = (index: number) =>
     selectElement(selection, PAGE, { frame: HERO, index, hash: HASH })
-  return { selection, mode, action, at, actions, deleted }
+  return { selection, mode, action, at, actions, deleted, moved }
 }
 
 const cleanups: (() => void)[] = []
@@ -315,5 +318,65 @@ describe('element.delete', () => {
     mode.setState({ mode: 'play' })
 
     expect(action('element.delete').enabled?.()).toBe(false)
+  })
+})
+
+describe('element.moveUp and element.moveDown', () => {
+  it('binds Alt+Shift+ArrowUp and Alt+Shift+ArrowDown', () => {
+    const { action } = setup()
+
+    expect(
+      ['element.moveUp', 'element.moveDown'].map((id) => action(id).keys),
+    ).toEqual([['Alt+Shift+ArrowUp'], ['Alt+Shift+ArrowDown']])
+  })
+
+  it('moves the selected element one place up among its siblings', () => {
+    const { action, at, moved } = setup()
+    at(8)
+
+    action('element.moveUp').run()
+
+    expect(moved).toEqual([[PAGE, { frame: HERO, index: 8, hash: HASH }, 0]])
+  })
+
+  it('moves the selected element one place down among its siblings', () => {
+    const { action, at, moved } = setup()
+    at(7)
+
+    action('element.moveDown').run()
+
+    expect(moved).toEqual([[PAGE, { frame: HERO, index: 7, hash: HASH }, 2]])
+  })
+
+  it('holds the press at the first child, so it never reaches a frame key', () => {
+    const { action, at } = setup()
+
+    at(7)
+
+    expect(action('element.moveUp').enabled?.()).toBe(true)
+  })
+
+  it('stands aside with a frame selected', () => {
+    const { selection, action } = setup()
+
+    select(selection, PAGE, [HERO])
+
+    expect(action('element.moveDown').enabled?.()).toBe(false)
+  })
+
+  it('stands aside while a panel button holds focus', () => {
+    const { action, at } = setup({ boardFocused: () => false })
+
+    at(7)
+
+    expect(action('element.moveDown').enabled?.()).toBe(false)
+  })
+
+  it('stands aside while the tab may not write', () => {
+    const { action, at } = setup({ writable: false })
+
+    at(7)
+
+    expect(action('element.moveDown').enabled?.()).toBe(false)
   })
 })

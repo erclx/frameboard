@@ -10,7 +10,7 @@ import type { ElementTree } from '@/shared/records/elements'
 
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
-import { deleteElement } from '../place/write'
+import { deleteElement, moveElementTo } from '../place/write'
 import {
   type ElementKey,
   select,
@@ -36,6 +36,8 @@ export interface ElementContext {
   writable: () => boolean
   /** Deletes an element, which `deleteElement` does on the board. */
   remove: (page: string, key: ElementKey) => void
+  /** Moves an element to the place `to` maps its own to among its siblings, which `moveElementTo` does on the board. */
+  move: (page: string, key: ElementKey, to: (place: number) => number) => void
 }
 
 /**
@@ -122,6 +124,22 @@ export function elementActions(context: ElementContext): Action[] {
       Boolean(element)
     )
   }
+  /**
+   * A move key holds the press with any element selected, even at the end of
+   * its siblings, where the move sends nothing, so it never falls through to
+   * a frame's key. It reads no tree here, since a press queued behind a move
+   * still in flight reads the place that move left it at.
+   */
+  const shift = (step: 1 | -1) => ({
+    enabled: () =>
+      elementSelected() && context.writable() && context.boardFocused(),
+    run: () => {
+      const { page, element } = selection.getState()
+      if (page && element) {
+        context.move(page, element, (place) => place + step)
+      }
+    },
+  })
   return [
     {
       id: 'element.down',
@@ -160,6 +178,21 @@ export function elementActions(context: ElementContext): Action[] {
       },
     },
     {
+      id: 'element.moveUp',
+      label: 'Move up among siblings',
+      group: 'selection',
+      // Alt+ArrowUp alone goes to all projects.
+      keys: ['Alt+Shift+ArrowUp'],
+      ...shift(-1),
+    },
+    {
+      id: 'element.moveDown',
+      label: 'Move down among siblings',
+      group: 'selection',
+      keys: ['Alt+Shift+ArrowDown'],
+      ...shift(1),
+    },
+    {
       id: 'element.next',
       label: 'Select next sibling',
       group: 'selection',
@@ -189,6 +222,7 @@ export function useElementActions(page: string): void {
         boardFocused: focusOnBoard,
         writable: () => liveStore.getState().canWrite,
         remove: (at, key) => void deleteElement(at, key),
+        move: (at, key, to) => void moveElementTo(at, key, to),
       }),
     )
     // The keys walk the one selected frame's tree, so it is fetched once

@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createLiveStore } from '@/client/live/store'
+import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
-import { deleteElement, moveElement, placeElement } from './write'
+import {
+  deleteElement,
+  moveElement,
+  moveElementTo,
+  placeElement,
+} from './write'
 
 const HASH = 'c'.repeat(64)
 const ANSWERED = 'd'.repeat(64)
@@ -350,6 +356,218 @@ describe('moveElement', () => {
     expect(told).toEqual([
       'claude · studio is editing hero, so nothing was written.',
     ])
+  })
+})
+
+describe('moveElementTo', () => {
+  const FIRST_DIV = { frame: HERO.ref, index: 4, hash: HASH }
+  const SECOND_HASH = 'e'.repeat(64)
+
+  function element(index: number, parent: number | null): TreeElement {
+    return {
+      index,
+      parent,
+      tag: 'div',
+      name: 'div',
+      textOnly: false,
+      layout: 'block',
+      round: false,
+    }
+  }
+
+  /** A main at 3 holding divs 4 to 7 under body at 2, at whichever bytes are asked for, since a move keeps that shape. */
+  const tree = async (ref: string, hash: string): Promise<ElementTree> => ({
+    ref,
+    hash,
+    elements: [
+      element(3, null),
+      element(4, 3),
+      element(5, 3),
+      element(6, 3),
+      element(7, 3),
+    ],
+  })
+
+  /**
+   * A server answering each request in turn with the next of `data`, keeping
+   * each request's body. The answer to request `holdAt` waits for `release`.
+   */
+  function answers(...data: unknown[]) {
+    const sent: unknown[] = []
+    let release = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let holdAt = 0
+    const send: typeof fetch = async (_url, init) => {
+      sent.push(JSON.parse(String(init?.body)))
+      const at = sent.length
+      if (at === holdAt) await held
+      return new Response(JSON.stringify({ ok: true, data: data[at - 1] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    const hold = (request: number) => (holdAt = request)
+    return { sent, send, hold, release: () => release() }
+  }
+
+  it('sends the gap one place down among its siblings, then selects it where it landed', async () => {
+    const selection = createSelectionStore()
+    const { sent, send } = answers({ ref: HERO.ref, index: 5, hash: ANSWERED })
+
+    const moved = await moveElementTo(
+      'studio/home',
+      FIRST_DIV,
+      (place) => place + 1,
+      { selection, live: createLiveStore(), send, tree },
+    )
+
+    expect(sent).toEqual([
+      { ref: HERO.ref, hash: HASH, index: 4, parent: 3, before: 6 },
+    ])
+    expect(moved).toEqual({ frame: HERO.ref, index: 5, hash: ANSWERED })
+    expect(selection.getState().element).toEqual(moved)
+  })
+
+  it('sends nothing and tells nothing for the first child moved up', async () => {
+    const { sent, send } = answers()
+    const told: string[] = []
+
+    const moved = await moveElementTo(
+      'studio/home',
+      FIRST_DIV,
+      (place) => place - 1,
+      {
+        selection: createSelectionStore(),
+        live: createLiveStore(),
+        send,
+        tree,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(moved).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([])
+  })
+
+  it('sends a second move queued behind the first from the hash and index the first answered', async () => {
+    const { sent, send } = answers(
+      { ref: HERO.ref, index: 5, hash: ANSWERED },
+      { ref: HERO.ref, index: 6, hash: SECOND_HASH },
+    )
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+      send,
+      tree,
+    }
+
+    // Both go before the first answers, as two quick presses do.
+    const [first, second] = await Promise.all([
+      moveElementTo('studio/home', FIRST_DIV, (place) => place + 1, deps),
+      moveElementTo('studio/home', FIRST_DIV, (place) => place + 1, deps),
+    ])
+
+    expect(sent).toEqual([
+      { ref: HERO.ref, hash: HASH, index: 4, parent: 3, before: 6 },
+      { ref: HERO.ref, hash: ANSWERED, index: 5, parent: 3, before: 7 },
+    ])
+    expect(first).toEqual({ frame: HERO.ref, index: 5, hash: ANSWERED })
+    expect(second).toEqual({ frame: HERO.ref, index: 6, hash: SECOND_HASH })
+  })
+
+  it('sends a third move pressed from where the first landed, while the second is in flight, from the second answer', async () => {
+    const { sent, send, hold, release } = answers(
+      { ref: HERO.ref, index: 5, hash: ANSWERED },
+      { ref: HERO.ref, index: 6, hash: SECOND_HASH },
+      { ref: HERO.ref, index: 7, hash: 'f'.repeat(64) },
+    )
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+      send,
+      tree,
+    }
+    hold(2)
+
+    // A held key: two presses go at once, and the third reads the selection the first answer left.
+    const first = moveElementTo('studio/home', FIRST_DIV, (p) => p + 1, deps)
+    const second = moveElementTo('studio/home', FIRST_DIV, (p) => p + 1, deps)
+    const landed = await first
+    if (!landed) throw new Error('The first move landed nothing')
+    const third = moveElementTo('studio/home', landed, (p) => p + 1, deps)
+    release()
+    await Promise.all([second, third])
+
+    expect(sent).toEqual([
+      { ref: HERO.ref, hash: HASH, index: 4, parent: 3, before: 6 },
+      { ref: HERO.ref, hash: ANSWERED, index: 5, parent: 3, before: 7 },
+      { ref: HERO.ref, hash: SECOND_HASH, index: 6, parent: 3, before: null },
+    ])
+  })
+
+  it('refuses a frame another session holds and sends nothing', async () => {
+    const live = createLiveStore()
+    live.setState({
+      claims: {
+        [HERO.ref]: {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: '2026-10-15T00:00:00.000Z',
+          expiresAt: '2026-10-15T01:00:00.000Z',
+        },
+      },
+    })
+    const { sent, send } = answers()
+    const told: string[] = []
+
+    const moved = await moveElementTo(
+      'studio/home',
+      FIRST_DIV,
+      (place) => place + 1,
+      {
+        selection: createSelectionStore(),
+        live,
+        send,
+        tree,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(moved).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([
+      'claude · studio is editing hero, so nothing was written.',
+    ])
+  })
+
+  it("shows the server's refusal and keeps the element selected", async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', FIRST_DIV)
+    const { send } = server(409, {
+      ok: false,
+      error: { code: 'invalid-placement', message: 'the parser would move it' },
+    })
+    const told: string[] = []
+
+    const moved = await moveElementTo(
+      'studio/home',
+      FIRST_DIV,
+      (place) => place + 1,
+      {
+        selection,
+        live: createLiveStore(),
+        send,
+        tree,
+        notify: ({ title }) => told.push(title),
+      },
+    )
+
+    expect(moved).toBeNull()
+    expect(told).toEqual(['Nothing moved'])
+    expect(selection.getState().element).toEqual(FIRST_DIV)
   })
 })
 
