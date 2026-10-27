@@ -163,6 +163,18 @@ export function attachGestures(
         dx === 0 && dy === 0 ? '' : `translate(${dx}px, ${dy}px)`
     }
   }
+  // Note pins sit in their own layer beside the frames, so a frame drag
+  // shifts the pins of the frames it moves here. The individual `translate`
+  // property composes with the pin's own centering and zoom `transform`.
+  const shiftPins = (refs: readonly string[], dx: number, dy: number) => {
+    const pins =
+      target.viewport.querySelectorAll<HTMLElement>('[data-note-frame]')
+    for (const pin of pins) {
+      const moves =
+        refs.includes(pin.dataset.noteFrame ?? '') && (dx !== 0 || dy !== 0)
+      pin.style.translate = moves ? `${dx}px ${dy}px` : ''
+    }
+  }
   const zoom = () => zoomTransform(target.viewport).k
   const toCanvas = (event: MouseEvent): Point => {
     const [x, y] = pointer(event, target.viewport)
@@ -342,6 +354,7 @@ export function attachGestures(
         }
         drawMove(root, ox, oy, snap.box)
         shiftElementOutline(ox, oy)
+        shiftPins(Object.keys(boxes), ox, oy)
         drawGuides(root, snap.guides, snap.gaps)
         return
       }
@@ -460,6 +473,7 @@ export function attachGestures(
     }
     if (root) drawRest(root)
     shiftElementOutline(0, 0)
+    shiftPins([], 0, 0)
     const point = toCanvas(event)
     if (gesture.kind === 'marquee') {
       const touched = framesIn(
