@@ -1,6 +1,7 @@
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import { movedKeys } from '@/client/live/store'
 import { isTheme, oppositeTheme, type Theme } from '@/shared/theme'
 
 /** What the developer picked: a theme, or to follow the system. */
@@ -105,6 +106,20 @@ export function flipFrame(ref: string, store: ThemeStore = themeStore): void {
   const flipped = new Set(store.getState().flipped)
   if (!flipped.delete(ref)) flipped.add(ref)
   store.setState({ flipped })
+}
+
+/** Moves the flipped frames under a renamed project or page to their new refs. */
+export function renameFlipped(
+  before: string,
+  after: string,
+  store: ThemeStore = themeStore,
+): void {
+  const byRef = Object.fromEntries(
+    [...store.getState().flipped].map((ref) => [ref, true]),
+  )
+  store.setState({
+    flipped: new Set(Object.keys(movedKeys(byRef, before, after))),
+  })
 }
 
 /** The theme one frame shows, being the board's unless it is flipped. */

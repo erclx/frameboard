@@ -6,6 +6,7 @@ import {
   createThemeStore,
   flipFrame,
   frameTheme,
+  renameFlipped,
   shownTheme,
   THEME_KEY,
   type ThemeHost,
@@ -162,6 +163,34 @@ describe('theme store', () => {
       flipFrame('site/home/a', store)
 
       expect(frameTheme('site/home/a', store)).toBe('dark')
+    })
+
+    it('keeps a flipped frame flipped under its new ref through a page rename', () => {
+      chooseTheme('dark', store)
+      flipFrame('site/home/a', store)
+
+      renameFlipped('site/home', 'site/start', store)
+
+      expect(frameTheme('site/start/a', store)).toBe('light')
+      expect(frameTheme('site/home/a', store)).toBe('dark')
+    })
+
+    it('keeps a flipped frame flipped through a project rename', () => {
+      chooseTheme('dark', store)
+      flipFrame('site/about/a', store)
+
+      renameFlipped('site', 'studio', store)
+
+      expect(frameTheme('studio/about/a', store)).toBe('light')
+    })
+
+    it('drops a flip a page gone before the rename left under the new name', () => {
+      chooseTheme('dark', store)
+      flipFrame('site/start/a', store)
+
+      renameFlipped('site/home', 'site/start', store)
+
+      expect(frameTheme('site/start/a', store)).toBe('dark')
     })
   })
 })
