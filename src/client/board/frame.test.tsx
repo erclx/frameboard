@@ -842,6 +842,16 @@ describe('LabelRename', () => {
     ).toHaveValue('hero')
   })
 
+  it('keeps the field to 240 screen pixels on a frame wider than that', () => {
+    const { calls } = server()
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+
+    act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    const field = view.getByRole('textbox', { name: 'Rename frame hero' })
+    expect(field.getBoundingClientRect().width).toBe(240)
+  })
+
   it('opens no field while another surface renames the frame', () => {
     const { calls } = server()
     const view = render(<LabelRename frames={[HERO]} calls={calls} />)
