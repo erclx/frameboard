@@ -49,13 +49,16 @@ export interface WriteDeps {
  * written. `at` maps each element index the chain edited, as its edits were
  * made, to where it now sits, and `shifted` says whether any was found again
  * past an agent's write, after which an index the chain never edited may
- * name another element.
+ * name another element. `moves`, which only a sibling move writes, maps
+ * each `hash\nindex` an element the chain moved was addressed at to where it
+ * now sits, since a key pressed between two moves names a middle hash.
  */
 export type Landed = {
   from: readonly string[]
   to: string
   at: ReadonlyMap<number, number>
   shifted: boolean
+  moves?: ReadonlyMap<string, number>
 } | null
 
 /** Each frame's latest element edit, which the next edit of that frame goes behind. */

@@ -181,10 +181,14 @@ export async function moveElementTo(
     const before = prior ? await prior : undefined
     if (before === null) return null
     // A move ahead of this one answered where the element went, so this one
-    // follows it there. Any other write ahead that shifted indices leaves
-    // the element's own, which the server refuses as stale.
+    // follows it there, whichever hash of the chain the press read. Any other
+    // write ahead that shifted indices leaves the element's own, which the
+    // server refuses as stale.
     const follows = before !== undefined && before.from.includes(key.hash)
-    const moved = follows ? before.at.get(key.index) : undefined
+    const moved = follows
+      ? (before.moves?.get(slot(key.hash, key.index)) ??
+        before.at.get(key.index))
+      : undefined
     const rebased = follows && (!before.shifted || moved !== undefined)
     const from = rebased ? before.to : key.hash
     const index = rebased ? (moved ?? key.index) : key.index
@@ -217,11 +221,20 @@ export async function moveElementTo(
       selectElement(selection, page, landed)
       const at = new Map(follows ? before.at : [])
       at.set(key.index, answer.index)
+      // Every other element's index shifted by an amount nobody read, so
+      // only this element's addresses carry forward.
+      const moves = new Map<string, number>()
+      for (const [address, now] of (follows && before.moves) || []) {
+        if (now === index) moves.set(address, answer.index)
+      }
+      moves.set(slot(key.hash, key.index), answer.index)
+      moves.set(slot(from, index), answer.index)
       return {
         from: follows ? [...before.from, from] : [from],
         to: answer.hash,
         at,
         shifted: true,
+        moves,
       }
     } catch (error) {
       notify({
@@ -237,6 +250,11 @@ export async function moveElementTo(
     }
   })
   return landed
+}
+
+/** The key a sibling move's trace files an element under, by the bytes and index it was addressed at. */
+function slot(hash: string, index: number): string {
+  return `${hash}\n${index}`
 }
 
 /** A frame's tree at the bytes `hash` names, the held one when it agrees, else read again. */
