@@ -63,6 +63,10 @@ export function createHug({
         continue
       }
       if (size.empty) continue
+      // A file written since `board` was measured at its old content, and
+      // that write's own batch measures it again. The check narrows the
+      // window rather than closing it, which that batch covers too.
+      if (!(await unchangedSince(frame))) continue
       stale ||=
         (frame.hugWidth && size.width !== frame.box.width) ||
         (frame.hugHeight && size.height !== frame.box.height)
@@ -132,6 +136,10 @@ export async function writtenSinceLayout(board: ListResult): Promise<string[]> {
     }),
   )
   return stale.flat()
+}
+
+async function unchangedSince(frame: FrameRecord): Promise<boolean> {
+  return new Date(await mtimeOf(frame.path)).toISOString() === frame.modifiedAt
 }
 
 async function mtimeOf(path: string): Promise<number> {
