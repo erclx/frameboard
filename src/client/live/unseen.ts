@@ -4,6 +4,8 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import type { FrameChange } from '@/shared/records/changes'
 import type { ListResult } from '@/shared/records/list'
 
+import { movedKeys, movedRef } from './store'
+
 /** Where the hashes this browser has seen are kept, by frame ref. */
 export const SEEN_KEY = 'frameboard.seen'
 
@@ -96,6 +98,33 @@ export function pruneUnseen(store: UnseenStore, board: ListResult): void {
   const keptBase = keptOn(base, refs)
   if (kept === unseen && keptBase === base) return
   store.setState({ unseen: kept, base: keptBase })
+}
+
+/**
+ * Moves every mark, seen hash, base, and the toast under a renamed project
+ * or page to the new refs, so a rename neither shows a frame as new nor
+ * forgets one the developer has not looked at.
+ */
+export function renameUnseen(
+  store: UnseenStore,
+  before: string,
+  after: string,
+): void {
+  const { unseen, seen, base, cursor } = store.getState()
+  const moved = Object.fromEntries(
+    Object.entries(movedKeys(unseen, before, after)).map(([ref, change]) => [
+      ref,
+      { ...change, frame: ref },
+    ]),
+  )
+  const nextSeen = movedKeys(seen, before, after)
+  store.setState({
+    unseen: moved,
+    seen: nextSeen,
+    base: movedKeys(base, before, after),
+    cursor: cursor === null ? null : movedRef(cursor, before, after),
+  })
+  writeSeen(store.storage, nextSeen)
 }
 
 /** Drops a frame's base once the server no longer holds its version. */
