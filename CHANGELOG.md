@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.16.0](https://github.com/erclx/frameboard/compare/v0.15.0...v0.16.0) (2026-10-27)
+
+
+### Features
+
+* **canvas:** match label rename, reveal, and drag to a Figma user ([#149](https://github.com/erclx/frameboard/issues/149)) ([8672b8d](https://github.com/erclx/frameboard/commit/8672b8d0d36353154846b54e1bc4aa749bb81b54))
+* **faces:** serve Inter and Source Serif 4 beside Geist ([#148](https://github.com/erclx/frameboard/issues/148)) ([191d8a8](https://github.com/erclx/frameboard/commit/191d8a82133c981366faf5d5b862cb8a4242a396))
+* **inspector:** pick font family and named weight in typography ([#144](https://github.com/erclx/frameboard/issues/144)) ([2d9295b](https://github.com/erclx/frameboard/commit/2d9295be4419a37bbd235dc3e2e6afca9a510082))
+* **live:** keep frame flips, unseen marks, and selection on a rename ([#141](https://github.com/erclx/frameboard/issues/141)) ([fb363f8](https://github.com/erclx/frameboard/commit/fb363f85d6bf77635c6cf6959ebb8cbe97750e60))
+
+
+### Bug Fixes
+
+* **history:** select the frame when an undo removes the selected element ([#146](https://github.com/erclx/frameboard/issues/146)) ([fcf8014](https://github.com/erclx/frameboard/commit/fcf80140c30fdc150aa59237f22da40e014e8026))
+* **kit:** stop the tooltip fade and zoom under reduced motion ([#147](https://github.com/erclx/frameboard/issues/147)) ([00acfd2](https://github.com/erclx/frameboard/commit/00acfd205fa68218048a400e676517e75a9e4a04))
+* **live:** measure every hugging frame placed or rewritten mid-measure ([#142](https://github.com/erclx/frameboard/issues/142)) ([889c86d](https://github.com/erclx/frameboard/commit/889c86d3172d8206b524248ed362c22a9ce6041b))
+* **notes:** start a note card below the View only pill ([#143](https://github.com/erclx/frameboard/issues/143)) ([ff46f24](https://github.com/erclx/frameboard/commit/ff46f245b28bc624699481a40a5dc13c8c72ed15))
+
 ## [0.15.0](https://github.com/erclx/frameboard/compare/v0.14.0...v0.15.0) (2026-10-27)
 
 
