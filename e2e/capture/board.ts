@@ -1891,6 +1891,22 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'weight-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            pressOnLoad('^Font weight$'),
+            readyWhen('[data-slot="dropdown-menu-content"]'),
+          ),
+        ),
+      },
+      {
         section: 'color-picker',
         theme,
         route: '/p/webapp/home',

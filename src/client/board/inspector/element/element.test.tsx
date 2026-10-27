@@ -535,6 +535,39 @@ describe('TypographySection', () => {
     ])
   })
 
+  it('keeps the checked weight number clear of the check', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fonts={[]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font weight' }))
+    const regular = await screen.findByRole('menuitemradio', {
+      name: /^Regular/,
+    })
+    const number = within(regular).getByText('400')
+    const check = regular.querySelector(
+      '[data-slot="dropdown-menu-radio-item-indicator"]',
+    )
+
+    expect(regular).toHaveAttribute('aria-checked', 'true')
+    expect(check).not.toBeNull()
+    expect(number.getBoundingClientRect().right).toBeLessThanOrEqual(
+      check?.getBoundingClientRect().left ?? Number.NEGATIVE_INFINITY,
+    )
+  })
+
   it('shows a weight the face lacks as its number', () => {
     const { write } = recorder()
     render(
