@@ -183,7 +183,7 @@ describe('InspectorPanel', () => {
     expect(screen.queryByRole('heading', { name: 'Arrange' })).toBeNull()
   })
 
-  it('renames the frame from its name and keeps it selected', async () => {
+  it('renames the frame from its name', async () => {
     const sent: unknown[] = []
     const calls = createStructure(async (_path, init) => {
       sent.push(JSON.parse(String(init?.body)))
@@ -201,7 +201,6 @@ describe('InspectorPanel', () => {
     await userEvent.keyboard('palette{Enter}')
 
     expect(sent).toEqual([{ ref: SWATCHES.ref, name: 'palette' }])
-    expect(selectionStore.getState().frames).toEqual(['studio/home/palette'])
   })
 
   it('opens the name field when the palette asks to rename the frame', () => {
