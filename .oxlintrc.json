@@ -9,6 +9,7 @@
   },
   "ignorePatterns": [
     "dist",
+    "web",
     "canon/design",
     "dist-ssr",
     "coverage",
