@@ -17,9 +17,9 @@ const access: Access = {
 }
 
 describe('accessRoutes', () => {
-  function setup() {
+  function setup(options: { openRoute?: boolean } = {}) {
     const tickets = createTickets()
-    return { tickets, routes: accessRoutes(access, tickets) }
+    return { tickets, routes: accessRoutes(access, tickets, options) }
   }
 
   describe('GET /api/access/redeem', () => {
@@ -111,6 +111,55 @@ describe('accessRoutes', () => {
       })
 
       expect(response.status).toBe(401)
+    })
+  })
+
+  describe('GET /api/access/open', () => {
+    it('redirects to a same-origin redeem URL that redeems once', async () => {
+      const { routes } = setup({ openRoute: true })
+
+      const response = await routes.request(`${BASE}/api/access/open`)
+
+      expect(response.status).toBe(303)
+      const location = response.headers.get('location') ?? ''
+      expect(location).toMatch(/^\/api\/access\/redeem\?ticket=[0-9a-f]{32}$/)
+      const redeemed = await routes.request(`${BASE}${location}`)
+      expect(redeemed.headers.get('set-cookie')).toContain(`${COOKIE}=${KEY}`)
+      const again = await routes.request(`${BASE}${location}`)
+      expect(again.headers.get('set-cookie')).toBeNull()
+    })
+
+    it('mints a fresh ticket on each request, and each redeems', async () => {
+      const { routes } = setup({ openRoute: true })
+
+      const first = await routes.request(`${BASE}/api/access/open`)
+      const second = await routes.request(`${BASE}/api/access/open`)
+
+      const firstAt = first.headers.get('location') ?? ''
+      const secondAt = second.headers.get('location') ?? ''
+      expect(firstAt).not.toBe(secondAt)
+      const redeemed = await Promise.all(
+        [firstAt, secondAt].map((at) => routes.request(`${BASE}${at}`)),
+      )
+      expect(redeemed.map((r) => r.headers.get('location'))).toEqual(['/', '/'])
+    })
+
+    it('answers 404 and mints nothing when the route is off', async () => {
+      let minted = 0
+      const tickets = createTickets()
+      const counting = {
+        ...tickets,
+        mint: () => {
+          minted += 1
+          return tickets.mint()
+        },
+      }
+      const routes = accessRoutes(access, counting)
+
+      const response = await routes.request(`${BASE}/api/access/open`)
+
+      expect(response.status).toBe(404)
+      expect(minted).toBe(0)
     })
   })
 })

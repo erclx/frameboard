@@ -12,8 +12,17 @@ const COOKIE_MAX_AGE_S = 34_560_000
  * trades for the board's cookie, and answers a 303 home either way so a used
  * ticket still lands on a board that reads. A failed redeem lands on
  * `/?link=expired`, the flag the client's expired-link toast reads.
+ *
+ * With `openRoute`, `GET /api/access/open` mints a ticket per request and
+ * redirects through redeem, so a browser with no shell, such as a recorder's,
+ * lands on a writing board. It is off unless `serve` is asked for it, since it
+ * makes any local browser navigating to it a writer.
  */
-export function accessRoutes(access: Access, tickets: Tickets): Hono {
+export function accessRoutes(
+  access: Access,
+  tickets: Tickets,
+  { openRoute = false }: { openRoute?: boolean } = {},
+): Hono {
   const app = new Hono()
 
   app.get('/api/access/redeem', (c) => {
@@ -29,6 +38,14 @@ export function accessRoutes(access: Access, tickets: Tickets): Hono {
     }
     return c.redirect('/?link=expired', 303)
   })
+
+  if (openRoute) {
+    // A relative target, never one built from the Host header, keeps the
+    // ticket on the origin that minted it.
+    app.get('/api/access/open', (c) =>
+      c.redirect(`/api/access/redeem?ticket=${tickets.mint().ticket}`, 303),
+    )
+  }
 
   // Bearer only: a cookie-holding frame must not mint tickets for itself.
   app.post('/api/access/ticket', (c) => {
