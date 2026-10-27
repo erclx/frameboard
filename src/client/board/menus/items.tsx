@@ -84,7 +84,7 @@ export function DeleteRow({ action }: { action: Action | undefined }) {
   )
 }
 
-/** The faint label naming what a menu opened on, as Page or Empty canvas. */
+/** The muted label naming what a menu opened on, as Page or Empty canvas. */
 export function MenuTitle({ children }: { children: string }) {
   return <ContextMenuLabel>{children}</ContextMenuLabel>
 }

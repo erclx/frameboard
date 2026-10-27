@@ -10,6 +10,7 @@ import { receiveChanges, unseenStore } from '@/client/live/unseen'
 import { frameTheme, themeStore } from '@/client/theme/store'
 import type { PageRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { contrastOnPage } from '@/test/contrast'
 
 import { useBoardActions } from '../board-actions'
 import { Canvas } from '../canvas'
@@ -121,6 +122,30 @@ describe('CanvasMenu', () => {
 
     const menu = await screen.findByRole('menu')
     expect(within(menu).getAllByRole('group')[0]).toHaveAccessibleName('Frame')
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads the menu label at 4.5:1 or better once the menu settles', async () => {
+      render(<Board page={PAGE} />)
+
+      rightClick(centerOf(A.ref))
+      const menu = await screen.findByRole('menu')
+      await Promise.all(
+        menu.getAnimations({ subtree: true }).map((each) => each.finished),
+      )
+
+      expect(
+        contrastOnPage(within(menu).getByText('Frame')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   it('heads the menu of a selection of two with 2 frames', async () => {
