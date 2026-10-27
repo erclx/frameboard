@@ -139,18 +139,18 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toContain('<h1 data-name="Headline">hero</h1>')
   })
 
+  /** Headline and Caption in the order the hero's file holds them. */
+  function order(): string[] {
+    const html = readFileSync(join(board.root, `${HERO}.html`), 'utf8')
+    return html.indexOf('data-name="Headline"') <
+      html.indexOf('data-name="Caption"')
+      ? ['Headline', 'Caption']
+      : ['Caption', 'Headline']
+  }
+
   test('a Layers row dragged above its sibling moves the element in the file, and undo puts it back', async ({
     page,
   }) => {
-    const path = join(board.root, `${HERO}.html`)
-    /** Where Headline and Caption sit in the file, Headline first while it leads. */
-    const order = () => {
-      const html = readFileSync(path, 'utf8')
-      return html.indexOf('data-name="Headline"') <
-        html.indexOf('data-name="Caption"')
-        ? ['Headline', 'Caption']
-        : ['Caption', 'Headline']
-    }
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
     await page
@@ -172,6 +172,23 @@ test.describe('selecting an element inside a frame', () => {
     await expect(elements.locator('[aria-current="true"]')).toHaveText(
       'Caption',
     )
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(order).toEqual(['Headline', 'Caption'])
+  })
+
+  test('Alt+Shift+ArrowDown moves the selected element below its sibling, and undo puts it back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+
+    await cmdClick(page, 'h1')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.keyboard.press('Alt+Shift+ArrowDown')
+
+    await expect.poll(order).toEqual(['Caption', 'Headline'])
 
     await page.keyboard.press('ControlOrMeta+z')
 
