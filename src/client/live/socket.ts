@@ -1,4 +1,14 @@
 import {
+  renameSelection,
+  type SelectionStore,
+  selectionStore,
+} from '@/client/board/selection'
+import {
+  renameFlipped,
+  type ThemeStore,
+  themeStore,
+} from '@/client/theme/store'
+import {
   type HelloMessage,
   LIVE_PATH,
   type ServerMessage,
@@ -17,10 +27,12 @@ import {
   receiveReload,
   receiveRename,
   receiveThumbnails,
+  takesRename,
 } from './store'
 import {
   pruneUnseen,
   receiveChanges,
+  renameUnseen,
   type UnseenStore,
   unseenStore,
 } from './unseen'
@@ -41,6 +53,10 @@ export interface LiveHandlers {
   onDisconnect?: () => void
   /** Where an agent's changes go, the app's own store unless a test stands in. */
   unseen?: UnseenStore
+  /** The selection a rename moves, the app's own unless a test stands in. */
+  selection?: SelectionStore
+  /** The flipped frames a rename moves, the app's own unless a test stands in. */
+  theme?: ThemeStore
 }
 
 /**
@@ -50,7 +66,13 @@ export interface LiveHandlers {
  */
 export function connectLive(
   store: LiveStore,
-  { onShow, onDisconnect, unseen = unseenStore }: LiveHandlers = {},
+  {
+    onShow,
+    onDisconnect,
+    unseen = unseenStore,
+    selection = selectionStore,
+    theme = themeStore,
+  }: LiveHandlers = {},
 ): () => void {
   let socket: WebSocket | undefined
   let retry: ReturnType<typeof setTimeout> | undefined
@@ -78,7 +100,15 @@ export function connectLive(
         receiveAccess(store, message.write, message.dispatch)
       } else if (message.type === 'reload') receiveReload(store, message.refs)
       else if (message.type === 'renamed') {
-        receiveRename(store, message.before, message.after)
+        const { before, after } = message
+        // The stores keyed by frame ref move first, since the renamed board
+        // prunes a selection it no longer holds the moment it lands.
+        if (takesRename(store, before, after)) {
+          renameSelection(selection, before, after)
+          renameFlipped(before, after, theme)
+          renameUnseen(unseen, before, after)
+          receiveRename(store, before, after)
+        }
       } else if (message.type === 'findings') {
         receiveFindings(store, message.findings)
       } else if (message.type === 'notes') {

@@ -83,19 +83,16 @@ export function identityOf(
  * that will carry it, moving every count, finding, claim, note, and
  * thumbnail to the new refs and recording the alias `identityOf` reads. A
  * board that no longer holds `before`, or already holds `after`, carries the
- * rename already and is left alone. Returns whether it moved anything, so
- * the stores keyed by frame ref outside this one can move theirs alike.
+ * rename already and is left alone.
  */
 export function receiveRename(
   store: LiveStore,
   before: string,
   after: string,
-): boolean {
+): void {
   const state = store.getState()
   const { board } = state
-  if (!board || !holdsRef(board, before) || holdsRef(board, after)) {
-    return false
-  }
+  if (!board || !takesRename(store, before, after)) return
   const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
     movedKeys(byRef, before, after)
   const aliases = { ...moveKeys(state.aliases) }
@@ -113,7 +110,20 @@ export function receiveRename(
     },
     aliases: liveAliases(aliases, renamed),
   })
-  return true
+}
+
+/**
+ * Whether the board in hand still waits on a rename, holding `before` and
+ * not yet `after`, so the stores keyed by frame ref outside this one move
+ * theirs only for a rename `receiveRename` carries.
+ */
+export function takesRename(
+  store: LiveStore,
+  before: string,
+  after: string,
+): boolean {
+  const { board } = store.getState()
+  return !!board && holdsRef(board, before) && !holdsRef(board, after)
 }
 
 /**
