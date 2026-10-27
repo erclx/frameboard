@@ -17,6 +17,7 @@ export function ViewOnlyNotice() {
   return (
     <p
       role="status"
+      data-view-only-notice
       className="absolute top-3 left-1/2 -translate-x-1/2 rounded-xl border border-border bg-card px-3 py-1 text-body text-muted-foreground"
     >
       View only. Run frameboard open to edit

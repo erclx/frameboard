@@ -1,3 +1,7 @@
+import { execFile } from 'node:child_process'
+import { resolve } from 'node:path'
+import { promisify } from 'node:util'
+
 import { expect, type Page, test } from '@playwright/test'
 
 import {
@@ -5,6 +9,9 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+
+const CLI = resolve('dist/cli.js')
+const run = promisify(execFile)
 
 /** Posts to the show route from the page itself, the way a board control would. */
 function show(page: Page): Promise<number> {
@@ -101,5 +108,97 @@ test.describe('the board write key', () => {
     const cookies = await page.context().cookies()
     expect(cookies).toHaveLength(1)
     expect(cookies[0]).toMatchObject({ httpOnly: true, sameSite: 'Strict' })
+  })
+})
+
+test.describe('a note card in a read-only tab', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  /** Saves a note on the hero frame from a writing tab and answers it 8 times at about 800 characters each. */
+  async function longThreadOnHero(page: Page): Promise<void> {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+    const hero = page.locator('[data-frame="studio/home/hero"]')
+    await expect(hero.locator('iframe')).toBeVisible()
+    await page.getByRole('button', { name: 'Note', exact: true }).click()
+    const box = await hero.boundingBox()
+    if (!box) throw new Error('the hero frame has no box')
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    const composer = page.getByRole('region', { name: 'New note on hero' })
+    await composer.getByRole('textbox').fill('Rewrite the hero copy')
+    await composer.getByRole('button', { name: 'Save' }).click()
+    await expect(composer).toHaveCount(0)
+    const { stdout } = await run('node', [
+      CLI,
+      'notes',
+      '--json',
+      '--root',
+      board.root,
+    ])
+    const [note] = (JSON.parse(stdout) as { data: { notes: { id: string }[] } })
+      .data.notes
+    if (!note) throw new Error('the saved note is not listed')
+    const body = 'The hero copy now leads with the outcome. '.repeat(19)
+    for (let turn = 1; turn <= 8; turn++) {
+      await run('node', [
+        CLI,
+        'notes',
+        'reply',
+        note.id,
+        `${turn}. ${body}`,
+        '--root',
+        board.root,
+      ])
+    }
+  }
+
+  test('starts a capped card below the View only pill', async ({
+    browser,
+    page,
+  }) => {
+    await longThreadOnHero(page)
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+    })
+    const reader = await context.newPage()
+    await reader.goto(`${server.url}/p/studio/home`)
+    const pill = reader.getByRole('status').filter({ hasText: 'View only' })
+    await expect(pill).toBeVisible()
+
+    await reader.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
+
+    const thread = reader.getByRole('region', { name: /^Note \d+$/ })
+    await expect(
+      thread.getByRole('list', { name: 'Messages' }).getByRole('listitem'),
+    ).toHaveCount(9)
+    await expect
+      .poll(async () => {
+        const [card, notice, toolbar] = await Promise.all([
+          thread.boundingBox(),
+          pill.boundingBox(),
+          reader.getByRole('toolbar', { name: 'Tools' }).boundingBox(),
+        ])
+        if (!card || !notice || !toolbar) {
+          throw new Error('the card, the pill, or the toolbar has no box')
+        }
+        return Math.min(
+          card.y - (notice.y + notice.height),
+          toolbar.y - (card.y + card.height),
+        )
+      })
+      .toBeGreaterThanOrEqual(0)
+    await expect(thread.getByRole('heading')).toBeInViewport()
+    await context.close()
   })
 })

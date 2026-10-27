@@ -204,6 +204,13 @@ function Popover({
       bounds.bottom,
       toolbar?.getBoundingClientRect().top ?? bounds.bottom,
     )
+    // The View only pill sits in the app's slot above the canvas's head, so
+    // the card starts below it wherever the two overlap or not.
+    const notice = document.querySelector('[data-view-only-notice]')
+    const ceiling = Math.max(
+      bounds.top,
+      notice?.getBoundingClientRect().bottom ?? bounds.top,
+    )
     const box = element.getBoundingClientRect()
     const right = shift.flip
       ? box.right + box.width + 2 * CARD_OFFSET.x
@@ -212,13 +219,13 @@ function Popover({
     const next = {
       flip: right > bounds.right - EDGE_GAP,
       y:
-        top < bounds.top + EDGE_GAP
-          ? bounds.top + EDGE_GAP - top
+        top < ceiling + EDGE_GAP
+          ? ceiling + EDGE_GAP - top
           : Math.min(0, bottom - EDGE_GAP - (top + box.height)),
-      // Taken from the canvas and the toolbar, never the card, so the cap
-      // and the shift cannot chase each other. The card sits at screen size,
-      // so these screen measures need no zoom factor.
-      cap: bottom - bounds.top - 2 * EDGE_GAP,
+      // Taken from the canvas, the pill, and the toolbar, never the card, so
+      // the cap and the shift cannot chase each other. The card sits at
+      // screen size, so these screen measures need no zoom factor.
+      cap: bottom - ceiling - 2 * EDGE_GAP,
     }
     // A shift moves the card it measured, so it settles once one repeats.
     if (
