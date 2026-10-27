@@ -10,7 +10,7 @@ import {
 } from 'parse5'
 import { afterAll, describe, expect, it } from 'vitest'
 
-import { applyEdit, type EditChange } from './apply'
+import { applyEdit, type SingleChange } from './apply'
 import { swapSpan } from './element-span'
 import { changeArbitrary, frameArbitrary } from './frame-arbitrary'
 
@@ -158,7 +158,7 @@ function sorted(declared: Record<string, string>): string {
 function windowOf(
   source: string,
   element: Element,
-  change: EditChange,
+  change: SingleChange,
 ): [number, number] {
   const location = element.sourceCodeLocation
   if (!location?.startTag) throw new Error(`<${element.tagName}> is not stated`)
@@ -211,7 +211,7 @@ function changedSpan(before: Buffer, after: Buffer): [number, number] {
  * that one change, and a style edit keeps every other declaration's decoded
  * value.
  */
-function checkEdit(source: string, index: number, change: EditChange): void {
+function checkEdit(source: string, index: number, change: SingleChange): void {
   const result = applyEdit(source, { index }, change)
   digest.update(`${JSON.stringify(result)}\n`)
   if (!result.ok) return
@@ -291,7 +291,7 @@ const fixtures = readdirSync(FIXTURES)
   .filter((file) => file.endsWith('.html'))
   .sort()
 
-const FIXTURE_CHANGES: readonly EditChange[] = [
+const FIXTURE_CHANGES: readonly SingleChange[] = [
   { kind: 'style', property: 'color', value: 'blue' },
   { kind: 'style', property: 'color', value: '' },
   { kind: 'style', property: 'font-family', value: "'Geist', serif" },

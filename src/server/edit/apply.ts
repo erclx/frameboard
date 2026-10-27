@@ -18,7 +18,8 @@ export interface ElementAddress {
   readonly hash?: string
 }
 
-export type EditChange =
+/** A change that writes one value, being a declaration, an attribute, or the text. */
+export type SingleChange =
   | {
       readonly kind: 'style'
       readonly property: string
@@ -30,6 +31,19 @@ export type EditChange =
       readonly value: string
     }
   | { readonly kind: 'text'; readonly value: string }
+
+export type EditChange =
+  | SingleChange
+  /** Several declarations written into one style, so an undo puts them back together. */
+  | {
+      readonly kind: 'styles'
+      readonly declarations: readonly StyleDeclaration[]
+    }
+
+export interface StyleDeclaration {
+  readonly property: string
+  readonly value: string
+}
 
 export type EditRefusal =
   | 'invalid-edit'
@@ -73,27 +87,55 @@ export function refuse(reason: EditRefusal, detail: string): EditRefused {
   return { ok: false, reason, detail }
 }
 
-function checkChange(change: EditChange): EditRefused | undefined {
-  if (change.value.length > MAX_VALUE_LENGTH) {
+function checkValue(value: string): EditRefused | undefined {
+  return value.length > MAX_VALUE_LENGTH
+    ? refuse(
+        'invalid-edit',
+        `the value runs past ${MAX_VALUE_LENGTH} characters`,
+      )
+    : undefined
+}
+
+function checkDeclaration({
+  property,
+  value,
+}: StyleDeclaration): EditRefused | undefined {
+  const invalid = checkValue(value)
+  if (invalid) return invalid
+  if (!PROPERTY_NAME.test(property)) {
+    return refuse('invalid-edit', `${property} is not a CSS property name`)
+  }
+  if (DECLARATION_BREAK.test(value)) {
     return refuse(
       'invalid-edit',
-      `the value runs past ${MAX_VALUE_LENGTH} characters`,
+      `${property} takes one value, with no ; { } < > or line break`,
     )
   }
-  if (change.kind === 'style') {
-    if (!PROPERTY_NAME.test(change.property)) {
+  return undefined
+}
+
+function checkChange(change: EditChange): EditRefused | undefined {
+  if (change.kind === 'style') return checkDeclaration(change)
+  if (change.kind === 'styles') {
+    const { declarations } = change
+    if (declarations.length === 0) {
+      return refuse('invalid-edit', 'a styles edit names no declaration')
+    }
+    const properties = new Set(declarations.map(({ property }) => property))
+    if (properties.size !== declarations.length) {
       return refuse(
         'invalid-edit',
-        `${change.property} is not a CSS property name`,
+        'a styles edit names one property twice, so one value would be lost',
       )
     }
-    if (DECLARATION_BREAK.test(change.value)) {
-      return refuse(
-        'invalid-edit',
-        `${change.property} takes one value, with no ; { } < > or line break`,
-      )
+    for (const declaration of declarations) {
+      const invalid = checkDeclaration(declaration)
+      if (invalid) return invalid
     }
+    return undefined
   }
+  const invalid = checkValue(change.value)
+  if (invalid) return invalid
   if (change.kind === 'attribute') {
     if (!ATTRIBUTE_NAME.test(change.name)) {
       return refuse('invalid-edit', `${change.name} is not an attribute name`)
@@ -138,7 +180,7 @@ export function scopeOf(change: EditChange): SpanScope {
 
 /** The attribute name an edit writes, or undefined for a text edit. */
 function editedAttribute(change: EditChange): string | undefined {
-  if (change.kind === 'style') return 'style'
+  if (change.kind === 'style' || change.kind === 'styles') return 'style'
   if (change.kind === 'attribute') return change.name
   return undefined
 }
@@ -159,24 +201,24 @@ function write(source: string, element: Element, change: EditChange): Written {
       ),
     }
   }
-  const raw = rawAttribute(source, element, 'style') ?? ''
-  const next = setDeclaration(
-    raw,
-    change.property,
-    escapeAttribute(change.value),
-  )
-  if (!next.ok) {
-    return refuse(
-      'open-quote',
-      `the style on <${element.tagName}> ends inside an open quote or comment`,
-    )
+  const declarations = change.kind === 'styles' ? change.declarations : [change]
+  let style = rawAttribute(source, element, 'style') ?? ''
+  for (const { property, value } of declarations) {
+    const next = setDeclaration(style, property, escapeAttribute(value))
+    if (!next.ok) {
+      return refuse(
+        'open-quote',
+        `the style on <${element.tagName}> ends inside an open quote or comment`,
+      )
+    }
+    style = next.style
   }
   return {
     ok: true,
     html:
-      next.style === ''
+      style === ''
         ? removeAttribute(source, element, 'style')
-        : setRawAttribute(source, element, 'style', next.style),
+        : setRawAttribute(source, element, 'style', style),
   }
 }
 
@@ -244,16 +286,20 @@ function holdsValue(element: Element, change: EditChange): boolean {
   }
   const style =
     element.attrs.find((attribute) => attribute.name === 'style')?.value ?? ''
-  const declared = declaredValues(style, change.property)
-  const value = change.value.trim()
-  return value === ''
-    ? declared.length === 0
-    : declared.length === 1 && declared[0] === value
+  const declarations = change.kind === 'styles' ? change.declarations : [change]
+  return declarations.every(({ property, value }) => {
+    const declared = declaredValues(style, property)
+    const wanted = value.trim()
+    return wanted === ''
+      ? declared.length === 0
+      : declared.length === 1 && declared[0] === wanted
+  })
 }
 
 /**
  * Applies one change to the element the address names and leaves every other
- * byte of the source as it was. The output is parsed again and refused as
+ * byte of the source as it was, a `styles` change writing each declaration in
+ * turn into the one style attribute. The output is parsed again and refused as
  * `verify-failed` unless its tree is the input's with that one change, so an
  * input the guards never met is refused rather than written corrupted.
  */
@@ -265,9 +311,17 @@ export function applyEdit(
   const normalized: EditChange =
     change.kind === 'style'
       ? { ...change, property: change.property.toLowerCase() }
-      : change.kind === 'attribute'
-        ? { ...change, name: change.name.toLowerCase() }
-        : change
+      : change.kind === 'styles'
+        ? {
+            ...change,
+            declarations: change.declarations.map((declaration) => ({
+              ...declaration,
+              property: declaration.property.toLowerCase(),
+            })),
+          }
+        : change.kind === 'attribute'
+          ? { ...change, name: change.name.toLowerCase() }
+          : change
   const invalid = checkChange(normalized)
   if (invalid) return invalid
 
