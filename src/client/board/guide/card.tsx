@@ -21,6 +21,7 @@ import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
+import { FACES, faceSheetUrl } from '@/shared/faces'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
 import type { PageRecord } from '@/shared/records/list'
 import type { TokenTable } from '@/shared/records/tokens'
@@ -533,6 +534,13 @@ function LookStep({
           </div>
         </div>
         <label className="rounded-lg bg-muted px-2.5 py-2">
+          {FACES.filter((face) => face.startsLook).map((face) => (
+            <link
+              key={face.folder}
+              rel="stylesheet"
+              href={faceSheetUrl(face)}
+            />
+          ))}
           <span className="mb-1.5 block text-label font-normal text-muted-foreground">
             Font
           </span>
@@ -545,7 +553,11 @@ function LookStep({
               className="h-[26px] w-full appearance-none rounded-md bg-card px-2 text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
             >
               {fonts.map((each) => (
-                <option key={each} value={each}>
+                <option
+                  key={each}
+                  value={each}
+                  style={{ fontFamily: STARTER_FONTS[each].stack }}
+                >
                   {STARTER_FONTS[each].family}
                 </option>
               ))}
