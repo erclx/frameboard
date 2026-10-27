@@ -522,6 +522,16 @@ describe('placedRefs', () => {
     ).toEqual([])
   })
 
+  it('names a newly placed hugging frame on any page given no paths', async () => {
+    writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
+    const previous = await scanBoard(board.root)
+    writeHomeLayout({ tall: { ...TALL, hugHeight: true } })
+
+    expect(placedRefs(previous, await scanBoard(board.root))).toEqual([
+      'studio/home/tall',
+    ])
+  })
+
   it('leaves out a frame still unplaced', async () => {
     const previous = await scanBoard(board.root)
     writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
