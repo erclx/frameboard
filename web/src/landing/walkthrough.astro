@@ -65,7 +65,12 @@ const SIZES = '(min-width: 1024px) 680px, 100vw'
             aria-current={index === 0 ? 'step' : undefined}
           >
             <div class="shot inline">
-              <Image src={step.still} alt={step.alt} sizes={SIZES} />
+              <Image
+                src={step.still}
+                alt={step.alt}
+                sizes={SIZES}
+                loading="eager"
+              />
             </div>
             <h3>{step.title}</h3>
             <p>{step.body}</p>
@@ -81,7 +86,7 @@ const SIZES = '(min-width: 1024px) 680px, 100vw'
               sizes={SIZES}
               data-step={index}
               hidden={index !== 0}
-              loading={index === 0 ? 'eager' : 'lazy'}
+              loading="eager"
             />
           ))}
         </div>
