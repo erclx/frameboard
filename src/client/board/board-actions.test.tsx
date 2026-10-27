@@ -9,10 +9,12 @@ import {
   useActions,
 } from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
+import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { useBoardActions } from './board-actions'
+import { Toolbar } from './chrome/toolbar'
 import type { Box } from './geometry/box'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
@@ -109,6 +111,21 @@ describe('useBoardActions', () => {
         expect(selectionStore.getState().frames).toEqual([HERO.ref])
       },
     )
+
+    it('drops focus from the toolbar button that armed the tool', async () => {
+      const board = setup()
+      done = board.done
+      render(
+        <TooltipProvider>
+          <Toolbar />
+        </TooltipProvider>,
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'Hand' }))
+
+      board.action('tool.disarm').run()
+
+      expect(document.activeElement).toBe(document.body)
+    })
 
     it('stands aside with Move already on', () => {
       const board = setup()
