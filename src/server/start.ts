@@ -544,8 +544,20 @@ async function pushBatch(
     // A frame its own file reloaded is measured first, so the board never
     // shows it at its old size, and the write's own batch reloads nothing.
     if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
+      const measured = board
       board = await scanBoard(root)
       scanned.board = board
+      // A frame placed during that measure is in the rescan, so the next
+      // batch reads it as placed already, and it is measured here once.
+      // One placed during this second measure is left out of `scanned`,
+      // which keeps it new to the next batch.
+      const late = placedRefs(measured, board)
+      if (late.length > 0) {
+        placed = [...placed, ...late]
+        if (await hug.now(board, late).catch(() => false)) {
+          board = await scanBoard(root)
+        }
+      }
     }
   } catch {
     // A board folder mid-removal does not scan, and the next batch catches up.

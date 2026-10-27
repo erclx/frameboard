@@ -46,7 +46,7 @@ export function createHug({
     board: ListResult,
     refs: readonly string[],
   ): Promise<boolean> => {
-    const pages = new Map<string, Record<string, ContentSize>>()
+    const pages = new Map<string, { frame: FrameRecord; size: ContentSize }[]>()
     let stale = false
     for (const frame of huggingFrames(board, refs)) {
       if (closed) return false
@@ -67,11 +67,23 @@ export function createHug({
         (frame.hugWidth && size.width !== frame.box.width) ||
         (frame.hugHeight && size.height !== frame.box.height)
       const page = `${frame.project}/${frame.page}`
-      pages.set(page, { ...pages.get(page), [frame.name]: size })
+      pages.set(page, [...(pages.get(page) ?? []), { frame, size }])
     }
     let written = false
-    for (const [page, sizes] of pages) {
+    for (const [page, measured] of pages) {
       if (closed) break
+      // A file written since `board` was measured at its old content, and
+      // that write's own batch measures it again. Checking just ahead of
+      // the write narrows the window rather than closing it.
+      const unchanged = await Promise.all(
+        measured.map(({ frame }) => unchangedSince(frame)),
+      )
+      const sizes = Object.fromEntries(
+        measured
+          .filter((_, index) => unchanged[index])
+          .map(({ frame, size }) => [frame.name, size]),
+      )
+      if (Object.keys(sizes).length === 0) continue
       try {
         const names = await setMeasured(root, page, sizes, { cwd: root })
         written ||= names.length > 0
@@ -132,6 +144,10 @@ export async function writtenSinceLayout(board: ListResult): Promise<string[]> {
     }),
   )
   return stale.flat()
+}
+
+async function unchangedSince(frame: FrameRecord): Promise<boolean> {
+  return new Date(await mtimeOf(frame.path)).toISOString() === frame.modifiedAt
 }
 
 async function mtimeOf(path: string): Promise<number> {

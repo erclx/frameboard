@@ -270,14 +270,15 @@ function frameNameOf(name: string): string | null {
  * agent wrote and then placed. Placing writes `layout.json` alone, which
  * reloads nothing, so these are measured without a reload. A frame that only
  * moved was placed in both, and one a folder rename carried has a new ref
- * but a batch naming the folder alone, so both are left out.
+ * but a batch naming the folder alone, so both are left out. Given no
+ * `paths`, as for two scans of one batch, every page is read.
  */
 export function placedRefs(
   previous: ListResult,
   next: ListResult,
-  paths: readonly string[],
+  paths?: readonly string[],
 ): string[] {
-  const written = new Set(paths)
+  const written = paths && new Set(paths)
   const before = new Set(
     previous.projects.flatMap((project) =>
       project.pages.flatMap((page) =>
@@ -287,7 +288,7 @@ export function placedRefs(
   )
   return next.projects.flatMap((project) =>
     project.pages
-      .filter((page) => written.has(join(page.path, LAYOUT_FILE)))
+      .filter((page) => !written || written.has(join(page.path, LAYOUT_FILE)))
       .flatMap((page) =>
         page.frames
           .filter(

@@ -6,6 +6,8 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -683,6 +685,81 @@ describe.skipIf(shell === null)(
             message.refs.includes('studio/home/tall'),
         ),
       ).toBe(false)
+    })
+
+    it('measures a frame placed while another frame measures', async () => {
+      writeFileSync(
+        join(board.root, 'studio/home/quick.html'),
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 700px"></div></body></html>',
+      )
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'board' &&
+                message.data.projects[0]?.pages.some((page) =>
+                  page.frames.some(
+                    (frame) => frame.ref === 'studio/home/quick',
+                  ),
+                ),
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      // The browser checker loading a frame ahead of the hero's batch would
+      // take the held request, so the board settles first.
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'findings' &&
+                'studio/home/quick' in message.findings,
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      // The hero's script answers only once the add has landed, so the add
+      // lands while the hero's write batch is measuring it.
+      let requested: () => void = () => {}
+      const measuring = new Promise<void>((resolve) => {
+        requested = resolve
+      })
+      let release: () => void = () => {}
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const held = createServer((_request, response) => {
+        requested()
+        void released.then(() => response.end(''))
+      })
+      await new Promise<void>((resolve) => held.listen(0, '127.0.0.1', resolve))
+      const { port } = held.address() as AddressInfo
+
+      try {
+        writeFileSync(
+          join(board.root, 'studio/home/hero.html'),
+          `<!doctype html><html><head><style>body { margin: 0 }</style><script src="http://127.0.0.1:${port}/hold.js"></script></head><body><div style="height: 1200px"></div></body></html>`,
+        )
+        await measuring
+        await cli(['frame', 'add', 'studio/home/quick', '--size', 'desktop'], {
+          cwd: board.root,
+        })
+        release()
+
+        const heights = () => {
+          const { frames } = JSON.parse(
+            readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+          )
+          return [frames.hero?.height, frames.quick?.height]
+        }
+        await expect.poll(heights, { timeout: 10_000 }).toEqual([1200, 700])
+      } finally {
+        release()
+        held.closeAllConnections()
+        await new Promise((resolve) => held.close(resolve))
+      }
     })
   },
 )
