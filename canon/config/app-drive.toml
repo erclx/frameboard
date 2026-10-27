@@ -1,0 +1,3 @@
+launch = "bun install --frozen-lockfile && bun run build && CANON_PREVIEW_ROOT=. PREVIEW_PORT=4530 bun run preview"
+data = "test/fixtures/boards/basic"
+personas = ["a developer in the browser"]
