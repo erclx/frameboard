@@ -23,7 +23,8 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 
-- A double-click in the label strip runs `frame.rename`, opening the inspector's name through F2's gates, so a read-only tab opens nothing
+- A double-click in the label strip opens a rename field over the label through F2's gates, so a read-only tab opens nothing, while F2 itself still opens the inspector's name
+- `LabelRename` draws that field in the notes layer, since the hit layer covers the frames' layer and would take a click meant to place the caret
 - It skips a point over a `[data-label-control]`, which clicks on release, and anywhere else a double-click picks inside the frame
 
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
@@ -52,8 +53,8 @@ Owns the left panel, being `project-header.tsx` with the way home, the project n
 
 The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
 
-- Choosing a frame lying wholly off screen centers its drawn box at the current zoom through `canvasView.reveal`
-- The reveal reports as a hand move, so it stops Follow, and a frame showing any part of itself leaves the view
+- Choosing a frame not wholly in view centers its drawn box at the current zoom through `canvasView.reveal`, fitting one larger than the view
+- The reveal reports as a hand move, so it stops Follow, and only a frame lying wholly in view leaves the view
 
 An element row draws `T` for text, an image glyph for media, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout and the rounding from the static cascade, so a culled frame keeps its glyphs.
 
