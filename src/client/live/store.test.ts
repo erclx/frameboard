@@ -449,6 +449,55 @@ describe('receiveRename', () => {
     expect(store.getState().reloads).toEqual({ 'studio/home/hero': 1 })
   })
 
+  it('renames one frame on the board it holds, its page and siblings left alone', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'footer'))
+
+    receiveRename(store, 'studio/home/hero', 'studio/home/lead')
+
+    const page = store.getState().board?.projects[0]?.pages[0]
+    expect(page).toMatchObject({ ref: 'studio/home', name: 'home' })
+    expect(page?.frames[0]).toMatchObject({
+      ref: 'studio/home/lead',
+      name: 'lead',
+      page: 'home',
+      path: '/board/studio/home/lead.html',
+    })
+    expect(page?.frames[1]).toMatchObject({
+      ref: 'studio/home/footer',
+      path: '/board/studio/home/footer.html',
+    })
+  })
+
+  it('carries a renamed frame findings and thumbnails to its new ref alone', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'footer'))
+    receiveFindings(store, { 'studio/home/hero': [], 'studio/home/footer': [] })
+    receiveThumbnails(store, 'light', { 'studio/home/hero': 'r-0-390x844' })
+
+    receiveRename(store, 'studio/home/hero', 'studio/home/lead')
+
+    const state = store.getState()
+    expect(Object.keys(state.findings).sort()).toEqual([
+      'studio/home/footer',
+      'studio/home/lead',
+    ])
+    expect(state.thumbnails.light).toEqual({
+      'studio/home/lead': 'r-0-390x844',
+    })
+  })
+
+  it('gives a renamed frame a new identity, so it loads from its new file', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    receiveRename(store, 'studio/home/hero', 'studio/home/lead')
+
+    expect(identityOf(store.getState().aliases, 'studio/home/lead')).toBe(
+      'studio/home/lead',
+    )
+  })
+
   it('ignores a rename the board already carries', () => {
     const store = createLiveStore()
     receiveBoard(store, boardWith('hero'))
@@ -476,6 +525,24 @@ describe('takesRename', () => {
     receiveRename(store, 'studio/home', 'studio/start')
 
     expect(takesRename(store, 'studio/home', 'studio/start')).toBe(false)
+  })
+
+  it('waits on a frame rename the board does not carry yet', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+
+    expect(takesRename(store, 'studio/home/hero', 'studio/home/lead')).toBe(
+      true,
+    )
+  })
+
+  it('refuses a frame rename the board already carries', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('lead'))
+
+    expect(takesRename(store, 'studio/home/hero', 'studio/home/lead')).toBe(
+      false,
+    )
   })
 })
 
