@@ -35,10 +35,10 @@ These serve the board and run the test layers.
 | `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and prints an edit link |
 | `bun run dev`              | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset                 |
 | `bun run test`             | Runs Vitest in watch mode                                                                                           |
-| `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once                                                               |
+| `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once on half the cores, under the test lock                        |
 | `bun run test:coverage`    | Runs the `node` project with coverage, as CI's unit-tests job does                                                  |
-| `bun run test:e2e`         | Runs Playwright against the built CLI on a port offset per worktree                                                 |
-| `bun run test:e2e:changed` | Runs Playwright on specs the import graph reaches from the current diff                                             |
+| `bun run test:e2e`         | Runs Playwright on the built CLI at a per-worktree port, locally on a quarter of the cores, under the test lock     |
+| `bun run test:e2e:changed` | Runs Playwright on specs the import graph reaches from the current diff, under the test lock                        |
 
 Two of those need a companion command or variable.
 
@@ -129,6 +129,15 @@ These catch the toolchain out.
 - `canon sync` writes `canon/config/config.json` in a shape oxfmt rejects, so run `bun run format` before the commit
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
 - `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 4173
+
+### Test lock
+
+`scripts/test-locked.ts` holds one lock across every checkout on the machine, so a heavy run waits for another worktree's rather than starving it.
+
+- `test:run`, `test:e2e`, and `test:e2e:changed` take it, at `~/Library/Caches/frameboard/test.lock` on macOS and under `${XDG_CACHE_HOME:-~/.cache}/frameboard/` on Linux
+- A lock whose holder exited is taken over on the next poll, so delete the file by hand only when the waiting line names a live pid that runs no test
+- `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` or `pre-push` waiting on the lock looks hung until its run ends
+- `canon tooling diff web .` marks `test:run` with `!`, since the stack ships it plain, and the locked form is the one to keep
 
 ### Preview servers
 
