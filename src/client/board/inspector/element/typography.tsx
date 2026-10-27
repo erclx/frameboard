@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { ActionTooltip } from '../../chrome/action-tooltip'
 import { NumberField } from '../number-field'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
@@ -42,7 +43,8 @@ const NORMAL_LINE = 1.2
 /**
  * The Typography section of `inspector/text`: size in px, weight stepping
  * by 100, line height and letter spacing in px, and three alignment
- * buttons, each writing one declaration. A `normal` line height reads Auto
+ * buttons, each writing one declaration. Every icon control is captioned
+ * or names itself in a tooltip. A `normal` line height reads Auto
  * and writes nothing until changed. Family stays the agent's.
  */
 export function TypographySection({
@@ -94,6 +96,7 @@ export function TypographySection({
         />
         <NumberField
           label="Line height"
+          caption="Line height"
           prefix={
             <LineHeight aria-hidden className="size-3" strokeWidth={1.6} />
           }
@@ -113,6 +116,7 @@ export function TypographySection({
         />
         <NumberField
           label="Letter spacing"
+          caption="Letter spacing"
           prefix={
             <LetterSpacing aria-hidden className="size-3" strokeWidth={1.6} />
           }
@@ -129,26 +133,37 @@ export function TypographySection({
           )}
         />
       </div>
-      <div className="mt-1.5 flex w-max gap-0.5 rounded-md bg-input p-0.5">
+      <p
+        id="inspector-alignment"
+        className="mt-1.5 mb-1 ml-0.5 text-label font-normal text-muted-foreground"
+      >
+        Alignment
+      </p>
+      <div
+        role="group"
+        aria-labelledby="inspector-alignment"
+        className="flex w-max gap-0.5 rounded-md bg-input p-0.5"
+      >
         {ALIGNS.map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            aria-label={label}
-            aria-pressed={textAlign === value}
-            disabled={disabled}
-            onClick={() => {
-              if (textAlign !== value) {
-                void write({ kind: 'style', property: 'text-align', value })
-              }
-            }}
-            className={cn(
-              'grid h-[22px] w-7 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
-              textAlign === value && 'bg-sidebar text-foreground',
-            )}
-          >
-            <Icon aria-hidden className="size-[13px]" />
-          </button>
+          <ActionTooltip key={value} label={label}>
+            <button
+              type="button"
+              aria-label={label}
+              aria-pressed={textAlign === value}
+              disabled={disabled}
+              onClick={() => {
+                if (textAlign !== value) {
+                  void write({ kind: 'style', property: 'text-align', value })
+                }
+              }}
+              className={cn(
+                'grid h-[22px] w-7 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
+                textAlign === value && 'bg-sidebar text-foreground',
+              )}
+            >
+              <Icon aria-hidden className="size-[13px]" />
+            </button>
+          </ActionTooltip>
         ))}
       </div>
     </section>

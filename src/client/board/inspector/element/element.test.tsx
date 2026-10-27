@@ -56,6 +56,9 @@ const SHADOW: TokenRow = {
   sheet: 'tokens.css',
 }
 
+/** The kit's tooltip popup, apart from a caption carrying the same words. */
+const TOOLTIP = '[data-slot="tooltip-content"]'
+
 function tokenValueOf(token: string, percent = 100): StyleValue {
   return { value: `var(${token})`, token, percent }
 }
@@ -338,6 +341,71 @@ describe('TypographySection', () => {
     expect(changes).toEqual([
       { kind: 'style', property: 'text-align', value: 'center' },
     ])
+  })
+
+  it('captions the alignment buttons as a group', () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    expect(
+      within(screen.getByRole('group', { name: 'Alignment' })).getAllByRole(
+        'button',
+      ),
+    ).toHaveLength(3)
+  })
+
+  it('names an alignment button in a tooltip on hover', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.hover(
+      screen.getByRole('button', { name: 'Align text right' }),
+    )
+
+    expect(
+      await screen.findByText('Align text right', { selector: TOOLTIP }),
+    ).toBeInTheDocument()
+  })
+
+  it('names an icon field in a tooltip on keyboard focus', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    act(() => screen.getByRole('textbox', { name: 'Letter spacing' }).focus())
+
+    expect(
+      await screen.findByText('Letter spacing', { selector: TOOLTIP }),
+    ).toBeInTheDocument()
   })
 
   it('shows the computed line height and letter spacing', () => {
