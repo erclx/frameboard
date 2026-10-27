@@ -2,11 +2,12 @@ name: Deploy
 # canon-no-seed: a stack-specific deploy workflow with no root counterpart by design, parameterized per project on sync rather than mirrored from one.
 
 on:
-  # Every branch, so each one gets a preview, and only web/, since src/ here
-  # is the board rather than the site.
+  # Every branch, so each one gets a preview, and only web/ and this file,
+  # since src/ here is the board rather than the site.
   push:
     paths:
       - 'web/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
   # A closed pull request runs only the cleanup job below, which deletes the
   # preview deployments `canon pr preview` minted for its branch.
