@@ -161,6 +161,20 @@ function setup(
             />
           ) : null}
         </div>
+        <div
+          data-notes-layer
+          className="pointer-events-none absolute top-0 left-0"
+        >
+          {frames.map((frame) => (
+            <span
+              key={frame.ref}
+              data-note-marker
+              data-note-frame={frame.ref}
+              className="absolute"
+              style={{ left: frame.box.x + frame.box.width, top: frame.box.y }}
+            />
+          ))}
+        </div>
         <div data-hit-layer className="absolute inset-0" />
       </div>
     </Profiler>,
@@ -752,6 +766,46 @@ describe('attachGestures', () => {
         'translate(40px, 30px)',
       )
       canvas.pointer.up(190, 125)
+    })
+
+    it('shifts the pin of the dragged frame and no other frame while it drags', () => {
+      const canvas = setupWithElement()
+      const pin = (ref: string) =>
+        canvas.part(`[data-note-frame="${CSS.escape(ref)}"]`)
+
+      canvas.pointer.down(150, 95)
+      canvas.pointer.move(190, 125)
+
+      expect(pin(LEFT.ref).style.translate).toBe('40px 30px')
+      expect(pin(RIGHT.ref).style.translate).toBe('')
+      canvas.pointer.up(190, 125)
+    })
+
+    it('hands the pin back to its stored corner on release', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([150, 95], [190, 125])
+
+      expect(
+        canvas.part(`[data-note-frame="${CSS.escape(LEFT.ref)}"]`).style
+          .translate,
+      ).toBe('')
+    })
+
+    it('shifts the pin by the snapped offset rather than the pointer delta', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      // 97 px right puts LEFT's right edge 3 px short of RIGHT's left edge.
+      canvas.pointer.down(150, 95)
+      canvas.pointer.move(247, 95)
+
+      expect(
+        canvas.part(`[data-note-frame="${CSS.escape(LEFT.ref)}"]`).style
+          .translate,
+      ).toBe('100px')
+      canvas.pointer.up(247, 95)
     })
 
     it('hands the element outline back to its drawn box on release', () => {
