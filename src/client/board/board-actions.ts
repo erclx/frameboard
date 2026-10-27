@@ -144,7 +144,17 @@ function boardActions(): Action[] {
         read().mode === 'edit' &&
         read().tool !== 'move' &&
         notesUi.getState().open === null,
-      run: () => set({ tool: 'move' }),
+      run: () => {
+        // The button that armed the tool keeps its ring once Move takes over.
+        const focused = document.activeElement
+        if (
+          focused instanceof HTMLElement &&
+          focused.closest('[role="toolbar"]')
+        ) {
+          focused.blur()
+        }
+        set({ tool: 'move' })
+      },
     },
     {
       id: 'view.hideUi',

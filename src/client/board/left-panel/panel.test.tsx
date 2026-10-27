@@ -928,10 +928,22 @@ describe('LeftPanel', () => {
         expect([view.centered, view.handMoves()]).toEqual([[far], 1])
       })
 
-      it('leaves the view on a frame partly on screen', async () => {
+      it('centers a frame partly on screen', async () => {
         const view = attachView()
         const edge = { x: 700, y: 500, width: 400, height: 300 }
         renderPanel(project([page('home', [frame('hero', { box: edge })])]))
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Select hero' }),
+        )
+
+        expect(view.centered).toEqual([edge])
+      })
+
+      it('leaves the view on a frame wholly on screen', async () => {
+        const view = attachView()
+        const inside = { x: 100, y: 100, width: 400, height: 300 }
+        renderPanel(project([page('home', [frame('hero', { box: inside })])]))
 
         await userEvent.click(
           screen.getByRole('button', { name: 'Select hero' }),

@@ -36,8 +36,8 @@ export function createClipboardStore(): ClipboardStore {
 
 export const clipboardStore = createClipboardStore()
 
-/** Where a frame's rename field opens, being its layers row or the inspector's name. */
-export type RenameSurface = 'layers' | 'inspector'
+/** Where a frame's rename field opens, being its layers row, the inspector's name, or its canvas label. */
+export type RenameSurface = 'layers' | 'inspector' | 'canvas'
 
 /**
  * The frame shown as a rename field and the one surface showing it, so two

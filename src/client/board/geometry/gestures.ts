@@ -129,6 +129,17 @@ export function attachGestures(
 
   const overlay = () =>
     target.layer.querySelector<HTMLElement>('[data-overlay]')
+  // The element outline is drawn beside the frame overlay rather than in it,
+  // so a frame drag shifts it here, as `drawMove` shifts the frame's.
+  const shiftElementOutline = (dx: number, dy: number) => {
+    const outline = target.layer.querySelector<HTMLElement>(
+      '[data-element-selection]',
+    )
+    if (outline) {
+      outline.style.transform =
+        dx === 0 && dy === 0 ? '' : `translate(${dx}px, ${dy}px)`
+    }
+  }
   const zoom = () => zoomTransform(target.viewport).k
   const toCanvas = (event: MouseEvent): Point => {
     const [x, y] = pointer(event, target.viewport)
@@ -292,6 +303,7 @@ export function attachGestures(
           element.style.top = `${box.y + oy}px`
         }
         drawMove(root, ox, oy, snap.box)
+        shiftElementOutline(ox, oy)
         drawGuides(root, snap.guides, snap.gaps)
         return
       }
@@ -398,6 +410,7 @@ export function attachGestures(
       return
     }
     if (root) drawRest(root)
+    shiftElementOutline(0, 0)
     const point = toCanvas(event)
     if (gesture.kind === 'marquee') {
       const touched = framesIn(

@@ -708,6 +708,26 @@ describe('attachGestures', () => {
       expect(canvas.writes).toHaveLength(1)
     })
 
+    it('shifts the element outline with its frame while the frame drags', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.down(150, 95)
+      canvas.pointer.move(190, 125)
+
+      expect(canvas.part('[data-element-selection]').style.transform).toBe(
+        'translate(40px, 30px)',
+      )
+      canvas.pointer.up(190, 125)
+    })
+
+    it('hands the element outline back to its drawn box on release', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([150, 95], [190, 125])
+
+      expect(canvas.part('[data-element-selection]').style.transform).toBe('')
+    })
+
     it('keeps the element on a click on its outline', () => {
       const canvas = setupWithElement()
 
