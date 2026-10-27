@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.17.0](https://github.com/erclx/frameboard/compare/v0.16.0...v0.17.0) (2026-10-27)
+
+
+### Features
+
+* **canvas:** resize a placed shape by dragging its corner marks ([#152](https://github.com/erclx/frameboard/issues/152)) ([c5745bf](https://github.com/erclx/frameboard/commit/c5745bf4ef191c4560aaf5e31a891a0d792f8441))
+* **layers:** reorder an element among its siblings by row drag and key ([#155](https://github.com/erclx/frameboard/issues/155)) ([ce4d3ee](https://github.com/erclx/frameboard/commit/ce4d3ee3d27c1fd8e16b60543afa52fbf850ed5d))
+* **live:** keep a frame's flip, unseen mark, and selection on rename ([#153](https://github.com/erclx/frameboard/issues/153)) ([64dcc1f](https://github.com/erclx/frameboard/commit/64dcc1f7fbf24c291a7b3f037d2bb293210b6a27))
+* **tooling:** queue heavy test runs on a machine-wide lock ([#158](https://github.com/erclx/frameboard/issues/158)) ([ed88ddd](https://github.com/erclx/frameboard/commit/ed88ddd4ff232cc36af57a957c3c6dfe74316d9c))
+
+
+### Bug Fixes
+
+* **inspector:** keep the checked weight number clear of its check ([#161](https://github.com/erclx/frameboard/issues/161)) ([eea4f5f](https://github.com/erclx/frameboard/commit/eea4f5f9771e2f03e891674082f71c77ff62f983))
+* **web:** lift landing text to 4.5:1 contrast in light and dark ([#156](https://github.com/erclx/frameboard/issues/156)) ([c148ccb](https://github.com/erclx/frameboard/commit/c148ccb9c24f9bd91c7595b684360be6b78ba68b))
+
+
+### Performance Improvements
+
+* **faces:** copy only the woff2 files a sheet references ([#151](https://github.com/erclx/frameboard/issues/151)) ([21fe020](https://github.com/erclx/frameboard/commit/21fe0204e1221705c55d0a1d92182e7a166e6165))
+
 ## [0.16.0](https://github.com/erclx/frameboard/compare/v0.15.0...v0.16.0) (2026-10-27)
 
 

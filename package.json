@@ -1,6 +1,6 @@
 {
   "name": "frameboard",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "A local design board that coding agents draw on as plain HTML files",
   "keywords": [
     "design",
