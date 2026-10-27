@@ -4,6 +4,12 @@
 // (default `.`) names the checkout whose board is served, and PREVIEW_PORT
 // (default 4173) the port asked for. Stays up as long as the server it
 // started, and on a server already live it prints the link and exits.
+//
+// It starts `serve` with the hidden `--open-route`, so `/api/access/open` hands
+// out a fresh edit link on every open, for a browser with no shell such as a
+// recorder's. Any page that navigates a browser on this machine there gets a
+// writing tab, which is safe only because this serves a throwaway fixture or
+// drive copy. Pointing CANON_PREVIEW_ROOT at a real board widens that to it.
 import { type ChildProcess, execFile, spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -36,7 +42,17 @@ const PORT = process.env.PREVIEW_PORT || '4173'
 
 const server = spawn(
   'node',
-  [CLI, 'serve', '--root', BOARD, '--no-open', '--json', '--port', PORT],
+  [
+    CLI,
+    'serve',
+    '--root',
+    BOARD,
+    '--no-open',
+    '--json',
+    '--port',
+    PORT,
+    '--open-route',
+  ],
   { stdio: ['ignore', 'pipe', 'inherit'] },
 )
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -61,6 +77,10 @@ try {
   console.log(`Edit link: ${opened.writeUrl}`)
   console.log(
     `The link works once and lives two minutes. Mint another with: node ${CLI} open --root ${served.root} --no-open`,
+  )
+  // A reused server kept the flags it started with, so its route may be absent.
+  console.log(
+    `Edit link (fresh each open): ${served.url}/api/access/open${served.reused ? ' (only on a server preview started)' : ''}`,
   )
   // A reused server belongs to someone else, and its `serve` has already exited.
   process.exit(served.reused ? 0 : await exited)
