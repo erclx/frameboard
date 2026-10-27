@@ -228,10 +228,152 @@ describe('AppearanceSection', () => {
 })
 
 describe('TypographySection', () => {
+  const FONT_TEXT: TokenRow = {
+    name: '--font-text',
+    group: 'font',
+    light: 'Geist, sans-serif',
+    dark: null,
+    sheet: 'tokens.css',
+  }
+  const FONT_SIZE: TokenRow = {
+    name: '--font-size-sm',
+    group: 'font',
+    light: '12px',
+    dark: null,
+    sheet: 'tokens.css',
+  }
+
+  it('shows a family a token sets by the token, and writes nothing for that token', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Font family' })
+    expect(trigger).toHaveTextContent('font-text')
+    await userEvent.click(trigger)
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'font-text' }),
+    )
+
+    expect(changes).toEqual([])
+  })
+
+  it('writes a font token as its var()', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Caveat, cursive"
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font family' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'font-text' }),
+    )
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-family', value: 'var(--font-text)' },
+    ])
+  })
+
+  it('writes a served face by its family, quoted when it holds a space', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font family' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Geist Mono' }),
+    )
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-family', value: "'Geist Mono'" },
+    ])
+  })
+
+  it('lists the font tokens holding a family ahead of the faces, leaving a size out', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_SIZE, FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font family' }))
+    const items = await screen.findAllByRole('menuitemradio')
+
+    expect(items.map((item) => item.textContent)).toEqual([
+      'font-text',
+      'Geist',
+      'Geist Mono',
+      'Caveat',
+    ])
+  })
+
+  it('shows a family the menu does not hold as written', () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily='"Inter Tight", sans-serif'
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Font family' }),
+    ).toHaveTextContent('Inter Tight')
+  })
+
   it('writes the size in px', async () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -256,6 +398,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -283,6 +426,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -306,6 +450,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Caveat, cursive"
         fontSize={30}
         fontWeight={400}
@@ -332,6 +477,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Caveat, cursive"
         fontSize={30}
         fontWeight={900}
@@ -352,6 +498,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -379,6 +526,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -401,6 +549,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -425,6 +574,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -447,6 +597,7 @@ describe('TypographySection', () => {
     const { write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -470,6 +621,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -494,6 +646,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -518,6 +671,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}
@@ -541,6 +695,7 @@ describe('TypographySection', () => {
     const { changes, write } = recorder()
     render(
       <TypographySection
+        fonts={[]}
         fontFamily="Geist, sans-serif"
         fontSize={30}
         fontWeight={700}

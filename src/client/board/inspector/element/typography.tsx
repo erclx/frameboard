@@ -8,6 +8,7 @@ import {
   LineHeight,
   type LucideIcon,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import {
   DropdownMenu,
@@ -15,11 +16,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { FACES, faceSheetUrl } from '@/shared/faces'
+import type { TokenRow } from '@/shared/records/tokens'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { NumberField } from '../number-field'
-import { faceOf } from './families'
+import { faceOf, familyIn, familyOptions, firstFamily } from './families'
+import { TOKEN_CHIP } from './values'
 import { weightLabel, weightsOf } from './weights'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
@@ -33,7 +37,9 @@ const ALIGNS: readonly { value: string; label: string; icon: LucideIcon }[] = [
 const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
 
 interface TypographySectionProps {
-  /** The computed stack, whose first family picks the weights offered. */
+  /** The project's `font` tokens, listed in Family ahead of the served faces. */
+  fonts: readonly TokenRow[]
+  /** The computed stack, which Family matches back to a token and whose face picks the weights offered. */
   fontFamily: string
   fontSize: number
   fontWeight: number
@@ -53,13 +59,16 @@ interface TypographySectionProps {
 const NORMAL_LINE = 1.2
 
 /**
- * The Typography section of `inspector/text`: weight by name among those
- * the face ships, size in px, line height and letter spacing in px, and
- * three alignment buttons, each writing one declaration. Every icon control
- * is captioned or names itself in a tooltip. A `normal` line height reads
- * Auto and writes nothing until changed. Family stays the agent's.
+ * The Typography section of `inspector/text`: the family from the project's
+ * font tokens and the served faces, each drawn in its own face, the weight
+ * by name among those the face ships, size in px, line height and letter
+ * spacing in px, and three alignment buttons, each writing one declaration.
+ * Every icon control is captioned or names itself in a tooltip. A family
+ * the menu does not hold reads as written, and a `normal` line height reads
+ * Auto and writes nothing until changed.
  */
 export function TypographySection({
+  fonts,
   fontFamily,
   fontSize,
   fontWeight,
@@ -71,6 +80,8 @@ export function TypographySection({
   preview,
 }: TypographySectionProps) {
   const weights = weightsOf(faceOf(fontFamily))
+  const families = familyOptions(fonts)
+  const family = familyIn(fontFamily, families)
   return (
     <section
       aria-labelledby="inspector-typography"
@@ -79,7 +90,31 @@ export function TypographySection({
       <h2 id="inspector-typography" className="mb-2 text-xs font-semibold">
         Typography
       </h2>
+      {FACES.map((face) => (
+        <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
+      ))}
       <div className="grid grid-cols-2 gap-1.5">
+        <TypePicker
+          label="Font family"
+          shown={
+            family?.token ? (
+              <span className={TOKEN_CHIP}>{family.name}</span>
+            ) : (
+              (family?.name ?? firstFamily(fontFamily))
+            )
+          }
+          current={family?.value ?? null}
+          options={families.map(({ value, name, stack }) => ({
+            value,
+            name,
+            font: stack,
+          }))}
+          disabled={disabled}
+          onPick={(value) =>
+            void write({ kind: 'style', property: 'font-family', value })
+          }
+          className="col-span-2"
+        />
         <TypePicker
           label="Font weight"
           shown={weightLabel(fontWeight, weights)}
@@ -195,7 +230,7 @@ interface TypeOption {
 interface TypePickerProps {
   label: string
   /** What the closed picker reads, which may name a value no option holds. */
-  shown: string
+  shown: ReactNode
   /** The option checked, matched by value. */
   current: string | null
   options: readonly TypeOption[]
