@@ -138,4 +138,43 @@ test.describe('selecting an element inside a frame', () => {
 
     await expect.poll(read).toContain('<h1 data-name="Headline">hero</h1>')
   })
+
+  test('a Layers row dragged above its sibling moves the element in the file, and undo puts it back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    /** Where Headline and Caption sit in the file, Headline first while it leads. */
+    const order = () => {
+      const html = readFileSync(path, 'utf8')
+      return html.indexOf('data-name="Headline"') <
+        html.indexOf('data-name="Caption"')
+        ? ['Headline', 'Caption']
+        : ['Caption', 'Headline']
+    }
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await page
+      .getByRole('button', { name: 'Show the elements of hero' })
+      .click()
+    const elements = page.getByRole('list', { name: 'Elements of hero' })
+    const headline = elements.getByRole('button', {
+      name: 'Headline',
+      exact: true,
+    })
+    const box = await headline.boundingBox()
+    if (!box) throw new Error('The Headline row has no box on screen')
+
+    await elements
+      .getByRole('button', { name: 'Caption', exact: true })
+      .dragTo(headline, { targetPosition: { x: box.width / 2, y: 2 } })
+
+    await expect.poll(order).toEqual(['Caption', 'Headline'])
+    await expect(elements.locator('[aria-current="true"]')).toHaveText(
+      'Caption',
+    )
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(order).toEqual(['Headline', 'Caption'])
+  })
 })
