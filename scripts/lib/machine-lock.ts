@@ -63,19 +63,21 @@ export function release(path: string, pid: number): void {
 function takeOver(path: string, staleRaw: string | null, me: Holder): boolean {
   const guard = `${path}.takeover`
   if (!create(guard, me)) {
-    const taker = read(guard).holder
-    if (taker && alive(taker.pid)) return false
+    const seen = read(guard)
+    if (seen.holder && alive(seen.holder.pid)) return false
     // A taker that died mid-takeover strands the guard, which nothing else
-    // would ever clear.
-    unlinkQuietly(guard)
-    if (!create(guard, me)) return false
+    // would ever clear. Clearing it and retrying on the next poll, rather than
+    // taking the guard at once, leaves two waiters inside the takeover only
+    // when one stalls a whole poll between this read and its unlink.
+    if (read(guard).raw === seen.raw) unlinkQuietly(guard)
+    return false
   }
   try {
     if (read(path).raw !== staleRaw) return create(path, me)
     unlinkQuietly(path)
     return create(path, me)
   } finally {
-    unlinkQuietly(guard)
+    if (read(guard).holder?.pid === me.pid) unlinkQuietly(guard)
   }
 }
 

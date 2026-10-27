@@ -95,15 +95,17 @@ describe('tryAcquire', () => {
     expect(result).toEqual({ acquired: false, holder: null })
   })
 
-  it('should clear a takeover guard its own taker left when it died', () => {
+  it("should clear a dead taker's guard and take the lock on the next poll", () => {
     const dead = holder(deadPid())
     tryAcquire(path, dead)
     writeFileSync(`${path}.takeover`, JSON.stringify(dead))
     const me = holder(process.pid)
 
-    const result = tryAcquire(path, me)
+    const first = tryAcquire(path, me)
+    const second = tryAcquire(path, me)
 
-    expect(result).toEqual({ acquired: true })
+    expect(first).toEqual({ acquired: false, holder: null })
+    expect(second).toEqual({ acquired: true })
     expect(existsSync(`${path}.takeover`)).toBe(false)
   })
 })
