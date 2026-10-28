@@ -66,7 +66,7 @@
         },
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-loop-light.webp loop and the .github/readme-hero-dark.png still, with .github/readme-hero-light.png as the reduced-motion fallback, and commits no capture under assets/evidence/readme"
+          "reason": "The README shows the .github/readme-hero-loop-light.webp and .github/readme-hero-loop-dark.webp loops, with the .github/readme-hero-light.png and .github/readme-hero-dark.png stills as the reduced-motion fallbacks, and commits no capture under assets/evidence/readme"
         },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
