@@ -11,6 +11,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 import { contrastOnPage } from '@/test/contrast'
 
+import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
 import { Composer } from './composer'
@@ -799,6 +800,25 @@ describe('NotesLayer', () => {
       expect(
         screen.getByRole('button', { name: 'Note 1 on hero' }),
       ).toHaveStyle({ left: '1440px', top: '0px' })
+    })
+  })
+
+  describe('on a frame whose released box is still pending', () => {
+    afterEach(() => {
+      act(() => dropPending([HERO.ref]))
+    })
+
+    it('draws a frame note at the corner of the pending box', () => {
+      live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+      renderLayer()
+
+      act(() =>
+        holdBoxes({ [HERO.ref]: { x: 20, y: -40, width: 500, height: 884 } }),
+      )
+
+      expect(
+        screen.getByRole('button', { name: 'Note 1 on hero' }),
+      ).toHaveStyle({ left: '520px', top: '-40px' })
     })
   })
 

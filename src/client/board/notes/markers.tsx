@@ -5,9 +5,9 @@ import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
+import { useDrawnFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { cornerOf } from '../pin-corner'
-import { usePreviewedFrames } from '../preview/store'
 import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
@@ -37,8 +37,10 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   // so a frame load renders the layer again.
   useFrameLoads(container)
   useCloseOnEscape(open !== null)
-  // A marker sits on the frame as drawn, at a previewed width included.
-  const shown = usePreviewedFrames(frames)
+  // A marker sits on the frame as drawn, at a previewed width and at a
+  // released box the board has not carried back yet, so a pin a drag shifted
+  // stays where the drag left it.
+  const shown = useDrawnFrames(frames)
   if (playing) return null
 
   const roots = (notes ?? []).filter(
