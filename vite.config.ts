@@ -5,8 +5,10 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 const offset = Number(process.env.WORKTREE_PORT_OFFSET ?? 0)
-// The CLI's `serve`, which `bun run dev` proxies the board's API, socket, and frames to.
-const boardServer = `http://127.0.0.1:${4173 + offset}`
+// The board server `scripts/dev.ts` starts and proxies the API, socket, and
+// frames to. It sits above Vite's port because `canon pr local` reports the
+// lowest page port, which has to be Vite's.
+const boardServer = `http://127.0.0.1:${6173 + offset}`
 
 export default defineConfig({
   root: fileURLToPath(new URL('./src/client', import.meta.url)),
