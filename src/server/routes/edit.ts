@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import { resolveAsset } from '@/server/board/assets'
 import { resolveFrameRef } from '@/server/board/refs'
 import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
@@ -12,7 +14,12 @@ import {
   moveFrameFile,
   removeFrameFile,
 } from '@/server/edit/frame-file'
-import { elementMarkup, shapePaint, textFont } from '@/server/edit/insert'
+import {
+  elementMarkup,
+  type InsertKind,
+  shapePaint,
+  textFont,
+} from '@/server/edit/insert'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
 import type {
@@ -65,6 +72,12 @@ const insertSchema = z.object({
       height: side.optional(),
     }),
     z.object({ kind: z.literal('divider'), vertical: z.boolean() }),
+    z.object({
+      kind: z.literal('asset'),
+      path: z.string().min(1).max(1024),
+      width: side,
+      height: side,
+    }),
   ]),
 })
 
@@ -108,6 +121,10 @@ export type SettledVersion = (
  * has answers 409 `stale-address` with nothing written, since the gap's
  * indices name nothing past an agent's write, and a retried insert lands once.
  * A rectangle or an ellipse takes an optional width and height a drag drew.
+ * An asset names a file under the project's `assets/` and the size it
+ * shows at, and the server picks its tag from the file's kind. A file
+ * outside that folder or not there answers 409 `asset-missing`, and one that
+ * is no image, GIF, SVG, or video `asset-not-placeable`, each writing nothing.
  *
  * The remove takes out the element at `index`, with what it holds, from the
  * bytes `hash` names, and records it as one step whose undo puts it back
@@ -188,11 +205,34 @@ export function editRoutes(
     const tokens = sheets
       ? readTokenTable(root, sheets(frame.project)).tokens
       : []
+    let element: InsertKind
+    if (body.element.kind !== 'asset') {
+      element = body.element
+    } else {
+      const asset = await resolveAsset(
+        join(root, frame.project),
+        body.element.path,
+      )
+      if (!asset.ok) {
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: asset.code,
+              message: asset.message,
+              details: { ref, path: body.element.path },
+            },
+          },
+          409,
+        )
+      }
+      element = { ...body.element, video: asset.kind === 'video' }
+    }
     const result = insertFrameFile(
       frame.path,
       body.hash,
       { parent: body.parent, before: body.before },
-      elementMarkup(body.element, shapePaint(tokens), textFont(tokens)),
+      elementMarkup(element, shapePaint(tokens), textFont(tokens)),
     )
     if (!result.ok) {
       return c.json(

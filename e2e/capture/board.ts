@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import type { Page } from '@playwright/test'
 import WebSocket from 'ws'
@@ -11,6 +12,16 @@ import type { ListResult } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
 import type { CaptureCase } from './types'
+
+/**
+ * The board the preview serves, under the checkout `CANON_PREVIEW_ROOT`
+ * names as `scripts/preview.ts` reads it, so a run against a copy outside the
+ * tree reads and writes that copy.
+ */
+const SERVED_BOARD = join(
+  process.env.CANON_PREVIEW_ROOT || '.',
+  'test/fixtures/boards/basic',
+)
 
 /**
  * Saves a theme choice before the board loads, as `theme.light` and
@@ -173,6 +184,39 @@ function chooseOnLoad(label: string): (page: Page) => Promise<void> {
       { name: label, frames: PRESS_FRAMES },
     )
   }
+}
+
+/**
+ * Opens the Shape menu and then the picker from its Image or video row, once
+ * the server grants writes, which enable the row. Waits in an init script as
+ * `pressOnLoad` does.
+ */
+async function imagePickerOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const open = () => {
+        const row = [
+          ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+        ].find((item) => item.textContent?.includes('Image or video'))
+        if (row && row.getAttribute('aria-disabled') !== 'true') {
+          row.click()
+          return
+        }
+        // One press opens the menu, and another before it draws would close it.
+        const caret = document.querySelector<HTMLElement>(
+          'button[aria-label="Shapes"]',
+        )
+        if (!row && caret && caret.getAttribute('aria-expanded') !== 'true') {
+          caret.click()
+        }
+        if (--left > 0) requestAnimationFrame(open)
+        else console.error('The Image or video row never enabled')
+      }
+      document.addEventListener('DOMContentLoaded', open)
+    },
+    { frames: PRESS_FRAMES },
+  )
 }
 
 /**
@@ -350,7 +394,7 @@ function onCanvas(gesture: CanvasGesture): (page: Page) => Promise<void> {
 async function asWriter(page: Page): Promise<void> {
   const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
   const { token } = JSON.parse(
-    readFileSync('test/fixtures/boards/basic/.run/address.json', 'utf8'),
+    readFileSync(join(SERVED_BOARD, '.run/address.json'), 'utf8'),
   ) as { token: string }
   const response = await fetch(`${base}/api/access/ticket`, {
     method: 'POST',
@@ -367,7 +411,7 @@ async function asWriter(page: Page): Promise<void> {
  */
 async function browserSwept(): Promise<void> {
   const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
-  const root = 'test/fixtures/boards/basic'
+  const root = SERVED_BOARD
   const { token } = JSON.parse(
     readFileSync(`${root}/.run/address.json`, 'utf8'),
   ) as { token: string }
@@ -396,7 +440,7 @@ async function browserSwept(): Promise<void> {
 async function listening(page: Page): Promise<void> {
   const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
   const { token } = JSON.parse(
-    readFileSync('test/fixtures/boards/basic/.run/address.json', 'utf8'),
+    readFileSync(join(SERVED_BOARD, '.run/address.json'), 'utf8'),
   ) as { token: string }
   const socket = new WebSocket(`${base.replace(/^http/, 'ws')}/api/live`, {
     headers: { authorization: `Bearer ${token}` },
@@ -425,7 +469,7 @@ const LISTENING_SESSION = '4b7d2e90-1c3a-4f6e-9a1b-2d5c8e7f0a13'
  */
 function claimed(frame: string): (page: Page) => Promise<void> {
   return async (page) => {
-    const root = 'test/fixtures/boards/basic'
+    const root = SERVED_BOARD
     await claim(
       root,
       {
@@ -1409,6 +1453,24 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(referenceAssets, leftTab('Assets'))),
+      },
+      {
+        section: 'shape-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, pressOnLoad('^Shapes$'))),
+      },
+      {
+        section: 'image-picker',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(referenceAssets, asWriter, imagePickerOnLoad)),
       },
       {
         section: 'hide-ui',

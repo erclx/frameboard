@@ -10,7 +10,13 @@ import {
 } from 'node:fs/promises'
 import { join, sep } from 'node:path'
 
-import { assetKind, extensionOf, isAcceptedUpload } from '@/shared/asset-kinds'
+import {
+  assetKind,
+  extensionOf,
+  isAcceptedUpload,
+  isPlaceableKind,
+  type PlaceableKind,
+} from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
@@ -77,6 +83,61 @@ async function walk(
     if (!target.startsWith(real + sep)) continue
     into.push({ path: `${prefix}${name}`, kind: assetKind(name), size })
   }
+}
+
+export type ResolvedAsset =
+  | { readonly ok: true; readonly kind: PlaceableKind }
+  | {
+      readonly ok: false
+      readonly code: 'asset-missing' | 'asset-not-placeable'
+      readonly message: string
+    }
+
+/**
+ * The kind of the file at `path` under a project's `assets/`, when a frame
+ * can show it, confined as `listAssets` is: a path naming a dot-named
+ * segment, a `..`, or any file whose real path leaves the folder is
+ * `asset-missing`, as is one that is not there. A file that is there but is
+ * no image, GIF, SVG, or video is `asset-not-placeable`.
+ */
+export async function resolveAsset(
+  projectDir: string,
+  path: string,
+): Promise<ResolvedAsset> {
+  const missing = {
+    ok: false,
+    code: 'asset-missing',
+    message: `assets/${path} is not a file in the project's assets folder`,
+  } as const
+  const segments = path.split('/')
+  if (
+    segments.some(
+      (segment) =>
+        segment === '' || segment.startsWith('.') || isScratch(segment),
+    )
+  ) {
+    return missing
+  }
+  const folder = join(projectDir, ASSETS_FOLDER)
+  try {
+    const real = await realpath(folder)
+    const target = await realpath(join(folder, ...segments))
+    if (!target.startsWith(real + sep) || !(await stat(target)).isFile()) {
+      return missing
+    }
+  } catch (error) {
+    if (isCode(error, 'ENOENT') || isCode(error, 'ENOTDIR')) return missing
+    throw error
+  }
+  const kind = assetKind(path)
+  if (!isPlaceableKind(kind)) {
+    return {
+      ok: false,
+      code: 'asset-not-placeable',
+      message: `assets/${path} is not an image, GIF, SVG, or video, so a frame cannot show it`,
+    }
+  }
+  return { ok: true, kind }
 }
 
 function isScratch(name: string): boolean {

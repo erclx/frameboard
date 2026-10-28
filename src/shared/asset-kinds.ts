@@ -12,6 +12,20 @@ export const ASSET_KINDS = [
 
 export type AssetKind = (typeof ASSET_KINDS)[number]
 
+/** The kinds a frame shows as an `<img>` or a `<video>`, which the board places by hand. */
+export const PLACEABLE_KINDS = [
+  'image',
+  'gif',
+  'svg',
+  'video',
+] as const satisfies readonly AssetKind[]
+
+export type PlaceableKind = (typeof PLACEABLE_KINDS)[number]
+
+export function isPlaceableKind(kind: unknown): kind is PlaceableKind {
+  return (PLACEABLE_KINDS as readonly unknown[]).includes(kind)
+}
+
 /** The extensions a drop accepts, each with the kind its tile draws. */
 const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   png: 'image',

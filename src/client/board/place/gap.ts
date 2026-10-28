@@ -24,6 +24,8 @@ export interface Gap {
   before: number | null
   /** Whether the container lays its children out along x, where a divider draws vertical. */
   row: boolean
+  /** The container's content width in frame pixels, which a placed file is capped at. */
+  room: number
   line: GapLine
 }
 
@@ -163,10 +165,16 @@ export function gapAt(document: Document, at: FramePoint): Gap | null {
   )
   const after = next === -1 ? children.at(-1) : children[next - 1]
   const ahead = next === -1 ? undefined : children[next]
+  const padding = (side: string) =>
+    Number.parseFloat(style.getPropertyValue(`padding-${side}`)) || 0
   return {
     parent,
     before: ahead?.index ?? null,
     row,
+    room: Math.max(
+      0,
+      container.clientWidth - padding('left') - padding('right'),
+    ),
     line: lineAt(container.getBoundingClientRect(), style, row, reverse, {
       after: after?.box,
       ahead: ahead?.box,

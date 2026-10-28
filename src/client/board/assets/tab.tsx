@@ -4,6 +4,7 @@ import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { useLive } from '@/client/live/store'
 import type { AssetAddResult, AssetList } from '@/shared/records/assets'
 
+import { fetchAssets } from './list'
 import { Tile } from './tile'
 import { uploadAssets } from './upload'
 
@@ -202,13 +203,3 @@ function useAssetList(
 
   return list
 }
-
-async function fetchAssets(project: string): Promise<AssetList | null> {
-  const response = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/assets`,
-  )
-  const body = (await response.json()) as AssetsBody
-  return body.ok ? body.data : null
-}
-
-type AssetsBody = { ok: true; data: AssetList } | { ok: false }

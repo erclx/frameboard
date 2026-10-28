@@ -1,9 +1,13 @@
+import { draggable } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
 import { Music, Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { useLive } from '@/client/live/store'
+import { isPlaceableKind } from '@/shared/asset-kinds'
 import type { AssetFile } from '@/shared/records/assets'
 
 import { assetUrl, describeAsset, linkPath } from './describe'
+import { tileDragData } from './drag'
 
 interface TileProps {
   project: string
@@ -16,12 +20,26 @@ const COPIED_MS = 1500
 
 /**
  * One file of `canon/design/tabs/assets`: the thumbnail, the name, and the
- * `<type> · <size>` line, a click copying the path a frame links it by.
+ * `<type> · <size>` line, a click copying the path a frame links it by. An
+ * image, GIF, SVG, or video drags onto a frame while this tab may write,
+ * landing where the canvas's drop target places it.
  */
 export function Tile({ project, file }: TileProps) {
   const [copy, setCopy] = useState<Copy>('idle')
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
+  const button = useRef<HTMLButtonElement>(null)
+  const canWrite = useLive((state) => state.canWrite)
+  const { path, kind } = file
+  useEffect(() => {
+    const element = button.current
+    if (!element || !canWrite) return
+    if (!isPlaceableKind(kind)) return
+    return draggable({
+      element,
+      getInitialData: () => tileDragData({ project, path, kind }),
+    })
+  }, [project, path, kind, canWrite])
 
   async function copyPath() {
     let next: Copy = 'copied'
@@ -38,6 +56,7 @@ export function Tile({ project, file }: TileProps) {
   return (
     <li>
       <button
+        ref={button}
         type="button"
         onClick={() => void copyPath()}
         aria-label={`Copy path of ${file.path}`}
@@ -69,7 +88,8 @@ const PILL: Record<Copy, string> = {
 
 const THUMB = 'grid h-[72px] place-items-center text-muted-foreground'
 
-function Thumbnail({ project, file }: TileProps) {
+/** A file's 72px preview, the image itself or a mark for its kind. */
+export function Thumbnail({ project, file }: TileProps) {
   switch (file.kind) {
     case 'image':
     case 'gif':
