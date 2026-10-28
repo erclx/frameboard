@@ -31,6 +31,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Selection colors:** the colors the frame, the frames, or the element's subtree use, with token names, and a flag on raw values, read-only
+- **Export:** one frame alone ends on scale and theme menus, a button, and a caption naming each `<frame>.<theme>@<n>x.png`. Every theme renders before any file downloads.
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. One frame with findings lists them under Checks below it, the list its label's badge opens. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
