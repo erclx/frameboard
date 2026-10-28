@@ -129,4 +129,4 @@ The favicon files sit beside the app.
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a wheel carrying `ctrlKey` zooms
 - `wheel.ts` reads an axis in line mode or of 50 pixels or more as a mouse notch, which zooms one 1.2 step or pans over 120 ms, so a unit test polls the view after a notch-sized pan
 - Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
-- `cn` reads the custom `text-body` and `text-label` steps as colors, keeping a kit part's `text-sm` beside one but dropping one before a color. Use `text-xs` for 12px, `text-[11px]` for 11px
+- `cn` drops a `text-body`, `text-label`, or `text-caption` step before a color. Inside `cn` use `text-xs` for 12px, `text-[11px]` for 11px, and `text-(length:--text-caption)` for 10px
