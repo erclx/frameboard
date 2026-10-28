@@ -178,10 +178,12 @@ export function Canvas({
   // press, so a frame change rebinds neither.
   const framesRef = useRef(frames)
   const sectionsRef = useRef(page.sections)
+  const pageFramesRef = useRef(page.frames)
   useLayoutEffect(() => {
     framesRef.current = frames
     sectionsRef.current = page.sections
-  }, [frames, page.sections])
+    pageFramesRef.current = page.frames
+  }, [frames, page.sections, page.frames])
   // Read by the zoom handler, which marks crowded labels with no render.
   const rooms = useMemo(() => labelRoom(frames), [frames])
   const roomsRef = useRef(rooms)
@@ -504,6 +506,7 @@ export function Canvas({
       page: page.ref,
       frames: () => framesRef.current,
       sections: () => sectionsRef.current,
+      pageFrames: () => pageFramesRef.current,
     })
   }, [page.ref, playing])
 

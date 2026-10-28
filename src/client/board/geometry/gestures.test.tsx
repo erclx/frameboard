@@ -67,7 +67,10 @@ function setup(
     live,
     sections = [],
     lands = true,
+    hidden = [],
   }: {
+    /** Frames on the page the canvas does not draw, which a section move still carries. */
+    hidden?: FrameRecord[]
     /** The page's sections, drawn under the frames as the canvas draws them. */
     sections?: SectionRecord[]
     /** Whether a write lands, false answering it refused. */
@@ -222,6 +225,7 @@ function setup(
       page: PAGE,
       frames: () => frames,
       sections: () => sections,
+      pageFrames: () => [...frames, ...hidden],
     },
     {
       selection: selectionStore,
@@ -469,6 +473,26 @@ describe('attachGestures', () => {
           },
         },
       ])
+    })
+
+    it('carries a hidden frame it holds, which the canvas does not draw', () => {
+      const away = frameOf('away', {
+        box: { x: 120, y: 260, width: 50, height: 50 },
+        hidden: true,
+      })
+      const canvas = setup(undefined, {
+        sections: [{ ...FLOW, frames: ['left', 'away'] }],
+        hidden: [away],
+      })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+
+      expect(canvas.writes[0]?.boxes[away.ref]).toEqual({
+        ...away.box,
+        x: 145,
+        y: 280,
+      })
     })
 
     it('carries the pins of the frames it moves', () => {

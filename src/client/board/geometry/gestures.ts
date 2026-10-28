@@ -60,6 +60,11 @@ export interface GestureTarget {
   frames: () => readonly FrameRecord[]
   /** The page's sections, bottom to top, absent on a surface that draws none. */
   sections?: () => readonly SectionRecord[]
+  /**
+   * Every frame on the page, hidden ones included, which a section move
+   * carries since a hidden frame stays in its section. `frames` when absent.
+   */
+  pageFrames?: () => readonly FrameRecord[]
 }
 
 export interface GestureStores {
@@ -380,9 +385,9 @@ export function attachGestures(
     }
     if (gesture.kind === 'section') {
       const { section } = gesture
-      const members = withPending(target.frames()).filter((frame) =>
-        section.frames.includes(frame.name),
-      )
+      const members = withPending(
+        target.pageFrames?.() ?? target.frames(),
+      ).filter((frame) => section.frames.includes(frame.name))
       gesture =
         stores.canWrite() && members.every(({ locked }) => !locked)
           ? { kind: 'section-move', section, boxes: boxesOf(members) }
