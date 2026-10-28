@@ -21,7 +21,7 @@ const PLACEABLE: readonly unknown[] = [
   'video',
 ] satisfies PlaceableKind[]
 
-function isPlaceableKind(kind: unknown): kind is PlaceableKind {
+export function isPlaceableKind(kind: unknown): kind is PlaceableKind {
   return PLACEABLE.includes(kind)
 }
 

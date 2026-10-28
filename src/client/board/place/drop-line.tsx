@@ -7,7 +7,8 @@ import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
 import type { BoardPoint } from '../notes/pick'
-import { type GapLine, gapUnder, moveGapUnder } from './gap'
+import { tileDragStore } from './asset-drop'
+import { type FrameGap, type GapLine, gapUnder, moveGapUnder } from './gap'
 import { carriedStore, placedKind, placesElement } from './tool'
 
 interface DropLineProps {
@@ -31,7 +32,8 @@ interface DropLineProps {
  *
  * While a Move drag carries the selected element, it draws the gap the
  * element would drop into instead, and nothing where a drop would leave it
- * where it is.
+ * where it is. While an Assets tile is dragged over the canvas, it draws the
+ * gap the file would land in, whatever the tool.
  */
 export function DropLine({
   viewport,
@@ -43,8 +45,19 @@ export function DropLine({
     (state) => state.mode === 'edit' && placesElement(state.tool),
   )
   const carried = useStore(carriedStore, (state) => state.carried)
+  const dragged = useStore(tileDragStore, (state) => state.at)
   const placing = tool || carried !== null
   const [line, setLine] = useState<GapLine | null>(null)
+  const [tileLine, setTileLine] = useState<GapLine | null>(null)
+  useEffect(() => {
+    if (!container) return
+    // A native drag fires no `pointermove`, so the tile's point comes from its drop target.
+    return tileDragStore.subscribe(({ at }) => {
+      const under = at && gapUnder(container, frames(), at)
+      const next = under ? boardLine(under) : null
+      setTileLine((held) => (sameLine(held, next) ? held : next))
+    })
+  }, [container, frames])
   useEffect(() => {
     const target = viewport.current
     if (!placing || !target || !container) return
@@ -56,11 +69,7 @@ export function DropLine({
       const under = carried
         ? moveGapUnder(container, frames(), at, carried)
         : gapUnder(container, frames(), at)
-      const next = under && {
-        ...under.gap.line,
-        x: under.frame.box.x + under.gap.line.x,
-        y: under.frame.box.y + under.gap.line.y,
-      }
+      const next = under && boardLine(under)
       setLine((held) => (sameLine(held, next) ? held : next))
     }
     const leave = () => setLine(null)
@@ -72,23 +81,33 @@ export function DropLine({
       setLine(null)
     }
   }, [placing, carried, viewport, container, frames, toBoard])
-  if (!placing || !line) return null
-  const across = line.height === 0
+  const shown = dragged ? tileLine : placing ? line : null
+  if (!shown) return null
+  const across = shown.height === 0
   return (
     <div
       data-drop-line
       aria-hidden
       className="pointer-events-none absolute rounded-full bg-primary"
       style={{
-        left: line.x,
-        top: line.y,
-        width: across ? line.width : screen(2),
-        height: across ? screen(2) : line.height,
+        left: shown.x,
+        top: shown.y,
+        width: across ? shown.width : screen(2),
+        height: across ? screen(2) : shown.height,
         translate: across ? '0 -50%' : '-50% 0',
         zIndex: OVERLAY_Z,
       }}
     />
   )
+}
+
+/** A gap's line where it draws on the board, offset by its frame's place. */
+function boardLine({ frame, gap }: FrameGap): GapLine {
+  return {
+    ...gap.line,
+    x: frame.box.x + gap.line.x,
+    y: frame.box.y + gap.line.y,
+  }
 }
 
 /** Whether the tool on now sizes its shape by a drag, as `ShapeDraft` draws one. */

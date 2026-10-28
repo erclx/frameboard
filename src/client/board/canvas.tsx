@@ -52,6 +52,7 @@ import { followSpacePan, modeStore, useMode } from './mode'
 import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
+import { type ClientPoint, useAssetDrop } from './place/asset-drop'
 import { DropLine } from './place/drop-line'
 import { ShapeDraft } from './place/shape-draft'
 import {
@@ -530,13 +531,20 @@ export function Canvas({
     onFocused?.()
   }, [focus, frames, onFocused])
 
-  const toBoard = useCallback((event: PointerEvent) => {
+  const toBoard = useCallback((event: ClientPoint) => {
     const viewport = viewportRef.current
     if (!viewport) return { x: 0, y: 0 }
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     return { x, y }
   }, [])
   const drawnFrames = useCallback(() => withDrawn(framesRef.current), [])
+  useAssetDrop(hitRef, {
+    enabled: !playing,
+    container: layer,
+    page: page.ref,
+    frames: drawnFrames,
+    toBoard,
+  })
 
   /** Opens a text element's text for typing, a double-click's or a placed Text's. */
   const editText = (key: ElementKey, waits: boolean): boolean => {
