@@ -4,7 +4,7 @@ import { liveStore } from '@/client/live/store'
 import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
-import { previewStyle } from '../inspector/element/styles'
+import { degreesOf, previewStyle } from '../inspector/element/styles'
 import { writeElement } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 
@@ -60,16 +60,22 @@ export interface ShapeResize {
   cancel: () => void
 }
 
-/** Whether the element `key` names is a shape in a live frame showing the bytes it was read from. */
+/**
+ * Whether the element `key` names is an upright shape in a live frame
+ * showing the bytes it was read from. A rotated shape's outline is its
+ * turned bounding box, whose corners are not the element's own, so it takes
+ * no corner resize.
+ */
 export function isShownShape(container: ParentNode, key: ElementKey): boolean {
   const shown = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(key.frame)}"] iframe`,
   )?.contentDocument
-  return (
-    !!shown &&
-    renderedHash(shown) === key.hash &&
-    isShape(elementAt(shown, key.index))
-  )
+  if (!shown || renderedHash(shown) !== key.hash) return false
+  const element = elementAt(shown, key.index)
+  const rotate = element
+    ? shown.defaultView?.getComputedStyle(element).rotate
+    : undefined
+  return isShape(element) && rotate !== undefined && degreesOf(rotate) === 0
 }
 
 /**

@@ -31,13 +31,14 @@ In the board you move and resize frames, Alt-drag one to drop a copy, and hold S
 The Frame tool places a phone, tablet, or desktop size picked from its list with a click, or draws a frame at any size with a drag. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- The inspector edits a frame's fill and an element's opacity, radius, type, line height, letter spacing, fill, stroke, shadow, and text, its numbers stepping on arrows and scrubbing from a label
+- The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, line height, letter spacing, fill, stroke, shadow, and text
+- Every inspector number steps on arrows and scrubs from its label
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 - The inspector's Export section saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, named like `hero.light@2x.png`, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
 
-The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected shape's corner to resize it or any element to move it, Delete to take it out, or double-click text to retype it. Alt+Shift+ArrowUp and ArrowDown step it among its siblings. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
+The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected upright shape's corner to resize it or any element to move it, Delete to take it out, or double-click text to retype it. Alt+Shift+ArrowUp and ArrowDown step it among its siblings. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
 
 Images and videos come from the project's `assets/` folder and land in the layout the same way.
 

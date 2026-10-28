@@ -180,6 +180,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
       <AppearanceSection
         opacity={live.opacity}
         radius={live.radius}
+        rotation={live.rotation}
         disabled={disabled}
         write={write}
         preview={preview}

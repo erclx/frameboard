@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { isShape, shapeSize } from './resize'
+import { isShape, isShownShape, shapeSize } from './resize'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
 
@@ -65,5 +65,51 @@ describe('isShape', () => {
     ['a box holding an element', '<div><span></span></div>'],
   ])('reads %s as no shape', (_name, markup) => {
     expect(isShape(parse(markup))).toBe(false)
+  })
+})
+
+describe('isShownShape', () => {
+  const HASH = 'd'.repeat(64)
+  const KEY = { frame: 'studio/home/hero', index: 3, hash: HASH }
+  let container: HTMLDivElement | undefined
+
+  // Indices past the skipped injected style: html 0, head 1, body 2, then the body's children.
+  async function mountShape(style: string): Promise<HTMLDivElement> {
+    container = document.createElement('div')
+    const frame = document.createElement('div')
+    frame.dataset.frame = KEY.frame
+    const iframe = document.createElement('iframe')
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    )
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><div style="${style}"></div></body></html>`
+    frame.append(iframe)
+    container.append(frame)
+    document.body.append(container)
+    await loaded
+    return container
+  }
+
+  afterEach(() => {
+    container?.remove()
+    container = undefined
+  })
+
+  it('reads an upright shape as one a corner resizes', async () => {
+    const shown = await mountShape('width: 40px; height: 40px')
+
+    expect(isShownShape(shown, KEY)).toBe(true)
+  })
+
+  it('reads a shape whose rotate states 0deg as upright', async () => {
+    const shown = await mountShape('width: 40px; height: 40px; rotate: 0deg')
+
+    expect(isShownShape(shown, KEY)).toBe(true)
+  })
+
+  it('refuses a shape its rotate turns', async () => {
+    const shown = await mountShape('width: 40px; height: 40px; rotate: 30deg')
+
+    expect(isShownShape(shown, KEY)).toBe(false)
   })
 })
