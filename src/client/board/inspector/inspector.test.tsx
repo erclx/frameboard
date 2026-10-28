@@ -734,7 +734,7 @@ describe('FrameSection', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
       expect(
-        within(screen.getByRole('group', { name: 'Desktop' })).getByRole(
+        within(await screen.findByRole('group', { name: 'Desktop' })).getByRole(
           'menuitemradio',
           { name: /^Desktop/ },
         ),
@@ -749,7 +749,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
-      expect(screen.getAllByRole('menuitemradio')).toHaveLength(13)
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(13)
       expect(
         within(screen.getByRole('group', { name: 'Slide' })).getAllByRole(
           'menuitemradio',
@@ -768,7 +768,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
       await userEvent.click(
-        screen.getByRole('menuitemradio', { name: /^iPhone 16\s*393/ }),
+        await screen.findByRole('menuitemradio', { name: /^iPhone 16\s*393/ }),
       )
 
       expect(writes).toEqual([
@@ -785,7 +785,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: '2 frames' }))
       await userEvent.click(
-        screen.getByRole('menuitemradio', { name: /^Desktop/ }),
+        await screen.findByRole('menuitemradio', { name: /^Desktop/ }),
       )
 
       expect(writes).toEqual([
