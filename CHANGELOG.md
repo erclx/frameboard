@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.20.0](https://github.com/erclx/frameboard/compare/v0.19.0...v0.20.0) (2026-10-28)
+
+
+### Features
+
+* **board:** group frames into named sections on a page ([#182](https://github.com/erclx/frameboard/issues/182)) ([2279143](https://github.com/erclx/frameboard/commit/227914352a7d2fd5978ef0e97e54a8062ac57cca))
+* **inspector:** add justify, Type details, and a caption type step ([#178](https://github.com/erclx/frameboard/issues/178)) ([f032216](https://github.com/erclx/frameboard/commit/f032216619f617db379d3b23926860ad45fd50ee))
+* **inspector:** export a selected frame as a PNG at 1x to 3x ([#179](https://github.com/erclx/frameboard/issues/179)) ([00deca9](https://github.com/erclx/frameboard/commit/00deca93cc8a95972d58fb7303301cd264292ab6))
+* **inspector:** resize a selected frame from a size menu ([#177](https://github.com/erclx/frameboard/issues/177)) ([ca00488](https://github.com/erclx/frameboard/commit/ca004887c72afe2f53fd41ce9359e030654445c8))
+* **inspector:** rotate and flip an element by hand ([#181](https://github.com/erclx/frameboard/issues/181)) ([e801c25](https://github.com/erclx/frameboard/commit/e801c25165e82cc384dd36857a43bb653d8884c1))
+* **place:** place an image or video from assets into a frame ([#176](https://github.com/erclx/frameboard/issues/176)) ([f33e686](https://github.com/erclx/frameboard/commit/f33e6869cf863dab9110e27dcf4f8d2d2dfff891))
+* **tooling:** start a source board behind vite in bun run dev ([#175](https://github.com/erclx/frameboard/issues/175)) ([4ca5d2e](https://github.com/erclx/frameboard/commit/4ca5d2e453a83f9943c6fdd384bc2cb5cece148f))
+
 ## [0.19.0](https://github.com/erclx/frameboard/compare/v0.18.0...v0.19.0) (2026-10-28)
 
 
