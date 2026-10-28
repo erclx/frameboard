@@ -5,6 +5,7 @@ import type {
   FrameRecord,
   PageRecord,
   ProjectRecord,
+  SectionRecord,
 } from '@/shared/records/list'
 import type { StarterLook, StarterSheetRecord } from '@/shared/starter-tokens'
 
@@ -88,6 +89,13 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Pastes onto a page, with the group's top left at `at` when given and beside its source otherwise. */
     pasteFrames: (page: string, at?: { x: number; y: number }) =>
       post<FrameRecord[]>('/api/clipboard/paste', { ref: page, at }),
+    /** A section groups the frames whose center its box holds, so it moves no frame and waits on no claim. */
+    addSection: (page: string, box: SectionRecord['box'], name?: string) =>
+      post<SectionRecord>('/api/section/add', { page, name, box }),
+    renameSection: (page: string, section: string, name: string) =>
+      post<SectionRecord>('/api/section/rename', { page, section, name }),
+    deleteSection: (page: string, section: string) =>
+      post<{ deleted: string }>('/api/section/delete', { page, section }),
     undo: () => post<StepAnswer>('/api/undo', {}),
     redo: () => post<StepAnswer>('/api/redo', {}),
   }

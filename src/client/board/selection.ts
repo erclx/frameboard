@@ -27,6 +27,11 @@ export interface SelectionState {
   frames: readonly string[]
   /** An element inside the one selected frame, absent or null when the frame itself is selected. */
   element?: ElementKey | null
+  /**
+   * A section on `page`, by name, selected alone with no frame. Every other
+   * setter leaves it absent, so a frame selection never carries one.
+   */
+  section?: string
 }
 
 export type SelectionStore = StoreApi<SelectionState>
@@ -41,7 +46,21 @@ export function select(
   page: string,
   frames: readonly string[],
 ): void {
-  store.setState({ page, frames: [...new Set(frames)], element: null })
+  store.setState({
+    page,
+    frames: [...new Set(frames)],
+    element: null,
+    section: undefined,
+  })
+}
+
+/** Selects one section on `page`, and no frame with it. */
+export function selectSection(
+  store: SelectionStore,
+  page: string,
+  section: string,
+): void {
+  store.setState({ page, frames: [], element: null, section })
 }
 
 /** Selects one element, and with it its frame alone, on `page`. */
@@ -50,7 +69,12 @@ export function selectElement(
   page: string,
   element: ElementKey,
 ): void {
-  store.setState({ page, frames: [element.frame], element })
+  store.setState({
+    page,
+    frames: [element.frame],
+    element,
+    section: undefined,
+  })
 }
 
 /** Adds a frame to the selection or takes it out, starting over on another page. */
@@ -67,13 +91,14 @@ export function toggle(store: SelectionStore, page: string, ref: string): void {
     page: next.length === 0 ? null : page,
     frames: next,
     element: null,
+    section: undefined,
   })
 }
 
 export function clear(store: SelectionStore): void {
-  const { page, frames, element } = store.getState()
-  if (page === null && frames.length === 0 && !element) return
-  store.setState({ page: null, frames: [], element: null })
+  const { page, frames, element, section } = store.getState()
+  if (page === null && frames.length === 0 && !element && !section) return
+  store.setState({ page: null, frames: [], element: null, section: undefined })
 }
 
 /**
@@ -100,13 +125,18 @@ export function renameSelection(
  * page, so a deleted, hidden, or moved frame never stays selected.
  */
 export function pruneSelection(store: SelectionStore, board: ListResult): void {
-  const { page, frames } = store.getState()
+  const { page, frames, section } = store.getState()
   if (page === null) return
+  const shownPage = board.projects
+    .flatMap((project) => project.pages)
+    .find((candidate) => candidate.ref === page)
+  if (section !== undefined) {
+    if (!shownPage?.sections.some((held) => held.name === section)) clear(store)
+    return
+  }
   const shown = new Set(
-    board.projects
-      .flatMap((project) => project.pages)
-      .find((candidate) => candidate.ref === page)
-      ?.frames.filter((frame) => !frame.hidden)
+    shownPage?.frames
+      .filter((frame) => !frame.hidden)
       .map((frame) => frame.ref),
   )
   const kept = frames.filter((frame) => shown.has(frame))
