@@ -423,6 +423,24 @@ describe('NumberField', () => {
     expect(calls.writes[0]).toBeGreaterThan(40)
   })
 
+  it('sets its caption at the caption step', () => {
+    const calls = recorder({ from: 40 })
+    render(
+      <NumberField
+        label="X position"
+        caption="Position"
+        prefix="X"
+        value={40}
+        disabled={false}
+        {...calls}
+      />,
+    )
+
+    const caption = getComputedStyle(screen.getByText('Position'))
+    expect(caption.fontSize).toBe('10px')
+    expect(caption.fontWeight).toBe('400')
+  })
+
   it('focuses the field and writes nothing on a caption click', async () => {
     const calls = recorder({ from: 40 })
     render(
