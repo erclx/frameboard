@@ -227,7 +227,11 @@ function SizeMenu({ frames, disabled, onPick }: SizeMenuProps) {
               )}
             />
           </DropdownMenuTrigger>
-          <ChromeMenuContent align="start" sideOffset={4} className="w-[220px]">
+          <ChromeMenuContent
+            align="start"
+            sideOffset={4}
+            className="w-auto min-w-[220px]"
+          >
             {FRAME_TOOL_GROUPS.map(({ group, label, rows: sizes }, index) => (
               <Fragment key={group}>
                 {index > 0 ? <DropdownMenuSeparator /> : null}
@@ -248,7 +252,7 @@ function SizeMenu({ frames, disabled, onPick }: SizeMenuProps) {
                       value={row.name}
                       // A radio row stays open by default, and a pick is the menu's whole job.
                       closeOnClick
-                      className={cn(MENU_ROW, 'pr-8')}
+                      className={cn(MENU_ROW, 'pr-8 whitespace-nowrap')}
                     >
                       {row.label}
                       <span className="ml-auto pl-2 text-muted-foreground tabular-nums">

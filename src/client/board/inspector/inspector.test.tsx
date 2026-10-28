@@ -763,6 +763,21 @@ describe('FrameSection', () => {
       ).toHaveTextContent('1920 × 1080')
     })
 
+    it('keeps the longest row on one line', async () => {
+      renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+
+      const longest = await screen.findByRole('menuitemradio', {
+        name: /iPhone 16 Pro Max/,
+      })
+      const short = screen.getByRole('menuitemradio', { name: /^Phone/ })
+      expect(longest.getBoundingClientRect().height).toBeCloseTo(
+        short.getBoundingClientRect().height,
+        0,
+      )
+    })
+
     it('sets W and H on a pick and keeps X and Y, in one write', async () => {
       const writes = renderSection([DESKTOP])
 
@@ -815,6 +830,7 @@ describe('FrameSection', () => {
       const trigger = screen.getByRole('button', { name: 'Frame' })
 
       await userEvent.click(trigger)
+      await screen.findByRole('menu')
       await userEvent.keyboard('{Escape}')
 
       await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
