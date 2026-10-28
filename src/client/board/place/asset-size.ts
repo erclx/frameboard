@@ -12,15 +12,24 @@ export const FALLBACK_SIZE: AssetSize = { width: 240, height: 135 }
 /** How long a video's metadata may take before the fallback stands in. */
 const METADATA_MS = 3000
 
+/** The longest side the insert route takes, in CSS pixels. */
+const MAX_SIDE = 10_000
+
 /**
- * The box a placed file lands at: its natural size, else the fallback, and
- * no wider than `room`, the container's content width, its ratio kept. A
- * container with no width caps nothing.
+ * The box a placed file lands at: its natural size, else the fallback, no
+ * wider than `room`, the container's content width, and no side past what
+ * the insert route takes, its ratio kept. A container with no width caps
+ * only the sides.
  */
 export function placedSize(natural: AssetSize | null, room: number): AssetSize {
   const size =
     natural && natural.width > 0 && natural.height > 0 ? natural : FALLBACK_SIZE
-  const scale = room > 0 && size.width > room ? room / size.width : 1
+  const scale = Math.min(
+    1,
+    room > 0 ? room / size.width : 1,
+    MAX_SIDE / size.width,
+    MAX_SIDE / size.height,
+  )
   return {
     width: Math.max(1, Math.round(size.width * scale)),
     height: Math.max(1, Math.round(size.height * scale)),

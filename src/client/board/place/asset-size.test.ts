@@ -43,6 +43,20 @@ describe('placedSize', () => {
     })
   })
 
+  it('keeps a tall file within the 10,000px side the route takes', () => {
+    expect(placedSize({ width: 1440, height: 15000 }, 1440)).toEqual({
+      width: 960,
+      height: 10000,
+    })
+  })
+
+  it('keeps a wide file within the route side in a container with no width', () => {
+    expect(placedSize({ width: 20000, height: 500 }, 0)).toEqual({
+      width: 10000,
+      height: 250,
+    })
+  })
+
   it('caps nothing in a container with no width', () => {
     expect(placedSize({ width: 320, height: 180 }, 0)).toEqual({
       width: 320,
