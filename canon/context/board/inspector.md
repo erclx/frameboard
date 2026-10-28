@@ -55,7 +55,7 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 ## Gotchas
 
 - Element position, width, height, padding, flex, gap, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
-- None is built yet. Hand layout and placement are scoped, and v17.3 builds them.
+- Those controls are not built yet, though hand layout and placement are scoped.
 - A Rectangle or Ellipse drag sets a new shape's size, and a corner drag sets a placed one's as one `styles` edit. A drag on the selected element moves it to another gap in its layout.
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
