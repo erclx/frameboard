@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { Plus, Search, TriangleAlert } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
 import { isEnabled, useActions } from '@/client/actions/registry'
@@ -185,6 +185,12 @@ const ROW =
 function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
   const { current } = context
   const row = useRef<HTMLLIElement>(null)
+  const isCurrent = page.name === current
+  // A page just added lands below the fold once the list holds more rows
+  // than it shows, so the page on the canvas is brought into view.
+  useEffect(() => {
+    if (isCurrent) row.current?.scrollIntoView({ block: 'nearest' })
+  }, [isCurrent])
   const renaming = useRenamingPage() === page.ref
   const unseen = useUnseen((state) => unseenUnder(state.unseen, page.ref))
   // A filtered list's positions are not the saved order, so it never reorders.

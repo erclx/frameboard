@@ -718,6 +718,16 @@ describe('LeftPanel', () => {
       await expect.poll(() => pageRows().length).toBe(7)
       expect(listHeight()).toBeCloseTo(dragged, 0)
     })
+
+    it('scrolls the page on the canvas into view past eight rows', async () => {
+      renderPanel(pages(12), 'page-12')
+
+      const list = screen.getByRole('navigation', { name: 'Pages' })
+      const row = screen.getByRole('link', { name: 'page-12' })
+      await expect
+        .poll(() => row.getBoundingClientRect().bottom)
+        .toBeLessThanOrEqual(list.getBoundingClientRect().bottom)
+    })
   })
 
   describe('element rows', () => {
