@@ -15,7 +15,7 @@ Owns the browser app around the frames, being the board screen and canvas, its p
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool, key F, places the size picked from its list at the click, named for it, or draws a frame named `frame` at a dragged box, then selects it, opens its name, and returns to Move
+- The Frame tool, key F, places the size picked from its list at the click, named for it, or draws a frame named `frame` at a dragged box, then selects it and returns to Move, opening no name field
 - A frame placed partly out of view moves the view to center it at the current zoom
 - An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
 - In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide

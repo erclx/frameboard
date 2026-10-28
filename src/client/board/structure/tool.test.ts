@@ -8,6 +8,7 @@ import { frameOf } from '@/test/board'
 import type { Box } from '../geometry/box'
 import { createModeStore } from '../mode'
 import { createSelectionStore } from '../selection'
+import { renamingFrame } from './actions'
 import { placeFrame } from './tool'
 
 const PAGE = 'studio/home'
@@ -30,9 +31,7 @@ function setup(answer: () => Promise<unknown>) {
     preset: 'tablet',
   }))
   const centered: Box[] = []
-  const renamed: string[] = []
   const view = { centerOn: (box: Box) => void centered.push(box) }
-  const rename = (ref: string) => void renamed.push(ref)
   return {
     sent,
     calls,
@@ -40,9 +39,7 @@ function setup(answer: () => Promise<unknown>) {
     mode,
     preset,
     centered,
-    renamed,
     view,
-    rename,
   }
 }
 
@@ -183,17 +180,17 @@ describe('placeFrame', () => {
     expect(centered).toEqual([])
   })
 
-  it("opens the new frame's rename in the inspector", async () => {
-    const { calls, selection, mode, preset, renamed, rename } = setup(
-      async () => frameOf('tablet'),
+  it('opens no rename field on the new frame', async () => {
+    const { calls, selection, mode, preset } = setup(async () =>
+      frameOf('tablet'),
     )
 
     await placeFrame(
       { x: 0, y: 0 },
-      { page: PAGE, frames: [], calls, selection, mode, preset, rename },
+      { page: PAGE, frames: [], calls, selection, mode, preset },
     )
 
-    expect(renamed).toEqual(['studio/home/tablet'])
+    expect(renamingFrame().ref).toBeNull()
   })
 
   it('resolves to the frame the server added', async () => {

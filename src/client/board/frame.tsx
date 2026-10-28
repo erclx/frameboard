@@ -319,13 +319,14 @@ function LabelRenameAt({
   return (
     <div className="absolute" style={{ left: x, top: y }}>
       <div
-        // The right padding gives back the field's -ml-1.5, so it spans the width exactly.
-        className="pointer-events-auto absolute bottom-0 left-0 flex origin-bottom-left pr-1.5 pb-0.5 text-label [transform:scale(calc(1/var(--zoom,1)))]"
+        // The right padding gives back the field's -ml-1.5, so a long name stops at the cap exactly.
+        className="pointer-events-auto absolute bottom-0 left-0 flex w-max origin-bottom-left pr-1.5 pb-0.5 text-label [transform:scale(calc(1/var(--zoom,1)))]"
         style={{
-          width: `clamp(160px, calc(${width}px * var(--zoom, 1)), 240px)`,
+          maxWidth: `clamp(160px, calc(${width}px * var(--zoom, 1)), 240px)`,
         }}
       >
         <RenameField
+          hug
           name={frame.name}
           label={`Rename frame ${frame.name}`}
           onCommit={(name) => {

@@ -289,15 +289,19 @@ function FrameRow({
               {renaming ? (
                 <>
                   {icon}
-                  <RenameField
-                    name={frame.name}
-                    label={`Rename frame ${frame.name}`}
-                    onCommit={(name) => {
-                      stopFrameRename()
-                      void renameFrame(frame, name, calls)
-                    }}
-                    onCancel={stopFrameRename}
-                  />
+                  {/* The slot takes the row's free width, so the hugging field leaves the trailing buttons at the edge. */}
+                  <span className="flex min-w-0 flex-1">
+                    <RenameField
+                      hug
+                      name={frame.name}
+                      label={`Rename frame ${frame.name}`}
+                      onCommit={(name) => {
+                        stopFrameRename()
+                        void renameFrame(frame, name, calls)
+                      }}
+                      onCancel={stopFrameRename}
+                    />
+                  </span>
                 </>
               ) : (
                 <button

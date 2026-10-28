@@ -205,6 +205,7 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
       {renaming ? (
         <div className={cn(ROW, page.name === current && 'bg-accent')}>
           <RenameField
+            hug
             name={page.name}
             label={`Rename page ${page.name}`}
             onCommit={(name) => {
