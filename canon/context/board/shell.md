@@ -29,6 +29,16 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
 
+### `src/client/board/sections/`
+
+Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which is the panel's section heading and shares only the word.
+
+- `box.tsx` draws each section under every frame, a faint plate with its name inside the top left at the labels' constant screen size
+- The name is the box's one handle, and the rest of the plate is bare canvas to a press, so a marquee across a section stays free
+- `actions.ts` registers Wrap in section on `$mod+Alt+KeyG`, rename on F2, delete on Delete, the arrow nudges, and the Section tool
+- A wrap pads the selected frames' bounds by 40, with 80 on top for the names. Delete takes the box and keeps every frame it held.
+- The Section tool, Shift+S, draws a section at a dragged box or at 800 by 600 on a click, then selects it and returns to Move
+
 ### `src/client/board/place/`
 
 Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which drop one new element into a frame's layout at the click and move nothing else, and the drop of a selected element a Move drag carries or an Assets tile.
@@ -61,6 +71,8 @@ Owns the left panel, being `project-header.tsx` with the way home, the project n
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
 The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
+
+Each section's row in `section-rows.tsx` holds its frames' rows indented under it, and the frames in no section follow. A row restacks within its own group and never into or out of a section, landing at the page-wide index beside the frame it drops by, so the canvas draws it over or under that frame.
 
 - Choosing a frame not wholly in view centers its drawn box at the current zoom through `canvasView.reveal`, fitting one larger than the view
 - The reveal reports as a hand move, so it stops Follow, and only a frame lying wholly in view leaves the view
@@ -97,6 +109,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
 - The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- The Frame button turns on Frame or Section, whichever was chosen last, and its caret opens both, keys F and Shift+S
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog

@@ -68,6 +68,11 @@ A press on the canvas while an inspector field has focus blurs the field, which 
 
 A move released with Alt held puts the frames back and sends one duplicate carrying the drop's offset, so the copies land there in one undo step. A locked frame neither moves nor copies.
 
+- A section's name is its handle, taking a press over a frame's label strip but never over a frame's body
+- Dragging the name moves the box, its frames, and their pins in one write, and a section holding a locked frame does not move
+- A corner drag on a selected section resizes the box alone, and a frame its new edge crosses joins or leaves it by its center
+- A refused section write puts the box back where the board holds it, since no newer board redraws it
+
 ### `src/client/board/preview/`
 
 Owns the width a frame is previewed at, held in this tab's memory alone, so a reload drops it and nothing reaches the server, the history, or the hug step. The palette carries a preview at each preset width and End preview, with no key.
@@ -85,7 +90,7 @@ A frame draws at its pending box over its stored one at the previewed width, and
 Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
-- A change is one layout entry, page order, rename, path with its hash, or hand-edited or placed element, so an agent's write elsewhere in the file neither blocks an undo nor is reverted by it
+- A change is one layout or section entry, page order, rename, path with its hash, or hand-edited or placed element, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - A page or project rename, its undo, and its redo each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route to the new name
