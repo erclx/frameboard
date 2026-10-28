@@ -108,6 +108,20 @@ describe('InspectorPanel', () => {
           { name: /Full HD/ },
         ),
       ).toHaveTextContent('1920 × 1080')
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Slide' })).getByRole(
+          'radio',
+          { name: /Slide 4:3/ },
+        ),
+      ).toHaveTextContent('1024 × 768')
+    })
+
+    it('chooses a slide the next click places', async () => {
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('radio', { name: /Slide 16:9/ }))
+
+      expect(presetStore.getState().preset).toBe('slide-16-9')
     })
 
     it('chooses a device the next click places', async () => {
@@ -129,7 +143,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(11)
+      expect(screen.getAllByRole('radio')).toHaveLength(13)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })
@@ -662,6 +676,181 @@ describe('FrameSection', () => {
     )
 
     expect(writes[0]?.boxes[SWATCHES.ref]?.width).toBe(1)
+  })
+
+  describe('size menu', () => {
+    const DESKTOP = frameOf('desktop', {
+      box: { x: 1019, y: 1648, width: 1440, height: 900 },
+    })
+    const WIDE = frameOf('wide', {
+      box: { x: 0, y: 0, width: 1920, height: 1080 },
+    })
+
+    it('names the size a frame measures beside its heading', () => {
+      renderSection([DESKTOP])
+
+      expect(
+        screen.getByRole('button', { name: 'Frame' }),
+      ).toHaveAccessibleDescription('Desktop')
+    })
+
+    it('names a size no row holds Custom', () => {
+      renderSection([SWATCHES])
+
+      expect(
+        screen.getByRole('button', { name: 'Frame' }),
+      ).toHaveAccessibleDescription('Custom')
+    })
+
+    it('names a size two rows share by the first in list order', () => {
+      renderSection([WIDE])
+
+      expect(
+        screen.getByRole('button', { name: 'Frame' }),
+      ).toHaveAccessibleDescription('Full HD')
+    })
+
+    it('names the size several frames share', () => {
+      const other = frameOf('other', { box: { ...DESKTOP.box, x: 0 } })
+
+      renderSection([DESKTOP, other])
+
+      expect(
+        screen.getByRole('button', { name: '2 frames' }),
+      ).toHaveAccessibleDescription('Desktop')
+    })
+
+    it('reads Mixed over frames at different sizes', () => {
+      renderSection([DESKTOP, WIDE])
+
+      expect(
+        screen.getByRole('button', { name: '2 frames' }),
+      ).toHaveAccessibleDescription('Mixed')
+    })
+
+    it('checks the matched size in its group', async () => {
+      renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+
+      expect(
+        within(await screen.findByRole('group', { name: 'Desktop' })).getByRole(
+          'menuitemradio',
+          { name: /^Desktop/ },
+        ),
+      ).toHaveAttribute('aria-checked', 'true')
+      expect(
+        screen.getAllByRole('menuitemradio', { checked: true }),
+      ).toHaveLength(1)
+    })
+
+    it('lists every size under its group, slides last', async () => {
+      renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(13)
+      expect(
+        within(screen.getByRole('group', { name: 'Slide' })).getAllByRole(
+          'menuitemradio',
+        ),
+      ).toHaveLength(2)
+      expect(
+        within(screen.getByRole('group', { name: 'Slide' })).getByRole(
+          'menuitemradio',
+          { name: /Slide 16:9/ },
+        ),
+      ).toHaveTextContent('1920 × 1080')
+    })
+
+    it('keeps the longest row on one line', async () => {
+      renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+
+      const longest = await screen.findByRole('menuitemradio', {
+        name: /iPhone 16 Pro Max/,
+      })
+      const short = screen.getByRole('menuitemradio', { name: /^Phone/ })
+      expect(longest.getBoundingClientRect().height).toBeCloseTo(
+        short.getBoundingClientRect().height,
+        0,
+      )
+    })
+
+    it('sets W and H on a pick and keeps X and Y, in one write', async () => {
+      const writes = renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: /^iPhone 16\s*393/ }),
+      )
+
+      expect(writes).toEqual([
+        {
+          boxes: {
+            [DESKTOP.ref]: { x: 1019, y: 1648, width: 393, height: 852 },
+          },
+        },
+      ])
+    })
+
+    it('sizes each selected frame on a pick, skipping one already there', async () => {
+      const writes = renderSection([DESKTOP, SWATCHES])
+
+      await userEvent.click(screen.getByRole('button', { name: '2 frames' }))
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: /^Desktop/ }),
+      )
+
+      expect(writes).toEqual([
+        {
+          boxes: {
+            [SWATCHES.ref]: { ...SWATCHES.box, width: 1440, height: 900 },
+          },
+        },
+      ])
+    })
+
+    it('picks by keyboard and returns focus to the trigger on close', async () => {
+      const writes = renderSection([DESKTOP])
+      const trigger = screen.getByRole('button', { name: 'Frame' })
+
+      trigger.focus()
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => expect(screen.getByRole('menu')).toBeVisible())
+      await userEvent.keyboard('{ArrowDown}{Enter}')
+
+      expect(writes).toHaveLength(1)
+      await waitFor(() => expect(trigger).toHaveFocus())
+    })
+
+    it('closes on Escape with no write', async () => {
+      const writes = renderSection([DESKTOP])
+      const trigger = screen.getByRole('button', { name: 'Frame' })
+
+      await userEvent.click(trigger)
+      await screen.findByRole('menu')
+      await userEvent.keyboard('{Escape}')
+
+      await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+      expect(trigger).toHaveFocus()
+      expect(writes).toEqual([])
+    })
+
+    it('disables the trigger on a locked frame', () => {
+      renderSection([{ ...DESKTOP, locked: true }])
+
+      expect(screen.getByRole('button', { name: 'Frame' })).toBeDisabled()
+    })
+
+    it('disables the trigger in a tab that may not write', () => {
+      liveStore.setState({ canWrite: false })
+
+      renderSection([DESKTOP])
+
+      expect(screen.getByRole('button', { name: 'Frame' })).toBeDisabled()
+    })
   })
 
   describe.each(['light', 'dark'])('in the %s theme', (theme) => {

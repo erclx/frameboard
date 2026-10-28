@@ -340,15 +340,15 @@ function PresetSection() {
         Frame
       </h2>
       <div className="-mx-1.5 flex flex-col">
-        {FRAME_TOOL_GROUPS.map(({ preset, label, icon: Icon, rows }) => (
+        {FRAME_TOOL_GROUPS.map(({ group, label, icon: Icon, rows }) => (
           <div
-            key={preset}
+            key={group}
             role="radiogroup"
-            aria-labelledby={`inspector-presets-${preset}`}
+            aria-labelledby={`inspector-presets-${group}`}
             className="flex flex-col"
           >
             <h3
-              id={`inspector-presets-${preset}`}
+              id={`inspector-presets-${group}`}
               className="px-1.5 pt-1.5 pb-0.5 text-label text-muted-foreground"
             >
               {label}

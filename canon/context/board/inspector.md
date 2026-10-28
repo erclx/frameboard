@@ -15,6 +15,7 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 Owns the right panel, under a header of the avatar and the zoom level, and its controls.
 
+- **Frame size:** the `Frame ⌄` heading opens the Frame tool's sizes and names the matched row, `Custom`, or `Mixed` on its right. A pick sets W and H in one write.
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
@@ -40,7 +41,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. One frame with findings lists them under Checks below it, the list its label's badge opens. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
-- Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, and Desktop headings in place of the selection, and the chosen row is what the next click places
+- Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, Desktop, and Slide headings in place of the selection, and the chosen row is what the next click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
 
 Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and ArrowDown step it, by ten with Shift, and a drag on its prefix zone or caption scrubs it. A step on a `Mixed` frame value moves each frame by the step from its own.
