@@ -152,6 +152,9 @@ test.describe('editing a selected element by hand', () => {
     await page.getByRole('button', { name: 'Font family' }).click()
     await page.getByRole('menuitemradio', { name: 'Geist Mono' }).click()
     await expect.poll(read).toContain("font-family: 'Geist Mono'")
+    // A radio pick leaves the menu open, and its backdrop covers Weight below.
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu', { name: 'Font family' })).toBeHidden()
 
     const weight = page.getByRole('button', { name: 'Font weight' })
     // The frame reloads after the family write, and the weights offered follow its face.
