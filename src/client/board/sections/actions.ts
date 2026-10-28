@@ -25,7 +25,10 @@ import {
 
 /** How far, in board pixels, a wrapped section reaches past its frames, more on top for its name and theirs. */
 export const WRAP_PAD = 40
-const WRAP_PAD_TOP = 80
+// The section's name and its frames' labels each hold their screen size, so
+// the room between them shrinks with the zoom. 200 keeps them apart down to
+// about 25%, where 80 overlapped them at the board's default fit.
+const WRAP_PAD_TOP = 200
 
 /** The box a click of the Section tool draws, in board pixels, as a Frame click places a preset. */
 export const CLICKED_SECTION = { width: 800, height: 600 } as const

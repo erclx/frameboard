@@ -92,7 +92,7 @@ describe('sectionActions', () => {
     await settle()
 
     expect(sent).toEqual([
-      ['addSection', PAGE, { x: -40, y: -80, width: 780, height: 620 }],
+      ['addSection', PAGE, { x: -40, y: -200, width: 780, height: 740 }],
     ])
     expect(selection.getState()).toMatchObject({ frames: [], section: 'flow' })
   })

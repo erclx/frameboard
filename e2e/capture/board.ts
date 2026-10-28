@@ -1100,7 +1100,7 @@ async function longThread(page: Page): Promise<void> {
 async function sectionOnHome(page: Page): Promise<void> {
   const onboarding = {
     name: 'onboarding',
-    box: { x: -40, y: -80, width: 1990, height: 1020 },
+    box: { x: -40, y: -200, width: 1990, height: 1140 },
     order: 0,
     frames: ['hero', 'about'],
   }

@@ -36,7 +36,7 @@ Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which
 - `box.tsx` draws each section under every frame, a faint plate with its name inside the top left at the labels' constant screen size
 - The name is the box's one handle, and the rest of the plate is bare canvas to a press, so a marquee across a section stays free
 - `actions.ts` registers Wrap in section on `$mod+Alt+KeyG`, rename on F2, delete on Delete, the arrow nudges, and the Section tool
-- A wrap pads the selected frames' bounds by 40, with 80 on top for the names. Delete takes the box and keeps every frame it held.
+- A wrap pads the selected frames' bounds by 40, with 200 on top so the name clears the frames' labels down to about 25% zoom. Delete keeps every frame.
 - The Section tool, Shift+S, draws a section at a dragged box or at 800 by 600 on a click, then selects it and returns to Move
 
 ### `src/client/board/place/`

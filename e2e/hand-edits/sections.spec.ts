@@ -66,7 +66,7 @@ test.describe('page sections by hand', () => {
       .poll(() => layout().sections?.section)
       .toMatchObject({
         x: -40,
-        y: -80,
+        y: -200,
       })
     await expect(
       page
