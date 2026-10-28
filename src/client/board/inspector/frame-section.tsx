@@ -1,13 +1,24 @@
-import { FoldVertical } from 'lucide-react'
-import { useRef } from 'react'
+import { cn } from 'cn'
+import { ChevronDown, FoldVertical } from 'lucide-react'
+import { Fragment, useRef } from 'react'
 
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
+import {
+  DropdownMenu,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/client/components/ui/dropdown-menu'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
+import { type FrameSizeName, frameSizeOf } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
+import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import type { Box } from '../geometry/box'
 import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
 import {
@@ -17,6 +28,7 @@ import {
   useRenamingFrame,
 } from '../structure/actions'
 import { type NumberChange, NumberField } from './number-field'
+import { FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
 
 const FIELDS = [
@@ -48,7 +60,8 @@ interface FrameSectionProps {
  * differ. A field writes through the same write the gestures use, a typed
  * value setting every selected frame and a step on `Mixed` moving each by
  * the step, and a step or scrub draws each frame at its pending box first.
- * One frame's H carries Fit height, running the registered action. The
+ * The heading opens the Frame tool's sizes, a pick setting W and H on every
+ * frame in one write. One frame's H carries Fit height, running the registered action. The
  * Preview row under the fields shows the frames at another width and writes
  * nothing.
  */
@@ -110,9 +123,21 @@ export function FrameSection({
       aria-labelledby="inspector-frame"
       className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
     >
-      <h2 id="inspector-frame" className="mb-2 text-xs font-semibold">
-        {several ? `${frames.length} frames` : 'Frame'}
-      </h2>
+      <SizeMenu
+        frames={frames}
+        disabled={!canWrite || locked}
+        onPick={(name) => {
+          const size = frameSizeOf(name)
+          const boxes: Record<string, Box> = {}
+          const expected: Record<string, Box> = {}
+          for (const { ref, box } of frames) {
+            if (box.width === size.width && box.height === size.height) continue
+            boxes[ref] = { ...box, ...size }
+            expected[ref] = box
+          }
+          void write(page, boxes, expected)
+        }}
+      />
       {several || !named ? null : renaming === frame.ref ? (
         <div className="mb-1.5 flex h-[26px] items-center pl-1.5">
           <RenameField
@@ -164,6 +189,86 @@ export function FrameSection({
       </div>
       <PreviewRow frames={frames} />
     </section>
+  )
+}
+
+interface SizeMenuProps {
+  frames: readonly FrameRecord[]
+  disabled: boolean
+  onPick: (name: FrameSizeName) => void
+}
+
+/**
+ * The section heading as a menu of the Frame tool's sizes, naming on its right
+ * the row the frames measure, `Custom` for a size no row holds, and `Mixed`
+ * where the frames differ.
+ */
+function SizeMenu({ frames, disabled, onPick }: SizeMenuProps) {
+  const rows = frames.map(({ box }) => matchSize(box))
+  const [first] = rows
+  const same = rows.every((row) => row?.name === first?.name)
+  const checked = same ? first?.name : undefined
+  const shown = !same ? 'Mixed' : (first?.label ?? 'Custom')
+  return (
+    <div className="mb-2 flex h-5 items-center justify-between gap-2">
+      <h2 id="inspector-frame" className="-ml-1 text-xs font-semibold">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={disabled}
+            aria-describedby="inspector-frame-size"
+            className="flex h-5 items-center gap-1 rounded-[5px] px-1 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 disabled:hover:bg-transparent aria-expanded:bg-accent"
+          >
+            {frames.length > 1 ? `${frames.length} frames` : 'Frame'}
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                'size-2.5 text-muted-foreground',
+                disabled && 'opacity-0',
+              )}
+            />
+          </DropdownMenuTrigger>
+          <ChromeMenuContent align="start" sideOffset={4} className="w-[220px]">
+            {FRAME_TOOL_GROUPS.map(({ group, label, rows: sizes }, index) => (
+              <Fragment key={group}>
+                {index > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuRadioGroup
+                  value={
+                    sizes.some((row) => row.name === checked) ? checked : null
+                  }
+                  onValueChange={(name: FrameSizeName) => {
+                    if (name !== checked) onPick(name)
+                  }}
+                >
+                  <DropdownMenuLabel className="px-2 text-label font-normal">
+                    {label}
+                  </DropdownMenuLabel>
+                  {sizes.map((row) => (
+                    <DropdownMenuRadioItem
+                      key={row.name}
+                      value={row.name}
+                      // A radio row stays open by default, and a pick is the menu's whole job.
+                      closeOnClick
+                      className={cn(MENU_ROW, 'pr-8')}
+                    >
+                      {row.label}
+                      <span className="ml-auto pl-2 text-muted-foreground tabular-nums">
+                        {row.width} × {row.height}
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </Fragment>
+            ))}
+          </ChromeMenuContent>
+        </DropdownMenu>
+      </h2>
+      <span
+        id="inspector-frame-size"
+        className="truncate text-muted-foreground"
+      >
+        {shown}
+      </span>
+    </div>
   )
 }
 

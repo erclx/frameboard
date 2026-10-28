@@ -9,6 +9,7 @@ import {
 import {
   DEVICE_SIZES,
   FRAME_SIZES,
+  type FrameSize,
   type FrameSizeGroup,
   type FrameSizeName,
   type FrameSizePreset,
@@ -68,4 +69,19 @@ export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
 
 function devicesIn(group: FrameSizeGroup): SizeRow[] {
   return DEVICE_SIZES.filter((device) => device.group === group)
+}
+
+/**
+ * The first row in list order a size measures exactly, so 1920 × 1080 reads
+ * Full HD ahead of Slide 16:9, since a frame keeps no memory of the row that
+ * placed it.
+ */
+export function matchSize({ width, height }: FrameSize): SizeRow | undefined {
+  for (const { rows } of FRAME_TOOL_GROUPS) {
+    const row = rows.find(
+      (candidate) => candidate.width === width && candidate.height === height,
+    )
+    if (row) return row
+  }
+  return undefined
 }
