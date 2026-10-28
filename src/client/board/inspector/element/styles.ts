@@ -28,6 +28,8 @@ export interface LiveElement {
   textWrapStyle: string
   /** Whether it clips to one line with an ellipsis, which takes three declarations together. */
   truncated: boolean
+  /** The computed `display`, where `inline` is a box nothing clips. */
+  display: string
   /** The computed text color, which a `currentcolor` paint shows. */
   color: string
   /** Whether any side draws a border. */
@@ -146,6 +148,7 @@ function readLive(element: Element, view: Window): LiveElement {
       style.textOverflow === 'ellipsis' &&
       style.overflowX !== 'visible' &&
       style.getPropertyValue('text-wrap-mode') === 'nowrap',
+    display: style.display,
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
     holdsText: text.trim() !== '',

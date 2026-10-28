@@ -33,7 +33,11 @@ import type { WriteElement } from './write'
 /** What the Type details rows light, as the live element computes it. */
 export type TypeDetails = Pick<
   LiveElement,
-  'textDecorationLine' | 'textTransform' | 'textWrapStyle' | 'truncated'
+  | 'textDecorationLine'
+  | 'textTransform'
+  | 'textWrapStyle'
+  | 'truncated'
+  | 'display'
 >
 
 export interface Segment {
@@ -63,17 +67,18 @@ const TRUNCATIONS: readonly Segment[] = [
 /**
  * One-line truncation takes all three declarations, and turning it off
  * writes each back rather than dropping it, so a frame rule setting one of
- * them cannot show through.
+ * them cannot show through. It writes the `text-wrap-mode` longhand, so a
+ * frame's whitespace collapsing stays as it was.
  */
 const TRUNCATE = {
   on: [
     { property: 'overflow', value: 'hidden' },
-    { property: 'white-space', value: 'nowrap' },
+    { property: 'text-wrap-mode', value: 'nowrap' },
     { property: 'text-overflow', value: 'ellipsis' },
   ],
   off: [
     { property: 'overflow', value: 'visible' },
-    { property: 'white-space', value: 'normal' },
+    { property: 'text-wrap-mode', value: 'wrap' },
     { property: 'text-overflow', value: 'clip' },
   ],
 } as const
@@ -157,7 +162,8 @@ export function TypeDetailsButton({
             labelledBy="type-details-truncate"
             options={TRUNCATIONS}
             current={details.truncated ? 'on' : 'off'}
-            disabled={disabled}
+            // `overflow` and `text-overflow` clip only a block container, and writing `display` is layout.
+            disabled={disabled || details.display === 'inline'}
             onPick={(value) =>
               void write({
                 kind: 'styles',
@@ -200,6 +206,7 @@ export function TypeDetailsButton({
                   <DropdownMenuRadioItem
                     key={value}
                     value={value}
+                    closeOnClick
                     className={cn(MENU_ROW, 'pr-8')}
                   >
                     {name}

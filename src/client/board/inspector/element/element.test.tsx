@@ -65,6 +65,7 @@ const PLAIN_TYPE = {
   textTransform: 'none',
   textWrapStyle: 'auto',
   truncated: false,
+  display: 'block',
 }
 
 function tokenValueOf(token: string, percent = 100): StyleValue {
@@ -641,6 +642,35 @@ describe('TypographySection', () => {
     ])
   })
 
+  it('closes the weight menu on a pick', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        details={PLAIN_TYPE}
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font weight' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: /^Medium/ }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-weight', value: '500' },
+    ])
+  })
+
   it('writes justify and lights it when the element computes it', async () => {
     const { changes, write } = recorder()
     const { rerender } = render(
@@ -980,7 +1010,7 @@ describe('TypographySection', () => {
           kind: 'styles',
           declarations: [
             { property: 'overflow', value: 'hidden' },
-            { property: 'white-space', value: 'nowrap' },
+            { property: 'text-wrap-mode', value: 'nowrap' },
             { property: 'text-overflow', value: 'ellipsis' },
           ],
         },
@@ -1006,11 +1036,25 @@ describe('TypographySection', () => {
           kind: 'styles',
           declarations: [
             { property: 'overflow', value: 'visible' },
-            { property: 'white-space', value: 'normal' },
+            { property: 'text-wrap-mode', value: 'wrap' },
             { property: 'text-overflow', value: 'clip' },
           ],
         },
       ])
+    })
+
+    it('offers no truncation on an inline box, which nothing clips', async () => {
+      const { write } = recorder()
+      renderDetails(write, { display: 'inline' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+
+      expect(
+        await screen.findByRole('button', { name: 'Truncate text' }),
+      ).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Underline' })).toBeEnabled()
     })
 
     it('writes the wrap style picked from its menu', async () => {
