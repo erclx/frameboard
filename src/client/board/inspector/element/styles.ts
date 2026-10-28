@@ -39,6 +39,7 @@ export interface LiveElement {
   /** Whether it holds text and no element, so its text is edited as a whole. */
   textOnly: boolean
   text: string
+  rotation: Rotation
   /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
   inline: {
     color: boolean
@@ -47,6 +48,25 @@ export interface LiveElement {
     background: boolean
     border: boolean
   }
+}
+
+/** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
+export interface Rotation {
+  /** The `rotate` property in degrees, clockwise, null for a 3D rotation the field cannot show. */
+  degrees: number | null
+  /** The `scale` property's x and y, null for a 3D scale. */
+  scale: { x: number; y: number } | null
+  /**
+   * For each the element's own `style` sets, the value a rule gives under it,
+   * so a write landing there drops the element's declaration rather than
+   * restating the rule. Absent where the style sets none.
+   */
+  own: {
+    rotate?: number | null
+    scale?: { x: number; y: number } | null
+  }
+  /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
+  translated: boolean
 }
 
 /**
@@ -154,8 +174,79 @@ function readLive(element: Element, view: Window): LiveElement {
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
+    rotation: {
+      degrees: degreesOf(style.rotate),
+      scale: scaleOf(style.scale),
+      own: beneathOwn(element, view),
+      translated: translates(style.transform),
+    },
     inline: inlinePaints(element),
   }
+}
+
+const TO_DEGREES: Record<string, number> = {
+  deg: 1,
+  grad: 0.9,
+  rad: 180 / Math.PI,
+  turn: 360,
+}
+
+/** A computed `rotate` in degrees, 0 for `none`, null for one about another axis. */
+export function degreesOf(rotate: string): number | null {
+  if (rotate === 'none' || rotate === '') return 0
+  const angle = /^(-?[\d.]+(?:e[+-]?\d+)?)(deg|grad|rad|turn)$/.exec(rotate)
+  const unit = angle?.[2] ? TO_DEGREES[angle[2]] : undefined
+  if (!angle || unit === undefined) return null
+  return Math.round(Number(angle[1]) * unit * 100) / 100
+}
+
+/** A computed `scale` as its x and y, 1 and 1 for `none`, null for a 3D scale. */
+export function scaleOf(scale: string): { x: number; y: number } | null {
+  if (scale === 'none' || scale === '') return { x: 1, y: 1 }
+  const factors = scale
+    .split(/\s+/)
+    .map((factor) =>
+      factor.endsWith('%') ? parseFloat(factor) / 100 : Number(factor),
+    )
+  const [x, y = x, z = 1] = factors
+  if (x === undefined || y === undefined || factors.some(Number.isNaN)) {
+    return null
+  }
+  return factors.length > 3 || z !== 1 ? null : { x, y }
+}
+
+/** Whether a computed `transform` matrix moves the element, reading any other value as one that may. */
+export function translates(transform: string): boolean {
+  if (transform === 'none' || transform === '') return false
+  const matrix = /^matrix(3d)?\(([^)]*)\)$/.exec(transform)
+  if (!matrix?.[2]) return true
+  const values = matrix[2].split(',').map(Number)
+  const offsets = matrix[1] ? values.slice(12, 15) : values.slice(4, 6)
+  return offsets.some((offset) => offset !== 0)
+}
+
+/**
+ * The `rotate` and `scale` a rule gives the element under its own `style`,
+ * read with those declarations lifted off the live node and the attribute
+ * put back as it was, so nothing paints between.
+ */
+function beneathOwn(element: Element, view: Window): Rotation['own'] {
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const node = 'style' in element ? (element as HTMLElement) : null
+  const rotate = !!node?.style.getPropertyValue('rotate')
+  const scale = !!node?.style.getPropertyValue('scale')
+  if (!node || (!rotate && !scale)) return {}
+  const attribute = node.getAttribute('style')
+  node.style.removeProperty('rotate')
+  node.style.removeProperty('scale')
+  const style = view.getComputedStyle(node)
+  const own: Rotation['own'] = {
+    ...(rotate ? { rotate: degreesOf(style.rotate) } : {}),
+    ...(scale ? { scale: scaleOf(style.scale) } : {}),
+  }
+  if (attribute === null) node.removeAttribute('style')
+  else node.setAttribute('style', attribute)
+  return own
 }
 
 /** A computed px length to two places. */

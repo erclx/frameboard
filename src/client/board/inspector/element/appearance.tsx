@@ -1,4 +1,6 @@
 import { NumberField } from '../number-field'
+import { RotationRow } from './rotation'
+import type { Rotation } from './styles'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const PERCENT: Intl.NumberFormatOptions = {
@@ -48,6 +50,7 @@ interface AppearanceSectionProps {
   opacity: number
   /** The corner radius in px. */
   radius: number
+  rotation: Rotation
   disabled: boolean
   write: WriteElement
   /** Shows a step on the live element before it is written. */
@@ -56,12 +59,13 @@ interface AppearanceSectionProps {
 
 /**
  * The Appearance section of `inspector/text`: the opacity as a percent and
- * the corner radius in px, each captioned, stepping, and scrubbing. The layer name is
- * renamed in Layers rather than here.
+ * the corner radius in px, each captioned, stepping, and scrubbing, over the
+ * Rotation row. The layer name is renamed in Layers rather than here.
  */
 export function AppearanceSection({
   opacity,
   radius,
+  rotation,
   disabled,
   write,
   preview,
@@ -112,6 +116,12 @@ export function AppearanceSection({
           )}
         />
       </div>
+      <RotationRow
+        rotation={rotation}
+        disabled={disabled}
+        write={write}
+        preview={preview}
+      />
     </section>
   )
 }

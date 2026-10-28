@@ -119,6 +119,33 @@ test.describe('editing a selected element by hand', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a rotate and a flip land in the headline’s span, and undo restores the bytes', async ({
+    page,
+  }) => {
+    const headline = original.split('\n').find((line) => line.includes('<h1'))
+    await page.getByRole('button', { name: 'Rotate 90°' }).click()
+    await expect.poll(read).toContain('rotate: 90deg')
+
+    // The frame reloads after the rotate, so the flip reads the written angle back.
+    await expect(
+      page.getByRole('textbox', { name: 'Rotation', exact: true }),
+    ).toHaveValue('90°')
+    await page.getByRole('button', { name: 'Flip horizontal' }).click()
+
+    await expect.poll(read).toContain('scale: -1 1')
+    expect(changedLines(original, read())).toEqual([
+      headline?.replace(
+        '<h1 data-name="Headline">',
+        '<h1 data-name="Headline" style="rotate: 90deg; scale: -1 1">',
+      ),
+    ])
+
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await expect.poll(read).not.toContain('scale')
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await expect.poll(read).toBe(original)
+  })
+
   test('a family and a named weight picked in Typography land in the headline’s span', async ({
     page,
   }) => {
