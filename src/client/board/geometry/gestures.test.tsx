@@ -533,6 +533,30 @@ describe('attachGestures', () => {
       expect(canvas.writes).toEqual([])
     })
 
+    it("takes a press on its name over a frame's label strip", () => {
+      // RIGHT's label strip reaches above its top edge, over this name.
+      const above = { ...FLOW, box: { x: 390, y: 80, width: 300, height: 300 } }
+      const canvas = setup(undefined, { sections: [above] })
+      detach = canvas.detach
+
+      canvas.pointer.click(400, 88)
+
+      expect([selectedRefs(), selectionStore.getState().section]).toEqual([
+        [],
+        'flow',
+      ])
+    })
+
+    it('leaves a press on a frame over its name to the frame', () => {
+      const under = { ...FLOW, box: { x: 390, y: 90, width: 300, height: 300 } }
+      const canvas = setup(undefined, { sections: [under] })
+      detach = canvas.detach
+
+      canvas.pointer.click(410, 105)
+
+      expect(selectedRefs()).toEqual([RIGHT.ref])
+    })
+
     it('marquees on its empty plate, as on bare canvas', () => {
       const canvas = setup(undefined, { sections: [FLOW] })
       detach = canvas.detach

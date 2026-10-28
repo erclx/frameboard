@@ -328,6 +328,18 @@ export function attachGestures(
       gesture = { kind: 'resize', corner, boxes: boxesOf(chosen), bounds }
       return
     }
+    // A section's name is its handle, over a frame's label strip but never
+    // over a frame itself. The rest of its plate is bare canvas, so a press
+    // there marquees, which keeps a drag across a section free.
+    const label = drawn.some((shown) => inBox(shown.box, point))
+      ? null
+      : topmost(target.layer, '[data-section-label]', event)
+    const section = sectionNamed(label?.dataset.sectionLabel)
+    if (section) {
+      if (!leaving) selectSection(selection, target.page, section.name)
+      gesture = { kind: 'section', section }
+      return
+    }
     const frame = frameAt(drawn, point, zoom())
     if (frame) {
       // Pressing an unselected frame selects it at once, so a drag moves it.
@@ -337,15 +349,6 @@ export function attachGestures(
         select(selection, target.page, [frame.ref])
       }
       gesture = { kind: 'press', frame, shift: event.shiftKey }
-      return
-    }
-    // A section's name is its handle. The rest of its plate is bare canvas,
-    // so a press there marquees, which keeps a drag across a section free.
-    const label = topmost(target.layer, '[data-section-label]', event)
-    const section = sectionNamed(label?.dataset.sectionLabel)
-    if (section) {
-      if (!leaving) selectSection(selection, target.page, section.name)
-      gesture = { kind: 'section', section }
       return
     }
     gesture = {
