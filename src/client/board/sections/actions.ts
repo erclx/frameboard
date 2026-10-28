@@ -13,6 +13,7 @@ import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { boundsOf, type Box } from '../geometry/box'
+import { withPending, writeBoxes } from '../geometry/write'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import {
@@ -67,6 +68,13 @@ export function wrapBox(frames: readonly FrameRecord[]): Box | null {
   }
 }
 
+const NUDGES = [
+  { name: 'Left', key: 'ArrowLeft', dx: -1, dy: 0 },
+  { name: 'Right', key: 'ArrowRight', dx: 1, dy: 0 },
+  { name: 'Up', key: 'ArrowUp', dx: 0, dy: -1 },
+  { name: 'Down', key: 'ArrowDown', dx: 0, dy: 1 },
+] as const
+
 export interface SectionContext {
   /** The page the canvas shows. */
   page: () => string
@@ -77,6 +85,8 @@ export interface SectionContext {
   mode: ModeStore
   live: LiveStore
   calls: Structure
+  /** Sends a section move with its frames, as a drag of it does. */
+  write?: typeof writeBoxes
 }
 
 /**
@@ -102,6 +112,40 @@ export function sectionActions(context: SectionContext): Action[] {
     return context.sections().find((held) => held.name === section)
   }
   const onSection = () => writable() && chosenSection() !== undefined
+  const membersOf = (section: SectionRecord) =>
+    withPending(context.frames()).filter((frame) =>
+      section.frames.includes(frame.name),
+    )
+  const movable = () => {
+    const section = chosenSection()
+    return (
+      writable() &&
+      section !== undefined &&
+      membersOf(section).every((frame) => !frame.locked)
+    )
+  }
+  // One nudge is out at a time, since the next starts from the box the
+  // board carries back, and a press while one is out is dropped.
+  let nudging = false
+  const nudge = (dx: number, dy: number) => {
+    const section = chosenSection()
+    if (!section || nudging) return
+    const members = membersOf(section)
+    const shift = (box: Box) => ({ ...box, x: box.x + dx, y: box.y + dy })
+    nudging = true
+    void (context.write ?? writeBoxes)(
+      context.page(),
+      Object.fromEntries(members.map((frame) => [frame.ref, shift(frame.box)])),
+      Object.fromEntries(members.map((frame) => [frame.ref, frame.box])),
+      undefined,
+      {
+        boxes: { [section.name]: shift(section.box) },
+        expected: { [section.name]: section.box },
+      },
+    ).finally(() => {
+      nudging = false
+    })
+  }
 
   return [
     {
@@ -149,6 +193,26 @@ export function sectionActions(context: SectionContext): Action[] {
           .catch(reportRefusal(`Couldn't delete ${section.name}`))
       },
     },
+    // A section moves by the keys as a frame does, its frames with it, which
+    // is the keyboard path its drag needs.
+    ...NUDGES.flatMap(({ name, key, dx, dy }) => [
+      {
+        id: `section.nudge${name}`,
+        label: `Nudge section ${name.toLowerCase()}`,
+        group: 'section',
+        keys: [key],
+        enabled: movable,
+        run: () => nudge(dx, dy),
+      },
+      {
+        id: `section.nudge${name}Far`,
+        label: `Nudge section ${name.toLowerCase()} 10 px`,
+        group: 'section',
+        keys: [`Shift+${key}`],
+        enabled: movable,
+        run: () => nudge(dx * 10, dy * 10),
+      },
+    ]),
     {
       id: 'tool.section',
       label: 'Section',

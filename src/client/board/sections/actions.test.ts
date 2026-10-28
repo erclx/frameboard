@@ -52,6 +52,7 @@ function setup() {
   const live = createLiveStore()
   live.setState({ canWrite: true })
   const { sent, calls } = fakeCalls()
+  const writes: unknown[][] = []
   const actions = sectionActions({
     page: () => PAGE,
     frames: () => [A, B],
@@ -60,6 +61,10 @@ function setup() {
     mode,
     live,
     calls,
+    write: async (...args) => {
+      writes.push(args)
+      return true
+    },
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -67,7 +72,7 @@ function setup() {
     return found
   }
   const enabled = (id: string) => action(id).enabled?.() ?? true
-  return { selection, mode, live, sent, calls, action, enabled }
+  return { selection, mode, live, sent, writes, calls, action, enabled }
 }
 
 /** Lets the call a run started answer and its `then` run. */
@@ -137,6 +142,36 @@ describe('sectionActions', () => {
       expect(enabled(id)).toBe(false)
     },
   )
+
+  it('nudges the selected section 10 px with its frames in one write', () => {
+    const { selection, writes, action } = setup()
+    selectSection(selection, PAGE, 'flow')
+
+    action('section.nudgeRightFar').run()
+
+    expect(writes).toEqual([
+      [
+        PAGE,
+        {
+          [A.ref]: { ...A.box, x: 10 },
+          [B.ref]: { ...B.box, x: 510 },
+        },
+        { [A.ref]: A.box, [B.ref]: B.box },
+        undefined,
+        {
+          boxes: { flow: { ...FLOW.box, x: -30 } },
+          expected: { flow: FLOW.box },
+        },
+      ],
+    ])
+  })
+
+  it('leaves the arrows to the frames while frames are selected', () => {
+    const { selection, enabled } = setup()
+    select(selection, PAGE, [A.ref])
+
+    expect(enabled('section.nudgeLeft')).toBe(false)
+  })
 
   it('turns the Section tool on and shows it in the Frame slot', () => {
     const { mode, action } = setup()
