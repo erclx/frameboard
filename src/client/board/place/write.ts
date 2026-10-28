@@ -9,6 +9,8 @@ import type {
 import type { ElementTree } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { assetUrl } from '../assets/describe'
+import type { PlaceableFile } from '../assets/drag'
 import { WaitDropped, whenFree } from '../claims/waiting'
 import { catchUpTree, fetchTree, treeOf } from '../element/tree'
 import { siblingGap } from '../element/walk'
@@ -24,10 +26,11 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
+import { type AssetSize, naturalSize, placedSize } from './asset-size'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
-export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider'
+export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider' | 'asset'
 
 export interface PlaceDeps {
   selection?: SelectionStore
@@ -36,13 +39,19 @@ export interface PlaceDeps {
   send?: typeof fetch
   /** Shows a refusal, the kit's toast by default. */
   notify?: (refusal: { title: string; description: string }) => void
-  /** A rectangle's or an ellipse's size in CSS pixels as a drag drew it, else the default 100 by 100. */
+  /**
+   * A rectangle's, an ellipse's, or a file's size in CSS pixels as a drag
+   * drew it, else the default 100 by 100, or for a file `placedSize`.
+   */
   size?: { width: number; height: number }
+  /** The file an asset places, with the size it draws at on its own. */
+  asset?: { path: string; natural: AssetSize | null }
 }
 
 /**
  * Places one element of `kind` into the frame under a board point, at the
- * gap between children `gapUnder` reads there, then selects it and returns to
+ * gap between children `gapUnder` reads there, an asset naming the file it
+ * shows, then selects it and returns to
  * Move, as one click of a placement tool. It answers the new element, or
  * null when nothing was written. A frame another session holds is refused
  * with nothing sent, since its indices go stale when that session writes,
@@ -65,17 +74,24 @@ export async function placeElement(
     send = fetch,
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
     size,
+    asset,
   }: PlaceDeps = {},
 ): Promise<ElementKey | null> {
   const under = gapUnder(container, frames, at)
-  if (!under) return null
+  if (!under || (kind === 'asset' && !asset)) return null
   const { gap } = under
   const element =
-    kind === 'divider'
-      ? { kind, vertical: gap.row }
-      : kind === 'text' || !size
-        ? { kind }
-        : { kind, ...size }
+    kind === 'asset' && asset
+      ? {
+          kind,
+          path: asset.path,
+          ...(size ?? placedSize(asset.natural, gap.room)),
+        }
+      : kind === 'divider'
+        ? { kind, vertical: gap.row }
+        : kind === 'text' || !size
+          ? { kind }
+          : { kind, ...size }
   return writeAtGap(
     under,
     'Nothing placed',
@@ -95,6 +111,34 @@ export async function placeElement(
     },
     { live, send, notify },
   )
+}
+
+/**
+ * Places `file` into the frame under a board point as `placeElement` places
+ * an asset, at the size a drag drew, else at its natural size read first,
+ * capped at its container's width.
+ */
+export async function placeFile(
+  container: ParentNode,
+  page: string,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+  file: PlaceableFile,
+  {
+    measure = naturalSize,
+    ...deps
+  }: PlaceDeps & {
+    /** Reads a file's natural size, from the server in the app. */
+    measure?: typeof naturalSize
+  } = {},
+): Promise<ElementKey | null> {
+  const natural = deps.size
+    ? null
+    : await measure(assetUrl(file.project, file.path), file.kind)
+  return placeElement(container, page, frames, at, 'asset', {
+    ...deps,
+    asset: { path: file.path, natural },
+  })
 }
 
 /**

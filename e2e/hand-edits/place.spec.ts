@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -331,5 +331,86 @@ test.describe('placing text and shapes into a frame', () => {
     await page.keyboard.press('Enter')
 
     await expect.poll(read).toContain('<h1 data-name="Headline">Welcome</h1>')
+  })
+
+  test.describe('an image or video from assets/', () => {
+    /** A 1 by 1 PNG, small enough to inline and real enough to decode. */
+    const PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    )
+
+    test.beforeEach(() => {
+      // The basic fixture holds no assets, so the copy gets an image and a
+      // video whose bytes decode as none, which places at the fallback size.
+      const assets = join(board.root, 'webapp/assets')
+      mkdirSync(assets, { recursive: true })
+      writeFileSync(join(assets, 'hero.png'), PNG)
+      writeFileSync(join(assets, 'demo.mp4'), 'not a video')
+    })
+
+    test('a picked image lands in a row gap as one img and undoes to its frame', async ({
+      page,
+    }) => {
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const original = read()
+      const one = await hero(page).locator('[data-name="One"]').boundingBox()
+      if (!one) throw new Error('The row draws no first child')
+
+      await tools(page).getByRole('button', { name: 'Shapes' }).click()
+      await page.getByRole('menuitem', { name: /Image or video/ }).click()
+      await page.getByRole('button', { name: 'Place hero.png' }).click()
+      await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
+
+      await expect
+        .poll(read)
+        .toBe(
+          original.replace(
+            '<div data-name="Two"',
+            '<img data-name="hero.png" src="../assets/hero.png" alt="" style="width: 1px; height: 1px; object-fit: cover"><div data-name="Two"',
+          ),
+        )
+
+      await page.keyboard.press('ControlOrMeta+z')
+
+      await expect.poll(read).toBe(original)
+    })
+
+    test('a video tile dragged from Assets lands in a row gap as one video and undoes to its frame', async ({
+      page,
+    }) => {
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const original = read()
+      await page.getByRole('tab', { name: 'Assets' }).click()
+      const gap = await centerOf(page, '[data-name="One"]')
+      const one = await hero(page).locator('[data-name="One"]').boundingBox()
+      const layer = await page.locator('[data-hit-layer]').boundingBox()
+      if (!one || !layer)
+        throw new Error('The row or the hit layer draws no box')
+
+      await page
+        .getByRole('button', { name: 'Copy path of demo.mp4' })
+        .dragTo(page.locator('[data-hit-layer]'), {
+          targetPosition: {
+            x: one.x + one.width + 20 - layer.x,
+            y: gap.y - layer.y,
+          },
+        })
+
+      await expect
+        .poll(read)
+        .toBe(
+          original.replace(
+            '<div data-name="Two"',
+            '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline style="width: 240px; height: 135px; object-fit: cover"></video><div data-name="Two"',
+          ),
+        )
+
+      await page.keyboard.press('ControlOrMeta+z')
+
+      await expect.poll(read).toBe(original)
+    })
   })
 })

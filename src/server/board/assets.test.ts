@@ -14,7 +14,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
-import { addAssets, listAssets, splitName } from './assets'
+import { addAssets, listAssets, resolveAsset, splitName } from './assets'
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -90,6 +90,83 @@ describe('assets', () => {
         'alias.png',
         'real.png',
       ])
+    })
+  })
+
+  describe('resolveAsset', () => {
+    it('answers the kind of an image, an SVG, and a video', async () => {
+      put('hero.png')
+      put('img/logo.svg')
+      put('demo.mp4')
+
+      expect(await resolveAsset(project, 'hero.png')).toEqual({
+        ok: true,
+        kind: 'image',
+      })
+      expect(await resolveAsset(project, 'img/logo.svg')).toEqual({
+        ok: true,
+        kind: 'svg',
+      })
+      expect(await resolveAsset(project, 'demo.mp4')).toEqual({
+        ok: true,
+        kind: 'video',
+      })
+    })
+
+    it('refuses a path that is not there as missing', async () => {
+      put('hero.png')
+
+      expect(await resolveAsset(project, 'gone.png')).toMatchObject({
+        ok: false,
+        code: 'asset-missing',
+      })
+    })
+
+    it('refuses a path climbing out with .. as missing', async () => {
+      put('hero.png')
+      writeFileSync(join(project, 'outside.png'), 'x')
+
+      expect(await resolveAsset(project, '../outside.png')).toMatchObject({
+        ok: false,
+        code: 'asset-missing',
+      })
+    })
+
+    it('refuses an absolute path as missing', async () => {
+      writeFileSync(join(board.root, 'secret.png'), 'secret')
+
+      expect(
+        await resolveAsset(project, join(board.root, 'secret.png')),
+      ).toMatchObject({ ok: false, code: 'asset-missing' })
+    })
+
+    it('refuses a symlink out of the folder as missing', async () => {
+      put('real.png')
+      writeFileSync(join(board.root, 'secret.png'), 'secret')
+      symlinkSync(join(board.root, 'secret.png'), join(assets, 'escape.png'))
+
+      expect(await resolveAsset(project, 'escape.png')).toMatchObject({
+        ok: false,
+        code: 'asset-missing',
+      })
+    })
+
+    it('refuses a folder as missing', async () => {
+      put('img/logo.svg')
+
+      expect(await resolveAsset(project, 'img')).toMatchObject({
+        ok: false,
+        code: 'asset-missing',
+      })
+    })
+
+    it('refuses a font as not placeable', async () => {
+      put('Inter.woff2')
+
+      expect(await resolveAsset(project, 'Inter.woff2')).toMatchObject({
+        ok: false,
+        code: 'asset-not-placeable',
+      })
     })
   })
 

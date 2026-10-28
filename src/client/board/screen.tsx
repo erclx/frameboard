@@ -154,7 +154,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
                 focus={focus}
                 onFocused={clearFocus}
               />
-              <Toolbar />
+              <Toolbar project={record.name} />
               <ChangesToast />
             </>
           ) : (

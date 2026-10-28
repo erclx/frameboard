@@ -13,12 +13,17 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'page-not-found': 404,
   'frame-not-found': 404,
   'font-missing': 422,
+  'capture-too-large': 422,
   'browser-not-found': 503,
 }
 
+/** The route's scale when none is asked for, matching Copy as PNG. */
+const DEFAULT_SCALE = 2
+
 /**
- * `GET /api/frames/png?ref=<frame-ref>&theme=<light|dark>`, a frame rendered
- * at twice its layout size. It takes no token, since the image shows only
+ * `GET /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>`, a
+ * frame rendered at `scale` times its layout size, twice when no scale is
+ * given. It takes no token, since the image shows only
  * what the frame route already serves, and a refusal answers the CLI's
  * `{ ok, error }` envelope.
  */
@@ -29,15 +34,16 @@ export function pngRoutes(root: string, render: RenderFrame): Hono {
     try {
       const ref = c.req.query('ref') ?? ''
       const theme = c.req.query('theme') ?? ''
-      if (ref === '' || !isTheme(theme)) {
+      const scale = parseScale(c.req.query('scale'))
+      if (ref === '' || !isTheme(theme) || scale === null) {
         throw new FrameboardError(
           'usage',
-          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>.',
-          { ref, theme },
+          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>.',
+          { ref, theme, scale: c.req.query('scale') ?? null },
         )
       }
       const frame = await readFrame(root, ref, { cwd: root })
-      const bytes = await render(frame, theme)
+      const bytes = await render(frame, theme, scale)
       return c.body(new Uint8Array(bytes), 200, {
         'Content-Type': 'image/png',
         'Cache-Control': 'no-store',
@@ -63,4 +69,11 @@ export function pngRoutes(root: string, render: RenderFrame): Hono {
 
 function isTheme(value: string): value is Theme {
   return value === 'light' || value === 'dark'
+}
+
+// Exact strings only, so `1.5`, `2x`, and an empty value refuse rather than round.
+function parseScale(value: string | undefined): number | null {
+  if (value === undefined) return DEFAULT_SCALE
+  if (value === '1' || value === '2' || value === '3') return Number(value)
+  return null
 }

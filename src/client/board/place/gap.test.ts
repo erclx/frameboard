@@ -37,6 +37,7 @@ describe('gapAt', () => {
       parent: 4,
       before: 6,
       row: false,
+      room: 380,
       line: { x: 10, y: 50, width: 380, height: 0 },
     })
   })
@@ -50,6 +51,7 @@ describe('gapAt', () => {
       parent: 4,
       before: 6,
       row: true,
+      room: 400,
       line: { x: 100, y: 0, width: 0, height: 40 },
     })
   })
@@ -112,6 +114,7 @@ describe('gapAt', () => {
       parent: 3,
       before: null,
       row: false,
+      room: 400,
       line: { x: 0, y: 40, width: 400, height: 0 },
     })
   })
@@ -126,6 +129,7 @@ describe('gapAt', () => {
       parent: 4,
       before: 5,
       row: false,
+      room: 400,
       line: { x: 0, y: 0, width: 400, height: 0 },
     })
   })
@@ -137,6 +141,7 @@ describe('gapAt', () => {
       parent: 3,
       before: null,
       row: false,
+      room: 400,
       line: { x: 0, y: 0, width: 400, height: 0 },
     })
   })

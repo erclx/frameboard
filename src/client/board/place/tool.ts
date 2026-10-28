@@ -1,4 +1,11 @@
-import { Circle, type LucideIcon, Minus, Square, Type } from 'lucide-react'
+import {
+  Circle,
+  Image as ImageIcon,
+  type LucideIcon,
+  Minus,
+  Square,
+  Type,
+} from 'lucide-react'
 import { useEffect } from 'react'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
@@ -6,12 +13,13 @@ import { createStore } from 'zustand/vanilla'
 import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 
-import { modeStore } from '../mode'
+import type { PlaceableFile } from '../assets/drag'
+import { modeStore, type Tool } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey } from '../selection'
 import type { PlacedKind } from './write'
 
-export type ShapeKind = Exclude<PlacedKind, 'text'>
+export type ShapeKind = Exclude<PlacedKind, 'text' | 'asset'>
 
 /** A shape the Shape tool places, with the action and key that pick it. */
 export interface ShapeRow {
@@ -21,6 +29,9 @@ export interface ShapeRow {
   key: string
   icon: LucideIcon
 }
+
+/** The action that opens the picker, listed in the Shape menu below the shapes. */
+export const IMAGE_TOOL = 'tool.image'
 
 /** In the order the Shape menu lists them. */
 export const SHAPES = [
@@ -52,13 +63,31 @@ export const shapeStore = createStore<{ shape: ShapeKind }>()(() => ({
   shape: 'rectangle',
 }))
 
+/** The file the Image tool places, chosen in the picker, null until one is. */
+export const armedStore = createStore<{ file: PlaceableFile | null }>()(() => ({
+  file: null,
+}))
+
+/** Whether the picker the Image tool opens with is open. */
+export const pickerStore = createStore<{ open: boolean }>()(() => ({
+  open: false,
+}))
+
+/** Turns the Image tool on with `file`, so the next click places it. */
+export function armFile(file: PlaceableFile): void {
+  armedStore.setState({ file })
+  pickerStore.setState({ open: false })
+  modeStore.setState({ tool: 'image', mode: 'edit' })
+  refreshActions()
+}
+
 /** The selected element a Move drag carries, which the drop line follows, null while none is dragged. */
 export const carriedStore = createStore<{ carried: ElementKey | null }>()(
   () => ({ carried: null }),
 )
 
 /**
- * A Rectangle, Ellipse, or Frame drag as it ended, where it started, the top
+ * A Rectangle, Ellipse, Image, or Frame drag as it ended, where it started, the top
  * left corner of the box it drew, and that box's size in CSS pixels.
  */
 export interface Draft {
@@ -75,7 +104,7 @@ export function finishDraft(draft: Draft | null): void {
   finished = draft
 }
 
-/** The drag a Rectangle or Ellipse press just finished, taken once, else null. */
+/** The drag a Rectangle, Ellipse, or Image press just finished, taken once, else null. */
 export function takeDraft(): Draft | null {
   const draft = finished
   finished = null
@@ -95,21 +124,26 @@ export function placedKind(): PlacedKind | null {
   const { mode, tool } = modeStore.getState()
   if (mode !== 'edit') return null
   if (tool === 'text') return 'text'
+  if (tool === 'image') return armedStore.getState().file ? 'asset' : null
   return tool === 'shape' ? shapeStore.getState().shape : null
+}
+
+/** Whether `tool` places an element with a click, as Text, Shape, and Image do. */
+export function placesElement(tool: Tool): boolean {
+  return tool === 'text' || tool === 'shape' || tool === 'image'
 }
 
 const canWrite = () => liveStore.getState().canWrite
 
-const placing = () => {
-  const { tool } = modeStore.getState()
-  return tool === 'text' || tool === 'shape'
-}
+const placing = () => placesElement(modeStore.getState().tool)
 
 /**
- * Registers the Text tool, key T, and one action per shape, keys R, O, and
- * L, each choosing that shape for the Shape tool. They write, so they are
- * enabled only while this tab may, and a tab losing write returns to Move,
- * as the canvas leaving does, so a tool never carries to the next page.
+ * Registers the Text tool, key T, one action per shape, keys R, O, and L,
+ * each choosing that shape for the Shape tool, and the Image tool, which
+ * opens the picker whose choice arms it. They write, so they are enabled
+ * only while this tab may, and a tab losing write returns to Move and closes
+ * the picker, as the canvas leaving does, so a tool never carries to the
+ * next page.
  */
 export function usePlaceTools(): void {
   useEffect(() => {
@@ -144,15 +178,30 @@ export function usePlaceTools(): void {
           modeStore.getState().tool === 'shape' &&
           shapeStore.getState().shape === row.kind,
       })),
+      {
+        id: IMAGE_TOOL,
+        label: 'Image or video',
+        group: 'tool',
+        command: { label: 'Add an image or video', icon: ImageIcon },
+        keys: ['$mod+Shift+KeyK'],
+        enabled: canWrite,
+        run: () => pickerStore.setState({ open: true }),
+        checked: () =>
+          modeStore.getState().mode === 'edit' &&
+          modeStore.getState().tool === 'image',
+      },
     ])
     const unsubscribe = liveStore.subscribe((state, previous) => {
       if (state.canWrite === previous.canWrite) return
       refreshActions()
-      if (!state.canWrite && placing()) modeStore.setState({ tool: 'move' })
+      if (state.canWrite) return
+      pickerStore.setState({ open: false })
+      if (placing()) modeStore.setState({ tool: 'move' })
     })
     return () => {
       unsubscribe()
       unregister()
+      pickerStore.setState({ open: false })
       if (placing()) modeStore.setState({ tool: 'move' })
     }
   }, [])

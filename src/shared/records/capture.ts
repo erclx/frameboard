@@ -11,8 +11,11 @@ export const captureResultSchema = z.object({
       ref: z.string(),
       theme: themeSchema,
       path: z.string(),
+      /** The layout box in CSS pixels, whatever the scale. */
       width: z.int().min(1),
       height: z.int().min(1),
+      /** Device pixels per CSS pixel, so the file is `width * scale` wide. */
+      scale: z.int().min(1).max(3),
     }),
   ),
 })

@@ -14,7 +14,7 @@ import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 
 import { modeStore } from '../mode'
-import { shapeStore, usePlaceTools } from '../place/tool'
+import { pickerStore, shapeStore, usePlaceTools } from '../place/tool'
 import { Toolbar } from './toolbar'
 
 const cleanups: (() => void)[] = []
@@ -123,6 +123,7 @@ describe('Toolbar', () => {
 
     afterEach(() => {
       shapeStore.setState({ shape: 'rectangle' })
+      pickerStore.setState({ open: false })
       modeStore.setState({ tool: 'move', mode: 'edit' })
       liveStore.setState({ canWrite: false })
     })
@@ -172,6 +173,19 @@ describe('Toolbar', () => {
       expect(box.height).toBeGreaterThanOrEqual(24)
       expect(box.left).toBeGreaterThanOrEqual(shape.right)
       expect(box.right).toBeLessThanOrEqual(note.left)
+    })
+
+    it('opens the picker from the Image or video row and keeps the last shape in the slot', async () => {
+      renderWithTools()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: /Image or video/ }),
+      )
+
+      expect(pickerStore.getState().open).toBe(true)
+      expect(shapeStore.getState().shape).toBe('rectangle')
+      expect(screen.getByRole('button', { name: 'Rectangle' })).toBeVisible()
     })
 
     it('shows the Shape button unpressed under another tool', () => {

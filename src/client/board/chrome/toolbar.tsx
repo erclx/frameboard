@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Frame,
   Hand,
+  Image as ImageIcon,
   type LucideIcon,
   Maximize,
   MessageSquare,
@@ -15,7 +16,7 @@ import {
   Type,
   Undo2,
 } from 'lucide-react'
-import { Fragment } from 'react'
+import { Fragment, useRef } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
@@ -24,12 +25,14 @@ import {
   DropdownMenu,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
 
-import { shapeRow, SHAPES, useShape } from '../place/tool'
+import { AssetPicker } from '../place/asset-picker'
+import { IMAGE_TOOL, shapeRow, SHAPES, useShape } from '../place/tool'
 import { ActionTooltip } from './action-tooltip'
-import { ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
+import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
 
 /**
  * A toolbar place and what it shows before its action registers. A row
@@ -81,18 +84,22 @@ const SLOTS = [...GROUPS.flat(), ...MODES]
 const IDS = [
   ...SLOTS.map((slot) => slot.id).filter((id) => id !== SHAPE_SLOT),
   ...SHAPES.map((row) => row.id),
+  IMAGE_TOOL,
 ]
 
 /**
  * The floating pill centered at the foot of the canvas column. Every button
  * runs its action from the registry, and one whose action no row has
- * registered yet shows disabled with its name and key on hover.
+ * registered yet shows disabled with its name and key on hover. Given the
+ * project, it opens the Image tool's picker above itself.
  */
-export function Toolbar() {
+export function Toolbar({ project }: { project?: string }) {
   const registered = useActions(IDS)
   const actions = new Map(IDS.map((id, index) => [id, registered[index]]))
+  const bar = useRef<HTMLDivElement>(null)
   return (
     <div
+      ref={bar}
       role="toolbar"
       aria-label="Tools"
       className="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-card p-[5px] shadow-[0_6px_24px_rgba(0,0,0,.18),0_1px_3px_rgba(0,0,0,.12)]"
@@ -119,6 +126,9 @@ export function Toolbar() {
           <ModeButton key={slot.id} slot={slot} action={actions.get(slot.id)} />
         ))}
       </div>
+      {project === undefined ? null : (
+        <AssetPicker project={project} anchor={bar} />
+      )}
     </div>
   )
 }
@@ -162,7 +172,7 @@ function ToolButton({ slot, action, pressed }: ButtonProps) {
 /**
  * The Shape tool: a button placing the last shape chosen, pressed while any
  * shape is on, and a caret opening the menu of shapes, the one chosen
- * marked, each naming its key.
+ * marked, each naming its key, and below them the Image or video row.
  */
 function ShapeTool({
   actions,
@@ -193,7 +203,7 @@ function ShapeTool({
           side="top"
           align="start"
           sideOffset={8}
-          className="w-[190px]"
+          className="w-[220px]"
         >
           <DropdownMenuRadioGroup
             value={shown.kind}
@@ -225,6 +235,18 @@ function ShapeTool({
               )
             })}
           </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          {/* Opens the picker rather than choosing a shape, so the slot keeps the last shape. */}
+          <ActionMenuItem
+            action={actions.get(IMAGE_TOOL)}
+            label="Image or video"
+            keys={['$mod+Shift+KeyK']}
+          >
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              <ImageIcon aria-hidden className="size-[13px]" />
+              Image or video…
+            </span>
+          </ActionMenuItem>
         </ChromeMenuContent>
       </DropdownMenu>
     </>

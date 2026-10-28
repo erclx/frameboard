@@ -33,6 +33,7 @@ import {
 import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
 import { type ElementChange, writeElement } from './element/write'
+import { ExportSection } from './export-section'
 import { FrameSection } from './frame-section'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { SelectionColors } from './selection-colors'
@@ -102,6 +103,9 @@ export function InspectorPanel() {
           ) : (
             <FramesColors frames={frames} />
           )}
+          {frames.length === 1 && !inFrame && frames[0] ? (
+            <ExportSection key={frames[0].ref} frame={frames[0]} />
+          ) : null}
         </>
       ) : (
         <div className="px-3 pt-2.5 pb-3 text-muted-foreground">

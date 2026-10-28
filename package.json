@@ -1,6 +1,6 @@
 {
   "name": "frameboard",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "A local design board that coding agents draw on as plain HTML files",
   "keywords": [
     "design",
@@ -33,7 +33,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts",
-    "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && vite",
+    "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && bun scripts/dev.ts",
     "preview": "bun scripts/preview.ts",
     "test": "vitest",
     "test:run": "bun scripts/test-locked.ts vitest run --reporter=verbose --maxWorkers=50%",

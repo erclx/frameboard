@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.19.0](https://github.com/erclx/frameboard/compare/v0.18.0...v0.19.0) (2026-10-28)
+
+
+### Features
+
+* **agent:** teach the skill selection, inspect, and device sizes ([#167](https://github.com/erclx/frameboard/issues/167)) ([a2d3e4c](https://github.com/erclx/frameboard/commit/a2d3e4ca0870afc06b133e4f7bd39fc342f8dd38))
+* **canvas:** move note pins with their frame during a resize ([#170](https://github.com/erclx/frameboard/issues/170)) ([ba32057](https://github.com/erclx/frameboard/commit/ba32057b87ab3f30d4f6bc78ed466a65699f00fc))
+* **canvas:** open no rename on frame add and hug the rename field ([#172](https://github.com/erclx/frameboard/issues/172)) ([9504ff2](https://github.com/erclx/frameboard/commit/9504ff29f7ba471483d024ef4e88c8f11e950557))
+* **inspector:** show a token chip only for a token sheet's names ([#169](https://github.com/erclx/frameboard/issues/169)) ([b576eb5](https://github.com/erclx/frameboard/commit/b576eb5acb2980f6c2271464d62a7ae8c52fcf55))
+* **pages:** grow the pages list to fit a new page from a four-row start ([#171](https://github.com/erclx/frameboard/issues/171)) ([76b9e10](https://github.com/erclx/frameboard/commit/76b9e1017f50058c4a561ce00c878cb121f7b008))
+
+
+### Bug Fixes
+
+* **guide:** draw the agent step radio ring in muted-foreground ([#168](https://github.com/erclx/frameboard/issues/168)) ([a272214](https://github.com/erclx/frameboard/commit/a272214366242d3024a7aaf9821853d19050a39d))
+
 ## [0.18.0](https://github.com/erclx/frameboard/compare/v0.17.0...v0.18.0) (2026-10-27)
 
 

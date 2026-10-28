@@ -36,7 +36,13 @@ The Frame tool places a phone, tablet, or desktop size picked from its list with
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
+- The inspector's Export section saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, named like `hero.light@2x.png`, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
 
 The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected upright shape's corner to resize it or any element to move it, Delete to take it out, or double-click text to retype it. Alt+Shift+ArrowUp and ArrowDown step it among its siblings. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
+
+Images and videos come from the project's `assets/` folder and land in the layout the same way.
+
+- Image or video in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width
+- Dragging an image or video tile from the Assets tab onto a frame places it where you let go
 
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
