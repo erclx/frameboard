@@ -101,6 +101,12 @@ describe('isShownShape', () => {
     expect(isShownShape(shown, KEY)).toBe(true)
   })
 
+  it('reads a shape whose rotate states 0deg as upright', async () => {
+    const shown = await mountShape('width: 40px; height: 40px; rotate: 0deg')
+
+    expect(isShownShape(shown, KEY)).toBe(true)
+  })
+
   it('refuses a shape its rotate turns', async () => {
     const shown = await mountShape('width: 40px; height: 40px; rotate: 30deg')
 

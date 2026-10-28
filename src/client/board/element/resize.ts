@@ -4,7 +4,7 @@ import { liveStore } from '@/client/live/store'
 import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
-import { previewStyle } from '../inspector/element/styles'
+import { degreesOf, previewStyle } from '../inspector/element/styles'
 import { writeElement } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 
@@ -72,11 +72,10 @@ export function isShownShape(container: ParentNode, key: ElementKey): boolean {
   )?.contentDocument
   if (!shown || renderedHash(shown) !== key.hash) return false
   const element = elementAt(shown, key.index)
-  return (
-    isShape(element) &&
-    !!element &&
-    shown.defaultView?.getComputedStyle(element).rotate === 'none'
-  )
+  const rotate = element
+    ? shown.defaultView?.getComputedStyle(element).rotate
+    : undefined
+  return isShape(element) && rotate !== undefined && degreesOf(rotate) === 0
 }
 
 /**
