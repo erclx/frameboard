@@ -46,8 +46,15 @@ export interface Rotation {
   degrees: number | null
   /** The `scale` property's x and y, null for a 3D scale. */
   scale: { x: number; y: number } | null
-  /** Whether the element's own `style` sets each, which a return to none drops rather than overrides. */
-  inline: { rotate: boolean; scale: boolean }
+  /**
+   * For each the element's own `style` sets, the value a rule gives under it,
+   * so a write landing there drops the element's declaration rather than
+   * restating the rule. Absent where the style sets none.
+   */
+  own: {
+    rotate?: number | null
+    scale?: { x: number; y: number } | null
+  }
   /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
   translated: boolean
 }
@@ -152,10 +159,7 @@ function readLive(element: Element, view: Window): LiveElement {
     rotation: {
       degrees: degreesOf(style.rotate),
       scale: scaleOf(style.scale),
-      inline: {
-        rotate: ownValue(element, 'rotate'),
-        scale: ownValue(element, 'scale'),
-      },
+      own: beneathOwn(element, view),
       translated: translates(style.transform),
     },
     inline: inlinePaints(element),
@@ -203,10 +207,28 @@ export function translates(transform: string): boolean {
   return offsets.some((offset) => offset !== 0)
 }
 
-/** Whether the element's own `style` attribute sets `property`. */
-function ownValue(element: Element, property: string): boolean {
-  const own = 'style' in element ? (element as HTMLElement).style : null
-  return !!own && own.getPropertyValue(property) !== ''
+/**
+ * The `rotate` and `scale` a rule gives the element under its own `style`,
+ * read with those declarations lifted off the live node and the attribute
+ * put back as it was, so nothing paints between.
+ */
+function beneathOwn(element: Element, view: Window): Rotation['own'] {
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const node = 'style' in element ? (element as HTMLElement) : null
+  const rotate = !!node?.style.getPropertyValue('rotate')
+  const scale = !!node?.style.getPropertyValue('scale')
+  if (!node || (!rotate && !scale)) return {}
+  const attribute = node.getAttribute('style')
+  node.style.removeProperty('rotate')
+  node.style.removeProperty('scale')
+  const style = view.getComputedStyle(node)
+  const own: Rotation['own'] = {
+    ...(rotate ? { rotate: degreesOf(style.rotate) } : {}),
+    ...(scale ? { scale: scaleOf(style.scale) } : {}),
+  }
+  if (attribute === null) node.removeAttribute('style')
+  else node.setAttribute('style', attribute)
+  return own
 }
 
 /** A computed px length to two places. */

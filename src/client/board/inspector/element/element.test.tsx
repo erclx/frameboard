@@ -65,18 +65,13 @@ function tokenValueOf(token: string, percent = 100): StyleValue {
 }
 
 /** An element's rotation, upright and unflipped by default, with its own style setting neither. */
-function rotationOf(
-  overrides: Partial<Omit<Rotation, 'inline'>> & {
-    inline?: Partial<Rotation['inline']>
-  } = {},
-): Rotation {
-  const { inline, ...rest } = overrides
+function rotationOf(overrides: Partial<Rotation> = {}): Rotation {
   return {
     degrees: 0,
     scale: { x: 1, y: 1 },
+    own: {},
     translated: false,
-    ...rest,
-    inline: { rotate: false, scale: false, ...inline },
+    ...overrides,
   }
 }
 
@@ -297,7 +292,7 @@ describe('RotationRow', () => {
 
   it('drops the element’s own rotate at 0 rather than writing 0deg', async () => {
     const { changes, write } = recorder()
-    renderRow(rotationOf({ degrees: 90, inline: { rotate: true } }), write)
+    renderRow(rotationOf({ degrees: 90, own: { rotate: 0 } }), write)
 
     const field = screen.getByRole('textbox', { name: 'Rotation' })
     await userEvent.clear(field)
@@ -308,7 +303,7 @@ describe('RotationRow', () => {
 
   it('writes nothing for a typed full turn and shows the stored angle', async () => {
     const { changes, write } = recorder()
-    renderRow(rotationOf({ degrees: 90, inline: { rotate: true } }), write)
+    renderRow(rotationOf({ degrees: 90, own: { rotate: 0 } }), write)
 
     const field = screen.getByRole('textbox', { name: 'Rotation' })
     await userEvent.clear(field)
@@ -343,7 +338,7 @@ describe('RotationRow', () => {
 
   it('rotates 135 by 90 to -135', async () => {
     const { changes, write } = recorder()
-    renderRow(rotationOf({ degrees: 135, inline: { rotate: true } }), write)
+    renderRow(rotationOf({ degrees: 135, own: { rotate: 0 } }), write)
 
     await userEvent.click(screen.getByRole('button', { name: 'Rotate 90°' }))
 
@@ -354,7 +349,7 @@ describe('RotationRow', () => {
 
   it('drops the element’s own rotate on the fourth quarter turn', async () => {
     const { changes, write } = recorder()
-    renderRow(rotationOf({ degrees: -90, inline: { rotate: true } }), write)
+    renderRow(rotationOf({ degrees: -90, own: { rotate: 0 } }), write)
 
     await userEvent.click(screen.getByRole('button', { name: 'Rotate 90°' }))
 
@@ -388,7 +383,7 @@ describe('RotationRow', () => {
   it('drops the element’s own scale on a flip back to 1 1', async () => {
     const { changes, write } = recorder()
     renderRow(
-      rotationOf({ scale: { x: -1, y: 1 }, inline: { scale: true } }),
+      rotationOf({ scale: { x: -1, y: 1 }, own: { scale: { x: 1, y: 1 } } }),
       write,
     )
 
@@ -399,10 +394,13 @@ describe('RotationRow', () => {
     expect(changes).toEqual([{ kind: 'style', property: 'scale', value: '' }])
   })
 
-  it('writes a flip back over a rule’s scale rather than dropping it', async () => {
+  it('writes a flip back the rule under the element’s own scale does not give', async () => {
     const { changes, write } = recorder()
     renderRow(
-      rotationOf({ scale: { x: -1.5, y: 1.5 }, inline: { scale: true } }),
+      rotationOf({
+        scale: { x: -1.5, y: 1.5 },
+        own: { scale: { x: 1, y: 1 } },
+      }),
       write,
     )
 
@@ -413,6 +411,40 @@ describe('RotationRow', () => {
     expect(changes).toEqual([
       { kind: 'style', property: 'scale', value: '1.5 1.5' },
     ])
+  })
+
+  it('writes 0deg over a rule’s angle under the element’s own rotate', async () => {
+    const { changes, write } = recorder()
+    renderRow(rotationOf({ degrees: -90, own: { rotate: 90 } }), write)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rotate 90°' }))
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'rotate', value: '0deg' },
+    ])
+  })
+
+  it('drops the element’s own rotate on reaching the rule’s angle under it', async () => {
+    const { changes, write } = recorder()
+    renderRow(rotationOf({ degrees: 0, own: { rotate: 90 } }), write)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rotate 90°' }))
+
+    expect(changes).toEqual([{ kind: 'style', property: 'rotate', value: '' }])
+  })
+
+  it('drops the element’s own scale on flipping to the rule’s scale under it', async () => {
+    const { changes, write } = recorder()
+    renderRow(
+      rotationOf({ scale: { x: 1, y: 1 }, own: { scale: { x: -1, y: 1 } } }),
+      write,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Flip horizontal' }),
+    )
+
+    expect(changes).toEqual([{ kind: 'style', property: 'scale', value: '' }])
   })
 
   it('locks the row on a translating transform, saying why', async () => {
@@ -2568,7 +2600,7 @@ describe('InspectorPanel with an element selected', () => {
     expect(result.current?.rotation).toEqual({
       degrees: 90,
       scale: { x: -1.5, y: 1.5 },
-      inline: { rotate: true, scale: true },
+      own: { rotate: 0, scale: { x: 1, y: 1 } },
       translated: true,
     })
   })
@@ -2583,9 +2615,30 @@ describe('InspectorPanel with an element selected', () => {
     expect(result.current?.rotation).toEqual({
       degrees: 0,
       scale: { x: 1, y: 1 },
-      inline: { rotate: false, scale: false },
+      own: {},
       translated: false,
     })
+  })
+
+  it('reads a rule’s rotate and scale under the element’s own, leaving its style as written', async () => {
+    await mountFrame(
+      '<div style="rotate: 0deg; scale: 1 1"></div><style>div { rotate: 90deg; scale: -1 1 }</style>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.rotation.own).toEqual({
+      rotate: 90,
+      scale: { x: -1, y: 1 },
+    })
+    expect(
+      document
+        .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+        ?.contentDocument?.querySelector('div')
+        ?.getAttribute('style'),
+    ).toBe('rotate: 0deg; scale: 1 1')
   })
 
   it('reads a 3D rotate as unreadable', async () => {

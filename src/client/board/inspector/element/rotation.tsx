@@ -26,26 +26,25 @@ function normalized(degrees: number): number {
 
 /**
  * The `rotate` value writing `degrees`, empty to drop the element's own
- * declaration at 0 rather than write `0deg`. Without one of its own, 0 is
- * written, since only a rule can have turned it.
+ * declaration where the angle a rule gives under it is the one asked for.
  */
-function rotateValue(degrees: number, inline: boolean): string {
-  return degrees === 0 && inline ? '' : `${degrees}deg`
+function rotateValue(degrees: number, { rotate }: Rotation['own']): string {
+  return rotate === degrees ? '' : `${degrees}deg`
 }
 
 /**
  * The `scale` value flipping `scale` along `axis`, as an x and y pair so a
- * rule's uniform scale survives the flip. A flip back to 1 and 1 drops the
- * element's own declaration, and without one writes it, over a rule's.
+ * rule's uniform scale survives the flip, or empty to drop the element's own
+ * declaration where the scale a rule gives under it is the flipped one.
  */
 function flippedScale(
   scale: { x: number; y: number },
   axis: 'x' | 'y',
-  inline: boolean,
+  { scale: beneath }: Rotation['own'],
 ): string {
   const x = axis === 'x' ? -scale.x : scale.x
   const y = axis === 'y' ? -scale.y : scale.y
-  return x === 1 && y === 1 && inline ? '' : `${x} ${y}`
+  return beneath?.x === x && beneath.y === y ? '' : `${x} ${y}`
 }
 
 function AngleIcon() {
@@ -97,7 +96,7 @@ export function RotationRow({
   write,
   preview,
 }: RotationRowProps) {
-  const { degrees, scale, inline } = rotation
+  const { degrees, scale, own } = rotation
   const lock = lockOf(rotation)
   const off = disabled || lock !== null
   const current = degrees ?? 0
@@ -105,7 +104,7 @@ export function RotationRow({
     write({
       kind: 'style',
       property: 'rotate',
-      value: rotateValue(next, inline.rotate),
+      value: rotateValue(next, own),
     })
   const buttons: readonly {
     label: string

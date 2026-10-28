@@ -21,7 +21,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment, plus its text when it holds text only. Layers renames an element.
 - **Rotation:** a degrees field writes `rotate`, clockwise and normalized to (-180, 180], beside Rotate 90°, Flip horizontal, and Flip vertical
 - **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
-- **What rotation leaves:** neither writes `transform`. A return to 0 or to `1 1` drops the element's own declaration, and the field reads `rotate` alone, not an angle inside an agent's `transform`.
+- **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.
 - **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
 - **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written
@@ -68,7 +68,7 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 
 Rotation leaves two gaps in what the canvas draws.
 
-- A shape whose `rotate` is not `none` takes no corner resize, since its outline is the turned bounding box
+- A shape whose `rotate` turns it takes no corner resize, since its outline is the turned bounding box
 - A rotation preview fires no resize or load, so the selection outline lags a scrub until the write reloads the frame
 
 The number field works around two base-ui behaviors.
