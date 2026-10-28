@@ -33,6 +33,7 @@ import { closeFind, findStore } from '../find/actions'
 import type { Box } from '../geometry/box'
 import { endPreview, setPreview } from '../preview/store'
 import { clear, selectElement, selectionStore } from '../selection'
+import { stopFrameRename } from '../structure/actions'
 import { attachCanvas, canvasView } from '../view'
 import { LeftPanel } from './panel'
 
@@ -153,6 +154,7 @@ afterEach(() => {
     unseenStore.setState({ unseen: {}, cursor: null })
     clear(selectionStore)
     trees.store.setState({ byRef: {} })
+    stopFrameRename()
   })
 })
 
@@ -1318,6 +1320,22 @@ describe('LeftPanel', () => {
       await expect
         .poll(() => document.activeElement)
         .toBe(screen.getByRole('textbox', { name: 'Rename frame hero' }))
+    })
+
+    it('keeps the hide button at the row edge while the row renames', async () => {
+      renderPanel(project([page('home', [frame('hero')])]))
+      const hide = () =>
+        screen
+          .getByRole('button', { name: 'Hide hero' })
+          .getBoundingClientRect()
+      const before = hide().right
+
+      await userEvent.dblClick(
+        screen.getByRole('button', { name: 'Select hero' }),
+      )
+      await screen.findByRole('textbox', { name: 'Rename frame hero' })
+
+      expect(hide().right).toBe(before)
     })
 
     it('selects the element whose row opened the menu', async () => {
