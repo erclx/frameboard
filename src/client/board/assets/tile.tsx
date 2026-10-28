@@ -69,7 +69,8 @@ const PILL: Record<Copy, string> = {
 
 const THUMB = 'grid h-[72px] place-items-center text-muted-foreground'
 
-function Thumbnail({ project, file }: TileProps) {
+/** A file's 72px preview, the image itself or a mark for its kind. */
+export function Thumbnail({ project, file }: TileProps) {
   switch (file.kind) {
     case 'image':
     case 'gif':
