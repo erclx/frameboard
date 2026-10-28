@@ -196,7 +196,7 @@ export function TypographySection({
       </div>
       <p
         id="inspector-alignment"
-        className="mt-1.5 mb-1 ml-0.5 text-label font-normal text-muted-foreground"
+        className="mt-1.5 mb-[3px] ml-0.5 text-caption text-muted-foreground"
       >
         Alignment
       </p>

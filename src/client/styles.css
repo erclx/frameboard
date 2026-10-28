@@ -14,6 +14,8 @@
   --text-body--font-weight: 400;
   --text-label: 11px;
   --text-label--font-weight: 600;
+  --text-caption: 10px;
+  --text-caption--font-weight: 400;
 
   /* A claimed frame's outline, its tag's tint, and a ring on the initial breathe together, per agents/claim-pulse. */
   --animate-claim-outline: claim-outline 2.4s ease-in-out infinite;

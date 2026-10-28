@@ -101,7 +101,7 @@ export function TextSection({
       {/* The line is kept while hidden, so focusing the field moves no section below. */}
       <p
         className={cn(
-          'mt-2.5 flex items-center gap-1 text-label font-normal text-muted-foreground',
+          'mt-2.5 flex items-center gap-1 text-caption text-muted-foreground',
           !focused && 'invisible',
         )}
       >

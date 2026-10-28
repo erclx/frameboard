@@ -81,12 +81,12 @@ export function PreviewRow({ frames }: PreviewRowProps) {
       <div className="mb-1.5 flex h-4 items-center justify-between">
         <span
           id="inspector-preview"
-          className="text-[11px] text-muted-foreground"
+          className="text-caption text-muted-foreground"
         >
           Preview
         </span>
         {previewed ? (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             Size unchanged
           </span>
         ) : null}

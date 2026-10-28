@@ -306,7 +306,7 @@ export function NumberField({
           aria-hidden
           data-scrub
           className={cn(
-            'mb-1 ml-0.5 block w-max cursor-ew-resize text-label font-normal text-muted-foreground select-none',
+            'mb-[3px] ml-0.5 block w-max cursor-ew-resize text-caption text-muted-foreground select-none',
             !disabled && CAPTION_LIT,
           )}
           onPointerDown={startScrub}
