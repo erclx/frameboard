@@ -11,10 +11,11 @@ import {
 import { join, sep } from 'node:path'
 
 import {
-  type AssetKind,
   assetKind,
   extensionOf,
   isAcceptedUpload,
+  isPlaceableKind,
+  type PlaceableKind,
 } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
@@ -84,16 +85,6 @@ async function walk(
   }
 }
 
-/** The kinds a frame shows as an `<img>` or a `<video>`. */
-export type PlaceableKind = 'image' | 'gif' | 'svg' | 'video'
-
-const PLACEABLE: ReadonlySet<AssetKind> = new Set<PlaceableKind>([
-  'image',
-  'gif',
-  'svg',
-  'video',
-])
-
 export type ResolvedAsset =
   | { readonly ok: true; readonly kind: PlaceableKind }
   | {
@@ -139,7 +130,7 @@ export async function resolveAsset(
     throw error
   }
   const kind = assetKind(path)
-  if (!isPlaceable(kind)) {
+  if (!isPlaceableKind(kind)) {
     return {
       ok: false,
       code: 'asset-not-placeable',
@@ -147,10 +138,6 @@ export async function resolveAsset(
     }
   }
   return { ok: true, kind }
-}
-
-function isPlaceable(kind: AssetKind): kind is PlaceableKind {
-  return PLACEABLE.has(kind)
 }
 
 function isScratch(name: string): boolean {

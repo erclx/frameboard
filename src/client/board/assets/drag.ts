@@ -1,28 +1,11 @@
-import type { AssetKind } from '@/shared/asset-kinds'
+import { isPlaceableKind, type PlaceableKind } from '@/shared/asset-kinds'
 import type { AssetFile } from '@/shared/records/assets'
-
-/** The kinds a frame shows as an `<img>` or a `<video>`, which a tile drags and the picker lists. */
-export type PlaceableKind = Extract<
-  AssetKind,
-  'image' | 'gif' | 'svg' | 'video'
->
 
 /** A file a placement lands, by its path under the project's `assets/`. */
 export interface PlaceableFile {
   project: string
   path: string
   kind: PlaceableKind
-}
-
-const PLACEABLE: readonly unknown[] = [
-  'image',
-  'gif',
-  'svg',
-  'video',
-] satisfies PlaceableKind[]
-
-export function isPlaceableKind(kind: unknown): kind is PlaceableKind {
-  return PLACEABLE.includes(kind)
 }
 
 export function isPlaceable(

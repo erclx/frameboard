@@ -3,10 +3,11 @@ import { Music, Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
+import { isPlaceableKind } from '@/shared/asset-kinds'
 import type { AssetFile } from '@/shared/records/assets'
 
 import { assetUrl, describeAsset, linkPath } from './describe'
-import { isPlaceableKind, tileDragData } from './drag'
+import { tileDragData } from './drag'
 
 interface TileProps {
   project: string
