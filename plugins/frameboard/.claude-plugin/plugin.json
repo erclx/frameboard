@@ -1,6 +1,6 @@
 {
   "name": "frameboard",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "A local design board that coding agents draw on as plain HTML files",
   "author": {
     "name": "Eric Le"
