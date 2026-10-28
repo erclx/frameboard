@@ -140,6 +140,7 @@ function ExportMenu({ label, shown, value, options, onPick }: ExportMenuProps) {
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
+              closeOnClick
               className={cn(MENU_ROW, 'pr-8')}
             >
               {option.label}

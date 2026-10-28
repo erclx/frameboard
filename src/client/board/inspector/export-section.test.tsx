@@ -72,6 +72,8 @@ describe('ExportSection', () => {
     await user.click(screen.getByRole('button', { name: 'Export scale' }))
     await user.click(await screen.findByRole('menuitemradio', { name: '1x' }))
 
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+
     expect(
       screen.getByText('PNG, hero.light@1x.png and hero.dark@1x.png'),
     ).toBeVisible()
