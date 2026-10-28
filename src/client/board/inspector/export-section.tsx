@@ -99,7 +99,7 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
       >
         {exporting ? 'Exporting' : `Export ${frame.name}`}
       </Button>
-      <p className="mt-1.5 text-label font-normal text-muted-foreground">
+      <p className="mt-1.5 text-caption text-muted-foreground">
         PNG, {files.join(' and ')}
       </p>
     </section>
