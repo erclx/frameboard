@@ -332,3 +332,51 @@ test.describe('filling a selected frame by hand', () => {
     await expect.poll(read).toBe(original)
   })
 })
+
+test.describe('exporting a selected frame', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('export saves the frame at 1x in light, named for its scale and theme', async ({
+    page,
+  }) => {
+    const headline = page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toBeVisible()
+    // As above, a click before the canvas fits lands beside the frame.
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Export hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+
+    await page.getByRole('button', { name: 'Export scale' }).click()
+    await page.getByRole('menuitemradio', { name: '1x' }).click()
+    await page.getByRole('button', { name: 'Export theme' }).click()
+    await page.getByRole('menuitemradio', { name: 'Light' }).click()
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Export hero' }).click()
+    const download = await downloading
+
+    expect(download.suggestedFilename()).toBe('hero.light@1x.png')
+    const bytes = readFileSync(await download.path())
+    // A PNG's IHDR chunk holds its width and height at bytes 16 and 20.
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+      1440, 900,
+    ])
+  })
+})
