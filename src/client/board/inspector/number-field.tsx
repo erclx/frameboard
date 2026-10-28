@@ -79,8 +79,7 @@ const CAPTION_LIT =
  *
  * base-ui commits a keyboard step with every press, so the field steps on
  * its own keys rather than base-ui's, and takes base-ui's commit only for a
- * scrub release. A value it sent stays shown until the stored value moves,
- * as `CommitField` holds one.
+ * scrub release. A value it sent stays shown until the stored value moves.
  */
 export function NumberField({
   label,
