@@ -7,7 +7,7 @@ import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
-import { openFrame } from './render'
+import { MAX_COMPOSITE_SIDE, openFrame } from './render'
 
 export interface CapturedImage {
   ref: string
@@ -30,8 +30,6 @@ export interface CompositePage {
 
 /** Space left around the frames of a composite, past each outermost edge. */
 export const COMPOSITE_MARGIN = 40
-/** Chromium's screenshot surface stops at this many pixels on either side. */
-export const MAX_COMPOSITE_SIDE = 16384
 
 const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 

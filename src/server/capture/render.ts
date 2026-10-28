@@ -1,11 +1,14 @@
 import type { Browser, Page } from 'playwright-core'
 
+import { FrameboardError } from '@/shared/errors'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { assertFontsPresent } from './fonts'
 
 /** How long a frame has to load before its capture fails. */
 const LOAD_TIMEOUT_MS = 10_000
+/** Chromium's screenshot surface stops at this many pixels on either side. */
+export const MAX_COMPOSITE_SIDE = 16384
 
 export interface OpenFrameOptions {
   /** The origin serving `/frames/`, a frame host or the board server. */
@@ -60,10 +63,35 @@ export async function openFrame(
   }
 }
 
-/** Renders a frame to PNG bytes in a theme, as the server's PNG route asks. */
+/**
+ * Refuses `capture-too-large` for a frame whose screenshot at `scale` would
+ * pass Chromium's surface on either side, which would otherwise come back
+ * cropped or blank rather than failing.
+ */
+export function assertScreenshotFits(
+  ref: string,
+  box: { width: number; height: number },
+  scale: number,
+): void {
+  const width = Math.ceil(box.width * scale)
+  const height = Math.ceil(box.height * scale)
+  if (width > MAX_COMPOSITE_SIDE || height > MAX_COMPOSITE_SIDE) {
+    throw new FrameboardError(
+      'capture-too-large',
+      `${ref} at ${scale}x would be ${width} by ${height} px, past the ${MAX_COMPOSITE_SIDE} px a browser screenshot holds. Pick a smaller scale.`,
+      { ref, width, height, scale, max: MAX_COMPOSITE_SIDE },
+    )
+  }
+}
+
+/**
+ * Renders a frame to PNG bytes in a theme, as the server's PNG route asks,
+ * at `scale` device pixels per CSS pixel or the renderer's own default.
+ */
 export type RenderFrame = (
   frame: { ref: string; box: { width: number; height: number } },
   theme: Theme,
+  scale?: number,
 ) => Promise<Buffer>
 
 export interface WarmBrowser {
@@ -110,19 +138,20 @@ export function createWarmBrowser(launch: () => Promise<Browser>): WarmBrowser {
 export function createWarmRenderer({
   baseUrl,
   browser,
-  scale,
+  scale: defaultScale,
 }: {
   /** Read per render, since the server's port is known only once listening. */
   baseUrl: () => string
   browser: WarmBrowser
-  /** Device pixels per CSS pixel: 2 for the PNG route, 0.5 for a thumbnail. */
+  /** The default device pixels per CSS pixel: 2 for the PNG route, 0.5 for a thumbnail. */
   scale: number
 }): RenderFrame {
   // Renders run in turn, so a frame calling the route in a loop costs one tab.
   let queue: Promise<unknown> = Promise.resolve()
 
-  return (frame, theme) => {
+  return (frame, theme, scale = defaultScale) => {
     const run = queue.then(async () => {
+      assertScreenshotFits(frame.ref, frame.box, scale)
       const opened = await openFrame(await browser.get(), {
         baseUrl: baseUrl(),
         ref: frame.ref,
