@@ -25,7 +25,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Check the page's frames in that `list` output first, and treat a name already there as an existing frame to claim before you rewrite it, since a write over it lands unclaimed
    - Write the file before placing it, since `frame add` writes an empty skeleton when none exists and the developer watches a blank box until your write lands
 2. Place it with `frameboard frame add <page>/<frame> --json` straight after the write. It places the file as written and touches nothing in it.
-   - Pass the phone, tablet, or desktop size the screen calls for, so it lands at its device width at once instead of showing at desktop width until it is sized
+   - Pass the size name nearest the screen the developer described, from the `Frame sizes` block of `frameboard docs`, so it lands at its device width at once
    - A frame with no size hugs its content on both axes, and a size fixes its width alone, so leave the size off a component and let the running server measure it
    - Resize an axis only to fix it, since a resize stops that axis hugging
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
@@ -53,11 +53,23 @@ Run `frameboard editing <page>/<frame> --json` before you change an existing fra
 - Drop it with `frameboard editing <page>/<frame> --release --json` as soon as you are done rather than letting it lapse, since the developer's hand edits on it wait for your claim to end
 - A refusal with `frame-claimed` means another session holds the frame. Leave it alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
 
+## Read what the developer picked
+
+When the developer says "this", "the selected one", or points at something on the board, run `frameboard selection --json` before acting, and take the target from its answer rather than guessing.
+
+- Treat a selection with no element as a frame or several frames, never as one element address
+- On `server-not-running`, run `frameboard serve --json`, and when nothing is selected, ask the developer to pick what they mean
+- Read it again before each new request, since it is a snapshot of the last writing tab and the developer keeps selecting
+
 ## Respect what the developer changed
 
 - Read a frame again before changing it, since the developer may have edited it by hand since your last write.
-- Change one property the developer touched through `frameboard edit`, passing the frame file's SHA-256 as `--hash`
-- Expect a file that changed since you read it to be refused rather than overwritten, then read it again and redo the edit
+- Change one property of one element through `frameboard edit`, which takes the element's `--index` and the frame file's SHA-256 as `--hash`
+  1. Run `frameboard inspect <page>/<frame> --json` to find the element's index, or take it from the selection
+  2. Edit by that index and hash
+- Treat `editable: false` in the inspect result as a frame `edit` refuses at every index, then rewrite the file instead of trying other indices
+- Inspect again after any rewrite, since indices follow document order and an old one can point at a different element
+- Read the `edit` entry of `frameboard docs` for its refusals, `stale-address` among them, then inspect again and redo the edit
 - Rewrite a whole frame only when the change reshapes it, and keep every value the developer set by hand.
 
 ## Answer the developer's notes
