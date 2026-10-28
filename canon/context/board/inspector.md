@@ -51,7 +51,7 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 - A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value that matches a token is still flagged
-- Only a name a token sheet declares reads as a token. A name only the frame declares answers the light value it resolves to, since the cascade sees no `data-theme`.
+- Only a token sheet's name reads as a token. A frame's own name reads as the first token its chain reaches, else its light value, as the cascade sees no `data-theme`.
 
 ## Gotchas
 

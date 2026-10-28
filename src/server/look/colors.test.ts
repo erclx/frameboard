@@ -127,6 +127,19 @@ describe('frameStyles', () => {
     })
   })
 
+  it('names the token a frame property aliases', () => {
+    const { element } = stylesOf(
+      '<style>:root { --bg: var(--primary) }</style><p id="t" style="color: color-mix(in srgb, var(--bg) 40%, transparent)">x</p>',
+      't',
+    )
+
+    expect(element?.color).toEqual({
+      value: 'var(--primary)',
+      token: '--primary',
+      percent: 40,
+    })
+  })
+
   it('keeps a token the frame overrides named as the token', () => {
     const { element } = stylesOf(
       '<style>:root { --primary: #000000 }</style><p id="t" style="color: var(--primary)">x</p>',

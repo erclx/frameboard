@@ -243,6 +243,31 @@ describe('buildCascade resolve', () => {
   it('answers null for a property nothing declares', () => {
     expect(resolvedOn('<p id="t">x</p>', 't', 'var(--missing)')).toBeNull()
   })
+
+  it('stops at a kept name and leaves its var() as written', () => {
+    board = writeBoard({
+      'site/home/hero.html':
+        '<style>:root { --surface: #fff; --bg: var(--surface) }</style><p id="t">x</p>',
+    })
+    const source = readFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+    const element = source.elements.find(
+      (candidate) => candidate.attribs.id === 't',
+    )
+    if (!element) throw new Error('no element #t')
+
+    expect(
+      buildCascade(source, []).resolve(
+        'var(--bg)',
+        element,
+        new Set(['--surface']),
+      ),
+    ).toBe('var(--surface)')
+  })
 })
 
 /** The declaration of `property` that wins on the element with `id`, and the id it came from. */

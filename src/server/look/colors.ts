@@ -88,11 +88,12 @@ export function frameStyles(
   const tokenNames = declaredNames(tokens)
   const target = index === undefined ? undefined : source.elements[index]
   // A name only the frame declares is no token, so it answers as the value it
-  // resolves to. A name nothing declares stays named for `unknown-token`.
+  // resolves to, or the token its chain reaches first. A name nothing
+  // declares stays named for `unknown-token`.
   const named = (written: string, element: Element): StyleValue => {
     const value = styleValue(written)
     if (!value.token || tokenNames.has(value.token)) return value
-    const resolved = cascade.resolve(`var(${value.token})`, element)
+    const resolved = cascade.resolve(`var(${value.token})`, element, tokenNames)
     if (resolved === null) return value
     const raw = styleValue(resolved)
     return { ...raw, percent: Math.round((raw.percent * value.percent) / 100) }

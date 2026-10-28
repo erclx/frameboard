@@ -108,8 +108,13 @@ export interface Cascade {
    * `value` with every `var()` replaced by what the custom property holds
    * on `element`, following chains and fallbacks. Null when a `var()` has
    * nothing behind it, which makes the declaration invalid at computed time.
+   * A `var()` naming one of `keep` stays as written, ending its chain there.
    */
-  resolve: (value: string, element: Element) => string | null
+  resolve: (
+    value: string,
+    element: Element,
+    keep?: ReadonlySet<string>,
+  ) => string | null
 }
 
 export interface CascadeOptions {
@@ -228,6 +233,7 @@ export function buildCascade(
   const resolveVars = (
     value: string,
     element: Element,
+    keep: ReadonlySet<string> = new Set(),
     depth = 0,
   ): string | null => {
     if (depth > 16) return null
@@ -245,14 +251,19 @@ export function buildCascade(
         ',',
       )
       const fallback = fallbackParts.length > 0 ? fallbackParts.join(',') : null
-      const custom = inherited(element, name.trim())
-      const replacement =
-        custom === null
-          ? fallback === null
-            ? null
-            : resolveVars(fallback, element, depth + 1)
-          : // postcss keeps the space before a closing brace, which CSS strips.
-            resolveVars(custom.value.trim(), custom.element, depth + 1)
+      let replacement: string | null
+      if (keep.has(name.trim())) {
+        replacement = rest.slice(start, end + 1)
+      } else {
+        const custom = inherited(element, name.trim())
+        replacement =
+          custom === null
+            ? fallback === null
+              ? null
+              : resolveVars(fallback, element, keep, depth + 1)
+            : // postcss keeps the space before a closing brace, which CSS strips.
+              resolveVars(custom.value.trim(), custom.element, keep, depth + 1)
+      }
       if (replacement === null) return null
       resolved += rest.slice(0, start) + replacement
       rest = rest.slice(end + 1)
@@ -302,7 +313,7 @@ export function buildCascade(
         shorthand: declaration.property !== property,
       }
     },
-    resolve: (value, element) => resolveVars(value, element),
+    resolve: (value, element, keep) => resolveVars(value, element, keep),
   }
 }
 
