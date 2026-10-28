@@ -31,15 +31,24 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 
 ### `src/client/board/place/`
 
-Owns the Text and Shape tools, keys T, R, O, and L, which drop one new element into a frame's layout at the click and move nothing else, and the drop of a selected element a Move drag carries.
+Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which drop one new element into a frame's layout at the click and move nothing else, and the drop of a selected element a Move drag carries or an Assets tile.
 
 - `gap.ts` reads the container and the sibling gap under the pointer from the live DOM, along x in a flex row or a grid and along y otherwise, as the insert route's file indices
 - A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
-- `drop-line.tsx` draws a 2px line in the selection blue at that gap while either tool is on or an element is carried, and nothing over bare canvas, a loading frame, or a carried element's own spot
+- `drop-line.tsx` draws a 2px selection-blue line at that gap while a tool is on, an element is carried, or a tile is dragged, never over bare canvas, a loading frame, or a carried element's own spot
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
 
-A Rectangle, Ellipse, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks. `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
+The Image tool and a tile drag place a file from the project's `assets/`.
+
+- `asset-picker.tsx`, opened from the Shape menu's Image or video row, lists the project's images, GIFs, SVGs, and videos and arms the Image tool with the one chosen
+- An asset posts its path under `assets/` and a size from `asset-size.ts`, the file's own capped at the container's width, else 240 by 135, and the server picks `<img>` or `<video>`
+- An image, GIF, SVG, or video tile in the Assets tab drags while the tab may write, carrying the data `src/client/board/assets/drag.ts` shapes
+- `asset-drop.ts` makes the hit layer a drop target for a tile and swallows a system file dropped there, so it never opens in place of the board
+
+A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes and files land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks.
+
+`moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
 
 ### `src/client/board/left-panel/`
 

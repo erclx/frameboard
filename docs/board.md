@@ -38,4 +38,9 @@ The Frame tool places a phone, tablet, or desktop size picked from its list with
 
 The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame's layout where you click, sizing a rectangle or ellipse to a drag. Drag a selected shape's corner to resize it or any element to move it, Delete to take it out, or double-click text to retype it. Alt+Shift+ArrowUp and ArrowDown step it among its siblings. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
 
+Images and videos come from the project's `assets/` folder and land in the layout the same way.
+
+- Image or video in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width
+- Dragging an image or video tile from the Assets tab onto a frame places it where you let go
+
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
