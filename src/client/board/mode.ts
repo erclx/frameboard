@@ -6,12 +6,14 @@ export type Mode = 'edit' | 'play'
 
 /**
  * Text, Shape, and Image place an element into a frame, Shape the one
- * `place/tool` last chose and Image the file it armed.
+ * `place/tool` last chose and Image the file it armed. Section draws a
+ * section's box on the page.
  */
 export type Tool =
   | 'move'
   | 'hand'
   | 'frame'
+  | 'section'
   | 'note'
   | 'text'
   | 'shape'

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { keyLabel } from '@/client/actions/keys'
 import {
   type Action,
   refreshActions,
@@ -15,6 +16,7 @@ import { liveStore } from '@/client/live/store'
 
 import { modeStore } from '../mode'
 import { pickerStore, shapeStore, usePlaceTools } from '../place/tool'
+import { boxToolStore } from '../sections/actions'
 import { Toolbar } from './toolbar'
 
 const cleanups: (() => void)[] = []
@@ -100,9 +102,71 @@ describe('Toolbar', () => {
     expect(
       screen
         .getAllByRole('button')
-        .slice(0, 7)
+        .slice(0, 8)
         .map((button) => button.getAttribute('aria-label')),
-    ).toEqual(['Move', 'Hand', 'Frame', 'Text', 'Rectangle', 'Shapes', 'Note'])
+    ).toEqual([
+      'Move',
+      'Hand',
+      'Frame',
+      'Frame tools',
+      'Text',
+      'Rectangle',
+      'Shapes',
+      'Note',
+    ])
+  })
+
+  describe('the Frame slot', () => {
+    function renderWithBoxTools() {
+      const tool = (id: string, name: 'frame' | 'section', keys: string[]) => ({
+        id,
+        label: name === 'frame' ? 'Frame' : 'Section',
+        group: 'tool',
+        keys,
+        run: () => {
+          boxToolStore.setState({ tool: name })
+          modeStore.setState({ tool: name, mode: 'edit' })
+        },
+        checked: () => modeStore.getState().tool === name,
+      })
+      register(
+        tool('tool.frame', 'frame', ['f']),
+        tool('tool.section', 'section', ['Shift+KeyS']),
+      )
+      return renderToolbar()
+    }
+
+    afterEach(() => {
+      boxToolStore.setState({ tool: 'frame' })
+      modeStore.setState({ tool: 'move', mode: 'edit' })
+    })
+
+    it("lists Frame and Section in its menu, naming each one's key", async () => {
+      renderWithBoxTools()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame tools' }))
+
+      const rows = await screen.findAllByRole('menuitemradio')
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'FrameF',
+        `Section${keyLabel('Shift+KeyS')}`,
+      ])
+    })
+
+    it('turns Section on from its menu and shows it pressed in the slot', async () => {
+      renderWithBoxTools()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame tools' }))
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: /Section/ }),
+      )
+
+      expect(modeStore.getState().tool).toBe('section')
+      expect(screen.getByRole('button', { name: 'Section' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
   })
 
   describe('the Shape tool', () => {

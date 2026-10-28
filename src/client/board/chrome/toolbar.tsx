@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Moon,
   MousePointer2,
+  PanelTop,
   Pencil,
   Play,
   Redo2,
@@ -31,6 +32,7 @@ import {
 
 import { AssetPicker } from '../place/asset-picker'
 import { IMAGE_TOOL, shapeRow, SHAPES, useShape } from '../place/tool'
+import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
 
@@ -48,13 +50,28 @@ interface Slot {
 }
 
 const SHAPE_SLOT = 'tool.shape'
+const FRAME_SLOT = 'tool.frame'
+const SECTION_TOOL = 'tool.section'
+
+/** The tools the Frame slot's caret lists, Frame and Section both drawing a box on the page. */
+const BOX_TOOLS = [
+  { tool: 'frame', id: FRAME_SLOT, label: 'Frame', key: 'f', icon: Frame },
+  {
+    tool: 'section',
+    id: SECTION_TOOL,
+    label: 'Section',
+    key: 'Shift+KeyS',
+    icon: PanelTop,
+  },
+] as const
 
 /** The groups in the order `canon/design/toolbar/floating` draws them, divided by a rule. */
 const GROUPS: readonly (readonly Slot[])[] = [
   [
     { id: 'tool.move', label: 'Move', keys: ['v'], icon: MousePointer2 },
     { id: 'tool.hand', label: 'Hand', keys: ['h'], icon: Hand },
-    { id: 'tool.frame', label: 'Frame', keys: ['f'], icon: Frame },
+    // Stands in for the Frame slot, which `BoxTool` draws from Frame or Section, the last chosen.
+    { id: FRAME_SLOT, label: 'Frame', keys: ['f'], icon: Frame },
     { id: 'tool.text', label: 'Text', keys: ['t'], icon: Type },
     // Stands in for the Shape slot, which `ShapeTool` draws from the last shape chosen.
     { id: SHAPE_SLOT, label: 'Shape', icon: SHAPES[0].icon },
@@ -85,6 +102,7 @@ const IDS = [
   ...SLOTS.map((slot) => slot.id).filter((id) => id !== SHAPE_SLOT),
   ...SHAPES.map((row) => row.id),
   IMAGE_TOOL,
+  SECTION_TOOL,
 ]
 
 /**
@@ -110,6 +128,8 @@ export function Toolbar({ project }: { project?: string }) {
           {group.map((slot) =>
             slot.id === SHAPE_SLOT ? (
               <ShapeTool key={slot.id} actions={actions} />
+            ) : slot.id === FRAME_SLOT ? (
+              <BoxTool key={slot.id} actions={actions} />
             ) : (
               <ToolButton
                 key={slot.id}
@@ -247,6 +267,78 @@ function ShapeTool({
               Image or video…
             </span>
           </ActionMenuItem>
+        </ChromeMenuContent>
+      </DropdownMenu>
+    </>
+  )
+}
+
+/**
+ * The Frame slot: a button turning on Frame or Section, whichever was chosen
+ * last, pressed while either is on, and a caret opening the menu of both,
+ * the one chosen marked, each naming its key.
+ */
+function BoxTool({
+  actions,
+}: {
+  actions: ReadonlyMap<string, Action | undefined>
+}) {
+  const chosen = useBoxTool()
+  const keysOn = useCharacterKeysOn()
+  const shown = BOX_TOOLS.find((row) => row.tool === chosen) ?? BOX_TOOLS[0]
+  const slot = {
+    id: shown.id,
+    label: shown.label,
+    keys: [shown.key],
+    icon: shown.icon,
+  }
+  const on = BOX_TOOLS.some((row) => actions.get(row.id)?.checked?.() ?? false)
+  return (
+    <>
+      <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Frame tools"
+          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+        >
+          <ChevronDown aria-hidden className="size-[9px]" />
+        </DropdownMenuTrigger>
+        <ChromeMenuContent
+          side="top"
+          align="start"
+          sideOffset={8}
+          className="w-[196px]"
+        >
+          <DropdownMenuRadioGroup
+            value={chosen}
+            onValueChange={(tool) => {
+              const row = BOX_TOOLS.find((candidate) => candidate.tool === tool)
+              const action = row && actions.get(row.id)
+              if (action && isEnabled(action)) action.run()
+            }}
+          >
+            {BOX_TOOLS.map((row) => {
+              const registered = actions.get(row.id)
+              const key = liveKey(registered?.keys ?? [row.key], keysOn)
+              const Icon = row.icon
+              return (
+                <DropdownMenuRadioItem
+                  key={row.id}
+                  value={row.tool}
+                  closeOnClick
+                  disabled={!registered || !isEnabled(registered)}
+                  className={cn(
+                    MENU_ROW,
+                    'gap-2 pr-2 data-checked:bg-primary data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
+                  )}
+                >
+                  <Icon aria-hidden className="size-[13px]" />
+                  {row.label}
+                  {key ? <MenuKey>{keyLabel(key)}</MenuKey> : null}
+                </DropdownMenuRadioItem>
+              )
+            })}
+          </DropdownMenuRadioGroup>
         </ChromeMenuContent>
       </DropdownMenu>
     </>

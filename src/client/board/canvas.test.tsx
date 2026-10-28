@@ -159,6 +159,7 @@ describe('Canvas', () => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
     setCharacterKeys(true)
     liveStore.setState({ canWrite: false })
+    clear(selectionStore)
   })
 
   it('covers the frames with the hit layer in Edit', () => {
@@ -1056,6 +1057,36 @@ describe('Canvas on a previewed frame', () => {
       closeNote()
       modeStore.setState({ mode: 'edit', tool: 'move' })
     })
+  })
+
+  it('adds a section at the clicked size under the Section tool, then returns to Move', async () => {
+    const sent: unknown[][] = []
+    const calls = {
+      ...createStructure(),
+      addSection: async (...args: unknown[]) => {
+        sent.push(args)
+        return {
+          name: 'section',
+          box: { x: 0, y: 0, width: 800, height: 600 },
+          order: 0,
+          frames: [],
+        }
+      },
+    } as ReturnType<typeof createStructure>
+    const { container } = renderCanvas(
+      page('studio/home', [
+        frame('hero', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+      undefined,
+      calls,
+    )
+    act(() => modeStore.setState({ tool: 'section' }))
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!hit) throw new Error('no hit layer')
+
+    await userEvent.click(hit)
+
+    expect([sent.length, modeStore.getState().tool]).toEqual([1, 'move'])
   })
 
   it('pins a note through the width the frame is previewed at', async () => {

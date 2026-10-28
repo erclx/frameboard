@@ -17,6 +17,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { Box } from '../geometry/box'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
+import { boxToolStore } from '../sections/actions'
 import { select, type SelectionStore, selectionStore } from '../selection'
 import { canvasView } from '../view'
 
@@ -129,7 +130,10 @@ export function useFrameTool(): void {
         keys: ['f'],
         enabled: canWrite,
         // Picking a tool returns to Edit, since a tool only works there.
-        run: () => modeStore.setState({ tool: 'frame', mode: 'edit' }),
+        run: () => {
+          boxToolStore.setState({ tool: 'frame' })
+          modeStore.setState({ tool: 'frame', mode: 'edit' })
+        },
         checked: () =>
           modeStore.getState().mode === 'edit' &&
           modeStore.getState().tool === 'frame',
