@@ -254,6 +254,28 @@ describe('apiRoutes', () => {
       expect(JSON.parse(layout()).frames.hero).toMatchObject({ x: 40 })
     })
 
+    it('moves a section box beside its members in one write', async () => {
+      const box = { x: -40, y: -40, width: 2000, height: 1000 }
+      writeFileSync(
+        join(board.root, 'studio/home/layout.json'),
+        JSON.stringify({
+          ...JSON.parse(layout()),
+          sections: { flow: { ...box, order: 0 } },
+        }),
+      )
+
+      await post('/api/frames/boxes', {
+        page: 'studio/home',
+        boxes: { hero: { ...HERO, x: 40 } },
+        expected: { hero: HERO },
+        sections: { flow: { ...box, x: 0 } },
+        expectedSections: { flow: box },
+      })
+
+      const written = JSON.parse(layout())
+      expect([written.sections.flow.x, written.frames.hero.x]).toEqual([0, 40])
+    })
+
     it('refuses a request with no token and writes nothing', async () => {
       const bytes = layout()
 

@@ -231,6 +231,82 @@ describe('structureRoutes', () => {
     })
   })
 
+  describe('section routes', () => {
+    const BOX = { x: -40, y: -40, width: 2000, height: 1000 }
+    const sections = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+      ).sections
+
+    it('refuses a section add with no writer and writes nothing', async () => {
+      const response = await post(
+        '/api/section/add',
+        { page: 'studio/home', box: BOX },
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(sections()).toBeUndefined()
+    })
+
+    it('adds a section answering its members, and undoes it away', async () => {
+      const response = await post('/api/section/add', {
+        page: 'studio/home',
+        name: 'flow',
+        box: BOX,
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { name: 'flow', frames: ['hero', 'mobile'] },
+      })
+      await history.undo()
+      expect(sections()).toEqual({})
+    })
+
+    it('renames a section and undoes it back', async () => {
+      await post('/api/section/add', {
+        page: 'studio/home',
+        name: 'flow',
+        box: BOX,
+      })
+
+      await post('/api/section/rename', {
+        page: 'studio/home',
+        section: 'flow',
+        name: 'signup',
+      })
+      await history.undo()
+
+      expect(Object.keys(sections())).toEqual(['flow'])
+    })
+
+    it('deletes a section and undoes it back', async () => {
+      await post('/api/section/add', {
+        page: 'studio/home',
+        name: 'flow',
+        box: BOX,
+      })
+
+      await post('/api/section/delete', {
+        page: 'studio/home',
+        section: 'flow',
+      })
+      await history.undo()
+
+      expect(sections().flow).toEqual({ ...BOX, order: 0 })
+    })
+
+    it('answers section-not-found with 404', async () => {
+      const response = await post('/api/section/delete', {
+        page: 'studio/home',
+        section: 'nope',
+      })
+
+      expect(response.status).toBe(404)
+    })
+  })
+
   describe('frame routes', () => {
     const layout = () =>
       JSON.parse(

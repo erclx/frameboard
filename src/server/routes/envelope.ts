@@ -12,6 +12,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'project-not-found': 404,
   'page-not-found': 404,
   'frame-not-found': 404,
+  'section-not-found': 404,
   'name-taken': 409,
   'stale-layout': 409,
   'frame-claimed': 409,
