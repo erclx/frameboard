@@ -305,6 +305,7 @@ function TypePicker({
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
+              closeOnClick
               className={cn(MENU_ROW, 'pr-8')}
               style={option.font ? { fontFamily: option.font } : undefined}
             >

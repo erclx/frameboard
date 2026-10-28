@@ -603,6 +603,31 @@ describe('TypographySection', () => {
     ])
   })
 
+  it('closes the family menu on a pick, so it covers nothing below', async () => {
+    const { write } = recorder()
+    render(
+      <TypographySection
+        fonts={[FONT_TEXT]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={400}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font family' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Geist Mono' }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
   it('lists the font tokens holding a family ahead of the faces, leaving a size out', async () => {
     const { write } = recorder()
     render(
