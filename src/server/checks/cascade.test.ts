@@ -203,6 +203,73 @@ describe('buildCascade firstFamily', () => {
   })
 })
 
+/** `value` with its `var()` references resolved on the element with `id`. */
+function resolvedOn(html: string, id: string, value: string): string | null {
+  board = writeBoard({ 'site/home/hero.html': html })
+  const source = readFrame({
+    root: board.root,
+    project: 'site',
+    page: 'home',
+    name: 'hero',
+  })
+  const element = source.elements.find(
+    (candidate) => candidate.attribs.id === id,
+  )
+  if (!element) throw new Error(`no element #${id}`)
+  return buildCascade(source, []).resolve(value, element)
+}
+
+describe('buildCascade resolve', () => {
+  it('follows a chain of the frame’s own properties to its value', () => {
+    expect(
+      resolvedOn(
+        '<style>:root { --panel: #fff; --bg: var(--panel) }</style><p id="t">x</p>',
+        't',
+        'var(--bg)',
+      ),
+    ).toBe('#fff')
+  })
+
+  it('resolves inside a larger value', () => {
+    expect(
+      resolvedOn(
+        '<style>:root { --bg: #ececec }</style><p id="t">x</p>',
+        't',
+        'color-mix(in srgb, var(--bg) 50%, transparent)',
+      ),
+    ).toBe('color-mix(in srgb, #ececec 50%, transparent)')
+  })
+
+  it('answers null for a property nothing declares', () => {
+    expect(resolvedOn('<p id="t">x</p>', 't', 'var(--missing)')).toBeNull()
+  })
+
+  it('stops at a kept name and leaves its var() as written', () => {
+    board = writeBoard({
+      'site/home/hero.html':
+        '<style>:root { --surface: #fff; --bg: var(--surface) }</style><p id="t">x</p>',
+    })
+    const source = readFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+    const element = source.elements.find(
+      (candidate) => candidate.attribs.id === 't',
+    )
+    if (!element) throw new Error('no element #t')
+
+    expect(
+      buildCascade(source, []).resolve(
+        'var(--bg)',
+        element,
+        new Set(['--surface']),
+      ),
+    ).toBe('var(--surface)')
+  })
+})
+
 /** The declaration of `property` that wins on the element with `id`, and the id it came from. */
 function specifiedOf(
   html: string,

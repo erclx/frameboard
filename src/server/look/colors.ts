@@ -1,4 +1,5 @@
 import type { Element } from 'domhandler'
+import postcss from 'postcss'
 
 import { buildCascade, splitTopLevel } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
@@ -71,7 +72,9 @@ const HEX_ALPHA = /^#([0-9a-f]{6})([0-9a-f]{2})$/i
 
 /**
  * A frame's colors as its source states them, read through the static
- * cascade the checks use, so `var(--token)` is named exactly and a raw
+ * cascade the checks use, so a `var()` over a name a token sheet declares
+ * is named exactly, one over a name only the frame declares answers the
+ * value it resolves to, and a raw
  * value is answered raw rather than matched to a token that happens to
  * share its value. `index` is the edit address's, naming the selected
  * element, whose subtree the colors then cover in place of the frame's.
@@ -82,14 +85,26 @@ export function frameStyles(
   index?: number,
 ): Pick<FrameStyles, 'element' | 'colors'> {
   const cascade = buildCascade(source, tokens, { properties: PROPERTIES })
+  const tokenNames = declaredNames(tokens)
   const target = index === undefined ? undefined : source.elements[index]
+  // A name only the frame declares is no token, so it answers as the value it
+  // resolves to, or the token its chain reaches first. A name nothing
+  // declares stays named for `unknown-token`.
+  const named = (written: string, element: Element): StyleValue => {
+    const value = styleValue(written)
+    if (!value.token || tokenNames.has(value.token)) return value
+    const resolved = cascade.resolve(`var(${value.token})`, element, tokenNames)
+    if (resolved === null) return value
+    const raw = styleValue(resolved)
+    return { ...raw, percent: Math.round((raw.percent * value.percent) / 100) }
+  }
   const read = (element: Element, property: string): StyleValue | null => {
     const found = cascade.specified(element, property)
     if (!found) return null
     const part = found.shorthand
       ? shorthandPart(found.value, property)
       : found.value
-    return part === null ? null : styleValue(part)
+    return part === null ? null : named(part, found.element)
   }
   // A `font` shorthand states more than the family, so it names no token here.
   const family = (element: Element): StyleValue | null => {
@@ -144,6 +159,21 @@ export function styleValue(written: string): StyleValue {
     }
   }
   return { value, token: null, percent: 100 }
+}
+
+/** The custom properties the token sheets declare, which alone are tokens. */
+function declaredNames(sheets: Sheet[]): Set<string> {
+  const names = new Set<string>()
+  for (const sheet of sheets) {
+    try {
+      postcss.parse(sheet.css).walkDecls(/^--/, (node) => {
+        names.add(node.prop)
+      })
+    } catch {
+      continue
+    }
+  }
+  return names
 }
 
 /**

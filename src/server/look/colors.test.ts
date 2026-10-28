@@ -92,6 +92,63 @@ describe('frameStyles', () => {
     expect(element?.color?.token).toBe('--missing')
   })
 
+  it('answers a property only the frame declares as its raw value', () => {
+    const { element } = stylesOf(
+      '<style>:root { --bg: #ececec }</style><p id="t" style="color: var(--bg)">x</p>',
+      't',
+    )
+
+    expect(element?.color).toEqual({
+      value: '#ececec',
+      token: null,
+      percent: 100,
+    })
+  })
+
+  it('follows a chain of the frame’s own properties to its raw value', () => {
+    const { element } = stylesOf(
+      '<style>:root { --panel: #ffffff; --bg: var(--panel) }</style><p id="t" style="color: var(--bg)">x</p>',
+      't',
+    )
+
+    expect(element?.color?.value).toBe('#ffffff')
+  })
+
+  it('reads a color-mix() over a frame property as raw, keeping its percent', () => {
+    const { element } = stylesOf(
+      '<style>:root { --bg: #ececec }</style><p id="t" style="background-color: color-mix(in srgb, var(--bg) 50%, transparent)">x</p>',
+      't',
+    )
+
+    expect(element?.backgroundColor).toEqual({
+      value: '#ececec',
+      token: null,
+      percent: 50,
+    })
+  })
+
+  it('names the token a frame property aliases', () => {
+    const { element } = stylesOf(
+      '<style>:root { --bg: var(--primary) }</style><p id="t" style="color: color-mix(in srgb, var(--bg) 40%, transparent)">x</p>',
+      't',
+    )
+
+    expect(element?.color).toEqual({
+      value: 'var(--primary)',
+      token: '--primary',
+      percent: 40,
+    })
+  })
+
+  it('keeps a token the frame overrides named as the token', () => {
+    const { element } = stylesOf(
+      '<style>:root { --primary: #000000 }</style><p id="t" style="color: var(--primary)">x</p>',
+      't',
+    )
+
+    expect(element?.color?.token).toBe('--primary')
+  })
+
   it('takes the color and width out of a border shorthand', () => {
     const { element } = stylesOf(
       '<p id="t" style="border: 1px solid var(--border)">x</p>',
@@ -156,6 +213,16 @@ describe('frameStyles', () => {
       { value: '#ffffff', token: null, percent: 100 },
       { value: 'var(--primary)', token: '--primary', percent: 100 },
     ])
+  })
+
+  it('lists two frame properties holding one color once', () => {
+    const { colors } = stylesOf(
+      `<style>:root { --fg: #1a1a1a; --ink: #1a1a1a }</style>
+      <p style="color: var(--fg)">a</p>
+      <p style="color: var(--ink)">b</p>`,
+    )
+
+    expect(colors).toEqual([{ value: '#1a1a1a', token: null, percent: 100 }])
   })
 
   it('lists only the selected element’s subtree', () => {
