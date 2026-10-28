@@ -5,9 +5,9 @@ import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
-import { elementAt } from '../frame-dom'
+import { useDrawnFrames } from '../geometry/write'
 import { useMode } from '../mode'
-import { usePreviewedFrames } from '../preview/store'
+import { cornerOf } from '../pin-corner'
 import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
@@ -37,8 +37,10 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   // so a frame load renders the layer again.
   useFrameLoads(container)
   useCloseOnEscape(open !== null)
-  // A marker sits on the frame as drawn, at a previewed width included.
-  const shown = usePreviewedFrames(frames)
+  // A marker sits on the frame as drawn, at a previewed width and at a
+  // released box the board has not carried back yet, so a pin a drag shifted
+  // stays where the drag left it.
+  const shown = useDrawnFrames(frames)
   if (playing) return null
 
   const roots = (notes ?? []).filter(
@@ -72,6 +74,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
             number={note.number}
             at={at}
             frame={framesByName.get(note.frame)?.ref}
+            element={note.element}
             active={open?.kind === 'thread' && open.id === note.id}
             label={`Note ${note.number} on ${note.frame}`}
             onOpen={() =>
@@ -107,6 +110,8 @@ interface MarkerProps {
   at: BoardPoint
   /** The frame's ref, which a frame drag finds the pins to shift by. */
   frame?: string
+  /** The note's element index, whose corner a frame resize moves the pin to. */
+  element?: number | null
   active: boolean
   label?: string
   onOpen?: () => void
@@ -117,7 +122,15 @@ interface MarkerProps {
  * frame's corner, kept at screen size whatever the zoom, ringed while its
  * note is open.
  */
-function Marker({ number, at, frame, active, label, onOpen }: MarkerProps) {
+function Marker({
+  number,
+  at,
+  frame,
+  element,
+  active,
+  label,
+  onOpen,
+}: MarkerProps) {
   const className = cn(
     'pointer-events-auto absolute grid size-[22px] place-items-center rounded-[11px_11px_11px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] focus-visible:ring-3 focus-visible:ring-ring/50',
     active &&
@@ -129,6 +142,7 @@ function Marker({ number, at, frame, active, label, onOpen }: MarkerProps) {
       type="button"
       data-note-marker
       data-note-frame={frame}
+      data-note-element={element ?? undefined}
       aria-label={label}
       aria-expanded={active}
       onPointerDown={(event) => event.stopPropagation()}
@@ -264,29 +278,6 @@ function Popover({
       </div>
     </div>
   )
-}
-
-/**
- * Where a note's marker sits: the top right corner of its element while the
- * live frame holds it, else of the frame.
- */
-function cornerOf(
-  frame: FrameRecord,
-  element: number | null,
-  container: HTMLElement | null,
-): BoardPoint {
-  const { x, y, width } = frame.box
-  const document =
-    element === null
-      ? null
-      : container?.querySelector<HTMLIFrameElement>(
-          `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
-        )?.contentDocument
-  const target =
-    document && element !== null ? elementAt(document, element) : null
-  if (!target) return { x: x + width, y }
-  const rect = target.getBoundingClientRect()
-  return { x: x + Math.min(rect.right, width), y: y + Math.max(rect.top, 0) }
 }
 
 /**

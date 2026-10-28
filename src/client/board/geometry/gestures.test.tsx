@@ -58,6 +58,7 @@ function setup(
     control,
     divider,
     shape,
+    live,
   }: {
     canWrite?: boolean
     onCommit?: () => void
@@ -70,6 +71,11 @@ function setup(
     divider?: Box
     /** The selected element is a shape, in a frame free to write or held by another session. */
     shape?: 'free' | 'held'
+    /**
+     * A body LEFT renders live in an iframe filling its box, whose pin is
+     * anchored to the element at file index 3, the first in the body.
+     */
+    live?: string
   } = {},
 ) {
   const mode = createModeStore(1280)
@@ -107,7 +113,15 @@ function setup(
                 width: frame.box.width,
                 height: frame.box.height,
               }}
-            />
+            >
+              {live && frame.ref === LEFT.ref ? (
+                <iframe
+                  title={frame.ref}
+                  className="size-full border-0"
+                  srcDoc={`<!doctype html><html><head></head><body style="margin:0">${live}</body></html>`}
+                />
+              ) : null}
+            </div>
           ))}
           <SelectionOverlay frames={frames} />
           {elementBox ? (
@@ -170,6 +184,7 @@ function setup(
               key={frame.ref}
               data-note-marker
               data-note-frame={frame.ref}
+              data-note-element={live && frame.ref === LEFT.ref ? 3 : undefined}
               className="absolute"
               style={{ left: frame.box.x + frame.box.width, top: frame.box.y }}
             />
@@ -669,6 +684,117 @@ describe('attachGestures', () => {
 
       expect(canvas.part('[data-chip]')).toHaveTextContent('240 × 220')
       canvas.pointer.up(60, 80)
+    })
+
+    describe('a frame with a pin', () => {
+      const pin = (canvas: ReturnType<typeof setup>, ref: string) =>
+        canvas.part(`[data-note-frame="${CSS.escape(ref)}"]`)
+
+      it.each([
+        ['north-east', [300, 100], [340, 80], '40px -20px'],
+        ['south-east', [300, 300], [340, 320], '40px'],
+        ['north-west', [100, 100], [60, 80], '0px -20px'],
+        ['south-west', [100, 300], [60, 320], ''],
+      ] as const)(
+        'shifts the pin by its corner on a drag of the %s handle',
+        (_corner, from, to, translate) => {
+          const canvas = setup()
+          detach = canvas.detach
+          act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+          canvas.pointer.down(from[0], from[1])
+          canvas.pointer.move(to[0], to[1])
+
+          expect(pin(canvas, LEFT.ref).style.translate).toBe(translate)
+          canvas.pointer.up(to[0], to[1])
+        },
+      )
+
+      it('leaves the pin of a frame it does not resize', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(300, 300)
+        canvas.pointer.move(340, 320)
+
+        expect(pin(canvas, RIGHT.ref).style.translate).toBe('')
+        canvas.pointer.up(340, 320)
+      })
+
+      it('shifts each pin by its own frame on a resize of several', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+        // The selection spans 100 to 600, so 100 px more scales it by 1.2.
+        canvas.pointer.down(600, 300)
+        canvas.pointer.move(700, 300)
+
+        expect([
+          pin(canvas, LEFT.ref).style.translate,
+          pin(canvas, RIGHT.ref).style.translate,
+        ]).toEqual(['40px', '100px'])
+        canvas.pointer.up(700, 300)
+      })
+
+      it('shifts the pin by the snapped edge rather than the pointer', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        // 97 px right puts LEFT's right edge 3 px short of RIGHT's left edge.
+        canvas.pointer.down(300, 300)
+        canvas.pointer.move(397, 300)
+
+        expect(pin(canvas, LEFT.ref).style.translate).toBe('100px')
+        canvas.pointer.up(397, 300)
+      })
+
+      it('hands the pin back to its stored corner on release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([300, 100], [340, 80])
+
+        expect(pin(canvas, LEFT.ref).style.translate).toBe('')
+      })
+
+      it("follows its element's corner as the frame reflows it", async () => {
+        const canvas = setup(undefined, {
+          live: '<div style="position:absolute;right:20px;top:10px;width:30px;height:10px"></div>',
+        })
+        detach = canvas.detach
+        const iframe = canvas.part('iframe')
+        await new Promise((resolve) => iframe.addEventListener('load', resolve))
+        // The board draws an element's pin at its corner, 20 px in from LEFT's right edge.
+        Object.assign(pin(canvas, LEFT.ref).style, {
+          left: '280px',
+          top: '110px',
+        })
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(300, 100)
+        canvas.pointer.move(340, 80)
+
+        expect(pin(canvas, LEFT.ref).style.translate).toBe('40px -20px')
+        canvas.pointer.up(340, 80)
+      })
+
+      it("follows the frame's corner once its element is lost", async () => {
+        const canvas = setup(undefined, { live: 'No elements' })
+        detach = canvas.detach
+        const iframe = canvas.part('iframe')
+        await new Promise((resolve) => iframe.addEventListener('load', resolve))
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(300, 300)
+        canvas.pointer.move(340, 320)
+
+        expect(pin(canvas, LEFT.ref).style.translate).toBe('40px')
+        canvas.pointer.up(340, 320)
+      })
     })
   })
 
