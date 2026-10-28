@@ -33,7 +33,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts",
-    "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && vite",
+    "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && bun scripts/dev.ts",
     "preview": "bun scripts/preview.ts",
     "test": "vitest",
     "test:run": "bun scripts/test-locked.ts vitest run --reporter=verbose --maxWorkers=50%",

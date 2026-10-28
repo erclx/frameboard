@@ -26,14 +26,14 @@ These gate a change, and `bun run check` is the one the pre-push hook runs.
 | `bun run format`                   | Auto-fixes oxfmt formatting                                                                             |
 | `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown    |
 
-The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale. The board itself needs `bun run build`, since a source `serve` refuses without `dist/client`, and an old build serves the old board.
+The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale. The board needs `bun run build` outside `dev`, since a source `serve` refuses without `dist/client`, and an old build serves the old board.
 
 These serve the board and run the test layers.
 
 | Command                    | Purpose                                                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and prints an edit link |
-| `bun run dev`              | Serves the client with hot reload on 5173, proxying to a `preview` on 4173 plus the worktree offset                 |
+| `bun run dev`              | Serves the client with hot reload on 5173, proxying to its own board on 6173, both plus the worktree offset         |
 | `bun run test`             | Runs Vitest in watch mode                                                                                           |
 | `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once on half the cores, under the test lock                        |
 | `bun run test:coverage`    | Runs the `node` project with coverage, as CI's unit-tests job does                                                  |
@@ -42,8 +42,7 @@ These serve the board and run the test layers.
 
 Two of those need a companion command or variable.
 
-- Start the `preview` that `dev` proxies to with `PREVIEW_PORT=$(bash scripts/worktree-port.sh 4173) bun run preview`
-- Point `preview` at a drive copy with `CANON_PREVIEW_ROOT=<copyRoot>` from `canon pr drive-copy --json`, and leave it unset to serve the committed board
+- Point `preview` or `dev` at a drive copy with `CANON_PREVIEW_ROOT=<copyRoot>` from `canon pr drive-copy --json`. Unset, `preview` serves the committed board and `dev` a temporary copy of it.
 - Run the edit writer's tests on Bun with `bun --bun vitest run --project node src/server/edit`, adding `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest
 
 These capture and measure what the board renders.
@@ -76,8 +75,12 @@ Owns the shell scripts and the verify runner the commands above call, and every 
 - `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
-- `preview.ts` backs `bun run preview`, running the built CLI's `serve --open-route` and then `open --no-open`, so it prints a once-only edit link and one fresh per open, and exits as its server does
 - `design-sync.ts` writes `canon/design/` and nothing in `src/` imports it, so it is a dev script outside the gate, and `.prettierignore` and `.oxlintrc.json` keep the folder out of format and lint
+
+Two scripts back the serving commands.
+
+- `dev.ts` backs `bun run dev`, starting the board from source with `src/client` as its client, on the port the proxy in `vite.config.ts` names, and then Vite in front of it
+- `preview.ts` backs `bun run preview`, running the built CLI's `serve --open-route` and then `open --no-open`, so it prints a once-only edit link and one fresh per open, and exits as its server does
 
 ### `.husky/`
 
@@ -128,7 +131,7 @@ These catch the toolchain out.
 - `e2e/home.spec.ts` is a sync seed, so `canon/config/config.json` declines it and the spec lives at `e2e/shell/home.spec.ts`
 - `canon sync` writes `canon/config/config.json` in a shape oxfmt rejects, so run `bun run format` before the commit
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
-- `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 4173
+- `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 6173
 
 ### Test lock
 
@@ -148,3 +151,7 @@ These catch a running `preview` out.
 - The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
 - A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
+
+One catches a running `dev` out.
+
+- The board port `dev` starts serves `src/client` unbuilt, so opening it directly gets a page that never loads, and only Vite's address works
