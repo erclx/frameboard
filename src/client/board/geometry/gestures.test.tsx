@@ -4,19 +4,21 @@ import { act, render } from '@testing-library/react'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import type { ShapeSize } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
+import { SectionBoxes } from '../sections/box'
 import {
   clear,
   type ElementKey,
   select,
   selectElement,
   selectionStore,
+  selectSection,
 } from '../selection'
 import type { Box, Point } from './box'
 import { attachGestures } from './gestures'
@@ -41,6 +43,10 @@ interface Write {
   page: string
   boxes: Readonly<Record<string, Box>>
   expected: Readonly<Record<string, Box>>
+  sections?: {
+    boxes: Readonly<Record<string, Box>>
+    expected: Readonly<Record<string, Box>>
+  }
 }
 
 /**
@@ -59,7 +65,16 @@ function setup(
     divider,
     shape,
     live,
+    sections = [],
+    lands = true,
+    hidden = [],
   }: {
+    /** Frames on the page the canvas does not draw, which a section move still carries. */
+    hidden?: FrameRecord[]
+    /** The page's sections, drawn under the frames as the canvas draws them. */
+    sections?: SectionRecord[]
+    /** Whether a write lands, false answering it refused. */
+    lands?: boolean
     canWrite?: boolean
     onCommit?: () => void
     elementBox?: Box
@@ -102,6 +117,7 @@ function setup(
         style={{ width: 800, height: 600 }}
       >
         <div data-layer className="absolute top-0 left-0 origin-top-left">
+          <SectionBoxes page={PAGE} sections={sections} />
           {frames.map((frame) => (
             <div
               key={frame.ref}
@@ -203,14 +219,26 @@ function setup(
   const origin = viewport.getBoundingClientRect()
   const detach = attachGestures(
     part('[data-hit-layer]'),
-    { viewport, layer: part('[data-layer]'), page: PAGE, frames: () => frames },
+    {
+      viewport,
+      layer: part('[data-layer]'),
+      page: PAGE,
+      frames: () => frames,
+      sections: () => sections,
+      pageFrames: () => [...frames, ...hidden],
+    },
     {
       selection: selectionStore,
       mode,
       canWrite: () => canWrite,
-      write: async (page, boxes, expected) => {
-        writes.push({ page, boxes, expected })
-        return true
+      write: async (page, boxes, expected, _send, sectionBoxes) => {
+        writes.push({
+          page,
+          boxes,
+          expected,
+          ...(sectionBoxes ? { sections: sectionBoxes } : {}),
+        })
+        return lands
       },
       duplicate: async (refs, offset) => {
         duplicates.push({ refs, offset })
@@ -402,6 +430,168 @@ describe('attachGestures', () => {
   afterEach(() => {
     detach()
     clear(selectionStore)
+  })
+
+  describe('on a section', () => {
+    // Holds LEFT by its center, and not RIGHT. Its name sits inside the top
+    // left, clear of LEFT, and every offset below stays outside the snap.
+    const FLOW: SectionRecord = {
+      name: 'flow',
+      box: { x: 60, y: 60, width: 300, height: 300 },
+      order: 0,
+      frames: ['left'],
+    }
+    const NAME: [number, number] = [70, 68]
+
+    it('selects the section on a press of its name', () => {
+      const canvas = setup(undefined, { sections: [FLOW] })
+      detach = canvas.detach
+
+      canvas.pointer.click(...NAME)
+
+      expect(selectionStore.getState()).toMatchObject({
+        page: PAGE,
+        frames: [],
+        section: 'flow',
+      })
+    })
+
+    it('moves its box and its frames in one write, leaving a neighbor', () => {
+      const canvas = setup(undefined, { sections: [FLOW] })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+
+      expect(canvas.writes).toEqual([
+        {
+          page: PAGE,
+          boxes: { [LEFT.ref]: { x: 125, y: 120, width: 200, height: 200 } },
+          expected: { [LEFT.ref]: LEFT.box },
+          sections: {
+            boxes: { flow: { x: 85, y: 80, width: 300, height: 300 } },
+            expected: { flow: FLOW.box },
+          },
+        },
+      ])
+    })
+
+    it('carries a hidden frame it holds, which the canvas does not draw', () => {
+      const away = frameOf('away', {
+        box: { x: 120, y: 260, width: 50, height: 50 },
+        hidden: true,
+      })
+      const canvas = setup(undefined, {
+        sections: [{ ...FLOW, frames: ['left', 'away'] }],
+        hidden: [away],
+      })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+
+      expect(canvas.writes[0]?.boxes[away.ref]).toEqual({
+        ...away.box,
+        x: 145,
+        y: 280,
+      })
+    })
+
+    it('carries the pins of the frames it moves', () => {
+      const canvas = setup(undefined, { sections: [FLOW] })
+      detach = canvas.detach
+      canvas.pointer.down(...NAME)
+
+      canvas.pointer.move(95, 88)
+
+      const pin = (ref: string) =>
+        canvas.part(`[data-note-frame="${ref}"]`).style.translate
+      expect([pin(LEFT.ref), pin(RIGHT.ref)]).toEqual(['25px 20px', ''])
+      canvas.pointer.up(95, 88)
+    })
+
+    it('resizes its box alone from a corner, leaving its frames', () => {
+      const canvas = setup(undefined, { sections: [FLOW] })
+      detach = canvas.detach
+      act(() => selectSection(selectionStore, PAGE, 'flow'))
+
+      canvas.pointer.drag([360, 360], [380, 375])
+
+      expect(canvas.writes).toEqual([
+        {
+          page: PAGE,
+          boxes: {},
+          expected: {},
+          sections: {
+            boxes: { flow: { x: 60, y: 60, width: 320, height: 315 } },
+            expected: { flow: FLOW.box },
+          },
+        },
+      ])
+    })
+
+    it('puts the box back where the board holds it when the write is refused', async () => {
+      const canvas = setup(undefined, { sections: [FLOW], lands: false })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+      await Promise.resolve()
+
+      expect(canvas.part('[data-section="flow"]').style.left).toBe('60px')
+    })
+
+    it('moves nothing when one of its frames is locked', () => {
+      const held = { ...FLOW, frames: ['left', 'locked'] }
+      const canvas = setup(undefined, { sections: [held] })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+
+      expect(canvas.writes).toEqual([])
+    })
+
+    it('writes nothing from a read-only tab', () => {
+      const canvas = setup(undefined, { sections: [FLOW], canWrite: false })
+      detach = canvas.detach
+
+      canvas.pointer.drag(NAME, [95, 88])
+
+      expect(canvas.writes).toEqual([])
+    })
+
+    it("takes a press on its name over a frame's label strip", () => {
+      // RIGHT's label strip reaches above its top edge, over this name.
+      const above = { ...FLOW, box: { x: 390, y: 80, width: 300, height: 300 } }
+      const canvas = setup(undefined, { sections: [above] })
+      detach = canvas.detach
+
+      canvas.pointer.click(400, 88)
+
+      expect([selectedRefs(), selectionStore.getState().section]).toEqual([
+        [],
+        'flow',
+      ])
+    })
+
+    it('leaves a press on a frame over its name to the frame', () => {
+      const under = { ...FLOW, box: { x: 390, y: 90, width: 300, height: 300 } }
+      const canvas = setup(undefined, { sections: [under] })
+      detach = canvas.detach
+
+      canvas.pointer.click(410, 105)
+
+      expect(selectedRefs()).toEqual([RIGHT.ref])
+    })
+
+    it('marquees on its empty plate, as on bare canvas', () => {
+      const canvas = setup(undefined, { sections: [FLOW] })
+      detach = canvas.detach
+
+      canvas.pointer.drag([70, 340], [150, 150])
+
+      expect([selectedRefs(), selectionStore.getState().section]).toEqual([
+        [LEFT.ref],
+        undefined,
+      ])
+    })
   })
 
   describe('Alt-drag', () => {

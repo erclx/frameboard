@@ -16,6 +16,7 @@ import {
   select,
   selectElement,
   type SelectionStore,
+  selectSection,
   settleLanded,
   settleRefused,
   toggle,
@@ -36,6 +37,78 @@ describe('select', () => {
       frames: [ABOUT],
       element: null,
     })
+  })
+})
+
+describe('selectSection', () => {
+  it('selects the section alone, with no frame', () => {
+    const store = createSelectionStore()
+    select(store, 'studio/home', [HERO])
+
+    selectSection(store, 'studio/home', 'onboarding')
+
+    expect(store.getState()).toEqual({
+      page: 'studio/home',
+      frames: [],
+      element: null,
+      section: 'onboarding',
+    })
+  })
+
+  it('drops the section once a frame is selected', () => {
+    const store = createSelectionStore()
+    selectSection(store, 'studio/home', 'onboarding')
+
+    select(store, 'studio/home', [HERO])
+
+    expect(store.getState().section).toBeUndefined()
+  })
+
+  it('drops the section once a frame is toggled in', () => {
+    const store = createSelectionStore()
+    selectSection(store, 'studio/home', 'onboarding')
+
+    toggle(store, 'studio/home', HERO)
+
+    expect(store.getState().section).toBeUndefined()
+  })
+
+  it('clears a selected section', () => {
+    const store = createSelectionStore()
+    selectSection(store, 'studio/home', 'onboarding')
+
+    clear(store)
+
+    expect(store.getState()).toEqual({ page: null, frames: [], element: null })
+  })
+
+  it('keeps a section the next board still holds', () => {
+    const store = createSelectionStore()
+    selectSection(store, 'studio/home', 'onboarding')
+    const page = {
+      ...pageOf([frameOf('hero')]),
+      sections: [
+        {
+          name: 'onboarding',
+          box: { x: 0, y: 0, width: 800, height: 800 },
+          order: 0,
+          frames: ['hero'],
+        },
+      ],
+    }
+
+    pruneSelection(store, boardOf(page))
+
+    expect(store.getState().section).toBe('onboarding')
+  })
+
+  it('clears a section the next board no longer holds', () => {
+    const store = createSelectionStore()
+    selectSection(store, 'studio/home', 'onboarding')
+
+    pruneSelection(store, boardOf(pageOf([frameOf('hero')])))
+
+    expect(store.getState().page).toBeNull()
   })
 })
 

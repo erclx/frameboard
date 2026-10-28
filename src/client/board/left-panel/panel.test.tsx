@@ -65,6 +65,7 @@ function page(name: string, frames: FrameRecord[] = [], index = 0): PageRecord {
     index,
     layoutError: null,
     frames,
+    sections: [],
   }
 }
 
@@ -1309,6 +1310,105 @@ describe('LeftPanel', () => {
           body: { ref: 'studio/home/back', index: 2 },
         },
       ])
+    })
+  })
+
+  describe('a page with a section', () => {
+    // Flow holds back and front, which mid sits between in the page's stack.
+    const SECTIONED = () =>
+      project([
+        {
+          ...page('home', [
+            frame('back', { order: 0 }),
+            frame('mid', { order: 1 }),
+            frame('front', { order: 2 }),
+            frame('extra', { order: 3 }),
+          ]),
+          sections: [
+            {
+              name: 'flow',
+              box: { x: 0, y: 0, width: 900, height: 900 },
+              order: 0,
+              frames: ['back', 'front'],
+            },
+          ],
+        },
+      ])
+    const row = (name: string) =>
+      screen.getByRole('listitem', { name }) as HTMLElement
+
+    it('nests its frames under its row, then lists the frames in none', () => {
+      renderPanel(SECTIONED())
+
+      expect([
+        within(screen.getByRole('list', { name: 'Frames of flow' }))
+          .getAllByRole('listitem')
+          .map((item) => item.getAttribute('aria-label')),
+        screen.getByRole('button', { name: 'Select section flow' }).textContent,
+      ]).toEqual([['front', 'back'], 'flow2'])
+    })
+
+    it('hides its frames once collapsed', async () => {
+      renderPanel(SECTIONED())
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Hide the frames of flow' }),
+      )
+
+      expect(screen.queryByRole('listitem', { name: 'front' })).toBeNull()
+    })
+
+    it('selects the section from its row', async () => {
+      renderPanel(SECTIONED())
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Select section flow' }),
+      )
+
+      expect(selectionStore.getState()).toMatchObject({
+        page: 'studio/home',
+        frames: [],
+        section: 'flow',
+      })
+    })
+
+    it('restacks a frame within its section beside the one it lands by', async () => {
+      const { sent, calls } = server(frame('back'))
+      renderPanel(SECTIONED(), 'home', undefined, { calls })
+
+      await dragOnto(row('back'), row('front'), 'top')
+
+      expect(sent).toEqual([
+        {
+          path: '/api/frame/order',
+          body: { ref: 'studio/home/back', index: 2 },
+        },
+      ])
+    })
+
+    it('opens Rename and Delete on its row, selecting it', async () => {
+      renderPanel(SECTIONED())
+
+      await userEvent.pointer({
+        keys: '[MouseRight]',
+        target: screen.getByRole('button', { name: 'Select section flow' }),
+      })
+
+      expect([
+        within(await screen.findByRole('menu'))
+          .getAllByRole('menuitem')
+          .map((item) => item.textContent?.replace(/⌫$/, '')),
+        selectionStore.getState().section,
+      ]).toEqual([['Rename', 'Delete'], 'flow'])
+    })
+
+    it('drops no frame into a section it is not in', async () => {
+      const { sent, calls } = server(frame('extra'))
+      renderPanel(SECTIONED(), 'home', undefined, { calls })
+
+      await dragOnto(row('extra'), row('front'), 'top')
+
+      expect(sent).toEqual([])
     })
   })
 

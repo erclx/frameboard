@@ -10,14 +10,16 @@ import {
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
 import { useLive } from '@/client/live/store'
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { modeStore } from '../mode'
+import { startSectionRename } from '../sections/actions'
 import {
   type ElementKey,
   select,
   selectElement,
   selectionStore,
+  selectSection,
   useSelection,
 } from '../selection'
 import { startFrameRename } from '../structure/actions'
@@ -92,6 +94,59 @@ export function FrameRowMenu({ frame, page, trigger }: FrameRowMenuProps) {
           <MenuRow action={lock}>
             {lock?.checked?.() ? 'Unlock' : 'Lock'}
           </MenuRow>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <DeleteRow action={remove} />
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+const SECTION_IDS = ['section.delete'] as const
+
+interface SectionRowMenuProps {
+  section: SectionRecord
+  /** The page the section sits on, which opening the menu selects it on. */
+  page: string
+  /** The section's row, which keeps focus when the menu closes. */
+  trigger: ReactElement
+}
+
+/**
+ * The Section menu on a layers section row, opening on the row's section
+ * selected. Rename opens the row's field, and Delete takes the box and keeps
+ * every frame it held.
+ */
+export function SectionRowMenu({
+  section,
+  page,
+  trigger,
+}: SectionRowMenuProps) {
+  const [remove] = useActions(SECTION_IDS)
+  const canWrite = useLive((state) => state.canWrite)
+  const content = useRef<HTMLDivElement>(null)
+  const keyboard = useKeyboardOpen(content)
+  const rename: Action = {
+    id: 'layers.renameSection',
+    label: 'Rename',
+    group: 'section',
+    enabled: () => canWrite && modeStore.getState().mode === 'edit',
+    run: () => startSectionRename(section.name),
+  }
+  return (
+    <ContextMenu
+      onOpenChange={(opened) => {
+        if (opened && modeStore.getState().mode === 'edit') {
+          selectSection(selectionStore, page, section.name)
+        }
+      }}
+      onOpenChangeComplete={keyboard.onOpenChangeComplete}
+    >
+      <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
+      <ContextMenuContent ref={content} className="w-55">
+        <ContextMenuGroup>
+          <MenuTitle>Section</MenuTitle>
+          <MenuRow action={rename} />
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <DeleteRow action={remove} />

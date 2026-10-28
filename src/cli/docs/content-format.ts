@@ -62,6 +62,7 @@ export function contentFormat() {
       'An entry with no frame file beside it is ignored on read and kept on write.',
       `A ${LAYOUT_FILE} that does not parse is reported by list and refused by every verb writing that page, never overwritten.`,
       `Moving or resizing a frame writes ${LAYOUT_FILE} alone and never the frame file.`,
+      "sections, when present, maps a section name to its x, y, width, height, and order. A frame belongs to the topmost section holding its center, left and top edges inside, and is never listed in it, so list --json names each section's frames and an agent moving a frame out of the box takes it out of the section. The developer writes sections by hand on the board.",
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [

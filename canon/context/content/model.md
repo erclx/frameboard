@@ -30,6 +30,8 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 - Frame order is stacking order, so reordering in the layers panel changes what draws on top and leaves positions alone, while pages reorder in the pages list
 - `board.json` lets a verb find a standalone board by walking up from the working folder, and a project's `project.json` lists its pages in display order and may hold `checks`
 
+`layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
+
 An entry's `hugWidth` and `hugHeight` read as fixed when absent. A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size.
 
 ### `src/server/edit/`

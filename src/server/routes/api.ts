@@ -48,6 +48,8 @@ const boxesBodySchema = z.object({
   page: z.string().min(1).max(1024),
   boxes: boxesSchema,
   expected: boxesSchema,
+  sections: boxesSchema.optional(),
+  expectedSections: boxesSchema.optional(),
 })
 
 const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
@@ -57,6 +59,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'project-not-found': 404,
   'page-not-found': 404,
   'frame-not-found': 404,
+  'section-not-found': 404,
   'stale-layout': 409,
   'frame-claimed': 409,
   'frame-locked': 423,
@@ -134,13 +137,13 @@ export function apiRoutes(
           error: {
             code: 'usage',
             message:
-              'Send { "page": "<page ref>", "boxes": { <frame>: box }, "expected": { <frame>: box } }.',
+              'Send { "page": "<page ref>", "boxes": { <frame>: box }, "expected": { <frame>: box } }, with "sections" and "expectedSections" by section name to move a section.',
           },
         },
         400,
       )
     }
-    const { page, boxes, expected } = body.data
+    const { page, boxes, expected, sections, expectedSections } = body.data
     try {
       const target = await resolvePageRef(root, page, { cwd: root })
       await refuseClaimed(
@@ -154,6 +157,8 @@ export function apiRoutes(
       const frames = await setBoxes(root, page, boxes, expected, {
         cwd: root,
         journal,
+        sections,
+        expectedSections,
       })
       if (history && journal) {
         history.record({

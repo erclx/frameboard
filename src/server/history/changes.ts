@@ -41,7 +41,7 @@ import {
 } from '@/server/edit/insert'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
-import type { LayoutEntry } from '@/shared/records/board'
+import type { LayoutEntry, SectionEntry } from '@/shared/records/board'
 
 import { takeOut, trashSlot } from './trash'
 
@@ -61,6 +61,14 @@ export type Change =
       frame: string
       before: LayoutEntry | undefined
       after: LayoutEntry | undefined
+    }
+  /** One section's entry in one `layout.json`, undefined when it has none. */
+  | {
+      kind: 'section'
+      layout: string
+      section: string
+      before: SectionEntry | undefined
+      after: SectionEntry | undefined
     }
   /** The page order one `project.json` holds. */
   | { kind: 'pages'; file: string; before: string[]; after: string[] }
@@ -101,7 +109,9 @@ export type Change =
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
-  if (change.kind === 'entry') return [change.layout]
+  if (change.kind === 'entry' || change.kind === 'section') {
+    return [change.layout]
+  }
   if (change.kind === 'pages') return [change.file]
   return []
 }
@@ -134,6 +144,10 @@ async function reads(change: Change, side: Side): Promise<boolean> {
       const file = await readRecord(change.layout, layoutSpec)
       const stored = file.frames[change.frame]
       return isDeepStrictEqual(stored, withMeasured(change[side], stored))
+    }
+    case 'section': {
+      const file = await readRecord(change.layout, layoutSpec)
+      return isDeepStrictEqual(file.sections?.[change.section], change[side])
     }
     case 'pages': {
       const file = await readRecord(change.file, {
@@ -216,6 +230,15 @@ export async function restore(
       if (entry) frames[change.frame] = entry
       else delete frames[change.frame]
       await writeRecord(change.layout, { ...file, frames })
+      return
+    }
+    case 'section': {
+      const file = await readRecord(change.layout, layoutSpec)
+      const sections = { ...file.sections }
+      const entry = change[side]
+      if (entry) sections[change.section] = entry
+      else delete sections[change.section]
+      await writeRecord(change.layout, { ...file, sections })
       return
     }
     case 'pages': {
@@ -342,6 +365,16 @@ export class StepJournal implements Journal {
   ): void {
     const layout = join(page, LAYOUT_FILE)
     this.changes.push({ kind: 'entry', layout, frame, before, after })
+  }
+
+  section(
+    page: string,
+    section: string,
+    before: SectionEntry | undefined,
+    after: SectionEntry | undefined,
+  ): void {
+    const layout = join(page, LAYOUT_FILE)
+    this.changes.push({ kind: 'section', layout, section, before, after })
   }
 
   pages(project: string, before: string[], after: string[]): void {

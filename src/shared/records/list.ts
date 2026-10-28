@@ -28,6 +28,21 @@ export const frameRecordSchema = z.object({
 
 export type FrameRecord = z.infer<typeof frameRecordSchema>
 
+export const sectionRecordSchema = z.object({
+  name: z.string(),
+  box: z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+  }),
+  order: z.number(),
+  /** The frames whose center the section holds, bottom of the stack first. */
+  frames: z.array(z.string()),
+})
+
+export type SectionRecord = z.infer<typeof sectionRecordSchema>
+
 export const pageRecordSchema = z.object({
   ref: z.string(),
   project: z.string(),
@@ -36,6 +51,8 @@ export const pageRecordSchema = z.object({
   index: z.number(),
   layoutError: recordErrorSchema,
   frames: z.array(frameRecordSchema),
+  /** Bottom first, as frames are. */
+  sections: z.array(sectionRecordSchema),
 })
 
 export type PageRecord = z.infer<typeof pageRecordSchema>

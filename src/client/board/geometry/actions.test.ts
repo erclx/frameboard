@@ -5,7 +5,7 @@ import { createLiveStore } from '@/client/live/store'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
-import { createSelectionStore, select } from '../selection'
+import { createSelectionStore, select, selectSection } from '../selection'
 import { geometryActions, NUDGE_REST_MS } from './actions'
 import type { Box } from './box'
 
@@ -113,6 +113,15 @@ describe('geometryActions', () => {
       action('selection.clear').run()
 
       expect(selection.getState().frames).toEqual([])
+    })
+
+    it('clears a selected section', () => {
+      const { selection, action } = setup()
+      selectSection(selection, PAGE, 'flow')
+
+      action('selection.clear').run()
+
+      expect(selection.getState().section).toBeUndefined()
     })
 
     it('stands aside with nothing selected', () => {

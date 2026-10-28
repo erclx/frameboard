@@ -50,9 +50,22 @@ export const layoutEntrySchema = z.looseObject({
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>
 
+/** A named box grouping the frames whose center it holds, which it never lists. */
+export const sectionEntrySchema = z.looseObject({
+  x: z.int(),
+  y: z.int(),
+  width: z.int().min(1),
+  height: z.int().min(1),
+  order: z.int().min(0),
+})
+
+export type SectionEntry = z.infer<typeof sectionEntrySchema>
+
 export const layoutFileSchema = z.looseObject({
   version: z.literal(1),
   frames: z.record(z.string(), layoutEntrySchema),
+  // Optional, so a layout from before sections reads and writes as it was.
+  sections: z.record(z.string(), sectionEntrySchema).optional(),
 })
 
 export type LayoutFile = z.infer<typeof layoutFileSchema>

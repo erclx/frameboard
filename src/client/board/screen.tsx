@@ -16,7 +16,7 @@ import {
   useProjectActions,
 } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
@@ -35,6 +35,7 @@ import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme-tab'
 import { useMode } from './mode'
 import { usePreviewActions } from './preview/actions'
+import { useSectionActions } from './sections/actions'
 import { useStructureActions } from './structure/actions'
 import { useFrameTool } from './structure/tool'
 
@@ -42,6 +43,7 @@ import { useFrameTool } from './structure/tool'
 const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
 
 const NO_FRAMES: readonly FrameRecord[] = []
+const NO_SECTIONS: readonly SectionRecord[] = []
 
 /** Where the panel widths are remembered between loads. */
 const LAYOUT_ID = 'frameboard.board.panels'
@@ -102,6 +104,11 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
+  useSectionActions(
+    current?.ref ?? '',
+    current?.frames ?? NO_FRAMES,
+    current?.sections ?? NO_SECTIONS,
+  )
   useChangeActions()
   useCompareActions()
   useFollowActions()

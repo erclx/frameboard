@@ -122,6 +122,49 @@ describe('scanBoard', () => {
 
       expect([about?.hugWidth, about?.hugHeight]).toEqual([false, true])
     })
+
+    it('names the frames each section holds by center, bottom first', async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp/home/layout.json'),
+        JSON.stringify({
+          version: 1,
+          frames: {
+            hero: { x: 0, y: 0, width: 1440, height: 900, order: 0 },
+            about: { x: 1520, y: 0, width: 390, height: 844, order: 1 },
+          },
+          sections: {
+            onboarding: { x: -40, y: -40, width: 2000, height: 1000, order: 1 },
+            empty: { x: 0, y: 2000, width: 400, height: 400, order: 0 },
+          },
+        }),
+      )
+
+      const { projects } = await scanBoard(board.root, { project: 'webapp' })
+
+      expect(projects[0]?.pages[1]?.sections).toEqual([
+        {
+          name: 'empty',
+          box: { x: 0, y: 2000, width: 400, height: 400 },
+          order: 0,
+          frames: [],
+        },
+        {
+          name: 'onboarding',
+          box: { x: -40, y: -40, width: 2000, height: 1000 },
+          order: 1,
+          frames: ['hero', 'about'],
+        },
+      ])
+    })
+
+    it('reads a page with no sections key as holding none', async () => {
+      board = copyFixtureBoard('basic')
+
+      const { projects } = await scanBoard(board.root, { project: 'webapp' })
+
+      expect(projects[0]?.pages[1]?.sections).toEqual([])
+    })
   })
 
   describe('on the hand-made board', () => {

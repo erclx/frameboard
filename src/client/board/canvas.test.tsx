@@ -15,7 +15,7 @@ import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { endPreview, setPreview } from './preview/store'
-import { clear, selectionStore } from './selection'
+import { clear, selectionStore, selectSection } from './selection'
 import {
   createClipboardStore,
   renamingFrame,
@@ -61,6 +61,7 @@ function page(
     index: 0,
     layoutError: null,
     frames,
+    sections: [],
     ...extra,
   }
 }
@@ -158,6 +159,7 @@ describe('Canvas', () => {
     modeStore.setState({ mode: 'edit', tool: 'move' })
     setCharacterKeys(true)
     liveStore.setState({ canWrite: false })
+    clear(selectionStore)
   })
 
   it('covers the frames with the hit layer in Edit', () => {
@@ -624,6 +626,56 @@ describe('Canvas', () => {
       })
   })
 
+  describe('a section', () => {
+    const onboarding = {
+      name: 'onboarding',
+      box: { x: -40, y: -40, width: 600, height: 400 },
+      order: 0,
+      frames: ['hero'],
+    }
+    const withSection = () =>
+      page(
+        'studio/home',
+        [frame('hero', { x: 0, y: 0, width: 200, height: 200 })],
+        { sections: [onboarding] },
+      )
+
+    afterEach(() => {
+      clear(selectionStore)
+    })
+
+    it('draws its box under the frames, named inside', () => {
+      const { container } = renderCanvas(withSection())
+      const layer = layerOf(container)
+      const box = layer.querySelector('[data-section="onboarding"]')
+
+      expect([
+        box?.textContent,
+        box?.compareDocumentPosition(
+          layer.querySelector('[data-frame="studio/home/hero"]') as Node,
+        ),
+      ]).toEqual(['onboarding', Node.DOCUMENT_POSITION_FOLLOWING])
+    })
+
+    it('draws resize corners once it is selected', () => {
+      selectSection(selectionStore, 'studio/home', 'onboarding')
+
+      const { container } = renderCanvas(withSection())
+
+      expect(container.querySelectorAll('[data-section-corner]')).toHaveLength(
+        4,
+      )
+    })
+
+    it('draws no corners while another page holds the selection', () => {
+      selectSection(selectionStore, 'studio/about', 'onboarding')
+
+      const { container } = renderCanvas(withSection())
+
+      expect(container.querySelector('[data-section-corner]')).toBeNull()
+    })
+  })
+
   it('leaves a hidden frame undrawn', () => {
     const { container } = renderCanvas(
       page('studio/hidden', [
@@ -1005,6 +1057,36 @@ describe('Canvas on a previewed frame', () => {
       closeNote()
       modeStore.setState({ mode: 'edit', tool: 'move' })
     })
+  })
+
+  it('adds a section at the clicked size under the Section tool, then returns to Move', async () => {
+    const sent: unknown[][] = []
+    const calls = {
+      ...createStructure(),
+      addSection: async (...args: unknown[]) => {
+        sent.push(args)
+        return {
+          name: 'section',
+          box: { x: 0, y: 0, width: 800, height: 600 },
+          order: 0,
+          frames: [],
+        }
+      },
+    } as ReturnType<typeof createStructure>
+    const { container } = renderCanvas(
+      page('studio/home', [
+        frame('hero', { x: 0, y: 0, width: 200, height: 200 }),
+      ]),
+      undefined,
+      calls,
+    )
+    act(() => modeStore.setState({ tool: 'section' }))
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!hit) throw new Error('no hit layer')
+
+    await userEvent.click(hit)
+
+    expect([sent.length, modeStore.getState().tool]).toEqual([1, 'move'])
   })
 
   it('pins a note through the width the frame is previewed at', async () => {

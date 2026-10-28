@@ -98,7 +98,9 @@ test.describe('placing text and shapes into a frame', () => {
     const below = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
     if (!below) throw new Error('The hero draws no box')
 
-    await tools(page).getByRole('button', { name: 'Frame' }).click()
+    await tools(page)
+      .getByRole('button', { name: 'Frame', exact: true })
+      .click()
     await page.mouse.click(below.x + 10, below.y + below.height + 80)
     await page.keyboard.press('Enter')
     const desktop = page.frameLocator(

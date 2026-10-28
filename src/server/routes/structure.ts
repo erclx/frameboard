@@ -29,6 +29,11 @@ import {
 } from '@/server/board/projects'
 import { resolvePageRef, resolveProject } from '@/server/board/refs'
 import { listProjects, readPageOrder } from '@/server/board/scan'
+import {
+  addSection,
+  deleteSection,
+  renameSection,
+} from '@/server/board/sections'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
@@ -84,6 +89,19 @@ const frameFlagSchema = z.object({
   flag: z.enum(['hidden', 'locked']),
   on: z.boolean(),
 })
+const sectionBox = z.object({
+  x: coordinate,
+  y: coordinate,
+  width: z.int().min(1),
+  height: z.int().min(1),
+})
+const sectionAddSchema = z.object({
+  page: ref,
+  name: name.optional(),
+  box: sectionBox,
+})
+const sectionRenameSchema = z.object({ page: ref, section: name, name })
+const sectionSchema = z.object({ page: ref, section: name })
 const projectAddSchema = z.object({ name: name.optional() })
 const projectSchema = z.object({ ref })
 const projectTokensSchema = z.object({
@@ -118,6 +136,7 @@ export function structureRoutes(
   app.use('/api/frame/*', requireWriter(access))
   app.use('/api/clipboard/*', requireWriter(access))
   app.use('/api/project/*', requireWriter(access))
+  app.use('/api/section/*', requireWriter(access))
   const cwd = root
 
   /** Runs one verb with a fresh journal and records what it reported. */
@@ -414,6 +433,45 @@ export function structureRoutes(
       (pasted) => onFrames(pasted.map((frame) => frame.ref)),
     )
     return c.json({ ok: true, data: frames })
+  })
+
+  // A section write moves no frame file or box, so no claim refuses it.
+  app.post('/api/section/add', async (c) => {
+    const body = await parseBody(c.req.raw, sectionAddSchema)
+    const section = await recorded(
+      (journal) =>
+        addSection(root, body.page, {
+          cwd,
+          name: body.name,
+          box: body.box,
+          journal,
+        }),
+      () => onFrames([]),
+    )
+    return c.json({ ok: true, data: section })
+  })
+
+  app.post('/api/section/rename', async (c) => {
+    const body = await parseBody(c.req.raw, sectionRenameSchema)
+    const section = await recorded(
+      (journal) =>
+        renameSection(root, body.page, body.section, body.name, {
+          cwd,
+          journal,
+        }),
+      () => onFrames([]),
+    )
+    return c.json({ ok: true, data: section })
+  })
+
+  app.post('/api/section/delete', async (c) => {
+    const body = await parseBody(c.req.raw, sectionSchema)
+    const result = await recorded(
+      (journal) =>
+        deleteSection(root, body.page, body.section, { cwd, journal }),
+      () => onFrames([]),
+    )
+    return c.json({ ok: true, data: result })
   })
 
   /** A project write leaves the board on home, so it follows no page or frame. */

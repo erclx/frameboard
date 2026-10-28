@@ -33,6 +33,7 @@ const BOARD: ListResult = {
           index: 0,
           layoutError: null,
           frames: [],
+          sections: [],
         },
       ],
     },

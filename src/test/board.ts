@@ -35,6 +35,7 @@ export function pageOf(
     index: 0,
     layoutError: null,
     frames,
+    sections: [],
   }
 }
 

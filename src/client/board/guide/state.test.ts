@@ -58,6 +58,7 @@ function untouchedBoard(): ListResult {
             index: 0,
             layoutError: null,
             frames: [],
+            sections: [],
           },
         ],
       },

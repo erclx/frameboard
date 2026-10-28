@@ -62,6 +62,50 @@ describe('writeBoxes', () => {
     })
   })
 
+  it('posts a section box beside its frames in the one write', async () => {
+    let body: unknown = null
+    const send: typeof fetch = async (_path, init) => {
+      body = JSON.parse(String(init?.body))
+      return Response.json({ ok: true, data: { frames: [] } })
+    }
+    const flow = { x: 0, y: 0, width: 800, height: 900 }
+
+    await writeBoxes(
+      'studio/home',
+      { [HERO.ref]: MOVED },
+      { [HERO.ref]: HERO.box },
+      send,
+      {
+        boxes: { flow: { ...flow, x: 40 } },
+        expected: { flow },
+      },
+    )
+
+    expect(body).toEqual({
+      page: 'studio/home',
+      boxes: { hero: MOVED },
+      expected: { hero: HERO.box },
+      sections: { flow: { ...flow, x: 40 } },
+      expectedSections: { flow },
+    })
+  })
+
+  it('posts a section resize that carries no frame', async () => {
+    let sent = 0
+    const send: typeof fetch = async () => {
+      sent += 1
+      return Response.json({ ok: true, data: { frames: [] } })
+    }
+    const flow = { x: 0, y: 0, width: 800, height: 900 }
+
+    await writeBoxes('studio/home', {}, {}, send, {
+      boxes: { flow: { ...flow, width: 900 } },
+      expected: { flow },
+    })
+
+    expect(sent).toBe(1)
+  })
+
   it('holds the new box after the write lands, until a board carries it', async () => {
     const live = createLiveStore()
     stop = followPending(live)
@@ -234,6 +278,38 @@ describe('writeBoxes', () => {
           page: 'studio/home',
           boxes: { about: { ...aboutArranged, x: 1530 }, hero: MOVED },
           expected: { about: aboutBox, hero: HERO.box },
+        },
+      ])
+    })
+
+    it('carries a waiting section move’s box into a newer edit of one of its frames', async () => {
+      const flow = { x: -40, y: -200, width: 900, height: 1200 }
+      const flowMoved = { ...flow, x: 0 }
+      const older = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: MOVED },
+        { [HERO.ref]: HERO.box },
+        send,
+        { boxes: { flow: flowMoved }, expected: { flow } },
+      )
+      // The nudge starts from the moved box the board draws for hero.
+      const newer = writeBoxes(
+        'studio/home',
+        { [HERO.ref]: { ...MOVED, x: 50 } },
+        { [HERO.ref]: MOVED },
+        send,
+      )
+
+      expect(await older).toBe(false)
+      receiveClaims(liveStore, [])
+      expect(await newer).toBe(true)
+      expect(bodies).toEqual([
+        {
+          page: 'studio/home',
+          boxes: { hero: { ...MOVED, x: 50 } },
+          expected: { hero: HERO.box },
+          sections: { flow: flowMoved },
+          expectedSections: { flow },
         },
       ])
     })

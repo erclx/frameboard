@@ -63,6 +63,8 @@ import {
 } from './place/tool'
 import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
+import { placeSection } from './sections/actions'
+import { SectionBoxes } from './sections/box'
 import {
   type ElementKey,
   followSelection,
@@ -106,7 +108,7 @@ interface CanvasProps {
   claims?: Readonly<Record<string, Claim>>
   /** A frame to bring into view, as `show` asks, once it is on this page. */
   focus?: string | null
-  /** The server calls the empty page's Show writes through, the board's own when absent. */
+  /** The server calls the empty page's Show writes and the Section tool go through, the board's own when absent. */
   calls?: Structure
   /** Called once the view has started toward `focus`. */
   onFocused?: () => void
@@ -158,6 +160,7 @@ export function Canvas({
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
+  const sectioning = useMode((state) => state.tool === 'section')
   const placing = useMode((state) => placesElement(state.tool))
   const spacePan = useMode((state) => state.spacePan)
   useEffect(() => followSpacePan(window), [])
@@ -174,9 +177,13 @@ export function Canvas({
   // Read by the zoom effect for the first fit and by the gestures at each
   // press, so a frame change rebinds neither.
   const framesRef = useRef(frames)
+  const sectionsRef = useRef(page.sections)
+  const pageFramesRef = useRef(page.frames)
   useLayoutEffect(() => {
     framesRef.current = frames
-  }, [frames])
+    sectionsRef.current = page.sections
+    pageFramesRef.current = page.frames
+  }, [frames, page.sections, page.frames])
   // Read by the zoom handler, which marks crowded labels with no render.
   const rooms = useMemo(() => labelRoom(frames), [frames])
   const roomsRef = useRef(rooms)
@@ -498,6 +505,8 @@ export function Canvas({
       layer,
       page: page.ref,
       frames: () => framesRef.current,
+      sections: () => sectionsRef.current,
+      pageFrames: () => pageFramesRef.current,
     })
   }, [page.ref, playing])
 
@@ -570,7 +579,12 @@ export function Canvas({
   const doubleClick = (event: MouseEvent) => {
     const viewport = viewportRef.current
     const held = pressedOn.current
-    if (viewport && layer && held && !(noting || hand || framing || placing)) {
+    if (
+      viewport &&
+      layer &&
+      held &&
+      !(noting || hand || framing || sectioning || placing)
+    ) {
       const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
       const drawn = withDrawn(frames)
       if (overElement(layer, drawn, held, { x, y }) && editText(held, false)) {
@@ -583,7 +597,16 @@ export function Canvas({
   const pickInside = (event: MouseEvent) => {
     const viewport = viewportRef.current
     // Only the Move tool selects, so every other tool picks nothing.
-    if (noting || hand || framing || placing || !viewport || !layer) return
+    if (
+      noting ||
+      hand ||
+      framing ||
+      sectioning ||
+      placing ||
+      !viewport ||
+      !layer
+    )
+      return
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
@@ -603,7 +626,15 @@ export function Canvas({
    */
   const onLabel = (event: MouseEvent): boolean => {
     const viewport = viewportRef.current
-    if (noting || hand || framing || placing || !viewport || !layer) {
+    if (
+      noting ||
+      hand ||
+      framing ||
+      sectioning ||
+      placing ||
+      !viewport ||
+      !layer
+    ) {
       return false
     }
     if (drawnAt(layer, '[data-label-control]', event)) return false
@@ -635,7 +666,9 @@ export function Canvas({
       data-canvas
       className={cn(
         'relative size-full touch-none overflow-hidden bg-background',
-        (noting || framing || placing) && !playing && 'cursor-crosshair',
+        (noting || framing || sectioning || placing) &&
+          !playing &&
+          'cursor-crosshair',
         (spacePan || (hand && !playing)) &&
           'cursor-grab active:cursor-grabbing',
       )}
@@ -650,6 +683,7 @@ export function Canvas({
       >
         {page.layoutError ? null : (
           <>
+            <SectionBoxes page={page.ref} sections={page.sections} />
             {frames.map((frame) => (
               <Frame
                 key={identityOf(aliases, frame.ref)}
@@ -697,7 +731,11 @@ export function Canvas({
               // never see these presses.
               onClickCapture={(event) => {
                 const viewport = viewportRef.current
-                if (!(noting || framing || placing) || !viewport || !layer) {
+                if (
+                  !(noting || framing || sectioning || placing) ||
+                  !viewport ||
+                  !layer
+                ) {
                   return
                 }
                 event.stopPropagation()
@@ -734,6 +772,19 @@ export function Canvas({
                     // A placed Text opens for typing once its frame shows it.
                     if (placed && kind === 'text') editText(placed, true)
                   })
+                  return
+                }
+                if (sectioning) {
+                  // A drag draws the section at its box, and one too small
+                  // to use draws the clicked size, as the Frame tool does.
+                  const draft = takeDraft()
+                  const drawn =
+                    draft &&
+                    draft.size.width * transform.k >= DRAWN_FRAME_MIN &&
+                    draft.size.height * transform.k >= DRAWN_FRAME_MIN
+                      ? { ...draft.at, ...draft.size }
+                      : null
+                  void placeSection(page.ref, drawn ?? { x, y }, { calls })
                   return
                 }
                 if (framing) {

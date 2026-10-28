@@ -13,7 +13,7 @@ In a folder with no board above it, `serve` creates `.frameboard/` there with on
 
 A board folder holds projects, a project holds pages, and a page holds frames.
 
-- Each frame is one `.html` file beside a `layout.json` that records where it sits
+- Each frame is one `.html` file beside a `layout.json` that records where it sits and the page's sections, which group frames by where they sit
 
 ## Tokens and themes
 

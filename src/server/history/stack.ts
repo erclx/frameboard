@@ -199,9 +199,10 @@ export class History {
   }
 }
 
-/** What a refusal names as overtaken, being a frame, a page, or the page order. */
+/** What a refusal names as overtaken, being a frame, a section, a page, or the page order. */
 function nameOf(change: Change): string {
   if (change.kind === 'entry') return change.frame
+  if (change.kind === 'section') return `section ${change.section}`
   if (change.kind === 'pages') return 'the page order'
   const path = change.kind === 'moved' ? change.to : change.path
   return basename(path, FRAME_EXTENSION)

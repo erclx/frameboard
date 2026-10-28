@@ -30,6 +30,7 @@ export function ShapeDraft({ viewport, toBoard }: ShapeDraftProps) {
     (state) =>
       state.mode === 'edit' &&
       (state.tool === 'frame' ||
+        state.tool === 'section' ||
         state.tool === 'image' ||
         (state.tool === 'shape' && shape !== 'divider')),
   )
