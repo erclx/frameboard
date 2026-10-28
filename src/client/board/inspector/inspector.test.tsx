@@ -108,6 +108,20 @@ describe('InspectorPanel', () => {
           { name: /Full HD/ },
         ),
       ).toHaveTextContent('1920 × 1080')
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Slide' })).getByRole(
+          'radio',
+          { name: /Slide 4:3/ },
+        ),
+      ).toHaveTextContent('1024 × 768')
+    })
+
+    it('chooses a slide the next click places', async () => {
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('radio', { name: /Slide 16:9/ }))
+
+      expect(presetStore.getState().preset).toBe('slide-16-9')
     })
 
     it('chooses a device the next click places', async () => {
@@ -129,7 +143,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(11)
+      expect(screen.getAllByRole('radio')).toHaveLength(13)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })

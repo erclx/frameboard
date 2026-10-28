@@ -12,11 +12,14 @@ export const FRAME_SIZES = {
 
 export type FrameSizePreset = keyof typeof FRAME_SIZES
 
+/** A heading in the Frame tool's list, being a preset's or the slides'. */
+export type FrameSizeGroup = FrameSizePreset | 'slide'
+
 export interface DeviceSize extends FrameSize {
   name: string
   label: string
-  /** The preset heading the device's group in the Frame tool's list. */
-  group: FrameSizePreset
+  /** The heading the device sits under in the Frame tool's list. */
+  group: FrameSizeGroup
 }
 
 /**
@@ -80,6 +83,20 @@ export const DEVICE_SIZES = [
     group: 'desktop',
     width: 1920,
     height: 1080,
+  },
+  {
+    name: 'slide-16-9',
+    label: 'Slide 16:9',
+    group: 'slide',
+    width: 1920,
+    height: 1080,
+  },
+  {
+    name: 'slide-4-3',
+    label: 'Slide 4:3',
+    group: 'slide',
+    width: 1024,
+    height: 768,
   },
 ] as const satisfies readonly DeviceSize[]
 

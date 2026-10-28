@@ -1,8 +1,15 @@
-import { type LucideIcon, Monitor, Smartphone, Tablet } from 'lucide-react'
+import {
+  type LucideIcon,
+  Monitor,
+  Presentation,
+  Smartphone,
+  Tablet,
+} from 'lucide-react'
 
 import {
   DEVICE_SIZES,
   FRAME_SIZES,
+  type FrameSizeGroup,
   type FrameSizeName,
   type FrameSizePreset,
 } from '@/shared/frame-sizes'
@@ -25,21 +32,40 @@ export interface SizeRow {
   height: number
 }
 
-/**
- * The Frame tool's list, one group per preset, each holding the preset and
- * the devices in its group, narrowest first.
- */
-export const FRAME_TOOL_GROUPS: readonly {
-  preset: FrameSizePreset
+export interface SizeGroup {
+  group: FrameSizeGroup
   label: string
   icon: LucideIcon
   rows: readonly SizeRow[]
-}[] = PRESETS.map(({ preset, label, icon }) => ({
-  preset,
-  label,
-  icon,
-  rows: [
-    { name: preset, label, ...FRAME_SIZES[preset] },
-    ...DEVICE_SIZES.filter((device) => device.group === preset),
-  ].toSorted((a, b) => a.width - b.width),
+}
+
+/**
+ * The Frame tool's list, one group per preset holding the preset and the
+ * devices in its group, then the slides, each group narrowest first.
+ */
+export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
+  [
+    ...PRESETS.map(({ preset, label, icon }) => ({
+      group: preset,
+      label,
+      icon,
+      rows: [
+        { name: preset, label, ...FRAME_SIZES[preset] },
+        ...devicesIn(preset),
+      ],
+    })),
+    {
+      group: 'slide',
+      label: 'Slide',
+      icon: Presentation,
+      rows: devicesIn('slide'),
+    },
+  ] satisfies SizeGroup[]
+).map((group) => ({
+  ...group,
+  rows: group.rows.toSorted((a, b) => a.width - b.width),
 }))
+
+function devicesIn(group: FrameSizeGroup): SizeRow[] {
+  return DEVICE_SIZES.filter((device) => device.group === group)
+}

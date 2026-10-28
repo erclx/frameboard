@@ -116,6 +116,8 @@ describe('frame', () => {
     ['phone', 390, 844],
     ['tablet', 834, 1194],
     ['desktop', 1440, 900],
+    ['slide-16-9', 1920, 1080],
+    ['slide-4-3', 1024, 768],
   ])('add --size %s places %i x %i', async (size, width, height) => {
     const run = on('basic')
 
