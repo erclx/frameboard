@@ -10,7 +10,7 @@ import {
   frameSizeOf,
 } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
-import type { LayoutFile } from '@/shared/records/board'
+import type { LayoutFile, SectionEntry } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
 import type { Journal, JournalOptions } from './journal'
@@ -325,18 +325,27 @@ export async function setMeasured(
 
 type Box = FrameRecord['box']
 
+export interface SectionBoxes {
+  /** Section boxes by name, written beside the frame boxes in the same write. */
+  sections?: Readonly<Record<string, Box>>
+  /** The section boxes the client started from, refusing the write as a frame's does. */
+  expectedSections?: Readonly<Record<string, Box>>
+}
+
 /**
  * Sets the boxes of several frames on one page under one lock and one write,
  * the one path a hand move or resize takes. `expected` holds the boxes the
  * client started from, and a frame whose stored box differs from it refuses
- * the whole write, so a hand edit never silently undoes an agent's.
+ * the whole write, so a hand edit never silently undoes an agent's. A section
+ * move carries its box in `sections` beside its members' boxes, so the box
+ * and the frames move as one step or not at all.
  */
 export async function setBoxes(
   root: string,
   pageRef: string,
   boxes: Readonly<Record<string, Box>>,
   expected: Readonly<Record<string, Box>>,
-  options: RefOptions & JournalOptions,
+  options: RefOptions & JournalOptions & SectionBoxes,
 ): Promise<FrameRecord[]> {
   const page = await resolvePageRef(root, pageRef, options)
   const names = Object.keys(boxes)
@@ -344,6 +353,33 @@ export async function setBoxes(
     [page.path],
     async (layouts) => {
       const layout = layoutAt(layouts, page.path)
+      const sections = Object.entries(options.sections ?? {}).map(
+        ([name, box]) => {
+          const ref = `${page.project}/${page.name}`
+          const entry = layout.section(name)
+          if (!entry) {
+            throw new FrameboardError(
+              'section-not-found',
+              `No section ${name} on ${ref}.`,
+              { page: ref, name },
+            )
+          }
+          const started = options.expectedSections?.[name]
+          if (!started || !sameBox(started, entry)) {
+            throw new FrameboardError(
+              'stale-layout',
+              `Section ${name} moved since this edit began, so nothing was written.`,
+              {
+                page: ref,
+                name,
+                stored: boxOf(entry),
+                expected: started ?? null,
+              },
+            )
+          }
+          return { name, entry, box }
+        },
+      )
       const placements = names.map((name) => {
         const ref = `${page.project}/${page.name}/${name}`
         if (!layout.names.includes(name)) {
@@ -369,6 +405,9 @@ export async function setBoxes(
         }
         return { name, placement, box, kept, started }
       })
+      for (const { name, entry, box } of sections) {
+        layout.setSection(name, { ...entry, ...box })
+      }
       for (const { name, placement, box, kept, started } of placements) {
         if (!box || !started) continue
         layout.set(name, {
@@ -403,6 +442,10 @@ function measuredAxes(
       ? { height: placement.box.height }
       : {}),
   }
+}
+
+function boxOf({ x, y, width, height }: Box): Box {
+  return { x, y, width, height }
 }
 
 function sameBox(a: Box, b: Box): boolean {
@@ -602,6 +645,37 @@ class PageLayout {
     this.changed = true
   }
 
+  sectionNames(): string[] {
+    return Object.keys(this.file.sections ?? {})
+  }
+
+  section(name: string): SectionEntry | undefined {
+    const sections = this.file.sections ?? {}
+    return Object.hasOwn(sections, name) ? sections[name] : undefined
+  }
+
+  /** Writes the five fixed keys after any the entry already held, so unknown keys survive. */
+  setSection(name: string, entry: SectionEntry): void {
+    const sections = (this.file.sections ??= {})
+    const { x, y, width, height, order } = entry
+    sections[name] = { ...sections[name], x, y, width, height, order }
+    this.changed = true
+  }
+
+  removeSection(name: string): void {
+    if (this.file.sections) delete this.file.sections[name]
+    this.changed = true
+  }
+
+  topSectionOrder(): number {
+    return Math.max(
+      ...this.sectionNames().map(
+        (name) => (this.section(name)?.order ?? 0) + 1,
+      ),
+      0,
+    )
+  }
+
   /** Renumbers the page's placed frames densely from 0, touching only entries whose order moves. */
   renumber(): void {
     const placed = this.stack().filter((name) => this.hasEntry(name))
@@ -661,9 +735,22 @@ function reportEntries(
     const to = after.frames[frame]
     if (!isDeepStrictEqual(from, to)) journal.entry(page, frame, from, to)
   }
+  const wasSections = before?.sections ?? {}
+  const nowSections = after.sections ?? {}
+  for (const section of new Set([
+    ...Object.keys(wasSections),
+    ...Object.keys(nowSections),
+  ])) {
+    const from = wasSections[section]
+    const to = nowSections[section]
+    if (!isDeepStrictEqual(from, to)) journal.section(page, section, from, to)
+  }
 }
 
-function layoutAt(layouts: Map<string, PageLayout>, page: string): PageLayout {
+export function layoutAt(
+  layouts: Map<string, PageLayout>,
+  page: string,
+): PageLayout {
   const layout = layouts.get(page)
   if (!layout) throw new Error(`No layout read for ${page}.`)
   return layout

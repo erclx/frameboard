@@ -1,4 +1,4 @@
-import type { LayoutEntry } from '@/shared/records/board'
+import type { LayoutEntry, SectionEntry } from '@/shared/records/board'
 
 /**
  * What a board verb reports of the changes it made, so the board's undo can
@@ -12,6 +12,13 @@ export interface Journal {
     frame: string,
     before: LayoutEntry | undefined,
     after: LayoutEntry | undefined,
+  ): void
+  /** A section's entry in the layout of the page folder `page`, undefined when it has none. */
+  section(
+    page: string,
+    name: string,
+    before: SectionEntry | undefined,
+    after: SectionEntry | undefined,
   ): void
   /** The page order `project.json` holds in the project folder `project`. */
   pages(project: string, before: string[], after: string[]): void

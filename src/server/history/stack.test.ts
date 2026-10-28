@@ -7,9 +7,10 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
-import { moveFrame } from '../board/frames'
+import { moveFrame, setBoxes } from '../board/frames'
 import { addPage, movePage, renamePage } from '../board/pages'
 import { renameProject } from '../board/projects'
+import { addSection } from '../board/sections'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
 import { History, HISTORY_CAP, type HistoryCounts, type Step } from './stack'
@@ -211,6 +212,59 @@ describe('History', () => {
     })
     expect(history.counts()).toEqual({ undo: 0, redo: 0 })
     expect(heroX()).toBe(80)
+  })
+
+  describe('a section move', () => {
+    const box = { x: -40, y: -40, width: 2000, height: 1000 }
+    const hero = { x: 0, y: 0, width: 1440, height: 900 }
+    const sectionX = () =>
+      JSON.parse(readFileSync(at('webapp/home/layout.json'), 'utf8')).sections
+        .flow.x
+
+    beforeEach(async () => {
+      await addSection(board.root, 'webapp/home', {
+        cwd: board.root,
+        name: 'flow',
+        box,
+      })
+      const journal = history.journal()
+      await setBoxes(
+        board.root,
+        'webapp/home',
+        { hero: { ...hero, x: 100 } },
+        { hero },
+        {
+          cwd: board.root,
+          journal,
+          sections: { flow: { ...box, x: 60 } },
+          expectedSections: { flow: box },
+        },
+      )
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: ['webapp/home/hero'],
+      })
+    })
+
+    it('undoes the box and its members as one step', async () => {
+      await history.undo()
+
+      expect([sectionX(), heroX()]).toEqual([-40, 0])
+    })
+
+    it('refuses whole once an agent moved a member', async () => {
+      await moveFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        x: 300,
+      })
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect([sectionX(), heroX()]).toEqual([60, 300])
+    })
   })
 
   it('drops a step whose layout an agent left unreadable', async () => {

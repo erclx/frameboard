@@ -60,6 +60,8 @@ export const EXIT_CODES = {
   'dispatch-unavailable': 3,
   // The command a note dispatched failed to start, leaving the note as it was.
   'dispatch-failed': 13,
+  // A section write naming a section its page does not hold.
+  'section-not-found': 3,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

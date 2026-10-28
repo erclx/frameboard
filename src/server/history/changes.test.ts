@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
+import { addSection, renameSection } from '../board/sections'
 import { contentHash } from '../edit/address'
 import {
   editFrameFile,
@@ -129,6 +130,64 @@ describe('changes', () => {
       expect(
         JSON.parse(read('webapp/home/layout.json')).frames.hero,
       ).toMatchObject({ height: 900, hugHeight: true })
+    })
+  })
+
+  describe('section', () => {
+    const box = { x: 0, y: 0, width: 2000, height: 1000 }
+    const sections = () => JSON.parse(read('webapp/home/layout.json')).sections
+
+    it('holds while the section is as the step left it', async () => {
+      await addSection(board.root, 'webapp/home', {
+        ...options(),
+        name: 'flow',
+        box,
+      })
+
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('fails once an agent renamed the section', async () => {
+      await addSection(board.root, 'webapp/home', {
+        ...options(),
+        name: 'flow',
+        box,
+      })
+      await renameSection(board.root, 'webapp/home', 'flow', 'signup', {
+        cwd: board.root,
+      })
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('undoes an add and keeps another section', async () => {
+      await addSection(board.root, 'webapp/home', {
+        ...options(),
+        name: 'flow',
+        box,
+      })
+      await addSection(board.root, 'webapp/home', {
+        cwd: board.root,
+        name: 'other',
+        box,
+      })
+
+      await restore(first(), 'before')
+
+      expect(Object.keys(sections())).toEqual(['other'])
+    })
+
+    it('redoes the add with its box', async () => {
+      await addSection(board.root, 'webapp/home', {
+        ...options(),
+        name: 'flow',
+        box,
+      })
+      await restore(first(), 'before')
+
+      await restore(first(), 'after')
+
+      expect(sections().flow).toEqual({ ...box, order: 0 })
     })
   })
 
