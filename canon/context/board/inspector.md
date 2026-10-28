@@ -18,7 +18,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment, plus its text when it holds text only. Layers renames an element.
+- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. Layers renames an element.
+- **Type details:** a settings button ending the alignment row opens decoration, case, one-line truncate, and wrap style. Truncate writes its three declarations as one edit.
 - **Rotation:** a degrees field writes `rotate`, clockwise and normalized to (-180, 180], beside Rotate 90°, Flip horizontal, and Flip vertical
 - **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
 - **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.

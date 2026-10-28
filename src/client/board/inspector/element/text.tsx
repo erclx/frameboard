@@ -100,8 +100,9 @@ export function TextSection({
       />
       {/* The line is kept while hidden, so focusing the field moves no section below. */}
       <p
+        // `cn` reads the `text-caption` step as a color and drops it, so the size goes by its length.
         className={cn(
-          'mt-2.5 flex items-center gap-1 text-label font-normal text-muted-foreground',
+          'mt-2.5 flex items-center gap-1 text-(length:--text-caption) font-normal text-muted-foreground',
           !focused && 'invisible',
         )}
       >

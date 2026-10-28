@@ -79,8 +79,7 @@ const CAPTION_LIT =
  *
  * base-ui commits a keyboard step with every press, so the field steps on
  * its own keys rather than base-ui's, and takes base-ui's commit only for a
- * scrub release. A value it sent stays shown until the stored value moves,
- * as `CommitField` holds one.
+ * scrub release. A value it sent stays shown until the stored value moves.
  */
 export function NumberField({
   label,
@@ -305,8 +304,9 @@ export function NumberField({
         <Primitive.ScrubArea
           aria-hidden
           data-scrub
+          // `cn` reads the `text-caption` step as a color and drops it, so the size goes by its length.
           className={cn(
-            'mb-1 ml-0.5 block w-max cursor-ew-resize text-label font-normal text-muted-foreground select-none',
+            'mb-[3px] ml-0.5 block w-max cursor-ew-resize text-(length:--text-caption) font-normal text-muted-foreground select-none',
             !disabled && CAPTION_LIT,
           )}
           onPointerDown={startScrub}

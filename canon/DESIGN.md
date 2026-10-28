@@ -33,7 +33,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 ## Typography
 
 - Set the chrome in Geist, the face already bundled for frames, and no second family.
-- Use the four role steps, `--text-title`, `--text-panel`, `--text-body`, and `--text-label`, each carrying its own weight. Vendored components keep Tailwind's steps.
+- Use the five role steps, `--text-title`, `--text-panel`, `--text-body`, `--text-label`, and `--text-caption` for captions, each carrying its own weight. Vendored components keep Tailwind's steps.
 - Build hierarchy from weight and the quiet text color before reaching for a larger step.
 
 ## Spacing
