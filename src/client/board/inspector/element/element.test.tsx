@@ -2302,6 +2302,48 @@ describe('InspectorPanel with an element selected', () => {
     expect(result.current).toMatchObject({ lineHeight: null, letterSpacing: 0 })
   })
 
+  it('reads the element’s own rotate and scale and a translating transform', async () => {
+    await mountFrame(
+      '<div style="transform: translate(-50%, -50%); rotate: 0.25turn; scale: -1.5 1.5"></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.rotation).toEqual({
+      degrees: 90,
+      scale: { x: -1.5, y: 1.5 },
+      inline: { rotate: true, scale: true },
+      translated: true,
+    })
+  })
+
+  it('reads a rotating transform as no translation and no rotate', async () => {
+    await mountFrame('<div style="transform: rotate(45deg)"></div>')
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.rotation).toEqual({
+      degrees: 0,
+      scale: { x: 1, y: 1 },
+      inline: { rotate: false, scale: false },
+      translated: false,
+    })
+  })
+
+  it('reads a 3D rotate as unreadable', async () => {
+    await mountFrame('<div style="rotate: x 30deg"></div>')
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.rotation.degrees).toBeNull()
+  })
+
   it('leaves Typography out for an element holding no text', async () => {
     await mountFrame('<div></div>')
 

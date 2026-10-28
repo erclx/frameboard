@@ -29,6 +29,7 @@ export interface LiveElement {
   /** Whether it holds text and no element, so its text is edited as a whole. */
   textOnly: boolean
   text: string
+  rotation: Rotation
   /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
   inline: {
     color: boolean
@@ -37,6 +38,18 @@ export interface LiveElement {
     background: boolean
     border: boolean
   }
+}
+
+/** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
+export interface Rotation {
+  /** The `rotate` property in degrees, clockwise, null for a 3D rotation the field cannot show. */
+  degrees: number | null
+  /** The `scale` property's x and y, null for a 3D scale. */
+  scale: { x: number; y: number } | null
+  /** Whether the element's own `style` sets each, which a return to none drops rather than overrides. */
+  inline: { rotate: boolean; scale: boolean }
+  /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
+  translated: boolean
 }
 
 /**
@@ -136,8 +149,64 @@ function readLive(element: Element, view: Window): LiveElement {
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
+    rotation: {
+      degrees: degreesOf(style.rotate),
+      scale: scaleOf(style.scale),
+      inline: {
+        rotate: ownValue(element, 'rotate'),
+        scale: ownValue(element, 'scale'),
+      },
+      translated: translates(style.transform),
+    },
     inline: inlinePaints(element),
   }
+}
+
+const TO_DEGREES: Record<string, number> = {
+  deg: 1,
+  grad: 0.9,
+  rad: 180 / Math.PI,
+  turn: 360,
+}
+
+/** A computed `rotate` in degrees, 0 for `none`, null for one about another axis. */
+export function degreesOf(rotate: string): number | null {
+  if (rotate === 'none' || rotate === '') return 0
+  const angle = /^(-?[\d.]+(?:e[+-]?\d+)?)(deg|grad|rad|turn)$/.exec(rotate)
+  const unit = angle?.[2] ? TO_DEGREES[angle[2]] : undefined
+  if (!angle || unit === undefined) return null
+  return Math.round(Number(angle[1]) * unit * 100) / 100
+}
+
+/** A computed `scale` as its x and y, 1 and 1 for `none`, null for a 3D scale. */
+export function scaleOf(scale: string): { x: number; y: number } | null {
+  if (scale === 'none' || scale === '') return { x: 1, y: 1 }
+  const factors = scale
+    .split(/\s+/)
+    .map((factor) =>
+      factor.endsWith('%') ? parseFloat(factor) / 100 : Number(factor),
+    )
+  const [x, y = x, z = 1] = factors
+  if (x === undefined || y === undefined || factors.some(Number.isNaN)) {
+    return null
+  }
+  return factors.length > 3 || z !== 1 ? null : { x, y }
+}
+
+/** Whether a computed `transform` matrix moves the element, reading any other value as one that may. */
+export function translates(transform: string): boolean {
+  if (transform === 'none' || transform === '') return false
+  const matrix = /^matrix(3d)?\(([^)]*)\)$/.exec(transform)
+  if (!matrix?.[2]) return true
+  const values = matrix[2].split(',').map(Number)
+  const offsets = matrix[1] ? values.slice(12, 15) : values.slice(4, 6)
+  return offsets.some((offset) => offset !== 0)
+}
+
+/** Whether the element's own `style` attribute sets `property`. */
+function ownValue(element: Element, property: string): boolean {
+  const own = 'style' in element ? (element as HTMLElement).style : null
+  return !!own && own.getPropertyValue(property) !== ''
 }
 
 /** A computed px length to two places. */
