@@ -203,7 +203,7 @@ function ShapeTool({
           side="top"
           align="start"
           sideOffset={8}
-          className="w-[190px]"
+          className="w-[220px]"
         >
           <DropdownMenuRadioGroup
             value={shown.kind}
@@ -242,7 +242,7 @@ function ShapeTool({
             label="Image or video"
             keys={['$mod+Shift+KeyK']}
           >
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               <ImageIcon aria-hidden className="size-[13px]" />
               Image or video…
             </span>
