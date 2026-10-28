@@ -31,7 +31,7 @@ In the board you move and resize frames, Alt-drag one to drop a copy, and hold S
 The Frame tool places a phone, tablet, or desktop size picked from its list with a click, or draws a frame at any size with a drag. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- The inspector edits a frame's fill and an element's opacity, radius, type, line height, letter spacing, fill, stroke, shadow, and text, its numbers stepping on arrows and scrubbing from a label
+- The inspector edits a frame's fill and an element's opacity, radius, type, case, truncation, fill, stroke, shadow, and text, its numbers stepping on arrows and scrubbing from a label
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
