@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   type LayoutStorage,
   useDefaultLayout,
@@ -90,18 +90,30 @@ export function LeftPanel({
   const pagesHeight = rowsHeight(Math.min(Math.max(project.pages.length, 4), 8))
   // A page added grows a split shorter than the new fit, so the new page
   // shows, and leaves one already taller. Counts compare within one project,
-  // since another project's list is a different split.
+  // since another project's list is a different split. A hidden Design tab
+  // unmounts the split, so the count holds until it shows again, and the
+  // check waits a frame for a remounted group to measure its height.
+  const [tab, setTab] = useState('design')
+  const splitShown = !finding && tab === 'design'
   const counted = useRef({ project: project.name, pages: project.pages.length })
   useEffect(() => {
-    const before = counted.current
-    counted.current = { project: project.name, pages: project.pages.length }
-    if (before.project !== project.name || project.pages.length <= before.pages)
-      return
-    const panel = pagesPanel.current
-    if (!panel || panel.getSize().inPixels > pagesHeight - 1) return
-    resetting.current = true
-    panel.resize(pagesHeight)
-  }, [project.name, project.pages.length, pagesHeight, pagesPanel])
+    if (!splitShown) return
+    const frame = requestAnimationFrame(() => {
+      const panel = pagesPanel.current
+      if (!panel) return
+      const before = counted.current
+      counted.current = { project: project.name, pages: project.pages.length }
+      if (
+        before.project !== project.name ||
+        project.pages.length <= before.pages
+      )
+        return
+      if (panel.getSize().inPixels > pagesHeight - 1) return
+      resetting.current = true
+      panel.resize(pagesHeight)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [splitShown, project.name, project.pages.length, pagesHeight, pagesPanel])
   const frames =
     project.pages.find((candidate) => candidate.name === page)?.frames ?? []
   return (
@@ -113,7 +125,11 @@ export function LeftPanel({
       {finding ? (
         <FindPanel project={project.name} page={page} />
       ) : (
-        <Tabs defaultValue="design" className="min-h-0 flex-1 gap-0">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(String(value))}
+          className="min-h-0 flex-1 gap-0"
+        >
           <TabsList className="m-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5">
             <TabsTrigger value="design" className={TAB}>
               Design

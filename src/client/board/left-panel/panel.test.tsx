@@ -631,7 +631,12 @@ describe('LeftPanel', () => {
         <Router hook={location.hook}>
           <TooltipProvider>
             <div className="h-[600px]">
-              <LeftPanel project={record} page={current} storage={kept} />
+              <LeftPanel
+                project={record}
+                page={current}
+                storage={kept}
+                assets={<p>No assets</p>}
+              />
             </div>
           </TooltipProvider>
         </Router>
@@ -687,6 +692,21 @@ describe('LeftPanel', () => {
       cleanup()
       renderPanel(pages(5), 'page-5', undefined, { storage })
       expect(listHeight()).toBeCloseTo(178, 0)
+    })
+
+    it('grows a dragged split for a page added while another tab was open', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      show(pages(4), 'page-4')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+      await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+
+      show(pages(5), 'page-5')
+      await userEvent.click(screen.getByRole('tab', { name: 'Design' }))
+
+      await expect.poll(listHeight).toBeCloseTo(178, 0)
     })
 
     it('keeps a split dragged taller than the fit when a page is added', async () => {
