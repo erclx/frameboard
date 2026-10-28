@@ -95,7 +95,7 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
         size="sm"
         disabled={exporting}
         onClick={run}
-        className="w-full text-xs"
+        className="w-full bg-transparent text-xs dark:bg-transparent"
       >
         {exporting ? 'Exporting' : `Export ${frame.name}`}
       </Button>
