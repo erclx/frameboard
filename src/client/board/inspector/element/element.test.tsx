@@ -1108,6 +1108,27 @@ describe('TypographySection', () => {
       expect(changes).toEqual([])
     })
 
+    it('closes on one Escape from a button showing its tooltip', async () => {
+      const { write } = recorder()
+      renderDetails(write)
+      const button = screen.getByRole('button', { name: 'Type details' })
+
+      await userEvent.click(button)
+      await screen.findByRole('dialog', { name: 'Type details' })
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: 'No decoration' }),
+      ).toHaveFocus()
+      await userEvent.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Type details' }),
+        ).toBeNull(),
+      )
+      expect(button).toHaveFocus()
+    })
+
     it('closes on a press outside it', async () => {
       const { write } = recorder()
       renderDetails(write)

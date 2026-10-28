@@ -11,7 +11,7 @@ import {
   Strikethrough,
   Underline,
 } from 'lucide-react'
-import { type KeyboardEvent, type ReactNode, useRef } from 'react'
+import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
 import {
   DropdownMenu,
@@ -106,13 +106,24 @@ export function TypeDetailsButton({
   disabled,
   write,
 }: TypeDetailsProps) {
+  const [open, setOpen] = useState(false)
   // Opening on the popup rather than its first button keeps that button's
-  // tooltip shut, which would otherwise take the first Escape.
+  // tooltip shut until a key moves focus there.
   const popup = useRef<HTMLDivElement>(null)
+  // A focused button's tooltip takes Escape first, so Escape from inside the
+  // popup closes the popover whole. The Wrap menu sits in its own portal and
+  // keeps its Escape.
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape') return
+    if (!(event.target instanceof Node)) return
+    if (!popup.current?.contains(event.target)) return
+    event.stopPropagation()
+    setOpen(false)
+  }
   const wrap =
     WRAPS.find(({ value }) => value === details.textWrapStyle) ?? WRAPS[0]
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <ActionTooltip label="Type details">
         <PopoverTrigger
           aria-label="Type details"
@@ -128,6 +139,7 @@ export function TypeDetailsButton({
         sideOffset={6}
         ref={popup}
         initialFocus={popup}
+        onKeyDownCapture={onEscape}
         aria-label="Type details"
         className="w-60 gap-2 rounded-[10px] p-2.5 text-xs shadow-[0_12px_40px_rgba(0,0,0,.3)] ring-border"
       >
