@@ -104,6 +104,12 @@ export interface Cascade {
    * inherited property. Null when no author rule sets it.
    */
   specified: (element: Element, property: string) => Cascaded | null
+  /**
+   * `value` with every `var()` replaced by what the custom property holds
+   * on `element`, following chains and fallbacks. Null when a `var()` has
+   * nothing behind it, which makes the declaration invalid at computed time.
+   */
+  resolve: (value: string, element: Element) => string | null
 }
 
 export interface CascadeOptions {
@@ -245,7 +251,8 @@ export function buildCascade(
           ? fallback === null
             ? null
             : resolveVars(fallback, element, depth + 1)
-          : resolveVars(custom.value, custom.element, depth + 1)
+          : // postcss keeps the space before a closing brace, which CSS strips.
+            resolveVars(custom.value.trim(), custom.element, depth + 1)
       if (replacement === null) return null
       resolved += rest.slice(0, start) + replacement
       rest = rest.slice(end + 1)
@@ -295,6 +302,7 @@ export function buildCascade(
         shorthand: declaration.property !== property,
       }
     },
+    resolve: (value, element) => resolveVars(value, element),
   }
 }
 
