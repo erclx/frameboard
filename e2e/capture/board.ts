@@ -1093,6 +1093,41 @@ async function longThread(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Draws webapp/home with one section around hero and about, by adding it to
+ * every board the server sends, so the tracked fixture holds no section.
+ */
+async function sectionOnHome(page: Page): Promise<void> {
+  const onboarding = {
+    name: 'onboarding',
+    box: { x: -40, y: -80, width: 1990, height: 1020 },
+    order: 0,
+    frames: ['hero', 'about'],
+  }
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as ServerMessage
+      if (parsed.type !== 'board') {
+        socket.send(message)
+        return
+      }
+      const projects = parsed.data.projects.map((project) => ({
+        ...project,
+        pages: project.pages.map((shown) =>
+          shown.ref === 'webapp/home'
+            ? { ...shown, sections: [onboarding] }
+            : shown,
+        ),
+      }))
+      socket.send(
+        JSON.stringify({ ...parsed, data: { ...parsed.data, projects } }),
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
 /** The toast once it has slid in. */
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
 
@@ -1634,6 +1669,18 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(headlineOnHero),
+      },
+      {
+        // A section around both frames, its box on the canvas and its row in Layers.
+        section: 'sections',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(sectionOnHome, readyWhen('[data-section="onboarding"]')),
+        ),
       },
       {
         section: 'layers-expanded',
