@@ -20,59 +20,43 @@ vi.mock('@/server/capture/host', () => ({
     run: (browser: unknown, baseUrl: string) => Promise<unknown>,
   ) => run({}, 'http://127.0.0.1:1'),
 }))
-vi.mock('@/server/capture/images', () => ({
-  captureFrameImages: async (
-    _browser: unknown,
-    {
-      frames,
-      themes,
-      out,
-    }: {
-      frames: {
-        ref: string
-        project: string
-        page: string
-        name: string
-        box: { width: number; height: number }
-      }[]
-      themes: string[]
-      out: string
-    },
-  ) =>
-    frames.flatMap((frame) =>
+vi.mock('@/server/capture/images', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/server/capture/images')>()
+  return {
+    ...real,
+    captureFrameImages: async (
+      _browser: unknown,
+      {
+        frames,
+        themes,
+        out,
+        scale,
+      }: Parameters<typeof real.captureFrameImages>[1],
+    ) =>
+      frames.flatMap((frame) =>
+        themes.map((theme) => ({
+          ref: frame.ref,
+          theme,
+          path: real.frameImagePath(out, frame, theme, scale),
+          width: frame.box.width,
+          height: frame.box.height,
+          scale,
+        })),
+      ),
+    captureComposite: async (
+      _browser: unknown,
+      { page, themes, out, scale }: Parameters<typeof real.captureComposite>[1],
+    ) =>
       themes.map((theme) => ({
-        ref: frame.ref,
+        ref: page.ref,
         theme,
-        path: join(
-          out,
-          frame.project,
-          frame.page,
-          `${frame.name}.${theme}.png`,
-        ),
-        width: frame.box.width,
-        height: frame.box.height,
+        path: real.compositeImagePath(out, page, theme, scale),
+        width: 1,
+        height: 1,
+        scale,
       })),
-    ),
-  captureComposite: async (
-    _browser: unknown,
-    {
-      page,
-      themes,
-      out,
-    }: {
-      page: { ref: string; project: string; name: string }
-      themes: string[]
-      out: string
-    },
-  ) =>
-    themes.map((theme) => ({
-      ref: page.ref,
-      theme,
-      path: join(out, page.project, `${page.name}.${theme}.png`),
-      width: 1,
-      height: 1,
-    })),
-}))
+  }
+})
 
 const shell = await launchShellOrNull()
 await shell?.close()
@@ -124,6 +108,7 @@ describe('capture', () => {
           path: join(board.root, 'shots/studio/home/hero.light.png'),
           width: 400,
           height: 300,
+          scale: 1,
         },
         {
           ref: 'studio/home/hero',
@@ -131,6 +116,7 @@ describe('capture', () => {
           path: join(board.root, 'shots/studio/home/hero.dark.png'),
           width: 400,
           height: 300,
+          scale: 1,
         },
       ],
     })
@@ -169,6 +155,63 @@ describe('capture', () => {
     expect(run.exitCode).toBe(2)
     expect(run.json().error?.code).toBe('usage')
   })
+
+  it('names a scaled image with its scale and keeps the layout box', async () => {
+    board = writeBoard(HERO)
+
+    const run = await capture([
+      'home/hero',
+      '--theme',
+      'light',
+      '--scale',
+      '2',
+      '--out',
+      'shots',
+    ])
+
+    expect(captureResultSchema.parse(run.json().data).images).toEqual([
+      {
+        ref: 'studio/home/hero',
+        theme: 'light',
+        path: join(board.root, 'shots/studio/home/hero.light@2x.png'),
+        width: 400,
+        height: 300,
+        scale: 2,
+      },
+    ])
+  })
+
+  it('names a scaled composite with its scale', async () => {
+    board = writeBoard(PAGE)
+
+    const run = await capture([
+      '--page',
+      'home',
+      '--composite',
+      '--theme',
+      'dark',
+      '--scale',
+      '3',
+      '--out',
+      'shots',
+    ])
+
+    expect(run.json().data).toMatchObject({
+      images: [{ path: join(board.root, 'shots/studio/home.dark@3x.png') }],
+    })
+  })
+
+  it.each(['0', '4', '1.5', '2x'])(
+    'refuses a scale of %s as usage',
+    async (scale) => {
+      board = writeBoard(HERO)
+
+      const run = await capture(['home/hero', '--scale', scale])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    },
+  )
 
   it('captures every visible frame of a page with --page, leaving hidden ones out', async () => {
     board = writeBoard(PAGE)
@@ -302,5 +345,31 @@ describe.skipIf(shell === null)('capture from source', () => {
     )
 
     expect(JSON.parse(run.stdout).ok).toBe(true)
+  }, 60_000)
+
+  it('writes a 2x image at twice the layout box', () => {
+    board = writeBoard(HERO)
+
+    const run = spawnSync(
+      'bun',
+      [
+        fileURLToPath(new URL('../index.ts', import.meta.url)),
+        'capture',
+        'studio/home/hero',
+        '--theme',
+        'light',
+        '--scale',
+        '2',
+        '--json',
+      ],
+      { cwd: board.root, encoding: 'utf8' },
+    )
+    const [image] = captureResultSchema.parse(
+      JSON.parse(run.stdout).data,
+    ).images
+    const bytes = readFileSync(image?.path ?? '')
+
+    // A PNG's IHDR chunk holds its width and height at bytes 16 and 20.
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([800, 600])
   }, 60_000)
 })

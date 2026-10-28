@@ -7,14 +7,16 @@ import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
-import { MAX_COMPOSITE_SIDE, openFrame } from './render'
+import { assertScreenshotFits, MAX_COMPOSITE_SIDE, openFrame } from './render'
 
 export interface CapturedImage {
   ref: string
   theme: Theme
   path: string
+  /** The layout box in CSS pixels, so the file holds `scale` times as many. */
   width: number
   height: number
+  scale: number
 }
 
 interface Rendered extends CapturedImage {
@@ -33,13 +35,27 @@ export const COMPOSITE_MARGIN = 40
 
 const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 
+/**
+ * The file name of one image, `<name>.<theme>.png` at 1x so a path an agent
+ * saved stays true, and `<name>.<theme>@<n>x.png` at any other scale.
+ */
+function imageName(name: string, theme: Theme, scale: number): string {
+  return scale === 1 ? `${name}.${theme}.png` : `${name}.${theme}@${scale}x.png`
+}
+
 /** Where one frame's capture in one theme lands under `out`. */
 export function frameImagePath(
   out: string,
-  frame: FrameRecord,
+  frame: Pick<FrameRecord, 'project' | 'page' | 'name'>,
   theme: Theme,
+  scale = 1,
 ): string {
-  return join(out, frame.project, frame.page, `${frame.name}.${theme}.png`)
+  return join(
+    out,
+    frame.project,
+    frame.page,
+    imageName(frame.name, theme, scale),
+  )
 }
 
 /** Where a page's composite in one theme lands under `out`. */
@@ -47,8 +63,9 @@ export function compositeImagePath(
   out: string,
   page: CompositePage,
   theme: Theme,
+  scale = 1,
 ): string {
-  return join(out, page.project, `${page.name}.${theme}.png`)
+  return join(out, page.project, imageName(page.name, theme, scale))
 }
 
 /**
@@ -59,6 +76,7 @@ export function compositeImagePath(
 export function compositeBounds(
   page: CompositePage,
   frames: Pick<FrameRecord, 'box'>[],
+  scale = 1,
 ): { width: number; height: number; dx: number; dy: number } {
   const left = Math.min(...frames.map(({ box }) => box.x))
   const top = Math.min(...frames.map(({ box }) => box.y))
@@ -66,11 +84,15 @@ export function compositeBounds(
   const bottom = Math.max(...frames.map(({ box }) => box.y + box.height))
   const width = right - left + 2 * COMPOSITE_MARGIN
   const height = bottom - top + 2 * COMPOSITE_MARGIN
-  if (width > MAX_COMPOSITE_SIDE || height > MAX_COMPOSITE_SIDE) {
+  if (
+    width * scale > MAX_COMPOSITE_SIDE ||
+    height * scale > MAX_COMPOSITE_SIDE
+  ) {
+    const at = scale === 1 ? '' : ` at ${scale}x`
     throw new FrameboardError(
       'capture-too-large',
-      `A composite of ${page.ref} would be ${width} by ${height} px, past the ${MAX_COMPOSITE_SIDE} px a browser screenshot holds. Capture its frames one by one instead.`,
-      { ref: page.ref, width, height, max: MAX_COMPOSITE_SIDE },
+      `A composite of ${page.ref}${at} would be ${width * scale} by ${height * scale} px, past the ${MAX_COMPOSITE_SIDE} px a browser screenshot holds. Capture its frames one by one instead.`,
+      { ref: page.ref, width, height, scale, max: MAX_COMPOSITE_SIDE },
     )
   }
   return {
@@ -82,7 +104,7 @@ export function compositeBounds(
 }
 
 /**
- * Captures each frame in each theme at its layout size, one PNG apiece. Every
+ * Captures each frame in each theme at its layout size times `scale`, one PNG apiece. Every
  * image renders before any is written, so a refusal on one frame leaves no
  * half-written set an agent could read as current.
  */
@@ -93,11 +115,13 @@ export async function captureFrameImages(
     frames,
     themes,
     out,
+    scale = 1,
   }: {
     baseUrl: string
     frames: FrameRecord[]
     themes: readonly Theme[]
     out: string
+    scale?: number
   },
 ): Promise<CapturedImage[]> {
   const rendered: Rendered[] = []
@@ -106,10 +130,11 @@ export async function captureFrameImages(
       rendered.push({
         ref: frame.ref,
         theme,
-        path: frameImagePath(out, frame, theme),
+        path: frameImagePath(out, frame, theme, scale),
         width: frame.box.width,
         height: frame.box.height,
-        bytes: await renderFrame(browser, baseUrl, frame, theme),
+        scale,
+        bytes: await renderFrame(browser, baseUrl, frame, theme, scale),
       })
     }
   }
@@ -129,20 +154,22 @@ export async function captureComposite(
     frames,
     themes,
     out,
+    scale = 1,
   }: {
     baseUrl: string
     page: CompositePage
     frames: FrameRecord[]
     themes: readonly Theme[]
     out: string
+    scale?: number
   },
 ): Promise<CapturedImage[]> {
-  const bounds = compositeBounds(page, frames)
+  const bounds = compositeBounds(page, frames, scale)
   const rendered: Rendered[] = []
   for (const theme of themes) {
     const tiles: string[] = []
     for (const frame of frames) {
-      const bytes = await renderFrame(browser, baseUrl, frame, theme)
+      const bytes = await renderFrame(browser, baseUrl, frame, theme, scale)
       tiles.push(
         `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${frame.box.x + bounds.dx}px;top:${frame.box.y + bounds.dy}px;width:${frame.box.width}px;height:${frame.box.height}px">`,
       )
@@ -150,10 +177,11 @@ export async function captureComposite(
     rendered.push({
       ref: page.ref,
       theme,
-      path: compositeImagePath(out, page, theme),
+      path: compositeImagePath(out, page, theme, scale),
       width: bounds.width,
       height: bounds.height,
-      bytes: await renderComposite(browser, bounds, theme, tiles),
+      scale,
+      bytes: await renderComposite(browser, bounds, theme, tiles, scale),
     })
   }
   return writeImages(rendered)
@@ -165,12 +193,16 @@ async function renderFrame(
   baseUrl: string,
   frame: FrameRecord,
   theme: Theme,
+  scale: number,
 ): Promise<Buffer> {
+  const box = { width: frame.box.width, height: frame.box.height }
+  assertScreenshotFits(frame.ref, box, scale)
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: { width: frame.box.width, height: frame.box.height },
+    box,
     theme,
+    scale,
   })
   try {
     return await opened.page.screenshot(SCREENSHOT)
@@ -184,9 +216,12 @@ async function renderComposite(
   { width, height }: { width: number; height: number },
   theme: Theme,
   tiles: string[],
+  scale: number,
 ): Promise<Buffer> {
+  // Tiles sit at CSS pixels, and the device scale gives each its own pixels back.
   const context = await browser.newContext({
     viewport: { width, height },
+    deviceScaleFactor: scale,
     colorScheme: theme,
   })
   try {

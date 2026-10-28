@@ -217,7 +217,14 @@ test.describe('capture', () => {
     const path = join(out, 'studio/home.light.png')
 
     expect(envelope.data?.images).toEqual([
-      { ref: 'studio/home', theme: 'light', path, width: 880, height: 400 },
+      {
+        ref: 'studio/home',
+        theme: 'light',
+        path,
+        width: 880,
+        height: 400,
+        scale: 1,
+      },
     ])
     // hero sits at 0,0 and geist at 480,120, each shifted 40 px in.
     expect(await pixelAt(page, path, 42, 42)).toMatchObject({

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { FrameboardError } from '@/shared/errors'
 
-import { compositeBounds } from './images'
+import { compositeBounds, compositeImagePath, frameImagePath } from './images'
 
 const PAGE = { ref: 'studio/home', project: 'studio', name: 'home' }
 
@@ -30,6 +30,12 @@ describe('compositeBounds', () => {
     expect(compositeBounds(PAGE, [at(0, 0, 16304, 10)]).width).toBe(16384)
   })
 
+  it('refuses a composite whose side passes the limit only at its scale', () => {
+    expect(() => compositeBounds(PAGE, [at(0, 0, 8153, 10)], 2)).toThrow(
+      expect.objectContaining({ code: 'capture-too-large' }),
+    )
+  })
+
   it('refuses capture-too-large, exit 10, one pixel past the limit', () => {
     let refusal: unknown
     try {
@@ -44,5 +50,27 @@ describe('compositeBounds', () => {
       exitCode: 10,
       details: { ref: 'studio/home', width: 90, height: 16385 },
     })
+  })
+})
+
+describe('image paths', () => {
+  const frame = { project: 'studio', page: 'home', name: 'hero' }
+
+  it('names a 1x frame image with no scale suffix', () => {
+    expect(frameImagePath('/out', frame, 'light', 1)).toBe(
+      '/out/studio/home/hero.light.png',
+    )
+  })
+
+  it('names a scaled frame image with its scale', () => {
+    expect(frameImagePath('/out', frame, 'dark', 3)).toBe(
+      '/out/studio/home/hero.dark@3x.png',
+    )
+  })
+
+  it('names a scaled composite with its scale', () => {
+    expect(compositeImagePath('/out', PAGE, 'light', 2)).toBe(
+      '/out/studio/home.light@2x.png',
+    )
   })
 })
