@@ -1132,6 +1132,29 @@ async function sectionOnHome(page: Page): Promise<void> {
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
 
 /**
+ * Opens the selected frame's size menu once write access lights its
+ * trigger, waiting in an init script as `pressOnLoad` does. The trigger is
+ * named by its text, which the toolbar's Frame tool shares as a label.
+ */
+async function sizeMenuOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const press = () => {
+        const trigger = document.querySelector<HTMLButtonElement>(
+          '#inspector-frame button:not(:disabled)',
+        )
+        if (trigger) trigger.click()
+        else if (--left > 0) requestAnimationFrame(press)
+        else console.error('The size menu never lit')
+      }
+      document.addEventListener('DOMContentLoaded', press)
+    },
+    { frames: ROW_FRAMES },
+  )
+}
+
+/**
  * Once `ready` matches, which a control lit by write access stands for,
  * fires `event` on the button labelled `label`. Like `pressOnLoad`, it waits
  * in an init script, since `setup` runs before the harness navigates.
@@ -1567,9 +1590,26 @@ export const BOARD_CASES: CaptureCase[] = [
         section: 'select-one',
         theme,
         route: '/p/webapp/home',
+        evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(onCanvas({ select: ['webapp/home/hero'] })),
+      },
+      {
+        section: 'frame-size-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            sizeMenuOnLoad,
+            readyWhen('[data-slot="dropdown-menu-content"]'),
+          ),
+        ),
       },
       {
         // The about frame sets no font, so its badge opens on its one finding.
