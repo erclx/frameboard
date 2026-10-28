@@ -196,7 +196,8 @@ export function geometryActions(context: GeometryContext): Action[] {
       enabled: () =>
         editing() &&
         mode.getState().tool === 'move' &&
-        selection.getState().frames.length > 0,
+        (selection.getState().frames.length > 0 ||
+          selection.getState().section !== undefined),
       run: () => clear(selection),
     },
     {
