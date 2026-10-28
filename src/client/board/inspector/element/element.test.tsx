@@ -619,6 +619,47 @@ describe('TypographySection', () => {
     ])
   })
 
+  it('writes justify and lights it when the element computes it', async () => {
+    const { changes, write } = recorder()
+    const { rerender } = render(
+      <TypographySection
+        fonts={[]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Justify text' }))
+    rerender(
+      <TypographySection
+        fonts={[]}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={700}
+        textAlign="justify"
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'text-align', value: 'justify' },
+    ])
+    expect(
+      screen.getByRole('button', { name: 'Justify text' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('captions the alignment buttons as a group', () => {
     const { write } = recorder()
     render(
@@ -640,7 +681,7 @@ describe('TypographySection', () => {
       within(screen.getByRole('group', { name: 'Alignment' })).getAllByRole(
         'button',
       ),
-    ).toHaveLength(3)
+    ).toHaveLength(4)
   })
 
   it('names an alignment button in a tooltip on hover', async () => {

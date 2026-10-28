@@ -164,7 +164,7 @@ function inlinePaints(element: Element): LiveElement['inline'] {
   }
 }
 
-/** `start` and `end` as the side they fall on, so one of three buttons lights. */
+/** `start` and `end` as the side they fall on, so one of four buttons lights. */
 function alignOf(align: string, direction: string): string {
   if (align === 'start') return direction === 'rtl' ? 'right' : 'left'
   if (align === 'end') return direction === 'rtl' ? 'left' : 'right'

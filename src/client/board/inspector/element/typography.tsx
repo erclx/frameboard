@@ -1,6 +1,7 @@
 import { cn } from 'cn'
 import {
   AlignCenter,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   ChevronDown,
@@ -31,6 +32,7 @@ const ALIGNS: readonly { value: string; label: string; icon: LucideIcon }[] = [
   { value: 'left', label: 'Align text left', icon: AlignLeft },
   { value: 'center', label: 'Align text center', icon: AlignCenter },
   { value: 'right', label: 'Align text right', icon: AlignRight },
+  { value: 'justify', label: 'Justify text', icon: AlignJustify },
 ]
 
 /** A computed size can carry a fraction, as `styles.ts` reads it to two places. */
@@ -49,7 +51,7 @@ interface TypographySectionProps {
   lineHeight: number | null
   /** In px. */
   letterSpacing: number
-  /** The computed alignment, `left`, `center`, or `right` lighting a button. */
+  /** The computed alignment, `left`, `center`, `right`, or `justify` lighting a button. */
   textAlign: string
   disabled: boolean
   write: WriteElement
@@ -64,7 +66,7 @@ const NORMAL_LINE = 1.2
  * The Typography section of `inspector/text`: the family from the project's
  * font tokens and the served faces, each drawn in its own face, the weight
  * by name among those the face ships, size in px, line height and letter
- * spacing in px, and three alignment buttons, each writing one declaration.
+ * spacing in px, and four alignment buttons, each writing one declaration.
  * Every icon control is captioned or names itself in a tooltip. A family
  * the menu does not hold reads as written, and a `normal` line height reads
  * Auto and writes nothing until changed.
