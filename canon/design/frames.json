@@ -8,6 +8,7 @@
     "foundations/colors": "design/06-color/picked-hybrid",
     "foundations/logo": "design/03-logo/picked-arm-5c",
     "toolbar/floating": "design/05-layout/picked-toolbar-floating",
+    "toolbar/frame-caret": "design/05-layout/picked-toolbar-frame-caret",
     "shell/hide-ui": "design/05-layout/picked-hide-ui",
     "shell/resize-none": "design/05-layout/picked-resize-none",
     "canvas/play-panels": "design/12-canvas/picked-play-panels",
@@ -59,6 +60,7 @@
     "menus/home-pin": "design/07-home/context-home-pin",
     "menus/toast": "design/14-overlays/menu-toast",
     "menus/context": "design/14-overlays/context-menus",
-    "landing/page": "launch/landing/picked-landing-style-1-workbench"
+    "landing/page": "launch/landing/picked-landing-style-1-workbench",
+    "canvas/sections": "design/12-canvas/picked-sections"
   }
 }
