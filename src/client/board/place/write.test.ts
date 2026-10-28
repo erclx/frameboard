@@ -11,6 +11,7 @@ import {
   moveElement,
   moveElementTo,
   placeElement,
+  placeFile,
 } from './write'
 
 const HASH = 'c'.repeat(64)
@@ -251,6 +252,127 @@ describe('placeElement', () => {
 
     expect(sent).toMatchObject([
       { element: { kind: 'ellipse', width: 240, height: 48 } },
+    ])
+  })
+})
+
+describe('placeFile', () => {
+  const PHOTO = {
+    project: 'studio',
+    path: 'photos/hero.png',
+    kind: 'image',
+  } as const
+
+  it('sends the file at its natural size capped at the container width', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        measure: async () => ({ width: 1600, height: 900 }),
+      },
+    )
+
+    // The main spans the frame's 400px, so a 1600 by 900 photo lands at 400 by 225.
+    expect(sent).toEqual([
+      {
+        ref: HERO.ref,
+        hash: HASH,
+        parent: 3,
+        before: 5,
+        element: {
+          kind: 'asset',
+          path: 'photos/hero.png',
+          width: 400,
+          height: 225,
+        },
+      },
+    ])
+  })
+
+  it('sends the size a drag drew without reading the file', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+    const measured: string[] = []
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        size: { width: 120, height: 80 },
+        measure: async (url) => {
+          measured.push(url)
+          return null
+        },
+      },
+    )
+
+    expect(sent).toMatchObject([
+      { element: { kind: 'asset', width: 120, height: 80 } },
+    ])
+    expect(measured).toEqual([])
+  })
+
+  it('refuses a frame another session holds and sends nothing', async () => {
+    const container = await mount(COLUMN)
+    const live = createLiveStore()
+    live.setState({
+      claims: {
+        [HERO.ref]: {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: '2026-10-15T00:00:00.000Z',
+          expiresAt: '2026-10-15T01:00:00.000Z',
+        },
+      },
+    })
+    const { sent, send } = server(200, {})
+    const told: string[] = []
+
+    const placed = await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live,
+        send,
+        notify: ({ description }) => told.push(description),
+        measure: async () => null,
+      },
+    )
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([
+      'claude · studio is editing hero, so nothing was written.',
     ])
   })
 })

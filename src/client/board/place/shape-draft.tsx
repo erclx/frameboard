@@ -17,7 +17,7 @@ interface ShapeDraftProps {
 }
 
 /**
- * The box a Rectangle, Ellipse, or Frame drag draws, from the press to the
+ * The box a Rectangle, Ellipse, Image, or Frame drag draws, from the press to the
  * pointer, drawn as the marquee is once the press passes the click distance.
  * On release it leaves the box for `takeDraft`, so the click placing a shape
  * lands it at the gap the drag started in, at the size drawn, and the click
@@ -30,6 +30,7 @@ export function ShapeDraft({ viewport, toBoard }: ShapeDraftProps) {
     (state) =>
       state.mode === 'edit' &&
       (state.tool === 'frame' ||
+        state.tool === 'image' ||
         (state.tool === 'shape' && shape !== 'divider')),
   )
   const [box, setBox] = useState<Box | null>(null)

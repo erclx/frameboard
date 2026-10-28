@@ -4,8 +4,18 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 /** Edit selects and arranges frames, and Play hands the clicks to them. */
 export type Mode = 'edit' | 'play'
 
-/** Text and Shape place an element into a frame, Shape the one `place/tool` last chose. */
-export type Tool = 'move' | 'hand' | 'frame' | 'note' | 'text' | 'shape'
+/**
+ * Text, Shape, and Image place an element into a frame, Shape the one
+ * `place/tool` last chose and Image the file it armed.
+ */
+export type Tool =
+  | 'move'
+  | 'hand'
+  | 'frame'
+  | 'note'
+  | 'text'
+  | 'shape'
+  | 'image'
 
 export interface ModeState {
   mode: Mode

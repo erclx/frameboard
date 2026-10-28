@@ -54,9 +54,14 @@ import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { DropLine } from './place/drop-line'
 import { ShapeDraft } from './place/shape-draft'
-import { placedKind, usePlaceTools } from './place/tool'
+import {
+  armedStore,
+  placedKind,
+  placesElement,
+  usePlaceTools,
+} from './place/tool'
 import { takeDraft } from './place/tool'
-import { placeElement } from './place/write'
+import { placeElement, placeFile } from './place/write'
 import {
   type ElementKey,
   followSelection,
@@ -152,9 +157,7 @@ export function Canvas({
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
   const framing = useMode((state) => state.tool === 'frame')
-  const placing = useMode(
-    (state) => state.tool === 'text' || state.tool === 'shape',
-  )
+  const placing = useMode((state) => placesElement(state.tool))
   const spacePan = useMode((state) => state.spacePan)
   useEffect(() => followSpacePan(window), [])
   useNoteTool()
@@ -695,6 +698,20 @@ export function Canvas({
                   pointer(event.nativeEvent, viewport),
                 )
                 const kind = placedKind()
+                const file = armedStore.getState().file
+                if (kind === 'asset' && file) {
+                  // A drag lands the file where it started, at the size drawn.
+                  const draft = takeDraft()
+                  void placeFile(
+                    layer,
+                    page.ref,
+                    withDrawn(frames),
+                    draft?.from ?? { x, y },
+                    file,
+                    { size: draft?.size },
+                  )
+                  return
+                }
                 if (kind) {
                   // A Rectangle or Ellipse drag lands where it started, at the size drawn.
                   const draft = takeDraft()

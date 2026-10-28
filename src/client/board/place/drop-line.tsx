@@ -8,7 +8,7 @@ import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import { type GapLine, gapUnder, moveGapUnder } from './gap'
-import { carriedStore, placedKind } from './tool'
+import { carriedStore, placedKind, placesElement } from './tool'
 
 interface DropLineProps {
   /** The canvas viewport, whose pointer moves the line follows. */
@@ -26,7 +26,7 @@ interface DropLineProps {
  * selection blue at a constant screen size, drawn while the Text or Shape
  * tool is on and the pointer is over a live frame. It draws nothing over
  * bare canvas or a frame still loading, where a click places nothing. While
- * a Rectangle or Ellipse press is held it stays at the gap the press began
+ * a Rectangle, Ellipse, or Image press is held it stays at the gap the press began
  * in, where the drag sized shape lands.
  *
  * While a Move drag carries the selected element, it draws the gap the
@@ -40,9 +40,7 @@ export function DropLine({
   toBoard,
 }: DropLineProps) {
   const tool = useMode(
-    (state) =>
-      state.mode === 'edit' &&
-      (state.tool === 'text' || state.tool === 'shape'),
+    (state) => state.mode === 'edit' && placesElement(state.tool),
   )
   const carried = useStore(carriedStore, (state) => state.carried)
   const placing = tool || carried !== null
@@ -51,7 +49,7 @@ export function DropLine({
     const target = viewport.current
     if (!placing || !target || !container) return
     const move = (event: PointerEvent) => {
-      // A Rectangle or Ellipse drag lands at the gap its press began in, so
+      // A Rectangle, Ellipse, or Image drag lands at the gap its press began in, so
       // the line holds there, while Text and a Divider land under the release.
       if (!carried && event.buttons & 1 && sizesByDrag()) return
       const at = toBoard(event)
@@ -96,7 +94,7 @@ export function DropLine({
 /** Whether the tool on now sizes its shape by a drag, as `ShapeDraft` draws one. */
 function sizesByDrag(): boolean {
   const kind = placedKind()
-  return kind === 'rectangle' || kind === 'ellipse'
+  return kind === 'rectangle' || kind === 'ellipse' || kind === 'asset'
 }
 
 function sameLine(a: GapLine | null, b: GapLine | null): boolean {
