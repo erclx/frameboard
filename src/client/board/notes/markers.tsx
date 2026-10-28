@@ -72,6 +72,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
             number={note.number}
             at={at}
             frame={framesByName.get(note.frame)?.ref}
+            element={note.element}
             active={open?.kind === 'thread' && open.id === note.id}
             label={`Note ${note.number} on ${note.frame}`}
             onOpen={() =>
@@ -107,6 +108,8 @@ interface MarkerProps {
   at: BoardPoint
   /** The frame's ref, which a frame drag finds the pins to shift by. */
   frame?: string
+  /** The note's element index, whose corner a frame resize moves the pin to. */
+  element?: number | null
   active: boolean
   label?: string
   onOpen?: () => void
@@ -117,7 +120,15 @@ interface MarkerProps {
  * frame's corner, kept at screen size whatever the zoom, ringed while its
  * note is open.
  */
-function Marker({ number, at, frame, active, label, onOpen }: MarkerProps) {
+function Marker({
+  number,
+  at,
+  frame,
+  element,
+  active,
+  label,
+  onOpen,
+}: MarkerProps) {
   const className = cn(
     'pointer-events-auto absolute grid size-[22px] place-items-center rounded-[11px_11px_11px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] focus-visible:ring-3 focus-visible:ring-ring/50',
     active &&
@@ -129,6 +140,7 @@ function Marker({ number, at, frame, active, label, onOpen }: MarkerProps) {
       type="button"
       data-note-marker
       data-note-frame={frame}
+      data-note-element={element ?? undefined}
       aria-label={label}
       aria-expanded={active}
       onPointerDown={(event) => event.stopPropagation()}

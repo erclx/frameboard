@@ -17,6 +17,7 @@ import {
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
+import { cornerOf } from '../pin-corner'
 import { carriedStore } from '../place/tool'
 import { moveElement } from '../place/write'
 import { endPreview } from '../preview/store'
@@ -173,6 +174,30 @@ export function attachGestures(
       const moves =
         refs.includes(pin.dataset.noteFrame ?? '') && (dx !== 0 || dy !== 0)
       pin.style.translate = moves ? `${dx}px ${dy}px` : ''
+    }
+  }
+  // A resize moves a pin by the gap between where `cornerOf` puts it on the
+  // frame's next box and where the board drew it from the stored one, so an
+  // element's pin follows the element as the frame reflows it.
+  const followPins = (boxes: Readonly<Record<string, Box>>) => {
+    const pins =
+      target.viewport.querySelectorAll<HTMLElement>('[data-note-frame]')
+    for (const pin of pins) {
+      const ref = pin.dataset.noteFrame ?? ''
+      const box = boxes[ref]
+      if (!box) {
+        pin.style.translate = ''
+        continue
+      }
+      const element = pin.dataset.noteElement
+      const at = cornerOf(
+        { ref, box },
+        element === undefined ? null : Number(element),
+        target.layer,
+      )
+      const dx = at.x - parseFloat(pin.style.left)
+      const dy = at.y - parseFloat(pin.style.top)
+      pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
     }
   }
   const zoom = () => zoomTransform(target.viewport).k
@@ -381,6 +406,7 @@ export function attachGestures(
             height: `${box.height}px`,
           })
         }
+        followPins(next)
         drawResize(root, next)
         drawGuides(root, snap.guides, snap.gaps)
         return
