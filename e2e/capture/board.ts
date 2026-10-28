@@ -131,6 +131,27 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Presses the guide's Next until its drawer step draws, waiting in an init
+ * script as `pressOnLoad` does. The name, size, and look steps write nothing
+ * while the name is left as it is, so only Finish would touch the board.
+ */
+async function guideToAgentStep(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const press = () => {
+      if (document.querySelector('input[name="guide-drawer"]')) return
+      const next = [...document.querySelectorAll('button')].find(
+        (button) => !button.disabled && button.textContent?.trim() === 'Next',
+      )
+      next?.click()
+      if (--left > 0) requestAnimationFrame(press)
+      else console.error('The guide never reached its drawer step')
+    }
+    document.addEventListener('DOMContentLoaded', press)
+  }, PRESS_FRAMES)
+}
+
+/**
  * Chooses the menu item named `label` once an earlier press has opened its
  * menu, waiting in an init script as `pressOnLoad` does.
  */
@@ -2077,6 +2098,25 @@ export const BOARD_CASES: CaptureCase[] = [
             noTokens,
             asWriter,
             readyWhen('section[aria-labelledby="guide-title"]'),
+          ),
+        ),
+      },
+      {
+        // The drawer step, where the unchecked radio ring shows beside the
+        // checked one. The folder path it prints differs per checkout.
+        section: 'guide-agent',
+        theme,
+        route: '/p/untitled/page-1',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR, '#guide-agent-hint code'],
+        setup: themed(
+          both(
+            untouchedBoard,
+            noTokens,
+            asWriter,
+            guideToAgentStep,
+            readyWhen('input[name="guide-drawer"]'),
           ),
         ),
       },

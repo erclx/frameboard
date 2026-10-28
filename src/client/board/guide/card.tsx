@@ -600,7 +600,7 @@ function AgentStep({
   const option =
     'flex gap-2.5 rounded-[10px] border border-border px-3 py-2.5 text-left'
   const dot =
-    'mt-px size-3.5 flex-none rounded-full border-[1.5px] border-faint peer-checked:border-4 peer-checked:border-primary'
+    'mt-px size-3.5 flex-none rounded-full border-[1.5px] border-muted-foreground peer-checked:border-4 peer-checked:border-primary'
   return (
     <>
       <Lead>
