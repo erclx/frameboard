@@ -61,7 +61,7 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
 - `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
 - `write.ts` holds a released box as pending until the server's next board carries it, and sends every hand move or resize through `POST /api/frames/boxes`
-- A dragged or resized frame snaps to other frames' edges and centers, and holding Ctrl turns snapping off
+- A dragged or resized frame snaps to other frames' edges and centers unless Ctrl is held, and its note pins follow the snapped box, a resize placing each by `board/pin-corner.ts`
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
 A press on the canvas while an inspector field has focus blurs the field, which applies its edit. A click that only leaves the field selects and clears nothing, and a drag from the same press still moves frames.
