@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -518,6 +518,87 @@ describe('editRoutes', () => {
       expect(read()).toContain(
         '<div data-name="Ellipse" style="width: 240px; height: 48px; background: var(--muted); border-radius: 50%"></div>',
       )
+    })
+
+    describe('an asset', () => {
+      const assets = () => join(board.root, 'webapp', 'assets')
+
+      function putAsset(name: string) {
+        mkdirSync(assets(), { recursive: true })
+        writeFileSync(join(assets(), name), 'x')
+      }
+
+      const asset = (path: string) => ({
+        ...rectangle(),
+        element: { kind: 'asset', path, width: 320, height: 180 },
+      })
+
+      it('writes one img for an image and one undo step', async () => {
+        putAsset('hero.png')
+        const original = read()
+
+        const response = await insert(asset('hero.png'))
+
+        expect(response.status).toBe(200)
+        expect(read()).toBe(
+          original.replace(
+            '<p data-name="Caption">',
+            '<img data-name="hero.png" src="../assets/hero.png" alt="" style="width: 320px; height: 180px; object-fit: cover"><p data-name="Caption">',
+          ),
+        )
+        expect(history.counts().undo).toBe(1)
+      })
+
+      it('writes a video for a video file', async () => {
+        putAsset('demo.mp4')
+
+        await insert(asset('demo.mp4'))
+
+        expect(read()).toContain(
+          '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline',
+        )
+      })
+
+      it('refuses a path out of the assets folder as asset-missing, writing nothing', async () => {
+        putAsset('hero.png')
+        const original = read()
+
+        const response = await insert(asset('../home/hero.html'))
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code: 'asset-missing' },
+        })
+        expect(read()).toBe(original)
+        expect(history.counts().undo).toBe(0)
+      })
+
+      it('refuses a font as asset-not-placeable, writing nothing', async () => {
+        putAsset('Inter.woff2')
+        const original = read()
+
+        const response = await insert(asset('Inter.woff2'))
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code: 'asset-not-placeable' },
+        })
+        expect(read()).toBe(original)
+        expect(history.counts().undo).toBe(0)
+      })
+
+      it('refuses an asset with no size as usage', async () => {
+        putAsset('hero.png')
+
+        const response = await insert({
+          ...rectangle(),
+          element: { kind: 'asset', path: 'hero.png' },
+        })
+
+        expect(response.status).toBe(400)
+      })
     })
 
     it('refuses a size under one pixel as usage', async () => {
