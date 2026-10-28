@@ -842,11 +842,25 @@ describe('LabelRename', () => {
     ).toHaveValue('hero')
   })
 
-  it('keeps the field to 240 screen pixels on a frame wider than that', () => {
+  it('hugs a short name on a frame wider than the field', () => {
     const { calls } = server()
     const view = render(<LabelRename frames={[HERO]} calls={calls} />)
 
     act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    const { width } = view
+      .getByRole('textbox', { name: 'Rename frame hero' })
+      .getBoundingClientRect()
+    expect(width).toBeGreaterThan(20)
+    expect(width).toBeLessThan(80)
+  })
+
+  it('stops a long name at 240 screen pixels on a frame wider than that', async () => {
+    const { calls } = server()
+    const view = render(<LabelRename frames={[HERO]} calls={calls} />)
+    act(() => startFrameRename(HERO.ref, 'canvas'))
+
+    await userEvent.keyboard(`{End}${'x'.repeat(80)}`)
 
     const field = view.getByRole('textbox', { name: 'Rename frame hero' })
     expect(field.getBoundingClientRect().width).toBe(240)

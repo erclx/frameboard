@@ -290,6 +290,7 @@ function FrameRow({
                 <>
                   {icon}
                   <RenameField
+                    hug
                     name={frame.name}
                     label={`Rename frame ${frame.name}`}
                     onCommit={(name) => {

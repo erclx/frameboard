@@ -205,6 +205,7 @@ function ElementRow({
             <>
               {icon}
               <RenameField
+                hug
                 name={element.name}
                 label={`Rename ${element.name}`}
                 onCommit={(name) => {
