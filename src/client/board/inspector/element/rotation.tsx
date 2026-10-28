@@ -1,9 +1,9 @@
 import { cn } from 'cn'
 import {
-  FlipHorizontal2,
-  FlipVertical2,
   type LucideIcon,
   RotateCw,
+  TrianglesCenterlineDashedHorizontal,
+  TrianglesCenterlineDashedVertical,
 } from 'lucide-react'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
@@ -119,12 +119,16 @@ export function RotationRow({
     },
     ...(['x', 'y'] as const).map((axis) => ({
       label: axis === 'x' ? 'Flip horizontal' : 'Flip vertical',
-      icon: axis === 'x' ? FlipHorizontal2 : FlipVertical2,
+      // Named by the mirror line, so a horizontal flip mirrors across the vertical one.
+      icon:
+        axis === 'x'
+          ? TrianglesCenterlineDashedVertical
+          : TrianglesCenterlineDashedHorizontal,
       press: () =>
         void write({
           kind: 'style',
           property: 'scale',
-          value: flippedScale(scale ?? { x: 1, y: 1 }, axis, inline.scale),
+          value: flippedScale(scale ?? { x: 1, y: 1 }, axis, own),
         }),
     })),
   ]
