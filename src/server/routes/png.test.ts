@@ -75,4 +75,54 @@ describe('GET /api/frames/png', () => {
     expect(response.status).toBe(400)
     expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
   })
+  it('passes the scale asked for to the render', async () => {
+    const scales: (number | undefined)[] = []
+    const response = await get(
+      'ref=home/hero&theme=light&scale=3',
+      async (_frame, _theme, scale) => {
+        scales.push(scale)
+        return PNG
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(scales).toEqual([3])
+  })
+
+  it('renders at 2x when no scale is asked for', async () => {
+    const scales: (number | undefined)[] = []
+    await get('ref=home/hero&theme=light', async (_frame, _theme, scale) => {
+      scales.push(scale)
+      return PNG
+    })
+
+    expect(scales).toEqual([2])
+  })
+
+  it.each(['0', '4', '1.5', '2x', 'x', ''])(
+    'answers 400 usage for a scale of %j',
+    async (scale) => {
+      const response = await get(
+        `ref=home/hero&theme=light&scale=${scale}`,
+        async () => PNG,
+      )
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    },
+  )
+
+  it('answers 422 for a frame too large at its scale', async () => {
+    const response = await get(
+      'ref=home/hero&theme=light&scale=3',
+      async () => {
+        throw new FrameboardError('capture-too-large', 'Too large.')
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      error: { code: 'capture-too-large' },
+    })
+  })
 })

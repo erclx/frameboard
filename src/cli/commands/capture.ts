@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path'
 
-import { type Command, Option } from 'commander'
+import { type Command, InvalidArgumentError, Option } from 'commander'
 
 import { ensureRunFolder } from '@/server/address'
 import { readFrame } from '@/server/board/frames'
@@ -29,6 +29,7 @@ type CaptureOptions = CommonOptions & {
   page?: string
   composite?: boolean
   theme: Theme | 'both'
+  scale: number
   out?: string
 }
 
@@ -59,6 +60,14 @@ export function registerCapture(
       new Option('--theme <theme>', 'the theme to capture')
         .choices(['light', 'dark', 'both'])
         .default('both'),
+    )
+    .addOption(
+      new Option(
+        '--scale <n>',
+        'device pixels per CSS pixel, adding @<n>x to the file name past 1',
+      )
+        .default(1)
+        .argParser(parseScale),
     )
     .option(
       '--out <dir>',
@@ -106,8 +115,15 @@ export function registerCapture(
                 frames,
                 themes,
                 out,
+                scale: options.scale,
               })
-            : captureFrameImages(browser, { baseUrl, frames, themes, out }),
+            : captureFrameImages(browser, {
+                baseUrl,
+                frames,
+                themes,
+                out,
+                scale: options.scale,
+              }),
       )
       return {
         data: { images } satisfies CaptureResult,
@@ -121,10 +137,24 @@ export function registerCapture(
       { root, facesDir: context.facesDir },
       'capture',
       (browser, baseUrl) =>
-        captureFrameImages(browser, { baseUrl, frames: [frame], themes, out }),
+        captureFrameImages(browser, {
+          baseUrl,
+          frames: [frame],
+          themes,
+          out,
+          scale: options.scale,
+        }),
     )
     return { data: { images } satisfies CaptureResult, human: describe(images) }
   })
+}
+
+// An argument parser replaces commander's choices check, so the parser holds it.
+function parseScale(value: string): number {
+  if (value !== '1' && value !== '2' && value !== '3') {
+    throw new InvalidArgumentError('Expected 1, 2, or 3.')
+  }
+  return Number(value)
 }
 
 async function pageOf(

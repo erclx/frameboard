@@ -1958,6 +1958,21 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'export-section',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The one-frame inspector ending on Export at its 2x and Both themes default.
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen('#inspector-export'),
+          ),
+        ),
+      },
+      {
         section: 'token-menu',
         theme,
         route: '/p/webapp/home',

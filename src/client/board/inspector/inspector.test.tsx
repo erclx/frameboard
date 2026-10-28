@@ -14,7 +14,7 @@ import { contrastOnPage } from '@/test/contrast'
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
 import { endPreview, previewOf, setPreview } from '../preview/store'
-import { clear, select, selectionStore } from '../selection'
+import { clear, select, selectElement, selectionStore } from '../selection'
 import { startFrameRename, stopFrameRename } from '../structure/actions'
 import { presetStore } from '../structure/tool'
 import { FrameSection } from './frame-section'
@@ -376,6 +376,61 @@ describe('InspectorPanel', () => {
       renderPanel()
 
       expect(screen.queryByRole('region', { name: /Checks/ })).toBeNull()
+    })
+  })
+
+  describe('Export', () => {
+    it('draws for one selected frame', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(screen.getByRole('region', { name: 'Export' })).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: `Export ${SWATCHES.name}` }),
+      ).toBeEnabled()
+    })
+
+    it('draws no section for several frames', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+      renderPanel()
+
+      expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
+    })
+
+    it('draws no section while an element inside the frame is selected', () => {
+      act(() =>
+        selectElement(selectionStore, PAGE, {
+          frame: SWATCHES.ref,
+          index: 1,
+          hash: 'a'.repeat(64),
+        }),
+      )
+
+      renderPanel()
+
+      expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
+    })
+
+    it('draws no section under the Frame tool', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      modeStore.setState({ tool: 'frame', mode: 'edit' })
+
+      renderPanel()
+
+      expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
+    })
+
+    it('stays live in a tab that may not write, since it writes nothing', () => {
+      liveStore.setState({ canWrite: false })
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(
+        screen.getByRole('button', { name: `Export ${SWATCHES.name}` }),
+      ).toBeEnabled()
     })
   })
 

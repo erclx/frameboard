@@ -13,7 +13,12 @@ import {
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
-import { createWarmBrowser, createWarmRenderer, openFrame } from './render'
+import {
+  assertScreenshotFits,
+  createWarmBrowser,
+  createWarmRenderer,
+  openFrame,
+} from './render'
 
 const FRAME = { ref: 'studio/home/hero', box: { width: 10, height: 10 } }
 
@@ -95,6 +100,31 @@ describe('createWarmBrowser', () => {
     await warm.close()
 
     await expect(render(FRAME, 'light')).rejects.toThrow('closing')
+  })
+})
+
+describe('assertScreenshotFits', () => {
+  it('passes a frame reaching exactly 16384 device pixels', () => {
+    expect(() =>
+      assertScreenshotFits(FRAME.ref, { width: 8192, height: 900 }, 2),
+    ).not.toThrow()
+  })
+
+  it('refuses capture-too-large one device pixel past the limit', () => {
+    expect(() =>
+      assertScreenshotFits(FRAME.ref, { width: 1440, height: 16385 }, 1),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'capture-too-large',
+        details: expect.objectContaining({ ref: FRAME.ref, scale: 1 }),
+      }),
+    )
+  })
+
+  it('names the scale when the scale pushes a frame past the limit', () => {
+    expect(() =>
+      assertScreenshotFits(FRAME.ref, { width: 1440, height: 6000 }, 3),
+    ).toThrow(/at 3x/)
   })
 })
 
@@ -193,6 +223,40 @@ describe.skipIf(shell === null)(
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
         100, 50,
       ])
+    })
+
+    it('answers a PNG at the scale a call asks for over its default', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 2,
+      })
+
+      const bytes = await render(
+        { ref: 'studio/home/hero', box: { width: 200, height: 100 } },
+        'light',
+        3,
+      )
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        600, 300,
+      ])
+    })
+
+    it('refuses a render past the screenshot limit before opening a tab', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 2,
+      })
+
+      await expect(
+        render(
+          { ref: 'studio/home/hero', box: { width: 1440, height: 6000 } },
+          'light',
+          3,
+        ),
+      ).rejects.toMatchObject({ code: 'capture-too-large' })
     })
   },
 )
