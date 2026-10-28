@@ -957,6 +957,7 @@ async function untouchedBoard(page: Page): Promise<void> {
               index: 0,
               layoutError: null,
               frames: [],
+              sections: [],
             },
           ],
         },

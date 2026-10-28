@@ -65,6 +65,7 @@ function page(name: string, frames: FrameRecord[] = [], index = 0): PageRecord {
     index,
     layoutError: null,
     frames,
+    sections: [],
   }
 }
 

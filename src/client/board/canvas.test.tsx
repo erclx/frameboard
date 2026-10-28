@@ -61,6 +61,7 @@ function page(
     index: 0,
     layoutError: null,
     frames,
+    sections: [],
     ...extra,
   }
 }

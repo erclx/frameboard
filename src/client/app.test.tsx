@@ -23,6 +23,7 @@ function page(
     index,
     layoutError: null,
     frames: [],
+    sections: [],
     ...extra,
   }
 }

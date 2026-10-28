@@ -21,13 +21,16 @@ import {
   layoutFileSchema,
   type ProjectFile,
   projectFileSchema,
+  type SectionEntry,
 } from '@/shared/records/board'
 import type {
   FrameRecord,
   ListResult,
   PageRecord,
   ProjectRecord,
+  SectionRecord,
 } from '@/shared/records/list'
+import { membersOf } from '@/shared/sections'
 
 import { isCode, readRecord, type RecordSpec } from './json-record'
 
@@ -243,9 +246,12 @@ export async function scanPage(
   const path = join(root, project, name)
   const layoutPath = join(path, LAYOUT_FILE)
   let frames: Record<string, LayoutEntry> = {}
+  let sections: Record<string, SectionEntry> = {}
   let layoutError: PageRecord['layoutError'] = null
   try {
-    frames = (await readRecord(layoutPath, layoutSpec)).frames
+    const file = await readRecord(layoutPath, layoutSpec)
+    frames = file.frames
+    sections = file.sections ?? {}
   } catch (error) {
     if (!(error instanceof FrameboardError)) throw error
     layoutError = { path: layoutPath, message: error.message }
@@ -269,6 +275,7 @@ export async function scanPage(
     }),
   )
 
+  const stacked = records.sort(byStacking)
   return {
     ref: `${project}/${name}`,
     project,
@@ -276,8 +283,30 @@ export async function scanPage(
     path,
     index,
     layoutError,
-    frames: records.sort(byStacking),
+    frames: stacked,
+    sections: sectionRecords(sections, stacked),
   }
+}
+
+/** The page's sections bottom first, each naming its members in stacking order. */
+export function sectionRecords(
+  entries: Readonly<Record<string, SectionEntry>>,
+  frames: readonly FrameRecord[],
+): SectionRecord[] {
+  const sections = Object.entries(entries).map(
+    ([name, { x, y, width, height, order }]) => ({
+      name,
+      box: { x, y, width, height },
+      order,
+    }),
+  )
+  const members = membersOf(sections, frames)
+  return sections.sort(byStacking).map((section) => ({
+    ...section,
+    frames: frames
+      .filter((frame) => members.get(frame.name) === section.name)
+      .map((frame) => frame.name),
+  }))
 }
 
 async function childFolders(dir: string): Promise<string[]> {

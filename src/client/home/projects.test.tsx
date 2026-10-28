@@ -51,6 +51,7 @@ function project(
       index,
       layoutError: null,
       frames: [],
+      sections: [],
     })),
   }
 }

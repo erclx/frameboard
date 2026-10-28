@@ -53,6 +53,7 @@ function boardOf(...frames: FrameRecord[]): ListResult {
             index: 0,
             layoutError: null,
             frames,
+            sections: [],
           },
         ],
       },

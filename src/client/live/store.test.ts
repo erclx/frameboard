@@ -42,6 +42,7 @@ function boardWith(...names: string[]): ListResult {
             path: '/board/studio/home',
             index: 0,
             layoutError: null,
+            sections: [],
             frames: names.map((name) => ({
               ref: `studio/home/${name}`,
               project: 'studio',
