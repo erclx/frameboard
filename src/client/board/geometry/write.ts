@@ -115,9 +115,16 @@ interface WaitingBoxes {
  */
 const waitingFrom = new Map<string, { box: Box; owner: WaitingBoxes }>()
 
+/** A section's box a hand edit sends beside its frames, by section name, with the box it started from. */
+export interface SectionBoxes {
+  boxes: Readonly<Record<string, Box>>
+  expected: Readonly<Record<string, Box>>
+}
+
 /**
  * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
- * the edit started from. The new boxes draw at once and hold while another
+ * the edit started from. A section move or resize sends its box in
+ * `sections`, so the box and the frames it carries land as one step. The new boxes draw at once and hold while another
  * session holds a frame, the edit waiting until the claim drops and a newer
  * edit of the same frame replacing it, the newer one taking up the older's
  * other frames. A refusal or a cancelled wait drops them so the board shows
@@ -128,8 +135,9 @@ export async function writeBoxes(
   asked: Readonly<Record<string, Box>>,
   expected: Readonly<Record<string, Box>>,
   send: typeof fetch = fetch,
+  sections?: SectionBoxes,
 ): Promise<boolean> {
-  if (Object.keys(asked).length === 0) return true
+  if (Object.keys(asked).length === 0 && !sections) return true
   // An edit of a frame's box acts on the box itself, so it ends any preview
   // rather than leave the frame drawn at a width it no longer starts from.
   endPreview(Object.keys(asked))
@@ -184,7 +192,13 @@ export async function writeBoxes(
         try {
           return await writeBoard(
             '/api/frames/boxes',
-            { page, boxes: byName(boxes), expected: byName(started) },
+            {
+              page,
+              boxes: byName(boxes),
+              expected: byName(started),
+              sections: sections?.boxes,
+              expectedSections: sections?.expected,
+            },
             'POST',
             send,
           )

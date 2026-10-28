@@ -4,7 +4,7 @@ import { zoomTransform } from 'd3-zoom'
 
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
 import {
@@ -27,6 +27,7 @@ import {
   select,
   type SelectionStore,
   selectionStore,
+  selectSection,
   toggle,
 } from '../selection'
 import { boundsOf, type Box, type Point, sameBox } from './box'
@@ -57,6 +58,8 @@ export interface GestureTarget {
   page: string
   /** The page's shown frames, bottom to top. */
   frames: () => readonly FrameRecord[]
+  /** The page's sections, bottom to top, absent on a surface that draws none. */
+  sections?: () => readonly SectionRecord[]
 }
 
 export interface GestureStores {
@@ -123,6 +126,21 @@ type Gesture =
       box: Box
       resize: ShapeResize
       size: ShapeSize | null
+    }
+  /** A press on a section's name, which selects it and a drag turns into a move of it. */
+  | { kind: 'section'; section: SectionRecord }
+  /** A drag carrying a section's box and every frame it holds, written as one step. */
+  | {
+      kind: 'section-move'
+      section: SectionRecord
+      boxes: Record<string, Box>
+    }
+  /** A drag on a corner of the selected section, resizing its box and leaving its frames. */
+  | {
+      kind: 'section-resize'
+      section: SectionRecord
+      corner: Corner
+      moved: boolean
     }
   /** A drag that may not change anything, such as one on a locked frame. */
   | { kind: 'none' }
@@ -214,6 +232,22 @@ export function attachGestures(
   }
   const boxesOf = (frames: readonly FrameRecord[]) =>
     Object.fromEntries(frames.map((frame) => [frame.ref, frame.box]))
+  const sectionNamed = (name: string | undefined) =>
+    target.sections?.().find((section) => section.name === name)
+  const sectionElement = (name: string) =>
+    target.layer.querySelector<HTMLElement>(
+      `[data-section="${CSS.escape(name)}"]`,
+    )
+  const placeSection = (name: string, box: Box) => {
+    const element = sectionElement(name)
+    if (!element) return
+    Object.assign(element.style, {
+      left: `${box.x}px`,
+      top: `${box.y}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
+    })
+  }
 
   const start = (event: MouseEvent) => {
     // A press hits the frames where they draw, previewed widths included,
@@ -268,6 +302,24 @@ export function attachGestures(
         return
       }
     }
+    // The selected section's corners sit over its frames, as a frame's handles do.
+    const held = sectionNamed(
+      selection.getState().page === target.page
+        ? selection.getState().section
+        : undefined,
+    )
+    const sectionCorner = held
+      ? drawnAt(target.layer, '[data-section-corner]', event)
+      : null
+    if (held && sectionCorner) {
+      gesture = {
+        kind: 'section-resize',
+        section: held,
+        corner: sectionCorner.dataset.sectionCorner as Corner,
+        moved: false,
+      }
+      return
+    }
     const shown = boundsOf(selected(drawn).map((frame) => frame.box))
     const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
     const chosen = selected(withPending(target.frames()))
@@ -285,6 +337,15 @@ export function attachGestures(
         select(selection, target.page, [frame.ref])
       }
       gesture = { kind: 'press', frame, shift: event.shiftKey }
+      return
+    }
+    // A section's name is its handle. The rest of its plate is bare canvas,
+    // so a press there marquees, which keeps a drag across a section free.
+    const label = topmost(target.layer, '[data-section-label]', event)
+    const section = sectionNamed(label?.dataset.sectionLabel)
+    if (section) {
+      if (!leaving) selectSection(selection, target.page, section.name)
+      gesture = { kind: 'section', section }
       return
     }
     gesture = {
@@ -314,6 +375,26 @@ export function attachGestures(
       }
       return
     }
+    if (gesture.kind === 'section') {
+      const { section } = gesture
+      const members = withPending(target.frames()).filter((frame) =>
+        section.frames.includes(frame.name),
+      )
+      gesture =
+        stores.canWrite() && members.every(({ locked }) => !locked)
+          ? { kind: 'section-move', section, boxes: boxesOf(members) }
+          : { kind: 'none' }
+      if (gesture.kind === 'section-move') {
+        selectSection(selection, target.page, section.name)
+        endPreview(Object.keys(gesture.boxes))
+        elements = framesElements(Object.keys(gesture.boxes))
+      }
+      return
+    }
+    if (gesture.kind === 'section-resize') {
+      if (!stores.canWrite()) gesture = { kind: 'none' }
+      return
+    }
     if (gesture.kind !== 'press' && gesture.kind !== 'resize') return
     if (gesture.kind === 'press') {
       const { frame, shift } = gesture
@@ -338,16 +419,19 @@ export function attachGestures(
       // The frames move or resize from their own boxes, so they leave any
       // preview as the drag starts rather than jump on release.
       endPreview(Object.keys(gesture.boxes))
-      elements = new Map(
-        Object.keys(gesture.boxes).flatMap((ref) => {
-          const element = target.layer.querySelector<HTMLElement>(
-            `[data-frame="${CSS.escape(ref)}"]`,
-          )
-          return element ? [[ref, element] as const] : []
-        }),
-      )
+      elements = framesElements(Object.keys(gesture.boxes))
     }
   }
+
+  const framesElements = (refs: readonly string[]) =>
+    new Map(
+      refs.flatMap((ref) => {
+        const element = target.layer.querySelector<HTMLElement>(
+          `[data-frame="${CSS.escape(ref)}"]`,
+        )
+        return element ? [[ref, element] as const] : []
+      }),
+    )
 
   const update = (event: MouseEvent) => {
     const root = overlay()
@@ -409,6 +493,35 @@ export function attachGestures(
         followPins(next)
         drawResize(root, next)
         drawGuides(root, snap.guides, snap.gaps)
+        return
+      }
+      case 'section-move': {
+        const { section, boxes } = gesture
+        const shifted = {
+          ...section.box,
+          x: Math.round(section.box.x + dx),
+          y: Math.round(section.box.y + dy),
+        }
+        const snap = snapMove(shifted, others(), threshold)
+        const ox = snap.box.x - section.box.x
+        const oy = snap.box.y - section.box.y
+        placeSection(section.name, snap.box)
+        for (const [ref, box] of Object.entries(boxes)) {
+          const element = elements.get(ref)
+          if (!element) continue
+          element.style.left = `${box.x + ox}px`
+          element.style.top = `${box.y + oy}px`
+        }
+        shiftPins(Object.keys(boxes), ox, oy)
+        drawGuides(root, snap.guides, snap.gaps)
+        return
+      }
+      case 'section-resize': {
+        gesture.moved = true
+        placeSection(
+          gesture.section.name,
+          roundBox(resizeBox(gesture.section.box, gesture.corner, dx, dy)),
+        )
         return
       }
       case 'shape-resize': {
@@ -491,6 +604,8 @@ export function attachGestures(
       } else if (gesture.kind === 'element' && gesture.frame) {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
+      } else if (gesture.kind === 'section') {
+        selectSection(selection, target.page, gesture.section.name)
       } else if (gesture.kind === 'marquee' && !gesture.shift) {
         clear(selection)
       }
@@ -528,6 +643,10 @@ export function attachGestures(
         point,
         gesture.key,
       )
+    } else if (gesture.kind === 'section-move') {
+      writeSection(gesture.section, gesture.boxes)
+    } else if (gesture.kind === 'section-resize' && gesture.moved) {
+      writeSection(gesture.section, {})
     } else if (gesture.kind === 'move' && event.altKey) {
       dropCopies(gesture.boxes)
     } else if (gesture.kind === 'move' || gesture.kind === 'resize') {
@@ -559,6 +678,43 @@ export function attachGestures(
     }
     gesture = { kind: 'none' }
     elements = new Map()
+  }
+
+  /**
+   * Sends a dragged section's box, read back off its element, with the
+   * boxes of the members it carried shifted as far, as one write. A refusal
+   * puts the box back where the board holds it, since no newer board
+   * redraws it.
+   */
+  const writeSection = (
+    section: SectionRecord,
+    members: Readonly<Record<string, Box>>,
+  ) => {
+    const element = sectionElement(section.name)
+    if (!element) return
+    const box = {
+      x: parseFloat(element.style.left),
+      y: parseFloat(element.style.top),
+      width: parseFloat(element.style.width),
+      height: parseFloat(element.style.height),
+    }
+    if (sameBox(box, section.box)) return
+    const next: Record<string, Box> = {}
+    const expected: Record<string, Box> = {}
+    const dx = box.x - section.box.x
+    const dy = box.y - section.box.y
+    for (const [ref, from] of Object.entries(members)) {
+      next[ref] = { ...from, x: from.x + dx, y: from.y + dy }
+      expected[ref] = from
+    }
+    void stores
+      .write(target.page, next, expected, undefined, {
+        boxes: { [section.name]: box },
+        expected: { [section.name]: section.box },
+      })
+      .then((landed) => {
+        if (!landed) placeSection(section.name, section.box)
+      })
   }
 
   // Snapping follows Ctrl at once, rather than waiting for the next move.
@@ -648,6 +804,35 @@ function inBox(box: Box, point: Point): boolean {
     point.y >= box.y &&
     point.y <= box.y + box.height
   )
+}
+
+/** The last match under a screen point, being the one drawn on top. */
+function topmost(
+  layer: ParentNode,
+  selector: string,
+  point: { clientX: number; clientY: number },
+): HTMLElement | null {
+  const matches = [...layer.querySelectorAll<HTMLElement>(selector)].reverse()
+  return (
+    matches.find((element) => {
+      const { left, right, top, bottom } = element.getBoundingClientRect()
+      return (
+        point.clientX >= left &&
+        point.clientX <= right &&
+        point.clientY >= top &&
+        point.clientY <= bottom
+      )
+    }) ?? null
+  )
+}
+
+function roundBox(box: Box): Box {
+  return {
+    x: Math.round(box.x),
+    y: Math.round(box.y),
+    width: Math.max(1, Math.round(box.width)),
+    height: Math.max(1, Math.round(box.height)),
+  }
 }
 
 function rectFrom(a: Point, b: Point): Box {

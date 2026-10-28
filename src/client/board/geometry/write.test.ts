@@ -62,6 +62,50 @@ describe('writeBoxes', () => {
     })
   })
 
+  it('posts a section box beside its frames in the one write', async () => {
+    let body: unknown = null
+    const send: typeof fetch = async (_path, init) => {
+      body = JSON.parse(String(init?.body))
+      return Response.json({ ok: true, data: { frames: [] } })
+    }
+    const flow = { x: 0, y: 0, width: 800, height: 900 }
+
+    await writeBoxes(
+      'studio/home',
+      { [HERO.ref]: MOVED },
+      { [HERO.ref]: HERO.box },
+      send,
+      {
+        boxes: { flow: { ...flow, x: 40 } },
+        expected: { flow },
+      },
+    )
+
+    expect(body).toEqual({
+      page: 'studio/home',
+      boxes: { hero: MOVED },
+      expected: { hero: HERO.box },
+      sections: { flow: { ...flow, x: 40 } },
+      expectedSections: { flow },
+    })
+  })
+
+  it('posts a section resize that carries no frame', async () => {
+    let sent = 0
+    const send: typeof fetch = async () => {
+      sent += 1
+      return Response.json({ ok: true, data: { frames: [] } })
+    }
+    const flow = { x: 0, y: 0, width: 800, height: 900 }
+
+    await writeBoxes('studio/home', {}, {}, send, {
+      boxes: { flow: { ...flow, width: 900 } },
+      expected: { flow },
+    })
+
+    expect(sent).toBe(1)
+  })
+
   it('holds the new box after the write lands, until a board carries it', async () => {
     const live = createLiveStore()
     stop = followPending(live)
