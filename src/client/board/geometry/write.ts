@@ -105,6 +105,7 @@ export function holdBoxes(boxes: Readonly<Record<string, Box>>): void {
 /** A waiting box edit, being every box it will send. */
 interface WaitingBoxes {
   boxes: Readonly<Record<string, Box>>
+  sections?: SectionBoxes
 }
 
 /**
@@ -124,11 +125,12 @@ export interface SectionBoxes {
 /**
  * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
  * the edit started from. A section move or resize sends its box in
- * `sections`, so the box and the frames it carries land as one step. The new boxes draw at once and hold while another
- * session holds a frame, the edit waiting until the claim drops and a newer
- * edit of the same frame replacing it, the newer one taking up the older's
- * other frames. A refusal or a cancelled wait drops them so the board shows
- * the stored ones. Resolves whether the write landed.
+ * `sections`, so the box and the frames it carries land as one step. The
+ * new boxes draw at once and hold while another session holds a frame, the
+ * edit waiting until the claim drops and a newer edit of the same frame
+ * replacing it, the newer one taking up the older's other frames and section
+ * boxes. A refusal or a cancelled wait drops them so the board shows the
+ * stored ones. Resolves whether the write landed.
  */
 export async function writeBoxes(
   page: string,
@@ -143,9 +145,21 @@ export async function writeBoxes(
   endPreview(Object.keys(asked))
   const boxes: Record<string, Box> = { ...asked }
   const started: Record<string, Box> = { ...expected }
+  const sectionBoxes: Record<string, Box> = { ...sections?.boxes }
+  const sectionsFrom: Record<string, Box> = { ...sections?.expected }
   for (const ref of Object.keys(asked)) {
     const waiting = waitingFrom.get(ref)
     if (!waiting) continue
+    // The waiting edit's section moves with the frames it carried, so its box
+    // goes with them rather than stay behind once they land.
+    for (const [name, box] of Object.entries(
+      waiting.owner.sections?.boxes ?? {},
+    )) {
+      if (name in sectionBoxes) continue
+      sectionBoxes[name] = box
+      const from = waiting.owner.sections?.expected[name]
+      if (from) sectionsFrom[name] = from
+    }
     for (const [other, box] of Object.entries(waiting.owner.boxes)) {
       if (other in boxes) continue
       boxes[other] = box
@@ -170,7 +184,11 @@ export async function writeBoxes(
       () => undefined,
     )
   }
-  const owner: WaitingBoxes = { boxes }
+  const carried =
+    Object.keys(sectionBoxes).length > 0
+      ? { boxes: sectionBoxes, expected: sectionsFrom }
+      : undefined
+  const owner: WaitingBoxes = { boxes, sections: carried }
   const hold = () => {
     for (const ref of refs) {
       const box = started[ref]
@@ -196,8 +214,8 @@ export async function writeBoxes(
               page,
               boxes: byName(boxes),
               expected: byName(started),
-              sections: sections?.boxes,
-              expectedSections: sections?.expected,
+              sections: carried?.boxes,
+              expectedSections: carried?.expected,
             },
             'POST',
             send,
