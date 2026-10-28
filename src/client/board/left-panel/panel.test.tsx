@@ -601,6 +601,155 @@ describe('LeftPanel', () => {
     })
   })
 
+  describe('the pages fit', () => {
+    /** A project of `count` pages named page-1 onward. */
+    const pages = (count: number) =>
+      project(
+        Array.from({ length: count }, (_, at) =>
+          page(`page-${at + 1}`, [], at),
+        ),
+      )
+
+    /** The pages list's height in pixels, which is the pages panel's. */
+    const listHeight = () =>
+      screen.getByRole('navigation', { name: 'Pages' }).getBoundingClientRect()
+        .height
+
+    const pageRows = () =>
+      within(screen.getByRole('navigation', { name: 'Pages' })).getAllByRole(
+        'link',
+      )
+
+    /** Renders the panel over `storage`, returning a re-render that keeps the same mount, as a live store change does. */
+    function splitPanel(storage: Map<string, string>) {
+      const location = memoryLocation({ path: '/', record: true })
+      const kept = {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => void storage.set(key, value),
+      }
+      const panel = (record: ProjectRecord, current: string) => (
+        <Router hook={location.hook}>
+          <TooltipProvider>
+            <div className="h-[600px]">
+              <LeftPanel
+                project={record}
+                page={current}
+                storage={kept}
+                assets={<p>No assets</p>}
+              />
+            </div>
+          </TooltipProvider>
+        </Router>
+      )
+      const { rerender } = render(panel(pages(1), 'page-1'))
+      return (record: ProjectRecord, current: string) =>
+        rerender(panel(record, current))
+    }
+
+    it('opens a one-page project at four rows', () => {
+      renderPanel(pages(1), 'page-1')
+
+      expect(listHeight()).toBeCloseTo(152, 0)
+    })
+
+    it('stops the fit at eight rows', () => {
+      renderPanel(pages(9), 'page-1')
+
+      expect(listHeight()).toBeCloseTo(256, 0)
+    })
+
+    it('lets a drag take the list below four rows', async () => {
+      renderPanel(pages(1), 'page-1')
+      act(() => divider().focus())
+
+      await userEvent.keyboard('{Home}')
+
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+    })
+
+    it('resets to the four-row fit on a double-click', async () => {
+      renderPanel(pages(1), 'page-1')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+
+      await userEvent.dblClick(divider())
+
+      await expect.poll(listHeight).toBeCloseTo(152, 0)
+    })
+
+    it('grows a dragged split to fit a page added, and keeps it on the next load', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      show(pages(4), 'page-4')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+
+      show(pages(5), 'page-5')
+
+      await expect.poll(listHeight).toBeCloseTo(178, 0)
+      cleanup()
+      renderPanel(pages(5), 'page-5', undefined, { storage })
+      expect(listHeight()).toBeCloseTo(178, 0)
+    })
+
+    it('grows a dragged split for a page added while another tab was open', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      show(pages(4), 'page-4')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+      await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+
+      show(pages(5), 'page-5')
+      await userEvent.click(screen.getByRole('tab', { name: 'Design' }))
+
+      await expect.poll(listHeight).toBeCloseTo(178, 0)
+    })
+
+    it('keeps a split dragged taller than the fit when a page is added', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      show(pages(4), 'page-4')
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown>3/}')
+      await expect.poll(listHeight).toBeGreaterThan(204)
+      const dragged = listHeight()
+
+      show(pages(5), 'page-5')
+
+      await expect.poll(() => pageRows().length).toBe(5)
+      expect(listHeight()).toBeCloseTo(dragged, 0)
+    })
+
+    it('never shrinks the split when a page is deleted', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      show(pages(8), 'page-8')
+      act(() => divider().focus())
+      await userEvent.keyboard('{ArrowDown}')
+      await expect.poll(() => storage.size).toBe(1)
+      const dragged = listHeight()
+
+      show(pages(7), 'page-7')
+
+      await expect.poll(() => pageRows().length).toBe(7)
+      expect(listHeight()).toBeCloseTo(dragged, 0)
+    })
+
+    it('scrolls the page on the canvas into view past eight rows', async () => {
+      renderPanel(pages(12), 'page-12')
+
+      const list = screen.getByRole('navigation', { name: 'Pages' })
+      const row = screen.getByRole('link', { name: 'page-12' })
+      await expect
+        .poll(() => row.getBoundingClientRect().bottom)
+        .toBeLessThanOrEqual(list.getBoundingClientRect().bottom)
+    })
+  })
+
   describe('element rows', () => {
     it('gives a frame and an element expander a 24px target', async () => {
       heroTree()

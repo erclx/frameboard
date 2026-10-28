@@ -45,7 +45,7 @@ A Rectangle, Ellipse, or Frame drag past 3 screen pixels draws a box through `sh
 
 Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
 
-- Design holds a pages list with a search and a layers tree under a per-project divider that resets on a double-click, and Theme holds the project's tokens read-only
+- Design holds a searchable pages list and a layers tree under a per-project divider fit to 4 to 8 rows, grown on a page add, and reset on a double-click. Theme holds the project's tokens read-only.
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
 - Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, name, and `<type> · <size>` line, and a tile click copies `../assets/<name>`, each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies

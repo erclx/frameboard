@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   type LayoutStorage,
   useDefaultLayout,
@@ -46,14 +46,17 @@ function splitId(project: string): string {
 
 /**
  * Pixels. A row is 26 tall under a 29 heading and a 7 gap, with 12 of room
- * under the last row so the divider never crowds it, and the list starts at
- * eight rows at most.
+ * under the last row so the divider never crowds it. The fit holds four to
+ * eight rows, while a drag may take the list down to `PAGES_MIN`.
  */
 const ROW_HEIGHT = 26
 const PAGES_GAP = 7
 const PAGES_ROOM = 12
 const PAGES_MIN = 64
-const PAGES_MAX_DEFAULT = 29 + PAGES_GAP + 8 * ROW_HEIGHT + PAGES_ROOM
+
+function rowsHeight(rows: number): number {
+  return 29 + PAGES_GAP + rows * ROW_HEIGHT + PAGES_ROOM
+}
 
 const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
@@ -84,13 +87,33 @@ export function LeftPanel({
   // layout hook would skip saving, so the change it causes is marked as the
   // developer's.
   const resetting = useRef(false)
-  const pagesHeight = Math.min(
-    Math.max(
-      29 + PAGES_GAP + project.pages.length * ROW_HEIGHT + PAGES_ROOM,
-      PAGES_MIN,
-    ),
-    PAGES_MAX_DEFAULT,
-  )
+  const pagesHeight = rowsHeight(Math.min(Math.max(project.pages.length, 4), 8))
+  // A page added grows a split shorter than the new fit, so the new page
+  // shows, and leaves one already taller. Counts compare within one project,
+  // since another project's list is a different split. A hidden Design tab
+  // unmounts the split, so the count holds until it shows again, and the
+  // check waits a frame for a remounted group to measure its height.
+  const [tab, setTab] = useState('design')
+  const splitShown = !finding && tab === 'design'
+  const counted = useRef({ project: project.name, pages: project.pages.length })
+  useEffect(() => {
+    if (!splitShown) return
+    const frame = requestAnimationFrame(() => {
+      const panel = pagesPanel.current
+      if (!panel) return
+      const before = counted.current
+      counted.current = { project: project.name, pages: project.pages.length }
+      if (
+        before.project !== project.name ||
+        project.pages.length <= before.pages
+      )
+        return
+      if (panel.getSize().inPixels > pagesHeight - 1) return
+      resetting.current = true
+      panel.resize(pagesHeight)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [splitShown, project.name, project.pages.length, pagesHeight, pagesPanel])
   const frames =
     project.pages.find((candidate) => candidate.name === page)?.frames ?? []
   return (
@@ -102,7 +125,11 @@ export function LeftPanel({
       {finding ? (
         <FindPanel project={project.name} page={page} />
       ) : (
-        <Tabs defaultValue="design" className="min-h-0 flex-1 gap-0">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(String(value))}
+          className="min-h-0 flex-1 gap-0"
+        >
           <TabsList className="m-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5">
             <TabsTrigger value="design" className={TAB}>
               Design
