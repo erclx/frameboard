@@ -26,7 +26,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 
 ## Hand edits
 
-In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages.
+In the board you move and resize frames, Alt-drag one to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages. Sections group the frames sitting in them. Shift+S draws one, Cmd+Alt+G wraps the selection in one, and dragging a section's name moves it with its frames.
 
 The Frame tool places a phone, tablet, or desktop size picked from its list with a click, or draws a frame at any size with a drag. The inspector's Preview row redraws a frame at another width to watch it reflow, and writes nothing.
 
