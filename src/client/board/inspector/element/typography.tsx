@@ -7,7 +7,6 @@ import {
   ChevronDown,
   LetterSpacing,
   LineHeight,
-  type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -20,15 +19,20 @@ import {
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import type { TokenRow } from '@/shared/records/tokens'
 
-import { ActionTooltip } from '../../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { NumberField } from '../number-field'
 import { faceOf, familyIn, familyOptions, firstFamily } from './families'
+import {
+  type Segment,
+  Segmented,
+  type TypeDetails,
+  TypeDetailsButton,
+} from './type-details'
 import { TOKEN_CHIP } from './values'
 import { weightLabel, weightsOf } from './weights'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
-const ALIGNS: readonly { value: string; label: string; icon: LucideIcon }[] = [
+const ALIGNS: readonly Segment[] = [
   { value: 'left', label: 'Align text left', icon: AlignLeft },
   { value: 'center', label: 'Align text center', icon: AlignCenter },
   { value: 'right', label: 'Align text right', icon: AlignRight },
@@ -53,6 +57,8 @@ interface TypographySectionProps {
   letterSpacing: number
   /** The computed alignment, `left`, `center`, `right`, or `justify` lighting a button. */
   textAlign: string
+  /** Decoration, case, truncation, and wrap style, which the Type details popover lights. */
+  details: TypeDetails
   disabled: boolean
   write: WriteElement
   /** Shows a step on the live element before it is written. */
@@ -66,7 +72,8 @@ const NORMAL_LINE = 1.2
  * The Typography section of `inspector/text`: the family from the project's
  * font tokens and the served faces, each drawn in its own face, the weight
  * by name among those the face ships, size in px, line height and letter
- * spacing in px, and four alignment buttons, each writing one declaration.
+ * spacing in px, four alignment buttons, each writing one declaration, and
+ * the Type details popover at the alignment row's end.
  * Every icon control is captioned or names itself in a tooltip. A family
  * the menu does not hold reads as written, and a `normal` line height reads
  * Auto and writes nothing until changed.
@@ -80,6 +87,7 @@ export function TypographySection({
   lineHeight,
   letterSpacing,
   textAlign,
+  details,
   disabled,
   write,
   preview,
@@ -202,32 +210,21 @@ export function TypographySection({
       >
         Alignment
       </p>
-      <div
-        role="group"
-        aria-labelledby="inspector-alignment"
-        className="flex w-max gap-0.5 rounded-md bg-input p-0.5"
-      >
-        {ALIGNS.map(({ value, label, icon: Icon }) => (
-          <ActionTooltip key={value} label={label}>
-            <button
-              type="button"
-              aria-label={label}
-              aria-pressed={textAlign === value}
-              disabled={disabled}
-              onClick={() => {
-                if (textAlign !== value) {
-                  void write({ kind: 'style', property: 'text-align', value })
-                }
-              }}
-              className={cn(
-                'grid h-[22px] w-7 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
-                textAlign === value && 'bg-sidebar text-foreground',
-              )}
-            >
-              <Icon aria-hidden className="size-[13px]" />
-            </button>
-          </ActionTooltip>
-        ))}
+      <div className="flex items-center justify-between">
+        <Segmented
+          labelledBy="inspector-alignment"
+          options={ALIGNS}
+          current={textAlign}
+          disabled={disabled}
+          onPick={(value) =>
+            void write({ kind: 'style', property: 'text-align', value })
+          }
+        />
+        <TypeDetailsButton
+          details={details}
+          disabled={disabled}
+          write={write}
+        />
       </div>
     </section>
   )

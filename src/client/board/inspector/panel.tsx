@@ -194,6 +194,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
           lineHeight={live.lineHeight}
           letterSpacing={live.letterSpacing}
           textAlign={live.textAlign}
+          details={live}
           disabled={disabled}
           write={write}
           preview={preview}

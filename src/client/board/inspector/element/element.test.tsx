@@ -59,6 +59,14 @@ const SHADOW: TokenRow = {
 /** The kit's tooltip popup, apart from a caption carrying the same words. */
 const TOOLTIP = '[data-slot="tooltip-content"]'
 
+/** Type details as an element with no decoration, case, truncation, or wrap style computes them. */
+const PLAIN_TYPE = {
+  textDecorationLine: 'none',
+  textTransform: 'none',
+  textWrapStyle: 'auto',
+  truncated: false,
+}
+
 function tokenValueOf(token: string, percent = 100): StyleValue {
   return { value: `var(${token})`, token, percent }
 }
@@ -253,6 +261,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -282,6 +291,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -304,6 +314,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -331,6 +342,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -358,6 +370,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -385,6 +398,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -415,6 +429,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -437,6 +452,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -463,6 +479,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -492,6 +509,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -517,6 +535,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -545,6 +564,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={400}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -578,6 +598,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={900}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -600,6 +621,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -629,6 +651,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -645,6 +668,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="justify"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -670,6 +694,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -694,6 +719,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -720,6 +746,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -744,6 +771,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={36}
         letterSpacing={-0.5}
         disabled={false}
@@ -769,6 +797,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -795,6 +824,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={36}
         letterSpacing={0}
         disabled={false}
@@ -821,6 +851,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -846,6 +877,7 @@ describe('TypographySection', () => {
         fontSize={30}
         fontWeight={700}
         textAlign="left"
+        details={PLAIN_TYPE}
         lineHeight={null}
         letterSpacing={0}
         disabled={false}
@@ -860,6 +892,211 @@ describe('TypographySection', () => {
     expect(changes).toEqual([
       { kind: 'style', property: 'letter-spacing', value: '-0.5px' },
     ])
+  })
+
+  describe('Type details', () => {
+    function renderDetails(
+      write: WriteElement,
+      details: Partial<typeof PLAIN_TYPE> = {},
+    ) {
+      render(
+        <TypographySection
+          fonts={[]}
+          fontFamily="Geist, sans-serif"
+          fontToken={null}
+          fontSize={30}
+          fontWeight={700}
+          textAlign="left"
+          details={{ ...PLAIN_TYPE, ...details }}
+          lineHeight={null}
+          letterSpacing={0}
+          disabled={false}
+          write={write}
+        />,
+      )
+    }
+
+    it('writes the decoration a button names', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Underline' }),
+      )
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'text-decoration-line', value: 'underline' },
+      ])
+    })
+
+    it('lights the computed case and writes none over an inherited one', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write, { textTransform: 'uppercase' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      const upper = await screen.findByRole('button', { name: 'Uppercase' })
+      expect(upper).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.click(screen.getByRole('button', { name: 'No case' }))
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'text-transform', value: 'none' },
+      ])
+    })
+
+    it('writes title case as capitalize', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Title case' }),
+      )
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'text-transform', value: 'capitalize' },
+      ])
+    })
+
+    it('truncates to one line as one edit of three declarations', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Truncate text' }),
+      )
+
+      expect(changes).toEqual([
+        {
+          kind: 'styles',
+          declarations: [
+            { property: 'overflow', value: 'hidden' },
+            { property: 'white-space', value: 'nowrap' },
+            { property: 'text-overflow', value: 'ellipsis' },
+          ],
+        },
+      ])
+    })
+
+    it('writes all three truncation declarations back when turned off', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write, { truncated: true })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      expect(
+        await screen.findByRole('button', { name: 'Truncate text' }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.click(
+        screen.getByRole('button', { name: 'No truncation' }),
+      )
+
+      expect(changes).toEqual([
+        {
+          kind: 'styles',
+          declarations: [
+            { property: 'overflow', value: 'visible' },
+            { property: 'white-space', value: 'normal' },
+            { property: 'text-overflow', value: 'clip' },
+          ],
+        },
+      ])
+    })
+
+    it('writes the wrap style picked from its menu', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await userEvent.click(await screen.findByRole('button', { name: 'Wrap' }))
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: 'Balance' }),
+      )
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'text-wrap-style', value: 'balance' },
+      ])
+    })
+
+    it('writes nothing for the value already lit', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'No decoration' }),
+      )
+
+      expect(changes).toEqual([])
+    })
+
+    it('holds one tab stop per row and moves along it with the arrow keys', async () => {
+      const { changes, write } = recorder()
+      renderDetails(write, { textTransform: 'uppercase' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      const upper = await screen.findByRole('button', { name: 'Uppercase' })
+      expect(upper).toHaveAttribute('tabindex', '0')
+      expect(screen.getByRole('button', { name: 'No case' })).toHaveAttribute(
+        'tabindex',
+        '-1',
+      )
+      act(() => upper.focus())
+      await userEvent.keyboard('{ArrowRight}')
+
+      expect(screen.getByRole('button', { name: 'Lowercase' })).toHaveFocus()
+      expect(changes).toEqual([])
+    })
+
+    it('closes on a press outside it', async () => {
+      const { write } = recorder()
+      renderDetails(write)
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      await screen.findByRole('dialog', { name: 'Type details' })
+      await userEvent.click(screen.getByRole('heading', { name: 'Typography' }))
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Type details' }),
+        ).toBeNull(),
+      )
+    })
+
+    it('closes on Escape and hands focus back to its button', async () => {
+      const { write } = recorder()
+      renderDetails(write)
+      const button = screen.getByRole('button', { name: 'Type details' })
+
+      await userEvent.click(button)
+      await screen.findByRole('dialog', { name: 'Type details' })
+      await userEvent.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Type details' }),
+        ).toBeNull(),
+      )
+      expect(button).toHaveFocus()
+    })
   })
 })
 
@@ -2319,6 +2556,33 @@ describe('InspectorPanel with an element selected', () => {
       background: true,
       border: true,
     })
+  })
+
+  it('reads a one-line truncation and the type details it sets', async () => {
+    await mountFrame(
+      '<p style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-decoration-line: underline; text-transform: uppercase; text-wrap-style: balance">Hi</p>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current).toMatchObject({
+      truncated: true,
+      textDecorationLine: 'underline',
+      textTransform: 'uppercase',
+      textWrapStyle: 'balance',
+    })
+  })
+
+  it('reads a clipped line with no ellipsis as not truncated', async () => {
+    await mountFrame('<p style="overflow: hidden; white-space: nowrap">Hi</p>')
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current).toMatchObject({ truncated: false })
   })
 
   it('reads a stated line height and letter spacing in px', async () => {

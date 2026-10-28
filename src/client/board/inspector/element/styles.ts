@@ -20,6 +20,14 @@ export interface LiveElement {
   /** In px, 0 for `normal`. */
   letterSpacing: number
   textAlign: string
+  /** The computed `text-decoration-line`, such as `none` or `underline`. */
+  textDecorationLine: string
+  /** The computed `text-transform`, such as `none` or `uppercase`. */
+  textTransform: string
+  /** The computed `text-wrap-style`, `auto` unless balanced or pretty. */
+  textWrapStyle: string
+  /** Whether it clips to one line with an ellipsis, which takes three declarations together. */
+  truncated: boolean
   /** The computed text color, which a `currentcolor` paint shows. */
   color: string
   /** Whether any side draws a border. */
@@ -131,6 +139,13 @@ function readLive(element: Element, view: Window): LiveElement {
     letterSpacing:
       style.letterSpacing === 'normal' ? 0 : hundredths(style.letterSpacing),
     textAlign: alignOf(style.textAlign, style.direction),
+    textDecorationLine: style.textDecorationLine,
+    textTransform: style.textTransform,
+    textWrapStyle: style.getPropertyValue('text-wrap-style') || 'auto',
+    truncated:
+      style.textOverflow === 'ellipsis' &&
+      style.overflowX !== 'visible' &&
+      style.getPropertyValue('text-wrap-mode') === 'nowrap',
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
     holdsText: text.trim() !== '',
