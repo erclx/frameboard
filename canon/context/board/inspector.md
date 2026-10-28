@@ -18,7 +18,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
-- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. A settings button ending the alignment row opens Type details, whose decoration, case, one-line truncate, and wrap style each write the element alone, truncate as one edit of three declarations. Layers renames an element.
+- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. Layers renames an element.
+- **Type details:** a settings button ending the alignment row opens decoration, case, one-line truncate, and wrap style. Truncate writes its three declarations as one edit.
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
 - **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
