@@ -63,6 +63,7 @@ import {
 } from './place/tool'
 import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
+import { SectionBoxes } from './sections/box'
 import {
   type ElementKey,
   followSelection,
@@ -650,6 +651,7 @@ export function Canvas({
       >
         {page.layoutError ? null : (
           <>
+            <SectionBoxes page={page.ref} sections={page.sections} />
             {frames.map((frame) => (
               <Frame
                 key={identityOf(aliases, frame.ref)}

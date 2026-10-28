@@ -15,7 +15,7 @@ import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { endPreview, setPreview } from './preview/store'
-import { clear, selectionStore } from './selection'
+import { clear, selectionStore, selectSection } from './selection'
 import {
   createClipboardStore,
   renamingFrame,
@@ -623,6 +623,56 @@ describe('Canvas', () => {
           container.querySelector('[data-frame="studio/home/near"] iframe'),
         ).not.toBeNull()
       })
+  })
+
+  describe('a section', () => {
+    const onboarding = {
+      name: 'onboarding',
+      box: { x: -40, y: -40, width: 600, height: 400 },
+      order: 0,
+      frames: ['hero'],
+    }
+    const withSection = () =>
+      page(
+        'studio/home',
+        [frame('hero', { x: 0, y: 0, width: 200, height: 200 })],
+        { sections: [onboarding] },
+      )
+
+    afterEach(() => {
+      clear(selectionStore)
+    })
+
+    it('draws its box under the frames, named inside', () => {
+      const { container } = renderCanvas(withSection())
+      const layer = layerOf(container)
+      const box = layer.querySelector('[data-section="onboarding"]')
+
+      expect([
+        box?.textContent,
+        box?.compareDocumentPosition(
+          layer.querySelector('[data-frame="studio/home/hero"]') as Node,
+        ),
+      ]).toEqual(['onboarding', Node.DOCUMENT_POSITION_FOLLOWING])
+    })
+
+    it('draws resize corners once it is selected', () => {
+      selectSection(selectionStore, 'studio/home', 'onboarding')
+
+      const { container } = renderCanvas(withSection())
+
+      expect(container.querySelectorAll('[data-section-corner]')).toHaveLength(
+        4,
+      )
+    })
+
+    it('draws no corners while another page holds the selection', () => {
+      selectSection(selectionStore, 'studio/about', 'onboarding')
+
+      const { container } = renderCanvas(withSection())
+
+      expect(container.querySelector('[data-section-corner]')).toBeNull()
+    })
   })
 
   it('leaves a hidden frame undrawn', () => {
