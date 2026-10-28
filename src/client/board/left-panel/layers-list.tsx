@@ -26,7 +26,7 @@ import {
   structure,
 } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { UnseenDot } from '../changes/dot'
 import { treeOf, trees } from '../element/tree'
@@ -54,15 +54,23 @@ import { ElementRows } from './element-rows'
 import { reportRefusal } from './page-actions'
 import { useReorderMonitor, useReorderRow } from './reorder'
 import { PanelSection } from './section'
+import { SectionRow } from './section-rows'
 
 interface LayersListProps {
   /** The page's frames as the server sends them, bottom of the stack first. */
   frames: readonly FrameRecord[]
+  /** The page's sections as the server sends them, bottom first, each naming the frames it holds. */
+  sections?: readonly SectionRecord[]
   /** The server calls a row writes through, the board's own when absent. */
   calls?: Structure
 }
 
 const LIST = 'layers'
+/** A section's frames restack among themselves alone, as their own list. */
+const SECTION_LIST = 'layers:section:'
+const inLayers = (list: string) =>
+  list === LIST || list.startsWith(SECTION_LIST)
+const NO_SECTIONS: readonly SectionRecord[] = []
 
 /**
  * The page's frames top of the stack first, each opening onto its elements,
@@ -72,31 +80,52 @@ const LIST = 'layers'
  * not select, since the next board would prune it, and its eye unhides it.
  * A selected element opens its frame and the rows above it, and the
  * header's button closes every row. A frame selected, or one holding the
- * selected element, draws as one tinted band with its rows.
+ * selected element, draws as one tinted band with its rows. A section's row
+ * holds its frames' rows under it, then the frames in no section follow, and
+ * a row restacks within its own group, never into or out of a section.
  */
-export function LayersList({ frames, calls = structure }: LayersListProps) {
+export function LayersList({
+  frames,
+  sections = NO_SECTIONS,
+  calls = structure,
+}: LayersListProps) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const page = useSelection((state) => state.page)
+  const selectedSection = useSelection((state) => state.section)
   const selectedFrames = useSelection((state) => state.frames)
   const element = useSelection((state) => state.element ?? null)
   const canWrite = useLive((state) => state.canWrite)
   useRevealSelected(setExpanded)
-  const stack = [...frames].reverse()
+  const groups = groupsOf(frames, sections)
 
-  // A row lands at a place in the list, which counts from the top of the
-  // stack, while the server counts its index from the bottom.
+  // A row lands at a place in its group, which counts from the top of the
+  // stack, while the server counts a page-wide index from the bottom. The
+  // frame goes beside the neighbor it lands by, so the canvas draws it over
+  // or under that frame whatever sits between them in the page's stack.
   const move = useCallback(
-    (from: number, to: number) => {
-      const shown = [...frames].reverse()
-      const frame = shown[from]
-      if (!frame) return
+    (from: number, to: number, list: string) => {
+      const group = groupsOf(frames, sections).find(
+        (candidate) => candidate.list === list,
+      )
+      const frame = group?.rows[from]
+      if (!group || !frame) return
+      const rest = group.rows.filter((row) => row.ref !== frame.ref)
+      const stack = frames.filter((row) => row.ref !== frame.ref)
+      const above = rest[to]
+      const below = rest[to - 1]
+      const index = above
+        ? stack.findIndex((row) => row.ref === above.ref) + 1
+        : below
+          ? stack.findIndex((row) => row.ref === below.ref)
+          : 0
       calls
-        .orderFrame(frame.ref, shown.length - 1 - to)
+        .orderFrame(frame.ref, index)
         .catch(reportRefusal(`Couldn't move ${frame.name}`))
     },
-    [frames, calls],
+    [frames, sections, calls],
   )
-  useReorderMonitor(LIST, move)
+  useReorderMonitor(inLayers, move)
 
   const isOpen = (key: string) => expanded.has(key)
   const toggle = (key: string) =>
@@ -106,6 +135,58 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
       return next
     })
 
+  const frameRow = (frame: FrameRecord, index: number, list: string) => {
+    const open = isOpen(frame.ref)
+    const holdsElement = element?.frame === frame.ref
+    const frameSelected =
+      !holdsElement &&
+      page === pageOf(frame) &&
+      selectedFrames.includes(frame.ref)
+    return (
+      <FrameRow
+        key={frame.ref}
+        frame={frame}
+        index={index}
+        list={list}
+        canWrite={canWrite}
+        calls={calls}
+        tint={
+          frameSelected
+            ? 'bg-primary/26'
+            : holdsElement
+              ? 'bg-primary/7'
+              : undefined
+        }
+        chevron={
+          <button
+            type="button"
+            aria-label={`${open ? 'Hide' : 'Show'} the elements of ${frame.name}`}
+            aria-expanded={open}
+            onClick={() => toggle(frame.ref)}
+            className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {open ? (
+              <ChevronDown aria-hidden className="size-2.5" />
+            ) : (
+              <ChevronRight aria-hidden className="size-2.5" />
+            )}
+          </button>
+        }
+      >
+        {open ? (
+          <ElementRows
+            frame={frame}
+            page={pageOf(frame)}
+            selected={holdsElement ? (element?.index ?? null) : null}
+            frameSelected={frameSelected}
+            isOpen={(index) => isOpen(rowKey(frame.ref, index))}
+            toggle={(index) => toggle(rowKey(frame.ref, index))}
+          />
+        ) : null}
+      </FrameRow>
+    )
+  }
+
   return (
     <section aria-labelledby="layers-heading" className="flex min-h-0 flex-col">
       <PanelSection id="layers-heading" title="Layers">
@@ -113,7 +194,10 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
           type="button"
           aria-label="Collapse all layers"
           title="Collapse all layers"
-          onClick={() => setExpanded(new Set())}
+          onClick={() => {
+            setExpanded(new Set())
+            setCollapsed(new Set(sections.map((section) => section.name)))
+          }}
           className="group/target grid size-6 place-items-center text-muted-foreground outline-none hover:text-foreground"
         >
           <span className="grid size-5 place-items-center rounded-md group-hover/target:bg-accent group-focus-visible/target:ring-3 group-focus-visible/target:ring-ring/50">
@@ -127,54 +211,36 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
         </p>
       ) : (
         <ul className="flex min-h-0 flex-col overflow-y-auto pb-1">
-          {stack.map((frame, index) => {
-            const open = isOpen(frame.ref)
-            const holdsElement = element?.frame === frame.ref
-            const frameSelected =
-              !holdsElement &&
-              page === pageOf(frame) &&
-              selectedFrames.includes(frame.ref)
+          {groups.map((group) => {
+            const rows = group.rows.map((frame, index) =>
+              frameRow(frame, index, group.list),
+            )
+            if (!group.section) return rows
+            const { section } = group
+            const holdsSelected = group.rows.some(
+              (frame) =>
+                selectedFrames.includes(frame.ref) ||
+                element?.frame === frame.ref,
+            )
             return (
-              <FrameRow
-                key={frame.ref}
-                frame={frame}
-                index={index}
+              <SectionRow
+                key={`${SECTION_LIST}${section.name}`}
+                section={section}
+                page={pageOfFrames(frames)}
+                open={!collapsed.has(section.name) || holdsSelected}
+                onToggle={() =>
+                  setCollapsed((shut) => {
+                    const next = new Set(shut)
+                    if (!next.delete(section.name)) next.add(section.name)
+                    return next
+                  })
+                }
+                selected={selectedSection === section.name}
                 canWrite={canWrite}
                 calls={calls}
-                tint={
-                  frameSelected
-                    ? 'bg-primary/26'
-                    : holdsElement
-                      ? 'bg-primary/7'
-                      : undefined
-                }
-                chevron={
-                  <button
-                    type="button"
-                    aria-label={`${open ? 'Hide' : 'Show'} the elements of ${frame.name}`}
-                    aria-expanded={open}
-                    onClick={() => toggle(frame.ref)}
-                    className="-mr-1.5 -ml-[7px] grid size-6 shrink-0 place-items-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    {open ? (
-                      <ChevronDown aria-hidden className="size-2.5" />
-                    ) : (
-                      <ChevronRight aria-hidden className="size-2.5" />
-                    )}
-                  </button>
-                }
               >
-                {open ? (
-                  <ElementRows
-                    frame={frame}
-                    page={pageOf(frame)}
-                    selected={holdsElement ? (element?.index ?? null) : null}
-                    frameSelected={frameSelected}
-                    isOpen={(index) => isOpen(rowKey(frame.ref, index))}
-                    toggle={(index) => toggle(rowKey(frame.ref, index))}
-                  />
-                ) : null}
-              </FrameRow>
+                {rows}
+              </SectionRow>
             )
           })}
         </ul>
@@ -185,8 +251,10 @@ export function LayersList({ frames, calls = structure }: LayersListProps) {
 
 interface FrameRowProps {
   frame: FrameRecord
-  /** Its place in the list, counting from the top of the stack. */
+  /** Its place in its group, counting from the top of the stack. */
   index: number
+  /** The reorder list of its group, which a drag stays within. */
+  list: string
   canWrite: boolean
   calls: Structure
   /** The selected tint, absent when neither the frame nor one of its elements is selected. */
@@ -223,6 +291,7 @@ const FLAG_VERBS: Record<FrameFlag, readonly [string, string]> = {
 function FrameRow({
   frame,
   index,
+  list,
   canWrite,
   calls,
   tint,
@@ -234,7 +303,7 @@ function FrameRow({
   const claim = useLive((state) => state.claims[frame.ref])
   const unseen = useUnseen((state) => frame.ref in state.unseen)
   const edge = useReorderRow(row, {
-    list: LIST,
+    list,
     index,
     enabled: canWrite && !renaming,
   })
@@ -390,6 +459,38 @@ function rowKey(frame: string, index: number): string {
 
 function pageOf(frame: FrameRecord): string {
   return `${frame.project}/${frame.page}`
+}
+
+/** The page every frame in the list sits on, read off the first. */
+function pageOfFrames(frames: readonly FrameRecord[]): string {
+  const [first] = frames
+  return first ? pageOf(first) : ''
+}
+
+interface Group {
+  /** The reorder list its rows drag within. */
+  list: string
+  /** The section holding the rows, absent for the frames in none. */
+  section?: SectionRecord
+  /** Top of the stack first. */
+  rows: readonly FrameRecord[]
+}
+
+/** The rows as Layers groups them: each section top first with its frames, then the frames in no section. */
+function groupsOf(
+  frames: readonly FrameRecord[],
+  sections: readonly SectionRecord[],
+): Group[] {
+  const top = [...frames].reverse()
+  const held = new Set(sections.flatMap((section) => section.frames))
+  return [
+    ...[...sections].reverse().map((section) => ({
+      list: `${SECTION_LIST}${section.name}`,
+      section,
+      rows: top.filter((frame) => section.frames.includes(frame.name)),
+    })),
+    { list: LIST, rows: top.filter((frame) => !held.has(frame.name)) },
+  ]
 }
 
 /**

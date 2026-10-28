@@ -17,6 +17,7 @@ import { Canvas } from '../canvas'
 import { useCompareActions } from '../changes/compare'
 import { modeStore } from '../mode'
 import { notesUi, useNoteTool } from '../notes/tool'
+import { useSectionActions } from '../sections/actions'
 import { clear, select, selectElement, selectionStore } from '../selection'
 import { clipboardStore, useStructureActions } from '../structure/actions'
 import { useFrameTool } from '../structure/tool'
@@ -35,6 +36,7 @@ const PAGE = pageOf([A, B, C])
 function Board({ page }: { page: PageRecord }) {
   useBoardActions()
   useStructureActions(page.ref, page.frames)
+  useSectionActions(page.ref, page.frames, page.sections)
   useFrameTool()
   useNoteTool()
   useCompareActions()
@@ -175,6 +177,7 @@ describe('CanvasMenu', () => {
       `Cut${MOD}X`,
       IS_MAC ? 'Copy as PNG⇧⌘C' : 'Copy as PNGCtrlShiftC',
       `Duplicate${MOD}D`,
+      IS_MAC ? 'Wrap in section⌥⌘G' : 'Wrap in sectionCtrlAltG',
       'RenameF2',
       'Fit height',
       'Compare with before',

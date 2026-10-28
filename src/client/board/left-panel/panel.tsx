@@ -114,8 +114,8 @@ export function LeftPanel({
     })
     return () => cancelAnimationFrame(frame)
   }, [splitShown, project.name, project.pages.length, pagesHeight, pagesPanel])
-  const frames =
-    project.pages.find((candidate) => candidate.name === page)?.frames ?? []
+  const shown = project.pages.find((candidate) => candidate.name === page)
+  const frames = shown?.frames ?? []
   return (
     <aside
       aria-label="Pages and layers"
@@ -189,7 +189,11 @@ export function LeftPanel({
                 />
               </ResizableHandle>
               <ResizablePanel id="layers" minSize={PAGES_MIN}>
-                <LayersList frames={frames} calls={calls} />
+                <LayersList
+                  frames={frames}
+                  sections={shown?.sections}
+                  calls={calls}
+                />
               </ResizablePanel>
             </ResizablePanelGroup>
           </TabsContent>

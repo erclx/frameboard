@@ -116,6 +116,7 @@ const FRAME_IDS = [
   'frame.cut',
   'frame.copyPng',
   'frame.duplicate',
+  'section.wrap',
   'frame.rename',
   'frame.fitHeight',
   'frame.compare',
@@ -133,6 +134,7 @@ function FrameItems() {
     cut,
     copyPng,
     duplicate,
+    wrap,
     rename,
     fitHeight,
     compare,
@@ -153,6 +155,7 @@ function FrameItems() {
         <MenuRow action={cut}>Cut</MenuRow>
         <MenuRow action={copyPng}>Copy as PNG</MenuRow>
         <MenuRow action={duplicate}>Duplicate</MenuRow>
+        <MenuRow action={wrap}>Wrap in section</MenuRow>
         <MenuRow action={rename}>Rename</MenuRow>
         <MenuRow action={fitHeight}>Fit height</MenuRow>
         <MenuRow action={compare}>Compare with before</MenuRow>
