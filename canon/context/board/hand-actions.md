@@ -108,6 +108,6 @@ Owns the change kinds a step holds and what each restores, which is only what th
 
 - Hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
-- Elements cannot be hidden, because that would write `display` into the frame, which is layout
+- Elements cannot be hidden, since it would write `display` into the frame, which no hand edit writes yet
 - A drag on a selected element or its outline carries it, and one on a shape's corner mark resizes it. Its frame moves by the label strip or after Esc.
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one
