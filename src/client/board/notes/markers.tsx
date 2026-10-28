@@ -5,8 +5,8 @@ import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
-import { elementAt } from '../frame-dom'
 import { useMode } from '../mode'
+import { cornerOf } from '../pin-corner'
 import { usePreviewedFrames } from '../preview/store'
 import { canvasView } from '../view'
 import { Composer } from './composer'
@@ -264,29 +264,6 @@ function Popover({
       </div>
     </div>
   )
-}
-
-/**
- * Where a note's marker sits: the top right corner of its element while the
- * live frame holds it, else of the frame.
- */
-function cornerOf(
-  frame: FrameRecord,
-  element: number | null,
-  container: HTMLElement | null,
-): BoardPoint {
-  const { x, y, width } = frame.box
-  const document =
-    element === null
-      ? null
-      : container?.querySelector<HTMLIFrameElement>(
-          `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
-        )?.contentDocument
-  const target =
-    document && element !== null ? elementAt(document, element) : null
-  if (!target) return { x: x + width, y }
-  const rect = target.getBoundingClientRect()
-  return { x: x + Math.min(rect.right, width), y: y + Math.max(rect.top, 0) }
 }
 
 /**
