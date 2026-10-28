@@ -70,6 +70,35 @@ describe('elementMarkup', () => {
   })
 })
 
+describe('elementMarkup for an asset', () => {
+  const asset = (path: string, video = false) =>
+    ({ kind: 'asset', path, video, width: 320, height: 180 }) as const
+
+  it('should write an image at its size, cropped to the box', () => {
+    expect(elementMarkup(asset('hero.png'), PAINT, FONT)).toBe(
+      '<img data-name="hero.png" src="../assets/hero.png" alt="" style="width: 320px; height: 180px; object-fit: cover">',
+    )
+  })
+
+  it('should write an SVG in a folder as an image named by its file', () => {
+    expect(elementMarkup(asset('icons/logo.svg'), PAINT, FONT)).toBe(
+      '<img data-name="logo.svg" src="../assets/icons/logo.svg" alt="" style="width: 320px; height: 180px; object-fit: cover">',
+    )
+  })
+
+  it('should write a video that plays muted on a loop with no controls', () => {
+    expect(elementMarkup(asset('demo.mp4', true), PAINT, FONT)).toBe(
+      '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline style="width: 320px; height: 180px; object-fit: cover"></video>',
+    )
+  })
+
+  it('should keep a name holding a quote, an ampersand, and a bracket inside its attributes', () => {
+    expect(elementMarkup(asset('a"b&c<d.png'), PAINT, FONT)).toBe(
+      '<img data-name="a&quot;b&amp;c&lt;d.png" src="../assets/a%22b%26c%3Cd.png" alt="" style="width: 320px; height: 180px; object-fit: cover">',
+    )
+  })
+})
+
 describe('shapePaint', () => {
   it('should fill with the first of muted, secondary, and accent present', () => {
     expect(
@@ -222,6 +251,27 @@ describe('insertElement', () => {
         elementMarkup({ kind: 'rectangle' }, PAINT, FONT),
       ),
     ).toMatchObject({ ok: false, reason: 'verify-failed' })
+  })
+
+  it('should land an image dropped over an image beside it in its parent', () => {
+    const img = '<img data-name="a.png" src="../assets/a.png" alt="">'
+    const source = `<div>${img}</div>`
+
+    const result = insertElement(source, { parent: FIRST, before: null }, img)
+
+    expect(result).toMatchObject({ ok: true, html: `<div>${img}${img}</div>` })
+  })
+
+  it('should refuse an image as the parent of a placed element', () => {
+    const img = '<img data-name="a.png" src="../assets/a.png" alt="">'
+
+    const result = insertElement(
+      `<div>${img}</div>`,
+      { parent: FIRST + 1, before: null },
+      img,
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-container' })
   })
 
   it('should refuse a frame the browser builds an unstated element in', () => {

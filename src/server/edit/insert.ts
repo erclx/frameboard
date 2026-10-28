@@ -19,6 +19,19 @@ export type InsertKind =
   | ({ readonly kind: 'ellipse' } & ShapeSize)
   /** `vertical` draws the line down the left, as a divider in a row does. */
   | { readonly kind: 'divider'; readonly vertical: boolean }
+  | ({ readonly kind: 'asset' } & PlacedAsset)
+
+/**
+ * A file under the project's `assets/`, shown as a `<video>` when `video`
+ * and an `<img>` otherwise, at a size in CSS pixels.
+ */
+export interface PlacedAsset {
+  /** Relative to the project's `assets/`, with `/` between segments. */
+  readonly path: string
+  readonly video: boolean
+  readonly width: number
+  readonly height: number
+}
 
 /** A shape's size in CSS pixels as a drag drew it, each side 100 when left out. */
 export interface ShapeSize {
@@ -150,12 +163,13 @@ export function elementMarkup(
   if (!PAINT_VALUE.test(fill) || !PAINT_VALUE.test(line)) {
     throw new Error(`Unexpected shape paint ${fill} ${line}`)
   }
-  const box = ({ width = SHAPE_SIZE, height = SHAPE_SIZE }: ShapeSize) => {
+  const size = ({ width = SHAPE_SIZE, height = SHAPE_SIZE }: ShapeSize) => {
     if (!Number.isInteger(width) || !Number.isInteger(height)) {
       throw new Error(`Unexpected shape size ${width} ${height}`)
     }
-    return `width: ${width}px; height: ${height}px; background: ${fill}`
+    return `width: ${width}px; height: ${height}px`
   }
+  const box = (shape: ShapeSize) => `${size(shape)}; background: ${fill}`
   switch (element.kind) {
     case 'text':
       return `<p data-name="Text" style="font-family: ${font}">Text</p>`
@@ -167,7 +181,31 @@ export function elementMarkup(
       const side = element.vertical ? 'border-left' : 'border-top'
       return `<hr data-name="Divider" style="align-self: stretch; margin: 0; border: 0; ${side}: 1px solid ${line}">`
     }
+    case 'asset': {
+      const name = attribute(element.path.split('/').at(-1) ?? element.path)
+      // A crop rather than a squash once a corner drag changes the ratio.
+      const style = `${size(element)}; object-fit: cover`
+      return element.video
+        ? `<video data-name="${name}" src="${assetLink(element.path)}" autoplay muted loop playsinline style="${style}"></video>`
+        : `<img data-name="${name}" src="${assetLink(element.path)}" alt="" style="${style}">`
+    }
   }
+}
+
+/**
+ * The path a frame at `<project>/<page>/<frame>.html` links a project asset
+ * by, each segment encoded, as the Assets tab's `linkPath` copies it.
+ */
+function assetLink(path: string): string {
+  return `../assets/${path.split('/').map(encodeURIComponent).join('/')}`
+}
+
+/** `text` as a double-quoted attribute value holds it. */
+function attribute(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
 }
 
 function startTag(source: string, element: Element): string {
