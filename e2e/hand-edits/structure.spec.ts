@@ -416,11 +416,12 @@ test.describe('page structure by hand, and its undo', () => {
       await expect(
         page.getByRole('button', { name: 'Move', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
-      const name = page.getByRole('textbox', {
-        name: 'Rename frame iphone-16-pro-max',
-      })
-      await expect(name).toBeFocused()
-      await name.press('Escape')
+      await expect(
+        page.locator('[data-frame="studio/home/iphone-16-pro-max"]'),
+      ).toHaveAttribute('data-selected', 'true')
+      await expect(
+        page.getByRole('textbox', { name: /^Rename frame/ }),
+      ).toHaveCount(0)
 
       await undo(page)
 
@@ -456,9 +457,6 @@ test.describe('page structure by hand, and its undo', () => {
       await expect.poll(() => layout().frame).toBeDefined()
       expect(layout().frame?.width).toBeCloseTo(200 / zoom, -0.5)
       expect(layout().frame?.height).toBeCloseTo(150 / zoom, -0.5)
-      await page
-        .getByRole('textbox', { name: 'Rename frame frame' })
-        .press('Escape')
 
       await page.keyboard.press('f')
       await page.mouse.move(start.x, start.y)

@@ -19,7 +19,6 @@ import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import { select, type SelectionStore, selectionStore } from '../selection'
 import { canvasView } from '../view'
-import { startFrameRename } from './actions'
 
 /** The size the Frame tool's next click places, chosen from the inspector's list. */
 export type PresetStore = StoreApi<{ preset: FrameSizeName }>
@@ -47,8 +46,6 @@ export interface PlaceContext {
   /** The board area the view shows, which a new frame outside it pans to. Absent, the view stays. */
   visible?: Box
   view?: Pick<typeof canvasView, 'centerOn'>
-  /** Opens the new frame's name for editing, the inspector's Name field when absent. */
-  rename?: (ref: string) => void
 }
 
 /** The smallest box, in screen pixels, a Frame tool drag draws, below which the drag places as a click does. */
@@ -61,10 +58,11 @@ const DRAWN_FRAME_NAME = 'frame'
  * Adds a frame with its top left corner on a board point, hugging neither
  * axis, at the chosen size's width and height and named for it as duplicate
  * and new page name theirs, or at a drawn box's size and named `frame`, then
- * selects it, returns to Move, opens its name for editing, and centers the
- * view on it when it is not wholly in view, as one click or drag of the
- * Frame tool. Resolves to the added frame, or null once a refusal is
- * reported, so a caller can act on its box before the live store carries it.
+ * selects it, returns to Move, and centers the view on it when it is not
+ * wholly in view, as one click or drag of the Frame tool. It opens no rename
+ * field, so the next keystroke still reaches the board. Resolves to the
+ * added frame, or null once a refusal is reported, so a caller can act on its
+ * box before the live store carries it.
  */
 export async function placeFrame(
   point: { x: number; y: number; width?: number; height?: number },
@@ -77,7 +75,6 @@ export async function placeFrame(
     calls = structure,
     visible,
     view = canvasView,
-    rename = (ref) => startFrameRename(ref, 'inspector'),
   }: PlaceContext,
 ): Promise<FrameRecord | null> {
   const { width, height } = point
@@ -97,7 +94,6 @@ export async function placeFrame(
     )
     select(selection, page, [added.ref])
     mode.setState({ tool: 'move' })
-    rename(added.ref)
     if (visible && !within(added.box, visible)) view.centerOn(added.box)
     return added
   } catch (error) {
