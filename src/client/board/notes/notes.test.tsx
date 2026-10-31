@@ -2,6 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Profiler } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
@@ -15,6 +16,7 @@ import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
+import { reportZoom } from '../view'
 import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
@@ -886,6 +888,134 @@ describe('NotesLayer', () => {
         screen.getAllByRole('button').map((button) => button.textContent),
       ).toEqual(['3'])
     })
+  })
+
+  describe('with notes a few board pixels apart', () => {
+    /** A frame on the page whose top right corner sits at `right`, 0. */
+    function frameEndingAt(name: string, right: number): FrameRecord {
+      return {
+        ...HERO,
+        ref: `studio/home/${name}`,
+        name,
+        path: `/board/studio/home/${name}.html`,
+        box: { x: 0, y: 0, width: right, height: 844 },
+      }
+    }
+    // Corners at 390,0 and 393,0, three board pixels apart.
+    const NEAR = frameEndingAt('near', 393)
+    const ON_HERO = note({ id: 'n_1', number: 1 })
+    const ON_NEAR = note({ id: 'n_2', number: 2, frame: 'near' })
+
+    function renderNear(frames: FrameRecord[] = [HERO, NEAR]) {
+      return render(
+        <NotesLayer page="studio/home" frames={frames} container={null} />,
+      )
+    }
+
+    afterEach(() => {
+      act(() => reportZoom(1))
+    })
+
+    it('draws one count pin reading 2 at zoom 1', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+
+      renderNear()
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['2'])
+    })
+
+    it('draws two pins at a zoom setting them 30 screen px apart', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      act(() => reportZoom(10))
+
+      renderNear()
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['1', '2'])
+    })
+
+    it('groups a row 15 px apart by the first spot in reach, never chaining', () => {
+      const FAR = frameEndingAt('far', 420)
+      live({
+        notes: {
+          'studio/home': [
+            ON_HERO,
+            note({ id: 'n_2', number: 2, frame: 'mid' }),
+            note({ id: 'n_3', number: 3, frame: 'far' }),
+          ],
+        },
+      })
+
+      renderNear([HERO, frameEndingAt('mid', 405), FAR])
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['2', '3'])
+    })
+
+    it('closes an open list once a zoom splits its spot', async () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      renderNear()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      act(() => reportZoom(10))
+      act(() => reportZoom(1))
+
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('moves focus from a list a zoom closes to the pin of its first note', async () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      renderNear()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      act(() => reportZoom(10))
+
+      expect(
+        screen.getByRole('button', { name: 'Note 1 on hero' }),
+      ).toHaveFocus()
+    })
+
+    it('renders nothing for a zoom that regroups no pin', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      let commits = 0
+      render(
+        <Profiler id="notes" onRender={() => commits++}>
+          <NotesLayer
+            page="studio/home"
+            frames={[HERO, NEAR]}
+            container={null}
+          />
+        </Profiler>,
+      )
+      const before = commits
+
+      act(() => reportZoom(2))
+      act(() => reportZoom(3))
+
+      expect(commits - before).toBe(0)
+    })
+  })
+
+  it('draws a pin at least 24 px on each side, the target size', () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+
+    renderLayer()
+
+    const pin = screen
+      .getByRole('button', { name: 'Note 1 on hero' })
+      .getBoundingClientRect()
+    expect({
+      width: pin.width >= 24,
+      height: pin.height >= 24,
+    }).toEqual({ width: true, height: true })
   })
 
   it("tags a marker with its frame's ref, which a frame drag matches", () => {
