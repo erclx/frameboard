@@ -790,18 +790,22 @@ export function attachGestures(
       })
   }
 
-  // Snapping follows Ctrl at once, rather than waiting for the next move.
   // Esc puts a placed element's drag back where it started, writing nothing.
+  // It listens in the capture phase and stops the press there, since the key
+  // registry's window listener registered first and would also run Esc's
+  // `element.up` on the same press.
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || gesture.kind !== 'placed') return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    gesture.move.cancel()
+    shiftElementOutline(0, 0)
+    shiftElementPins(gesture.key, 0, 0)
+    gesture = { kind: 'none' }
+  }
+
+  // Snapping follows Ctrl at once, rather than waiting for the next move.
   const onKey = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && gesture.kind === 'placed') {
-      event.preventDefault()
-      event.stopPropagation()
-      gesture.move.cancel()
-      shiftElementOutline(0, 0)
-      shiftElementPins(gesture.key, 0, 0)
-      gesture = { kind: 'none' }
-      return
-    }
     if (event.key !== 'Control' || !moved || !last) return
     update(
       new MouseEvent('mousemove', {
@@ -826,6 +830,7 @@ export function attachGestures(
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {
       start(event.sourceEvent)
+      addEventListener('keydown', onEscape, true)
       addEventListener('keydown', onKey)
       addEventListener('keyup', onKey)
     })
@@ -848,6 +853,7 @@ export function attachGestures(
       update(source)
     })
     .on('end', (event: { sourceEvent: MouseEvent }) => {
+      removeEventListener('keydown', onEscape, true)
       removeEventListener('keydown', onKey)
       removeEventListener('keyup', onKey)
       finish(event.sourceEvent)
@@ -865,6 +871,7 @@ export function attachGestures(
   return () => {
     selectionOfHit.on('.drag', null)
     hit.removeEventListener('contextmenu', noMenu)
+    removeEventListener('keydown', onEscape, true)
     removeEventListener('keydown', onKey)
     removeEventListener('keyup', onKey)
   }

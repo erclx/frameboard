@@ -1,9 +1,11 @@
 import '../../styles.css'
 
 import { act, render } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
@@ -1196,6 +1198,31 @@ describe('attachGestures', () => {
           canvas.moves,
           canvas.writes,
         ]).toEqual([[{ left: 65, top: 10 }], [], []])
+      })
+
+      it('keeps Esc from the key registry, so the selection stays on the element', async () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        const ran: string[] = []
+        const unregister = registerActions([
+          {
+            id: 'test.escape',
+            label: 'Escape',
+            group: 'selection',
+            keys: ['Escape'],
+            run: () => ran.push('escape'),
+          },
+        ])
+        const unbind = bindKeys(window)
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        await userEvent.keyboard('{Escape}')
+        canvas.pointer.up(225, 155)
+        unbind()
+        unregister()
+
+        expect([ran, canvas.placedMoves[0]?.cancelled]).toEqual([[], true])
       })
 
       it('puts it back and writes nothing on Esc mid-drag', () => {
