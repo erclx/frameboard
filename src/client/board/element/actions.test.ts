@@ -146,6 +146,22 @@ describe('elementActions', () => {
       expect(action('element.down').enabled?.()).toBe(false)
     })
 
+    it('stands aside while a note pin on the canvas holds focus, so Enter opens it', () => {
+      const { selection, action } = setup({ boardFocused: focusOnBoard })
+      select(selection, PAGE, [HERO])
+
+      const canvas = document.createElement('div')
+      canvas.setAttribute('data-canvas', '')
+      const pin = document.createElement('button')
+      pin.setAttribute('data-note-marker', '')
+      canvas.append(pin)
+      document.body.append(canvas)
+      cleanups.push(() => canvas.remove())
+      pin.focus()
+
+      expect(action('element.down').enabled?.()).toBe(false)
+    })
+
     it('stands aside with several frames selected', () => {
       const { selection, action } = setup()
       select(selection, PAGE, [HERO, 'studio/home/about'])
