@@ -8,6 +8,7 @@ import { version } from '@/shared/version'
 
 import { createTickets } from './access/tickets'
 import { createApp } from './app'
+import type { ClipboardFiles } from './clipboard/files'
 import { History } from './history/stack'
 import { createSelectionHolder } from './live/selection'
 
@@ -25,7 +26,7 @@ describe('createApp', () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  function request(url: string) {
+  function request(url: string, clipboard: ClipboardFiles | null = null) {
     return createApp({
       clientDir,
       facesDir: clientDir,
@@ -43,6 +44,7 @@ describe('createApp', () => {
         show: () => 0,
       },
       renderFrame: async () => Buffer.alloc(0),
+      clipboard,
       history: new History('/board'),
       selection: createSelectionHolder(() => 0),
     }).request(url)
@@ -76,7 +78,16 @@ describe('createApp', () => {
       version,
       root: '/board',
       tokens: null,
+      clipboard: null,
     })
+  })
+
+  it('reports the clipboard backend on the health check', async () => {
+    const wsl: ClipboardFiles = { backend: 'wsl', write: async () => {} }
+
+    const response = await request(`http://127.0.0.1:${PORT}/api/health`, wsl)
+
+    expect(await response.json()).toMatchObject({ clipboard: 'wsl' })
   })
 
   describe('host guard', () => {

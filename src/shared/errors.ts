@@ -66,6 +66,8 @@ export const EXIT_CODES = {
   'section-not-found': 3,
   // A hand placement refused, since a positioned parent would move another element.
   'reanchors-descendant': 7,
+  // A copy of several frames to the OS clipboard where the server holds no backend for it.
+  'clipboard-unsupported': 3,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
