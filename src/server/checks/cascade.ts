@@ -318,7 +318,7 @@ export function buildCascade(
 }
 
 /** A rule styles elements unless it sits in a non-styling at-rule or inside another rule. */
-function styles(rule: Rule): boolean {
+export function styles(rule: Rule): boolean {
   for (
     let parent: Node | undefined = rule.parent;
     parent;
@@ -340,7 +340,7 @@ function styles(rule: Rule): boolean {
  * statically: a pseudo-element, a state the frame is not in, or a selector
  * css-select does not support.
  */
-function compileSelector(
+export function compileSelector(
   selector: string,
 ): ((element: Element) => boolean) | null {
   if (

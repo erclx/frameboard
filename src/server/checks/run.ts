@@ -11,6 +11,7 @@ import { CUSTOM_PROPERTY_RULES } from './custom-properties'
 import { FONT_RULES } from './fonts'
 import { checkFrameIn, type ProjectContext, readProjectContext } from './frame'
 import { LINK_RULES } from './links'
+import { OUTRANKED_RULES } from './outranked'
 import type { RuleDoc } from './rule'
 import { checkDotFolders, STRUCTURE_RULES } from './structure'
 import { THEME_RULES } from './theme'
@@ -24,6 +25,7 @@ export const RULES: RuleDoc[] = [
   ...THEME_RULES,
   ...CUSTOM_PROPERTY_RULES,
   ...UPPERCASE_RULES,
+  ...OUTRANKED_RULES,
   ...LAYOUT_RULES,
   ...FONT_SIZE_RULES,
   ...DECLARATION_RULES,

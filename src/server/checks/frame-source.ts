@@ -58,10 +58,17 @@ export interface FrameSource extends FrameTarget {
 }
 
 export function readFrame(target: FrameTarget): FrameSource {
-  const projectDir = join(target.root, target.project)
-  const pageDir = join(projectDir, target.page)
-  const path = join(pageDir, `${target.name}${FRAME_EXTENSION}`)
-  const html = readFileSync(path, 'utf8')
+  return frameFrom(target, readFileSync(framePath(target), 'utf8'))
+}
+
+/**
+ * A frame read from `html` rather than its file, such as a version an agent's
+ * write replaced. Linked sheets still read from disk as they stand now.
+ */
+export function frameFrom(target: FrameTarget, html: string): FrameSource {
+  const path = framePath(target)
+  const pageDir = dirname(path)
+  const projectDir = dirname(pageDir)
   // As the edit writer's parseFrame does in src/server/edit/address.ts: a
   // browser drops a leading BOM before the tokenizer, where parse5 would read
   // it as text and imply the wrappers. A space is ignored alike and keeps
@@ -142,6 +149,15 @@ export function readFrame(target: FrameTarget): FrameSource {
     sheets,
     parseErrors,
   }
+}
+
+function framePath(target: FrameTarget): string {
+  return join(
+    target.root,
+    target.project,
+    target.page,
+    `${target.name}${FRAME_EXTENSION}`,
+  )
 }
 
 /**
