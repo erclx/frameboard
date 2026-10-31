@@ -19,6 +19,7 @@ import {
   type Placement,
   removeElement,
 } from './insert'
+import { placeElement, type PlaceFacts, type Spot } from './place'
 
 export type FrameFileEdit =
   | {
@@ -211,6 +212,37 @@ export function moveFrameFile(
     index: moved.index,
     span: moved.span,
   }
+}
+
+export type FrameFilePlace =
+  | {
+      readonly ok: true
+      readonly hash: string
+      /** The parent's start tag first when it was written, then the element's. */
+      readonly spans: readonly ElementSpan[]
+    }
+  | EditRefused
+
+/**
+ * Places one element of a frame file at a spot, or puts it back in the flow,
+ * written as `moveFrameFile` writes and refused as stale on a hash the file
+ * no longer has. `facts` is the static cascade read from the bytes `hash`
+ * names, so a parent's position is never read from another version.
+ */
+export function placeFrameFile(
+  path: string,
+  hash: string,
+  index: number,
+  spot: Spot | null,
+  facts: readonly PlaceFacts[],
+): FrameFilePlace {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const placed = placeElement(read.source, index, spot, facts)
+  if (!placed.ok) return placed
+  if (!replaceFile(path, hash, placed.html)) return stale(path)
+  return { ok: true, hash: contentHash(placed.html), spans: placed.spans }
 }
 
 /**

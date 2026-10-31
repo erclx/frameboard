@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -6,12 +7,15 @@ import { z } from 'zod'
 
 import { resolveAsset } from '@/server/board/assets'
 import { resolveFrameRef } from '@/server/board/refs'
+import { readFrame, type Sheet } from '@/server/checks/frame-source'
 import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
+import { elementPlaceFacts } from '@/server/edit/elements'
 import {
   editFrameFile,
   insertFrameFile,
   moveFrameFile,
+  placeFrameFile,
   removeFrameFile,
 } from '@/server/edit/frame-file'
 import {
@@ -26,6 +30,7 @@ import type {
   EditResult,
   InsertResult,
   MoveResult,
+  PlaceResult,
   RemoveResult,
 } from '@/shared/records/edit'
 
@@ -95,6 +100,23 @@ const moveSchema = z.object({
   before: z.int().min(0).nullable(),
 })
 
+/** A spot in CSS pixels, bounded well past any frame. */
+const offset = z.number().min(-100_000).max(100_000)
+
+const placeSchema = z.object({
+  ref: z.string().min(1).max(1024),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  index: z.int().min(0),
+  spot: z
+    .object({
+      left: offset,
+      top: offset,
+      width: side.optional(),
+      height: side.optional(),
+    })
+    .nullable(),
+})
+
 /** The source a frame held under a hash an agent's write replaced, or null when none is kept. */
 export type SettledVersion = (
   ref: string,
@@ -136,6 +158,14 @@ export type SettledVersion = (
  * puts back byte for byte. It answers the element's new index and the hash
  * written, and refuses as the insert does, with `invalid-container` for a
  * gap inside the element itself.
+ *
+ * The place takes one element by index and a spot in CSS pixels against its
+ * containing block, or null to put it back in the flow, read in the frame as
+ * the hash names it. It writes the element's start tag, and its static
+ * parent's first, and records both as one step, so one undo restores both.
+ * It answers the element's index and the hash written, refuses as the move
+ * does, and refuses `reanchors-descendant` where a positioned parent would
+ * move another element anchored above it.
  */
 export function editRoutes(
   root: string,
@@ -323,6 +353,65 @@ export function editRoutes(
     const data: MoveResult = { ref, index: result.index, hash: result.hash }
     return c.json({ ok: true, data })
   })
+
+  app.post('/api/frames/place', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, placeSchema)
+    const frame = await resolveFrameRef(root, body.ref, { cwd: root })
+    const ref = `${frame.project}/${frame.page}/${frame.name}`
+    await refuseClaimed(root, [ref], new Date())
+    const source = readFrame(frame)
+    // Facts read from other bytes than the hash names would pick the wrong tags.
+    const facts =
+      contentHash(source.html) === body.hash
+        ? elementPlaceFacts(source, tokenSheets(frame.project))
+        : []
+    const result = placeFrameFile(
+      frame.path,
+      body.hash,
+      body.index,
+      body.spot,
+      facts,
+    )
+    if (!result.ok) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: result.reason,
+            message: result.detail,
+            details: { ref, index: body.index },
+          },
+        },
+        409,
+      )
+    }
+    const written = result.spans.filter((span) => span.before !== span.after)
+    if (written.length > 0) {
+      const journal = history.journal()
+      for (const span of written) journal.element(frame.path, ref, span)
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: [ref],
+      })
+    }
+    const data: PlaceResult = { ref, index: body.index, hash: result.hash }
+    return c.json({ ok: true, data })
+  })
+
+  /** The project's token sheets as the cascade reads them, board-wide first. */
+  const tokenSheets = (project: string): Sheet[] => {
+    const paths = sheets?.(project)
+    return [paths?.board ?? null, paths?.project ?? null]
+      .filter((path) => path !== null)
+      .map((path) => ({
+        css: readFileSync(path, 'utf8'),
+        origin: 'token',
+        path,
+        offset: 0,
+      }))
+  }
 
   app.onError(answerRefusal)
 

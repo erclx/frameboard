@@ -6,6 +6,7 @@ import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
+import type { PlaceFacts } from './place'
 
 /** How long a text-only element's text may run as its name. */
 const NAME_LENGTH = 40
@@ -18,6 +19,13 @@ const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
 ])
 
 const ROUND_PROPERTIES: ReadonlySet<string> = new Set(['border-radius'])
+
+/** What a placement reads: where an element is anchored and which axes a rule sizes. */
+const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
+  'position',
+  'width',
+  'height',
+])
 
 /**
  * A frame's elements under `body` in index order, each with its parent and
@@ -90,6 +98,30 @@ export function elementRounds(source: FrameSource, tokens: Sheet[]): boolean[] {
     const percent = radius?.match(/^(\d+(?:\.\d+)?)%$/)?.[1]
     return percent !== undefined && Number(percent) >= 50
   })
+}
+
+/**
+ * Each element's `position` and whether a rule sizes its width and height,
+ * read from the same static cascade by the edit index, which a placement
+ * reads to choose the tags it writes. A sheet a load cannot read is missed,
+ * so a parent it positions reads as static.
+ */
+export function elementPlaceFacts(
+  source: FrameSource,
+  tokens: Sheet[],
+): PlaceFacts[] {
+  const cascade = buildCascade(source, tokens, {
+    properties: PLACE_PROPERTIES,
+  })
+  const own = (element: FrameSource['elements'][number], property: string) => {
+    const specified = cascade.specified(element, property)
+    return specified && !specified.userAgent ? specified.value : null
+  }
+  return source.elements.map((element) => ({
+    position: own(element, 'position'),
+    width: own(element, 'width') !== null,
+    height: own(element, 'height') !== null,
+  }))
 }
 
 function layoutOf(

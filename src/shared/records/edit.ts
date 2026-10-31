@@ -39,3 +39,12 @@ export const moveResultSchema = z.object({
 })
 
 export type MoveResult = z.infer<typeof moveResultSchema>
+
+/** What `POST /api/frames/place` returns: the frame it wrote, the placed element's index, and the hash the next write is made from. */
+export const placeResultSchema = z.object({
+  ref: z.string(),
+  index: z.int().min(0),
+  hash,
+})
+
+export type PlaceResult = z.infer<typeof placeResultSchema>
