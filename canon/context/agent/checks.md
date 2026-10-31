@@ -19,6 +19,12 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - `check` exits 8 with `check-findings` and the result in the error's details when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, and `unknown-token`
 
+Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.
+
+- Red means the frame is broken, rendering wrong or not loading, and an error fails `check`. Amber means it renders and a style call is in question, so a warning never does
+- The errors are the link, markup, and naming rules, `clipped`, `theme`, and `allowed-fonts`, which a project chose. Every other rule warns, `uppercase` and `min-font-size` included
+- `findingFor` binds a module's docs and stamps each finding with its rule's level, refusing a rule the docs never declare
+
 The markup rules read what parse5 recovered from, since a browser recovers from the same bytes without a word.
 
 - `readFrame` collects parse5's `onParseError` codes onto `FrameSource.parseErrors`, so a rule reads them without parsing twice
@@ -30,6 +36,7 @@ The custom property rule reads declarations rather than the tree.
 
 - `unknown-token` reports a `var()` with no fallback that no token sheet, frame sheet, or style attribute declares, leaving a token sheet's own references to the board
 - A property a script sets reads as unknown to `unknown-token`, which a fallback silences
+- `unknown-token` skips a linked sheet's rule matching no element in the frame, so a site sheet's other pages stay quiet. The frame's own `<style>` keeps reporting its theme and state rules
 - `parseSheet` blanks a declaration postcss reads as an unknown word and cuts the sheet at any other break, so `unknown-token` and `dropped-declaration` read every declaration a browser keeps
 
 Selector rules read the cascade rather than the parsed file.
@@ -53,7 +60,7 @@ The hook's entry is `src/cli/hook.ts`, bundled to `dist/hook.js` beside the CLI,
 
 ### `src/server/checks/browser/`
 
-Owns the browser tier, the rules that read a rendered page. It sits in its own folder so the hook bundle, which imports `checks/frame.ts` alone, never reaches it or `playwright-core`. Its `viewport` rule reports a warning and the rest report errors, since a full-height screen sizes off the viewport on purpose.
+Owns the browser tier, the rules that read a rendered page. It sits in its own folder so the hook bundle, which imports `checks/frame.ts` alone, never reaches it or `playwright-core`. Only `clipped` reports an error, and `viewport` warns since a full-height screen sizes off the viewport on purpose.
 
 - `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'` so a missing face is measured in the fallback the board shows
 - Each rule reports at most one finding per frame, naming the first offending element by its edit index and how many more, and opens with the theme when only one theme trips it
@@ -61,12 +68,12 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - `viewport` rereads the content at twice the viewport height through `fit`'s `readContentSize`, which leaves out what a cropping ancestor hides, as `clipped` does
 - `min-font-size` runs only when `project.json` sets `checks.minFontSize` to a positive number of pixels, and picks text elements the way capture's font check does
 
-`dropped-declaration` is the one browser rule that reports per declaration rather than once per frame.
+`dropped-declaration` is the one browser rule that reports per declaration rather than once per frame. Only the page's own parser knows what it drops, which is why the rule sits in the browser tier.
 
 - It reads the frame's own sheets and style attributes with postcss in node, then asks the page's `CSS.supports` for every pair in one `evaluate`
-- Only the page's own parser knows what it drops, which is why the rule sits in the browser tier
 - It reports each refused pair at its source location, and a sheet postcss refuses once at the break
 - It skips custom properties, declarations inside `@font-face`, `@property`, `@page`, `@counter-style`, `@font-palette-values`, and `@supports`, and the `-moz-`, `-ms-`, and `-o-` prefixes
+- It skips a `-webkit-` declaration whose standard property sits in the same rule, the fallback a build tool writes for Safari, and still reports one standing alone
 - It reads no theme, so `checkRendered` runs it once and appends its findings after the merged themed rules, and it takes the board `root` to read the frame
 
 The findings the board holds between watch batches, and the warm checker that runs this tier, sit in `src/server/live/`, which `canon/context/board/server.md` owns. Each frame's list is its static findings, then the change findings its last agent write raised, then the browser findings last landed for it, so the client keeps one list per ref.

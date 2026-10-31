@@ -3,28 +3,33 @@ import type { Page } from 'playwright-core'
 import { readContentSize } from '@/server/capture/fit'
 import type { Finding } from '@/shared/records/check'
 
-import { finding, type RuleDoc } from '../rule'
+import { findingFor, type RuleDoc } from '../rule'
 
 export const LAYOUT_RULES: RuleDoc[] = [
   {
     id: 'clipped',
     tier: 'browser',
+    severity: 'error',
     description:
       'Content reaches past the box the frame renders at, so the board cuts it off',
   },
   {
     id: 'scrollbar',
     tier: 'browser',
+    severity: 'warning',
     description:
       'An element inside the frame scrolls by more than a pixel, showing a scrollbar in the design',
   },
   {
     id: 'viewport',
     tier: 'browser',
+    severity: 'warning',
     description:
       'Content sizes itself off the viewport height rather than holding a height of its own, a warning since a full-height screen does it on purpose',
   },
 ]
+
+const finding = findingFor(LAYOUT_RULES)
 
 /** The frame a browser rule reports on. */
 export interface RenderedTarget {
@@ -161,7 +166,6 @@ function viewport(
   return finding('viewport', {
     frame: target.ref,
     path: target.path,
-    severity: 'warning',
     message: `${target.ref} grows with the viewport, measuring ${atBox} px at its ${target.box.height} px height and ${atTall} px at twice that${offenders(grown, 'growing')}. Give it a height of its own unless it is a full-height screen on purpose.`,
   })
 }

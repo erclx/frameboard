@@ -8,16 +8,19 @@ import {
   type FrameSource,
   locate,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const THEME_RULES: RuleDoc[] = [
   {
     id: 'theme',
     tier: 'selector',
+    severity: 'error',
     description:
       'A frame setting literal colors defines the other theme too, through a [data-theme] selector, a prefers-color-scheme query, or light-dark()',
   },
 ]
+
+const finding = findingFor(THEME_RULES)
 
 const COLOR_PROPERTIES =
   /^(color|background(-color|-image)?|border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?|outline(-color)?|fill|stroke|box-shadow|text-shadow|caret-color|accent-color|text-decoration(-color)?|column-rule(-color)?)$/i

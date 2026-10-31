@@ -1,7 +1,9 @@
-import postcss, { type Root } from 'postcss'
+import type { Element } from 'domhandler'
+import postcss, { type Declaration, type Root, type Rule } from 'postcss'
 
 import type { Finding, FindingLocation } from '@/shared/records/check'
 
+import { compileSelector, styles } from './cascade'
 import {
   attributeLocation,
   boardPath,
@@ -10,16 +12,19 @@ import {
   parseSheet,
   type Sheet,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const CUSTOM_PROPERTY_RULES: RuleDoc[] = [
   {
     id: 'unknown-token',
     tier: 'exact',
+    severity: 'warning',
     description:
       'A var() with no fallback names a custom property no token sheet, frame sheet, or style attribute declares',
   },
 ]
+
+const finding = findingFor(CUSTOM_PROPERTY_RULES)
 
 /** A `var()` naming its property, with no fallback after a comma. */
 const BARE_VAR = /var\(\s*(--[\w-]+)\s*\)/g
@@ -35,6 +40,9 @@ interface Use {
  * and style attributes whose name nothing declares. A token sheet's own
  * references are the board's to answer for, so only its declarations count.
  * A property a script sets reads as unknown, which a fallback silences.
+ * A linked sheet's rule matching no element in the frame stays quiet, since a
+ * site sheet styles other pages. The frame's own `<style>` keeps reporting,
+ * since its theme and state rules match elements no static tree marks.
  */
 export function checkUnknownTokens(
   source: FrameSource,
@@ -52,6 +60,9 @@ export function checkUnknownTokens(
     root.walkDecls((node) => {
       if (node.prop.startsWith('--')) declared.add(node.prop)
       if (sheet.origin === 'token') return
+      if (sheet.origin === 'linked' && matchesNothing(node, source.elements)) {
+        return
+      }
       for (const name of bareVars(node.value)) {
         uses.push({
           name,
@@ -94,6 +105,20 @@ export function checkUnknownTokens(
         location: use.location,
       }),
     )
+}
+
+/**
+ * Whether `node` sits in a rule none of whose selectors matches an element.
+ * A declaration outside a rule, or a selector the check cannot match
+ * statically, counts as matching, so the use still reports.
+ */
+function matchesNothing(node: Declaration, elements: Element[]): boolean {
+  const rule = node.parent
+  if (rule?.type !== 'rule' || !styles(rule as Rule)) return false
+  return (rule as Rule).selectors.every((selector) => {
+    const matches = compileSelector(selector)
+    return matches !== null && !elements.some(matches)
+  })
 }
 
 function bareVars(value: string): string[] {

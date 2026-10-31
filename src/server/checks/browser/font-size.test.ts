@@ -60,7 +60,7 @@ describe.skipIf(shell === null)(
       expect(findings).toMatchObject([
         {
           rule: 'min-font-size',
-          severity: 'error',
+          severity: 'warning',
           message:
             "studio/home/hero sets text at 9 px in <p> at element 5, under the project's 12 px minimum, and 2 more elements are under it.",
         },

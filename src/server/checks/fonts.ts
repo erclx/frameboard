@@ -5,29 +5,34 @@ import type { Finding } from '@/shared/records/check'
 
 import type { Cascade } from './cascade'
 import { boardPath, type FrameSource, startTagLocation } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const FONT_RULES: RuleDoc[] = [
   {
     id: 'default-font',
     tier: 'selector',
+    severity: 'warning',
     description:
       "Every text element reaches a font-family, so the browser's default font never renders",
   },
   {
     id: 'generic-font',
     tier: 'selector',
+    severity: 'warning',
     description:
       'No text element renders in a generic family such as sans-serif or monospace as its first choice',
   },
   {
     id: 'allowed-fonts',
     tier: 'selector',
+    severity: 'error',
     configKey: 'allowedFonts',
     description:
       "Every text element's first family is one of the project's allowed fonts",
   },
 ]
+
+const finding = findingFor(FONT_RULES)
 
 const GENERIC_FAMILIES = new Set([
   'serif',

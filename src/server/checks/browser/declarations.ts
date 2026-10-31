@@ -19,16 +19,19 @@ import {
   parseSheet,
   type Sheet,
 } from '../frame-source'
-import { finding, type RuleDoc } from '../rule'
+import { findingFor, type RuleDoc } from '../rule'
 
 export const DECLARATION_RULES: RuleDoc[] = [
   {
     id: 'dropped-declaration',
     tier: 'browser',
+    severity: 'warning',
     description:
       "A declaration the page's own CSS parser drops, being a misspelled property, a value it cannot read, or a sheet that stops parsing",
   },
 ]
+
+const finding = findingFor(DECLARATION_RULES)
 
 /**
  * At-rules whose blocks hold descriptors rather than properties, which
@@ -40,6 +43,9 @@ const SKIPPED_BLOCKS =
 
 /** Prefixes for engines the board never renders in. */
 const FOREIGN_PREFIX = /^-(moz|ms|o)-/i
+
+/** The one engine prefix the board renders, which a build tool writes beside the standard property as a fallback. */
+const FALLBACK_PREFIX = /^-webkit-/i
 
 interface Written {
   property: string
@@ -134,6 +140,7 @@ function checkable(node: Declaration): boolean {
   if (node.prop.startsWith('--') || FOREIGN_PREFIX.test(node.prop)) {
     return false
   }
+  if (isFallback(node)) return false
   for (
     let parent: Node | Document | undefined = node.parent;
     parent;
@@ -147,6 +154,19 @@ function checkable(node: Declaration): boolean {
     }
   }
   return true
+}
+
+/** A prefixed declaration whose standard property sits in the same rule. */
+function isFallback(node: Declaration): boolean {
+  if (!FALLBACK_PREFIX.test(node.prop)) return false
+  const standard = node.prop.replace(FALLBACK_PREFIX, '').toLowerCase()
+  return (
+    node.parent?.some(
+      (sibling) =>
+        sibling.type === 'decl' &&
+        (sibling as Declaration).prop.toLowerCase() === standard,
+    ) ?? false
+  )
 }
 
 /** What to tell the agent about a break, by the cure its kind takes. */

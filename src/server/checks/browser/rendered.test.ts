@@ -54,9 +54,9 @@ describe.skipIf(shell === null)(
 
     it.each([
       ['rules/clipped/fail', 'clipped', 'error'],
-      ['rules/scrollbar/fail', 'scrollbar', 'error'],
+      ['rules/scrollbar/fail', 'scrollbar', 'warning'],
       ['rules/viewport/fail', 'viewport', 'warning'],
-      ['rules/min-font-size/fail', 'min-font-size', 'error'],
+      ['rules/min-font-size/fail', 'min-font-size', 'warning'],
     ])('reports %s for %s alone, at %s', async (ref, rule, severity) => {
       const findings = await check(ref)
 

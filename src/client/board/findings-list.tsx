@@ -3,8 +3,8 @@ import { TriangleAlert } from 'lucide-react'
 import type { Finding } from '@/shared/records/check'
 
 /**
- * A frame's findings, each as its rule, the line it sits at when it has one,
- * and its message, which already ends on the fix. The badge's popover and
+ * A frame's findings, each as its rule, the file it sits in when that is not
+ * the frame's own, the line when it has one, and its message, which already ends on the fix. The badge's popover and
  * the inspector's Checks both draw it, the warning glyph in the destructive
  * hue for an error and the note hue for a warning.
  */
@@ -27,14 +27,9 @@ export function FindingsList({ findings }: { findings: readonly Finding[] }) {
             strokeWidth={2}
           />
           <div className="min-w-0">
-            <p className="text-xs">
+            <p className="text-xs break-words">
               <span className="font-semibold">{finding.rule}</span>
-              {finding.location ? (
-                <span className="text-muted-foreground">
-                  {' '}
-                  · line {finding.location.line}
-                </span>
-              ) : null}
+              <Where finding={finding} />
             </p>
             <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
               {finding.message}
@@ -44,4 +39,26 @@ export function FindingsList({ findings }: { findings: readonly Finding[] }) {
       ))}
     </ul>
   )
+}
+
+function Where({ finding }: { finding: Finding }) {
+  const file = otherFile(finding)
+  const line = finding.location ? `line ${finding.location.line}` : null
+  const where = [file, line].filter(Boolean).join(', ')
+  if (!where) return null
+  return <span className="text-muted-foreground"> · {where}</span>
+}
+
+/**
+ * The finding's path under its project, such as `assets/site.css`, when it
+ * sits in a file the frame links rather than the frame's own.
+ */
+function otherFile(finding: Finding): string | null {
+  if (finding.frame === null || finding.path === `${finding.frame}.html`) {
+    return null
+  }
+  const project = `${finding.frame.split('/')[0]}/`
+  return finding.path.startsWith(project)
+    ? finding.path.slice(project.length)
+    : finding.path
 }

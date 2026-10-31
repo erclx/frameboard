@@ -10,16 +10,19 @@ import {
   type FrameSource,
   parseSheet,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const OUTRANKED_RULES: RuleDoc[] = [
   {
     id: 'outranked',
     tier: 'selector',
+    severity: 'warning',
     description:
       "An agent's write changed a rule in the frame's own <style> that an element's unchanged style attribute also sets, so that element keeps its inline value, which may be the developer's hand edit. A warning the server raises against the bytes the write replaced, so the hook never reports it.",
   },
 ]
+
+const finding = findingFor(OUTRANKED_RULES)
 
 const SIDES = ['top', 'right', 'bottom', 'left'] as const
 const LOGICAL = [
@@ -167,7 +170,6 @@ export function checkOutranked(
     finding('outranked', {
       frame: after.ref,
       path: boardPath(after.root, after.path),
-      severity: 'warning',
       message: `This write changed the ${first.selector} rule, but <${first.element.name}> at element ${first.index} sets ${first.property} in its style attribute, which outranks every rule${others}. The style attribute may hold a value the developer set by hand, so change it too only if the new value should reach that element.`,
       location: attributeLocation(first.element, 'style'),
     }),

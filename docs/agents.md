@@ -21,7 +21,9 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
 
-- The board runs the same rules on each change, and a frame's findings badge opens the list, which the inspector shows too
+- An error means the frame renders wrong or cannot load, and a warning means it renders and a style call is in question, such as a generic font. `frameboard docs` prints each rule's level.
+- The board runs the same rules on each change, and a frame's findings badge, red for an error and amber for warnings alone, opens the list, which the inspector shows too
+- A finding in a stylesheet the frame links names that file beside its line
 - A running server adds the rules only a browser can see, being clipped content, an inner scrollbar, content sized off the viewport, text under a project's minimum size, and dropped CSS
 - A running server also warns when an agent's write changes a rule that an element's own `style` attribute overrides, since that element keeps the value you may have set by hand
 
