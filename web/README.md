@@ -8,10 +8,13 @@ The public page for Frameboard, a static Astro site built against `canon/design/
 
 ## Social card
 
-The card at `card-src/pages/og-card.astro` reads the page's tokens from `src/styles/global.css`, so a token change reaches `public/og-image.png` only when someone captures it again. With `bun run card:dev` running, capture from the repository root:
+The card at `card-src/pages/og-card.astro` reads the page's tokens from `src/styles/global.css`, so a token change reaches the two cards in `public/` only when someone captures them again. With `bun run card:dev` running, capture both from the repository root:
 
 ```bash
 canon capture http://localhost:<port>/og-card --selector .card --out web/public/og-image.png
+canon capture "http://localhost:<port>/og-card?theme=dark" --selector .card --out web/public/og-image-dark.png
 ```
 
-The capture prints 1200x630. Delete the `.stamp` file it writes beside the image, since its source line names a local port.
+Each capture prints 1200x630. Delete the `.stamp` files they write beside the images, since their source lines name a local port.
+
+A link preview shows one image whatever the reader's theme, so the site publishes one card. `socialCard` in `src/pages/index.astro` names it, and pointing it at `/og-image-dark.png` switches the site to the dark card.
