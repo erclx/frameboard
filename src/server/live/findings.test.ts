@@ -79,6 +79,62 @@ describe('createBoardFindings', () => {
   })
 })
 
+describe('change findings', () => {
+  const outranked = (message: string): Finding => ({
+    rule: 'outranked',
+    severity: 'warning',
+    frame: 'site/home/hero',
+    path: 'site/home/hero.html',
+    message,
+    location: null,
+  })
+
+  it('merges a held change finding after the static ones', async () => {
+    board = writeBoard({ 'site/home/hero.html': UNSTYLED })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+
+    const sent = findings.setChanged('site/home/hero', [outranked('first')])
+
+    expect(rulesOf(sent)).toEqual({
+      'site/home/hero': ['default-font', 'outranked'],
+    })
+  })
+
+  it('keeps it across a recheck until the next agent write replaces it', async () => {
+    board = writeBoard({ 'site/home/hero.html': UNSTYLED })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setChanged('site/home/hero', [outranked('first')])
+    const hero = join(board.root, 'site/home/hero.html')
+    writeFileSync(hero, CLEAN)
+    findings.update(await scanBoard(board.root), [hero])
+    expect(rulesOf(findings.all())).toEqual({ 'site/home/hero': ['outranked'] })
+
+    findings.setChanged('site/home/hero', [])
+
+    expect(findings.all()).toEqual({ 'site/home/hero': [] })
+  })
+
+  it('drops it with a frame the board no longer holds', async () => {
+    board = writeBoard({
+      'site/home/hero.html': UNSTYLED,
+      'site/home/about.html': UNSTYLED,
+    })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setChanged('site/home/hero', [outranked('first')])
+    const hero = join(board.root, 'site/home/hero.html')
+    rmSync(hero)
+
+    findings.update(await scanBoard(board.root), [hero])
+
+    expect(findings.changed(['site/home/hero'])).toEqual({
+      'site/home/hero': [],
+    })
+  })
+})
+
 describe('browser findings', () => {
   const CLIPPED: Finding = {
     rule: 'clipped',
