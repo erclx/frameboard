@@ -1451,6 +1451,43 @@ function menuOn(
 }
 
 /**
+ * Adds a finding in a sheet the about frame links to every findings message
+ * the server sends, so its list shows that sheet's path beside the line.
+ * Faked, since a linked sheet in the committed fixture would change every
+ * board case.
+ */
+async function linkedSheetFinding(page: Page): Promise<void> {
+  const frame = 'webapp/home/about'
+  const linked = {
+    rule: 'unknown-token',
+    severity: 'warning',
+    frame,
+    path: 'webapp/home/site.css',
+    message:
+      "var(--brand) names a custom property nothing declares, so the declaration resolves to nothing. Use a token the project's tokens.css declares, or give it a fallback, such as var(--brand, red).",
+    location: { line: 1, column: 9, startOffset: 8, endOffset: 28 },
+  }
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as ServerMessage
+      const held = parsed.type === 'findings' ? parsed.findings[frame] : null
+      if (parsed.type !== 'findings' || !held) {
+        socket.send(message)
+        return
+      }
+      socket.send(
+        JSON.stringify({
+          ...parsed,
+          findings: { ...parsed.findings, [frame]: [...held, linked] },
+        }),
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
  * Presses a frame's findings badge through the hit layer above it once the
  * badge has drawn, the way a click reaches it, so its list opens.
  */
@@ -1746,6 +1783,24 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(
           both(
             asWriter,
+            findingsOn('webapp/home/about'),
+            readyWhen('[data-slot="popover-content"]'),
+          ),
+        ),
+      },
+      {
+        // A finding in a sheet the frame links names that sheet beside its line.
+        section: 'findings-linked',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        // The note marker's edge over the hero frame antialiases differently between runs.
+        mask: [AVATAR, '[data-note-marker]'],
+        setup: themed(
+          both(
+            asWriter,
+            linkedSheetFinding,
             findingsOn('webapp/home/about'),
             readyWhen('[data-slot="popover-content"]'),
           ),
