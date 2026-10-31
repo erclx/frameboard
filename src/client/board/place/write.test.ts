@@ -12,6 +12,7 @@ import {
   moveElementTo,
   placeElement,
   placeFile,
+  placeFree,
 } from './write'
 
 const HASH = 'c'.repeat(64)
@@ -738,5 +739,85 @@ describe('deleteElement', () => {
     expect(deleted).toBe(false)
     expect(notes).toEqual(['Nothing deleted'])
     expect(selection.getState().element).toEqual(KEY)
+  })
+})
+
+describe('placeFree', () => {
+  const KEY = { frame: HERO.ref, index: 4, hash: HASH }
+
+  it('sends the spot from the hash it was selected at, then selects it at the bytes written', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 4, hash: ANSWERED },
+    })
+
+    const placed = await placeFree(
+      'studio/home',
+      KEY,
+      { left: 12, top: 8, width: 100 },
+      { selection, live: createLiveStore(), send },
+    )
+
+    expect(placed).toBe(true)
+    expect(sent).toEqual([
+      {
+        ref: HERO.ref,
+        hash: HASH,
+        index: 4,
+        spot: { left: 12, top: 8, width: 100 },
+      },
+    ])
+    expect(selection.getState().element).toEqual({
+      ...KEY,
+      hash: ANSWERED,
+    })
+  })
+
+  it('sends a null spot to put the element back in the flow', async () => {
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 4, hash: ANSWERED },
+    })
+
+    await placeFree('studio/home', KEY, null, {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+      send,
+    })
+
+    expect(sent).toEqual([{ ref: HERO.ref, hash: HASH, index: 4, spot: null }])
+  })
+
+  it('shows a refusal and keeps the element selected', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const notes: string[] = []
+    const { send } = server(409, {
+      ok: false,
+      error: {
+        code: 'reanchors-descendant',
+        message: 'a positioned <div> would move the <i> anchored above it',
+      },
+    })
+
+    const placed = await placeFree(
+      'studio/home',
+      KEY,
+      { left: 0, top: 0 },
+      {
+        selection,
+        live: createLiveStore(),
+        send,
+        notify: (refusal) => void notes.push(refusal.title),
+      },
+    )
+
+    expect([placed, notes, selection.getState().element]).toEqual([
+      false,
+      ['Nothing placed'],
+      KEY,
+    ])
   })
 })

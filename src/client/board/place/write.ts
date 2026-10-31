@@ -4,6 +4,7 @@ import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type {
   InsertResult,
   MoveResult,
+  PlaceResult,
   RemoveResult,
 } from '@/shared/records/edit'
 import type { ElementTree } from '@/shared/records/elements'
@@ -441,6 +442,91 @@ export async function deleteElement(
               : 'The board could not be reached, so nothing was written.',
         })
       }
+      return null
+    } finally {
+      done()
+    }
+  })
+  return landed !== null
+}
+
+/** Where a placed element sits, in CSS pixels against the box it counts from, and the size it rendered at. */
+export interface FreeSpot {
+  left: number
+  top: number
+  width?: number
+  height?: number
+}
+
+/**
+ * Places the selected element at a spot out of the flow, or back in the flow
+ * on null, through `POST /api/frames/place`, which writes its start tag and
+ * its static parent's as one step, then selects it at the bytes written. It
+ * goes in the frame's turn from the hash an edit ahead answered, as a delete
+ * does, and keeps every index, so an edit queued behind goes as it would
+ * have. A frame another session holds is refused with nothing sent, as a
+ * move is. Answers whether it landed.
+ */
+export async function placeFree(
+  page: string,
+  key: ElementKey,
+  spot: FreeSpot | null,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+): Promise<boolean> {
+  const ref = key.frame
+  const title = spot ? 'Nothing placed' : 'Nothing moved'
+  const holder = live.getState().claims[ref]
+  if (holder) {
+    notify({
+      title,
+      description: `${holder.tag} is editing ${ref.split('/').at(-1) ?? ref}, so nothing was written.`,
+    })
+    return false
+  }
+  const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
+    const before = prior ? await prior : undefined
+    if (before === null) return null
+    const rebased =
+      before !== undefined && before.from.includes(key.hash) && !before.shifted
+    const from = rebased ? before.to : key.hash
+    const index = rebased ? (before.at.get(key.index) ?? key.index) : key.index
+    const done = awaitHash(ref)
+    rememberHash(ref, from)
+    try {
+      const answer = await writeBoard<PlaceResult>(
+        '/api/frames/place',
+        { ref, hash: from, index, spot },
+        'POST',
+        send,
+      )
+      rememberHash(ref, answer.hash)
+      void catchUpTree(ref, answer.hash)
+      selectElement(selection, page, {
+        frame: ref,
+        index: answer.index,
+        hash: answer.hash,
+      })
+      const at = new Map(rebased ? before.at : [])
+      at.set(key.index, answer.index)
+      return {
+        from: rebased ? [...before.from, from] : [from],
+        to: answer.hash,
+        at,
+        shifted: false,
+      }
+    } catch (error) {
+      notify({
+        title,
+        description:
+          error instanceof BoardWriteError
+            ? sentence(error.message)
+            : 'The board could not be reached, so nothing was written.',
+      })
       return null
     } finally {
       done()
