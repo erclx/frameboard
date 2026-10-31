@@ -42,7 +42,7 @@ Owns the edit writer, which parses a frame with parse5 and writes only inside th
 - An element's name is its `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else its tag, and `elementTree` returns each name and parent under `body`
 - A board edit on a hash the file has left lands where its element's bytes and all before them held, or read once before and after, else is refused as stale, as the CLI's `edit` always is
 - Each writer parses its output again and refuses `verify-failed` unless the tree differs only at the target or by the placed element, so an unmet input is refused rather than written corrupted
-- A note anchors to a frame or to an element by its address, and falls back to the frame when the file's hash has changed
+- A note anchors by element address, and a board write records its index under each new hash in the anchor's `known`, so only an outside write or a removal drops it to the frame
 
 ### `src/server/notes/`
 
