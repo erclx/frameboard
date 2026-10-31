@@ -47,7 +47,7 @@ describe('checkUnknownTokens', () => {
 
   it('reports one in a linked sheet against that sheet', () => {
     expect(
-      check('<link rel="stylesheet" href="hero.css"><p>x</p>', {
+      check('<link rel="stylesheet" href="hero.css"><p class="a">x</p>', {
         'site/home/hero.css': '.a { margin: var(--gap) }',
       }),
     ).toMatchObject([{ rule: 'unknown-token', path: 'site/home/hero.css' }])
@@ -56,7 +56,7 @@ describe('checkUnknownTokens', () => {
   it('reports one ahead of an unclosed rule in the same sheet', () => {
     expect(
       check(
-        '<style>.b { color: var(--no-such-token) }\n.c { margin: 0 auto\n</style>',
+        '<p class="b">x</p><style>.b { color: var(--no-such-token) }\n.c { margin: 0 auto\n</style>',
       ),
     ).toMatchObject([{ rule: 'unknown-token', location: { line: 1 } }])
   })
@@ -64,9 +64,39 @@ describe('checkUnknownTokens', () => {
   it('reports one after a declaration missing its colon', () => {
     expect(
       check(
-        '<style>.a { color red; margin: 0 }\n.b { color: var(--nope) }</style>',
+        '<style>.a { color red; margin: 0 }\n.b { color: var(--nope) }</style><p class="b">x</p>',
       ),
     ).toMatchObject([{ rule: 'unknown-token', location: { line: 2 } }])
+  })
+
+  it('passes one in a rule matching no element in the frame', () => {
+    expect(
+      check('<link rel="stylesheet" href="site.css"><p class="a">x</p>', {
+        'site/home/site.css': '.nav, .footer a { color: var(--brand) }',
+      }),
+    ).toEqual([])
+  })
+
+  it('reports one in a rule where one selector of the list matches', () => {
+    expect(
+      check('<link rel="stylesheet" href="site.css"><p class="a">x</p>', {
+        'site/home/site.css': '.nav, p.a { color: var(--brand) }',
+      }),
+    ).toMatchObject([{ rule: 'unknown-token', path: 'site/home/site.css' }])
+  })
+
+  it('reports one in a rule whose selector it cannot match statically', () => {
+    expect(
+      check('<style>.nav:hover { color: var(--brand) }</style><p>x</p>'),
+    ).toMatchObject([{ rule: 'unknown-token' }])
+  })
+
+  it('reports one outside any rule, such as in @font-face', () => {
+    expect(
+      check(
+        '<style>@font-face { font-family: X; src: var(--face) }</style><p>x</p>',
+      ),
+    ).toMatchObject([{ rule: 'unknown-token' }])
   })
 
   it('passes a var() with a fallback', () => {
