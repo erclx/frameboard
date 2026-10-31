@@ -61,9 +61,9 @@ Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a
 
 ### `plugins/frameboard/`
 
-Owns the `frameboard:draw` skill in `skills/draw/`, the check hook, the version hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hooks and the monitor share. The version hook compares `plugin.json` with the installed `--version` at `SessionStart` and prints only on a mismatch.
+Owns the `frameboard:draw` skill in `skills/draw/`, the check hook, the version hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hooks and the monitor share. The version hook compares `plugin.json` with the installed `--version` at `SessionStart` and prints only on a mismatch, a note that never orders a halt.
 
-- The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then the install on PATH, so the checkout checks itself
+- The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then PATH's, so the checkout checks itself and its note names `bun run build`
 
 - The skill holds judgment and carries no verb table or rule list, so it cannot drift from the installed tool, and `docs` holds the facts
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest
