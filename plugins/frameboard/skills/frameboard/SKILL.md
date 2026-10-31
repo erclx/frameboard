@@ -71,6 +71,7 @@ When the developer says "this", "the selected one", or points at something on th
 - Inspect again after any rewrite, since indices follow document order and an old one can point at a different element
 - Read the `edit` entry of `frameboard docs` for its refusals, `stale-address` among them, then inspect again and redo the edit
 - Rewrite a whole frame only when the change reshapes it, and keep every value the developer set by hand.
+- A `style` attribute outranks every rule, and may hold a value the developer set by hand, so read it before changing a rule the element matches. With a server running, `check` warns as `outranked` when your write changed such a rule.
 
 ## Answer the developer's notes
 
