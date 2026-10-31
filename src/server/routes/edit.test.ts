@@ -13,6 +13,8 @@ import { claim, release } from '../claims/store'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
 import { History } from '../history/stack'
+import { resolveAnchors } from '../notes/anchor'
+import { readNotes } from '../notes/store'
 import { editRoutes } from './edit'
 
 const TOKEN = 'a'.repeat(64)
@@ -439,6 +441,32 @@ describe('editRoutes', () => {
             finding.frame === HERO && finding.rule === 'default-font',
         ),
       ).toEqual([])
+    })
+
+    it('keeps a note pinned on the child it went before on that child', async () => {
+      const page = join(board.root, 'webapp/home')
+      const notes = join(page, 'notes.json')
+      const pinned = (await readNotes(notes)).notes[0]
+      if (!pinned) throw new Error('the fixture carries no note')
+      writeFileSync(
+        notes,
+        JSON.stringify({
+          version: 1,
+          notes: [
+            {
+              ...pinned,
+              frame: 'hero',
+              anchor: { index: CAPTION, hash: hash() },
+            },
+          ],
+        }),
+      )
+
+      await insert(rectangle())
+
+      await expect(
+        resolveAnchors(page, (await readNotes(notes)).notes),
+      ).resolves.toEqual({ [pinned.id]: CAPTION + 1 })
     })
 
     it('records one step, which undo reverts byte for byte', async () => {
