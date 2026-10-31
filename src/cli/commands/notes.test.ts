@@ -81,6 +81,28 @@ describe('notes', () => {
     })
   })
 
+  it('lists an anchored note without the hashes its anchor followed', async () => {
+    writeFileSync(
+      home,
+      JSON.stringify({
+        version: 1,
+        notes: [
+          note({
+            id: 'n_0000000a',
+            anchor: { index: 5, hash: 'a'.repeat(64), known: { b: 6 } },
+          }),
+        ],
+      }),
+    )
+
+    const result = await run('notes')
+
+    expect((result.json().data as { notes: Note[] }).notes[0]?.anchor).toEqual({
+      index: 5,
+      hash: 'a'.repeat(64),
+    })
+  })
+
   it('lists each image a note carries by an absolute path beside the record', async () => {
     writeFileSync(
       home,

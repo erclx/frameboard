@@ -12,6 +12,7 @@ import { resolveAnchors } from '@/server/notes/anchor'
 import {
   addReply,
   findNote,
+  forAgent,
   listPageNotes,
   newNoteId,
   notesPath,
@@ -87,7 +88,7 @@ export function registerNotes(program: Command, context: ProgramContext): void {
       const elements = await resolveAnchors(pageDir, kept)
       listed.push(
         ...kept.map((note) => ({
-          ...note,
+          ...forAgent(note),
           ref: `${place.project}/${place.page}/${note.frame}`,
           element: elements[note.id] ?? null,
           ...(note.images?.length

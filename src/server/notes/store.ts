@@ -296,6 +296,13 @@ function followed(
   return { ...note, anchor: { ...note.anchor, known } }
 }
 
+/** A note as an agent reads it, without the hashes its anchor followed, which only the board resolves. */
+export function forAgent<T extends Note>(note: T): T {
+  if (!note.anchor?.known) return note
+  const { known: _, ...anchor } = note.anchor
+  return { ...note, anchor }
+}
+
 /** A page's notes as the board draws them, an unreadable file reading as none. */
 export async function pageView(
   root: string,
@@ -390,7 +397,7 @@ function toDelivery(
   const message = newest ?? note
   const pageDir = dirname(place.path)
   return {
-    note: stored,
+    note: forAgent(stored),
     ref,
     line: noteLine({
       id: note.id,
