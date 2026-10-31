@@ -12,6 +12,7 @@ import { cornerOf } from '../pin-corner'
 import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
+import { PinList } from './pin-list'
 import { Thread } from './thread'
 import { closeNote, notesUi, useNotesUi } from './tool'
 
@@ -27,13 +28,16 @@ interface NotesLayerProps {
  * The page's notes on the canvas, in board coordinates on a layer that pans
  * and zooms with the frames: one amber numbered marker per open root note
  * at its element's corner, or its frame's once the element is lost, and the
- * composer or thread the Note tool has open. Markers hide in Play and once
- * a note is done.
+ * composer or thread the Note tool has open. Two or more notes drawing at one
+ * spot show as one pin carrying their count, which opens a list of them.
+ * Markers hide in Play and once a note is done.
  */
 export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const notes = useLive((state) => state.notes[page])
   const playing = useMode((state) => state.mode === 'play')
   const open = useNotesUi((state) => state.open)
+  // The spot whose count pin has its list open.
+  const [listed, setListed] = useState<string | null>(null)
   // Markers read their elements' boxes from the live frames as they render,
   // so a frame load renders the layer again.
   useFrameLoads(container)
@@ -44,16 +48,23 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const shown = useDrawnFrames(frames)
   if (playing) return null
 
-  const roots = (notes ?? []).filter(
-    (note) => note.thread === null && note.state !== 'done',
-  )
   const framesByName = new Map(shown.map((frame) => [frame.name, frame]))
   const place = (note: BoardNote): BoardPoint | null => {
     const frame = framesByName.get(note.frame)
     return frame ? cornerOf(frame, note.element, container) : null
   }
+  const spots = spotsOf(
+    (notes ?? []).filter(
+      (note) => note.thread === null && note.state !== 'done',
+    ),
+    place,
+  )
   const nextNumber =
     Math.max(0, ...(notes ?? []).map((note) => note.number ?? 0)) + 1
+  const openThread = (id: string) => {
+    setListed(null)
+    notesUi.setState({ open: { kind: 'thread', page, id } })
+  }
 
   const thread =
     open?.kind === 'thread' && open.page === page
@@ -62,32 +73,66 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
         )
       : null
   const threadRoot = thread?.[0]
-  const threadAt = threadRoot ? place(threadRoot) : null
+  // A thread opened from a count pin's list anchors its card at that pin.
+  const threadAt = threadRoot
+    ? (spots.find((spot) => spot.notes.some((n) => n.id === threadRoot.id))
+        ?.at ?? place(threadRoot))
+    : null
+  const list = spots.find(
+    (spot) => spot.key === listed && spot.notes.length > 1,
+  )
+  const closeList = (spot: string) => {
+    setListed(null)
+    document
+      .querySelector<HTMLElement>(`[data-note-spot="${CSS.escape(spot)}"]`)
+      ?.focus()
+  }
 
   return (
     <>
-      {roots.map((note) => {
-        const at = place(note)
-        if (!at || note.number === null) return null
+      {spots.map((spot) => {
+        const [first] = spot.notes
+        if (!first || first.number === null) return null
+        const frame = framesByName.get(first.frame)?.ref
+        if (spot.notes.length === 1) {
+          return (
+            <Marker
+              key={first.id}
+              content={first.number}
+              at={spot.at}
+              frame={frame}
+              element={first.element}
+              active={open?.kind === 'thread' && open.id === first.id}
+              label={`Note ${first.number} on ${first.frame}`}
+              onOpen={() => openThread(first.id)}
+            />
+          )
+        }
+        const threadOpen = spot.notes.some(
+          (note) => open?.kind === 'thread' && open.id === note.id,
+        )
         return (
           <Marker
-            key={note.id}
-            number={note.number}
-            at={at}
-            frame={framesByName.get(note.frame)?.ref}
-            element={note.element}
-            active={open?.kind === 'thread' && open.id === note.id}
-            label={`Note ${note.number} on ${note.frame}`}
-            onOpen={() =>
-              notesUi.setState({ open: { kind: 'thread', page, id: note.id } })
-            }
+            key={spot.key}
+            content={spot.notes.length}
+            at={spot.at}
+            frame={frame}
+            element={first.element}
+            spot={spot.key}
+            active={threadOpen || listed === spot.key}
+            expanded={listed === spot.key}
+            label={`${spot.notes.length} notes on ${first.frame}`}
+            onOpen={() => {
+              closeNote()
+              setListed((current) => (current === spot.key ? null : spot.key))
+            }}
           />
         )
       })}
       {open?.kind === 'new' &&
       frames.some((frame) => frame.ref === open.pick.frame.ref) ? (
         <>
-          <Marker number={nextNumber} at={open.pick.at} active />
+          <Marker content={nextNumber} at={open.pick.at} active />
           <Popover at={open.pick.at} onDismiss={closeNote}>
             <Composer
               key={open.pick.frame.ref}
@@ -96,6 +141,19 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
             />
           </Popover>
         </>
+      ) : null}
+      {list ? (
+        <Popover at={list.at} onDismiss={() => setListed(null)}>
+          <PinList
+            title={`${list.notes.length} notes on ${list.notes[0]?.frame}`}
+            notes={list.notes}
+            onPick={(id) => {
+              closeList(list.key)
+              openThread(id)
+            }}
+            onClose={() => closeList(list.key)}
+          />
+        </Popover>
       ) : null}
       {thread && threadAt ? (
         <Popover at={threadAt} onDismiss={closeNote}>
@@ -106,14 +164,50 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   )
 }
 
+/** Open root notes drawing at one board pixel, with the point they draw at. */
+interface Spot {
+  key: string
+  at: BoardPoint
+  notes: BoardNote[]
+}
+
+/**
+ * Groups the root notes by where they draw, two notes sharing a spot when
+ * their points round to the same board pixel, each spot's notes in number
+ * order. A note with no number or no point draws nowhere.
+ */
+function spotsOf(
+  roots: readonly BoardNote[],
+  place: (note: BoardNote) => BoardPoint | null,
+): Spot[] {
+  const spots = new Map<string, Spot>()
+  for (const note of roots) {
+    const at = place(note)
+    if (!at || note.number === null) continue
+    const key = `${Math.round(at.x)},${Math.round(at.y)}`
+    const spot = spots.get(key)
+    if (spot) spot.notes.push(note)
+    else spots.set(key, { key, at, notes: [note] })
+  }
+  for (const spot of spots.values()) {
+    spot.notes.sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
+  }
+  return [...spots.values()]
+}
+
 interface MarkerProps {
-  number: number
+  /** The note's number, or a count pin's count. */
+  content: number
   at: BoardPoint
   /** The frame's ref, which a frame drag finds the pins to shift by. */
   frame?: string
   /** The note's element index, whose corner a frame resize moves the pin to. */
   element?: number | null
+  /** A count pin's spot, which its list returns focus to on closing. */
+  spot?: string
   active: boolean
+  /** Whether the card the pin opens is open, its `active` unless given. */
+  expanded?: boolean
   label?: string
   onOpen?: () => void
 }
@@ -138,11 +232,13 @@ const PIN_CENTER = {
  * note is open.
  */
 function Marker({
-  number,
+  content,
   at,
   frame,
   element,
+  spot,
   active,
+  expanded = active,
   label,
   onOpen,
 }: MarkerProps) {
@@ -163,18 +259,20 @@ function Marker({
       data-note-marker
       data-note-frame={frame}
       data-note-element={element ?? undefined}
+      data-note-spot={spot}
       aria-label={label}
-      aria-expanded={active}
+      aria-haspopup={spot === undefined ? undefined : 'menu'}
+      aria-expanded={expanded}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={onOpen}
       className={className}
       style={style}
     >
-      {number}
+      {content}
     </button>
   ) : (
     <span aria-hidden className={className} style={style}>
-      {number}
+      {content}
     </span>
   )
 }
