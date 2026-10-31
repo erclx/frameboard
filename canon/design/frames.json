@@ -55,6 +55,8 @@
     "notes/place": "design/13-agents/note-place",
     "notes/thread": "design/13-agents/note-thread",
     "palette/commands": "design/14-overlays/palette",
+    "palette/selected": "design/14-overlays/palette-selected",
+    "palette/empty": "design/14-overlays/palette-empty",
     "palette/shortcuts": "design/14-overlays/shortcuts",
     "palette/shortcuts-home": "design/14-overlays/shortcuts-home",
     "menus/avatar": "design/14-overlays/avatar-menu",
