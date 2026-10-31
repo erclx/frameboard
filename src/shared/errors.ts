@@ -62,6 +62,8 @@ export const EXIT_CODES = {
   'dispatch-failed': 13,
   // A section write naming a section its page does not hold.
   'section-not-found': 3,
+  // A hand placement refused, since a positioned parent would move another element.
+  'reanchors-descendant': 7,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

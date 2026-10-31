@@ -55,6 +55,7 @@ export type EditRefusal =
   | 'invalid-utf8'
   | 'stale-address'
   | 'invalid-container'
+  | 'reanchors-descendant'
 
 export interface EditRefused {
   readonly ok: false
