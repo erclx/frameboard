@@ -169,7 +169,7 @@ function parseSheet(css: string): Root {
   } catch (error) {
     const reason =
       error instanceof postcss.CssSyntaxError ? error.reason : String(error)
-    return refuse(`The project token sheet does not parse: ${reason}.`)
+    return refuse(`The token sheet does not parse: ${reason}.`)
   }
 }
 

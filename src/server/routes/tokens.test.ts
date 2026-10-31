@@ -1,10 +1,18 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { tokenSheetPaths } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
+import { readTokenTable } from '@/server/look/token-table'
 
 import {
   copyFixtureBoard,
@@ -75,12 +83,13 @@ describe('tokenRoutes', () => {
           light: '#222222',
           dark: '#818cf8',
           hash: hashOf('webapp/tokens.css'),
+          sheet: 'project',
           created: false,
         },
       })
     })
 
-    it('never writes the board sheet', async () => {
+    it('leaves the board sheet alone when the body names no sheet', async () => {
       const boardSheet = read('tokens.css')
 
       await post({
@@ -139,6 +148,177 @@ describe('tokenRoutes', () => {
         data: { light: '#f59e0b', dark: '#fbbf24' },
       })
       expect(read('webapp/tokens.css')).not.toContain('--accent')
+    })
+  })
+
+  describe('a board edit', () => {
+    const rowIn = (project: string, name: string) =>
+      readTokenTable(
+        board.root,
+        tokenSheetPaths(board.root, project, null),
+      ).tokens.find((row) => row.name === name)
+
+    it('writes the board sheet, which every project without an override follows', async () => {
+      const webapp = read('webapp/tokens.css')
+
+      const response = await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--primary',
+        side: 'light',
+        value: '#222222',
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: {
+          project: 'webapp',
+          name: '--primary',
+          light: '#222222',
+          dark: '#818cf8',
+          hash: hashOf('tokens.css'),
+          sheet: 'board',
+          created: false,
+        },
+      })
+      expect(rowIn('webapp', '--primary')?.light).toBe('#222222')
+      expect(rowIn('marketing', '--primary')?.light).toBe('#222222')
+      expect(read('webapp/tokens.css')).toBe(webapp)
+    })
+
+    it("keeps a project's override of the token", async () => {
+      await post({
+        project: 'marketing',
+        sheet: 'board',
+        name: '--accent',
+        side: 'both',
+        value: '#000000',
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(rowIn('marketing', '--accent')).toMatchObject({
+        light: '#000000',
+        dark: '#000000',
+      })
+      expect(rowIn('webapp', '--accent')).toMatchObject({
+        light: '#e11d48',
+        dark: '#fb7185',
+      })
+    })
+
+    it('reaches the theme a project leaves to the board', async () => {
+      writeFileSync(
+        at('webapp/tokens.css'),
+        "[data-theme='light'] { --accent: #e11d48; }\n",
+      )
+
+      await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--accent',
+        side: 'dark',
+        value: '#000000',
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(rowIn('webapp', '--accent')).toMatchObject({
+        light: '#e11d48',
+        dark: '#000000',
+      })
+    })
+
+    it('records one step whose undo puts the board sheet back byte for byte', async () => {
+      const original = read('tokens.css')
+      await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--space',
+        side: 'both',
+        value: '20px',
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read('tokens.css')).toBe(original)
+    })
+
+    it('refuses stale-tokens for a board hash the sheet no longer has', async () => {
+      const original = read('tokens.css')
+
+      const response = await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--primary',
+        side: 'light',
+        value: '#000000',
+        hash: hashOf('webapp/tokens.css'),
+      })
+
+      expect(response.status).toBe(409)
+      expect(await codeOf(response)).toBe('stale-tokens')
+      expect(read('tokens.css')).toBe(original)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a reset, since nothing sits under the board sheet', async () => {
+      const response = await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--primary',
+        reset: true,
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(await codeOf(response)).toBe('invalid-edit')
+    })
+
+    it('refuses a token only the project sheet sets', async () => {
+      const original = read('tokens.css')
+
+      const response = await post({
+        project: 'webapp',
+        sheet: 'board',
+        name: '--border',
+        side: 'light',
+        value: '#000000',
+        hash: hashOf('tokens.css'),
+      })
+
+      expect(await codeOf(response)).toBe('invalid-edit')
+      expect(read('tokens.css')).toBe(original)
+    })
+
+    it('leaves a --tokens sheet outside the board folder as it is', async () => {
+      const outside = mkdtempSync(join(tmpdir(), 'frameboard-tokens-'))
+      const sheet = join(outside, 'tokens.css')
+      const css = ':root { --primary: red; }\n'
+      writeFileSync(sheet, css)
+      const consumer = tokenRoutes(board.root, ACCESS, history, {
+        sheets: (project) => tokenSheetPaths(board.root, project, sheet),
+      })
+
+      try {
+        const response = await consumer.request('/api/tokens/edit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...BEARER },
+          body: JSON.stringify({
+            project: 'webapp',
+            sheet: 'board',
+            name: '--primary',
+            side: 'light',
+            value: '#000000',
+            hash: contentHash(readFileSync(sheet)),
+          }),
+        })
+
+        expect(await codeOf(response)).toBe('invalid-edit')
+        expect(readFileSync(sheet, 'utf8')).toBe(css)
+      } finally {
+        rmSync(outside, { recursive: true, force: true })
+      }
     })
   })
 

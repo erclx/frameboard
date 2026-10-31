@@ -290,6 +290,7 @@ describe('ThemeTab', () => {
           light: null,
           dark: null,
           hash: WRITTEN_HASH,
+          sheet: 'project',
           created: false,
         }
       }
