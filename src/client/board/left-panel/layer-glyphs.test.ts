@@ -9,6 +9,7 @@ import {
   GridGlyph,
   LayoutColumnGlyph,
   LayoutRowGlyph,
+  PlacedGlyph,
 } from './layer-glyphs'
 
 function element(overrides: Partial<TreeElement>): TreeElement {
@@ -44,6 +45,12 @@ describe('elementGlyph', () => {
       'a round box laid out as a row still as an ellipse',
       element({ round: true, layout: 'row' }),
       Circle,
+    ],
+    ['a placed box', element({ placed: true, layout: 'row' }), PlacedGlyph],
+    [
+      'placed text still as text',
+      element({ tag: 'p', textOnly: true, placed: true }),
+      Type,
     ],
     ['a plain block', element({}), BlockGlyph],
   ])('draws %s', (_case, row, expected) => {
