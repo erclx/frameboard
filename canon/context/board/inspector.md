@@ -25,6 +25,9 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
 - **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.
 - **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
+- **Position:** an In flow and Free toggle above Appearance. Free places the element where it renders through `POST /api/frames/place`, and its X and Y then write `left` and `top` as any other edit.
+- **Placing:** the place writes `position: absolute` with pixel offsets, the rendered size on an axis no rule sizes, and `position: relative` on a static parent other than `body` in the same undo step
+- **Back in flow:** drops `position`, `left`, and `top` and keeps every size, since nothing records which size the placement added
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
 - **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
@@ -62,11 +65,16 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 
 ## Gotchas
 
-- Element position, width, height, padding, flex, gap, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
-- Those controls are not built yet, though hand layout and placement are scoped.
-- A Rectangle or Ellipse drag sets a new shape's size, and a corner drag sets a placed one's as one `styles` edit. A drag on the selected element moves it to another gap in its layout.
+- Element width, height, padding, flex, gap, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
+- Those controls are not built yet, though hand layout is scoped.
+- A Rectangle or Ellipse drag sets a new shape's size, and a corner drag sets a placed one's as one `styles` edit. A drag on the selected element moves it to another gap, or a Free one's offsets.
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
+
+A place reads the parent's position from the static cascade.
+
+- A static parent holding another absolute element anchored above it refuses `reanchors-descendant`
+- The cascade misses a sheet a load cannot read, so a miss writes `relative` anyway, and one undo restores it
 
 Rotation leaves two gaps in what the canvas draws.
 

@@ -29,12 +29,13 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 - A placement, a delete, or a move shifts indices, so a kept index would name another element or none, which the styles read refuses
 - Alt+Shift+ArrowUp and ArrowDown move the selected element among its siblings, because Alt+ArrowUp alone is `nav.home` and the registry gives a shared key to whichever action registered first
 - A move key reads the tree inside the frame's turn rather than at the press, so a press queued behind a move in flight goes from the index and hash that move answered
+- A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside a shape's corner drag. Esc writes nothing.
 
 ### `src/client/board/menus/`
 
 Owns the right-click menus on a frame, the selected element, empty canvas, a page row, and a layers frame or element row, which change together. Each item runs a registered action, greys while it is disabled, and shows that action's key, or the key of the one it stands in for.
 
-The Element menu ends with Delete, which deletes the selected element with what it holds, as Delete and Backspace do. It posts to `POST /api/frames/remove` and waits under the claim card on a held frame.
+The Element menu ends with Delete, which posts to `POST /api/frames/remove` and waits under the claim card on a held frame. Above it, Bring to front, Bring forward, Send backward, and Send to back restack the element in document order, never writing `z-index`.
 
 - A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts on the selection the way its key does
 - Paste here shows Paste's key, sends the right-clicked point with the paste to place the group's top left there, and New frame here and both Add a note rows act at that point too
