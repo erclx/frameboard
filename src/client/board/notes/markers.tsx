@@ -238,7 +238,7 @@ interface MarkerProps {
 }
 
 /** The pin's side, in screen pixels. */
-const PIN_SIZE = 22
+const PIN_SIZE = 24
 /**
  * How far the pin's bottom-left tail sits up and right of its spot, in screen
  * pixels: one past the reach of a frame's corner handle, so a press on the
@@ -252,7 +252,7 @@ const PIN_CENTER = {
 }
 
 /**
- * A 22 px amber pin whose bottom-left tail points at its spot from just up
+ * A 24 px amber pin, the pointer target size, whose bottom-left tail points at its spot from just up
  * and right of it, kept at screen size whatever the zoom, ringed while its
  * note is open.
  */
@@ -268,7 +268,7 @@ function Marker({
   onOpen,
 }: MarkerProps) {
   const className = cn(
-    'pointer-events-auto absolute grid size-[22px] origin-top-left place-items-center rounded-[11px_11px_11px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+    'pointer-events-auto absolute grid size-[24px] origin-top-left place-items-center rounded-[12px_12px_12px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     active &&
       'shadow-[0_0_0_3px_color-mix(in_srgb,var(--note)_35%,transparent),0_2px_6px_rgba(0,0,0,.25)]',
   )

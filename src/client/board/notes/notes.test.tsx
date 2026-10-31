@@ -969,6 +969,20 @@ describe('NotesLayer', () => {
     })
   })
 
+  it('draws a pin at least 24 px on each side, the target size', () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+
+    renderLayer()
+
+    const pin = screen
+      .getByRole('button', { name: 'Note 1 on hero' })
+      .getBoundingClientRect()
+    expect({
+      width: pin.width >= 24,
+      height: pin.height >= 24,
+    }).toEqual({ width: true, height: true })
+  })
+
   it("tags a marker with its frame's ref, which a frame drag matches", () => {
     live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
 
