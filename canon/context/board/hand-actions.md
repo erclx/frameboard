@@ -76,7 +76,7 @@ A move released with Alt held puts the frames back and sends one duplicate carry
 
 ### `src/client/board/preview/`
 
-Owns the width a frame is previewed at, held in this tab's memory alone, so a reload drops it and nothing reaches the server, the history, or the hug step. The palette carries a preview at each preset width and End preview, with no key.
+Owns the width a frame is previewed at, held in this tab's memory alone, so a reload drops it and nothing reaches the server, the history, or the hug step. The palette carries a preview at each preset and End preview, with no key, keeping a width already in the preset's range and taking its default otherwise.
 
 - The iframe keeps its `src` and reflows at the new width, so its animation, media queries, and element selection read the live page
 - A frame hugging its height takes its content's height at the previewed width, read as the server's fit step reads it, and a page sized off the viewport keeps its stored height

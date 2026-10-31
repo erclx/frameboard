@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { type Action, isEnabled } from '@/client/actions/registry'
-import { frameOf } from '@/test/board'
+import { createLiveStore, receiveBoard } from '@/client/live/store'
+import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { createSelectionStore, select } from '../selection'
 import { previewActions } from './actions'
@@ -10,11 +11,17 @@ import { endPreview, previewOf, setPreview } from './store'
 const PAGE = 'studio/home'
 const A = frameOf('a')
 const B = frameOf('b')
+const IPHONE = frameOf('iphone', {
+  box: { x: 0, y: 0, width: 393, height: 852 },
+})
+const WIDE = frameOf('wide', { box: { x: 0, y: 0, width: 1180, height: 820 } })
 
 function setup(selected: readonly string[]) {
   const selection = createSelectionStore()
   if (selected.length > 0) select(selection, PAGE, [...selected])
-  const actions = previewActions(selection)
+  const live = createLiveStore()
+  receiveBoard(live, boardOf(pageOf([IPHONE, WIDE])))
+  const actions = previewActions(selection, live)
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
     if (!found) throw new Error(`no action ${id}`)
@@ -25,7 +32,7 @@ function setup(selected: readonly string[]) {
 
 describe('previewActions', () => {
   afterEach(() => {
-    endPreview([A.ref, B.ref])
+    endPreview([A.ref, B.ref, IPHONE.ref, WIDE.ref])
   })
 
   it.each([
@@ -38,6 +45,31 @@ describe('previewActions', () => {
     action(id).run()
 
     expect(previewOf(A.ref)).toEqual({ width })
+  })
+
+  it('keeps a width already in the preset range', () => {
+    const { action } = setup([IPHONE.ref])
+
+    action('preview.phone').run()
+
+    expect(previewOf(IPHONE.ref)).toEqual({ width: 393 })
+  })
+
+  it('takes the preset default from a width outside its range', () => {
+    const { action } = setup([WIDE.ref])
+
+    action('preview.tablet').run()
+
+    expect(previewOf(WIDE.ref)).toEqual({ width: 834 })
+  })
+
+  it('checks the preset whose range holds the frame width', () => {
+    const { action } = setup([IPHONE.ref])
+
+    expect([
+      action('preview.phone').checked?.(),
+      action('preview.tablet').checked?.(),
+    ]).toEqual([true, false])
   })
 
   it('previews every selected frame at once', () => {

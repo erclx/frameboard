@@ -1846,7 +1846,32 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(
           both(
             onCanvas({ select: ['webapp/home/hero'] }),
-            actWhen('[data-selection]', 'Preview at phone width, 390', 'click'),
+            actWhen(
+              '[data-selection]',
+              'Preview at phone width, 320 to 479, default 390',
+              'click',
+            ),
+            readyWhen('[data-preview-chip]'),
+          ),
+        ),
+      },
+      {
+        section: 'preview-tablet',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        // Carries a 1440 frame taking the tablet default, 834, from outside
+        // the tablet range, with Tablet pressed, into the evidence comparison.
+        evidence: true,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero'] }),
+            actWhen(
+              '[data-selection]',
+              'Preview at tablet width, 480 to 1023, default 834',
+              'click',
+            ),
             readyWhen('[data-preview-chip]'),
           ),
         ),

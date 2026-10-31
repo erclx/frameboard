@@ -52,16 +52,12 @@ test.describe('previewing a frame at another width', () => {
       }
     })
 
-    await page
-      .getByRole('button', { name: 'Preview at phone width, 390' })
-      .click()
+    await page.getByRole('button', { name: /^Preview at phone width/ }).click()
     await expect(hero).toHaveCSS('width', '390px')
-    await page
-      .getByRole('button', { name: 'Preview at tablet width, 834' })
-      .click()
+    await page.getByRole('button', { name: /^Preview at tablet width/ }).click()
     await expect(hero).toHaveCSS('width', '834px')
     await page
-      .getByRole('button', { name: 'Preview at desktop width, 1440' })
+      .getByRole('button', { name: /^Preview at desktop width/ })
       .click()
     await expect(hero).toHaveCSS('width', '1440px')
     const field = page.getByRole('textbox', { name: 'Preview width' })
