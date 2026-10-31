@@ -1,3 +1,10 @@
+import {
+  ArrowDown,
+  ArrowUp,
+  BringToFront,
+  SendToBack,
+  Trash2,
+} from 'lucide-react'
 import { useEffect } from 'react'
 
 import {
@@ -20,6 +27,9 @@ import {
 } from '../selection'
 import { requestTree, treeOf, trees } from './tree'
 import { down, sibling, siblingPlace, up } from './walk'
+
+/** What a restack row is found by beside its label. */
+const STACK_WORDS = ['layer', 'stack', 'order'] as const
 
 export interface ElementContext {
   /** The page the canvas shows. */
@@ -169,11 +179,15 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
+  // The walks and the sibling moves take no palette row. Enter, Tab, and the
+  // Alt+Shift moves need focus on the board, which the open palette holds,
+  // and Esc's walk up is a navigation key. The restack rows cover the moves.
   return [
     {
       id: 'element.down',
       label: 'Select child',
       group: 'selection',
+      palette: false,
       keys: ['Enter'],
       ...onBoard(go(down)),
     },
@@ -181,6 +195,7 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.up',
       label: 'Select parent',
       group: 'selection',
+      palette: false,
       keys: ['Escape'],
       // With a note card open, the card's own listener closes it and this
       // row holds the press, so the selection clear behind it never runs
@@ -198,6 +213,7 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.delete',
       label: 'Delete',
       group: 'selection',
+      command: { label: 'Delete element', icon: Trash2, keywords: ['remove'] },
       // The frame delete holds the same keys and stands aside while an element is selected.
       keys: ['Backspace', 'Delete'],
       enabled: () => elementSelected() && context.writable(),
@@ -210,6 +226,7 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.moveUp',
       label: 'Move up among siblings',
       group: 'selection',
+      palette: false,
       // Alt+ArrowUp alone goes to all projects.
       keys: ['Alt+Shift+ArrowUp'],
       ...shift(-1),
@@ -218,6 +235,7 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.moveDown',
       label: 'Move down among siblings',
       group: 'selection',
+      palette: false,
       keys: ['Alt+Shift+ArrowDown'],
       ...shift(1),
     },
@@ -225,6 +243,11 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.toFront',
       label: 'Bring to front',
       group: 'selection',
+      command: {
+        label: 'Bring to front',
+        icon: BringToFront,
+        keywords: STACK_WORDS,
+      },
       ...restack((_place, count) => count - 1),
     },
     // The menu's one-place rows, standing in for the moves whose keys hold
@@ -233,24 +256,36 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.forward',
       label: 'Bring forward',
       group: 'selection',
+      command: { label: 'Bring forward', icon: ArrowUp, keywords: STACK_WORDS },
       ...restack((place) => place + 1),
     },
     {
       id: 'element.backward',
       label: 'Send backward',
       group: 'selection',
+      command: {
+        label: 'Send backward',
+        icon: ArrowDown,
+        keywords: STACK_WORDS,
+      },
       ...restack((place) => place - 1),
     },
     {
       id: 'element.toBack',
       label: 'Send to back',
       group: 'selection',
+      command: {
+        label: 'Send to back',
+        icon: SendToBack,
+        keywords: STACK_WORDS,
+      },
       ...restack(() => 0),
     },
     {
       id: 'element.next',
       label: 'Select next sibling',
       group: 'selection',
+      palette: false,
       keys: ['Tab'],
       ...onBoard(go(fromElement((tree, at) => sibling(tree, at, 1)))),
     },
@@ -258,6 +293,7 @@ export function elementActions(context: ElementContext): Action[] {
       id: 'element.previous',
       label: 'Select previous sibling',
       group: 'selection',
+      palette: false,
       keys: ['Shift+Tab'],
       ...onBoard(go(fromElement((tree, at) => sibling(tree, at, -1)))),
     },

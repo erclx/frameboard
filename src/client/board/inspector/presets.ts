@@ -13,9 +13,13 @@ import {
   type FrameSize,
   type FrameSizeGroup,
   type FrameSizeName,
+  frameSizeOf,
   type FrameSizePreset,
   PRESET_RANGES,
 } from '@/shared/frame-sizes'
+import type { FrameRecord } from '@/shared/records/list'
+
+import type { Box } from '../geometry/box'
 
 /** The frame sizes by name and icon, which a preview shows a frame at and the new-board guide offers. */
 export const PRESETS: readonly {
@@ -84,6 +88,25 @@ export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
 
 function devicesIn(group: FrameSizeGroup): SizeRow[] {
   return DEVICE_SIZES.filter((device) => device.group === group)
+}
+
+/**
+ * The boxes that give `frames` the size `name`, each keeping its place, and
+ * the boxes they start from, leaving out a frame already at that size.
+ */
+export function boxesSizedTo(
+  frames: readonly Pick<FrameRecord, 'ref' | 'box'>[],
+  name: FrameSizeName,
+): { boxes: Record<string, Box>; expected: Record<string, Box> } {
+  const size = frameSizeOf(name)
+  const boxes: Record<string, Box> = {}
+  const expected: Record<string, Box> = {}
+  for (const { ref, box } of frames) {
+    if (box.width === size.width && box.height === size.height) continue
+    boxes[ref] = { ...box, ...size }
+    expected[ref] = box
+  }
+  return { boxes, expected }
 }
 
 /**

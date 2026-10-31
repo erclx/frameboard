@@ -15,11 +15,13 @@ Owns how every button, menu item, and key reaches the board, being the action re
 
 Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
 
-- An action is `{ id, label, group, keys?, run, enabled?, checked?, command? }`, a row registers its own and removes them on unmount, and a row needing a field adds it as optional
-- `command` is the label, icon, right-hand `hint`, and search `keywords` the palette reads, and the palette lists only enabled actions carrying it, so a key nobody runs by name stays out
+- An action is `{ id, label, group, keys?, run, enabled?, checked? }` plus `command` or `palette: false`, and a row registers its own and removes them on unmount
+- `command` is the label, icon, right-hand `hint`, search `keywords`, and `searchOnly` the palette reads, and the palette lists only enabled actions carrying it
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
+
+The type checker refuses an action carrying neither `command` nor `palette: false`, so leaving one out of the palette is a choice. The opt-out is kept to arrow nudges and pans, Esc aliases, focus walks the open palette could never run, and the actions a context menu runs at its point. A row needing a field adds it to `ActionBase` as optional.
 
 `character-keys.ts` holds the Single-key shortcuts switch WCAG 2.1.4 asks for, on by default and kept in `localStorage`. While it is off, `press` skips a key typing a character before `preventDefault`, so the press reaches the browser untouched, and every chip reads its key through `liveKey`, which skips that key.
 
@@ -27,8 +29,10 @@ Owns the action registry every toolbar button, menu item, and key runs through, 
 
 Owns the two overlays that list the registry, being Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both routes.
 
+With nothing typed the palette opens on Recent, then the actions fitting the selection, or every enabled action with nothing selected, then pages. A query searches frames and pages, the open project's first, then every action, `searchOnly` rows such as Resize to among them, then projects. A mode or theme row naming the one on stays out.
+
 - Cmd+K jumps to any project, page, or frame and runs board actions such as new page, theme toggle, and zoom, while inspector edits stay in the inspector
-- On a board the palette lists every project's frames and pages, the open project's first, each hinted with where it sits, then actions and projects. Home lists projects and app actions alone.
+- `recent.ts` keeps the last 5 action ids run from the palette in `localStorage`, and a refused write keeps none, so a blocked store shows no Recent group
 - A frame row sets the selection on its page, navigates, and runs `view.zoomToSelection` once the page's canvas attaches
 - A hidden frame's row is marked and shows the frame first, jumping once the board holds it shown, since `pruneSelection` would drop it sooner. A read-only tab greys it.
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open

@@ -116,6 +116,7 @@ describe('jumps', () => {
           id: 'view.zoomToSelection',
           label: 'Zoom to selection',
           group: 'view',
+          palette: false,
           run: () => {
             zooms += 1
           },

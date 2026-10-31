@@ -1,6 +1,8 @@
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
+  ChevronUp,
   Copy,
   FilePlus,
   PencilLine,
@@ -114,9 +116,10 @@ export async function deletePage(
 
 /**
  * Registers `page.new`, `page.duplicate`, `page.rename`, `page.moveUp`,
- * `page.moveDown`, and `page.delete` for the page on the canvas while a board
- * is mounted. Each is lit while the tab may write, and a new or copied page
- * opens on the canvas, a new one with its name ready to type over.
+ * `page.moveDown`, `page.delete`, `page.next`, and `page.previous` for the
+ * page on the canvas while a board is mounted. Each edit is lit while the tab
+ * may write, and a new or copied page opens on the canvas, a new one with its
+ * name ready to type over. Next and previous open the page beside it in any tab.
  */
 export function usePageActions(
   project: string,
@@ -218,6 +221,40 @@ export function usePageActions(
             .catch(reportRefusal(`Couldn't move ${at.name}`))
         },
       })),
+      ...(
+        [
+          {
+            id: 'page.next',
+            label: 'Next page',
+            by: 1,
+            icon: ChevronDown,
+          },
+          {
+            id: 'page.previous',
+            label: 'Previous page',
+            by: -1,
+            icon: ChevronUp,
+          },
+        ] as const
+      ).map(({ id, label, by, icon }): Action => {
+        const beside = () => {
+          const at = current()
+          return pages().find(
+            (candidate) => at && candidate.index === at.index + by,
+          )
+        }
+        return {
+          id,
+          label,
+          group: 'page',
+          command: { label, icon, keywords: ['go to', 'open'] },
+          enabled: () => beside() !== undefined,
+          run: () => {
+            const to = beside()
+            if (to) open(to)
+          },
+        }
+      }),
       {
         id: 'page.delete',
         label: 'Delete page',

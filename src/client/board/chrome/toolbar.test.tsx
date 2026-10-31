@@ -45,6 +45,7 @@ describe('Toolbar', () => {
         id: 'tool.move',
         label: 'Move',
         group: 'tool',
+        palette: false,
         keys: ['v'],
         run: () => (tool = 'move'),
         checked: () => tool === 'move',
@@ -53,6 +54,7 @@ describe('Toolbar', () => {
         id: 'tool.hand',
         label: 'Hand',
         group: 'tool',
+        palette: false,
         keys: ['h'],
         run: () => {
           tool = 'hand'
@@ -77,6 +79,7 @@ describe('Toolbar', () => {
       id: 'mode.play',
       label: 'Play',
       group: 'mode',
+      palette: false,
       run: () => (mode = 'play'),
     })
     renderToolbar()
@@ -118,10 +121,15 @@ describe('Toolbar', () => {
 
   describe('the Frame slot', () => {
     function renderWithBoxTools() {
-      const tool = (id: string, name: 'frame' | 'section', keys: string[]) => ({
+      const tool = (
+        id: string,
+        name: 'frame' | 'section',
+        keys: string[],
+      ): Action => ({
         id,
         label: name === 'frame' ? 'Frame' : 'Section',
         group: 'tool',
+        palette: false,
         keys,
         run: () => {
           boxToolStore.setState({ tool: name })
@@ -267,6 +275,7 @@ describe('Toolbar', () => {
       id: 'tool.hand',
       label: 'Hand',
       group: 'tool',
+      palette: false,
       keys: ['h'],
       run: () => {},
     })
@@ -284,6 +293,7 @@ describe('Toolbar', () => {
       id: 'tool.hand',
       label: 'Hand',
       group: 'tool',
+      palette: false,
       keys: ['h'],
       run: () => {},
     })
@@ -303,6 +313,7 @@ describe('Toolbar', () => {
         id: 'edit.undo',
         label: 'Undo',
         group: 'edit',
+        palette: false,
         run: () => {},
       }),
     )

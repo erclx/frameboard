@@ -165,7 +165,10 @@ export function usePlaceTools(): void {
         id: row.id,
         label: row.label,
         group: 'tool',
-        command: { label: `Add a ${row.label.toLowerCase()}`, icon: row.icon },
+        command: {
+          label: `Add ${/^[aeiou]/i.test(row.label) ? 'an' : 'a'} ${row.label.toLowerCase()}`,
+          icon: row.icon,
+        },
         keys: [row.key],
         enabled: canWrite,
         run: () => {

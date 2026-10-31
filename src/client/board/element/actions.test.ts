@@ -1,3 +1,6 @@
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -5,6 +8,8 @@ import {
   bindKeys,
   registerActions,
 } from '@/client/actions/registry'
+import { CommandPalette } from '@/client/palette/commands'
+import { openOverlay } from '@/client/palette/overlay'
 import type { ElementTree } from '@/shared/records/elements'
 
 import { createModeStore } from '../mode'
@@ -242,6 +247,7 @@ describe('elementActions', () => {
             id: 'selection.clear',
             label: 'Clear selection',
             group: 'selection',
+            palette: false,
             keys: ['Escape'],
             run: () => (cleared = true),
           },
@@ -498,5 +504,20 @@ describe('element.forward and element.backward', () => {
     at(7)
 
     expect(action('element.forward').enabled?.()).toBe(true)
+  })
+
+  it('is found in the palette by its name', async () => {
+    const { actions, at } = setup({ boardFocused: () => false })
+    at(7)
+    cleanups.push(registerActions(actions))
+    render(createElement(CommandPalette))
+    act(() => openOverlay('commands'))
+    cleanups.push(() => act(() => openOverlay(null)))
+
+    await userEvent.type(await screen.findByRole('combobox'), 'bring forward')
+
+    expect(
+      await screen.findByRole('option', { name: 'Bring forward' }),
+    ).toBeInTheDocument()
   })
 })

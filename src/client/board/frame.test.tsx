@@ -103,6 +103,7 @@ describe('Frame in Play', () => {
           id: 'mode.exitPlay',
           label: 'Exit Play',
           group: 'mode',
+          palette: false,
           keys: ['Escape'],
           run: () => (exits += 1),
         },
@@ -306,6 +307,7 @@ describe('Frame', () => {
           id: 'selection.clear',
           label: 'Clear selection',
           group: 'selection',
+          palette: false,
           keys: ['Escape'],
           run: () => {
             clears += 1

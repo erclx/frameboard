@@ -14,7 +14,7 @@ import {
 } from '@/client/components/ui/dropdown-menu'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
-import { type FrameSizeName, frameSizeOf } from '@/shared/frame-sizes'
+import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
@@ -28,7 +28,7 @@ import {
   useRenamingFrame,
 } from '../structure/actions'
 import { type NumberChange, NumberField } from './number-field'
-import { FRAME_TOOL_GROUPS, matchSize } from './presets'
+import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
 
 const FIELDS = [
@@ -127,14 +127,7 @@ export function FrameSection({
         frames={frames}
         disabled={!canWrite || locked}
         onPick={(name) => {
-          const size = frameSizeOf(name)
-          const boxes: Record<string, Box> = {}
-          const expected: Record<string, Box> = {}
-          for (const { ref, box } of frames) {
-            if (box.width === size.width && box.height === size.height) continue
-            boxes[ref] = { ...box, ...size }
-            expected[ref] = box
-          }
+          const { boxes, expected } = boxesSizedTo(frames, name)
           void write(page, boxes, expected)
         }}
       />

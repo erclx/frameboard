@@ -1,9 +1,14 @@
 import {
   Copy,
+  Download,
+  Hand,
+  Link,
   Maximize,
+  MousePointer2,
   PanelLeft,
   Pencil,
   Play,
+  Scaling,
   ScanSearch,
   ZoomIn,
   ZoomOut,
@@ -12,6 +17,7 @@ import { useEffect } from 'react'
 
 import {
   type Action,
+  type Command,
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
@@ -27,7 +33,13 @@ import {
   copyStitchedImage,
   readClipboardBackend,
 } from './copy-image'
-import { withPending } from './geometry/write'
+import { withPending, writeBoxes } from './geometry/write'
+import {
+  exportFileNames,
+  exportFrame,
+  exportStore,
+} from './inspector/export-store'
+import { boxesSizedTo, FRAME_TOOL_GROUPS } from './inspector/presets'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
@@ -84,7 +96,11 @@ function selectedFrames(): FrameRecord[] {
 function boardActions(): Action[] {
   const read = () => modeStore.getState()
   const set = (patch: Partial<ModeState>) => modeStore.setState(patch)
-  const zoom = (action: Omit<Action, 'group' | 'enabled'>): Action => ({
+  const zoom = (
+    action: Pick<Action, 'id' | 'label' | 'keys' | 'run'> & {
+      command: Command
+    },
+  ): Action => ({
     ...action,
     group: 'view',
     enabled: canvasView.attached,
@@ -98,6 +114,7 @@ function boardActions(): Action[] {
       id: 'tool.move',
       label: 'Move',
       group: 'tool',
+      command: { label: 'Use the move tool', icon: MousePointer2 },
       keys: ['v'],
       // Picking a tool returns to Edit, since a tool only works there.
       run: () => set({ tool: 'move', mode: 'edit' }),
@@ -107,6 +124,7 @@ function boardActions(): Action[] {
       id: 'tool.hand',
       label: 'Hand',
       group: 'tool',
+      command: { label: 'Use the hand tool', icon: Hand, keywords: ['pan'] },
       keys: ['h'],
       run: () => set({ tool: 'hand', mode: 'edit' }),
       checked: () => read().mode === 'edit' && read().tool === 'hand',
@@ -131,6 +149,8 @@ function boardActions(): Action[] {
       id: 'mode.exitPlay',
       label: 'Exit Play',
       group: 'mode',
+      // Switch to Edit is the row for the same move.
+      palette: false,
       keys: ['Escape'],
       enabled: () => read().mode === 'play',
       run: () => {
@@ -145,6 +165,7 @@ function boardActions(): Action[] {
       id: 'tool.disarm',
       label: 'Back to Move',
       group: 'tool',
+      palette: false,
       keys: ['Escape'],
       // The selection's Esc keys stand aside while a tool is armed, so the
       // selection stays, and an open note card takes the press to close.
@@ -203,11 +224,12 @@ function boardActions(): Action[] {
       enabled: onCanvas((count) => count > 0),
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
     },
-    ...PANS.flatMap(({ name, key, dx, dy }) => [
+    ...PANS.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `view.pan.${name}`,
         label: `Pan ${name}`,
         group: 'view',
+        palette: false,
         keys: [key],
         // An arrow nudges the selection instead, so it pans with nothing selected.
         enabled: onCanvas((count) => count === 0),
@@ -217,6 +239,7 @@ function boardActions(): Action[] {
         id: `view.pan.${name}Far`,
         label: `Pan ${name} further`,
         group: 'view',
+        palette: false,
         keys: [`Shift+${key}`],
         enabled: onCanvas((count) => count === 0),
         run: () => canvasView.panBy(dx * PAN_STEP_FAR, dy * PAN_STEP_FAR),
@@ -250,20 +273,119 @@ function boardActions(): Action[] {
         )
       },
     },
+    {
+      id: 'frame.copyRef',
+      label: 'Copy frame ref',
+      group: 'frame',
+      command: {
+        label: 'Copy frame ref',
+        icon: Link,
+        hint: () => {
+          const { frames } = selectionStore.getState()
+          return frames.length === 1
+            ? (frames[0] ?? '')
+            : `${frames.length} frames`
+        },
+        keywords: ['path', 'reference', 'agent'],
+      },
+      enabled: onCanvas((count) => count > 0),
+      run: () => {
+        const refs = selectionStore.getState().frames
+        // The ref is what an agent names a frame by, one to a line.
+        navigator.clipboard.writeText(refs.join('\n')).then(
+          () =>
+            toast.add({
+              title:
+                refs.length === 1
+                  ? 'Copied the frame ref'
+                  : `Copied ${refs.length} frame refs`,
+              description: refs.join(', '),
+              type: 'success',
+            }),
+          reportRefusal("Couldn't copy the frame ref"),
+        )
+      },
+    },
+    {
+      id: 'frame.exportPng',
+      label: 'Export as PNG',
+      group: 'frame',
+      command: {
+        label: 'Export as PNG',
+        icon: Download,
+        hint: () => {
+          const { scale, theme } = exportStore.getState()
+          return `${scale}x · ${theme === 'both' ? 'both themes' : `${theme} theme`}`
+        },
+        keywords: ['download', 'image', 'save'],
+      },
+      // The inspector's Export section exports one frame, at the settings it last picked.
+      enabled: onCanvas((count) => count === 1),
+      run: () => {
+        const [frame] = selectedFrames()
+        if (!frame) return
+        const settings = exportStore.getState()
+        // The palette has closed, so the render the download waits on toasts.
+        toast.promise(exportFrame(frame, settings), {
+          loading: { title: `Exporting ${frame.name}`, type: 'loading' },
+          success: {
+            title: `Exported ${frame.name}`,
+            description: exportFileNames(frame.name, settings).join(' and '),
+            type: 'success',
+          },
+          error: (error: unknown) => ({
+            title: `Couldn't export ${frame.name}`,
+            description: error instanceof Error ? error.message : String(error),
+            type: 'error',
+          }),
+        })
+      },
+    },
+    // One row per size the Frame tool places, found by a query alone, since
+    // every size at once would bury what an empty palette opens on.
+    ...FRAME_TOOL_GROUPS.flatMap(({ rows }) => rows).map((row): Action => ({
+      id: `frame.resizeTo.${row.name}`,
+      label: `Resize to ${row.label}`,
+      group: 'frame',
+      command: {
+        label: `Resize to ${row.label}`,
+        icon: Scaling,
+        hint: () => `${row.width} × ${row.height}`,
+        keywords: ['size', 'device'],
+        searchOnly: true,
+      },
+      enabled: () =>
+        onCanvas((count) => count > 0)() &&
+        liveStore.getState().canWrite &&
+        selectedFrames().every((frame) => !frame.locked),
+      run: () => {
+        const { page } = selectionStore.getState()
+        if (!page) return
+        const { boxes, expected } = boxesSizedTo(selectedFrames(), row.name)
+        void writeBoxes(page, boxes, expected)
+      },
+    })),
     zoom({
       id: 'view.zoom50',
       label: 'Zoom to 50%',
+      command: { label: 'Zoom to 50%', icon: ZoomOut },
       run: () => canvasView.zoomTo(0.5),
     }),
     zoom({
       id: 'view.zoom100',
       label: 'Zoom to 100%',
+      command: {
+        label: 'Zoom to 100%',
+        icon: ScanSearch,
+        keywords: ['actual size'],
+      },
       keys: ['Shift+Digit0'],
       run: () => canvasView.zoomTo(1),
     }),
     zoom({
       id: 'view.zoom200',
       label: 'Zoom to 200%',
+      command: { label: 'Zoom to 200%', icon: ZoomIn },
       run: () => canvasView.zoomTo(2),
     }),
   ]

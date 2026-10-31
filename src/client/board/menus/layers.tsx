@@ -67,6 +67,7 @@ export function FrameRowMenu({ frame, page, trigger }: FrameRowMenuProps) {
     id: 'layers.rename',
     label: 'Rename',
     group: 'frame',
+    palette: false,
     enabled: () => canWrite && modeStore.getState().mode === 'edit',
     run: () => startFrameRename(frame.ref, 'layers'),
   }
@@ -130,6 +131,7 @@ export function SectionRowMenu({
     id: 'layers.renameSection',
     label: 'Rename',
     group: 'section',
+    palette: false,
     enabled: () => canWrite && modeStore.getState().mode === 'edit',
     run: () => startSectionRename(section.name),
   }

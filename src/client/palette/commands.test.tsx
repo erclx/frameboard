@@ -2,7 +2,7 @@ import '../styles.css'
 
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   type Action,
@@ -11,7 +11,7 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { useChangeActions } from '@/client/board/changes/actions'
-import { clear, selectionStore } from '@/client/board/selection'
+import { clear, select, selectionStore } from '@/client/board/selection'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { createUnseenStore, receiveChanges } from '@/client/live/unseen'
 import type { FrameChange } from '@/shared/records/changes'
@@ -19,6 +19,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { CommandPalette } from './commands'
 import { openOverlay } from './overlay'
+import { RECENT_KEY, recentStore } from './recent'
 
 const SWATCH = frameOf('swatch grid')
 const HIDDEN = frameOf('swatch hidden', { hidden: true })
@@ -44,8 +45,12 @@ function register(...actions: Action[]): void {
   cleanups.push(registerActions(actions))
 }
 
-function action(id: string, label: string, extra: Partial<Action> = {}) {
-  const made = {
+function action(
+  id: string,
+  label: string,
+  extra: Partial<Omit<Action, 'palette'>> = {},
+): Action & { runs: number } {
+  const fields = {
     id,
     label,
     group: 'view',
@@ -55,6 +60,9 @@ function action(id: string, label: string, extra: Partial<Action> = {}) {
     },
     ...extra,
   }
+  const made: Action & { runs: number } = extra.command
+    ? { ...fields, command: extra.command }
+    : { ...fields, command: undefined, palette: false }
   return made
 }
 
@@ -77,7 +85,23 @@ async function openPalette() {
   return screen.findByRole('combobox')
 }
 
+/** The group headings in the order the palette shows them. */
+function headings(): string[] {
+  return screen
+    .getAllByText(/^(Recent|For .+|Frames|Pages|Actions|Projects)$/)
+    .map((heading) => heading.textContent ?? '')
+}
+
+/** Runs the action labelled `label` from a query, which records it as recent. */
+async function runFromQuery(query: string, label: string) {
+  await userEvent.type(await openPalette(), query)
+  await userEvent.click(await screen.findByRole('option', { name: label }))
+  await waitFor(() => expect(screen.queryByRole('combobox')).toBeNull())
+}
+
 beforeEach(() => {
+  localStorage.removeItem(RECENT_KEY)
+  recentStore.setState({ ids: [] })
   receiveBoard(liveStore, BOARD)
   history.pushState(null, '', '/p/studio/home')
 })
@@ -167,7 +191,7 @@ describe('CommandPalette', () => {
   it('shows the project and page a frame sits on', async () => {
     render(<CommandPalette />)
 
-    await openPalette()
+    await userEvent.type(await openPalette(), 'swatch card')
 
     expect(
       await screen.findByRole('option', {
@@ -181,7 +205,7 @@ describe('CommandPalette', () => {
     cleanups.push(() => liveStore.setState({ canWrite: false }))
     render(<CommandPalette />)
 
-    await openPalette()
+    await userEvent.type(await openPalette(), 'swatch hidden')
 
     const row = await screen.findByRole('option', {
       name: /swatch hidden.*Hidden/,
@@ -193,7 +217,7 @@ describe('CommandPalette', () => {
     liveStore.setState({ canWrite: false })
     render(<CommandPalette />)
 
-    await openPalette()
+    await userEvent.type(await openPalette(), 'swatch hidden')
 
     expect(
       await screen.findByRole('option', { name: /swatch hidden/ }),
@@ -361,7 +385,7 @@ describe('CommandPalette', () => {
   it('selects a frame on another page and opens that page', async () => {
     render(<CommandPalette />)
 
-    await openPalette()
+    await userEvent.type(await openPalette(), 'swatch card')
     await userEvent.click(
       await screen.findByRole('option', { name: /swatch card/ }),
     )
@@ -375,7 +399,7 @@ describe('CommandPalette', () => {
   it('opens a project’s board from its row', async () => {
     render(<CommandPalette />)
 
-    await openPalette()
+    await userEvent.type(await openPalette(), 'swatch library')
     await userEvent.click(
       await screen.findByRole('option', { name: 'swatch library' }),
     )
@@ -383,7 +407,7 @@ describe('CommandPalette', () => {
     expect(location.pathname).toBe('/p/swatch%20library')
   })
 
-  it('lists projects and app actions alone on the home view', async () => {
+  it('opens on app actions alone on the home view', async () => {
     history.pushState(null, '', '/')
     register(action('a.on', 'Offered', { command: { label: 'Offered' } }))
     render(<CommandPalette />)
@@ -394,7 +418,18 @@ describe('CommandPalette', () => {
       ['Frames', 'Pages', 'Actions', 'Projects'].map(
         (heading) => screen.queryByText(heading) !== null,
       ),
-    ).toEqual([false, false, true, true])
+    ).toEqual([false, false, true, false])
+  })
+
+  it('finds a project on the home view once a query is typed', async () => {
+    history.pushState(null, '', '/')
+    render(<CommandPalette />)
+
+    await userEvent.type(await openPalette(), 'swatch')
+
+    expect(
+      await screen.findByRole('option', { name: 'swatch library' }),
+    ).toBeInTheDocument()
   })
 
   it('opens with no heading for a group that has no rows', async () => {
@@ -416,6 +451,116 @@ describe('CommandPalette', () => {
     await userEvent.type(await openPalette(), 'zzzz')
 
     expect(await screen.findByText('Nothing matches.')).toBeInTheDocument()
+  })
+
+  describe('with nothing typed', () => {
+    it('opens on recent actions, then the selection’s, then pages', async () => {
+      register(
+        action('view.zoomIn', 'Zoom in', { command: { label: 'Zoom in' } }),
+        action('frame.duplicate', 'Duplicate', {
+          group: 'frame',
+          command: { label: 'Duplicate frame' },
+        }),
+        action('theme.toggle', 'Theme', {
+          command: { label: 'Toggle theme' },
+        }),
+      )
+      render(<CommandPalette />)
+      await runFromQuery('zoom in', 'Zoom in')
+      select(selectionStore, 'studio/home', [SWATCH.ref])
+
+      await openPalette()
+
+      expect([
+        headings(),
+        screen.getAllByRole('option').map((option) => option.textContent),
+      ]).toEqual([
+        ['Recent', 'For 1 frame', 'Pages'],
+        ['Zoom in', 'Duplicate frame', 'homestudio', 'swatchesstudio'],
+      ])
+    })
+
+    it('opens on every enabled action with nothing selected', async () => {
+      register(
+        action('view.zoomIn', 'Zoom in', { command: { label: 'Zoom in' } }),
+      )
+      render(<CommandPalette />)
+
+      await openPalette()
+
+      expect(headings()).toEqual(['Actions', 'Pages'])
+    })
+
+    it('lists a frame only once a query is typed', async () => {
+      render(<CommandPalette />)
+      const input = await openPalette()
+      const before = screen.queryByRole('option', { name: /swatch grid/ })
+
+      await userEvent.type(input, 'grid')
+
+      expect([
+        before,
+        await screen.findByRole('option', { name: /swatch grid/ }),
+      ]).toEqual([null, expect.anything()])
+    })
+
+    it('keeps a search-only action out until a query finds it', async () => {
+      register(
+        action('frame.resizeTo.phone', 'Phone', {
+          group: 'frame',
+          command: { label: 'Resize to Phone', searchOnly: true },
+        }),
+      )
+      select(selectionStore, 'studio/home', [SWATCH.ref])
+      render(<CommandPalette />)
+      const input = await openPalette()
+      const before = screen.queryByRole('option', { name: 'Resize to Phone' })
+
+      await userEvent.type(input, 'resize')
+
+      expect([
+        before,
+        await screen.findByRole('option', { name: 'Resize to Phone' }),
+      ]).toEqual([null, expect.anything()])
+    })
+
+    it('drops a recent action while it is disabled', async () => {
+      let on = true
+      register(
+        action('a.gated', 'Gated', {
+          command: { label: 'Gated' },
+          enabled: () => on,
+        }),
+      )
+      render(<CommandPalette />)
+      await runFromQuery('gated', 'Gated')
+      await openPalette()
+      const before = screen.queryByText('Recent') !== null
+
+      on = false
+      act(() => refreshActions())
+
+      expect([before, screen.queryByText('Recent') !== null]).toEqual([
+        true,
+        false,
+      ])
+    })
+
+    it('opens with no Recent group and the rest intact when storage refuses writes', async () => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('Blocked', 'SecurityError')
+      })
+      cleanups.push(() => vi.restoreAllMocks())
+      register(
+        action('view.zoomIn', 'Zoom in', { command: { label: 'Zoom in' } }),
+      )
+      render(<CommandPalette />)
+      await runFromQuery('zoom in', 'Zoom in')
+
+      await openPalette()
+
+      expect(headings()).toEqual(['Actions', 'Pages'])
+    })
   })
 
   it('closes on Esc without reaching the keys bound to it', async () => {

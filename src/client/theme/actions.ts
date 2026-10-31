@@ -1,4 +1,4 @@
-import { SunMoon } from 'lucide-react'
+import { type LucideIcon, Monitor, Moon, Sun, SunMoon } from 'lucide-react'
 
 import {
   type Action,
@@ -14,10 +14,14 @@ import {
   toggleTheme,
 } from './store'
 
-const CHOICES: readonly { choice: ThemeChoice; label: string }[] = [
-  { choice: 'system', label: 'System' },
-  { choice: 'light', label: 'Light' },
-  { choice: 'dark', label: 'Dark' },
+const CHOICES: readonly {
+  choice: ThemeChoice
+  label: string
+  icon: LucideIcon
+}[] = [
+  { choice: 'system', label: 'System', icon: Monitor },
+  { choice: 'light', label: 'Light', icon: Sun },
+  { choice: 'dark', label: 'Dark', icon: Moon },
 ]
 
 /**
@@ -41,10 +45,15 @@ export function registerThemeActions(
       },
       run: () => toggleTheme(store),
     },
-    ...CHOICES.map(({ choice, label }) => ({
+    ...CHOICES.map(({ choice, label, icon }) => ({
       id: `theme.${choice}`,
       label,
       group: 'theme',
+      command: {
+        label: `Use the ${label.toLowerCase()} theme`,
+        icon,
+        keywords: ['appearance', 'mode'],
+      },
       run: () => chooseTheme(choice, store),
       checked: () => store.getState().choice === choice,
     })),

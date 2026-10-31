@@ -550,6 +550,7 @@ describe('Thread', () => {
           id: 'test.nudgeUp',
           label: 'Nudge up',
           group: 'test',
+          palette: false,
           keys: ['ArrowUp'],
           run: () => nudged++,
         },
