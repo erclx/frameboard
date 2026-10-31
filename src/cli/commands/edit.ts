@@ -3,6 +3,7 @@ import { type Command, InvalidArgumentError } from 'commander'
 import { resolveFrameRef } from '@/server/board/refs'
 import type { EditChange } from '@/server/edit/apply'
 import { editFrameFile } from '@/server/edit/frame-file'
+import { followEdit, notesPath } from '@/server/notes/store'
 import { FrameboardError } from '@/shared/errors'
 import type { EditResult } from '@/shared/records/edit'
 
@@ -98,7 +99,8 @@ export function registerEdit(program: Command, context: ProgramContext): void {
     context,
     async ([ref = ''], options) => {
       const change = changeOf(options)
-      const frame = await resolveFrameRef(await boardOf(options, io), ref, {
+      const root = await boardOf(options, io)
+      const frame = await resolveFrameRef(root, ref, {
         project: options.project,
         cwd: io.cwd,
       })
@@ -113,6 +115,16 @@ export function registerEdit(program: Command, context: ProgramContext): void {
           ref: frameRef,
           index: options.index,
         })
+      }
+      // An edit writes inside one element, so a note pinned on any keeps it.
+      if (result.hash !== result.from) {
+        await followEdit(
+          notesPath(root, frame.project, frame.page),
+          frame.name,
+          result.from,
+          result.hash,
+          result.remap,
+        )
       }
       const data: EditResult = {
         ref: frameRef,
