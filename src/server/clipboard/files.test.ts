@@ -4,13 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { FrameboardError } from '@/shared/errors'
-
-import {
-  clipboardFiles,
-  type ClipboardHost,
-  writeClipboardFiles,
-} from './files'
+import { clipboardFiles, type ClipboardHost } from './files'
 
 const WSL_RELEASE = '6.6.87.2-microsoft-standard-WSL2'
 
@@ -54,19 +48,6 @@ describe('clipboardFiles', () => {
   })
 })
 
-describe('writeClipboardFiles', () => {
-  it('refuses clipboard-unsupported with no backend', async () => {
-    const written = writeClipboardFiles(null, [
-      { name: 'hero', bytes: Buffer.from('png') },
-    ])
-
-    await expect(written).rejects.toMatchObject({
-      code: 'clipboard-unsupported',
-    })
-    await expect(written).rejects.toBeInstanceOf(FrameboardError)
-  })
-})
-
 describe('the WSL backend', () => {
   let linuxTemp: string
 
@@ -94,7 +75,7 @@ describe('the WSL backend', () => {
     const { commands, run } = windows()
     const clipboard = clipboardFiles(host({ release: WSL_RELEASE, run }))
 
-    await writeClipboardFiles(clipboard, [
+    await clipboard?.write([
       { name: 'hero', bytes: Buffer.from('one') },
       { name: "Bob's card", bytes: Buffer.from('two') },
       { name: 'hero', bytes: Buffer.from('three') },
@@ -117,13 +98,9 @@ describe('the WSL backend', () => {
   it("clears the last copy's images when it writes the next", async () => {
     const { run } = windows()
     const clipboard = clipboardFiles(host({ release: WSL_RELEASE, run }))
-    await writeClipboardFiles(clipboard, [
-      { name: 'a', bytes: Buffer.from('') },
-    ])
+    await clipboard?.write([{ name: 'a', bytes: Buffer.from('') }])
 
-    await writeClipboardFiles(clipboard, [
-      { name: 'b', bytes: Buffer.from('') },
-    ])
+    await clipboard?.write([{ name: 'b', bytes: Buffer.from('') }])
 
     expect(readdirSync(join(linuxTemp, 'frameboard-clip'))).toHaveLength(1)
   })

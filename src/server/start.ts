@@ -28,6 +28,7 @@ import { readConfig } from './checks/frame'
 import { boardPath, frameFrom, readFrame } from './checks/frame-source'
 import { checkOutranked } from './checks/outranked'
 import { type ClaimsPush, createClaimsPush } from './claims/push'
+import { clipboardFiles } from './clipboard/files'
 import { contentHash } from './edit/address'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
@@ -382,6 +383,7 @@ async function listen({
     history,
     selection,
     renderFrame,
+    clipboard: clipboardFiles(),
     thumbnails,
     measure,
     frameVersion: tracker.version,

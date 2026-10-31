@@ -7,6 +7,7 @@ import type { Tickets } from './access/tickets'
 import type { AssetUsage } from './board/asset-usage'
 import type { RenderFrame } from './capture/render'
 import type { ThumbnailStore } from './capture/thumbnails'
+import type { ClipboardFiles } from './clipboard/files'
 import type { History } from './history/stack'
 import type { MeasureFrame } from './live/hug'
 import type { SelectionHolder } from './live/selection'
@@ -16,6 +17,7 @@ import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
 import { type BrowserChecks, checkRoutes } from './routes/checks'
+import { clipboardRoutes } from './routes/clipboard'
 import { editRoutes, type SettledVersion } from './routes/edit'
 import { elementsRoutes } from './routes/elements'
 import { findRoutes } from './routes/find'
@@ -70,6 +72,8 @@ export interface AppOptions {
   openRoute?: boolean
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
+  /** Puts copied frames on the OS clipboard, null or absent where this system has no backend. */
+  clipboard?: ClipboardFiles | null
   /** The folder holding the faces every frame imports. */
   facesDir: string
   /** The `--tokens` sheet standing in for the board's `tokens.css`, when given. */
@@ -104,6 +108,7 @@ export function createApp({
   tickets,
   openRoute,
   renderFrame,
+  clipboard = null,
   facesDir,
   tokens,
   delivery,
@@ -134,7 +139,16 @@ export function createApp({
 
   // A second serve reads the root back to tell this board's server from
   // another, and the sheet to report the one this server was started with.
-  app.get('/api/health', (c) => c.json({ version, root, tokens: given }))
+  // The board reads `clipboard` at load, so Copy as PNG picks its path inside
+  // the key press that grants a browser clipboard write.
+  app.get('/api/health', (c) =>
+    c.json({
+      version,
+      root,
+      tokens: given,
+      clipboard: clipboard?.backend ?? null,
+    }),
+  )
   app.route('/', accessRoutes(actions.access, tickets, { openRoute }))
   app.route('/', apiRoutes(root, actions, frames.look, history))
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
@@ -155,6 +169,7 @@ export function createApp({
     ),
   )
   app.route('/', pngRoutes(root, renderFrame))
+  app.route('/', clipboardRoutes(root, actions.access, renderFrame, clipboard))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
   app.route('/', frames.routes)

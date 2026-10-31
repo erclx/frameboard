@@ -49,19 +49,12 @@ export function clipboardFiles(
   return null
 }
 
-/** Writes the files with the backend given, or refuses `clipboard-unsupported` without one. */
-export async function writeClipboardFiles(
-  clipboard: ClipboardFiles | null,
-  files: ClipboardFile[],
-): Promise<ClipboardBackend> {
-  if (clipboard === null) {
-    throw new FrameboardError(
-      'clipboard-unsupported',
-      'This system has no clipboard backend for a file list. Only Windows under WSL has one.',
-    )
-  }
-  await clipboard.write(files)
-  return clipboard.backend
+/** The refusal for a copy where `clipboardFiles` found no backend. */
+export function clipboardUnsupported(): FrameboardError {
+  return new FrameboardError(
+    'clipboard-unsupported',
+    'This system has no clipboard backend for a file list. Only Windows under WSL has one.',
+  )
 }
 
 // A WSL kernel names Microsoft in its release, and a WSL shell sets the distro name.
