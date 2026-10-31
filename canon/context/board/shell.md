@@ -118,7 +118,7 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 
 Owns the app shell and the controls around the canvas.
 
-- The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of git's `user.name`, which signs notes
+- The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of the name that signs notes, which a writing tab edits in place from the avatar menu's name row
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
 - Hide UI, through Cmd+\ or a button, hides both panels and keeps the way home, the project name with its menu, the toolbar, the avatar, and the zoom level
 

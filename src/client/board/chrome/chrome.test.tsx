@@ -10,7 +10,6 @@ import type { ProjectRecord } from '@/shared/records/list'
 
 import { reportZoom } from '../view'
 import { initials } from './author'
-import { AvatarMenu } from './avatar-menu'
 import { HiddenPills } from './hidden-pills'
 import { ZoomControl } from './zoom-control'
 
@@ -36,35 +35,6 @@ function counted(id: string, label: string): Action & { runs: number } {
 afterEach(() => {
   while (cleanups.length > 0) cleanups.pop()?.()
   act(() => reportZoom(1))
-})
-
-describe('AvatarMenu', () => {
-  it('names who notes are signed as, from git', async () => {
-    render(<AvatarMenu name="Eric Le" />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Eric Le/ }))
-
-    expect(await screen.findByText('From git user.name')).toBeInTheDocument()
-  })
-
-  it('leaves the name row out when git has no name', async () => {
-    render(<AvatarMenu name={null} />)
-
-    await userEvent.click(screen.getByRole('button', { name: 'Account' }))
-
-    await screen.findByRole('menu')
-    expect(screen.queryByText('From git user.name')).toBeNull()
-  })
-
-  it('shows Keyboard shortcuts disabled until its action registers', async () => {
-    render(<AvatarMenu name="Eric Le" />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Eric Le/ }))
-
-    expect(
-      await screen.findByRole('menuitem', { name: /Keyboard shortcuts/ }),
-    ).toHaveAttribute('aria-disabled', 'true')
-  })
 })
 
 describe('initials', () => {

@@ -8,7 +8,7 @@ import type { StyleValue } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
 
-import { useAuthor } from '../chrome/author'
+import { useAuthor, useAuthorSource } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
@@ -50,7 +50,8 @@ import { SelectionColors } from './selection-colors'
  * panel on one View only line, since every field under it reads greyed.
  */
 export function InspectorPanel() {
-  const name = useAuthor() ?? null
+  const name = useAuthor()
+  const source = useAuthorSource()
   const playing = useMode((state) => state.mode === 'play')
   const framing = useMode(
     (state) => state.mode === 'edit' && state.tool === 'frame',
@@ -78,7 +79,7 @@ export function InspectorPanel() {
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
         <span className="flex items-center">
-          <AvatarMenu name={name} />
+          <AvatarMenu name={name} source={source} />
           <ClaimAvatars listeners={listeners} claims={claims} />
         </span>
         <ZoomControl />

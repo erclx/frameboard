@@ -6,12 +6,14 @@ interface RenameFieldProps {
   name: string
   /** Names what is being renamed, such as `Rename page home`. */
   label: string
-  /** Called once with the trimmed name on Enter or blur, unless it is empty or unchanged. */
+  /** Called once with the trimmed name on Enter or blur, unless it is unchanged, or empty without `clearable`. */
   onCommit: (name: string) => void
   /** Called on Esc, and after a commit that changed nothing. */
   onCancel: () => void
   /** Sizes the field to its name as it is typed, stopping at the host's width, where it fills the host otherwise. */
   hug?: boolean
+  /** Commits an emptied name as `''` rather than cancelling, for a name that has a fallback. */
+  clearable?: boolean
 }
 
 /**
@@ -28,6 +30,7 @@ export function RenameField({
   onCommit,
   onCancel,
   hug = false,
+  clearable = false,
 }: RenameFieldProps) {
   const input = useRef<HTMLInputElement>(null)
   const done = useRef(false)
@@ -42,7 +45,7 @@ export function RenameField({
     if (done.current) return
     done.current = true
     const next = input.current?.value.trim() ?? ''
-    if (commit && next !== '' && next !== name) onCommit(next)
+    if (commit && (clearable || next !== '') && next !== name) onCommit(next)
     else onCancel()
   }
 

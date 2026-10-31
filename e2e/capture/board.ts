@@ -1155,6 +1155,46 @@ async function sizeMenuOnLoad(page: Page): Promise<void> {
 }
 
 /**
+ * Opens the avatar menu and clicks its name row into a field, waiting in an
+ * init script as `pressOnLoad` does. The row turns clickable only once write
+ * access lights it, and names the machine's git user.name only once its read
+ * lands, so the click waits on the row's `Edit your name` item. A click on
+ * the `Set your name` row drawn while the read is pending opens an empty field.
+ */
+async function nameEditOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const edit = () => {
+        const row = document.querySelector<HTMLElement>(
+          '[role="menuitem"][aria-label^="Edit your name"]',
+        )
+        if (row) row.click()
+        else if (--left > 0) requestAnimationFrame(edit)
+        else console.error('The name row never lit')
+      }
+      const open = () => {
+        const trigger = [...document.querySelectorAll('button')].find(
+          (button) =>
+            /from git user\.name$|saved on this machine$|^Account$/.test(
+              button.getAttribute('aria-label') ?? '',
+            ),
+        )
+        if (!trigger) {
+          if (--left > 0) requestAnimationFrame(open)
+          else console.error('No avatar to open')
+          return
+        }
+        trigger.click()
+        requestAnimationFrame(edit)
+      }
+      document.addEventListener('DOMContentLoaded', open)
+    },
+    { frames: PRESS_FRAMES },
+  )
+}
+
+/**
  * Once `ready` matches, which a control lit by write access stands for,
  * fires `event` on the button labelled `label`. Like `pressOnLoad`, it waits
  * in an init script, since `setup` runs before the harness navigates.
@@ -1551,8 +1591,23 @@ export const BOARD_CASES: CaptureCase[] = [
         section: 'avatar-menu',
         theme,
         route: '/p/webapp/home',
+        evidence: true,
         excludeViewports: STATE_ONLY,
         setup: themed(pressOnLoad('from git user.name$|^Account$')),
+      },
+      {
+        section: 'avatar-name-edit',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            asWriter,
+            nameEditOnLoad,
+            readyWhen('input[aria-label="Your name"]'),
+          ),
+        ),
       },
       {
         section: 'palette',
