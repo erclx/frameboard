@@ -15,6 +15,8 @@ import { contrastOnPage } from '@/test/contrast'
 import { useBoardActions } from '../board-actions'
 import { Canvas } from '../canvas'
 import { useCompareActions } from '../changes/compare'
+import { useElementActions } from '../element/actions'
+import { trees } from '../element/tree'
 import { modeStore } from '../mode'
 import { notesUi, useNoteTool } from '../notes/tool'
 import { useSectionActions } from '../sections/actions'
@@ -45,6 +47,39 @@ function Board({ page }: { page: PageRecord }) {
       <Canvas page={page} reloads={{}} />
     </div>
   )
+}
+
+/** The board with the element keys registered, as the canvas screen mounts them. */
+function ElementBoard({ page }: { page: PageRecord }) {
+  useElementActions(page.ref)
+  return <Board page={page} />
+}
+
+/** Frame `a` holding `<main 4>` with three children, held as already fetched. */
+function holdTree(): void {
+  const row = (index: number, parent: number | null) => ({
+    index,
+    parent,
+    tag: 'div',
+    name: `div ${index}`,
+    textOnly: false,
+    layout: 'block' as const,
+    round: false,
+    placed: false,
+  })
+  trees.store.setState({
+    byRef: {
+      [A.ref]: {
+        status: 'ready',
+        version: Number.MAX_SAFE_INTEGER,
+        tree: {
+          ref: A.ref,
+          hash: 'h',
+          elements: [row(4, null), row(5, 4), row(6, 4), row(7, 4)],
+        },
+      },
+    },
+  })
 }
 
 function hitLayer(): HTMLElement {
@@ -423,6 +458,89 @@ describe('CanvasMenu', () => {
     expect(within(menu).getAllByRole('menuitem').at(-1)).toHaveTextContent(
       /^Delete/,
     )
+  })
+
+  describe('the restack rows', () => {
+    afterEach(() => {
+      trees.store.setState({ byRef: {} })
+    })
+
+    /** Opens the element menu on child `index` of frame `a` and answers whether `row` is greyed. */
+    async function greyed(index: number, row: string) {
+      holdTree()
+      render(<ElementBoard page={PAGE} />)
+      selectElement(selectionStore, PAGE.ref, {
+        frame: A.ref,
+        index,
+        hash: 'h',
+      })
+      const outline = document.createElement('div')
+      outline.dataset.elementSelection = ''
+      Object.assign(outline.style, {
+        position: 'absolute',
+        left: '100px',
+        top: '100px',
+        width: '100px',
+        height: '100px',
+      })
+      document.querySelector('[data-layer]')?.append(outline)
+      rightClick(centerOf(A.ref))
+      const menu = await screen.findByRole('menu')
+      return within(menu)
+        .getByRole('menuitem', { name: new RegExp(`^${row}`) })
+        .hasAttribute('data-disabled')
+    }
+
+    it('greys Bring to front on the last sibling', async () => {
+      expect(await greyed(7, 'Bring to front')).toBe(true)
+    })
+
+    it('greys Bring forward on the last sibling', async () => {
+      expect(await greyed(7, 'Bring forward')).toBe(true)
+    })
+
+    it('greys Send backward on the first sibling', async () => {
+      expect(await greyed(5, 'Send backward')).toBe(true)
+    })
+
+    it('greys Send to back on the first sibling', async () => {
+      expect(await greyed(5, 'Send to back')).toBe(true)
+    })
+
+    it('offers every row on a middle sibling', async () => {
+      holdTree()
+      render(<ElementBoard page={PAGE} />)
+      selectElement(selectionStore, PAGE.ref, {
+        frame: A.ref,
+        index: 6,
+        hash: 'h',
+      })
+      const outline = document.createElement('div')
+      outline.dataset.elementSelection = ''
+      Object.assign(outline.style, {
+        position: 'absolute',
+        left: '100px',
+        top: '100px',
+        width: '100px',
+        height: '100px',
+      })
+      document.querySelector('[data-layer]')?.append(outline)
+      rightClick(centerOf(A.ref))
+
+      const menu = await screen.findByRole('menu')
+      expect(
+        [
+          'Bring to front',
+          'Bring forward',
+          'Send backward',
+          'Send to back',
+        ].map((row) =>
+          within(menu)
+            .getByRole('menuitem', { name: new RegExp(`^${row}`) })
+            .hasAttribute('data-disabled'),
+        ),
+      ).toEqual([false, false, false, false])
+    })
   })
 
   it('selects the frame when the right-click lands in it outside the selected element', async () => {

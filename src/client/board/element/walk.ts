@@ -36,24 +36,36 @@ export function sibling(
   return siblings[(position + step + count) % count]?.index
 }
 
+/** An element's place among its siblings and how many there are, undefined for one with no parent. */
+export function siblingPlace(
+  tree: readonly TreeElement[],
+  at: number,
+): { place: number; count: number } | undefined {
+  const parent = up(tree, at)
+  if (parent === undefined) return undefined
+  const siblings = tree.filter((element) => element.parent === parent)
+  const place = siblings.findIndex((element) => element.index === at)
+  return place < 0 ? undefined : { place, count: siblings.length }
+}
+
 /**
  * The gap `/api/frames/move` takes to move `at` to another place among its
  * siblings, `to` mapping the place it holds to the one it lands on, counted
- * with it lifted out. `body` is named by the index just before its first
+ * with it lifted out, out of how many siblings there are. `body` is named by the index just before its first
  * child's, since the file lists an element right ahead of what it holds.
  * Undefined when the place is the one it holds or past either end.
  */
 export function siblingGap(
   tree: readonly TreeElement[],
   at: number,
-  to: (place: number) => number,
+  to: (place: number, count: number) => number,
 ): { parent: number; before: number | null } | undefined {
   const parent = up(tree, at)
   const first = tree[0]
   if (parent === undefined || !first) return undefined
   const siblings = tree.filter((element) => element.parent === parent)
   const from = siblings.findIndex((element) => element.index === at)
-  const place = to(from)
+  const place = to(from, siblings.length)
   if (place === from || place < 0 || place >= siblings.length) return undefined
   const rest = siblings.filter((element) => element.index !== at)
   return {

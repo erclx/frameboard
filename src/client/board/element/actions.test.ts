@@ -72,7 +72,7 @@ function setup({
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
   const deleted: unknown[][] = []
-  /** Each move asked for, with the place it lands an element holding place 1 on. */
+  /** Each move asked for, with the place it lands an element holding place 1 of 3 on. */
   const moved: unknown[][] = []
   const actions = elementActions({
     page: () => PAGE,
@@ -83,7 +83,7 @@ function setup({
     boardFocused,
     writable: () => writable,
     remove: (...args) => void deleted.push(args),
-    move: (at, key, to) => void moved.push([at, key, to(1)]),
+    move: (at, key, to) => void moved.push([at, key, to(1, 3)]),
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -382,5 +382,84 @@ describe('element.moveUp and element.moveDown', () => {
     at(7)
 
     expect(action('element.moveDown').enabled?.()).toBe(false)
+  })
+})
+
+describe('element.toFront and element.toBack', () => {
+  it('brings the selected element to the last place among its siblings', () => {
+    const { action, at, moved } = setup()
+    at(7)
+
+    action('element.toFront').run()
+
+    expect(moved).toEqual([[PAGE, { frame: HERO, index: 7, hash: HASH }, 2]])
+  })
+
+  it('sends the selected element to the first place among its siblings', () => {
+    const { action, at, moved } = setup()
+    at(8)
+
+    action('element.toBack').run()
+
+    expect(moved).toEqual([[PAGE, { frame: HERO, index: 8, hash: HASH }, 0]])
+  })
+
+  it('stands Bring to front aside on the last sibling', () => {
+    const { action, at } = setup()
+
+    at(8)
+
+    expect(action('element.toFront').enabled?.()).toBe(false)
+  })
+
+  it('stands Send to back aside on the first sibling', () => {
+    const { action, at } = setup()
+
+    at(7)
+
+    expect(action('element.toBack').enabled?.()).toBe(false)
+  })
+
+  it('stands aside while the tab may not write', () => {
+    const { action, at } = setup({ writable: false })
+
+    at(7)
+
+    expect(action('element.toFront').enabled?.()).toBe(false)
+  })
+})
+
+describe('element.forward and element.backward', () => {
+  it('brings the selected element one place forward', () => {
+    const { action, at, moved } = setup()
+    at(7)
+
+    action('element.forward').run()
+
+    expect(moved).toEqual([[PAGE, { frame: HERO, index: 7, hash: HASH }, 2]])
+  })
+
+  it('stands Bring forward aside on the last sibling', () => {
+    const { action, at } = setup()
+
+    at(8)
+
+    expect(action('element.forward').enabled?.()).toBe(false)
+  })
+
+  it('stands Send backward aside on the first sibling', () => {
+    const { action, at } = setup()
+
+    at(7)
+
+    expect(action('element.backward').enabled?.()).toBe(false)
+  })
+
+  it('stays enabled while a panel button holds focus, as the Layers menu opens', () => {
+    const { action, at } = setup({ boardFocused: () => false })
+
+    at(7)
+
+    expect(action('element.forward').enabled?.()).toBe(true)
   })
 })

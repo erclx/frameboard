@@ -198,7 +198,7 @@ export async function moveElement(
 export async function moveElementTo(
   page: string,
   key: ElementKey,
-  to: (place: number) => number,
+  to: (place: number, count: number) => number,
   {
     selection = selectionStore,
     live = liveStore,

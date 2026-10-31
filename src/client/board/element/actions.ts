@@ -19,7 +19,7 @@ import {
   selectionStore,
 } from '../selection'
 import { requestTree, treeOf, trees } from './tree'
-import { down, sibling, up } from './walk'
+import { down, sibling, siblingPlace, up } from './walk'
 
 export interface ElementContext {
   /** The page the canvas shows. */
@@ -37,7 +37,11 @@ export interface ElementContext {
   /** Deletes an element, which `deleteElement` does on the board. */
   remove: (page: string, key: ElementKey) => void
   /** Moves an element to the place `to` maps its own to among its siblings, which `moveElementTo` does on the board. */
-  move: (page: string, key: ElementKey, to: (place: number) => number) => void
+  move: (
+    page: string,
+    key: ElementKey,
+    to: (place: number, count: number) => number,
+  ) => void
 }
 
 /**
@@ -140,6 +144,28 @@ export function elementActions(context: ElementContext): Action[] {
       }
     },
   })
+  /**
+   * A restack the menus run takes no key, so it reads the tree, with no
+   * focus test, and stands disabled where `to` lands the element on its own
+   * place or past either end.
+   */
+  const restack = (to: (place: number, count: number) => number) => {
+    const moves = () => {
+      const state = current()
+      if (!state || state.at === null) return false
+      const held = siblingPlace(state.tree.elements, state.at)
+      if (!held) return false
+      const place = to(held.place, held.count)
+      return place !== held.place && place >= 0 && place < held.count
+    }
+    return {
+      enabled: () => elementSelected() && context.writable() && moves(),
+      run: () => {
+        const { page, element } = selection.getState()
+        if (page && element) context.move(page, element, to)
+      },
+    }
+  }
   return [
     {
       id: 'element.down',
@@ -191,6 +217,32 @@ export function elementActions(context: ElementContext): Action[] {
       group: 'selection',
       keys: ['Alt+Shift+ArrowDown'],
       ...shift(1),
+    },
+    {
+      id: 'element.toFront',
+      label: 'Bring to front',
+      group: 'selection',
+      ...restack((_place, count) => count - 1),
+    },
+    // The menu's one-place rows, standing in for the moves whose keys hold
+    // the press at either end and only while focus sits on the board.
+    {
+      id: 'element.forward',
+      label: 'Bring forward',
+      group: 'selection',
+      ...restack((place) => place + 1),
+    },
+    {
+      id: 'element.backward',
+      label: 'Send backward',
+      group: 'selection',
+      ...restack((place) => place - 1),
+    },
+    {
+      id: 'element.toBack',
+      label: 'Send to back',
+      group: 'selection',
+      ...restack(() => 0),
     },
     {
       id: 'element.next',
