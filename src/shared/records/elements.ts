@@ -48,6 +48,33 @@ export const styleValueSchema = z.object({
 
 export type StyleValue = z.infer<typeof styleValueSchema>
 
+/**
+ * How an element sizes along one axis: `fixed` to a declared length, `hug`
+ * around what it holds, or `fill` across its flex parent's free space. Null
+ * where a block parent's width spans it, which neither mode names.
+ */
+export const sizeModeSchema = z.enum(['fixed', 'hug', 'fill'])
+
+export type SizeMode = z.infer<typeof sizeModeSchema>
+
+/** A rule several of a frame's elements may share, by the selector that matched and its match count. */
+export const declaringRuleSchema = z.object({
+  selector: z.string(),
+  count: z.int().min(1),
+})
+
+/** The selected element's flow as its source states it, beside the computed values the board reads live. */
+export const elementFlowSchema = z.object({
+  /** The rule that makes it a flex or grid container, null for its own `style`, a block, or an unread sheet. */
+  rule: declaringRuleSchema.nullable(),
+  size: z.object({
+    width: sizeModeSchema.nullable(),
+    height: sizeModeSchema.nullable(),
+  }),
+})
+
+export type ElementFlow = z.infer<typeof elementFlowSchema>
+
 /** The selected element's colors, border, shadow, and font family, each null when no author rule sets it. */
 export const elementStylesSchema = z.object({
   color: styleValueSchema.nullable(),
@@ -57,6 +84,8 @@ export const elementStylesSchema = z.object({
   boxShadow: styleValueSchema.nullable(),
   /** The family as written, inherited from an ancestor when the element states none, null for one a `font` shorthand sets. */
   fontFamily: styleValueSchema.nullable(),
+  /** Absent from a server older than the Layout section, which a reader treats as no rule and no size modes. */
+  flow: elementFlowSchema.optional(),
 })
 
 export type ElementStyles = z.infer<typeof elementStylesSchema>
