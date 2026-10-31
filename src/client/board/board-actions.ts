@@ -17,10 +17,15 @@ import {
 } from '@/client/actions/registry'
 import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
-import { frameTheme } from '@/client/theme/store'
+import { frameTheme, shownTheme, themeStore } from '@/client/theme/store'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { copyFrameImage } from './copy-image'
+import {
+  clipboardBackend,
+  copyFrameImage,
+  copyFramesToClipboard,
+  copyStitchedImage,
+} from './copy-image'
 import { withPending } from './geometry/write'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
@@ -49,6 +54,8 @@ const PANS = [
  */
 export function useBoardActions(): void {
   useEffect(() => {
+    // Asked ahead, since a several-frame copy picks its path inside the key press.
+    clipboardBackend()
     const unregister = registerActions(boardActions())
     const unsubscribeMode = modeStore.subscribe(refreshActions)
     const unsubscribeSelection = selectionStore.subscribe(refreshActions)
@@ -220,10 +227,15 @@ function boardActions(): Action[] {
       group: 'frame',
       command: { label: 'Copy as PNG', icon: Copy },
       keys: ['$mod+Shift+KeyC'],
-      enabled: onCanvas((count) => count === 1),
+      enabled: onCanvas((count) => count > 0),
       run: () => {
-        const [frame] = selectedFrames()
+        const frames = selectedFrames()
+        const [frame] = frames
         if (!frame) return
+        if (frames.length > 1) {
+          copyFrames(frames)
+          return
+        }
         const theme = frameTheme(frame.ref)
         // Nothing on the canvas shows a copy, so its outcome toasts.
         copyFrameImage(frame.ref, theme).then(
@@ -254,4 +266,52 @@ function boardActions(): Action[] {
       run: () => canvasView.zoomTo(2),
     }),
   ]
+}
+
+/**
+ * Copies several frames in the board's theme: as files on the OS clipboard
+ * where the server holds a backend, so one paste lands each, and otherwise
+ * as one image laid out as on the canvas.
+ */
+function copyFrames(frames: readonly FrameRecord[]): void {
+  const theme = shownTheme(themeStore.getState())
+  const count = frames.length
+  if (clipboardBackend() !== null) {
+    toast.promise(
+      copyFramesToClipboard(
+        frames.map((frame) => frame.ref),
+        theme,
+      ),
+      {
+        loading: { title: `Copying ${count} frames`, type: 'loading' },
+        success: {
+          title: `Copied ${count} frames`,
+          description: `${count} PNG files on the clipboard, in the ${theme} theme.`,
+          type: 'success',
+        },
+        error: copyRefusal,
+      },
+    )
+    return
+  }
+  const canvas = document.querySelector('[data-canvas]')
+  const background = canvas ? getComputedStyle(canvas).backgroundColor : 'white'
+  toast.promise(copyStitchedImage(frames, theme, background), {
+    loading: { title: `Copying ${count} frames`, type: 'loading' },
+    success: {
+      title: `Copied ${count} frames as one image`,
+      description:
+        'This system takes one image, so the frames are laid out as on the canvas.',
+      type: 'success',
+    },
+    error: copyRefusal,
+  })
+}
+
+function copyRefusal(error: unknown) {
+  return {
+    title: "Couldn't copy the frames",
+    description: error instanceof Error ? error.message : String(error),
+    type: 'error',
+  }
 }

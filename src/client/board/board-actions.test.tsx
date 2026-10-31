@@ -192,16 +192,18 @@ describe('useBoardActions', () => {
     expect(board.fits).toEqual([[HERO.box, ABOUT.box]])
   })
 
-  it('copies a PNG only with exactly one frame selected', () => {
+  it('copies a PNG with one frame or several selected, and not with none', () => {
     const board = setup()
     done = board.done
 
+    select(selectionStore, 'studio/home', [])
+    const none = isEnabled(board.action('frame.copyPng'))
     select(selectionStore, 'studio/home', [HERO.ref])
     const one = isEnabled(board.action('frame.copyPng'))
     select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
     const two = isEnabled(board.action('frame.copyPng'))
 
-    expect([one, two]).toEqual([true, false])
+    expect([none, one, two]).toEqual([false, true, true])
   })
 
   describe(
