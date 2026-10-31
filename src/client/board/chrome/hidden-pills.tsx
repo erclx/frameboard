@@ -7,7 +7,7 @@ import type { ProjectRecord } from '@/shared/records/list'
 
 import { ProjectTitle } from '../left-panel/project-header'
 import { ActionTooltip } from './action-tooltip'
-import { useAuthor } from './author'
+import { useAuthor, useAuthorSource } from './author'
 import { AvatarMenu } from './avatar-menu'
 import { ZoomControl } from './zoom-control'
 
@@ -28,6 +28,7 @@ interface HiddenPillsProps {
 export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
   const [hideUi] = useActions(['view.hideUi'])
   const name = useAuthor() ?? null
+  const source = useAuthorSource()
   return (
     <>
       <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-10rem)] items-center gap-2 rounded-[10px] border border-border bg-card py-1.5 pr-2 pl-1.5 shadow-[0_2px_8px_rgba(0,0,0,.12)]">
@@ -50,7 +51,7 @@ export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
         </ActionTooltip>
       </div>
       <div className="absolute top-3 right-3 z-10 flex h-[34px] items-center gap-1.5 rounded-lg border border-border bg-card pr-2.5 pl-1.5">
-        <AvatarMenu name={name} align="end" />
+        <AvatarMenu name={name} source={source} align="end" />
         <ZoomControl className="text-foreground" />
       </div>
     </>
