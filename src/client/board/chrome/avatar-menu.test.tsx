@@ -165,6 +165,16 @@ describe('AvatarMenu', () => {
       expect(saved).toEqual([{ name: 'Ada Lovelace' }])
     })
 
+    it('offers no Set your name while the name is still being read', async () => {
+      writing()
+      render(<AvatarMenu name={undefined} />)
+      await userEvent.click(screen.getByRole('button', { name: 'Account' }))
+
+      await screen.findByRole('menu')
+
+      expect(screen.queryByText('Set your name')).toBeNull()
+    })
+
     it('leaves the name row out on a read-only tab', async () => {
       render(<AvatarMenu name={null} />)
       await userEvent.click(screen.getByRole('button', { name: 'Account' }))

@@ -22,8 +22,8 @@ import { type AuthorSource, initials, setAuthor } from './author'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW } from './menu'
 
 interface AvatarMenuProps {
-  /** The signing name, null when neither this machine nor git has one, which shows a generic avatar and a `Set your name` row. */
-  name: string | null
+  /** The signing name, null when neither this machine nor git has one, which shows a generic avatar and a `Set your name` row, and undefined while its read is pending, which shows no name row. */
+  name: string | null | undefined
   /** Where the name comes from, which captions the name row. */
   source?: AuthorSource | null
   /** Which edge of the avatar the menu lines up with. */
@@ -59,14 +59,14 @@ export function AvatarMenu({
         }
         className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <Avatar name={name} />
+        <Avatar name={name ?? null} />
       </DropdownMenuTrigger>
       <ChromeMenuContent
         align={align}
         alignOffset={align === 'start' ? -25 : -10}
         sideOffset={7}
       >
-        <NameRow name={name} caption={caption} />
+        {name === undefined ? null : <NameRow name={name} caption={caption} />}
         <ActionMenuItem action={shortcuts} label="Keyboard shortcuts" />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger

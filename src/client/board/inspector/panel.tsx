@@ -48,7 +48,7 @@ import { SelectionColors } from './selection-colors'
  * panel on one View only line, since every field under it reads greyed.
  */
 export function InspectorPanel() {
-  const name = useAuthor() ?? null
+  const name = useAuthor()
   const source = useAuthorSource()
   const playing = useMode((state) => state.mode === 'play')
   const framing = useMode(

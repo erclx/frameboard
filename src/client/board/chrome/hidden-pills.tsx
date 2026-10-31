@@ -27,7 +27,7 @@ interface HiddenPillsProps {
  */
 export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
   const [hideUi] = useActions(['view.hideUi'])
-  const name = useAuthor() ?? null
+  const name = useAuthor()
   const source = useAuthorSource()
   return (
     <>
