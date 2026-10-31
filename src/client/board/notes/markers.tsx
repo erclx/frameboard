@@ -1,5 +1,11 @@
 import { cn } from 'cn'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 
 import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
@@ -28,14 +34,21 @@ interface NotesLayerProps {
  * The page's notes on the canvas, in board coordinates on a layer that pans
  * and zooms with the frames: one amber numbered marker per open root note
  * at its element's corner, or its frame's once the element is lost, and the
- * composer or thread the Note tool has open. Two or more notes drawing at one
- * spot show as one pin carrying their count, which opens a list of them.
+ * composer or thread the Note tool has open. Two or more notes whose pins would
+ * overlap at the current zoom show as one pin carrying their count, which
+ * opens a list of them.
  * Markers hide in Play and once a note is done.
  */
 export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const notes = useLive((state) => state.notes[page])
   const playing = useMode((state) => state.mode === 'play')
   const open = useNotesUi((state) => state.open)
+  // Pins keep screen size, so whether two overlap turns on the zoom.
+  const zoom = useSyncExternalStore(
+    canvasView.onZoom,
+    canvasView.zoom,
+    canvasView.zoom,
+  )
   // The spot whose count pin has its list open.
   const [listed, setListed] = useState<string | null>(null)
   // Markers read their elements' boxes from the live frames as they render,
@@ -58,6 +71,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
       (note) => note.thread === null && note.state !== 'done',
     ),
     place,
+    zoom,
   )
   const nextNumber =
     Math.max(0, ...(notes ?? []).map((note) => note.number ?? 0)) + 1
@@ -81,6 +95,9 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const list = spots.find(
     (spot) => spot.key === listed && spot.notes.length > 1,
   )
+  // A zoom can split the listed spot, so its list closes rather than
+  // reopening on whichever spot later takes its key.
+  if (listed !== null && !list) setListed(null)
   const closeList = (spot: string) => {
     setListed(null)
     document
@@ -164,35 +181,43 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   )
 }
 
-/** Open root notes drawing at one board pixel, with the point they draw at. */
+/** Open root notes sharing one pin, with the point the pin draws at. */
 interface Spot {
+  /** The id of the note whose point the spot took. */
   key: string
   at: BoardPoint
   notes: BoardNote[]
 }
 
 /**
- * Groups the root notes by where they draw, two notes sharing a spot when
- * their points round to the same board pixel, each spot's notes in number
- * order. A note with no number or no point draws nowhere.
+ * Groups the root notes by where their pins draw at `zoom`, a note joining the
+ * first spot whose pin its own would overlap, each spot's notes in number
+ * order. A note joins a spot by the spot's point rather than its last member's,
+ * so a row of close notes never chains into one pin wider than a pin. A note
+ * with no number or no point draws nowhere.
  */
 function spotsOf(
   roots: readonly BoardNote[],
   place: (note: BoardNote) => BoardPoint | null,
+  zoom: number,
 ): Spot[] {
-  const spots = new Map<string, Spot>()
+  // Pins share their offset from their points, so two overlap when their
+  // points sit closer than a pin's side on both axes.
+  const reach = PIN_SIZE / zoom
+  const spots: Spot[] = []
   for (const note of roots) {
     const at = place(note)
     if (!at || note.number === null) continue
-    const key = `${Math.round(at.x)},${Math.round(at.y)}`
-    const spot = spots.get(key)
+    const spot = spots.find(
+      (s) => Math.abs(s.at.x - at.x) < reach && Math.abs(s.at.y - at.y) < reach,
+    )
     if (spot) spot.notes.push(note)
-    else spots.set(key, { key, at, notes: [note] })
+    else spots.push({ key: note.id, at, notes: [note] })
   }
-  for (const spot of spots.values()) {
+  for (const spot of spots) {
     spot.notes.sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
   }
-  return [...spots.values()]
+  return spots
 }
 
 interface MarkerProps {

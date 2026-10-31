@@ -15,6 +15,7 @@ import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
+import { reportZoom } from '../view'
 import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
@@ -885,6 +886,86 @@ describe('NotesLayer', () => {
       expect(
         screen.getAllByRole('button').map((button) => button.textContent),
       ).toEqual(['3'])
+    })
+  })
+
+  describe('with notes a few board pixels apart', () => {
+    /** A frame on the page whose top right corner sits at `right`, 0. */
+    function frameEndingAt(name: string, right: number): FrameRecord {
+      return {
+        ...HERO,
+        ref: `studio/home/${name}`,
+        name,
+        path: `/board/studio/home/${name}.html`,
+        box: { x: 0, y: 0, width: right, height: 844 },
+      }
+    }
+    // Corners at 390,0 and 393,0, three board pixels apart.
+    const NEAR = frameEndingAt('near', 393)
+    const ON_HERO = note({ id: 'n_1', number: 1 })
+    const ON_NEAR = note({ id: 'n_2', number: 2, frame: 'near' })
+
+    function renderNear(frames: FrameRecord[] = [HERO, NEAR]) {
+      return render(
+        <NotesLayer page="studio/home" frames={frames} container={null} />,
+      )
+    }
+
+    afterEach(() => {
+      act(() => reportZoom(1))
+    })
+
+    it('draws one count pin reading 2 at zoom 1', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+
+      renderNear()
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['2'])
+    })
+
+    it('draws two pins at a zoom setting them 30 screen px apart', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      act(() => reportZoom(10))
+
+      renderNear()
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['1', '2'])
+    })
+
+    it('groups a row 15 px apart by the first spot in reach, never chaining', () => {
+      const FAR = frameEndingAt('far', 420)
+      live({
+        notes: {
+          'studio/home': [
+            ON_HERO,
+            note({ id: 'n_2', number: 2, frame: 'mid' }),
+            note({ id: 'n_3', number: 3, frame: 'far' }),
+          ],
+        },
+      })
+
+      renderNear([HERO, frameEndingAt('mid', 405), FAR])
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['2', '3'])
+    })
+
+    it('closes an open list once a zoom splits its spot', async () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      renderNear()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      act(() => reportZoom(10))
+      act(() => reportZoom(1))
+
+      expect(screen.queryByRole('menu')).toBeNull()
     })
   })
 
