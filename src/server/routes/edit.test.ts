@@ -776,7 +776,7 @@ describe('editRoutes', () => {
 
       expect(await response.json()).toEqual({
         ok: true,
-        data: { ref: HERO, index: COMMAND, hash: hash() },
+        data: { ref: HERO, index: COMMAND, hash: hash(), sized: [] },
       })
       expect(read()).toBe(
         original
@@ -826,6 +826,25 @@ describe('editRoutes', () => {
         placed.replace('; position: absolute; left: 12px; top: 8px', ''),
       )
       expect(history.counts().undo).toBe(2)
+    })
+
+    it('answers the sizes a placement wrote, and drops them back in flow', async () => {
+      const original = read()
+      const response = await place({
+        ...commandAt(),
+        spot: { left: 12, top: 8, width: 120 },
+      })
+      const answered = (await response.json()) as { data: { sized: string[] } }
+
+      await place({ ...commandAt(), spot: null, drop: answered.data.sized })
+
+      expect([answered.data.sized, read()]).toEqual([
+        ['width'],
+        original.replace(
+          '<p data-name="Caption">',
+          '<p data-name="Caption" style="position: relative">',
+        ),
+      ])
     })
 
     it('refuses stale-address on the old hash, writing nothing', async () => {

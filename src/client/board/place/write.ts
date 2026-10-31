@@ -458,10 +458,29 @@ export interface FreeSpot {
   height?: number
 }
 
+/** The element's own `width` and `height` as its style attribute states them, empty when unset. */
+export interface InlineSize {
+  width: string
+  height: string
+}
+
+/**
+ * The sizes each placement in this tab wrote, by frame and index, so back in
+ * flow drops one only while the element still holds the value written. A
+ * size an agent or a later edit changed is kept, and a reload forgets them.
+ */
+const sizesWritten = new Map<string, Partial<InlineSize>>()
+
+function sizeSlot({ frame, index }: Pick<ElementKey, 'frame' | 'index'>) {
+  return `${frame}\n${index}`
+}
+
 /**
  * Places the selected element at a spot out of the flow, or back in the flow
  * on null, through `POST /api/frames/place`, which writes its start tag and
- * its static parent's as one step, then selects it at the bytes written. It
+ * its static parent's as one step, then selects it at the bytes written.
+ * Back in flow also drops each size the placement in this tab wrote that
+ * `inline` still holds. It
  * goes in the frame's turn from the hash an edit ahead answered, as a delete
  * does, and keeps every index, so an edit queued behind goes as it would
  * have. A frame another session holds is refused with nothing sent, as a
@@ -476,10 +495,21 @@ export async function placeFree(
     live = liveStore,
     send = fetch,
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
-  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+    inline,
+  }: Omit<PlaceDeps, 'mode' | 'size'> & {
+    /** The element's own sizes as it renders, read back in flow. */
+    inline?: InlineSize
+  } = {},
 ): Promise<boolean> {
   const ref = key.frame
   const title = spot ? 'Nothing placed' : 'Nothing moved'
+  const written = sizesWritten.get(sizeSlot(key)) ?? {}
+  const drop = spot
+    ? []
+    : (['width', 'height'] as const).filter(
+        (axis) =>
+          written[axis] !== undefined && inline?.[axis] === written[axis],
+      )
   const holder = live.getState().claims[ref]
   if (holder) {
     notify({
@@ -500,7 +530,7 @@ export async function placeFree(
     try {
       const answer = await writeBoard<PlaceResult>(
         '/api/frames/place',
-        { ref, hash: from, index, spot },
+        { ref, hash: from, index, spot, ...(drop.length > 0 ? { drop } : {}) },
         'POST',
         send,
       )
@@ -511,6 +541,17 @@ export async function placeFree(
         index: answer.index,
         hash: answer.hash,
       })
+      const slot = sizeSlot({ frame: ref, index: answer.index })
+      if (spot) {
+        sizesWritten.set(
+          slot,
+          Object.fromEntries(
+            answer.sized.map((axis) => [axis, `${spot[axis] ?? 0}px`]),
+          ),
+        )
+      } else {
+        sizesWritten.delete(slot)
+      }
       const at = new Map(rebased ? before.at : [])
       at.set(key.index, answer.index)
       return {

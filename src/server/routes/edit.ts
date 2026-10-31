@@ -26,12 +26,13 @@ import {
 } from '@/server/edit/insert'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
-import type {
-  EditResult,
-  InsertResult,
-  MoveResult,
-  PlaceResult,
-  RemoveResult,
+import {
+  type EditResult,
+  type InsertResult,
+  type MoveResult,
+  placedSizeSchema,
+  type PlaceResult,
+  type RemoveResult,
 } from '@/shared/records/edit'
 
 import { type Access, requireWriter } from '../access/guard'
@@ -115,6 +116,8 @@ const placeSchema = z.object({
       height: side.optional(),
     })
     .nullable(),
+  /** Back in flow, the sizes to drop, being ones a placement wrote that nothing changed since. */
+  drop: z.array(placedSizeSchema).max(2).optional(),
 })
 
 /** The source a frame held under a hash an agent's write replaced, or null when none is kept. */
@@ -161,9 +164,10 @@ export type SettledVersion = (
  *
  * The place takes one element by index and a spot in CSS pixels against its
  * containing block, or null to put it back in the flow, read in the frame as
- * the hash names it. It writes the element's start tag, and its static
- * parent's first, and records both as one step, so one undo restores both.
- * It answers the element's index and the hash written, refuses as the move
+ * the hash names it, with `drop` naming the sizes back in flow takes off. It
+ * writes the element's start tag, and its static parent's first, and records
+ * both as one step, so one undo restores both. It answers the element's
+ * index, the hash written, and the sizes a placement wrote, refuses as the move
  * does, and refuses `reanchors-descendant` where a positioned parent would
  * move another element anchored above it.
  */
@@ -371,6 +375,7 @@ export function editRoutes(
       body.index,
       body.spot,
       facts,
+      body.spot ? [] : (body.drop ?? []),
     )
     if (!result.ok) {
       return c.json(
@@ -396,7 +401,12 @@ export function editRoutes(
         frames: [ref],
       })
     }
-    const data: PlaceResult = { ref, index: body.index, hash: result.hash }
+    const data: PlaceResult = {
+      ref,
+      index: body.index,
+      hash: result.hash,
+      sized: [...result.sized],
+    }
     return c.json({ ok: true, data })
   })
 

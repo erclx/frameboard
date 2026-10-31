@@ -67,6 +67,8 @@ export interface Placement {
   /** The width and height it renders at, null where `auto` resolves to no length, as on an inline box. */
   width: number | null
   height: number | null
+  /** Its own `width` and `height` as its style attribute states them, empty when unset. */
+  inline: { width: string; height: string }
 }
 
 /** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
@@ -216,6 +218,12 @@ function placementOf(
   }
   const width = size(style.width)
   const height = size(style.height)
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const own = 'style' in element ? (element as HTMLElement).style : null
+  const inline = {
+    width: own?.getPropertyValue('width') ?? '',
+    height: own?.getPropertyValue('height') ?? '',
+  }
   // A placed element's computed offsets are the ones it holds, unswung by a rotation.
   if (free && style.left.endsWith('px') && style.top.endsWith('px')) {
     return {
@@ -224,6 +232,7 @@ function placementOf(
       top: Math.round(parseFloat(style.top)),
       width,
       height,
+      inline,
     }
   }
   const doc = element.ownerDocument
@@ -262,6 +271,7 @@ function placementOf(
     top: Math.round(box.top - originY - (parseFloat(style.marginTop) || 0)),
     width,
     height,
+    inline,
   }
 }
 

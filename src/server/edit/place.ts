@@ -5,7 +5,9 @@ import {
   refuse,
   type StyleDeclaration,
 } from './apply'
+import { rawAttribute } from './attribute'
 import type { ElementSpan } from './element-span'
+import { declaredValues } from './style'
 
 /** Where a placed element sits, in CSS pixels against its containing block. */
 export interface Spot {
@@ -24,12 +26,17 @@ export interface PlaceFacts {
   readonly height: boolean
 }
 
+/** A size a placement writes where no rule sets one, and back in flow may drop. */
+export type PlacedSize = 'width' | 'height'
+
 export type Placed =
   | {
       readonly ok: true
       readonly html: string
       /** The parent's start tag first when it was written, then the element's. */
       readonly spans: readonly ElementSpan[]
+      /** The sizes a placement wrote, so back in flow can name them to drop. */
+      readonly sized: readonly PlacedSize[]
     }
   | EditRefused
 
@@ -43,6 +50,22 @@ function isStatic(facts: PlaceFacts | undefined): boolean {
 
 function px(value: number): string {
   return `${Math.round(value * 100) / 100}px`
+}
+
+/**
+ * The `position` back in flow writes: none where the style attribute states
+ * one, so a rule's own value shows again, and `static` where only a rule
+ * places the element.
+ */
+function inFlow(
+  source: string,
+  element: Element,
+  facts: PlaceFacts | undefined,
+): string {
+  const style = rawAttribute(source, element, 'style') ?? ''
+  if (declaredValues(style, 'position').length > 0) return ''
+  const position = facts?.position?.trim().toLowerCase()
+  return position === 'absolute' || position === 'fixed' ? 'static' : ''
 }
 
 /** Whether `element` is anchored above `parent`, with nothing positioned between. */
@@ -84,7 +107,9 @@ function reanchored(
 /**
  * Places the element at `index` at a pixel spot as `position: absolute` with
  * `left` and `top`, or puts it back in the flow when `spot` is null, which
- * drops `position`, `left`, and `top` and leaves every size as it stands. A
+ * drops `left`, `top`, and the sizes `drop` names, and drops `position` from
+ * the style attribute, or writes `position: static` where only a rule places
+ * it, since dropping nothing would leave it placed. A
  * static parent other than `body` takes `position: relative` first, so the
  * spot counts from it, and is refused as `reanchors-descendant` when another
  * absolute element under it anchors above it now. `facts` is the static
@@ -96,6 +121,7 @@ export function placeElement(
   index: number,
   spot: Spot | null,
   facts: readonly PlaceFacts[],
+  drop: readonly PlacedSize[] = [],
 ): Placed {
   const tree = parseFrame(source)
   const at = new Map(tree.elements.map((element, i) => [element, i]))
@@ -133,25 +159,29 @@ export function placeElement(
   }
 
   const own = facts[index]
+  const sized: PlacedSize[] = spot
+    ? (['width', 'height'] as const).filter(
+        (axis) => spot[axis] !== undefined && !own?.[axis],
+      )
+    : []
   const declarations: StyleDeclaration[] = spot
     ? [
         { property: 'position', value: 'absolute' },
         { property: 'left', value: px(spot.left) },
         { property: 'top', value: px(spot.top) },
-        ...(spot.width !== undefined && !own?.width
-          ? [{ property: 'width', value: px(spot.width) }]
-          : []),
-        ...(spot.height !== undefined && !own?.height
-          ? [{ property: 'height', value: px(spot.height) }]
-          : []),
+        ...sized.map((axis) => ({
+          property: axis,
+          value: px(spot[axis] ?? 0),
+        })),
       ]
     : [
-        { property: 'position', value: '' },
+        { property: 'position', value: inFlow(source, element, own) },
         { property: 'left', value: '' },
         { property: 'top', value: '' },
+        ...drop.map((axis) => ({ property: axis, value: '' })),
       ]
   const written = applyEdit(html, { index }, { kind: 'styles', declarations })
   if (!written.ok) return written
   spans.push(written.span)
-  return { ok: true, html: written.html, spans }
+  return { ok: true, html: written.html, spans, sized }
 }

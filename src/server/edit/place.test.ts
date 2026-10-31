@@ -81,6 +81,35 @@ describe('placeElement', () => {
     expect(placed).toMatchObject({
       ok: true,
       html: '<body><p style="position: absolute; left: 1px; top: 2px; height: 40px">x</p></body>',
+      sized: ['height'],
+    })
+  })
+
+  it('drops the sizes back in flow names and keeps the rest', () => {
+    const source =
+      '<body><p style="position: absolute; left: 3px; top: 4px; width: 80px; height: 40px">x</p></body>'
+
+    const placed = placeElement(source, 3, null, factsFor(source), ['height'])
+
+    expect(placed).toMatchObject({
+      ok: true,
+      html: '<body><p style="width: 80px">x</p></body>',
+    })
+  })
+
+  it('writes position static back in flow where only a rule places the element', () => {
+    const source = '<body><p class="badge">x</p></body>'
+
+    const placed = placeElement(
+      source,
+      3,
+      null,
+      factsFor(source, { 3: { position: 'absolute' } }),
+    )
+
+    expect(placed).toMatchObject({
+      ok: true,
+      html: '<body><p class="badge" style="position: static">x</p></body>',
     })
   })
 

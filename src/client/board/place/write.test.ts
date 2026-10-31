@@ -750,7 +750,7 @@ describe('placeFree', () => {
     selectElement(selection, 'studio/home', KEY)
     const { sent, send } = server(200, {
       ok: true,
-      data: { ref: HERO.ref, index: 4, hash: ANSWERED },
+      data: { ref: HERO.ref, index: 4, hash: ANSWERED, sized: [] },
     })
 
     const placed = await placeFree(
@@ -778,7 +778,7 @@ describe('placeFree', () => {
   it('sends a null spot to put the element back in the flow', async () => {
     const { sent, send } = server(200, {
       ok: true,
-      data: { ref: HERO.ref, index: 4, hash: ANSWERED },
+      data: { ref: HERO.ref, index: 4, hash: ANSWERED, sized: [] },
     })
 
     await placeFree('studio/home', KEY, null, {
@@ -788,6 +788,66 @@ describe('placeFree', () => {
     })
 
     expect(sent).toEqual([{ ref: HERO.ref, hash: HASH, index: 4, spot: null }])
+  })
+
+  it('drops back in flow a size the placement wrote while the element still holds it', async () => {
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+    }
+    const placing = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 7, hash: ANSWERED, sized: ['width'] },
+    })
+    await placeFree(
+      'studio/home',
+      { ...KEY, index: 7 },
+      { left: 0, top: 0, width: 120, height: 40 },
+      { ...deps, send: placing.send },
+    )
+    const back = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 7, hash: HASH, sized: [] },
+    })
+
+    await placeFree('studio/home', { ...KEY, index: 7, hash: ANSWERED }, null, {
+      ...deps,
+      send: back.send,
+      inline: { width: '120px', height: '40px' },
+    })
+
+    expect(back.sent).toMatchObject([{ spot: null, drop: ['width'] }])
+  })
+
+  it('keeps back in flow a size changed since the placement wrote it', async () => {
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+    }
+    const placing = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 8, hash: ANSWERED, sized: ['width'] },
+    })
+    await placeFree(
+      'studio/home',
+      { ...KEY, index: 8 },
+      { left: 0, top: 0, width: 120 },
+      { ...deps, send: placing.send },
+    )
+    const back = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 8, hash: HASH, sized: [] },
+    })
+
+    await placeFree('studio/home', { ...KEY, index: 8, hash: ANSWERED }, null, {
+      ...deps,
+      send: back.send,
+      inline: { width: '200px', height: '' },
+    })
+
+    expect(back.sent).toEqual([
+      { ref: HERO.ref, hash: ANSWERED, index: 8, spot: null },
+    ])
   })
 
   it('shows a refusal and keeps the element selected', async () => {

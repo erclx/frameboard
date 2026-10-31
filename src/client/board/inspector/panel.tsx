@@ -184,7 +184,9 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         disabled={disabled}
         write={write}
         preview={preview}
-        place={(spot) => placeFree(page, element, spot)}
+        place={(spot) =>
+          placeFree(page, element, spot, { inline: live.placement.inline })
+        }
       />
       <AppearanceSection
         opacity={live.opacity}

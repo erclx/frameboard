@@ -19,6 +19,7 @@ function placementOf(overrides: Partial<Placement> = {}): Placement {
     top: 16,
     width: 120,
     height: 40,
+    inline: { width: '', height: '' },
     ...overrides,
   }
 }

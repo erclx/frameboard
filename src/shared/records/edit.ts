@@ -40,11 +40,15 @@ export const moveResultSchema = z.object({
 
 export type MoveResult = z.infer<typeof moveResultSchema>
 
-/** What `POST /api/frames/place` returns: the frame it wrote, the placed element's index, and the hash the next write is made from. */
+/** A size a placement wrote where no rule set one. */
+export const placedSizeSchema = z.enum(['width', 'height'])
+
+/** What `POST /api/frames/place` returns: the frame it wrote, the placed element's index, the hash the next write is made from, and the sizes a placement wrote. */
 export const placeResultSchema = z.object({
   ref: z.string(),
   index: z.int().min(0),
   hash,
+  sized: z.array(placedSizeSchema),
 })
 
 export type PlaceResult = z.infer<typeof placeResultSchema>

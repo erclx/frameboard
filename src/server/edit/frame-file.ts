@@ -19,7 +19,12 @@ import {
   type Placement,
   removeElement,
 } from './insert'
-import { placeElement, type PlaceFacts, type Spot } from './place'
+import {
+  type PlacedSize,
+  placeElement,
+  type PlaceFacts,
+  type Spot,
+} from './place'
 
 export type FrameFileEdit =
   | {
@@ -220,11 +225,14 @@ export type FrameFilePlace =
       readonly hash: string
       /** The parent's start tag first when it was written, then the element's. */
       readonly spans: readonly ElementSpan[]
+      /** The sizes the placement wrote. */
+      readonly sized: readonly PlacedSize[]
     }
   | EditRefused
 
 /**
- * Places one element of a frame file at a spot, or puts it back in the flow,
+ * Places one element of a frame file at a spot, or puts it back in the flow
+ * dropping the sizes `drop` names,
  * written as `moveFrameFile` writes and refused as stale on a hash the file
  * no longer has. `facts` is the static cascade read from the bytes `hash`
  * names, so a parent's position is never read from another version.
@@ -235,14 +243,20 @@ export function placeFrameFile(
   index: number,
   spot: Spot | null,
   facts: readonly PlaceFacts[],
+  drop: readonly PlacedSize[] = [],
 ): FrameFilePlace {
   const read = readSource(path)
   if (!read.ok) return read
   if (read.hash !== hash) return stale(path)
-  const placed = placeElement(read.source, index, spot, facts)
+  const placed = placeElement(read.source, index, spot, facts, drop)
   if (!placed.ok) return placed
   if (!replaceFile(path, hash, placed.html)) return stale(path)
-  return { ok: true, hash: contentHash(placed.html), spans: placed.spans }
+  return {
+    ok: true,
+    hash: contentHash(placed.html),
+    spans: placed.spans,
+    sized: placed.sized,
+  }
 }
 
 /**
