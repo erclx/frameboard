@@ -28,6 +28,14 @@ export interface UnseenState {
    * outlives the look and moves on the next change after it.
    */
   base: Readonly<Record<string, string>>
+  /** What the last Mark all seen cleared, which its Undo restores, null once undone or before any. */
+  lastCleared: Readonly<Record<string, ClearedFrame>> | null
+}
+
+/** One frame Mark all seen cleared: the change it unmarked and the hash seen before it. */
+export interface ClearedFrame {
+  change: FrameChange
+  seenBefore: string | undefined
 }
 
 export interface UnseenStore extends StoreApi<UnseenState> {
@@ -45,6 +53,7 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
     seen: readSeen(storage),
     cursor: null,
     base: {},
+    lastCleared: null,
   }))
   return Object.assign(store, { storage })
 }
@@ -86,6 +95,48 @@ export function markSeen(store: UnseenStore, ref: string): void {
   writeSeen(store.storage, nextSeen)
 }
 
+/**
+ * Clears every frame's mark on every page in one write, remembering what
+ * each held so `undoMarkAll` can put the pile back.
+ */
+export function markAllSeen(store: UnseenStore): void {
+  const { unseen, seen } = store.getState()
+  const changes = Object.values(unseen)
+  if (changes.length === 0) return
+  const lastCleared = Object.fromEntries(
+    changes.map((change) => [
+      change.frame,
+      { change, seenBefore: seen[change.frame] },
+    ]),
+  )
+  const nextSeen = {
+    ...seen,
+    ...Object.fromEntries(changes.map((change) => [change.frame, change.hash])),
+  }
+  store.setState({ unseen: {}, seen: nextSeen, lastCleared })
+  writeSeen(store.storage, nextSeen)
+}
+
+/**
+ * Marks again each frame the last Mark all seen cleared, unless a newer
+ * change reached it since, whether still unseen or already looked at, so
+ * Undo never hides a later change behind an older one.
+ */
+export function undoMarkAll(store: UnseenStore): void {
+  const { unseen, seen, lastCleared } = store.getState()
+  if (!lastCleared) return
+  const nextUnseen = { ...unseen }
+  const nextSeen = { ...seen }
+  for (const [ref, { change, seenBefore }] of Object.entries(lastCleared)) {
+    if (ref in unseen || seen[ref] !== change.hash) continue
+    nextUnseen[ref] = change
+    if (seenBefore === undefined) delete nextSeen[ref]
+    else nextSeen[ref] = seenBefore
+  }
+  store.setState({ unseen: nextUnseen, seen: nextSeen, lastCleared: null })
+  writeSeen(store.storage, nextSeen)
+}
+
 /** Drops the marks and bases of frames the board no longer holds. */
 export function pruneUnseen(store: UnseenStore, board: ListResult): void {
   const refs = new Set(
@@ -93,11 +144,13 @@ export function pruneUnseen(store: UnseenStore, board: ListResult): void {
       project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
     ),
   )
-  const { unseen, base } = store.getState()
+  const { unseen, base, lastCleared } = store.getState()
   const kept = keptOn(unseen, refs)
   const keptBase = keptOn(base, refs)
-  if (kept === unseen && keptBase === base) return
-  store.setState({ unseen: kept, base: keptBase })
+  const keptCleared = lastCleared && keptOn(lastCleared, refs)
+  if (kept === unseen && keptBase === base && keptCleared === lastCleared)
+    return
+  store.setState({ unseen: kept, base: keptBase, lastCleared: keptCleared })
 }
 
 /**
@@ -110,7 +163,7 @@ export function renameUnseen(
   before: string,
   after: string,
 ): void {
-  const { unseen, seen, base, cursor } = store.getState()
+  const { unseen, seen, base, cursor, lastCleared } = store.getState()
   const moved = Object.fromEntries(
     Object.entries(movedKeys(unseen, before, after)).map(([ref, change]) => [
       ref,
@@ -122,6 +175,16 @@ export function renameUnseen(
     unseen: moved,
     seen: nextSeen,
     base: movedKeys(base, before, after),
+    lastCleared:
+      lastCleared &&
+      Object.fromEntries(
+        Object.entries(movedKeys(lastCleared, before, after)).map(
+          ([ref, cleared]) => [
+            ref,
+            { ...cleared, change: { ...cleared.change, frame: ref } },
+          ],
+        ),
+      ),
     cursor: cursor === null ? null : movedRef(cursor, before, after),
   })
   writeSeen(store.storage, nextSeen)
