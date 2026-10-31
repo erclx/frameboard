@@ -63,4 +63,39 @@ describe('RenameField', () => {
 
     expect(widthOf(field)).toBe(HOST_WIDTH + 6)
   })
+
+  it('cancels an emptied name by default', async () => {
+    const commits: string[] = []
+    let cancels = 0
+    render(
+      <RenameField
+        name="hero"
+        label="Rename frame hero"
+        onCommit={(name) => commits.push(name)}
+        onCancel={() => (cancels += 1)}
+      />,
+    )
+
+    await userEvent.keyboard('{Backspace}{Enter}')
+
+    expect(commits).toEqual([])
+    expect(cancels).toBe(1)
+  })
+
+  it('commits an emptied name when clearable', async () => {
+    const commits: string[] = []
+    render(
+      <RenameField
+        name="Grace Hopper"
+        label="Your name"
+        clearable
+        onCommit={(name) => commits.push(name)}
+        onCancel={() => {}}
+      />,
+    )
+
+    await userEvent.keyboard('{Backspace}{Enter}')
+
+    expect(commits).toEqual([''])
+  })
 })

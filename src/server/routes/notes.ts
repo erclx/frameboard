@@ -243,7 +243,7 @@ export function notesRoutes(
         ? null
         : await anchorFor(frame.path, body.element, body.renderedAt ?? '')
     const id = newNoteId()
-    const author = await readAuthor(root)
+    const { name: author } = await readAuthor(root)
     const place = {
       project: frame.project,
       page: frame.page,
@@ -278,7 +278,7 @@ export function notesRoutes(
     await assertStored(dirname(found.path), body.images ?? [])
     const rootId = found.note.thread ?? found.note.id
     const id = newNoteId()
-    const author = await readAuthor(root)
+    const { name: author } = await readAuthor(root)
     const note = await write(
       found.path,
       (file) =>

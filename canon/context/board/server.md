@@ -13,7 +13,7 @@ Owns the server half of the board, being the folder watcher and socket hub, the 
 
 ### `src/server/`
 
-Owns the loopback server around the folders below. `app.ts` is the Hono app, `start.ts` binds it to `127.0.0.1` alone since the board serves the developer's own files, `address.ts` writes the address file and its health check, and `author.ts` reads git's `user.name` to sign notes.
+Owns the loopback server around the folders below. `app.ts` is the Hono app, `start.ts` binds it to `127.0.0.1` alone since the board serves the developer's own files, `address.ts` writes the address file and its health check, and `author.ts` reads the signing name, a saved one winning over git's.
 
 ### `src/server/live/`
 
