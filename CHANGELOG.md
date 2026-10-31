@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.22.0](https://github.com/erclx/frameboard/compare/v0.21.0...v0.22.0) (2026-10-31)
+
+
+### Features
+
+* **checks:** report each rule at its own level and quiet linked sheets ([#197](https://github.com/erclx/frameboard/issues/197)) ([c5777ae](https://github.com/erclx/frameboard/commit/c5777aebd76514c0a1ecbb412ad5bc3232f0b1b4))
+* **notes:** join note pins that would overlap and draw them at 24px ([#196](https://github.com/erclx/frameboard/issues/196)) ([7bc4bbc](https://github.com/erclx/frameboard/commit/7bc4bbc2e3f6cf7b2d5346d4878918d5cc8f215f))
+* **plugin:** rename the skill to frameboard:draw ([#194](https://github.com/erclx/frameboard/issues/194)) ([c51f41a](https://github.com/erclx/frameboard/commit/c51f41a263e9d45fe19e7dd533e91b7c9d02dbe5))
+
 ## [0.21.0](https://github.com/erclx/frameboard/compare/v0.20.0...v0.21.0) (2026-10-31)
 
 
