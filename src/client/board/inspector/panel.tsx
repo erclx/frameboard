@@ -21,6 +21,7 @@ import { ArrangeSection } from './arrange-section'
 import { ChecksSection } from './checks-section'
 import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
+import { LayoutSection } from './element/layout'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
 import {
@@ -178,6 +179,14 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const own = styles?.element
   return (
     <>
+      <LayoutSection
+        layout={live.layout}
+        flow={own?.flow}
+        textOnly={live.textOnly}
+        disabled={disabled}
+        write={write}
+        preview={preview}
+      />
       <AppearanceSection
         opacity={live.opacity}
         radius={live.radius}

@@ -2820,6 +2820,7 @@ describe('InspectorPanel with an element selected', () => {
     const headings = await screen.findAllByRole('heading')
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',
+      'Layout',
       'Appearance',
       'Typography',
       'Fill',
