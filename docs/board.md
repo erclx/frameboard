@@ -21,6 +21,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 - The agent answers in the note's thread through `notes reply` and closes it with `notes done`
 - Paste or drop a PNG, JPEG, GIF, or WebP image into a note or a reply, and the agent gets its path to open
 - The notes stay in each page's `notes.json`, and their images in its `.notes/` folder
+- A note is signed with the name you set from the avatar menu, saved for every board on this machine in `$XDG_CONFIG_HOME/frameboard/config.json`, else `~/.config/frameboard/config.json`, and with git's `user.name` until you set one
 - With nobody listening, Send can start a session through a command you export before `serve`, such as `FRAMEBOARD_DISPATCH='claude --bg "$FRAMEBOARD_NOTE"'`, which gets the note in its environment
 - The command runs in the folder `serve` started in, and `claude --bg` starts only once Claude Code trusts that folder
 
