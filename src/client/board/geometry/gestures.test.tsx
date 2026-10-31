@@ -1,13 +1,15 @@
 import '../../styles.css'
 
 import { act, render } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
-import type { ShapeSize } from '../element/resize'
+import type { PlacedOffsets, ShapeSize } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
@@ -64,6 +66,7 @@ function setup(
     control,
     divider,
     shape,
+    placed,
     live,
     sections = [],
     lands = true,
@@ -86,6 +89,8 @@ function setup(
     divider?: Box
     /** The selected element is a shape, in a frame free to write or held by another session. */
     shape?: 'free' | 'held'
+    /** The selected element is placed at these offsets, out of the flow. */
+    placed?: PlacedOffsets
     /**
      * A body LEFT renders live in an iframe filling its box, whose pin is
      * anchored to the element at file index 3, the first in the body.
@@ -107,6 +112,13 @@ function setup(
     key: ElementKey
     previews: ShapeSize[]
     commits: ShapeSize[]
+    cancelled: boolean
+  }[] = []
+  const placedMoves: {
+    page: string
+    key: ElementKey
+    previews: PlacedOffsets[]
+    commits: PlacedOffsets[]
     cancelled: boolean
   }[] = []
   const view = render(
@@ -251,6 +263,27 @@ function setup(
         return null
       },
       isShape: () => shape !== undefined,
+      placedOffsets: () => placed ?? null,
+      movePlaced: (page, key) => {
+        const move = {
+          page,
+          key,
+          previews: [] as PlacedOffsets[],
+          commits: [] as PlacedOffsets[],
+          cancelled: false,
+        }
+        placedMoves.push(move)
+        return {
+          preview: (offsets) => move.previews.push(offsets),
+          commit: async (offsets) => {
+            move.commits.push(offsets)
+            return true
+          },
+          cancel: () => {
+            move.cancelled = true
+          },
+        }
+      },
       resizeShape: (page, key) => {
         if (shape !== 'free') return null
         const resize = {
@@ -284,6 +317,7 @@ function setup(
     splits,
     moves,
     resizes,
+    placedMoves,
     part,
     pointer,
     detach,
@@ -1130,6 +1164,96 @@ describe('attachGestures', () => {
       canvas.pointer.drag([150, 95], [190, 125])
 
       expect(canvas.part('[data-element-selection]').style.transform).toBe('')
+    })
+
+    describe('that is placed', () => {
+      const PLACED = { left: 40, top: 30 }
+
+      function setupPlaced(live?: string) {
+        const canvas = setup(undefined, {
+          elementBox: ELEMENT_BOX,
+          placed: PLACED,
+          live,
+        })
+        detach = canvas.detach
+        return canvas
+      }
+
+      it('moves its offsets by the drag and writes them once on release', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+
+        expect(canvas.placedMoves).toMatchObject([
+          { page: PAGE, key: ELEMENT, previews: [{ left: 65, top: 10 }] },
+        ])
+        expect(canvas.placedMoves[0]?.commits).toEqual([])
+
+        canvas.pointer.up(225, 155)
+
+        expect([
+          canvas.placedMoves[0]?.commits,
+          canvas.moves,
+          canvas.writes,
+        ]).toEqual([[{ left: 65, top: 10 }], [], []])
+      })
+
+      it('keeps Esc from the key registry, so the selection stays on the element', async () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        const ran: string[] = []
+        const unregister = registerActions([
+          {
+            id: 'test.escape',
+            label: 'Escape',
+            group: 'selection',
+            keys: ['Escape'],
+            run: () => ran.push('escape'),
+          },
+        ])
+        const unbind = bindKeys(window)
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        await userEvent.keyboard('{Escape}')
+        canvas.pointer.up(225, 155)
+        unbind()
+        unregister()
+
+        expect([ran, canvas.placedMoves[0]?.cancelled]).toEqual([[], true])
+      })
+
+      it('puts it back and writes nothing on Esc mid-drag', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        act(() => {
+          dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        })
+        canvas.pointer.up(225, 155)
+
+        expect([
+          canvas.placedMoves[0]?.commits,
+          canvas.placedMoves[0]?.cancelled,
+          canvas.moves,
+        ]).toEqual([[], true, []])
+      })
+
+      it('carries the pin pinned on it while the drag runs', () => {
+        const canvas = setupPlaced('<p>x</p>')
+        act(() => selectElement(selectionStore, PAGE, { ...ELEMENT, index: 3 }))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+
+        expect(
+          canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
+        ).toBe('25px -20px')
+      })
     })
 
     describe('that is a shape', () => {

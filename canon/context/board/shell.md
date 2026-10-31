@@ -83,7 +83,7 @@ Each section's row in `section-rows.tsx` holds its frames' rows indented under i
 - Choosing a frame not wholly in view centers its drawn box at the current zoom through `canvasView.reveal`, fitting one larger than the view
 - The reveal reports as a hand move, so it stops Follow, and only a frame lying wholly in view leaves the view
 
-An element row draws `T` for text, an image glyph for media, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout and the rounding from the static cascade, so a culled frame keeps its glyphs.
+An element row draws `T` for text, an image glyph for media, a corner bracket over a box for a placed element, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout, the rounding, and `position` from the static cascade, so a culled frame keeps its glyphs.
 
 An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
 

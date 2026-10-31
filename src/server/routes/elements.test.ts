@@ -79,6 +79,7 @@ describe('elementsRoutes', () => {
               textOnly: true,
               layout: 'block',
               round: false,
+              placed: false,
             },
             {
               index: 7,
@@ -88,6 +89,7 @@ describe('elementsRoutes', () => {
               textOnly: false,
               layout: 'block',
               round: false,
+              placed: false,
             },
           ],
         },

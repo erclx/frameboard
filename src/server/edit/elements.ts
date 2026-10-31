@@ -6,6 +6,7 @@ import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
+import type { PlaceFacts } from './place'
 
 /** How long a text-only element's text may run as its name. */
 const NAME_LENGTH = 40
@@ -19,6 +20,13 @@ export const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
 
 const ROUND_PROPERTIES: ReadonlySet<string> = new Set(['border-radius'])
 
+/** What a placement reads: where an element is anchored and which axes a rule sizes. */
+const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
+  'position',
+  'width',
+  'height',
+])
+
 /**
  * A frame's elements under `body` in index order, each with its parent and
  * name, read from the same parse and the same index `edit` addresses. A
@@ -26,12 +34,14 @@ const ROUND_PROPERTIES: ReadonlySet<string> = new Set(['border-radius'])
  * refused, since every index after it would name another element.
  * `layouts` is `elementLayouts`'s read by the same index, and an element it
  * does not reach reads as `block`. `rounds` is `elementRounds`'s read, which
- * marks an element round only while it holds nothing.
+ * marks an element round only while it holds nothing. `facts` is
+ * `elementPlaceFacts`'s read, and an element it does not reach reads unplaced.
  */
 export function elementTree(
   source: string,
   layouts: readonly Layout[] = [],
   rounds: readonly boolean[] = [],
+  facts: readonly PlaceFacts[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -58,6 +68,7 @@ export function elementTree(
       textOnly: ownText(element) !== null,
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
+      placed: isPlaced(facts[at]),
     })
   }
   return listed
@@ -90,6 +101,35 @@ export function elementRounds(source: FrameSource, tokens: Sheet[]): boolean[] {
     const percent = radius?.match(/^(\d+(?:\.\d+)?)%$/)?.[1]
     return percent !== undefined && Number(percent) >= 50
   })
+}
+
+/**
+ * Each element's `position` and whether a rule sizes its width and height,
+ * read from the same static cascade by the edit index, which a placement
+ * reads to choose the tags it writes. A sheet a load cannot read is missed,
+ * so a parent it positions reads as static.
+ */
+export function elementPlaceFacts(
+  source: FrameSource,
+  tokens: Sheet[],
+): PlaceFacts[] {
+  const cascade = buildCascade(source, tokens, {
+    properties: PLACE_PROPERTIES,
+  })
+  const own = (element: FrameSource['elements'][number], property: string) => {
+    const specified = cascade.specified(element, property)
+    return specified && !specified.userAgent ? specified.value : null
+  }
+  return source.elements.map((element) => ({
+    position: own(element, 'position'),
+    width: own(element, 'width') !== null,
+    height: own(element, 'height') !== null,
+  }))
+}
+
+function isPlaced(facts: PlaceFacts | undefined): boolean {
+  const position = facts?.position?.trim().toLowerCase()
+  return position === 'absolute' || position === 'fixed'
 }
 
 /** One element's layout off a cascade that reads `LAYOUT_PROPERTIES`. */

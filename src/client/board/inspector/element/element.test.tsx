@@ -2830,6 +2830,7 @@ describe('InspectorPanel with an element selected', () => {
     const headings = await screen.findAllByRole('heading')
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',
+      'Position',
       'Layout',
       'Appearance',
       'Typography',
@@ -3179,5 +3180,51 @@ describe('InspectorPanel with an element selected', () => {
     expect(controls.filter((control) => !control.matches(':disabled'))).toEqual(
       [],
     )
+  })
+
+  it('reads an in-flow child’s offsets from its parent’s padding box', async () => {
+    await mountFrame(
+      '<div style="margin: 0; padding: 10px; border: 2px solid"><p style="margin: 0">Hi</p></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 4, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.placement).toMatchObject({
+      free: false,
+      left: 10,
+      top: 10,
+    })
+  })
+
+  it('reads a body child’s offsets from the frame', async () => {
+    await mountFrame('<p style="margin: 0">Hi</p>')
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.placement).toMatchObject({
+      free: false,
+      left: 8,
+      top: 8,
+    })
+  })
+
+  it('reads a placed element’s own offsets', async () => {
+    await mountFrame(
+      '<div style="position: relative"><p style="position: absolute; left: 7px; top: 9px; margin: 0">Hi</p></div>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 4, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.placement).toMatchObject({
+      free: true,
+      left: 7,
+      top: 9,
+    })
   })
 })

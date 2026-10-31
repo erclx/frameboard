@@ -14,6 +14,7 @@ import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
+import { placeFree } from '../place/write'
 import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
@@ -22,6 +23,7 @@ import { ChecksSection } from './checks-section'
 import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
+import { PositionSection } from './element/position'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
 import {
@@ -179,6 +181,15 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const own = styles?.element
   return (
     <>
+      <PositionSection
+        placement={live.placement}
+        disabled={disabled}
+        write={write}
+        preview={preview}
+        place={(spot) =>
+          placeFree(page, element, spot, { inline: live.placement.inline })
+        }
+      />
       <LayoutSection
         layout={live.layout}
         flow={own?.flow}

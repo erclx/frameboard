@@ -181,6 +181,7 @@ function heroTree(): void {
               textOnly: false,
               layout: 'block',
               round: false,
+              placed: false,
             },
             {
               index: 7,
@@ -190,6 +191,7 @@ function heroTree(): void {
               textOnly: true,
               layout: 'block',
               round: false,
+              placed: false,
             },
             {
               index: 8,
@@ -199,6 +201,7 @@ function heroTree(): void {
               textOnly: false,
               layout: 'block',
               round: false,
+              placed: false,
             },
           ],
         },

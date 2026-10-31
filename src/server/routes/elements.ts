@@ -9,6 +9,7 @@ import { tokenSheets } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
 import {
   elementLayouts,
+  elementPlaceFacts,
   elementRounds,
   elementTree,
 } from '@/server/edit/elements'
@@ -61,6 +62,7 @@ export function elementsRoutes(
       bytes.toString('utf8'),
       elementLayouts(source, sheets),
       elementRounds(source, sheets),
+      elementPlaceFacts(source, sheets),
     )
     if (!Array.isArray(elements)) {
       throw new FrameboardError(elements.reason, elements.detail, { ref })

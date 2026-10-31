@@ -17,6 +17,7 @@ function element(
     textOnly: false,
     layout: 'block',
     round: false,
+    placed: false,
   }
 }
 

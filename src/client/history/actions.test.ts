@@ -59,6 +59,7 @@ function treeOf(hash: string, elements: string[]): ElementTree {
         textOnly: false,
         layout: 'block',
         round: false,
+        placed: false,
       }
     }),
   }

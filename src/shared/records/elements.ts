@@ -23,6 +23,8 @@ export const treeElementSchema = z.object({
   layout: layoutSchema,
   /** True when it holds nothing and its corners round by half or more, so it draws as an ellipse. */
   round: z.boolean(),
+  /** True when it is placed out of the flow, as `position: absolute` or `fixed`. */
+  placed: z.boolean(),
 })
 
 export type TreeElement = z.infer<typeof treeElementSchema>

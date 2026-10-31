@@ -8,6 +8,7 @@ import { parseFrame } from './address'
 import {
   elementLayouts,
   elementName,
+  elementPlaceFacts,
   elementRounds,
   elementTree,
 } from './elements'
@@ -28,6 +29,7 @@ describe('elementTree', () => {
         textOnly: false,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 5,
@@ -37,6 +39,7 @@ describe('elementTree', () => {
         textOnly: true,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 6,
@@ -46,6 +49,7 @@ describe('elementTree', () => {
         textOnly: true,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 7,
@@ -55,6 +59,7 @@ describe('elementTree', () => {
         textOnly: false,
         layout: 'block',
         round: false,
+        placed: false,
       },
     ])
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
@@ -101,6 +106,35 @@ describe('elementTree', () => {
     ).toEqual([
       [3, true],
       [4, false],
+      [5, false],
+    ])
+  })
+
+  it('marks an absolute or fixed element placed and a relative one not', () => {
+    const at = (position: string | null) => ({
+      position,
+      width: false,
+      height: false,
+    })
+    const tree = elementTree(
+      '<body><div></div><div></div><div></div></body>',
+      [],
+      [],
+      [
+        at(null),
+        at(null),
+        at(null),
+        at('absolute'),
+        at('fixed'),
+        at('relative'),
+      ],
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.index, row.placed]),
+    ).toEqual([
+      [3, true],
+      [4, true],
       [5, false],
     ])
   })
@@ -279,5 +313,53 @@ describe('elementName', () => {
     ['an id, which never names', '<div id="hero"></div>', 'div'],
   ])('names %s', (_case, html, expected) => {
     expect(named(html)).toBe(expected)
+  })
+})
+
+describe('elementPlaceFacts', () => {
+  let board: TempBoard | undefined
+
+  afterEach(() => {
+    board?.cleanup()
+    board = undefined
+  })
+
+  /** The facts of the element with `id="t"`, read over the board's token sheet. */
+  function factsOf(body: string, css = '', tokens = '') {
+    board = writeBoard({
+      'tokens.css': tokens,
+      'site/home/hero.html': `<!doctype html><html><head><style>${css}</style></head><body>${body}</body></html>`,
+    })
+    const source = readFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+    const facts = elementPlaceFacts(source, tokenSheets(board.root, 'site'))
+    const index = source.elements.findIndex(
+      (candidate) => candidate.attribs.id === 't',
+    )
+    return facts[index]
+  }
+
+  it('reads a position a rule sets', () => {
+    expect(factsOf('<div id="t"></div>', '#t { position: relative }')).toEqual({
+      position: 'relative',
+      width: false,
+      height: false,
+    })
+  })
+
+  it('reads a position and a width the style attribute sets', () => {
+    expect(
+      factsOf('<div id="t" style="position: absolute; width: 40px"></div>'),
+    ).toEqual({ position: 'absolute', width: true, height: false })
+  })
+
+  it('reads no position when only an ancestor sets one', () => {
+    expect(
+      factsOf('<div><p id="t">a</p></div>', 'div { position: relative }'),
+    ).toEqual({ position: null, width: false, height: false })
   })
 })

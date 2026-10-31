@@ -4,6 +4,7 @@ import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type {
   InsertResult,
   MoveResult,
+  PlaceResult,
   RemoveResult,
 } from '@/shared/records/edit'
 import type { ElementTree } from '@/shared/records/elements'
@@ -198,7 +199,7 @@ export async function moveElement(
 export async function moveElementTo(
   page: string,
   key: ElementKey,
-  to: (place: number) => number,
+  to: (place: number, count: number) => number,
   {
     selection = selectionStore,
     live = liveStore,
@@ -441,6 +442,132 @@ export async function deleteElement(
               : 'The board could not be reached, so nothing was written.',
         })
       }
+      return null
+    } finally {
+      done()
+    }
+  })
+  return landed !== null
+}
+
+/** Where a placed element sits, in CSS pixels against the box it counts from, and the size it rendered at. */
+export interface FreeSpot {
+  left: number
+  top: number
+  width?: number
+  height?: number
+}
+
+/** The element's own `width` and `height` as its style attribute states them, empty when unset. */
+export interface InlineSize {
+  width: string
+  height: string
+}
+
+/**
+ * The sizes each placement in this tab wrote, by frame and index, so back in
+ * flow drops one only while the element still holds the value written. A
+ * size an agent or a later edit changed is kept, and a reload forgets them.
+ */
+const sizesWritten = new Map<string, Partial<InlineSize>>()
+
+function sizeSlot({ frame, index }: Pick<ElementKey, 'frame' | 'index'>) {
+  return `${frame}\n${index}`
+}
+
+/**
+ * Places the selected element at a spot out of the flow, or back in the flow
+ * on null, through `POST /api/frames/place`, which writes its start tag and
+ * its static parent's as one step, then selects it at the bytes written.
+ * Back in flow also drops each size the placement in this tab wrote that
+ * `inline` still holds. It
+ * goes in the frame's turn from the hash an edit ahead answered, as a delete
+ * does, and keeps every index, so an edit queued behind goes as it would
+ * have. A frame another session holds is refused with nothing sent, as a
+ * move is. Answers whether it landed.
+ */
+export async function placeFree(
+  page: string,
+  key: ElementKey,
+  spot: FreeSpot | null,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+    inline,
+  }: Omit<PlaceDeps, 'mode' | 'size'> & {
+    /** The element's own sizes as it renders, read back in flow. */
+    inline?: InlineSize
+  } = {},
+): Promise<boolean> {
+  const ref = key.frame
+  const title = spot ? 'Nothing placed' : 'Nothing moved'
+  const written = sizesWritten.get(sizeSlot(key)) ?? {}
+  const drop = spot
+    ? []
+    : (['width', 'height'] as const).filter(
+        (axis) =>
+          written[axis] !== undefined && inline?.[axis] === written[axis],
+      )
+  const holder = live.getState().claims[ref]
+  if (holder) {
+    notify({
+      title,
+      description: `${holder.tag} is editing ${ref.split('/').at(-1) ?? ref}, so nothing was written.`,
+    })
+    return false
+  }
+  const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
+    const before = prior ? await prior : undefined
+    if (before === null) return null
+    const rebased =
+      before !== undefined && before.from.includes(key.hash) && !before.shifted
+    const from = rebased ? before.to : key.hash
+    const index = rebased ? (before.at.get(key.index) ?? key.index) : key.index
+    const done = awaitHash(ref)
+    rememberHash(ref, from)
+    try {
+      const answer = await writeBoard<PlaceResult>(
+        '/api/frames/place',
+        { ref, hash: from, index, spot, ...(drop.length > 0 ? { drop } : {}) },
+        'POST',
+        send,
+      )
+      rememberHash(ref, answer.hash)
+      void catchUpTree(ref, answer.hash)
+      selectElement(selection, page, {
+        frame: ref,
+        index: answer.index,
+        hash: answer.hash,
+      })
+      const slot = sizeSlot({ frame: ref, index: answer.index })
+      if (spot) {
+        sizesWritten.set(
+          slot,
+          Object.fromEntries(
+            answer.sized.map((axis) => [axis, `${spot[axis] ?? 0}px`]),
+          ),
+        )
+      } else {
+        sizesWritten.delete(slot)
+      }
+      const at = new Map(rebased ? before.at : [])
+      at.set(key.index, answer.index)
+      return {
+        from: rebased ? [...before.from, from] : [from],
+        to: answer.hash,
+        at,
+        shifted: false,
+      }
+    } catch (error) {
+      notify({
+        title,
+        description:
+          error instanceof BoardWriteError
+            ? sentence(error.message)
+            : 'The board could not be reached, so nothing was written.',
+      })
       return null
     } finally {
       done()

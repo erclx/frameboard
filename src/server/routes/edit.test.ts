@@ -738,6 +738,155 @@ describe('editRoutes', () => {
     })
   })
 
+  describe('POST /api/frames/place', () => {
+    /** The `<code>` inside the caption, a static `<p>`. */
+    const COMMAND = 7
+
+    function place(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+      ).request('/api/frames/place', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    const commandAt = () => ({
+      ref: HERO,
+      hash: hash(),
+      index: COMMAND,
+      spot: { left: 12, top: 8 },
+    })
+
+    it('writes the static parent and the element, answering the hash written', async () => {
+      const original = read()
+
+      const response = await place(commandAt())
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, index: COMMAND, hash: hash(), sized: [] },
+      })
+      expect(read()).toBe(
+        original
+          .replace(
+            '<p data-name="Caption">',
+            '<p data-name="Caption" style="position: relative">',
+          )
+          .replace(
+            'style="font-family: var(--font-mono)"',
+            'style="font-family: var(--font-mono); position: absolute; left: 12px; top: 8px"',
+          ),
+      )
+    })
+
+    it('records both tags as one step, which one undo puts back', async () => {
+      const original = read()
+      await place(commandAt())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toBe(original)
+    })
+
+    it('refuses the whole undo once an agent changed the parent, keeping both tags', async () => {
+      await place(commandAt())
+      writeFileSync(
+        path(),
+        read().replace('data-name="Caption"', 'data-name="Note"'),
+      )
+      const agent = read()
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+
+      expect(read()).toBe(agent)
+    })
+
+    it('puts the element back in the flow as its own step', async () => {
+      await place(commandAt())
+      const placed = read()
+
+      await place({ ...commandAt(), spot: null })
+
+      expect(read()).toBe(
+        placed.replace('; position: absolute; left: 12px; top: 8px', ''),
+      )
+      expect(history.counts().undo).toBe(2)
+    })
+
+    it('answers the sizes a placement wrote, and drops them back in flow', async () => {
+      const original = read()
+      const response = await place({
+        ...commandAt(),
+        spot: { left: 12, top: 8, width: 120 },
+      })
+      const answered = (await response.json()) as { data: { sized: string[] } }
+
+      await place({ ...commandAt(), spot: null, drop: answered.data.sized })
+
+      expect([answered.data.sized, read()]).toEqual([
+        ['width'],
+        original.replace(
+          '<p data-name="Caption">',
+          '<p data-name="Caption" style="position: relative">',
+        ),
+      ])
+    })
+
+    it('refuses stale-address on the old hash, writing nothing', async () => {
+      const sent = commandAt()
+      agentWrites(read().replace('hero</h1>', 'Agent</h1>'))
+      const agent = read()
+
+      const response = await place(sent)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a frame another session holds as frame-claimed', async () => {
+      const original = read()
+      await claim(
+        board.root,
+        {
+          frame: HERO,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await place(commandAt())
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed' },
+      })
+      expect(read()).toBe(original)
+    })
+  })
+
   describe('POST /api/frames/remove', () => {
     function remove(body: unknown) {
       return editRoutes(

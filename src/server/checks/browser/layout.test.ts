@@ -249,6 +249,24 @@ describe.skipIf(shell === null)(
       expect(findings).toEqual([])
     })
 
+    it('reports an absolute element escaping its cropping ancestor as clipped', async () => {
+      const findings = await checkHero(
+        'body { margin: 0; position: relative } .crop { height: 40px; overflow: hidden } .badge { position: absolute; top: 260px; width: 20px; height: 20px }',
+        '<div class="crop"><div class="badge"></div></div>',
+      )
+
+      expect(findings).toMatchObject([{ rule: 'clipped' }])
+    })
+
+    it('reads an absolute element its cropping ancestor anchors as no finding', async () => {
+      const findings = await checkHero(
+        '.crop { position: relative; height: 40px; overflow: hidden } .badge { position: absolute; top: 260px; width: 20px; height: 20px }',
+        '<div class="crop"><div class="badge"></div></div>',
+      )
+
+      expect(findings).toEqual([])
+    })
+
     it('names the panel that scrolls by its element index', async () => {
       const findings = await checkHero(
         '.panel { height: 50px; overflow: auto } .panel div { height: 80px }',

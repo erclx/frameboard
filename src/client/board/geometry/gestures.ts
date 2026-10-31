@@ -9,9 +9,13 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { splitAt } from '../changes/compare'
 import {
   isShownShape,
+  type PlacedMove,
+  type PlacedOffsets,
+  placedOffsets,
   type ShapeResize,
   type ShapeSize,
   shapeSize,
+  startPlacedMove,
   startShapeResize,
 } from '../element/resize'
 import { openFindings } from '../findings-open'
@@ -84,6 +88,10 @@ export interface GestureStores {
   isShape: typeof isShownShape
   /** Starts a corner drag of the selected shape, null when its frame is held. */
   resizeShape: typeof startShapeResize
+  /** The offsets the selected element holds when it is placed, else null. */
+  placedOffsets: typeof placedOffsets
+  /** Starts a drag of the selected placed element, null when its frame is held. */
+  movePlaced: typeof startPlacedMove
 }
 
 const STORES: GestureStores = {
@@ -97,6 +105,8 @@ const STORES: GestureStores = {
   moveElement,
   isShape: isShownShape,
   resizeShape: startShapeResize,
+  placedOffsets,
+  movePlaced: startPlacedMove,
 }
 
 type Gesture =
@@ -119,6 +129,16 @@ type Gesture =
       key: ElementKey
       frame: FrameRecord | null
       shift: boolean
+      /** The offsets a placed element holds, whose drag moves them rather than carrying it. */
+      placed: PlacedOffsets | null
+    }
+  /** A drag of the selected placed element, written as its offsets on release. */
+  | {
+      kind: 'placed'
+      key: ElementKey
+      from: PlacedOffsets
+      move: PlacedMove
+      to: PlacedOffsets | null
     }
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
@@ -197,6 +217,15 @@ export function attachGestures(
       const moves =
         refs.includes(pin.dataset.noteFrame ?? '') && (dx !== 0 || dy !== 0)
       pin.style.translate = moves ? `${dx}px ${dy}px` : ''
+    }
+  }
+  // A placed element's drag carries the pins pinned on it, so none is left behind.
+  const shiftElementPins = (key: ElementKey, dx: number, dy: number) => {
+    const pins = target.viewport.querySelectorAll<HTMLElement>(
+      `[data-note-frame="${CSS.escape(key.frame)}"][data-note-element="${key.index}"]`,
+    )
+    for (const pin of pins) {
+      pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
     }
   }
   // A resize moves a pin by the gap between where `cornerOf` puts it on the
@@ -303,6 +332,7 @@ export function attachGestures(
           key: element,
           frame,
           shift: event.shiftKey,
+          placed: stores.placedOffsets(target.layer, element),
         }
         return
       }
@@ -371,6 +401,21 @@ export function attachGestures(
         : null
       gesture = resize
         ? { ...gesture, kind: 'shape-resize', resize, size: null }
+        : { kind: 'none' }
+      return
+    }
+    if (gesture.kind === 'element' && gesture.placed) {
+      const move = stores.canWrite()
+        ? stores.movePlaced(target.page, gesture.key)
+        : null
+      gesture = move
+        ? {
+            kind: 'placed',
+            key: gesture.key,
+            from: gesture.placed,
+            move,
+            to: null,
+          }
         : { kind: 'none' }
       return
     }
@@ -532,6 +577,19 @@ export function attachGestures(
         )
         return
       }
+      case 'placed': {
+        // Canvas units are the frame's own pixels, whatever the zoom.
+        const ox = Math.round(dx)
+        const oy = Math.round(dy)
+        gesture.to = {
+          left: gesture.from.left + ox,
+          top: gesture.from.top + oy,
+        }
+        gesture.move.preview(gesture.to)
+        shiftElementOutline(ox, oy)
+        shiftElementPins(gesture.key, ox, oy)
+        return
+      }
       case 'shape-resize': {
         gesture.size = shapeSize(
           gesture.box,
@@ -642,6 +700,13 @@ export function attachGestures(
       } else {
         resize.cancel()
       }
+    } else if (gesture.kind === 'placed') {
+      const { from: start, to, move } = gesture
+      if (to && (to.left !== start.left || to.top !== start.top)) {
+        void move.commit(to)
+      } else {
+        move.cancel()
+      }
     } else if (gesture.kind === 'carry') {
       carriedStore.setState({ carried: null })
       void stores.moveElement(
@@ -725,6 +790,20 @@ export function attachGestures(
       })
   }
 
+  // Esc puts a placed element's drag back where it started, writing nothing.
+  // It listens in the capture phase and stops the press there, since the key
+  // registry's window listener registered first and would also run Esc's
+  // `element.up` on the same press.
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || gesture.kind !== 'placed') return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    gesture.move.cancel()
+    shiftElementOutline(0, 0)
+    shiftElementPins(gesture.key, 0, 0)
+    gesture = { kind: 'none' }
+  }
+
   // Snapping follows Ctrl at once, rather than waiting for the next move.
   const onKey = (event: KeyboardEvent) => {
     if (event.key !== 'Control' || !moved || !last) return
@@ -751,6 +830,7 @@ export function attachGestures(
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {
       start(event.sourceEvent)
+      addEventListener('keydown', onEscape, true)
       addEventListener('keydown', onKey)
       addEventListener('keyup', onKey)
     })
@@ -773,6 +853,7 @@ export function attachGestures(
       update(source)
     })
     .on('end', (event: { sourceEvent: MouseEvent }) => {
+      removeEventListener('keydown', onEscape, true)
       removeEventListener('keydown', onKey)
       removeEventListener('keyup', onKey)
       finish(event.sourceEvent)
@@ -790,6 +871,7 @@ export function attachGestures(
   return () => {
     selectionOfHit.on('.drag', null)
     hit.removeEventListener('contextmenu', noMenu)
+    removeEventListener('keydown', onEscape, true)
     removeEventListener('keydown', onKey)
     removeEventListener('keyup', onKey)
   }

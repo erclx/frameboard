@@ -180,6 +180,12 @@ const ELEMENT_IDS = [
   'tool.note',
   'element.up',
   'view.zoomToSelection',
+  'element.toFront',
+  'element.forward',
+  'element.moveDown',
+  'element.backward',
+  'element.moveUp',
+  'element.toBack',
   'frame.copyPng',
   'element.delete',
 ] as const
@@ -189,8 +195,20 @@ const ELEMENT_IDS = [
  * leaves out Add a note here, which needs the point the canvas was clicked at.
  */
 export function ElementItems({ noteable }: { noteable: boolean }) {
-  const [note, noteTool, parent, zoom, copyPng, remove] =
-    useActions(ELEMENT_IDS)
+  const [
+    note,
+    noteTool,
+    parent,
+    zoom,
+    toFront,
+    forward,
+    forwardKey,
+    backward,
+    backwardKey,
+    toBack,
+    copyPng,
+    remove,
+  ] = useActions(ELEMENT_IDS)
   const element = useSelection((state) => state.element ?? null)
   const tree = element ? treeOf(element.frame) : null
   // Esc from an element sitting directly in `body` selects the frame itself.
@@ -209,6 +227,15 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
           {atTop ? 'Select frame' : 'Select parent'}
         </MenuRow>
         <MenuRow action={zoom}>Zoom to selection</MenuRow>
+        <ContextMenuSeparator />
+        <MenuRow action={toFront}>Bring to front</MenuRow>
+        <MenuRow action={forward} binding={forwardKey?.keys?.[0]}>
+          Bring forward
+        </MenuRow>
+        <MenuRow action={backward} binding={backwardKey?.keys?.[0]}>
+          Send backward
+        </MenuRow>
+        <MenuRow action={toBack}>Send to back</MenuRow>
         <ContextMenuSeparator />
         <MenuRow action={copyPng}>Copy frame as PNG</MenuRow>
       </ContextMenuGroup>

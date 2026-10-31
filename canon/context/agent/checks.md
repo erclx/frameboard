@@ -104,3 +104,8 @@ The plugin side of the hook sits outside `src/`.
 - Every serve launches Chromium for the startup sweep, so a spec or capture case reading a label count waits on `check` or `POST /api/checks` first, since a browser finding can land mid-assertion
 - The browser comparison in `e2e/cli/checks.spec.ts` never sets `color-scheme` itself, since that flips the default text color around a frame's fixed literal color and reads as two themes
 - A project rule kind is added only when a real frame needs it, since a config language that grows ahead of need becomes the design tool Frameboard is not
+
+Both copies of the cropping test walk the containing block chain.
+
+- An ancestor crops only what its box contains, so the walk skips one an absolute element anchors past
+- An absolute element escaping an `overflow: hidden` ancestor that does not anchor it counts for `clipped` and `viewport`
