@@ -60,6 +60,17 @@ import '@/styles/global.css'
            --font-sans from global.css, and `canon capture` reads the computed
            family off this element and refuses when it cannot resolve. */
       }
+      /* The claim lightens on a dark board, as the picked dark arm drew it.
+         Both selectors carry it, since the OS preference and ?theme=dark
+         each reach the dark card. */
+      @media (prefers-color-scheme: dark) {
+        .card {
+          --claim: rgb(232 180 255);
+        }
+      }
+      .card[data-theme='dark'] {
+        --claim: rgb(232 180 255);
+      }
       .lockup {
         position: absolute;
         left: 36px;
@@ -174,5 +185,34 @@ import '@/styles/global.css'
       </div>
       <p class="tagline">The design board your agent draws on</p>
     </div>
+    <script is:inline>
+      // `canon capture` has no color-scheme option, so ?theme=dark asks the
+      // route for the dark card. It lifts the declarations of global.css's own
+      // prefers-color-scheme: dark rule onto the card rather than keeping a
+      // second copy of the dark tokens here. Finding no such rule hides the
+      // card, so a capture refuses rather than shipping a light card as dark.
+      if (new URLSearchParams(location.search).get('theme') === 'dark') {
+        const card = document.querySelector('.card')
+        const darkRoots = [...document.styleSheets]
+          .flatMap((sheet) => [...sheet.cssRules])
+          .filter(
+            (rule) =>
+              rule instanceof CSSMediaRule &&
+              /prefers-color-scheme:\s*dark/.test(rule.conditionText),
+          )
+          .flatMap((rule) => [...rule.cssRules])
+          .filter((rule) => rule.selectorText === ':root')
+        if (darkRoots.length === 0) {
+          card.hidden = true
+          throw new Error('No prefers-color-scheme: dark :root rule to lift')
+        }
+        card.dataset.theme = 'dark'
+        for (const rule of darkRoots) {
+          for (const name of rule.style) {
+            card.style.setProperty(name, rule.style.getPropertyValue(name))
+          }
+        }
+      }
+    </script>
   </body>
 </html>

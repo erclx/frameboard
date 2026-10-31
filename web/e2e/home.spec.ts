@@ -14,6 +14,20 @@ test('reduced motion reaches the page', async ({ page }) => {
 })
 
 test.describe('social card meta', () => {
+  test('the dark card a switch would publish answers as a 1200 × 630 PNG', async ({
+    request,
+  }) => {
+    const response = await request.get('/og-image-dark.png')
+    const png = await response.body()
+
+    expect(response.status()).toBe(200)
+    expect(response.headers()['content-type']).toBe('image/png')
+    expect({
+      width: png.readUInt32BE(16),
+      height: png.readUInt32BE(20),
+    }).toEqual({ width: 1200, height: 630 })
+  })
+
   test('og:image is absolute and answers with a PNG at its declared size', async ({
     page,
     request,
