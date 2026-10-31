@@ -1,6 +1,8 @@
 import {
   Copy,
+  Download,
   Hand,
+  Link,
   Maximize,
   MousePointer2,
   PanelLeft,
@@ -31,6 +33,11 @@ import {
   readClipboardBackend,
 } from './copy-image'
 import { withPending } from './geometry/write'
+import {
+  exportFileNames,
+  exportFrame,
+  exportStore,
+} from './inspector/export-store'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
@@ -262,6 +269,74 @@ function boardActions(): Action[] {
             }),
           reportRefusal(`Couldn't copy ${frame.name}`),
         )
+      },
+    },
+    {
+      id: 'frame.copyRef',
+      label: 'Copy frame ref',
+      group: 'frame',
+      command: {
+        label: 'Copy frame ref',
+        icon: Link,
+        hint: () => {
+          const { frames } = selectionStore.getState()
+          return frames.length === 1
+            ? (frames[0] ?? '')
+            : `${frames.length} frames`
+        },
+        keywords: ['path', 'reference', 'agent'],
+      },
+      enabled: onCanvas((count) => count > 0),
+      run: () => {
+        const refs = selectionStore.getState().frames
+        // The ref is what an agent names a frame by, one to a line.
+        navigator.clipboard.writeText(refs.join('\n')).then(
+          () =>
+            toast.add({
+              title:
+                refs.length === 1
+                  ? 'Copied the frame ref'
+                  : `Copied ${refs.length} frame refs`,
+              description: refs.join(', '),
+              type: 'success',
+            }),
+          reportRefusal("Couldn't copy the frame ref"),
+        )
+      },
+    },
+    {
+      id: 'frame.exportPng',
+      label: 'Export as PNG',
+      group: 'frame',
+      command: {
+        label: 'Export as PNG',
+        icon: Download,
+        hint: () => {
+          const { scale, theme } = exportStore.getState()
+          return `${scale}x · ${theme === 'both' ? 'both themes' : `${theme} theme`}`
+        },
+        keywords: ['download', 'image', 'save'],
+      },
+      // The inspector's Export section exports one frame, at the settings it last picked.
+      enabled: onCanvas((count) => count === 1),
+      run: () => {
+        const [frame] = selectedFrames()
+        if (!frame) return
+        const settings = exportStore.getState()
+        // The palette has closed, so the render the download waits on toasts.
+        toast.promise(exportFrame(frame, settings), {
+          loading: { title: `Exporting ${frame.name}`, type: 'loading' },
+          success: {
+            title: `Exported ${frame.name}`,
+            description: exportFileNames(frame.name, settings).join(' and '),
+            type: 'success',
+          },
+          error: (error: unknown) => ({
+            title: `Couldn't export ${frame.name}`,
+            description: error instanceof Error ? error.message : String(error),
+            type: 'error',
+          }),
+        })
       },
     },
     zoom({

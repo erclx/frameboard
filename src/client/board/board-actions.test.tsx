@@ -17,6 +17,7 @@ import { useBoardActions } from './board-actions'
 import { Toolbar } from './chrome/toolbar'
 import { clipboardBackend } from './copy-image'
 import type { Box } from './geometry/box'
+import { exportStore } from './inspector/export-store'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { clear, select, selectionStore } from './selection'
@@ -45,6 +46,8 @@ const IDS = [
   'view.pan.rightFar',
   'view.zoomToSelection',
   'frame.copyPng',
+  'frame.copyRef',
+  'frame.exportPng',
   'tool.disarm',
 ] as const
 
@@ -379,6 +382,8 @@ describe('command', () => {
     'view.zoom50',
     'view.zoom100',
     'view.zoom200',
+    'frame.copyRef',
+    'frame.exportPng',
   ]
   const UNNAMED = [
     'mode.exitPlay',
@@ -403,6 +408,77 @@ describe('command', () => {
       ['mode.play', 'mode.edit'].map((id) => findAction(id)?.command?.label),
     ).toEqual(['Switch to Play', 'Switch to Edit'])
     unmount()
+  })
+})
+
+describe('the frame rows the palette adds', () => {
+  let done = () => {}
+
+  beforeEach(() => {
+    receiveBoard(liveStore, boardOf(pageOf([HERO, ABOUT])))
+    exportStore.setState({ scale: 3, theme: 'light' })
+  })
+
+  afterEach(() => {
+    done()
+    clear(selectionStore)
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('copies the selected frames’ refs, one to a line', async () => {
+    const written: string[] = []
+    vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(
+      async (text) => {
+        written.push(text)
+      },
+    )
+    render(<Toaster />)
+    const board = setup()
+    done = board.done
+    select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+
+    board.action('frame.copyRef').run()
+
+    expect(await screen.findByText('Copied 2 frame refs')).toBeVisible()
+    expect(written).toEqual([`${HERO.ref}\n${ABOUT.ref}`])
+  })
+
+  it('exports one frame at the scale and theme the Export section holds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      async () =>
+        new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+          headers: { 'Content-Type': 'image/png' },
+        }),
+    )
+    const saved: string[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push(this.download)
+    })
+    render(<Toaster />)
+    const board = setup()
+    done = board.done
+    select(selectionStore, 'studio/home', [HERO.ref])
+
+    board.action('frame.exportPng').run()
+
+    expect(await screen.findByText('Exported hero')).toBeVisible()
+    expect(saved).toEqual(['hero.light@3x.png'])
+  })
+
+  it('exports only with one frame selected', () => {
+    const board = setup()
+    done = board.done
+
+    select(selectionStore, 'studio/home', [HERO.ref])
+    const one = isEnabled(board.action('frame.exportPng'))
+    select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+    const two = isEnabled(board.action('frame.exportPng'))
+
+    expect([one, two]).toEqual([true, false])
   })
 })
 
