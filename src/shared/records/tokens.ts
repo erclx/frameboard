@@ -13,6 +13,8 @@ export const tokenRowSchema = z.object({
   dark: z.string().nullable(),
   /** The sheet the winning value comes from, as `sheets` names it. */
   sheet: z.string(),
+  /** Whether the project sheet sets a token the board sheet sets too, which a reset takes back to the board's value. */
+  overrides: z.boolean(),
 })
 
 export type TokenRow = z.infer<typeof tokenRowSchema>
@@ -23,6 +25,8 @@ export const tokenSheetSchema = z.object({
   kind: z.enum(['board', 'project']),
   /** Why the sheet did not parse, null when it did. */
   error: z.string().nullable(),
+  /** The sheet's content hash as read, which a token edit sends back so a sheet changed since is refused. */
+  hash: z.string(),
 })
 
 /** A project's token sheets in cascade order, and one row per custom property they set. */

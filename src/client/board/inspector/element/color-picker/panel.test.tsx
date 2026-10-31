@@ -15,6 +15,7 @@ const PRIMARY: TokenRow = {
   light: '#4f46e5',
   dark: '#818cf8',
   sheet: 'tokens.css',
+  overrides: false,
 }
 const ACCENT: TokenRow = { ...PRIMARY, name: '--accent', light: '#f59e0b' }
 

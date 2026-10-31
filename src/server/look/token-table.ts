@@ -5,9 +5,10 @@ import postcss, { type AtRule, type Node, type Rule } from 'postcss'
 
 import { isLiteralColor } from '@/server/checks/theme'
 import type { TokenSheetPaths } from '@/server/checks/tokens'
+import { contentHash } from '@/server/edit/address'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 
-type Side = 'light' | 'dark' | 'base'
+export type Side = 'light' | 'dark' | 'base'
 
 // Compared with whitespace and quotes removed, so `[data-theme="dark"]` and
 // `[data-theme=dark]` read alike.
@@ -24,7 +25,7 @@ const LIGHT_SELECTORS = new Set([
 const BASE_SELECTOR = ':root'
 
 /** One sheet's custom properties by name, in the order the sheet first sets them. */
-type SheetTokens = Map<string, Partial<Record<Side, string>>>
+export type SheetTokens = Map<string, Partial<Record<Side, string>>>
 
 /**
  * Reads a project's token sheets into one row per custom property, with its
@@ -40,23 +41,31 @@ export function readTokenTable(
   paths: TokenSheetPaths,
 ): TokenTable {
   const sheets: TokenTable['sheets'] = []
-  const read: { label: string; tokens: SheetTokens }[] = []
+  const read: {
+    label: string
+    kind: 'board' | 'project'
+    tokens: SheetTokens
+  }[] = []
   for (const [kind, path] of [
     ['board', paths.board],
     ['project', paths.project],
   ] as const) {
     if (!path) continue
     const label = sheetLabel(root, path)
+    // A sheet that vanished before the read sends a hash no sheet has.
+    let hash = ''
     try {
-      read.push({ label, tokens: readSheet(readFileSync(path, 'utf8')) })
-      sheets.push({ path: label, kind, error: null })
+      const bytes = readFileSync(path)
+      hash = contentHash(bytes)
+      read.push({ label, kind, tokens: readSheet(bytes.toString('utf8')) })
+      sheets.push({ path: label, kind, error: null, hash })
     } catch (error) {
-      sheets.push({ path: label, kind, error: errorText(error) })
+      sheets.push({ path: label, kind, error: errorText(error), hash })
     }
   }
 
   const rows = new Map<string, TokenRow>()
-  for (const { label, tokens } of read) {
+  for (const { label, kind, tokens } of read) {
     for (const [name, sides] of tokens) {
       const light = sides.light ?? sides.base
       const dark = sides.dark ?? sides.base
@@ -67,6 +76,7 @@ export function readTokenTable(
         light: light ?? held?.light ?? null,
         dark: dark ?? held?.dark ?? null,
         sheet: label,
+        overrides: kind === 'project' && held !== undefined,
       })
     }
   }
@@ -77,7 +87,7 @@ export function readTokenTable(
   return { sheets, tokens }
 }
 
-function readSheet(css: string): SheetTokens {
+export function readSheet(css: string): SheetTokens {
   const tokens: SheetTokens = new Map()
   postcss.parse(css).walkRules((rule) => {
     const side = sideOf(rule)
@@ -92,7 +102,7 @@ function readSheet(css: string): SheetTokens {
   return tokens
 }
 
-function sideOf(rule: Rule): Side | null {
+export function sideOf(rule: Rule): Side | null {
   const selectors = rule.selectors.map((selector) =>
     selector.replace(/[\s'"]/g, '').toLowerCase(),
   )

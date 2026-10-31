@@ -17,6 +17,7 @@ function row(name: string, extra: Partial<TokenRow> = {}): TokenRow {
     light: '#111111',
     dark: '#eeeeee',
     sheet: 'tokens.css',
+    overrides: false,
     ...extra,
   }
 }
@@ -26,7 +27,7 @@ function table(
   extra: Partial<TokenTable> = {},
 ): TokenTable {
   return {
-    sheets: [{ path: 'tokens.css', kind: 'board', error: null }],
+    sheets: [{ path: 'tokens.css', kind: 'board', error: null, hash: 'h' }],
     tokens,
     ...extra,
   }
@@ -52,8 +53,8 @@ describe('ThemeTab', () => {
   it('names the board and the project sheet in cascade order', async () => {
     const both = table([], {
       sheets: [
-        { path: 'tokens.css', kind: 'board', error: null },
-        { path: 'studio/tokens.css', kind: 'project', error: null },
+        { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+        { path: 'studio/tokens.css', kind: 'project', error: null, hash: 'p' },
       ],
     })
 
@@ -193,6 +194,7 @@ describe('ThemeTab', () => {
           path: 'tokens.css',
           kind: 'board',
           error: 'Unclosed block at line 1',
+          hash: 'h',
         },
       ],
     })
