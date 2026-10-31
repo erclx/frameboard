@@ -5,7 +5,7 @@ import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod'
 
-import { readAuthor } from '@/server/author'
+import { readAuthor, writeAuthorName } from '@/server/author'
 import { setBoxes } from '@/server/board/frames'
 import { resolvePageRef } from '@/server/board/refs'
 import { scanBoard } from '@/server/board/scan'
@@ -29,6 +29,9 @@ export interface BoardActions {
 }
 
 const showBodySchema = z.object({ ref: z.string().min(1).max(1024) })
+
+/** Longer than any name `writeAuthorName` accepts, so it, not the schema, names the limit. */
+const authorBodySchema = z.object({ name: z.string().max(1024) })
 
 /** More frames than any page holds, so a body cannot grow without bound. */
 const MAX_BOXES = 1000
@@ -106,8 +109,36 @@ export function apiRoutes(
   })
 
   app.get('/api/author', async (c) =>
-    c.json({ ok: true, data: { name: (await readAuthor(root)).name } }),
+    c.json({ ok: true, data: await readAuthor(root) }),
   )
+
+  app.post('/api/author', authorized, async (c) => {
+    const body = authorBodySchema.safeParse(
+      await c.req.json().catch(() => null),
+    )
+    if (!body.success) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'usage',
+            message: 'Send { "name": "<name>" }, or an empty name to clear it.',
+          },
+        },
+        400,
+      )
+    }
+    try {
+      await writeAuthorName(body.data.name)
+    } catch (error) {
+      if (!(error instanceof FrameboardError)) throw error
+      return c.json(
+        { ok: false, error: { code: error.code, message: error.message } },
+        STATUS[error.code] ?? 500,
+      )
+    }
+    return c.json({ ok: true, data: await readAuthor(root) })
+  })
 
   app.post('/api/open', authorized, async (c) =>
     c.json({ ok: true, data: { opened: await actions.open() } }),

@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { tokenSheetPaths } from '@/server/checks/tokens'
 
@@ -141,19 +142,101 @@ describe('apiRoutes', () => {
     })
   })
 
-  describe('GET /api/author', () => {
-    it('answers the signing name in the envelope, null when unset', async () => {
+  describe('author', () => {
+    let config: string
+
+    /**
+     * Points the saved name into a temporary folder and shuts out the
+     * machine's git config, so no test reads or writes the developer's own
+     * name.
+     */
+    beforeEach(() => {
+      config = mkdtempSync(join(tmpdir(), 'frameboard-config-'))
+      vi.stubEnv('XDG_CONFIG_HOME', config)
+      vi.stubEnv('GIT_CONFIG_GLOBAL', join(config, 'no-global'))
+      vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1')
+      vi.stubEnv('GIT_DIR', undefined)
+    })
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      rmSync(config, { recursive: true, force: true })
+    })
+
+    function savedConfig(): unknown {
+      return JSON.parse(
+        readFileSync(join(config, 'frameboard', 'config.json'), 'utf8'),
+      )
+    }
+
+    it('reads null with its source when no name is set', async () => {
       const response = await routes().request('/api/author')
 
-      const body = await response.json()
-      expect(body).toEqual({
+      expect(await response.json()).toEqual({
         ok: true,
-        data: {
-          name: expect.toSatisfy(
-            (name) => name === null || typeof name === 'string',
-          ),
-        },
+        data: { name: null, source: null },
       })
+    })
+
+    it('saves a name that the read then answers from config', async () => {
+      const response = await post('/api/author', { name: '  Grace Hopper ' })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { name: 'Grace Hopper', source: 'config' },
+      })
+      expect(
+        await (await routes().request('/api/author')).json(),
+      ).toMatchObject({ data: { name: 'Grace Hopper', source: 'config' } })
+    })
+
+    it('clears the saved name on an empty one', async () => {
+      await post('/api/author', { name: 'Grace Hopper' })
+
+      const response = await post('/api/author', { name: '' })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { name: null, source: null },
+      })
+      expect(savedConfig()).toEqual({})
+    })
+
+    it('refuses a name holding a line break with invalid-name', async () => {
+      const response = await post('/api/author', { name: 'Grace\nHopper' })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-name' },
+      })
+    })
+
+    it('refuses a name over 80 characters with invalid-name', async () => {
+      const response = await post('/api/author', { name: 'a'.repeat(81) })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'invalid-name' },
+      })
+    })
+
+    it('refuses a body with no name', async () => {
+      const response = await post('/api/author', {})
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'usage' },
+      })
+    })
+
+    it('refuses a caller with no token and saves nothing', async () => {
+      const response = await post('/api/author', { name: 'Mallory' }, null)
+
+      expect(response.status).toBe(401)
+      expect(
+        await (await routes().request('/api/author')).json(),
+      ).toMatchObject({ data: { name: null } })
     })
   })
 
