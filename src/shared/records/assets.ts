@@ -8,6 +8,8 @@ export const assetFileSchema = z.object({
   kind: z.enum(ASSET_KINDS),
   /** Bytes. */
   size: z.number().int().nonnegative(),
+  /** How many frames link the file, each counted once, absent where the server counts none. */
+  frames: z.number().int().nonnegative().optional(),
 })
 
 export type AssetFile = z.infer<typeof assetFileSchema>

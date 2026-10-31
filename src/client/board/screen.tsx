@@ -141,7 +141,8 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               project={record}
               page={page ?? ''}
               theme={<ThemeTab project={record.name} />}
-              assets={<AssetsTab project={record.name} />}
+              // Keyed by project, so a search, a chip, and collapsed folders stay with the project they were set in.
+              assets={<AssetsTab key={record.name} project={record.name} />}
               storage={panelStorage}
             />
           </ResizablePanel>

@@ -99,7 +99,7 @@ describe('useAssetDrop', () => {
     renderBoard([{ path: 'hero.png', kind: 'image', size: 10 }], placed)
 
     await dragTo(
-      screen.getByRole('button', { name: 'Copy path of hero.png' }),
+      screen.getByRole('button', { name: /^Copy path of hero.png,/ }),
       screen.getByTestId('hit'),
       { clientX: 80, clientY: 60 },
     )
@@ -115,7 +115,7 @@ describe('useAssetDrop', () => {
   it('follows the dragged tile and lets go once it drops', async () => {
     const placed: Placed[] = []
     renderBoard([{ path: 'demo.mp4', kind: 'video', size: 10 }], placed)
-    const tile = screen.getByRole('button', { name: 'Copy path of demo.mp4' })
+    const tile = screen.getByRole('button', { name: /^Copy path of demo.mp4,/ })
     const hit = screen.getByTestId('hit')
     const dataTransfer = new DataTransfer()
     const seen: (BoardPoint | null)[] = []
@@ -150,7 +150,7 @@ describe('useAssetDrop', () => {
     renderBoard([{ path: 'Inter.woff2', kind: 'font', size: 10 }], placed)
 
     await dragTo(
-      screen.getByRole('button', { name: 'Copy path of Inter.woff2' }),
+      screen.getByRole('button', { name: /^Copy path of Inter.woff2,/ }),
       screen.getByTestId('hit'),
       { clientX: 80, clientY: 60 },
     )
@@ -164,7 +164,7 @@ describe('useAssetDrop', () => {
     renderBoard([{ path: 'hero.png', kind: 'image', size: 10 }], placed)
 
     await dragTo(
-      screen.getByRole('button', { name: 'Copy path of hero.png' }),
+      screen.getByRole('button', { name: /^Copy path of hero.png,/ }),
       screen.getByTestId('hit'),
       { clientX: 80, clientY: 60 },
     )
