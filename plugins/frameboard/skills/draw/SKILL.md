@@ -10,7 +10,8 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 ## Read the facts first
 
 - Run `frameboard docs --json` once per session, before the first verb
-- Read the version note the plugin's session hook prints. Stop and say so on a mismatch, and when `frameboard` is not on PATH, install it with `npm install -g frameboard` rather than running a checkout's `dist/`.
+- Read the version note the plugin's session hook prints, mention a mismatch to the developer once, and carry on
+- When `frameboard` is not on PATH, install it with `npm install -g frameboard` rather than running a checkout's `dist/`
 - Take every verb, flag, exit code, record shape, content rule, and check rule from that output rather than from memory, since it describes the installed version
 - Branch on the `ok` key of each envelope and on the exit code, never on the wording of a message
 

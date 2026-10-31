@@ -6,7 +6,8 @@
 # the agent to find plugin.json itself.
 #
 # Every path exits 0 and a match prints nothing, since the note is only
-# worth a line of context when the two disagree.
+# worth a line of context when the two disagree. The note informs and never
+# orders a halt, since the hook cannot tell whether the task touches the CLI.
 
 # shellcheck source=SCRIPTDIR/../lib/resolve.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/resolve.sh"
@@ -29,9 +30,11 @@ if [[ "$(printf '%s\n%s\n' "$cli" "$plugin" | sort -V | head -n 1)" == "$plugin"
   fix="Tell the developer to update the plugin, since the CLI is newer."
 elif [[ -n "${CLAUDE_PROJECT_DIR:-}" && "$dist" == "$CLAUDE_PROJECT_DIR/node_modules/frameboard/dist" ]]; then
   fix="Tell the developer to update the frameboard dependency of this project, which a global install would not change."
+elif [[ -n "${CLAUDE_PROJECT_DIR:-}" && "$dist" == "$CLAUDE_PROJECT_DIR/dist" ]]; then
+  fix="Tell the developer this checkout's own build is stale, which 'bun run build' refreshes and a global install would not."
 else
   fix="Tell the developer to update the CLI with 'npm install -g frameboard'."
 fi
 
-printf "frameboard plugin %s does not match the frameboard %s at %s. Stop. %s\n" "$plugin" "$cli" "$dist" "$fix"
+printf "frameboard plugin %s does not match the frameboard %s at %s. %s\n" "$plugin" "$cli" "$dist" "$fix"
 exit 0
