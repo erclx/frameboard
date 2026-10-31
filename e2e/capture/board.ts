@@ -1192,6 +1192,29 @@ async function sectionOnHome(page: Page): Promise<void> {
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
 
 /**
+ * Clicks the change toast's Mark all seen, its last button on the many form,
+ * once the toast has slid in. The button carries no aria-label, since its
+ * text names it, so `actWhen` cannot find it.
+ */
+async function markAllSeenOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ shown, frames }) => {
+      let left = frames
+      const press = () => {
+        const button = document.querySelector<HTMLButtonElement>(
+          `${shown} button:last-of-type`,
+        )
+        if (button?.textContent?.startsWith('Mark all seen')) button.click()
+        else if (--left > 0) requestAnimationFrame(press)
+        else console.error('Mark all seen never showed')
+      }
+      document.addEventListener('DOMContentLoaded', press)
+    },
+    { shown: TOAST_SHOWN, frames: ROW_FRAMES },
+  )
+}
+
+/**
  * Opens the selected frame's size menu once write access lights its
  * trigger, waiting in an init script as `pressOnLoad` does. The trigger is
  * named by its text, which the toolbar's Frame tool shares as a label.
@@ -2196,6 +2219,26 @@ export const BOARD_CASES: CaptureCase[] = [
             ]),
             actWhen(TOAST_SHOWN, 'claude · frameboard, listening', 'click'),
             readyWhen('button[aria-pressed="true"]'),
+          ),
+        ),
+      },
+      {
+        // The toast once Mark all seen cleared the pile, offering Undo alone.
+        section: 'unseen-cleared',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            seededChanges([
+              agentChange('webapp/home/about', 1),
+              agentChange('webapp/home/hero', 2),
+              agentChange('webapp/settings/profile', 3),
+            ]),
+            markAllSeenOnLoad,
+            readyWhen(`${TOAST_SHOWN}:has(button:only-of-type)`),
           ),
         ),
       },
