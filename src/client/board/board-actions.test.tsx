@@ -1,4 +1,10 @@
-import { render, renderHook, screen } from '@testing-library/react'
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,6 +17,8 @@ import {
 import { Toaster } from '@/client/components/ui/toast'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
+import { CommandPalette } from '@/client/palette/commands'
+import { openOverlay } from '@/client/palette/overlay'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { useBoardActions } from './board-actions'
@@ -467,6 +475,74 @@ describe('the frame rows the palette adds', () => {
 
     expect(await screen.findByText('Exported hero')).toBeVisible()
     expect(saved).toEqual(['hero.light@3x.png'])
+  })
+
+  it('resizes the selected frames to a size, keeping their place', async () => {
+    const sent: unknown[] = []
+    vi.stubGlobal('fetch', async (_url: string, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body)))
+      return Response.json({})
+    })
+    liveStore.setState({ canWrite: true })
+    const board = setup()
+    done = () => {
+      board.done()
+      liveStore.setState({ canWrite: false })
+    }
+    select(selectionStore, 'studio/home', [HERO.ref])
+
+    findAction('frame.resizeTo.phone')?.run()
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      boxes: { hero: { x: 10, y: 20, width: 390, height: 844 } },
+    })
+  })
+
+  it('offers a size only once a query is typed', async () => {
+    liveStore.setState({ canWrite: true })
+    const board = setup()
+    done = () => {
+      board.done()
+      liveStore.setState({ canWrite: false })
+    }
+    select(selectionStore, 'studio/home', [HERO.ref])
+    render(<CommandPalette />)
+    act(() => openOverlay('commands'))
+    const input = await screen.findByRole('combobox')
+    const before = screen.queryAllByRole('option', { name: /^Resize to/ })
+
+    await userEvent.type(input, 'iphone 16')
+
+    expect([
+      before,
+      await screen.findByRole('option', { name: /^Resize to iPhone 16\b/ }),
+    ]).toEqual([[], expect.anything()])
+    act(() => openOverlay(null))
+  })
+
+  it.each([
+    ['export', 'Export as PNG'],
+    ['resize', 'Resize to Phone'],
+    ['zoom to 100', 'Zoom to 100%'],
+    ['copy ref', 'Copy frame ref'],
+  ])('finds a row by %s', async (query, label) => {
+    liveStore.setState({ canWrite: true })
+    const board = setup()
+    done = () => {
+      board.done()
+      liveStore.setState({ canWrite: false })
+    }
+    select(selectionStore, 'studio/home', [HERO.ref])
+    render(<CommandPalette />)
+    act(() => openOverlay('commands'))
+
+    await userEvent.type(await screen.findByRole('combobox'), query)
+
+    expect(
+      await screen.findByRole('option', { name: new RegExp(`^${label}`) }),
+    ).toBeInTheDocument()
+    act(() => openOverlay(null))
   })
 
   it('exports only with one frame selected', () => {

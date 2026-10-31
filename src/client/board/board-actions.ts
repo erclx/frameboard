@@ -8,6 +8,7 @@ import {
   PanelLeft,
   Pencil,
   Play,
+  Scaling,
   ScanSearch,
   ZoomIn,
   ZoomOut,
@@ -32,12 +33,13 @@ import {
   copyStitchedImage,
   readClipboardBackend,
 } from './copy-image'
-import { withPending } from './geometry/write'
+import { withPending, writeBoxes } from './geometry/write'
 import {
   exportFileNames,
   exportFrame,
   exportStore,
 } from './inspector/export-store'
+import { boxesSizedTo, FRAME_TOOL_GROUPS } from './inspector/presets'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
@@ -339,6 +341,30 @@ function boardActions(): Action[] {
         })
       },
     },
+    // One row per size the Frame tool places, found by a query alone, since
+    // every size at once would bury what an empty palette opens on.
+    ...FRAME_TOOL_GROUPS.flatMap(({ rows }) => rows).map((row): Action => ({
+      id: `frame.resizeTo.${row.name}`,
+      label: `Resize to ${row.label}`,
+      group: 'frame',
+      command: {
+        label: `Resize to ${row.label}`,
+        icon: Scaling,
+        hint: () => `${row.width} × ${row.height}`,
+        keywords: ['size', 'device'],
+        searchOnly: true,
+      },
+      enabled: () =>
+        onCanvas((count) => count > 0)() &&
+        liveStore.getState().canWrite &&
+        selectedFrames().every((frame) => !frame.locked),
+      run: () => {
+        const { page } = selectionStore.getState()
+        if (!page) return
+        const { boxes, expected } = boxesSizedTo(selectedFrames(), row.name)
+        void writeBoxes(page, boxes, expected)
+      },
+    })),
     zoom({
       id: 'view.zoom50',
       label: 'Zoom to 50%',
