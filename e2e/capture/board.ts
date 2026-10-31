@@ -1759,6 +1759,36 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(openOverlayOnLoad('commands', 'ho')),
       },
       {
+        section: 'palette-empty',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            openOverlayOnLoad('commands'),
+            readyWhen('[role="listbox"] [role="option"]'),
+          ),
+        ),
+      },
+      {
+        section: 'palette-add',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The add rows write, so they list only in a tab that may.
+        setup: themed(
+          both(
+            asWriter,
+            openOverlayOnLoad('commands', 'add'),
+            readyWhen('[role="listbox"] [role="option"]'),
+          ),
+        ),
+      },
+      {
         section: 'shortcuts',
         theme,
         route: '/p/webapp/home',
