@@ -31,6 +31,18 @@ export function describeAsset({ kind, size }: AssetFile): string {
   return `${KIND_LABELS[kind]} · ${formatSize(size)}`
 }
 
+/** The kind as a tile names it, such as `SVG` or `font`. */
+export function kindLabel(kind: AssetFile['kind']): string {
+  return KIND_LABELS[kind]
+}
+
+/** How many frames link a file, `Unused` for none, and null where the listing carries no count. */
+export function describeUsage({ frames }: AssetFile): string | null {
+  if (frames === undefined) return null
+  if (frames === 0) return 'Unused'
+  return `${frames} ${frames === 1 ? 'frame' : 'frames'}`
+}
+
 /**
  * The path a frame links a file by. A frame sits at
  * `<project>/<page>/<frame>.html`, so one `..` reaches the project's `assets/`.

@@ -1,9 +1,16 @@
-import { Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Search } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
 import type { AssetAddResult, AssetList } from '@/shared/records/assets'
 
+import {
+  type AssetGroup,
+  type Chip,
+  CHIP_LABELS,
+  chipCounts,
+  groupAssets,
+} from './groups'
 import { fetchAssets } from './list'
 import { Tile } from './tile'
 import { uploadAssets } from './upload'
@@ -20,9 +27,10 @@ interface AssetsTabProps {
 
 /**
  * The Assets tab of `canon/design/tabs/assets`: the project's `assets/` files
- * as tiles, a click copying the path a frame links one by, and a drop or the
- * header's picker adding files. It reads the list again on every board
- * message while open, so a file an agent wrote shows without a reload.
+ * as tiles grouped by folder, narrowed by a name search and a kind chip, a
+ * click copying the path a frame links one by, and a drop or the header's
+ * picker adding files. It reads the list again on every board message while
+ * open, so a file an agent wrote shows without a reload.
  */
 export function AssetsTab({
   project,
@@ -36,6 +44,9 @@ export function AssetsTab({
   const [busy, setBusy] = useState(false)
   const [refusals, setRefusals] = useState<{ id: string; text: string }[]>([])
   const picker = useRef<HTMLInputElement>(null)
+  const [search, setSearch] = useState('')
+  const [picked, setPicked] = useState<Chip>('all')
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
 
   async function add(files: File[]) {
     if (!canWrite || files.length === 0) return
@@ -77,6 +88,20 @@ export function AssetsTab({
     )
   }
   const count = list.files.length
+  const chips = chipCounts(list.files)
+  // A chip whose last file went away falls back to All rather than hiding every tile.
+  const chip = chips.some((entry) => entry.chip === picked) ? picked : 'all'
+  const groups = groupAssets(list.files, { chip, search })
+  const clearFilter = () => {
+    setSearch('')
+    setPicked('all')
+  }
+  const toggle = (folder: string) =>
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (!next.delete(folder)) next.add(folder)
+      return next
+    })
 
   return (
     <div
@@ -126,11 +151,69 @@ export function AssetsTab({
           No files in <code className={CODE}>assets/</code> yet.
         </p>
       ) : (
-        <ul className="grid grid-cols-2 gap-2 px-2 py-1">
-          {list.files.map((file) => (
-            <Tile key={file.path} project={project} file={file} />
-          ))}
-        </ul>
+        <>
+          <div className="mx-2 mt-1 mb-1.5 flex h-[26px] shrink-0 items-center gap-1.5 rounded-md bg-muted px-2 focus-within:ring-[1.5px] focus-within:ring-primary">
+            <Search
+              aria-hidden
+              className="size-[13px] shrink-0 text-muted-foreground"
+            />
+            <input
+              type="search"
+              aria-label="Search assets"
+              placeholder="Search assets"
+              value={search}
+              spellCheck={false}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Escape' || search === '') return
+                event.preventDefault()
+                event.stopPropagation()
+                setSearch('')
+              }}
+              className="min-w-0 flex-1 bg-transparent text-label outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+            />
+          </div>
+          <div
+            role="group"
+            aria-label="Filter by kind"
+            className="flex flex-wrap gap-1 px-2 pb-1.5"
+          >
+            {chips.map((entry) => (
+              <button
+                key={entry.chip}
+                type="button"
+                aria-pressed={entry.chip === chip}
+                onClick={() => setPicked(entry.chip)}
+                className={`rounded-full px-[7px] py-0.5 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${entry.chip === chip ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+              >
+                {CHIP_LABELS[entry.chip]}
+                {entry.chip === 'all' ? null : ` ${entry.count}`}
+              </button>
+            ))}
+          </div>
+          {groups.length === 0 ? (
+            <div className="mx-3 my-1 text-muted-foreground">
+              <p>{noMatch(search, chip)}</p>
+              <button
+                type="button"
+                onClick={clearFilter}
+                className="mt-1 rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                Clear filter
+              </button>
+            </div>
+          ) : (
+            groups.map((group) => (
+              <Group
+                key={group.folder}
+                group={group}
+                project={project}
+                open={!collapsed.has(group.folder)}
+                onToggle={() => toggle(group.folder)}
+              />
+            ))
+          )}
+        </>
       )}
       <div className="m-2 rounded-[10px] border-[1.5px] border-dashed border-border p-3 text-center leading-normal text-muted-foreground">
         {canWrite ? (
@@ -159,6 +242,56 @@ export function AssetsTab({
       ) : null}
     </div>
   )
+}
+
+interface GroupProps {
+  group: AssetGroup
+  project: string
+  open: boolean
+  onToggle: () => void
+}
+
+/** One folder's tiles under a heading that collapses them, `assets/` naming the folder's own files. */
+function Group({ group, project, open, onToggle }: GroupProps) {
+  const Caret = open ? ChevronDown : ChevronRight
+  const count = group.files.length
+  return (
+    <section aria-label={group.folder === '' ? 'assets/' : group.folder}>
+      <h4>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={onToggle}
+          className="mx-1 flex items-center gap-1 rounded-md px-1.5 py-1 text-label font-semibold outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <Caret aria-hidden className="size-3 text-muted-foreground" />
+          {group.folder === '' ? 'assets/' : group.folder}
+          <span className="font-normal text-muted-foreground">· {count}</span>
+        </button>
+      </h4>
+      {open ? (
+        <ul className="grid grid-cols-2 gap-2 px-2 pt-0.5 pb-2">
+          {group.files.map((file) => (
+            <Tile key={file.path} project={project} file={file} />
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
+/** The no-match line, naming the search and the chip that left nothing. */
+function noMatch(search: string, chip: Chip): string {
+  const files = chip === 'all' ? 'files' : `${CHIP_NOUNS[chip]} files`
+  const query = search.trim()
+  return query === '' ? `No ${files} here.` : `No ${files} match "${query}".`
+}
+
+const CHIP_NOUNS: Record<Exclude<Chip, 'all'>, string> = {
+  images: 'image',
+  video: 'video',
+  fonts: 'font',
+  other: 'other',
 }
 
 function hasFiles(event: DragEvent): boolean {

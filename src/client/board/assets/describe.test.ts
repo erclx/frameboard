@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import type { AssetFile } from '@/shared/records/assets'
 
-import { assetUrl, describeAsset, formatSize, linkPath } from './describe'
+import {
+  assetUrl,
+  describeAsset,
+  describeUsage,
+  formatSize,
+  linkPath,
+} from './describe'
 
 describe('describeAsset', () => {
   it.each<[AssetFile, string]>([
@@ -17,6 +23,22 @@ describe('describeAsset', () => {
     ],
   ])('draws %j as %s', (file, line) => {
     expect(describeAsset(file)).toBe(line)
+  })
+})
+
+describe('describeUsage', () => {
+  const file: AssetFile = { path: 'logo.svg', kind: 'svg', size: 1 }
+
+  it.each<[number, string]>([
+    [0, 'Unused'],
+    [1, '1 frame'],
+    [3, '3 frames'],
+  ])('names %i linking frames as %s', (frames, line) => {
+    expect(describeUsage({ ...file, frames })).toBe(line)
+  })
+
+  it('names nothing where the listing carries no count', () => {
+    expect(describeUsage(file)).toBeNull()
   })
 })
 

@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,6 +24,13 @@ const FILES: AssetFile[] = [
   { path: 'Inter.woff2', kind: 'font', size: 98_000 },
   { path: 'demo.mp4', kind: 'video', size: 4_100_000 },
   { path: 'shared.css', kind: 'stylesheet', size: 3_000 },
+]
+
+const COUNTED: AssetFile[] = [
+  { path: 'brand.woff2', kind: 'font', size: 37_000, frames: 0 },
+  { path: 'clip.mp4', kind: 'video', size: 14_000, frames: 1 },
+  { path: 'icons/star.svg', kind: 'svg', size: 149, frames: 2 },
+  { path: 'logo.svg', kind: 'svg', size: 198, frames: 1 },
 ]
 
 const NOTHING: AssetAddResult = { added: [], refused: [] }
@@ -77,6 +85,14 @@ describe('AssetsTab', () => {
       document.documentElement.classList.remove('dark')
     })
 
+    it('reads Unused at 4.5:1 or better on the tile', async () => {
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      expect(
+        contrastOnPage(await screen.findByText('Unused')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
+
     it('reads a tile caption at 4.5:1 or better on the tile', async () => {
       render(<AssetsTab project="studio" load={listing(FILES)} />)
 
@@ -116,6 +132,119 @@ describe('AssetsTab', () => {
     render(<AssetsTab project="studio" load={async () => null} />)
 
     expect(await screen.findByText(/did not load/)).toBeVisible()
+  })
+
+  describe('organizing', () => {
+    it('groups root files first under assets/, then each folder with its count', async () => {
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      const headings = await screen.findAllByRole('heading', { level: 4 })
+
+      expect(headings.map((heading) => heading.textContent)).toEqual([
+        'assets/· 3',
+        'icons· 1',
+      ])
+      expect(
+        within(screen.getByRole('region', { name: 'icons' })).getByText(
+          'star.svg',
+        ),
+      ).toBeVisible()
+    })
+
+    it('names how many frames link each file and Unused for none', async () => {
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      expect(await screen.findByText('Unused')).toBeVisible()
+      expect(screen.getByText('2 frames')).toBeVisible()
+      expect(
+        screen.getByRole('button', {
+          name: 'Copy path of icons/star.svg, SVG, 149 B, 2 frames',
+        }),
+      ).toBeVisible()
+    })
+
+    it('counts each kind on its chip and hides a chip with no files', async () => {
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+      const chips = within(
+        await screen.findByRole('group', { name: 'Filter by kind' }),
+      ).getAllByRole('button')
+
+      expect(chips.map((chip) => chip.textContent)).toEqual([
+        'All',
+        'Images 2',
+        'Video 1',
+        'Fonts 1',
+      ])
+    })
+
+    it('shows only the files under a pressed chip', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      await user.click(await screen.findByRole('button', { name: 'Fonts 1' }))
+
+      expect(screen.getByRole('button', { name: 'Fonts 1' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByText('brand.woff2')).toBeVisible()
+      expect(screen.queryByText('logo.svg')).not.toBeInTheDocument()
+    })
+
+    it('narrows the tiles to the paths a search matches', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      await user.type(await screen.findByLabelText('Search assets'), 'STAR')
+
+      expect(screen.getByText('star.svg')).toBeVisible()
+      expect(screen.queryByText('logo.svg')).not.toBeInTheDocument()
+      expect(screen.queryByText('assets/')).not.toBeInTheDocument()
+    })
+
+    it('collapses a folder from its heading by keyboard and opens it again', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+      const heading = await screen.findByRole('button', { name: /^icons/ })
+
+      heading.focus()
+      await user.keyboard('{Enter}')
+
+      expect(heading).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByText('star.svg')).not.toBeInTheDocument()
+      await user.keyboard('{Enter}')
+      expect(screen.getByText('star.svg')).toBeVisible()
+    })
+
+    it('names a search that matches nothing and clears it', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+      const search = await screen.findByLabelText('Search assets')
+
+      await user.type(search, 'zebra')
+
+      expect(screen.getByText('No files match "zebra".')).toBeVisible()
+      expect(screen.queryByText(/No files in/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Clear filter' }))
+      expect(search).toHaveValue('')
+      expect(screen.getByText('logo.svg')).toBeVisible()
+    })
+
+    it('clears both the search and the chip from the no-match state', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+
+      await user.click(await screen.findByRole('button', { name: 'Video 1' }))
+      await user.type(screen.getByLabelText('Search assets'), 'logo')
+      expect(screen.getByText('No video files match "logo".')).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Clear filter' }))
+
+      expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByText('logo.svg')).toBeVisible()
+    })
   })
 
   describe('copying', () => {
