@@ -29,6 +29,8 @@ export const EXIT_CODES = {
   'verify-failed': 7,
   'invalid-utf8': 7,
   'stale-address': 7,
+  // A token edit made from a project sheet that changed since it was read.
+  'stale-tokens': 7,
   'invalid-container': 7,
   // `check` finding anything, with the result in the error's details.
   'check-findings': 8,
