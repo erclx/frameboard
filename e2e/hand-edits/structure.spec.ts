@@ -441,6 +441,55 @@ test.describe('page structure by hand, and its undo', () => {
       await expect(page.getByRole('region', { name: 'Note 1' })).toHaveCount(0)
     })
 
+    test('joins two notes pinned 3px apart into one count pin listing both', async ({
+      page,
+    }) => {
+      // Mobile laid over hero, so their top right corners sit 3px apart.
+      writeFileSync(
+        at('studio/home/layout.json'),
+        `${JSON.stringify({
+          version: 1,
+          frames: {
+            hero: { x: 0, y: 0, width: 1440, height: 900, order: 0 },
+            mobile: { x: 1053, y: 0, width: 390, height: 844, order: 1 },
+          },
+        })}\n`,
+      )
+      const frameNote = (id: string, number: number, frame: string) => ({
+        id,
+        number,
+        frame,
+        anchor: null,
+        text: `Note on ${frame}`,
+        from: 'developer',
+        author: 'Ada Lovelace',
+        session: null,
+        to: null,
+        state: 'open',
+        thread: null,
+        createdAt: '2026-10-19T16:08:00.000Z',
+        updatedAt: '2026-10-19T16:08:00.000Z',
+      })
+      writeFileSync(
+        at('studio/home/notes.json'),
+        `${JSON.stringify({
+          version: 1,
+          notes: [
+            frameNote('n_0a0b0c01', 1, 'hero'),
+            frameNote('n_0a0b0c02', 2, 'mobile'),
+          ],
+        })}\n`,
+      )
+      await openAsWriter(page)
+
+      await page.getByRole('button', { name: '2 notes on hero' }).click()
+
+      await expect(page.getByRole('menuitem')).toHaveText([
+        /^1\s*Note on hero$/,
+        /^2\s*Note on mobile$/,
+      ])
+    })
+
     test('adds a picked device where the Frame tool clicks, and undo takes it away', async ({
       page,
     }) => {
