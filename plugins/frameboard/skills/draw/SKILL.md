@@ -28,6 +28,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Write the file before placing it, since `frame add` writes an empty skeleton when none exists and the developer watches a blank box until your write lands
 2. Place it with `frameboard frame add <page>/<frame> --json` straight after the write. It places the file as written and touches nothing in it.
    - Pass the size name nearest the screen the developer described, from the `Frame sizes` block of `frameboard docs`, so it lands at its device width at once
+   - Pass `slide-16-9` or `slide-4-3` for a slide, `og-card` for a link preview card at 1200 × 630, and `linkedin-post` for a LinkedIn post at 1200 × 627
    - A frame with no size hugs its content on both axes, and a size fixes its width alone, so leave the size off a component and let the running server measure it
    - Resize an axis only to fix it, since a resize stops that axis hugging
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
