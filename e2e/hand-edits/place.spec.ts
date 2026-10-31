@@ -393,7 +393,7 @@ test.describe('placing text and shapes into a frame', () => {
         throw new Error('The row or the hit layer draws no box')
 
       await page
-        .getByRole('button', { name: 'Copy path of demo.mp4' })
+        .getByRole('button', { name: /^Copy path of demo.mp4,/ })
         .dragTo(page.locator('[data-hit-layer]'), {
           targetPosition: {
             x: one.x + one.width + 20 - layer.x,

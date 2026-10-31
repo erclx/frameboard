@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { type AssetUsage, createAssetUsage } from '../board/asset-usage'
 import { assetsRoutes } from './assets'
 
 const TOKEN = 'a'.repeat(64)
@@ -23,7 +24,7 @@ describe('assetsRoutes', () => {
     board.cleanup()
   })
 
-  function routes(limit?: number) {
+  function routes(limit?: number, usage?: AssetUsage) {
     return assetsRoutes(
       board.root,
       {
@@ -32,7 +33,7 @@ describe('assetsRoutes', () => {
         cookieName: 'frameboard-key-111111111111',
         isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
       },
-      limit,
+      { limit, usage },
     )
   }
 
@@ -60,6 +61,27 @@ describe('assetsRoutes', () => {
 
       expect(response.status).toBe(200)
       expect(await response.json()).toEqual({ ok: true, data: { files: [] } })
+    })
+
+    it('carries the number of frames linking each file, zero for an unlinked one', async () => {
+      mkdirSync(join(board.root, 'webapp/assets'))
+      writeFileSync(join(board.root, 'webapp/assets/logo.svg'), '<svg/>')
+      writeFileSync(join(board.root, 'webapp/assets/brand.woff2'), 'font')
+      writeFileSync(
+        join(board.root, 'webapp/home/logo.html'),
+        '<img src="../assets/logo.svg">',
+      )
+
+      const response = await routes(
+        undefined,
+        createAssetUsage(board.root),
+      ).request('/api/projects/webapp/assets')
+
+      const { data } = await response.json()
+      expect(data.files).toMatchObject([
+        { path: 'brand.woff2', frames: 0 },
+        { path: 'logo.svg', frames: 1 },
+      ])
     })
 
     it('answers 404 for a project that does not exist', async () => {

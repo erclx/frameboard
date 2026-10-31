@@ -4,6 +4,7 @@ import { Hono, type MiddlewareHandler } from 'hono'
 import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
+import type { AssetUsage } from './board/asset-usage'
 import type { RenderFrame } from './capture/render'
 import type { ThumbnailStore } from './capture/thumbnails'
 import type { History } from './history/stack'
@@ -90,6 +91,8 @@ export interface AppOptions {
   frameVersion?: FrameVersion
   /** The same lookup, read after any watch batch in progress, which the edit route relocates a stale edit from. */
   settledVersion?: SettledVersion
+  /** Counts the frames linking each asset, which the assets listing carries when given. */
+  assetUsage?: AssetUsage
 }
 
 export function createApp({
@@ -111,6 +114,7 @@ export function createApp({
   measure,
   frameVersion,
   settledVersion,
+  assetUsage,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -135,7 +139,7 @@ export function createApp({
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery, dispatch))
-  app.route('/', assetsRoutes(root, actions.access))
+  app.route('/', assetsRoutes(root, actions.access, { usage: assetUsage }))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
   app.route(

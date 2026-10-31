@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 
+import type { AssetUsage } from '@/server/board/asset-usage'
 import { addAssets, listAssets } from '@/server/board/assets'
 import { isValidName } from '@/shared/names'
 
@@ -11,6 +12,13 @@ import { type Access, requireWriter } from '../access/guard'
 
 /** The most a drop may carry, multipart overhead included. */
 export const ASSET_BODY_LIMIT = 64 * 1024 * 1024
+
+export interface AssetsRoutesOptions {
+  /** The most a drop may carry, `ASSET_BODY_LIMIT` unless given. */
+  limit?: number
+  /** Counts the frames linking each file, which the listing carries as `frames` when given. */
+  usage?: AssetUsage
+}
 
 /**
  * A project's `assets/` folder over the board's JSON envelope: the listing the
@@ -20,7 +28,7 @@ export const ASSET_BODY_LIMIT = 64 * 1024 * 1024
 export function assetsRoutes(
   root: string,
   access: Access,
-  limit = ASSET_BODY_LIMIT,
+  { limit = ASSET_BODY_LIMIT, usage }: AssetsRoutesOptions = {},
 ): Hono {
   const app = new Hono()
   const authorized = requireWriter(access)
@@ -30,7 +38,21 @@ export function assetsRoutes(
     const projectDir = projectFolder(root, c.req.param('project'))
     if (projectDir === null)
       return c.json(notFound(c.req.param('project')), 404)
-    return c.json({ ok: true, data: { files: await listAssets(projectDir) } })
+    const [files, counts] = await Promise.all([
+      listAssets(projectDir),
+      usage?.counts(c.req.param('project')),
+    ])
+    return c.json({
+      ok: true,
+      data: {
+        files: counts
+          ? files.map((file) => ({
+              ...file,
+              frames: counts.get(file.path) ?? 0,
+            }))
+          : files,
+      },
+    })
   })
 
   app.post(
