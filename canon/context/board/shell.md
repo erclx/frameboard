@@ -65,7 +65,7 @@ A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a box thro
 Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
 
 - Design holds a searchable pages list and a layers tree under a per-project divider fit to 4 to 8 rows, grown on a page add, and reset on a double-click
-  - Theme, in `theme/`, tags each token Board or Project and edits it in place into the project's sheet, per `canon/context/content/themes-and-tokens.md`
+  - Theme, in `theme/`, tags each token Board or Project and edits it in place into the sheet its tag names, per `canon/context/content/themes-and-tokens.md`
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
 
 The Assets tab, in `src/client/board/assets/`, lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips.

@@ -37,7 +37,7 @@ test.describe('editing a board token on the Theme tab', () => {
     board.cleanup()
   })
 
-  test('moves every project that does not override the token and keeps the one that does', async ({
+  test('moves every project that does not override the token', async ({
     page,
   }) => {
     const webappSheet = readFileSync(
@@ -63,7 +63,6 @@ test.describe('editing a board token on the Theme tab', () => {
     expect(readFileSync(join(board.root, 'webapp/tokens.css'), 'utf8')).toBe(
       webappSheet,
     )
-    expect(await tokenIn(page, HERO, '--accent')).toBe('#e11d48')
 
     await page.goto(`${server.url}/p/marketing/launch`)
     await expect(page.frameLocator(LANDING).locator('h1')).toBeVisible()

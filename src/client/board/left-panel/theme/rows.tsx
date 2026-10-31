@@ -25,7 +25,7 @@ interface RowProps {
   row: TokenRow
   /** Whether the winning value comes from the project's sheet, which tags the row Project. */
   fromProject: boolean
-  /** Whether the row takes edits, false on a reading tab or while the project sheet does not parse. */
+  /** Whether the row takes edits, false on a reading tab, while the sheet it writes does not parse, or for a board sheet outside the board folder. */
   editable: boolean
   onWrite: WriteRow
 }
