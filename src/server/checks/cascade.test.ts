@@ -354,3 +354,53 @@ describe('buildCascade specified', () => {
     ).toEqual({ value: 'var(--surface)', from: 't' })
   })
 })
+
+/** The rule that set `property` on the element with `id`, as the cascade names it. */
+function ruleOf(html: string, id: string, property: string) {
+  board = writeBoard({ 'site/home/hero.html': html })
+  const source = readFrame({
+    root: board.root,
+    project: 'site',
+    page: 'home',
+    name: 'hero',
+  })
+  const element = source.elements.find(
+    (candidate) => candidate.attribs.id === id,
+  )
+  if (!element) throw new Error(`no element #${id}`)
+  return buildCascade(source, [], {
+    properties: new Set(['display']),
+  }).specified(element, property)?.rule
+}
+
+describe('buildCascade specified rule', () => {
+  it('names a shared rule and every element it matches', () => {
+    expect(
+      ruleOf(
+        '<style>.row { display: flex }</style><div class="row" id="t"></div><div class="row"></div><div class="row"></div>',
+        't',
+        'display',
+      ),
+    ).toEqual({ selector: '.row', count: 3 })
+  })
+
+  it('names the one selector of a list that matched', () => {
+    expect(
+      ruleOf(
+        '<style>.stack, #t { display: flex }</style><div id="t"></div><div class="stack"></div>',
+        't',
+        'display',
+      ),
+    ).toEqual({ selector: '#t', count: 1 })
+  })
+
+  it('reads no rule for an inline declaration', () => {
+    expect(
+      ruleOf(
+        '<style>.row { display: flex }</style><div class="row" id="t" style="display: grid"></div>',
+        't',
+        'display',
+      ),
+    ).toBeNull()
+  })
+})

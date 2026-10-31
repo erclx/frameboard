@@ -18,6 +18,7 @@ const SHORTHANDS: Record<string, readonly string[]> = {
   background: ['background-color'],
   border: ['border-color', 'border-width'],
   'flex-flow': ['flex-direction', 'flex-wrap'],
+  flex: ['flex-grow', 'flex-shrink', 'flex-basis'],
 }
 
 /** The properties an element takes from its parent when no rule sets them. */
@@ -71,11 +72,22 @@ interface Declaration {
   specificity: [number, number, number]
   /** Position across every sheet in cascade order, so the later of two ties wins. */
   order: number
+  /** The rule it sits in, absent for a `style` attribute's own declaration. */
+  rule?: CompiledRule
 }
 
 interface CompiledRule {
+  selector: string
   matches: (element: Element) => boolean
   declarations: Declaration[]
+}
+
+/** The rule a declaration came from, as the frame's elements meet it. */
+export interface DeclaringRule {
+  /** The one selector out of the rule's list that matched, as written. */
+  selector: string
+  /** How many of the frame's elements that selector matches, the element itself included. */
+  count: number
 }
 
 /** A property's value on an element, and the element that declared it. */
@@ -87,6 +99,8 @@ export interface Cascaded {
   userAgent: boolean
   /** True when it came from a shorthand, such as `font`, whose value holds more than the property. */
   shorthand?: boolean
+  /** The rule that set it, null for the element's own `style` attribute or the browser's rule. */
+  rule: DeclaringRule | null
 }
 
 export interface Cascade {
@@ -155,27 +169,43 @@ export function buildCascade(
         const matches = compileSelector(selector)
         const specificity = specificityOf(selector)
         if (!matches || !specificity) continue
-        rules.push({
+        const compiled: CompiledRule = {
+          selector: selector.trim(),
           matches,
-          declarations: declared.flatMap((node) =>
-            node.type === 'decl'
-              ? [
-                  {
-                    property: node.prop.startsWith('--')
-                      ? node.prop
-                      : node.prop.toLowerCase(),
-                    value: node.value,
-                    important: node.important,
-                    inline: false,
-                    specificity,
-                    order: order++,
-                  },
-                ]
-              : [],
-          ),
-        })
+          declarations: [],
+        }
+        compiled.declarations = declared.flatMap((node) =>
+          node.type === 'decl'
+            ? [
+                {
+                  property: node.prop.startsWith('--')
+                    ? node.prop
+                    : node.prop.toLowerCase(),
+                  value: node.value,
+                  important: node.important,
+                  inline: false,
+                  specificity,
+                  order: order++,
+                  rule: compiled,
+                },
+              ]
+            : [],
+        )
+        rules.push(compiled)
       }
     })
+  }
+
+  const counts = new Map<CompiledRule, number>()
+  const ruleOf = (declaration: Declaration): DeclaringRule | null => {
+    const rule = declaration.rule
+    if (!rule) return null
+    let count = counts.get(rule)
+    if (count === undefined) {
+      count = source.elements.filter((element) => rule.matches(element)).length
+      counts.set(rule, count)
+    }
+    return { selector: rule.selector, count }
   }
 
   const winners = new Map<Element, Map<string, Declaration>>()
@@ -218,13 +248,14 @@ export function buildCascade(
           element: current,
           userAgent: false,
           shorthand: declaration.property !== property,
+          rule: ruleOf(declaration),
         }
       }
       if (property === 'font-family' && current.name in USER_AGENT_FAMILIES) {
         const family = USER_AGENT_FAMILIES[current.name]
         return family === null || family === undefined
           ? null
-          : { value: family, element: current, userAgent: true }
+          : { value: family, element: current, userAgent: true, rule: null }
       }
     }
     return null
@@ -311,6 +342,7 @@ export function buildCascade(
         element,
         userAgent: false,
         shorthand: declaration.property !== property,
+        rule: ruleOf(declaration),
       }
     },
     resolve: (value, element, keep) => resolveVars(value, element, keep),

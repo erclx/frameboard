@@ -407,3 +407,74 @@ test.describe('exporting a selected frame', () => {
     ])
   })
 })
+
+test.describe('setting the flow of one row a shared rule styles', () => {
+  const ROWS = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>about</title>
+    <style>
+      .row { display: flex; gap: 4px; padding: 24px }
+    </style>
+  </head>
+  <body>
+    <div class="row" data-name="First"><span>a</span><span>b</span></div>
+    <div class="row" data-name="Second"><span>c</span><span>d</span></div>
+    <div class="row" data-name="Third"><span>e</span><span>f</span></div>
+  </body>
+</html>
+`
+  const ABOUT = 'webapp/home/about'
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const read = () => readFileSync(join(board.root, `${ABOUT}.html`), 'utf8')
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    writeFileSync(join(board.root, `${ABOUT}.html`), ROWS)
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('a gap on one row writes its start tag alone, and one undo restores it', async ({
+    page,
+  }) => {
+    const second = page
+      .frameLocator(`[data-frame="${ABOUT}"] iframe`)
+      .locator('[data-name="Second"]')
+    await expect(second).toBeVisible()
+    // A click inside the row's padding, clear of its spans, selects the row itself.
+    await expect(async () => {
+      const box = await second.boundingBox()
+      if (!box) throw new Error('the row has no box on screen')
+      await page.keyboard.down('Meta')
+      await page.mouse.click(box.x + 3, box.y + 3)
+      await page.keyboard.up('Meta')
+      await expect(page.getByText(/shared by 3 elements/)).toBeVisible({
+        timeout: 1000,
+      })
+    }).toPass({ timeout: 10_000 })
+
+    const gap = page.getByRole('textbox', { name: 'Gap', exact: true })
+    await expect(gap).toHaveValue('4')
+    await gap.fill('16')
+    await gap.press('Enter')
+
+    await expect.poll(read).not.toBe(ROWS)
+    expect(changedLines(ROWS, read())).toEqual([
+      '    <div class="row" data-name="Second" style="gap: 16px"><span>c</span><span>d</span></div>',
+    ])
+
+    await gap.blur()
+    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await expect.poll(read).toBe(ROWS)
+  })
+})

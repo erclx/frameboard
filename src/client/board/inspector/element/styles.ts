@@ -40,6 +40,7 @@ export interface LiveElement {
   textOnly: boolean
   text: string
   rotation: Rotation
+  layout: LiveLayout
   /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
   inline: {
     color: boolean
@@ -48,6 +49,42 @@ export interface LiveElement {
     background: boolean
     border: boolean
   }
+}
+
+/** How a container lays out what it holds, as the Layout section names it. */
+export type Flow = 'block' | 'vertical' | 'horizontal' | 'wrap' | 'grid'
+
+/** What the Layout section reads off the element and its parent, as the browser computed them. */
+export interface LiveLayout {
+  flow: Flow
+  /** Whether it flows inline, as `inline-flex` or `inline-grid`, which a flow pick keeps. */
+  inline: boolean
+  /** The computed `flex-direction`, `flex-wrap`, `justify-content`, and `align-items`. */
+  direction: string
+  wrap: string
+  justify: string
+  alignItems: string
+  /** Whether its own `style` sets `justify-content`, which turning Auto gap off drops. */
+  ownJustify: boolean
+  /** In px, 0 for `normal`. */
+  rowGap: number
+  columnGap: number
+  padding: { top: number; right: number; bottom: number; left: number }
+  /** The parent's flow, which decides whether Fill is offered. */
+  parent: Flow
+  /** The parent's computed `align-items`, which decides how a child hugs across it. */
+  parentAlignItems: string
+  /** The rendered box in px, before any rotation. */
+  width: number
+  height: number
+}
+
+/** A computed `display`, `flex-direction`, and `flex-wrap` as one flow. */
+export function flowOf(display: string, direction: string, wrap: string): Flow {
+  if (display === 'grid' || display === 'inline-grid') return 'grid'
+  if (display !== 'flex' && display !== 'inline-flex') return 'block'
+  if (wrap !== 'nowrap') return 'wrap'
+  return direction.startsWith('column') ? 'vertical' : 'horizontal'
 }
 
 /** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
@@ -180,7 +217,43 @@ function readLive(element: Element, view: Window): LiveElement {
       own: beneathOwn(element, view),
       translated: translates(style.transform),
     },
+    layout: readLayout(element, style, view),
     inline: inlinePaints(element),
+  }
+}
+
+function readLayout(
+  element: Element,
+  style: CSSStyleDeclaration,
+  view: Window,
+): LiveLayout {
+  const parent = element.parentElement
+  const above = parent ? view.getComputedStyle(parent) : null
+  // The node is from the frame's realm, where this window's HTMLElement is not its class.
+  const node = 'offsetWidth' in element ? (element as HTMLElement) : null
+  const px = (length: string) => hundredths(length) || 0
+  return {
+    flow: flowOf(style.display, style.flexDirection, style.flexWrap),
+    inline: style.display.startsWith('inline-'),
+    direction: style.flexDirection,
+    wrap: style.flexWrap,
+    justify: style.justifyContent,
+    alignItems: style.alignItems,
+    ownJustify: !!node?.style.getPropertyValue('justify-content'),
+    rowGap: style.rowGap === 'normal' ? 0 : px(style.rowGap),
+    columnGap: style.columnGap === 'normal' ? 0 : px(style.columnGap),
+    padding: {
+      top: px(style.paddingTop),
+      right: px(style.paddingRight),
+      bottom: px(style.paddingBottom),
+      left: px(style.paddingLeft),
+    },
+    parent: above
+      ? flowOf(above.display, above.flexDirection, above.flexWrap)
+      : 'block',
+    parentAlignItems: above?.alignItems ?? 'normal',
+    width: Math.round(node?.offsetWidth ?? 0),
+    height: Math.round(node?.offsetHeight ?? 0),
   }
 }
 

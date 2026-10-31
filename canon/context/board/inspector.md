@@ -19,6 +19,15 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at the phone, tablet, or desktop width or a scrubbed one, with End preview. It writes nothing, and W keeps reading the stored width.
+- **Layout:** sits first among an element's sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
+- **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
+- **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
+- **Rule caption:** names the selector of a flow rule several elements share, with its count from the static cascade. An unread sheet names no rule.
+- **Gap:** writes `gap` in px. Auto gap writes `justify-content: space-between`, and off drops the element's own value or writes `flex-start`.
+- **Alignment:** the 3×3 grid writes `justify-content` and `align-items` as one edit, its rows and columns swapping for a column
+- **Padding:** horizontal and vertical fields write their two longhands as one edit, and a per-side toggle opens a field per side
+- **Size:** W and H write px as Fixed, each with a Fixed, Hug, or Fill menu read from the static cascade
+- **Fill:** offered only under a flex parent, writing `flex: 1 1 0` along its axis and `align-self: stretch` across it
 - **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. Layers renames an element.
 - **Type details:** a settings button ending the alignment row opens decoration, case, one-line truncate, and wrap style. Truncate writes its three declarations as one edit.
 - **Rotation:** a degrees field writes `rotate`, clockwise and normalized to (-180, 180], beside Rotate 90°, Flip horizontal, and Flip vertical
@@ -62,11 +71,16 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 
 ## Gotchas
 
-- Element position, width, height, padding, flex, gap, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
-- Those controls are not built yet, though hand layout and placement are scoped.
+- Element position, border width, and vertical text alignment have no control. A placement tool sets a new element's place once.
 - A Rectangle or Ellipse drag sets a new shape's size, and a corner drag sets a placed one's as one `styles` edit. A drag on the selected element moves it to another gap in its layout.
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
+
+The Layout section leaves some sizing to the browser.
+
+- Min and max sizes and clipping have no control, and a grid's tracks are never written
+- Hug under a block parent writes `width: fit-content`, since a block child's auto width spans its parent and reads as no mode
+- Fill as `flex: 1 1 0` can shrink a child below its content width under `overflow: hidden`, measured on 18 of 10,132 flex children across the design board
 
 Rotation leaves two gaps in what the canvas draws.
 
