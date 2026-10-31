@@ -22,10 +22,20 @@ const CLIPPED: Finding = {
   location: null,
 }
 
-/** A checker holding `held` by ref, settling once `settled` is called. */
+const OUTRANKED: Finding = {
+  rule: 'outranked',
+  severity: 'warning',
+  frame: 'site/home/hero',
+  path: 'site/home/hero.html',
+  message: 'This write changed the .row rule.',
+  location: null,
+}
+
+/** A checker holding `held` browser findings and `changes` by ref. */
 function fakeChecks(
   held: Record<string, Finding[]>,
   unavailable: 'browser-not-found' | null = null,
+  changes: Record<string, Finding[]> = {},
 ) {
   const asked: string[][] = []
   const steps: string[] = []
@@ -39,6 +49,8 @@ function fakeChecks(
     },
     rendered: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, held[ref] ?? []])),
+    changed: (refs) =>
+      Object.fromEntries(refs.map((ref) => [ref, changes[ref] ?? []])),
     unavailable: () => unavailable,
   }
   return { checks, asked, steps }
@@ -77,6 +89,33 @@ describe('POST /api/checks', () => {
     await post(checks, { refs: ['site/home/hero'] })
 
     expect(steps).toEqual(['refresh', 'settle'])
+  })
+
+  it('answers a held change finding ahead of the browser ones', async () => {
+    const { checks } = fakeChecks({ 'site/home/hero': [CLIPPED] }, null, {
+      'site/home/hero': [OUTRANKED],
+    })
+
+    const response = await post(checks, { refs: ['site/home/hero'] })
+
+    expect(await response.json()).toMatchObject({
+      data: { findings: [OUTRANKED, CLIPPED] },
+    })
+  })
+
+  it('answers a held change finding with no browser', async () => {
+    const { checks } = fakeChecks({}, 'browser-not-found', {
+      'site/home/hero': [OUTRANKED],
+    })
+
+    const response = await post(checks, { refs: ['site/home/hero'] })
+
+    expect(await response.json()).toMatchObject({
+      data: {
+        findings: [OUTRANKED],
+        browser: { ran: false, reason: 'browser-not-found' },
+      },
+    })
   })
 
   it('answers browser-not-found when the warm browser does not launch', async () => {

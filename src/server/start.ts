@@ -3,11 +3,12 @@ import { EventEmitter, once } from 'node:events'
 import { stat } from 'node:fs/promises'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { relative, sep } from 'node:path'
+import { join, relative, sep } from 'node:path'
 
 import { serve } from '@hono/node-server'
 
 import type { FrameChange } from '@/shared/records/changes'
+import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 import { THEMES } from '@/shared/theme'
 
@@ -23,8 +24,10 @@ import { createThumbnailStore, type ThumbnailStore } from './capture/thumbnails'
 import { type ChangeTracker, createChangeTracker } from './changes/tracker'
 import { checkRendered } from './checks/browser/rendered'
 import { readConfig } from './checks/frame'
-import { boardPath } from './checks/frame-source'
+import { boardPath, frameFrom, readFrame } from './checks/frame-source'
+import { checkOutranked } from './checks/outranked'
 import { type ClaimsPush, createClaimsPush } from './claims/push'
+import { contentHash } from './edit/address'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
 import {
@@ -220,16 +223,32 @@ async function listen({
   // The history lives in memory, so a trash a previous server left holds nothing it can undo.
   await emptyTrash(root)
   const tracker = createChangeTracker(root)
-  const settling = new Set<ReturnType<typeof setTimeout>>()
+  const settling = new Map<ReturnType<typeof setTimeout>, () => void>()
+  // The grace each frame's latest agent write waits out, which `check` waits on.
+  const graces = new Map<string, Promise<void>>()
   const settleLater = (held: FrameChange[]) => {
+    let release = () => {}
+    const done = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    for (const change of held) graces.set(change.frame, done)
     const timer = setTimeout(() => {
       settling.delete(timer)
       void inTurn(async () => {
         const changes = tracker.settle(held)
         if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
+        const sent = changeFindings(root, changes, tracker, findings)
+        if (Object.keys(sent).length > 0) {
+          hub.broadcast({ type: 'findings', findings: sent })
+        }
+      }).finally(() => {
+        for (const change of held) {
+          if (graces.get(change.frame) === done) graces.delete(change.frame)
+        }
+        release()
       })
     }, OWN_GRACE_MS)
-    settling.add(timer)
+    settling.set(timer, release)
   }
   // The board the tabs last received, which a moved frame's stamp is read against.
   const shown: { board: ListResult | null } = { board: null }
@@ -367,16 +386,32 @@ async function listen({
     settledVersion: (ref, hash) =>
       inTurn(async () => tracker.version(ref, hash)),
     checks: {
-      refresh: () =>
+      refresh: (refs) =>
         inTurn(async () => {
           try {
-            rendered.queue(await scanBoard(root), [])
+            const board = await scanBoard(root)
+            rendered.queue(board, [])
+            // An agent's write the watcher has not batched is taken in here,
+            // so its change findings land before the route answers. Its batch
+            // then finds the bytes already held and logs nothing twice.
+            const held = await tracker.update(
+              board,
+              refs.map(
+                (ref) => join(root, ...ref.split('/')) + FRAME_EXTENSION,
+              ),
+              await claims.read(),
+            )
+            if (held.length > 0) settleLater(held)
           } catch {
             // A board folder mid-removal does not scan, and the batch catches up.
           }
         }),
-      settle: rendered.settle,
+      settle: async (refs) => {
+        await Promise.all(refs.map((ref) => graces.get(ref)))
+        await rendered.settle(refs)
+      },
       rendered: findings.rendered,
+      changed: findings.changed,
       unavailable: rendered.unavailable,
     },
     actions: {
@@ -472,7 +507,10 @@ async function listen({
       rendered.close()
       hug.close()
       claims.close()
-      for (const timer of settling) clearTimeout(timer)
+      for (const [timer, release] of settling) {
+        clearTimeout(timer)
+        release()
+      }
       await Promise.all([
         watcher.close(),
         hub.close(),
@@ -594,6 +632,41 @@ async function pushBatch(
   }
   rendered.queue(board, recheckRefs(root, paths, board, tokens))
   await pushNotes(root, paths, hub, delivery)
+}
+
+/**
+ * Runs `outranked` over each settled agent write against the bytes it
+ * replaced, holding the result in place of the frame's previous write's, and
+ * returns the merged lists to send. A created frame holds none. A frame
+ * rewritten since is left to the write that rewrote it, and a removed one to
+ * the batch that drops it.
+ */
+function changeFindings(
+  root: string,
+  changes: readonly FrameChange[],
+  tracker: ChangeTracker,
+  findings: BoardFindings,
+): Record<string, Finding[]> {
+  const sent: Record<string, Finding[]> = {}
+  for (const change of changes) {
+    const [project = '', page = '', name = ''] = change.frame.split('/')
+    const target = { root, project, page, name }
+    const before = change.before
+      ? tracker.version(change.frame, change.before)
+      : null
+    let list: Finding[] = []
+    if (before !== null) {
+      try {
+        const after = readFrame(target)
+        if (contentHash(after.html) !== change.hash) continue
+        list = checkOutranked(frameFrom(target, before), after)
+      } catch {
+        continue
+      }
+    }
+    Object.assign(sent, findings.setChanged(change.frame, list))
+  }
+  return sent
 }
 
 async function modifiedAt(path: string): Promise<string | null> {
