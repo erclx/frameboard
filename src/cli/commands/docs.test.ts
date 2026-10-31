@@ -26,7 +26,10 @@ describe('docs', () => {
       verbs: { name: string; options: { flags: string; default?: unknown }[] }[]
       exitCodes: unknown
       records: Record<string, { type?: string }>
-      contentFormat: { names: { pattern: string } }
+      contentFormat: {
+        names: { pattern: string }
+        frameSizes: Record<string, { width: number; height: number }>
+      }
       checks: { rules: { id: string; tier: string; configKey?: string }[] }
     }
   }
@@ -91,6 +94,21 @@ describe('docs', () => {
 
     expect(Object.keys(records)).toEqual(Object.keys(RECORDS))
     expect(records.layout?.type).toBe('object')
+  })
+
+  it('lists the social sizes after every earlier size, unchanged', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.frameSizes).toMatchObject({
+      phone: { width: 390, height: 844 },
+      'slide-4-3': { width: 1024, height: 768 },
+      'og-card': { width: 1200, height: 630 },
+      'linkedin-post': { width: 1200, height: 627 },
+    })
+    expect(Object.keys(contentFormat.frameSizes).slice(-2)).toEqual([
+      'og-card',
+      'linkedin-post',
+    ])
   })
 
   it('prints the exit table and the name rule from their sources', async () => {

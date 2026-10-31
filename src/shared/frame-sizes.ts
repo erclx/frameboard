@@ -12,8 +12,19 @@ export const FRAME_SIZES = {
 
 export type FrameSizePreset = keyof typeof FRAME_SIZES
 
-/** A heading in the Frame tool's list, being a preset's or the slides'. */
-export type FrameSizeGroup = FrameSizePreset | 'slide'
+/**
+ * The widths each preset reads as, inclusive, so a 393 phone is a phone. The
+ * preset's own width is the default a preview takes from outside its range.
+ * They sit apart from `FRAME_SIZES`, whose entries spread into a frame's box.
+ */
+export const PRESET_RANGES = {
+  phone: { min: 320, max: 479 },
+  tablet: { min: 480, max: 1023 },
+  desktop: { min: 1024, max: Number.POSITIVE_INFINITY },
+} as const satisfies Record<FrameSizePreset, { min: number; max: number }>
+
+/** A heading in the Frame tool's list, being a preset's, the slides', or the social cards'. */
+export type FrameSizeGroup = FrameSizePreset | 'slide' | 'social'
 
 export interface DeviceSize extends FrameSize {
   name: string
@@ -98,6 +109,20 @@ export const DEVICE_SIZES = [
     width: 1024,
     height: 768,
   },
+  {
+    name: 'og-card',
+    label: 'Open Graph',
+    group: 'social',
+    width: 1200,
+    height: 630,
+  },
+  {
+    name: 'linkedin-post',
+    label: 'LinkedIn post',
+    group: 'social',
+    width: 1200,
+    height: 627,
+  },
 ] as const satisfies readonly DeviceSize[]
 
 /** A size taken by name, being a preset or a device. */
@@ -129,4 +154,22 @@ export function frameSizeOf(name: FrameSizeName): FrameSize {
     : (DEVICE_SIZES.find((device) => device.name === name) ??
       FRAME_SIZES[DEFAULT_FRAME_SIZE])
   return { width, height }
+}
+
+/** The preset whose range holds a width, or none below the phone range. */
+export function presetAt(width: number): FrameSizePreset | undefined {
+  return Object.keys(PRESET_RANGES)
+    .filter(isFrameSizePreset)
+    .find((preset) => {
+      const { min, max } = PRESET_RANGES[preset]
+      return width >= min && width <= max
+    })
+}
+
+/**
+ * The width a preview at a preset takes from a frame at `width`: the width
+ * itself when the preset's range holds it, and the preset's default otherwise.
+ */
+export function previewWidth(preset: FrameSizePreset, width: number): number {
+  return presetAt(width) === preset ? width : FRAME_SIZES[preset].width
 }

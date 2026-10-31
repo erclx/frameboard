@@ -118,6 +118,8 @@ describe('frame', () => {
     ['desktop', 1440, 900],
     ['slide-16-9', 1920, 1080],
     ['slide-4-3', 1024, 768],
+    ['og-card', 1200, 630],
+    ['linkedin-post', 1200, 627],
   ])('add --size %s places %i x %i', async (size, width, height) => {
     const run = on('basic')
 
