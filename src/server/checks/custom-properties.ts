@@ -40,8 +40,9 @@ interface Use {
  * and style attributes whose name nothing declares. A token sheet's own
  * references are the board's to answer for, so only its declarations count.
  * A property a script sets reads as unknown, which a fallback silences.
- * A rule matching no element in the frame never resolves its values, so a
- * linked site sheet's rules for other pages stay quiet.
+ * A linked sheet's rule matching no element in the frame stays quiet, since a
+ * site sheet styles other pages. The frame's own `<style>` keeps reporting,
+ * since its theme and state rules match elements no static tree marks.
  */
 export function checkUnknownTokens(
   source: FrameSource,
@@ -59,7 +60,9 @@ export function checkUnknownTokens(
     root.walkDecls((node) => {
       if (node.prop.startsWith('--')) declared.add(node.prop)
       if (sheet.origin === 'token') return
-      if (matchesNothing(node, source.elements)) return
+      if (sheet.origin === 'linked' && matchesNothing(node, source.elements)) {
+        return
+      }
       for (const name of bareVars(node.value)) {
         uses.push({
           name,

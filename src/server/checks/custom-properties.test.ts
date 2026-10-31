@@ -69,7 +69,15 @@ describe('checkUnknownTokens', () => {
     ).toMatchObject([{ rule: 'unknown-token', location: { line: 2 } }])
   })
 
-  it('passes one in a rule matching no element in the frame', () => {
+  it('reports one in the frame’s own dark-theme rule no static element matches', () => {
+    expect(
+      check(
+        '<style>[data-theme="dark"] .card { color: var(--fg-dakr) }</style><p class="card">x</p>',
+      ),
+    ).toMatchObject([{ rule: 'unknown-token', path: 'site/home/hero.html' }])
+  })
+
+  it('passes one in a linked sheet’s rule matching no element in the frame', () => {
     expect(
       check('<link rel="stylesheet" href="site.css"><p class="a">x</p>', {
         'site/home/site.css': '.nav, .footer a { color: var(--brand) }',

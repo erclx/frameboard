@@ -36,7 +36,7 @@ The custom property rule reads declarations rather than the tree.
 
 - `unknown-token` reports a `var()` with no fallback that no token sheet, frame sheet, or style attribute declares, leaving a token sheet's own references to the board
 - A property a script sets reads as unknown to `unknown-token`, which a fallback silences
-- `unknown-token` skips a rule whose selectors match no element in the frame, so a linked site sheet's rules for other pages stay quiet. One css-select cannot match statically still reports
+- `unknown-token` skips a linked sheet's rule matching no element in the frame, so a site sheet's other pages stay quiet. The frame's own `<style>` keeps reporting its theme and state rules
 - `parseSheet` blanks a declaration postcss reads as an unknown word and cuts the sheet at any other break, so `unknown-token` and `dropped-declaration` read every declaration a browser keeps
 
 Selector rules read the cascade rather than the parsed file.
