@@ -100,3 +100,51 @@ describe('moving a page', () => {
     ])
   })
 })
+
+describe('stepping between pages', () => {
+  const cleanups: (() => void)[] = []
+
+  beforeEach(() => {
+    receiveBoard(
+      liveStore,
+      boardOf(
+        { ...pageOf([], 'home'), index: 0 },
+        { ...pageOf([], 'pricing'), index: 1 },
+        { ...pageOf([], 'about'), index: 2 },
+      ),
+    )
+    history.pushState(null, '', '/p/studio/pricing')
+  })
+
+  afterEach(() => {
+    while (cleanups.length > 0) cleanups.pop()?.()
+    liveStore.setState({ board: null })
+    history.pushState(null, '', '/')
+  })
+
+  function onPage(page: string) {
+    cleanups.push(renderHook(() => usePageActions('studio', page)).unmount)
+  }
+
+  it.each([
+    ['page.next', '/p/studio/about'],
+    ['page.previous', '/p/studio/home'],
+  ])('opens the page %s reaches, in a tab that cannot write', (id, path) => {
+    onPage('pricing')
+
+    findAction(id)?.run()
+
+    expect(location.pathname).toBe(path)
+  })
+
+  it('steps nowhere past the last page', () => {
+    onPage('about')
+
+    expect(
+      ['page.next', 'page.previous'].map((id) => {
+        const action = findAction(id)
+        return action ? isEnabled(action) : false
+      }),
+    ).toEqual([false, true])
+  })
+})
