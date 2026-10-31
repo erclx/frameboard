@@ -163,11 +163,31 @@ export function readContentSize(): Reading {
     const style = getComputedStyle(element)
     return style.overflowX !== 'visible' || style.overflowY !== 'visible'
   }
+  // An ancestor crops only what its box contains, so the walk follows the
+  // containing block chain: an absolute element skips every static ancestor
+  // up to the one positioned, and a fixed one anchors to the viewport.
+  const anchors = (element: Element) => {
+    const style = getComputedStyle(element)
+    return style.position !== 'static' || style.transform !== 'none'
+  }
+  const containingBlock = (element: Element) => {
+    const position = getComputedStyle(element).position
+    let parent = element.parentElement
+    if (position === 'fixed') {
+      while (parent && getComputedStyle(parent).transform === 'none') {
+        parent = parent.parentElement
+      }
+      return parent
+    }
+    if (position !== 'absolute') return parent
+    while (parent && !anchors(parent)) parent = parent.parentElement
+    return parent
+  }
   const isCropped = (element: Element) => {
     for (
-      let parent = element.parentElement;
-      parent && parent !== document.body;
-      parent = parent.parentElement
+      let parent = containingBlock(element);
+      parent && parent !== document.body && parent !== root;
+      parent = containingBlock(parent)
     ) {
       if (crops(parent)) return true
     }

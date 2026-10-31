@@ -51,6 +51,14 @@ describe.skipIf(shell === null)(
           '<main style="min-height: 100vh">Hi</main>',
         ),
         'studio/home/skeleton.html': page(''),
+        'studio/home/escape.html': page(
+          '<div class="crop"><div class="badge"></div></div>',
+          'body { position: relative } .crop { height: 40px; overflow: hidden } .badge { position: absolute; top: 300px; width: 20px; height: 20px }',
+        ),
+        'studio/home/anchored.html': page(
+          '<div class="crop"><div class="badge"></div></div>',
+          '.crop { position: relative; height: 40px; overflow: hidden } .badge { position: absolute; top: 300px; width: 20px; height: 20px }',
+        ),
         'studio/home/tight.html': page(
           '<h1>Heading</h1>',
           'h1 { margin: 0; font-size: 48px; line-height: 1 }',
@@ -162,6 +170,18 @@ describe.skipIf(shell === null)(
       const size = await measure('tight-badge', false)
 
       expect(size.height).toBe(painted)
+    })
+
+    it('reads an absolute element escaping its cropping ancestor', async () => {
+      const size = await measure('escape', false)
+
+      expect(size.height).toBe(320)
+    })
+
+    it('leaves out an absolute element its cropping ancestor anchors', async () => {
+      const size = await measure('anchored', false)
+
+      expect(size.height).toBe(40)
     })
 
     it('reads an empty body as empty and keeps its box width', async () => {
