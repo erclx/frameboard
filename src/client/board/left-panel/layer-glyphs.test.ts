@@ -20,6 +20,7 @@ function element(overrides: Partial<TreeElement>): TreeElement {
     textOnly: false,
     layout: 'block',
     round: false,
+    placed: false,
     ...overrides,
   }
 }

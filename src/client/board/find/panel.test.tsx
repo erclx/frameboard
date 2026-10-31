@@ -73,6 +73,7 @@ function heldTrees(): Trees {
         textOnly: false,
         layout: 'row',
         round: false,
+        placed: false,
       },
       {
         index: 8,
@@ -82,6 +83,7 @@ function heldTrees(): Trees {
         textOnly: false,
         layout: 'block',
         round: true,
+        placed: false,
       },
     ],
   }))

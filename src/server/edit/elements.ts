@@ -34,12 +34,14 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
  * refused, since every index after it would name another element.
  * `layouts` is `elementLayouts`'s read by the same index, and an element it
  * does not reach reads as `block`. `rounds` is `elementRounds`'s read, which
- * marks an element round only while it holds nothing.
+ * marks an element round only while it holds nothing. `facts` is
+ * `elementPlaceFacts`'s read, and an element it does not reach reads unplaced.
  */
 export function elementTree(
   source: string,
   layouts: readonly Layout[] = [],
   rounds: readonly boolean[] = [],
+  facts: readonly PlaceFacts[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -66,6 +68,7 @@ export function elementTree(
       textOnly: ownText(element) !== null,
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
+      placed: isPlaced(facts[at]),
     })
   }
   return listed
@@ -122,6 +125,11 @@ export function elementPlaceFacts(
     width: own(element, 'width') !== null,
     height: own(element, 'height') !== null,
   }))
+}
+
+function isPlaced(facts: PlaceFacts | undefined): boolean {
+  const position = facts?.position?.trim().toLowerCase()
+  return position === 'absolute' || position === 'fixed'
 }
 
 function layoutOf(

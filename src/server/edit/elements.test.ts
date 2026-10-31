@@ -29,6 +29,7 @@ describe('elementTree', () => {
         textOnly: false,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 5,
@@ -38,6 +39,7 @@ describe('elementTree', () => {
         textOnly: true,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 6,
@@ -47,6 +49,7 @@ describe('elementTree', () => {
         textOnly: true,
         layout: 'block',
         round: false,
+        placed: false,
       },
       {
         index: 7,
@@ -56,6 +59,7 @@ describe('elementTree', () => {
         textOnly: false,
         layout: 'block',
         round: false,
+        placed: false,
       },
     ])
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
@@ -102,6 +106,35 @@ describe('elementTree', () => {
     ).toEqual([
       [3, true],
       [4, false],
+      [5, false],
+    ])
+  })
+
+  it('marks an absolute or fixed element placed and a relative one not', () => {
+    const at = (position: string | null) => ({
+      position,
+      width: false,
+      height: false,
+    })
+    const tree = elementTree(
+      '<body><div></div><div></div><div></div></body>',
+      [],
+      [],
+      [
+        at(null),
+        at(null),
+        at(null),
+        at('absolute'),
+        at('fixed'),
+        at('relative'),
+      ],
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.index, row.placed]),
+    ).toEqual([
+      [3, true],
+      [4, true],
       [5, false],
     ])
   })
