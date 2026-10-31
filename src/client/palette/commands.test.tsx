@@ -352,7 +352,9 @@ describe('CommandPalette', () => {
     )
     await userEvent.click(row)
 
-    expect(chips).toEqual(expect.arrayContaining([']']))
+    expect(chips).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^(?:Shift|⇧)$/), ']']),
+    )
     expect(store.getState().unseen).toEqual({})
   })
 
