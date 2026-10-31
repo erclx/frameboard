@@ -6,6 +6,7 @@ import type { ListResult } from '@/shared/records/list'
 import {
   createUnseenStore,
   dropBase,
+  markAllSeen,
   markSeen,
   nextUnseen,
   pointAt,
@@ -14,6 +15,7 @@ import {
   receiveChanges,
   renameUnseen,
   SEEN_KEY,
+  undoMarkAll,
   unseenUnder,
 } from './unseen'
 
@@ -280,6 +282,151 @@ describe('markSeen', () => {
     markSeen(store, 'studio/home/hero')
 
     expect(Object.keys(store.getState().unseen)).toEqual(['studio/home/about'])
+  })
+})
+
+describe('markAllSeen', () => {
+  it('clears the marks on every page and project', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('studio/pricing/table', 't1'),
+      change('shop/cart/list', 'l1'),
+    ])
+
+    markAllSeen(store)
+
+    expect(store.getState().unseen).toEqual({})
+  })
+
+  it('keeps every hash it cleared across a reload', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+
+    markAllSeen(store)
+    const reloaded = createUnseenStore(storage)
+    receiveChanges(reloaded, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
+  it('holds for the tab while storage throws', () => {
+    const store = createUnseenStore(throwing)
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+
+    markAllSeen(store)
+
+    expect(store.getState().unseen).toEqual({})
+  })
+
+  it('counts the frames it cleared', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+
+    markAllSeen(store)
+
+    expect(Object.keys(store.getState().lastCleared ?? {})).toHaveLength(2)
+  })
+})
+
+describe('undoMarkAll', () => {
+  it('marks every cleared frame again', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+    markAllSeen(store)
+
+    undoMarkAll(store)
+
+    expect(Object.keys(store.getState().unseen).sort()).toEqual([
+      'shop/cart/list',
+      'studio/home/hero',
+    ])
+  })
+
+  it('puts back the hash seen before the clear across a reload', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+    markSeen(store, 'studio/home/hero')
+    receiveChanges(store, [
+      change('studio/home/hero', 'h2'),
+      change('shop/cart/list', 'l1'),
+    ])
+    markAllSeen(store)
+
+    undoMarkAll(store)
+    const reloaded = createUnseenStore(storage)
+
+    expect(reloaded.getState().seen).toEqual({ 'studio/home/hero': 'h1' })
+  })
+
+  it('leaves a frame marked with the change landing after the clear', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('shop/cart/list', 'l1'),
+    ])
+    markAllSeen(store)
+    receiveChanges(store, [change('studio/home/hero', 'h2')])
+
+    undoMarkAll(store)
+
+    expect(store.getState().unseen['studio/home/hero']?.hash).toBe('h2')
+  })
+
+  it('leaves a frame seen when its newer change was looked at before the undo', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+    markAllSeen(store)
+    receiveChanges(store, [change('studio/home/hero', 'h2')])
+    markSeen(store, 'studio/home/hero')
+
+    undoMarkAll(store)
+
+    expect(store.getState().unseen).toEqual({})
+    expect(store.getState().seen).toEqual({ 'studio/home/hero': 'h2' })
+  })
+
+  it('runs once per clear', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [change('studio/home/hero', 'h1')])
+    markAllSeen(store)
+    undoMarkAll(store)
+    markSeen(store, 'studio/home/hero')
+
+    undoMarkAll(store)
+
+    expect(store.getState().unseen).toEqual({})
+  })
+
+  it('never marks a frame the board deleted after the clear', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1'),
+      change('studio/home/gone', 'g1'),
+    ])
+    markAllSeen(store)
+    pruneUnseen(store, boardWith('studio/home/hero'))
+
+    undoMarkAll(store)
+
+    expect(Object.keys(store.getState().unseen)).toEqual(['studio/home/hero'])
   })
 })
 

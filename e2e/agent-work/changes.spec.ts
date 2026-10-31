@@ -1,5 +1,5 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process'
-import { cpSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -82,6 +82,74 @@ test.describe('what an agent changed', () => {
     await expect(
       pageRow(page, 'pricing').getByRole('img', { name: /unseen/ }),
     ).toHaveCount(0)
+  })
+
+  test('clears every page from Mark all seen and puts the pile back on Undo', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+
+    // Off the page in view, so no frame clears on its own by being looked at.
+    writeAsAgent('studio/pricing/plans.html', 'Plans for teams')
+    mkdirSync(at('studio/gallery'))
+    for (let n = 1; n <= 11; n += 1) {
+      const folder = n <= 5 ? 'pricing' : 'gallery'
+      writeFileSync(
+        at(`studio/${folder}/card-${n}.html`),
+        `<!doctype html><title>card ${n}</title><h1>Card ${n}</h1>`,
+      )
+    }
+    const toast = page.locator('[data-change-toast]')
+    await expect(toast).toContainText('12 frames changed')
+    await expect(
+      pageRow(page, 'pricing').getByRole('img', { name: '6 unseen changes' }),
+    ).toBeVisible()
+    await expect(
+      pageRow(page, 'gallery').getByRole('img', { name: '6 unseen changes' }),
+    ).toBeVisible()
+
+    await toast.getByRole('button', { name: /^Mark all seen/ }).click()
+
+    await expect(toast).toContainText('12 changes marked seen')
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Pages' })
+        .getByRole('img', { name: /unseen/ }),
+    ).toHaveCount(0)
+
+    await toast.getByRole('button', { name: 'Undo' }).click()
+
+    await expect(toast).toContainText('12 frames changed')
+    await expect(
+      pageRow(page, 'pricing').getByRole('img', { name: '6 unseen changes' }),
+    ).toBeVisible()
+    await expect(
+      pageRow(page, 'gallery').getByRole('img', { name: '6 unseen changes' }),
+    ).toBeVisible()
+  })
+
+  test('opens a fresh toast for a change landing after Mark all seen and keeps the Undo', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+    writeAsAgent('studio/pricing/plans.html', 'Plans for teams')
+    writeFileSync(
+      at('studio/pricing/faq.html'),
+      '<!doctype html><title>faq</title><h1>FAQ</h1>',
+    )
+    const toasts = page.locator('[data-change-toast]')
+    await expect(toasts).toContainText('2 frames changed')
+    await toasts.getByRole('button', { name: /^Mark all seen/ }).click()
+    await expect(toasts).toContainText('2 changes marked seen')
+
+    writeAsAgent('studio/pricing/plans.html', 'Plans for agencies')
+
+    await expect(toasts.filter({ hasText: 'plans changed' })).toBeVisible()
+    await expect(
+      toasts
+        .filter({ hasText: '2 changes marked seen' })
+        .getByRole('button', { name: 'Undo' }),
+    ).toBeVisible()
   })
 
   test('marks nothing for a page renamed through the board', async ({

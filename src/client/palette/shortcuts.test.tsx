@@ -75,8 +75,10 @@ describe('ShortcutsSheet', () => {
 
   it('lists the agent change keys under Agents', async () => {
     register(
+      action('changes.show', { keys: ['Backslash'] }),
       action('changes.next', { keys: ['BracketRight'] }),
       action('changes.previous', { keys: ['BracketLeft'] }),
+      action('changes.markAllSeen', { keys: ['Shift+BracketRight'] }),
     )
     renderOnBoard(<ShortcutsSheet />)
 
@@ -84,9 +86,13 @@ describe('ShortcutsSheet', () => {
     await screen.findByRole('dialog')
 
     expect([
+      row('Show the agent change').querySelector('kbd kbd')?.textContent,
       row('Next change').querySelector('kbd kbd')?.textContent,
       row('Previous change').querySelector('kbd kbd')?.textContent,
-    ]).toEqual([']', '['])
+    ]).toEqual(['\\', ']', '['])
+    expect(
+      row('Mark all agent changes seen').querySelector('kbd kbd')?.textContent,
+    ).toMatch(/^(?:Shift\+|⇧)\]$/)
   })
 
   describe('the Single-key shortcuts switch', () => {
