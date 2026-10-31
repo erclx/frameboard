@@ -141,22 +141,34 @@ async function fetchFrameImage(ref: string, theme: Theme): Promise<Blob> {
 }
 
 let backend: string | null = null
-let requested = false
 
 /**
- * The clipboard backend `/api/health` reports, null until it arrives or
- * where the server has none. Read once per load, since the copy path is
- * chosen inside a key press that cannot wait on it.
+ * The clipboard backend `/api/health` last reported, null until it arrives or
+ * where the server has none. The copy path is chosen inside a key press that
+ * cannot wait on a request, so `readClipboardBackend` asks ahead.
  */
 export function clipboardBackend(): string | null {
-  if (!requested) {
-    requested = true
-    void fetch('/api/health')
-      .then((response) => response.json() as Promise<{ clipboard?: unknown }>)
-      .then((health) => {
-        if (typeof health.clipboard === 'string') backend = health.clipboard
-      })
-      .catch(() => {})
-  }
   return backend
+}
+
+let reads = 0
+
+/**
+ * Reads the clipboard backend off `/api/health`, leaving none on a failed
+ * read. Only the latest read writes, so an older one answering late never
+ * overwrites a newer reading.
+ */
+export async function readClipboardBackend(
+  send: typeof fetch = fetch,
+): Promise<void> {
+  const read = ++reads
+  let next: string | null = null
+  try {
+    const response = await send('/api/health')
+    const health = (await response.json()) as { clipboard?: unknown }
+    if (typeof health.clipboard === 'string') next = health.clipboard
+  } catch {
+    // A failed read leaves no backend, so a copy stitches.
+  }
+  if (read === reads) backend = next
 }

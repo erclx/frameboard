@@ -25,6 +25,7 @@ import {
   copyFrameImage,
   copyFramesToClipboard,
   copyStitchedImage,
+  readClipboardBackend,
 } from './copy-image'
 import { withPending } from './geometry/write'
 import { reportRefusal } from './left-panel/page-actions'
@@ -55,7 +56,7 @@ const PANS = [
 export function useBoardActions(): void {
   useEffect(() => {
     // Asked ahead, since a several-frame copy picks its path inside the key press.
-    clipboardBackend()
+    void readClipboardBackend()
     const unregister = registerActions(boardActions())
     const unsubscribeMode = modeStore.subscribe(refreshActions)
     const unsubscribeSelection = selectionStore.subscribe(refreshActions)
@@ -270,13 +271,14 @@ function boardActions(): Action[] {
 
 /**
  * Copies several frames in the board's theme: as files on the OS clipboard
- * where the server holds a backend, so one paste lands each, and otherwise
- * as one image laid out as on the canvas.
+ * where the server holds a backend and this tab may write, so one paste lands
+ * each, and otherwise as one image laid out as on the canvas. A view-only tab
+ * stitches, since the route takes the board key and the PNG route does not.
  */
 function copyFrames(frames: readonly FrameRecord[]): void {
   const theme = shownTheme(themeStore.getState())
   const count = frames.length
-  if (clipboardBackend() !== null) {
+  if (clipboardBackend() !== null && liveStore.getState().canWrite) {
     toast.promise(
       copyFramesToClipboard(
         frames.map((frame) => frame.ref),

@@ -15,6 +15,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { useBoardActions } from './board-actions'
 import { Toolbar } from './chrome/toolbar'
+import { clipboardBackend } from './copy-image'
 import type { Box } from './geometry/box'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
@@ -262,6 +263,92 @@ describe('useBoardActions', () => {
           ),
         ).toBeVisible()
         expect(screen.queryByText('Copied hero')).toBeNull()
+      })
+    },
+  )
+
+  describe(
+    'copying several frames as PNG',
+    { timeout: TOAST_TEST_TIMEOUT_MS },
+    () => {
+      afterEach(() => {
+        vi.unstubAllGlobals()
+        vi.restoreAllMocks()
+        liveStore.setState({ canWrite: false })
+      })
+
+      /** Answers health with `clipboard`, records each clipboard route body, and serves no PNG. */
+      function stubServer(clipboard: string | null) {
+        const posted: unknown[] = []
+        vi.stubGlobal(
+          'fetch',
+          async (input: RequestInfo | URL, init?: RequestInit) => {
+            const path = new URL(String(input), location.href).pathname
+            if (path === '/api/health') return Response.json({ clipboard })
+            if (path === '/api/frames/clipboard') {
+              posted.push(JSON.parse(String(init?.body)))
+              return Response.json({
+                ok: true,
+                data: { copied: 2, backend: 'wsl' },
+              })
+            }
+            return new Response(null, { status: 404 })
+          },
+        )
+        const writes = vi
+          .spyOn(navigator.clipboard, 'write')
+          .mockImplementation(async (items) => {
+            await items[0]?.getType('image/png').catch(() => null)
+          })
+        return { posted, writes }
+      }
+
+      async function copyBoth(backend: string | null) {
+        render(<Toaster />)
+        const board = setup()
+        done = board.done
+        await vi.waitFor(() => expect(clipboardBackend()).toBe(backend))
+        select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+        board.action('frame.copyPng').run()
+      }
+
+      it('sends them to the clipboard route where the server holds a backend', async () => {
+        const { posted, writes } = stubServer('wsl')
+        liveStore.setState({ canWrite: true })
+
+        await copyBoth('wsl')
+
+        expect(
+          await screen.findByText(
+            'Copied 2 frames',
+            {},
+            { timeout: TOAST_WAIT_MS },
+          ),
+        ).toBeVisible()
+        expect(posted).toEqual([
+          { refs: [HERO.ref, ABOUT.ref], theme: 'light' },
+        ])
+        expect(writes).not.toHaveBeenCalled()
+      })
+
+      it('stitches them into one image where the server holds none', async () => {
+        const { posted, writes } = stubServer(null)
+        liveStore.setState({ canWrite: true })
+
+        await copyBoth(null)
+
+        expect(writes).toHaveBeenCalledOnce()
+        expect(posted).toEqual([])
+      })
+
+      it('stitches them in a tab without the board key, which the route refuses', async () => {
+        const { posted, writes } = stubServer('wsl')
+        liveStore.setState({ canWrite: false })
+
+        await copyBoth('wsl')
+
+        expect(writes).toHaveBeenCalledOnce()
+        expect(posted).toEqual([])
       })
     },
   )
