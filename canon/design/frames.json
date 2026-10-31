@@ -42,6 +42,7 @@
     "inspector/multi": "design/10-inspector/multi-select",
     "inspector/preview": "design/10-inspector/frame-preview",
     "inspector/preview-active": "design/10-inspector/frame-preview-active",
+    "inspector/layout": "design/10-inspector/inspector-layout",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",
