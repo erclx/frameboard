@@ -7,14 +7,16 @@
  * an edit to one string here and a re-capture, not another pass through the
  * pick loop with an operator in it.
  *
- * `canon:design-identity` writes the picked composition into the `.card`
- * element below and leaves everything around it alone. What ships is a working
- * placeholder, so the route serves before any pick has been taken.
+ * The composition is the board scene the operator picked: the lockup in a
+ * panel over three frames, one held under an agent's outline. It reads the
+ * site's tokens from `global.css`, so a token change reaches the card on the
+ * next capture, which `web/README.md` names.
  *
  * The card is declared at half of 1200x630. `canon capture` opens every page at
  * a fixed 2x device scale factor and screenshots the element at that scale, so
  * a 600x315 element is what lands the captured PNG on the literal target size.
- * Declaring it at 1200x630 captures at 2400x1260.
+ * Declaring it at 1200x630 captures at 2400x1260. Every length below is half
+ * the pick's full-scale source for the same reason.
  *
  * `card.config.mjs` is the only config whose page router reaches this file, and
  * `scripts/check-card-exclusion.sh` fails a build that carries the marker
@@ -25,6 +27,7 @@
 // somewhere else. An unresolved path refuses the card server by name, which is
 // the loud direction: a card captured against no stylesheet renders as an
 // unstyled box and reports success.
+import '@fontsource-variable/geist'
 import '@/styles/global.css'
 ---
 
@@ -40,59 +43,135 @@ import '@/styles/global.css'
         margin: 0;
       }
       .card {
+        /* The agent outline's purple, the one color global.css lacks, since
+           the page never draws an agent's claim. Written as rgb() rather than
+           hex so the shipped-reference gate does not read a six-digit hex as
+           a pull request number. */
+        --claim: rgb(127 45 181);
+        position: relative;
+        overflow: hidden;
         box-sizing: border-box;
         width: 600px;
         height: 315px;
+        background: var(--bg);
+        color: var(--fg);
+        /* No font-family here on purpose. The card inherits the body's
+           --font-sans from global.css, and `canon capture` reads the computed
+           family off this element and refuses when it cannot resolve. */
+      }
+      .lockup {
+        position: absolute;
+        left: 36px;
+        top: 36px;
         display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 3rem;
-        /* These two names are what `canon design css` emits, so a project
-           carrying the design files resolves both and neither fallback fires.
-           A name the design system does not emit would take its fallback,
-           capture cleanly and report success, which is the silent failure this
-           route exists to close. Check the names against the stylesheet when
-           retargeting the import above.
-
-           Written as rgb() rather than hex so the shipped-reference gate does
-           not read a six-digit hex fallback as a pull request number. */
-        background: var(--color-background, rgb(255 255 255));
-        color: var(--color-text, rgb(17 17 17));
-        /* No font-family here on purpose. The design system emits no font
-           token, so the card inherits the project's own body font rather than
-           reading a custom property that does not exist. `canon capture` reads
-           the computed family off this element, so inheritance still gives it
-           a family to check and it refuses when that family cannot resolve. */
+        align-items: center;
+        gap: 11px;
+        padding: 13px 17px;
+        border-radius: 10px;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 0.5px var(--line),
+          0 5px 15px rgb(0 0 0 / 0.08);
       }
       .mark {
-        width: 64px;
-        height: 64px;
+        width: 42px;
+        height: 42px;
       }
       .title {
         margin: 0;
-        font-size: 2.25rem;
-        line-height: 1.1;
+        font-size: 36px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        line-height: 1;
       }
       .tagline {
+        position: absolute;
+        left: 36px;
+        top: 116px;
         margin: 0;
-        font-size: 1.125rem;
-        opacity: 0.75;
+        font-size: 17px;
+        line-height: 1;
+        color: var(--muted);
+      }
+      .frame {
+        position: absolute;
+        border-radius: 5px;
+        background: var(--panel);
+        box-shadow: 0 0 0 0.5px var(--line);
+      }
+      .frame-name {
+        position: absolute;
+        top: -17px;
+        left: 1px;
+        font-size: 9px;
+        font-weight: 500;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+      .bar {
+        height: 7px;
+        margin: 11px 11px 0;
+        border-radius: 3.5px;
+        background: var(--line);
+      }
+      .bar-short {
+        width: 45%;
+      }
+      .claimed {
+        box-shadow: 0 0 0 1.5px var(--claim);
+        outline: 1.5px dashed var(--claim);
+        outline-offset: 4px;
+      }
+      .claimed .frame-name {
+        top: -24px;
+      }
+      .agent-tag {
+        position: absolute;
+        top: -17px;
+        right: 0;
+        padding: 2px 5px;
+        border-radius: 3px;
+        background: var(--claim);
+        color: var(--panel);
+        font-size: 8px;
+        font-weight: 600;
+        line-height: 1.55;
       }
     </style>
   </head>
   <body>
     <div class="card">
-      <svg
-        class="mark"
-        viewBox="0 0 64 64"
-        role="img"
-        aria-label="Project mark"
+      <div
+        class="frame"
+        style="left: 60px; top: 180px; width: 150px; height: 95px"
       >
-        <rect width="64" height="64" rx="12" fill="currentColor"></rect>
-      </svg>
-      <h1 class="title">REPLACE_WITH_PROJECT_NAME</h1>
-      <p class="tagline">REPLACE_WITH_PROJECT_TAGLINE</p>
+        <span class="frame-name">home</span>
+        <div class="bar"></div>
+        <div class="bar bar-short"></div>
+      </div>
+      <div
+        class="frame claimed"
+        style="left: 240px; top: 165px; width: 170px; height: 110px"
+      >
+        <span class="frame-name">pricing</span>
+        <span class="agent-tag">agent</span>
+        <div class="bar"></div>
+        <div class="bar bar-short"></div>
+        <div class="bar"></div>
+      </div>
+      <div
+        class="frame"
+        style="left: 440px; top: 150px; width: 100px; height: 130px"
+      >
+        <span class="frame-name">phone</span>
+        <div class="bar"></div>
+        <div class="bar bar-short"></div>
+      </div>
+      <div class="lockup">
+        <img class="mark" src="/icon.svg" alt="" width="42" height="42" />
+        <h1 class="title">Frameboard</h1>
+      </div>
+      <p class="tagline">The design board your agent draws on</p>
     </div>
   </body>
 </html>
