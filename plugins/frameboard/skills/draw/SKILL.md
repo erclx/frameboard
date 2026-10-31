@@ -1,5 +1,5 @@
 ---
-name: frameboard
+name: draw
 description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing.
 ---
 
