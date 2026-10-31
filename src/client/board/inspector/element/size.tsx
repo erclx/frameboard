@@ -129,7 +129,8 @@ export function SizeRow({
         <NumberField
           label={label}
           prefix={axis === 'width' ? 'W' : 'H'}
-          inputClassName="pr-14"
+          // Clears the mode trigger, so a four-digit size still shows whole.
+          inputClassName="pr-[44px]"
           value={value}
           min={0}
           format={WHOLE}
@@ -143,7 +144,7 @@ export function SizeRow({
           <DropdownMenuTrigger
             aria-label={`${label} mode`}
             disabled={disabled || size === null}
-            className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-md px-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
+            className="absolute inset-y-0 right-0 flex items-center gap-px rounded-r-md px-1 text-caption text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
           >
             {mode ? MODE_NAMES[mode] : 'Auto'}
             <ChevronDown aria-hidden className="size-2.5" />
