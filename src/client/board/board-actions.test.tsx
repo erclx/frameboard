@@ -374,19 +374,20 @@ describe('command', () => {
     'frame.copyPng',
     'mode.play',
     'mode.edit',
-  ]
-  const UNNAMED = [
     'tool.move',
     'tool.hand',
-    'mode.exitPlay',
-    'view.pan.left',
-    'view.pan.rightFar',
     'view.zoom50',
     'view.zoom100',
     'view.zoom200',
   ]
+  const UNNAMED = [
+    'mode.exitPlay',
+    'tool.disarm',
+    'view.pan.left',
+    'view.pan.rightFar',
+  ]
 
-  it('lists what a person runs by name in the palette and nothing else', () => {
+  it('lists every action in the palette bar Esc aliases and pans', () => {
     const { unmount } = renderHook(() => useBoardActions())
 
     const listed = (ids: string[]) =>

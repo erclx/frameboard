@@ -1,6 +1,8 @@
 import {
   Copy,
+  Hand,
   Maximize,
+  MousePointer2,
   PanelLeft,
   Pencil,
   Play,
@@ -12,6 +14,7 @@ import { useEffect } from 'react'
 
 import {
   type Action,
+  type Command,
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
@@ -84,7 +87,11 @@ function selectedFrames(): FrameRecord[] {
 function boardActions(): Action[] {
   const read = () => modeStore.getState()
   const set = (patch: Partial<ModeState>) => modeStore.setState(patch)
-  const zoom = (action: Omit<Action, 'group' | 'enabled'>): Action => ({
+  const zoom = (
+    action: Pick<Action, 'id' | 'label' | 'keys' | 'run'> & {
+      command: Command
+    },
+  ): Action => ({
     ...action,
     group: 'view',
     enabled: canvasView.attached,
@@ -98,6 +105,7 @@ function boardActions(): Action[] {
       id: 'tool.move',
       label: 'Move',
       group: 'tool',
+      command: { label: 'Use the move tool', icon: MousePointer2 },
       keys: ['v'],
       // Picking a tool returns to Edit, since a tool only works there.
       run: () => set({ tool: 'move', mode: 'edit' }),
@@ -107,6 +115,7 @@ function boardActions(): Action[] {
       id: 'tool.hand',
       label: 'Hand',
       group: 'tool',
+      command: { label: 'Use the hand tool', icon: Hand, keywords: ['pan'] },
       keys: ['h'],
       run: () => set({ tool: 'hand', mode: 'edit' }),
       checked: () => read().mode === 'edit' && read().tool === 'hand',
@@ -131,6 +140,8 @@ function boardActions(): Action[] {
       id: 'mode.exitPlay',
       label: 'Exit Play',
       group: 'mode',
+      // Switch to Edit is the row for the same move.
+      palette: false,
       keys: ['Escape'],
       enabled: () => read().mode === 'play',
       run: () => {
@@ -145,6 +156,7 @@ function boardActions(): Action[] {
       id: 'tool.disarm',
       label: 'Back to Move',
       group: 'tool',
+      palette: false,
       keys: ['Escape'],
       // The selection's Esc keys stand aside while a tool is armed, so the
       // selection stays, and an open note card takes the press to close.
@@ -203,11 +215,12 @@ function boardActions(): Action[] {
       enabled: onCanvas((count) => count > 0),
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
     },
-    ...PANS.flatMap(({ name, key, dx, dy }) => [
+    ...PANS.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `view.pan.${name}`,
         label: `Pan ${name}`,
         group: 'view',
+        palette: false,
         keys: [key],
         // An arrow nudges the selection instead, so it pans with nothing selected.
         enabled: onCanvas((count) => count === 0),
@@ -217,6 +230,7 @@ function boardActions(): Action[] {
         id: `view.pan.${name}Far`,
         label: `Pan ${name} further`,
         group: 'view',
+        palette: false,
         keys: [`Shift+${key}`],
         enabled: onCanvas((count) => count === 0),
         run: () => canvasView.panBy(dx * PAN_STEP_FAR, dy * PAN_STEP_FAR),
@@ -253,17 +267,24 @@ function boardActions(): Action[] {
     zoom({
       id: 'view.zoom50',
       label: 'Zoom to 50%',
+      command: { label: 'Zoom to 50%', icon: ZoomOut },
       run: () => canvasView.zoomTo(0.5),
     }),
     zoom({
       id: 'view.zoom100',
       label: 'Zoom to 100%',
+      command: {
+        label: 'Zoom to 100%',
+        icon: ScanSearch,
+        keywords: ['actual size'],
+      },
       keys: ['Shift+Digit0'],
       run: () => canvasView.zoomTo(1),
     }),
     zoom({
       id: 'view.zoom200',
       label: 'Zoom to 200%',
+      command: { label: 'Zoom to 200%', icon: ZoomIn },
       run: () => canvasView.zoomTo(2),
     }),
   ]

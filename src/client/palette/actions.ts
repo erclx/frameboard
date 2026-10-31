@@ -25,6 +25,7 @@ export function registerPaletteActions(): () => void {
       id: 'palette.open',
       label: 'Command palette',
       group: 'help',
+      palette: false,
       keys: ['$mod+KeyK'],
       run: () => openOverlay('commands'),
     },

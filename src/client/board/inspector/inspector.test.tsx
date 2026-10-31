@@ -305,6 +305,7 @@ describe('InspectorPanel', () => {
       id: 'arrange.alignLeft',
       label: 'Align left',
       group: 'arrange',
+      palette: false,
       keys: ['Alt+KeyA'],
       run: () => {
         runs += 1
@@ -326,6 +327,7 @@ describe('InspectorPanel', () => {
       id: 'frame.fitHeight',
       label: 'Fit height',
       group: 'frame',
+      palette: false,
       run: () => {
         runs += 1
       },
@@ -346,6 +348,7 @@ describe('InspectorPanel', () => {
         id: 'frame.fitHeight',
         label: 'Fit height',
         group: 'frame',
+        palette: false,
         run: () => {},
       },
     ])

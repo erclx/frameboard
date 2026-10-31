@@ -207,6 +207,8 @@ export function useProjectActions(
         id: 'project.open',
         label: 'Open',
         group: 'project',
+        // Enter on a focused home card, which the palette's project rows cover.
+        palette: false,
         enabled: () => focused() !== undefined,
         run: () => {
           const project = focused()

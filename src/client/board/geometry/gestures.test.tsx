@@ -1209,6 +1209,7 @@ describe('attachGestures', () => {
             id: 'test.escape',
             label: 'Escape',
             group: 'selection',
+            palette: false,
             keys: ['Escape'],
             run: () => ran.push('escape'),
           },

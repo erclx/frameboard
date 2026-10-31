@@ -198,11 +198,12 @@ export function sectionActions(context: SectionContext): Action[] {
     },
     // A section moves by the keys as a frame does, its frames with it, which
     // is the keyboard path its drag needs.
-    ...NUDGES.flatMap(({ name, key, dx, dy }) => [
+    ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `section.nudge${name}`,
         label: `Nudge section ${name.toLowerCase()}`,
         group: 'section',
+        palette: false,
         keys: [key],
         enabled: movable,
         run: () => nudge(dx, dy),
@@ -211,6 +212,7 @@ export function sectionActions(context: SectionContext): Action[] {
         id: `section.nudge${name}Far`,
         label: `Nudge section ${name.toLowerCase()} 10 px`,
         group: 'section',
+        palette: false,
         keys: [`Shift+${key}`],
         enabled: movable,
         run: () => nudge(dx * 10, dy * 10),

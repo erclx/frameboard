@@ -242,6 +242,7 @@ describe('elementActions', () => {
             id: 'selection.clear',
             label: 'Clear selection',
             group: 'selection',
+            palette: false,
             keys: ['Escape'],
             run: () => (cleared = true),
           },

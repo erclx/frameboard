@@ -44,8 +44,12 @@ function register(...actions: Action[]): void {
   cleanups.push(registerActions(actions))
 }
 
-function action(id: string, label: string, extra: Partial<Action> = {}) {
-  const made = {
+function action(
+  id: string,
+  label: string,
+  extra: Partial<Omit<Action, 'palette'>> = {},
+): Action & { runs: number } {
+  const fields = {
     id,
     label,
     group: 'view',
@@ -55,6 +59,9 @@ function action(id: string, label: string, extra: Partial<Action> = {}) {
     },
     ...extra,
   }
+  const made: Action & { runs: number } = extra.command
+    ? { ...fields, command: extra.command }
+    : { ...fields, command: undefined, palette: false }
   return made
 }
 

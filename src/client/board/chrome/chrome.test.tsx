@@ -24,6 +24,7 @@ function counted(id: string, label: string): Action & { runs: number } {
     id,
     label,
     group: 'view',
+    palette: false as const,
     runs: 0,
     run: () => {
       made.runs += 1

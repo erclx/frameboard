@@ -9,9 +9,29 @@ import { isCharacterKey } from './keys'
 
 /**
  * One thing the board can do, run the same way from a button, a menu item,
- * or a key. A row needing a field this shape lacks adds it as optional.
+ * or a key. A row needing a field this shape lacks adds it as optional to
+ * `ActionBase`. Every action carries a palette row in `command` or opts out
+ * with `palette: false`, so leaving one out of the palette is a choice the
+ * type checker sees rather than an omission.
  */
-export interface Action {
+export type Action = ActionBase &
+  ({ command: Command; palette?: never } | { palette: false; command?: never })
+
+/**
+ * Lists the action in the command palette under this label and icon, which
+ * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
+ * enabled actions carrying it. `hint` prints on the row's right, such as the
+ * project a Rename acts on. `keywords` are further words the palette finds it
+ * by, such as `dark` for Toggle theme.
+ */
+export interface Command {
+  label: string
+  icon?: LucideIcon
+  hint?: () => string
+  keywords?: readonly string[]
+}
+
+interface ActionBase {
   /** Dotted and stable, such as `view.hideUi`, since buttons and menus look actions up by it. */
   id: string
   label: string
@@ -26,20 +46,6 @@ export interface Action {
   run: () => void
   /** Gates its button and its key alike, absent meaning always. */
   enabled?: () => boolean
-  /**
-   * Lists the action in the command palette under this label and icon, which
-   * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
-   * enabled actions carrying it, so a key a person never runs by name omits it.
-   * `hint` prints on the row's right, such as the project a Rename acts on.
-   * `keywords` are further words the palette finds it by, such as `dark` for
-   * Toggle theme.
-   */
-  command?: {
-    label: string
-    icon?: LucideIcon
-    hint?: () => string
-    keywords?: readonly string[]
-  }
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
   checked?: () => boolean
 }

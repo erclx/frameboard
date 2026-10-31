@@ -23,6 +23,7 @@ describe('a focused toast', () => {
       id: 'tool.move',
       label: 'Move',
       group: 'tool',
+      palette: false,
       keys: ['v'],
       run: () => {
         runs += 1

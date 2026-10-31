@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CheckCheck, ScanEye } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCheck, ScanEye, Undo2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 
@@ -116,13 +116,14 @@ export function useChangeActions(
         enabled: unseenAny,
         command: { label: 'Previous agent change', icon: ArrowLeft },
       },
-      // The cleared toast's Undo alone runs it, so it carries no key or row.
+      // The cleared toast's Undo is its button, so it carries no key.
       {
         id: 'changes.undoMarkAll',
         label: 'Undo mark all seen',
         group: 'changes',
         run: () => undoMarkAll(store),
         enabled: () => store.getState().lastCleared !== null,
+        command: { label: 'Undo marking agent changes seen', icon: Undo2 },
       },
     ]
     const unregister = registerActions(actions)

@@ -109,6 +109,9 @@ export function menuActions(context: MenuContext): Action[] {
       id: 'frame.pasteAt',
       label: 'Paste here',
       group: 'frame',
+      // It acts at the menu's point, which closing the menu clears, so the
+      // palette could never offer it.
+      palette: false,
       enabled: () =>
         writable() &&
         clipboard.getState().held > 0 &&
@@ -134,6 +137,7 @@ export function menuActions(context: MenuContext): Action[] {
       id: 'frame.newAt',
       label: 'New frame here',
       group: 'frame',
+      palette: false,
       enabled: () => writable() && place.getState().at !== null,
       run: () => {
         const { at } = place.getState()
@@ -152,6 +156,7 @@ export function menuActions(context: MenuContext): Action[] {
       id: 'note.addHere',
       label: 'Add a note here',
       group: 'note',
+      palette: false,
       enabled: () =>
         writable() &&
         Boolean(selection.getState().element) &&
@@ -185,6 +190,7 @@ export function menuActions(context: MenuContext): Action[] {
       id: 'note.addOnFrame',
       label: 'Add a note',
       group: 'note',
+      palette: false,
       enabled: () =>
         writable() &&
         place.getState().at !== null &&

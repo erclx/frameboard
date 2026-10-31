@@ -191,6 +191,7 @@ export function geometryActions(context: GeometryContext): Action[] {
       id: 'selection.clear',
       label: 'Clear selection',
       group: 'selection',
+      palette: false,
       keys: ['Escape'],
       // An armed tool takes Esc first, returning to Move.
       enabled: () =>
@@ -214,11 +215,12 @@ export function geometryActions(context: GeometryContext): Action[] {
           context.frames().map((frame) => frame.ref),
         ),
     },
-    ...NUDGES.flatMap(({ name, key, dx, dy }) => [
+    ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `frame.nudge${name}`,
         label: `Nudge ${name.toLowerCase()}`,
         group: 'frame',
+        palette: false,
         keys: [key],
         enabled: movable(1),
         run: () => step((box) => ({ ...box, x: box.x + dx, y: box.y + dy })),
@@ -227,6 +229,7 @@ export function geometryActions(context: GeometryContext): Action[] {
         id: `frame.nudge${name}Far`,
         label: `Nudge ${name.toLowerCase()} 10 px`,
         group: 'frame',
+        palette: false,
         keys: [`Shift+${key}`],
         enabled: movable(1),
         run: () =>
@@ -243,6 +246,7 @@ export function geometryActions(context: GeometryContext): Action[] {
               ? 'Make wider'
               : 'Make narrower',
         group: 'frame',
+        palette: false,
         keys: [`$mod+${key}`],
         enabled: movable(1),
         run: () =>

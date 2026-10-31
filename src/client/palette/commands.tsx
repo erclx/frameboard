@@ -61,9 +61,13 @@ export function CommandPalette() {
 function Palette() {
   const board = useLive((state) => state.board)
   const [, params] = useRoute('/p/:project/:page?')
-  // A mode row naming the mode the board is in would do nothing.
+  // A mode or theme row naming the one the board is in would do nothing.
   const actions = useCommands().filter(
-    (action) => !(action.group === 'mode' && action.checked?.()),
+    (action) =>
+      !(
+        (action.group === 'mode' || action.group === 'theme') &&
+        action.checked?.()
+      ),
   )
   const canWrite = useLive((state) => state.canWrite)
   const { frames, pages, projects } = board

@@ -1,5 +1,5 @@
 import { userEvent } from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, expectTypeOf, it } from 'vitest'
 
 import { setCharacterKeys } from './character-keys'
 import { IS_MAC } from './keys'
@@ -17,9 +17,9 @@ function bind(target: Window | Element, only?: readonly string[]): void {
 
 function action(
   id: string,
-  extra: Partial<Action> = {},
+  extra: Partial<Omit<Action, 'palette'>> = {},
 ): Action & { runs: number } {
-  const made = {
+  const fields = {
     id,
     label: id,
     group: 'test',
@@ -29,6 +29,9 @@ function action(
     },
     ...extra,
   }
+  const made: Action & { runs: number } = extra.command
+    ? { ...fields, command: extra.command }
+    : { ...fields, command: undefined, palette: false }
   return made
 }
 
@@ -285,5 +288,35 @@ describe('bindKeys', () => {
     pressIn(inner, 'v', 'KeyV')
 
     expect([exitPlay.runs, move.runs]).toEqual([1, 0])
+  })
+})
+
+describe('Action', () => {
+  const fields = { id: 'view.zoomIn', label: 'Zoom in', group: 'view' }
+
+  it('takes an action carrying a palette row or opting out', () => {
+    expectTypeOf({
+      ...fields,
+      run: () => {},
+      command: { label: 'Zoom in' },
+    }).toExtend<Action>()
+    expectTypeOf({
+      ...fields,
+      run: () => {},
+      palette: false as const,
+    }).toExtend<Action>()
+  })
+
+  it('refuses an action that neither carries a row nor opts out', () => {
+    expectTypeOf({ ...fields, run: () => {} }).not.toExtend<Action>()
+  })
+
+  it('refuses an action that both carries a row and opts out', () => {
+    expectTypeOf({
+      ...fields,
+      run: () => {},
+      command: { label: 'Zoom in' },
+      palette: false as const,
+    }).not.toExtend<Action>()
   })
 })

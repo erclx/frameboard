@@ -79,6 +79,7 @@ function useCardKeys(): void {
         id: 'home.focusCards',
         label: 'Focus the projects',
         group: 'project',
+        palette: false,
         keys: [
           'ArrowUp',
           'ArrowDown',
@@ -96,6 +97,7 @@ function useCardKeys(): void {
         id: 'home.focusFirst',
         label: 'Focus the first project',
         group: 'project',
+        palette: false,
         keys: ['Home'],
         enabled: idle,
         run: land((links) => links[0]),
@@ -104,6 +106,7 @@ function useCardKeys(): void {
         id: 'home.focusLast',
         label: 'Focus the last project',
         group: 'project',
+        palette: false,
         keys: ['End'],
         enabled: idle,
         run: land((links) => links.at(-1)),
