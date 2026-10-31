@@ -189,7 +189,8 @@ function pageOf(ref: string): string {
   return `${project}/${page}`
 }
 
-function boxOf(board: ListResult | null, ref: string) {
+/** The stored box of the frame at `ref`, or null when the board shows none. */
+export function boxOf(board: ListResult | null, ref: string) {
   for (const project of board?.projects ?? []) {
     for (const page of project.pages) {
       const frame = page.frames.find((candidate) => candidate.ref === ref)

@@ -2,7 +2,7 @@ import { cn } from 'cn'
 import { MoveHorizontal, X } from 'lucide-react'
 import { useRef } from 'react'
 
-import { FRAME_SIZES } from '@/shared/frame-sizes'
+import { FRAME_SIZES, presetAt, previewWidth } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
@@ -14,7 +14,7 @@ import {
 } from '../preview/store'
 import type { NumberChange } from './number-field'
 import { NumberField } from './number-field'
-import { PRESETS } from './presets'
+import { PRESETS, rangeLabel } from './presets'
 
 interface PreviewRowProps {
   /** The selected frames, at their stored boxes. */
@@ -24,7 +24,8 @@ interface PreviewRowProps {
 /**
  * Shows the selected frames at another width without writing anything: a
  * phone, tablet, or desktop toggle, a width that scrubs from the previewed
- * width or the stored one, and End preview. Every part reads as a preview,
+ * width or the stored one, and End preview. A toggle reads pressed while every
+ * width shown sits in its range, and a click keeps a width already in range. Every part reads as a preview,
  * never as the frame's size, which the W field above owns.
  */
 export function PreviewRow({ frames }: PreviewRowProps) {
@@ -34,7 +35,6 @@ export function PreviewRow({ frames }: PreviewRowProps) {
     (frame) => previews[frame.ref]?.width ?? frame.box.width,
   )
   const previewed = refs.some((ref) => previews[ref] !== undefined)
-  const all = refs.length > 0 && refs.every((ref) => previews[ref])
   const width = shared(widths)
 
   // The previews a scrub or a step started from, which it moves each frame
@@ -94,16 +94,27 @@ export function PreviewRow({ frames }: PreviewRowProps) {
       <div className="grid grid-cols-2 gap-1.5">
         <div className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5">
           {PRESETS.map(({ preset, label, icon: Icon }) => {
-            const at = FRAME_SIZES[preset].width
-            const on = all && width === at
-            const named = `Preview at ${label.toLowerCase()} width, ${at}`
+            const range = `${rangeLabel(preset)}, default ${FRAME_SIZES[preset].width}`
+            const on =
+              widths.length > 0 && widths.every((at) => presetAt(at) === preset)
             return (
-              <ActionTooltip key={preset} label={named} side="bottom">
+              <ActionTooltip
+                key={preset}
+                label={`${label}, ${range}`}
+                side="bottom"
+              >
                 <button
                   type="button"
-                  aria-label={named}
+                  aria-label={`Preview at ${label.toLowerCase()} width, ${range}`}
                   aria-pressed={on}
-                  onClick={() => setPreview(refs, at)}
+                  onClick={() => {
+                    for (const [index, ref] of refs.entries()) {
+                      const at = widths[index]
+                      if (at !== undefined) {
+                        setPreview([ref], previewWidth(preset, at))
+                      }
+                    }
+                  }}
                   className={cn(
                     'grid flex-1 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar',
                     on && 'bg-sidebar text-foreground shadow-xs',

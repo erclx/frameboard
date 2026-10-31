@@ -2,6 +2,7 @@ import {
   type LucideIcon,
   Monitor,
   Presentation,
+  Share2,
   Smartphone,
   Tablet,
 } from 'lucide-react'
@@ -13,6 +14,7 @@ import {
   type FrameSizeGroup,
   type FrameSizeName,
   type FrameSizePreset,
+  PRESET_RANGES,
 } from '@/shared/frame-sizes'
 
 /** The frame sizes by name and icon, which a preview shows a frame at and the new-board guide offers. */
@@ -25,6 +27,12 @@ export const PRESETS: readonly {
   { preset: 'tablet', label: 'Tablet', icon: Tablet },
   { preset: 'desktop', label: 'Desktop', icon: Monitor },
 ]
+
+/** The widths a preset reads as, such as `320 to 479` or `1024 and up`. */
+export function rangeLabel(preset: FrameSizePreset): string {
+  const { min, max } = PRESET_RANGES[preset]
+  return Number.isFinite(max) ? `${min} to ${max}` : `${min} and up`
+}
 
 export interface SizeRow {
   name: FrameSizeName
@@ -42,7 +50,8 @@ export interface SizeGroup {
 
 /**
  * The Frame tool's list, one group per preset holding the preset and the
- * devices in its group, then the slides, each group narrowest first.
+ * devices in its group, then the slides and the social cards, each group
+ * narrowest first.
  */
 export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
   [
@@ -60,6 +69,12 @@ export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
       label: 'Slide',
       icon: Presentation,
       rows: devicesIn('slide'),
+    },
+    {
+      group: 'social',
+      label: 'Social',
+      icon: Share2,
+      rows: devicesIn('social'),
     },
   ] satisfies SizeGroup[]
 ).map((group) => ({

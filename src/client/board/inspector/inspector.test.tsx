@@ -114,6 +114,12 @@ describe('InspectorPanel', () => {
           { name: /Slide 4:3/ },
         ),
       ).toHaveTextContent('1024 × 768')
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Social' })).getByRole(
+          'radio',
+          { name: /Open Graph/ },
+        ),
+      ).toHaveTextContent('1200 × 630')
     })
 
     it('chooses a slide the next click places', async () => {
@@ -143,7 +149,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(13)
+      expect(screen.getAllByRole('radio')).toHaveLength(15)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })
@@ -744,12 +750,17 @@ describe('FrameSection', () => {
       ).toHaveLength(1)
     })
 
-    it('lists every size under its group, slides last', async () => {
+    it('lists every size under its group, social cards among them', async () => {
       renderSection([DESKTOP])
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
-      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(13)
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(15)
+      expect(
+        within(screen.getByRole('group', { name: 'Social' })).getAllByRole(
+          'menuitemradio',
+        ),
+      ).toHaveLength(2)
       expect(
         within(screen.getByRole('group', { name: 'Slide' })).getAllByRole(
           'menuitemradio',
@@ -892,12 +903,12 @@ describe('FrameSection', () => {
       const writes = renderRow()
 
       await userEvent.click(
-        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+        screen.getByRole('button', { name: /^Preview at phone width/ }),
       )
 
       expect(previewOf(SWATCHES.ref)).toEqual({ width: 390 })
       expect(
-        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+        screen.getByRole('button', { name: /^Preview at phone width/ }),
       ).toHaveAttribute('aria-pressed', 'true')
       expect(writes).toEqual([])
     })
@@ -906,12 +917,12 @@ describe('FrameSection', () => {
       renderRow([SWATCHES, SUNSET])
 
       await userEvent.click(
-        screen.getByRole('button', { name: 'Preview at tablet width, 834' }),
+        screen.getByRole('button', { name: /^Preview at phone width/ }),
       )
 
       expect([previewOf(SWATCHES.ref), previewOf(SUNSET.ref)]).toEqual([
-        { width: 834 },
-        { width: 834 },
+        { width: 390 },
+        { width: 390 },
       ])
     })
 
@@ -919,7 +930,7 @@ describe('FrameSection', () => {
       renderRow()
 
       await userEvent.click(
-        screen.getByRole('button', { name: 'Preview at phone width, 390' }),
+        screen.getByRole('button', { name: /^Preview at phone width/ }),
       )
 
       expect(value('Width')).toBe('640')
