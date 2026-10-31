@@ -11,6 +11,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 import { contrastOnPage } from '@/test/contrast'
 
+import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
@@ -773,6 +774,117 @@ describe('NotesLayer', () => {
     expect(screen.getByRole('button', { name: 'Note 1 on hero' })).toHaveStyle({
       left: '390px',
       top: '0px',
+    })
+  })
+
+  it("points a pin's tail at its corner from past the corner handle's reach", () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+
+    renderLayer()
+
+    // The marker sits on no positioned ancestor, so its spot is the page's
+    // 390,0, and the page is unscrolled.
+    const origin = document.documentElement.getBoundingClientRect()
+    const pin = screen
+      .getByRole('button', { name: 'Note 1 on hero' })
+      .getBoundingClientRect()
+    expect({
+      right: pin.left - (origin.left + 390) > HANDLE_REACH,
+      up: origin.top - pin.bottom > HANDLE_REACH,
+    }).toEqual({ right: true, up: true })
+  })
+
+  describe('with two notes on one spot', () => {
+    const THREE = note({
+      id: 'n_1',
+      number: 3,
+      text: 'Tighten the hero spacing',
+    })
+    const FOUR = note({
+      id: 'n_2',
+      number: 4,
+      text: 'Make the headline bigger\nand bolder',
+    })
+    const TWO = [THREE, FOUR]
+
+    it('draws one count pin reading 2', () => {
+      live({ notes: { 'studio/home': TWO } })
+
+      renderLayer()
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['2'])
+    })
+
+    it("lists each note's number and first line on a click", async () => {
+      live({ notes: { 'studio/home': TWO } })
+      renderLayer()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      expect(
+        screen.getAllByRole('menuitem').map((row) => row.textContent),
+      ).toEqual(['3Tighten the hero spacing', '4Make the headline bigger'])
+    })
+
+    it("opens a row's thread and closes the list", async () => {
+      live({ notes: { 'studio/home': TWO } })
+      renderLayer()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      await userEvent.click(
+        screen.getByRole('menuitem', {
+          name: 'Note 4: Make the headline bigger',
+        }),
+      )
+
+      expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('moves through the rows on the arrows and opens one on Enter', async () => {
+      live({ notes: { 'studio/home': TWO } })
+      renderLayer()
+      screen.getByRole('button', { name: '2 notes on hero' }).focus()
+
+      await userEvent.keyboard('{Enter}')
+      await userEvent.keyboard('{ArrowDown}')
+      await userEvent.keyboard('{Enter}')
+
+      expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
+    })
+
+    it('closes the list on Esc and returns focus to the count pin', async () => {
+      live({ notes: { 'studio/home': TWO } })
+      renderLayer()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(screen.queryByRole('menu')).toBeNull()
+      expect(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      ).toHaveFocus()
+    })
+
+    it('draws a plain pin once one of the two is done', () => {
+      live({ notes: { 'studio/home': TWO } })
+      renderLayer()
+
+      live({
+        notes: { 'studio/home': [THREE, { ...FOUR, state: 'done' }] },
+      })
+
+      expect(
+        screen.getAllByRole('button').map((button) => button.textContent),
+      ).toEqual(['3'])
     })
   })
 
