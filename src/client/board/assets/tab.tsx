@@ -184,7 +184,7 @@ export function AssetsTab({
                 type="button"
                 aria-pressed={entry.chip === chip}
                 onClick={() => setPicked(entry.chip)}
-                className={`rounded-full px-[7px] py-0.5 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${entry.chip === chip ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[10px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${entry.chip === chip ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
               >
                 {CHIP_LABELS[entry.chip]}
                 {entry.chip === 'all' ? null : ` ${entry.count}`}

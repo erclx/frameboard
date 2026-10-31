@@ -177,6 +177,20 @@ describe('AssetsTab', () => {
       ])
     })
 
+    it('gives each chip a target at least 24px square', async () => {
+      render(<AssetsTab project="studio" load={listing(COUNTED)} />)
+      const chips = within(
+        await screen.findByRole('group', { name: 'Filter by kind' }),
+      ).getAllByRole('button')
+
+      const short = chips.filter((chip) => {
+        const { width, height } = chip.getBoundingClientRect()
+        return width < 24 || height < 24
+      })
+
+      expect(short).toEqual([])
+    })
+
     it('shows only the files under a pressed chip', async () => {
       const user = userEvent.setup()
       render(<AssetsTab project="studio" load={listing(COUNTED)} />)
