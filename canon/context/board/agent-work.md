@@ -23,7 +23,7 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 
 An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. It caps at the canvas height above the toolbar, starting below the View only pill where one shows, and scrolls a long thread's messages under its header and reply box.
 
-Markers hide in Play and once done, and notes sharing a board pixel stack into a count pin listing them in `pin-list.tsx`. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
+Markers hide in Play and once done, and notes whose pins would overlap stack into a count pin listing them in `pin-list.tsx`. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
 
 ### `src/client/board/claims/`
 
