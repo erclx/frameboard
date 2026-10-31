@@ -88,15 +88,34 @@ function gradient(from: string, to: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="72"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="120" height="72" fill="url(#g)"/></svg>`
 }
 
+/** A folder of files the frames link or leave unused, with one subfolder, as the planned mock draws it. */
+const COUNTED_ASSETS = [
+  { path: 'brand.woff2', kind: 'font', size: 37_000, frames: 0 },
+  { path: 'clip.mp4', kind: 'video', size: 14_000, frames: 1 },
+  { path: 'hero.png', kind: 'image', size: 1_200_000, frames: 2 },
+  { path: 'icons/star.svg', kind: 'svg', size: 149, frames: 1 },
+  { path: 'logo.svg', kind: 'svg', size: 198, frames: 3 },
+  { path: 'shared.css', kind: 'stylesheet', size: 3_000, frames: 0 },
+]
+
 /**
  * Answers the Assets tab's read with the reference's files and draws their
  * thumbnails as gradients, so no binary joins the `basic` fixture.
  */
 async function referenceAssets(page: Page): Promise<void> {
+  await answerAssets(page, REFERENCE_ASSETS)
+}
+
+/** The same, with frame counts and a subfolder, so the tab draws its groups and usage lines. */
+async function countedAssets(page: Page): Promise<void> {
+  await answerAssets(page, COUNTED_ASSETS)
+}
+
+async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   await page.route('**/api/projects/*/assets', (route) =>
-    route.fulfill({ json: { ok: true, data: { files: REFERENCE_ASSETS } } }),
+    route.fulfill({ json: { ok: true, data: { files } } }),
   )
-  await page.route('**/frames/*/assets/*', (route) =>
+  await page.route('**/frames/*/assets/**', (route) =>
     route.fulfill({
       contentType: 'image/svg+xml',
       body: route.request().url().endsWith('hero.png')
@@ -1512,6 +1531,15 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(referenceAssets, leftTab('Assets'))),
+      },
+      {
+        section: 'assets-groups',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(countedAssets, leftTab('Assets'))),
       },
       {
         section: 'shape-menu',
