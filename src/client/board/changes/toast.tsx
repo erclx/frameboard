@@ -12,10 +12,14 @@ import {
   type ToastObject,
   ToastTitle,
 } from '@/client/components/ui/toast'
-import { type UnseenStore, unseenStore } from '@/client/live/unseen'
+import {
+  type UnseenState,
+  type UnseenStore,
+  unseenStore,
+} from '@/client/live/unseen'
 
 import { currentChange } from './actions'
-import { type ToastCopy, toastCopy } from './copy'
+import { clearedCopy, type ToastCopy, toastCopy } from './copy'
 import { glowStore } from './glow-store'
 
 /** How long the toast stays once the last change is seen. */
@@ -27,9 +31,11 @@ export const CHANGE_TOAST = 'change'
 type Toasts = Pick<typeof kitToasts, 'add' | 'update' | 'close'>
 
 /**
- * The toast offering Show, Previous, and Next, per agents/unseen-one and
- * unseen-many, as the newest entry in the kit's one stack. It stays while
- * any change is unseen and closes 5 seconds after the last clears.
+ * The toast offering Show, Previous, Next, and Mark all seen, per
+ * agents/unseen-one and unseen-many, as the newest entry in the kit's one
+ * stack. It stays while any change is unseen and closes 5 seconds after the
+ * last clears, offering Undo for those 5 seconds when Mark all seen cleared
+ * them.
  */
 export function ChangesToast({
   store = unseenStore,
@@ -45,6 +51,10 @@ export function ChangesToast({
  * Opens the toast while any change is unseen and closes it 5 seconds after
  * the last clears, writing what it says into the toast as the stores move,
  * so a closing toast keeps the words of the last change.
+ *
+ * Mark all seen turns the toast into its cleared form. A change landing
+ * within its 5 seconds opens a fresh toast rather than taking that one over,
+ * so the Undo stays on screen beside the change it would now leave marked.
  */
 function OpenWhileUnseen({
   store,
@@ -56,58 +66,124 @@ function OpenWhileUnseen({
   useEffect(() => {
     let id: string | null = null
     let closing: ReturnType<typeof setTimeout> | undefined
+    let showsCleared = false
+    // The cleared toast a later change handed off, closing on its own timer.
+    let handed: { id: string; closing: ReturnType<typeof setTimeout> } | null =
+      null
+
+    const closeHanded = () => {
+      if (!handed) return
+      clearTimeout(handed.closing)
+      toasts.close(handed.id)
+      handed = null
+    }
+    const closeLater = (closed: string) =>
+      setTimeout(() => {
+        closing = undefined
+        if (id === closed) toasts.close(closed)
+      }, CLOSE_AFTER_MS)
+
+    const write = (data: ToastCopy) => {
+      if (id === null) {
+        const opened = toasts.add({
+          type: CHANGE_TOAST,
+          timeout: 0,
+          data,
+          onClose: () => {
+            if (id === opened) id = null
+          },
+        })
+        id = opened
+      } else {
+        toasts.update(id, { data })
+      }
+    }
+
     const follow = () => {
       const current = currentChange(store)
       if (current) {
+        if (id !== null && showsCleared && closing !== undefined) {
+          const handedId = id
+          handed = {
+            id: handedId,
+            closing: setTimeout(() => {
+              handed = null
+              toasts.close(handedId)
+            }, CLOSE_AFTER_MS),
+          }
+          id = null
+        }
+        showsCleared = false
         clearTimeout(closing)
         closing = undefined
-        const data = toastCopy(
-          store.getState().unseen,
-          current,
-          current.frame in glowStore.getState().glowing,
+        write(
+          toastCopy(
+            store.getState().unseen,
+            current,
+            current.frame in glowStore.getState().glowing,
+          ),
         )
-        if (id === null) {
-          id = toasts.add({
-            type: CHANGE_TOAST,
-            timeout: 0,
-            data,
-            onClose: () => {
-              id = null
-            },
-          })
-        } else {
-          toasts.update(id, { data })
-        }
       } else if (id !== null && closing === undefined) {
-        closing = setTimeout(() => {
-          closing = undefined
-          if (id !== null) toasts.close(id)
-        }, CLOSE_AFTER_MS)
+        closing = closeLater(id)
       }
     }
+
+    const cleared = (count: number) => {
+      closeHanded()
+      clearTimeout(closing)
+      write(clearedCopy(count))
+      showsCleared = true
+      if (id !== null) closing = closeLater(id)
+    }
+
+    const onUnseen = (state: UnseenState, previous: UnseenState) => {
+      if (state.lastCleared && state.lastCleared !== previous.lastCleared) {
+        cleared(Object.keys(state.lastCleared).length)
+        return
+      }
+      if (previous.lastCleared && !state.lastCleared) {
+        // Undo puts the pile back under the toast it ran from.
+        if (handed) {
+          closeHanded()
+        } else if (showsCleared) {
+          showsCleared = false
+          clearTimeout(closing)
+          closing = undefined
+        }
+      }
+      follow()
+    }
+
     follow()
-    const stopUnseen = store.subscribe(follow)
+    const stopUnseen = store.subscribe(onUnseen)
     const stopGlow = glowStore.subscribe(follow)
     return () => {
       stopUnseen()
       stopGlow()
       clearTimeout(closing)
+      closeHanded()
       if (id !== null) toasts.close(id)
     }
   }, [store, toasts])
   return null
 }
 
-/** The change toast in the kit's stack, its copy with Show, Previous, and Next, at the width its form draws. Enter on the toast itself runs Show. */
+/**
+ * The change toast in the kit's stack, its copy with Show, Previous, Next,
+ * and Mark all seen, or Undo once Mark all seen cleared the pile, at the
+ * width its form draws. Enter on the toast itself runs Show.
+ */
 export function ChangeToastBody({
   toast: item,
 }: {
   toast: ToastObject<ToastCopy>
 }) {
-  const [show, previous, next] = useActions([
+  const [show, previous, next, markAll, undo] = useActions([
     'changes.show',
     'changes.previous',
     'changes.next',
+    'changes.markAllSeen',
+    'changes.undoMarkAll',
   ])
   const copy = item.data
   if (!copy) return null
@@ -136,42 +212,56 @@ export function ChangeToastBody({
           <ToastDescription>{copy.detail}</ToastDescription>
         </div>
         {copy.show ? (
-          <button
-            type="button"
-            onClick={() => show?.run()}
-            className={cn(
-              TOAST_BUTTON,
-              'bg-[color-mix(in_srgb,var(--claim)_22%,transparent)] text-claim',
-            )}
-          >
-            Show
-          </button>
+          <KeyedButton
+            action={show}
+            label="Show"
+            keys={SHOW_KEYS}
+            className="bg-[color-mix(in_srgb,var(--claim)_22%,transparent)] text-claim"
+          />
         ) : null}
         {copy.next ? (
           <>
-            <StepButton
+            <KeyedButton
               action={previous}
               label="Previous"
               keys={PREVIOUS_KEYS}
             />
-            <StepButton action={next} label="Next" keys={NEXT_KEYS} />
+            <KeyedButton action={next} label="Next" keys={NEXT_KEYS} />
           </>
+        ) : null}
+        {copy.markAll ? (
+          <KeyedButton
+            action={markAll}
+            label="Mark all seen"
+            keys={MARK_ALL_KEYS}
+          />
+        ) : null}
+        {copy.undo ? (
+          <button
+            type="button"
+            onClick={() => undo?.run()}
+            className={cn(TOAST_BUTTON, 'bg-secondary text-foreground')}
+          >
+            Undo
+          </button>
         ) : null}
       </ToastContent>
     </Toast>
   )
 }
 
-/** A step through the changes, naming its key while that key is live. */
-function StepButton({
+/** A toast button naming its key while that key is live. */
+function KeyedButton({
   action,
   label,
   keys,
+  className = 'bg-secondary text-foreground',
 }: {
   action: Action | undefined
   label: string
   /** The key shown before the action registers, matching what it registers. */
   keys: readonly string[]
+  className?: string
 }) {
   const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
   return (
@@ -179,15 +269,17 @@ function StepButton({
       type="button"
       aria-keyshortcuts={key ? keyLabel(key) : undefined}
       onClick={() => action?.run()}
-      className={cn(TOAST_BUTTON, 'bg-secondary text-foreground')}
+      className={cn(TOAST_BUTTON, className)}
     >
       {key ? `${label} ${keyLabel(key)}` : label}
     </button>
   )
 }
 
+const SHOW_KEYS = ['Backslash']
 const PREVIOUS_KEYS = ['BracketLeft']
 const NEXT_KEYS = ['BracketRight']
+const MARK_ALL_KEYS = ['Shift+BracketRight']
 
 /** `.tbtn` in agents/unseen-many. */
 export const TOAST_BUTTON =

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ScanEye } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCheck, ScanEye } from 'lucide-react'
 import { useEffect } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 
@@ -10,9 +10,11 @@ import {
 import { liveStore } from '@/client/live/store'
 import {
   inLandingOrder,
+  markAllSeen,
   nextUnseen,
   pointAt,
   previousUnseen,
+  undoMarkAll,
   type UnseenStore,
   unseenStore,
 } from '@/client/live/unseen'
@@ -50,10 +52,10 @@ export function showChange(
 }
 
 /**
- * Registers Show, Next on `]`, and Previous on `[` while the board is
- * mounted. Next and Previous step through the changes in the order they
- * landed, wrapping, and show each, since the view moves only because the
- * developer asked.
+ * Registers Show on `\`, Next on `]`, Previous on `[`, and Mark all seen on
+ * `⇧]` while the board is mounted. Next and Previous step through the
+ * changes in the order they landed, wrapping, and show each, since the view
+ * moves only because the developer asked.
  */
 export function useChangeActions(
   store: UnseenStore = unseenStore,
@@ -72,10 +74,21 @@ export function useChangeActions(
       showChange(to.frame, go)
     }
     const actions: Action[] = [
+      // First, since the palette lists in registration order and the drawn rows lead with it.
+      {
+        id: 'changes.markAllSeen',
+        label: 'Mark all seen',
+        group: 'changes',
+        keys: ['Shift+BracketRight'],
+        run: () => markAllSeen(store),
+        enabled: unseenAny,
+        command: { label: 'Mark all agent changes seen', icon: CheckCheck },
+      },
       {
         id: 'changes.show',
         label: 'Show change',
         group: 'changes',
+        keys: ['Backslash'],
         run: () => {
           const change = currentChange(store)
           if (!change) return
@@ -102,6 +115,14 @@ export function useChangeActions(
         run: step(previousUnseen),
         enabled: unseenAny,
         command: { label: 'Previous agent change', icon: ArrowLeft },
+      },
+      // The cleared toast's Undo alone runs it, so it carries no key or row.
+      {
+        id: 'changes.undoMarkAll',
+        label: 'Undo mark all seen',
+        group: 'changes',
+        run: () => undoMarkAll(store),
+        enabled: () => store.getState().lastCleared !== null,
       },
     ]
     const unregister = registerActions(actions)

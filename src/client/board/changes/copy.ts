@@ -10,11 +10,16 @@ export interface ToastCopy {
   show: boolean
   /** Previous and Next are offered, which they are once several frames changed. */
   next: boolean
+  /** Mark all seen is offered, which it is beside Previous and Next. */
+  markAll: boolean
+  /** Undo is offered, which it is once Mark all seen cleared the pile. */
+  undo: boolean
   /**
    * The width agents/unseen-one and claim-full draw each form at, and
-   * unseen-many's 380 widened by the Previous button it predates.
+   * unseen-many's 380 widened by the Previous and Mark all seen buttons it
+   * predates.
    */
-  width: 300 | 340 | 460
+  width: 300 | 340 | 560
 }
 
 /**
@@ -44,6 +49,8 @@ export function toastCopy(
       detail: glowing ? `${counted}, glowing on the frame` : counted,
       show: !glowing,
       next: false,
+      markAll: false,
+      undo: false,
       width: glowing ? 300 : 340,
     }
   }
@@ -62,7 +69,23 @@ export function toastCopy(
     detail: `on ${pages} ${pages === 1 ? 'page' : 'pages'} · ${at} of ${count}`,
     show: true,
     next: true,
-    width: 460,
+    markAll: true,
+    undo: false,
+    width: 560,
+  }
+}
+
+/** What the toast says once Mark all seen cleared `count` changes, offering Undo alone. */
+export function clearedCopy(count: number): ToastCopy {
+  return {
+    initial: null,
+    title: `${count} ${count === 1 ? 'change' : 'changes'} marked seen`,
+    detail: 'Every page is clear',
+    show: false,
+    next: false,
+    markAll: false,
+    undo: true,
+    width: 300,
   }
 }
 

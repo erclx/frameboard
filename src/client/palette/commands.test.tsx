@@ -10,8 +10,11 @@ import {
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { useChangeActions } from '@/client/board/changes/actions'
 import { clear, selectionStore } from '@/client/board/selection'
 import { liveStore, receiveBoard } from '@/client/live/store'
+import { createUnseenStore, receiveChanges } from '@/client/live/unseen'
+import type { FrameChange } from '@/shared/records/changes'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { CommandPalette } from './commands'
@@ -53,6 +56,20 @@ function action(id: string, label: string, extra: Partial<Action> = {}) {
     ...extra,
   }
   return made
+}
+
+function changeTo(frame: string): FrameChange {
+  return {
+    id: `c-${frame}`,
+    frame,
+    at: '2026-10-19T12:00:00.000Z',
+    hash: 'c'.repeat(64),
+    author: null,
+    elements: [4],
+    removed: 0,
+    whole: false,
+    created: false,
+  }
 }
 
 async function openPalette() {
@@ -312,6 +329,31 @@ describe('CommandPalette', () => {
 
     expect(zoom.runs).toBe(1)
     await waitFor(() => expect(screen.queryByRole('combobox')).toBeNull())
+  })
+
+  it('clears every agent change from Mark all agent changes seen, naming ⇧]', async () => {
+    const store = createUnseenStore(null)
+    receiveChanges(store, [
+      changeTo('studio/home/swatch grid'),
+      changeTo('studio/swatches/swatch card'),
+    ])
+    function WithChanges() {
+      useChangeActions(store, () => {})
+      return <CommandPalette />
+    }
+    render(<WithChanges />)
+
+    await openPalette()
+    const row = await screen.findByRole('option', {
+      name: /Mark all agent changes seen/,
+    })
+    const chips = [...row.querySelectorAll('kbd')].map(
+      (chip) => chip.textContent,
+    )
+    await userEvent.click(row)
+
+    expect(chips).toEqual(expect.arrayContaining([']']))
+    expect(store.getState().unseen).toEqual({})
   })
 
   it('selects a frame on another page and opens that page', async () => {

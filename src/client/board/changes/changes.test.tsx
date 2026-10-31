@@ -10,6 +10,7 @@ import { toast, Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import {
   createUnseenStore,
+  markAllSeen,
   markSeen,
   receiveChanges,
   type UnseenStore,
@@ -22,7 +23,7 @@ import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
 import { useChangeActions } from './actions'
-import { toastCopy } from './copy'
+import { clearedCopy, toastCopy } from './copy'
 import { DWELL_MS, useDwell } from './dwell'
 import { ChangeGlow } from './glow'
 import { glowStore } from './glow-store'
@@ -128,6 +129,36 @@ describe('toastCopy', () => {
       '2 frames changed',
     )
   })
+
+  it('offers Mark all seen once several frames changed', () => {
+    const one = change('studio/home/hero')
+    const other = change('studio/home/about')
+
+    expect(toastCopy(byFrame(one, other), one, false).markAll).toBe(true)
+  })
+
+  it('offers no Mark all seen for one frame', () => {
+    const pricing = change('studio/home/pricing')
+
+    expect(toastCopy(byFrame(pricing), pricing, false).markAll).toBe(false)
+  })
+})
+
+describe('clearedCopy', () => {
+  it('counts the changes cleared and offers Undo alone', () => {
+    expect(clearedCopy(48)).toMatchObject({
+      title: '48 changes marked seen',
+      detail: 'Every page is clear',
+      show: false,
+      next: false,
+      markAll: false,
+      undo: true,
+    })
+  })
+
+  it('counts one change in the singular', () => {
+    expect(clearedCopy(1).title).toBe('1 change marked seen')
+  })
 })
 
 describe('ChangesToast', () => {
@@ -162,14 +193,16 @@ describe('ChangesToast', () => {
     act(() => receiveChanges(store, [change('studio/home/pricing')]))
 
     expect(await screen.findByText('Claude updated pricing')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Show \\' })).toBeVisible()
   })
 
   it('shows the change from Show, moving to its page first', async () => {
     render(<Harness />)
     act(() => receiveChanges(store, [change('studio/pricing/plans')]))
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Show' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Show \\' }),
+    )
 
     expect(went).toEqual(['/p/studio/pricing'])
     expect(liveStore.getState().focus).toBe('studio/pricing/plans')
@@ -312,6 +345,115 @@ describe('ChangesToast', () => {
     act(() => toast.close())
   })
 
+  describe('mark all seen', () => {
+    const pile = () => [
+      change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+      change('studio/pricing/plans', { at: '2026-10-19T12:00:02Z' }),
+      change('shop/cart/list', { at: '2026-10-19T12:00:03Z' }),
+    ]
+
+    it('clears every page from the button and says how many it cleared', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: /^Mark all seen/ }),
+      )
+
+      expect(store.getState().unseen).toEqual({})
+      expect(await screen.findByText('3 changes marked seen')).toBeVisible()
+      expect(screen.getByText('Every page is clear')).toBeVisible()
+    })
+
+    it('clears every page on ⇧]', async () => {
+      unbind = bindKeys(window)
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await screen.findByRole('button', { name: /^Mark all seen/ })
+
+      await userEvent.keyboard('{Shift>}]{/Shift}')
+
+      expect(store.getState().unseen).toEqual({})
+    })
+
+    it('steps to no change on the ] the ⇧] shares a key with', async () => {
+      unbind = bindKeys(window)
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await screen.findByRole('button', { name: /^Mark all seen/ })
+
+      await userEvent.keyboard('{Shift>}]{/Shift}')
+
+      expect(store.getState().cursor).toBeNull()
+    })
+
+    it('clears nothing on ⇧] while single-key shortcuts are off', async () => {
+      unbind = bindKeys(window)
+      setCharacterKeys(false)
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await screen.findByRole('button', { name: 'Mark all seen' })
+
+      await userEvent.keyboard('{Shift>}]{/Shift}')
+
+      expect(Object.keys(store.getState().unseen)).toHaveLength(3)
+    })
+
+    it('puts the pile back from Undo', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await userEvent.click(
+        await screen.findByRole('button', { name: /^Mark all seen/ }),
+      )
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Undo' }))
+
+      expect(Object.keys(store.getState().unseen)).toHaveLength(3)
+      expect(await screen.findByText('Claude changed 3 frames')).toBeVisible()
+    })
+
+    it('keeps Undo on screen when a change lands after the clear', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await userEvent.click(
+        await screen.findByRole('button', { name: /^Mark all seen/ }),
+      )
+      await screen.findByText('3 changes marked seen')
+
+      act(() =>
+        receiveChanges(store, [
+          change('studio/home/hero', { id: 'later', hash: 'd'.repeat(64) }),
+        ]),
+      )
+
+      expect(await screen.findByText('Claude updated hero')).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
+    })
+  })
+
+  it('shows the change on \\', async () => {
+    unbind = bindKeys(window)
+    render(<Harness />)
+    act(() => receiveChanges(store, [change('studio/pricing/plans')]))
+    await screen.findByText('Claude updated plans')
+
+    await userEvent.keyboard('[Backslash]')
+
+    expect(liveStore.getState().focus).toBe('studio/pricing/plans')
+  })
+
+  it('shows nothing on \\ while single-key shortcuts are off', async () => {
+    unbind = bindKeys(window)
+    setCharacterKeys(false)
+    render(<Harness />)
+    act(() => receiveChanges(store, [change('studio/pricing/plans')]))
+    await screen.findByRole('button', { name: 'Show' })
+
+    await userEvent.keyboard('[Backslash]')
+
+    expect(liveStore.getState().focus).toBeNull()
+  })
+
   describe('closing', () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -344,6 +486,26 @@ describe('ChangesToast', () => {
       act(() => vi.advanceTimersByTime(200))
       await vi.waitFor(() =>
         expect(screen.queryByText('Claude updated pricing')).toBeNull(),
+      )
+    })
+
+    it('closes 5 seconds after Mark all seen, taking Undo with it', async () => {
+      render(<Harness />)
+      act(() =>
+        receiveChanges(store, [
+          change('studio/home/hero'),
+          change('studio/home/about'),
+        ]),
+      )
+      await screen.findByText('Claude changed 2 frames')
+
+      act(() => markAllSeen(store))
+      act(() => vi.advanceTimersByTime(4900))
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
+
+      act(() => vi.advanceTimersByTime(200))
+      await vi.waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(),
       )
     })
   })
