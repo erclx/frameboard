@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { contentHash } from '@/server/edit/address'
+import { resolveAnchors } from '@/server/notes/anchor'
+import { readNotes } from '@/server/notes/store'
 import { EXIT_CODES } from '@/shared/errors'
 import { editResultSchema } from '@/shared/records/edit'
 
@@ -55,6 +57,32 @@ describe('edit', () => {
       },
     })
     expect(editResultSchema.safeParse(result.json().data).success).toBe(true)
+  })
+
+  it('should keep a note pinned on the edited element on it', async () => {
+    const page = join(board.root, 'webapp', 'home')
+    const notes = join(page, 'notes.json')
+    const pinned = (await readNotes(notes)).notes[0]
+    if (!pinned) throw new Error('the fixture carries no note')
+    writeFileSync(
+      notes,
+      JSON.stringify({
+        version: 1,
+        notes: [
+          {
+            ...pinned,
+            frame: 'hero',
+            anchor: { index: 5, hash: contentHash(readFileSync(frame)) },
+          },
+        ],
+      }),
+    )
+
+    await run('--index', HEADING, '--style', 'color=red')
+
+    await expect(
+      resolveAnchors(page, (await readNotes(notes)).notes),
+    ).resolves.toEqual({ [pinned.id]: 5 })
   })
 
   it('should replace the text of an element', async () => {

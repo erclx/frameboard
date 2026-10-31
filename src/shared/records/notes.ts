@@ -6,6 +6,11 @@ export const noteAnchorSchema = z.looseObject({
   index: z.int().min(0),
   /** The frame file's `contentHash` when the note was pinned. */
   hash: z.string(),
+  /**
+   * The element's index under each later hash a board write carried it to,
+   * oldest first. Absent on a note no hand edit has followed.
+   */
+  known: z.record(z.string(), z.int().min(0)).optional(),
 })
 
 export type NoteAnchor = z.infer<typeof noteAnchorSchema>
@@ -45,7 +50,7 @@ export type Note = z.infer<typeof noteSchema>
 
 /** A note as the board draws it, with the element its anchor still points at. */
 export interface BoardNote extends Note {
-  /** The element index while the frame file hashes as pinned, else null for the frame. */
+  /** The element index while the frame file hashes as pinned or as a write carried it, else null for the frame. */
   element: number | null
 }
 

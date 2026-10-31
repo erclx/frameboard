@@ -16,6 +16,7 @@ import {
   insertFrameFile,
   moveFrameFile,
   placeFrameFile,
+  type Remap,
   removeFrameFile,
 } from '@/server/edit/frame-file'
 import {
@@ -26,6 +27,7 @@ import {
 } from '@/server/edit/insert'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
+import { followEdit, notesPath } from '@/server/notes/store'
 import {
   type EditResult,
   type InsertResult,
@@ -170,6 +172,9 @@ export type SettledVersion = (
  * index, the hash written, and the sizes a placement wrote, refuses as the move
  * does, and refuses `reanchors-descendant` where a positioned parent would
  * move another element anchored above it.
+ *
+ * Each landed write carries the notes pinned on the frame's elements to the
+ * bytes it wrote, through the writer's remap, so a pin stays on its element.
  */
 export function editRoutes(
   root: string,
@@ -179,6 +184,23 @@ export function editRoutes(
   sheets?: FrameLook['sheets'],
 ): Hono {
   const app = new Hono()
+
+  /** Carries the frame's notes from `before` to `after`, a write that changed no byte carrying none. */
+  const follow = (
+    frame: { project: string; page: string; name: string },
+    before: string,
+    after: string,
+    remap: Remap,
+  ): Promise<void> =>
+    before === after
+      ? Promise.resolve()
+      : followEdit(
+          notesPath(root, frame.project, frame.page),
+          frame.name,
+          before,
+          after,
+          remap,
+        )
 
   app.post('/api/frames/edit', requireWriter(access), async (c) => {
     const body = await parseBody(c.req.raw, editSchema)
@@ -222,6 +244,7 @@ export function editRoutes(
         frames: [ref],
       })
     }
+    await follow(frame, result.from, result.hash, result.remap)
     const data: EditResult = {
       ref,
       index: result.index,
@@ -289,6 +312,7 @@ export function editRoutes(
       page: null,
       frames: [ref],
     })
+    await follow(frame, body.hash, result.hash, result.remap)
     const data: InsertResult = { ref, index: result.index, hash: result.hash }
     return c.json({ ok: true, data })
   })
@@ -320,6 +344,7 @@ export function editRoutes(
       page: null,
       frames: [ref],
     })
+    await follow(frame, body.hash, result.hash, result.remap)
     const data: RemoveResult = { ref, hash: result.hash }
     return c.json({ ok: true, data })
   })
@@ -354,6 +379,7 @@ export function editRoutes(
       page: null,
       frames: [ref],
     })
+    await follow(frame, body.hash, result.hash, result.remap)
     const data: MoveResult = { ref, index: result.index, hash: result.hash }
     return c.json({ ok: true, data })
   })
@@ -401,6 +427,7 @@ export function editRoutes(
         frames: [ref],
       })
     }
+    await follow(frame, body.hash, result.hash, result.remap)
     const data: PlaceResult = {
       ref,
       index: body.index,

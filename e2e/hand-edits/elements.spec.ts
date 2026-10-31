@@ -222,4 +222,47 @@ test.describe('selecting an element inside a frame', () => {
 
     await expect.poll(read).toBe(original)
   })
+
+  test('a note pinned on an element stays on it through a fill change and an insert before it, and through both undos', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    // The basic board pins its second note on the hero's h1, at index 5.
+    const pin = page.getByRole('button', { name: 'Note 2 on hero' })
+    await expect(pin).toHaveAttribute('data-note-element', '5')
+
+    await cmdClick(page, 'h1')
+    await page.getByRole('button', { name: 'Fill token' }).click()
+    await page
+      .getByRole('list', { name: 'Fill tokens' })
+      .getByRole('button', { name: 'accent' })
+      .click()
+    await expect.poll(read).toContain('color: var(--accent)')
+    await expect(pin).toHaveAttribute('data-note-element', '5')
+
+    const headline = await page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+      .boundingBox()
+    if (!headline) throw new Error('The hero draws no headline')
+    await page
+      .getByRole('toolbar', { name: 'Tools' })
+      .getByRole('button', { name: 'Rectangle' })
+      .click()
+    // In the body's padding just above the headline, so the gap before it.
+    await page.mouse.click(headline.x + headline.width / 2, headline.y - 4)
+    await expect.poll(read).toContain('data-name="Rectangle"')
+    await expect(pin).toHaveAttribute('data-note-element', '6')
+
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect.poll(read).not.toContain('data-name="Rectangle"')
+    await expect(pin).toHaveAttribute('data-note-element', '5')
+
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect.poll(read).not.toContain('color: var(--accent)')
+    await expect(pin).toHaveAttribute('data-note-element', '5')
+  })
 })

@@ -1,7 +1,7 @@
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
-import { contentHash, parseFrame } from './address'
+import { contentHash, type Element, hasTag, parseFrame } from './address'
 import {
   applyEdit,
   type EditChange,
@@ -36,6 +36,8 @@ export type FrameFileEdit =
       /** The element's index in the file as written. */
       readonly index: number
       readonly span: ElementSpan
+      /** Every element keeps its index, since an edit writes inside one. */
+      readonly remap: Remap
     }
   | EditRefused
   | Collided
@@ -47,6 +49,15 @@ export type FrameFileEdit =
 export interface Collided extends EditRefused {
   readonly moved: boolean
 }
+
+/**
+ * Where a write carried each element of the frame, from its index in the
+ * bytes written over to its index in the bytes written, or null for an element
+ * the write took out.
+ */
+export type Remap = (index: number) => number | null
+
+const identity: Remap = (index) => index
 
 /** The source a frame held under a hash it no longer has, or null when none is kept. */
 export type SourceAt = (hash: string) => string | null
@@ -114,6 +125,7 @@ export function editFrameFile(
     from: hash,
     index,
     span: applied.span,
+    remap: identity,
   }
 }
 
@@ -125,6 +137,7 @@ export type FrameFileInsert =
       /** The new element's index in the file as written. */
       readonly index: number
       readonly span: InsertedSpan
+      readonly remap: Remap
     }
   | EditRefused
 
@@ -152,6 +165,10 @@ export function insertFrameFile(
     hash: contentHash(inserted.html),
     index: inserted.index,
     span: inserted.span,
+    remap: shiftedPast(
+      inserted.index,
+      subtreeSize(inserted.html, inserted.index),
+    ),
   }
 }
 
@@ -162,6 +179,7 @@ export type FrameFileRemove =
       readonly hash: string
       /** The deleted element as `restoreInserted` puts it back. */
       readonly span: InsertedSpan
+      readonly remap: Remap
     }
   | EditRefused
 
@@ -181,7 +199,12 @@ export function removeFrameFile(
   const removed = removeElement(read.source, index)
   if (!removed.ok) return removed
   if (!replaceFile(path, hash, removed.html)) return stale(path)
-  return { ok: true, hash: contentHash(removed.html), span: removed.span }
+  return {
+    ok: true,
+    hash: contentHash(removed.html),
+    span: removed.span,
+    remap: takenOut(index, subtreeSize(read.source, index)),
+  }
 }
 
 export type FrameFileMove =
@@ -191,6 +214,7 @@ export type FrameFileMove =
       /** The moved element's index in the file as written. */
       readonly index: number
       readonly span: MovedSpan
+      readonly remap: Remap
     }
   | EditRefused
 
@@ -216,6 +240,7 @@ export function moveFrameFile(
     hash: contentHash(moved.html),
     index: moved.index,
     span: moved.span,
+    remap: carried(index, moved.index, subtreeSize(read.source, index)),
   }
 }
 
@@ -227,6 +252,8 @@ export type FrameFilePlace =
       readonly spans: readonly ElementSpan[]
       /** The sizes the placement wrote. */
       readonly sized: readonly PlacedSize[]
+      /** Every element keeps its index, since a placement writes start tags alone. */
+      readonly remap: Remap
     }
   | EditRefused
 
@@ -256,7 +283,43 @@ export function placeFrameFile(
     hash: contentHash(placed.html),
     spans: placed.spans,
     sized: placed.sized,
+    remap: identity,
   }
+}
+
+/** Elements written in at `at`, `size` of them with the descendants, push every later one on. */
+function shiftedPast(at: number, size: number): Remap {
+  return (index) => (index < at ? index : index + size)
+}
+
+/** Elements taken out from `at`, `size` of them, map to nothing and pull every later one back. */
+function takenOut(at: number, size: number): Remap {
+  return (index) => {
+    if (index < at) return index
+    return index < at + size ? null : index - size
+  }
+}
+
+/** A subtree of `size` elements carried from `from` to `to`, both in document order. */
+function carried(from: number, to: number, size: number): Remap {
+  const out = takenOut(from, size)
+  const into = shiftedPast(to, size)
+  return (index) => {
+    if (index >= from && index < from + size) return to + index - from
+    const rest = out(index)
+    return rest === null ? null : into(rest)
+  }
+}
+
+/** The element at `index` with its descendants, which run on from it in document order. */
+function subtreeSize(source: string, index: number): number {
+  const element = parseFrame(source).elements[index]
+  const count = (node: Element): number =>
+    node.childNodes.reduce(
+      (total, child) => (hasTag(child) ? total + count(child) : total),
+      1,
+    )
+  return element ? count(element) : 1
 }
 
 /**

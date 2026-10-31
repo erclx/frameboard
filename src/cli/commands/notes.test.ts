@@ -81,6 +81,60 @@ describe('notes', () => {
     })
   })
 
+  it('lists an anchored note without the hashes its anchor followed', async () => {
+    writeFileSync(
+      home,
+      JSON.stringify({
+        version: 1,
+        notes: [
+          note({
+            id: 'n_0000000a',
+            anchor: { index: 5, hash: 'a'.repeat(64), known: { b: 6 } },
+          }),
+        ],
+      }),
+    )
+
+    const result = await run('notes')
+
+    expect((result.json().data as { notes: Note[] }).notes[0]?.anchor).toEqual({
+      index: 5,
+      hash: 'a'.repeat(64),
+    })
+  })
+
+  describe('a note whose anchor followed a hand edit', () => {
+    const anchor = { index: 5, hash: 'a'.repeat(64), known: { b: 6 } }
+
+    beforeEach(() => {
+      writeFileSync(
+        home,
+        JSON.stringify({
+          version: 1,
+          notes: [note({ id: 'n_0000000a', anchor })],
+        }),
+      )
+    })
+
+    it('answers reply without the hashes its anchor followed', async () => {
+      const result = await run('notes', 'reply', 'n_0000000a', 'On it')
+
+      expect((result.json().data as { note: Note }).note.anchor).toEqual({
+        index: 5,
+        hash: 'a'.repeat(64),
+      })
+    })
+
+    it('answers done without the hashes its anchor followed', async () => {
+      const result = await run('notes', 'done', 'n_0000000a')
+
+      expect((result.json().data as { note: Note }).note.anchor).toEqual({
+        index: 5,
+        hash: 'a'.repeat(64),
+      })
+    })
+  })
+
   it('lists each image a note carries by an absolute path beside the record', async () => {
     writeFileSync(
       home,

@@ -12,7 +12,9 @@ import {
 
 import { readRecord, type RecordSpec, updateRecord } from '../board/json-record'
 import { listPageFolders, listProjects } from '../board/scan'
-import { resolveAnchors } from './anchor'
+import type { Remap } from '../edit/frame-file'
+import { HISTORY_CAP } from '../history/stack'
+import { indexAt, resolveAnchors } from './anchor'
 import type { NoteDelivery } from './delivery'
 import { noteLine } from './line'
 
@@ -239,6 +241,68 @@ export function threadOf(file: NotesFile, rootId: string): Note[] {
   )
 }
 
+/**
+ * Carries each note anchored on `frame` across a write the board made from
+ * the bytes `before` names to the bytes `after` names, recording the index
+ * `remap` gives its element. A note not resolving at `before`, or whose
+ * element the write took out, is left as it is, so it falls back to the
+ * frame. Each anchor keeps the last `HISTORY_CAP` hashes, since no undo
+ * reaches further. Writes nothing when no note follows, and leaves a notes
+ * file that does not parse, since the frame write already landed.
+ */
+export async function followEdit(
+  path: string,
+  frame: string,
+  before: string,
+  after: string,
+  remap: Remap,
+): Promise<void> {
+  let file: NotesFile
+  try {
+    file = await readNotes(path)
+  } catch (error) {
+    if (error instanceof FrameboardError) return
+    throw error
+  }
+  if (!file.notes.some((note) => followed(note, frame, before, after, remap))) {
+    return
+  }
+  await updateNotes(path, (current) => ({
+    ...current,
+    notes: current.notes.map(
+      (note) => followed(note, frame, before, after, remap) ?? note,
+    ),
+  }))
+}
+
+/** The note with `after` added to its anchor, or undefined when it does not follow the write. */
+function followed(
+  note: Note,
+  frame: string,
+  before: string,
+  after: string,
+  remap: Remap,
+): Note | undefined {
+  if (note.frame !== frame || !note.anchor || after === note.anchor.hash) {
+    return undefined
+  }
+  const was = indexAt(note.anchor, before)
+  const index = was === null ? null : remap(was)
+  if (index === null) return undefined
+  const { [after]: _, ...rest } = note.anchor.known ?? {}
+  const known = Object.fromEntries(
+    [...Object.entries(rest), [after, index] as const].slice(-HISTORY_CAP),
+  )
+  return { ...note, anchor: { ...note.anchor, known } }
+}
+
+/** A note as an agent reads it, without the hashes its anchor followed, which only the board resolves. */
+export function forAgent<T extends Note>(note: T): T {
+  if (!note.anchor?.known) return note
+  const { known: _, ...anchor } = note.anchor
+  return { ...note, anchor }
+}
+
 /** A page's notes as the board draws them, an unreadable file reading as none. */
 export async function pageView(
   root: string,
@@ -333,7 +397,7 @@ function toDelivery(
   const message = newest ?? note
   const pageDir = dirname(place.path)
   return {
-    note: stored,
+    note: forAgent(stored),
     ref,
     line: noteLine({
       id: note.id,
