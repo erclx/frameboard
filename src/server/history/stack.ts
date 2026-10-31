@@ -204,6 +204,7 @@ function nameOf(change: Change): string {
   if (change.kind === 'entry') return change.frame
   if (change.kind === 'section') return `section ${change.section}`
   if (change.kind === 'pages') return 'the page order'
+  if (change.kind === 'token') return change.name
   const path = change.kind === 'moved' ? change.to : change.path
   return basename(path, FRAME_EXTENSION)
 }

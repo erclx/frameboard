@@ -16,6 +16,7 @@ import {
   insertFrameFile,
   removeFrameFile,
 } from '../edit/frame-file'
+import { editTokenCss, tokenSides } from '../look/token-edit'
 import { type Change, holds, restore, StepJournal } from './changes'
 
 describe('changes', () => {
@@ -519,6 +520,67 @@ describe('changes', () => {
         code: 'undo-overtaken',
       })
       expect(read(HERO)).toBe(agent)
+    })
+  })
+
+  describe('token', () => {
+    const SHEET = 'webapp/tokens.css'
+
+    /** Edits `--accent` in light by hand, as the token route does, and journals it. */
+    function editAccent(value: string): void {
+      const css = read(SHEET)
+      const before = tokenSides(css, '--accent')
+      const written = editTokenCss(
+        css,
+        { base: '#f59e0b', dark: '#fbbf24' },
+        { name: '--accent', side: 'light', value },
+      )
+      writeFileSync(at(SHEET), written)
+      journal.token(
+        at(SHEET),
+        '--accent',
+        before,
+        tokenSides(written, '--accent'),
+      )
+    }
+
+    it('holds while the token is as the edit left it', async () => {
+      editAccent('#111111')
+
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('undoes the edit byte for byte', async () => {
+      const original = read(SHEET)
+      editAccent('#111111')
+
+      await restore(first(), 'before')
+
+      expect(read(SHEET)).toBe(original)
+    })
+
+    it('restores the token and keeps what an agent wrote to another token', async () => {
+      editAccent('#111111')
+      writeFileSync(at(SHEET), read(SHEET).replace('#e5e7eb', '#cccccc'))
+
+      await restore(first(), 'before')
+
+      expect(read(SHEET)).toContain('--accent: #e11d48;')
+      expect(read(SHEET)).toContain('--border: #cccccc;')
+    })
+
+    it('fails once an agent rewrote the same token', async () => {
+      editAccent('#111111')
+      writeFileSync(at(SHEET), read(SHEET).replace('#111111', '#222222'))
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('fails once the sheet no longer parses', async () => {
+      editAccent('#111111')
+      writeFileSync(at(SHEET), ':root { --accent: #111111')
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
     })
   })
 })

@@ -85,6 +85,8 @@ interface ColorPickerPanelProps {
   /** The token the paint names now, ringed among the swatches. */
   token: string | null
   onToken: (name: string) => void
+  /** Offers the Tokens tab beside Custom, true by default. The Theme tab opens Custom alone, since a token's value is never another token. */
+  tokensTab?: boolean
 }
 
 /**
@@ -105,6 +107,7 @@ export function ColorPickerPanel({
   theme,
   token,
   onToken,
+  tokensTab = true,
 }: ColorPickerPanelProps) {
   const [mode, setMode] = useState<Mode>('hex')
   const rgb = hsvToRgb(color.hsv)
@@ -123,14 +126,16 @@ export function ColorPickerPanel({
       onValueChange={(next: PickerTab) => onTab(next)}
       className="gap-0"
     >
-      <TabsList className="mb-2.5 h-7 w-full shrink-0 rounded-[7px] p-0.5">
-        <TabsTrigger value="custom" className={TAB}>
-          Custom
-        </TabsTrigger>
-        <TabsTrigger value="tokens" className={TAB}>
-          Tokens
-        </TabsTrigger>
-      </TabsList>
+      {tokensTab ? (
+        <TabsList className="mb-2.5 h-7 w-full shrink-0 rounded-[7px] p-0.5">
+          <TabsTrigger value="custom" className={TAB}>
+            Custom
+          </TabsTrigger>
+          <TabsTrigger value="tokens" className={TAB}>
+            Tokens
+          </TabsTrigger>
+        </TabsList>
+      ) : null}
       <TabsContent value="custom" className="text-xs">
         <SaturationArea hsv={color.hsv} onChange={setHsv} />
         <div className="mt-2.5 flex items-center gap-2">

@@ -105,7 +105,14 @@ describe('apiRoutes', () => {
       expect(await response.json()).toEqual({
         ok: true,
         data: {
-          sheets: [{ path: 'tokens.css', kind: 'board', error: null }],
+          sheets: [
+            {
+              path: 'tokens.css',
+              kind: 'board',
+              error: null,
+              hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+            },
+          ],
           tokens: [
             {
               name: '--fg',
@@ -113,6 +120,7 @@ describe('apiRoutes', () => {
               light: '#111111',
               dark: '#eeeeee',
               sheet: 'tokens.css',
+              overrides: false,
             },
           ],
         },

@@ -1,3 +1,4 @@
+import type { TokenSides } from '@/server/look/token-edit'
 import type { LayoutEntry, SectionEntry } from '@/shared/records/board'
 
 /**
@@ -22,6 +23,8 @@ export interface Journal {
   ): void
   /** The page order `project.json` holds in the project folder `project`. */
   pages(project: string, before: string[], after: string[]): void
+  /** One token's declarations in the project token sheet at `path`, on each side of a hand edit that already wrote it. */
+  token(path: string, name: string, before: TokenSides, after: TokenSides): void
   /** Renames `from` to `to`, in place of the verb's own rename. */
   moved(from: string, to: string): Promise<void>
   /** A file or folder the verb just created, whose content an undo checks before removing it. */

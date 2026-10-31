@@ -936,6 +936,100 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+      }
+      .trow .th {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+      .ttag {
+        flex: none;
+        font-size: 9px;
+        line-height: 14px;
+        padding: 0 4px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .ttag.p {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .trst {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        color: var(--muted);
+      }
+      .trow.on {
+        background: var(--hover);
+      }
+      .tsw.ring {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .tpick {
+        position: absolute;
+        left: 16px;
+        top: 118px;
+        width: 248px;
+        padding: 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+        z-index: 6;
+        font-size: 12px;
+      }
+      .tpick b {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .tpick .sq {
+        height: 120px;
+        border-radius: 6px;
+        background:
+          linear-gradient(to top, #000, transparent),
+          linear-gradient(to right, #fff, #4f46e5);
+        position: relative;
+      }
+      .tpick .sq i {
+        position: absolute;
+        left: 78%;
+        top: 12%;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+      }
+      .tpick .bar {
+        height: 10px;
+        border-radius: 5px;
+        margin-top: 8px;
+      }
+      .tpick .hexrow {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .tpick .hf {
+        height: 26px;
+        border-radius: 6px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        color: var(--muted);
+      }
+      .tpick .hf.v {
+        flex: 1;
+        color: var(--text);
       }
       .trow .tn em {
         font-style: normal;
@@ -1251,61 +1345,126 @@
           ><button>Assets</button>
         </div>
         <div class="tsrc">
-          From <code>tokens.css</code>, read-only. Edit the file or ask the
-          agent.
+          From board <code>tokens.css</code>, overridden by project
+          <code>webapp/tokens.css</code>. Click a value to edit it.
         </div>
         <div class="sec"><span>Color</span></div>
         <div class="thead"><span></span><span>L</span><span>D</span></div>
-        <div class="trow">
-          <span class="tn"><em>--</em>primary</span
-          ><span class="tsw" style="background: #4f46e5"></span
+        <div class="trow on">
+          <span class="th"
+            ><span class="tn"><em>--</em>primary</span
+            ><span class="ttag p">Project</span
+            ><span class="trst" title="Reset to the board value"
+              ><svg
+                class="ic"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" /></svg></span></span
+          ><span class="tsw ring" style="background: #4338ca"></span
           ><span class="tsw" style="background: #818cf8"></span>
         </div>
         <div class="trow">
-          <span class="tn"><em>--</em>secondary</span
+          <span class="th"
+            ><span class="tn"><em>--</em>secondary</span
+            ><span class="ttag">Board</span></span
           ><span class="tsw" style="background: #0ea5e9"></span
           ><span class="tsw" style="background: #38bdf8"></span>
         </div>
         <div class="trow">
-          <span class="tn"><em>--</em>accent</span
+          <span class="th"
+            ><span class="tn"><em>--</em>accent</span
+            ><span class="ttag">Board</span></span
           ><span class="tsw" style="background: #f59e0b"></span
           ><span class="tsw" style="background: #fbbf24"></span>
         </div>
         <div class="trow">
-          <span class="tn"><em>--</em>surface</span
+          <span class="th"
+            ><span class="tn"><em>--</em>surface</span
+            ><span class="ttag">Board</span></span
           ><span class="tsw" style="background: #ffffff"></span
           ><span class="tsw" style="background: #111827"></span>
         </div>
         <div class="trow">
-          <span class="tn"><em>--</em>text</span
+          <span class="th"
+            ><span class="tn"><em>--</em>text</span
+            ><span class="ttag">Board</span></span
           ><span class="tsw" style="background: #111827"></span
           ><span class="tsw" style="background: #f9fafb"></span>
         </div>
         <div class="trow">
-          <span class="tn"><em>--</em>muted</span
+          <span class="th"
+            ><span class="tn"><em>--</em>muted</span
+            ><span class="ttag">Board</span></span
           ><span class="tsw" style="background: #6b7280"></span
           ><span class="tsw" style="background: #9ca3af"></span>
         </div>
         <div class="sec"><span>Radius</span></div>
         <div class="trow" style="grid-template-columns: 1fr auto">
-          <span class="tn"><em>--</em>radius-sm</span
+          <span class="th"
+            ><span class="tn"><em>--</em>radius-sm</span
+            ><span class="ttag">Board</span></span
           ><span style="color: var(--muted)">4px</span>
         </div>
         <div class="trow" style="grid-template-columns: 1fr auto">
-          <span class="tn"><em>--</em>radius-md</span
+          <span class="th"
+            ><span class="tn"><em>--</em>radius-md</span
+            ><span class="ttag">Board</span></span
           ><span style="color: var(--muted)">8px</span>
         </div>
         <div class="sec"><span>Font</span></div>
         <div class="trow" style="grid-template-columns: 1fr auto">
-          <span class="tn"><em>--</em>font-text</span
+          <span class="th"
+            ><span class="tn"><em>--</em>font-text</span
+            ><span class="ttag">Board</span></span
           ><span style="color: var(--muted)">Geist</span>
         </div>
         <div class="trow" style="grid-template-columns: 1fr auto">
-          <span class="tn"><em>--</em>font-mono</span
+          <span class="th"
+            ><span class="tn"><em>--</em>font-mono</span
+            ><span class="ttag">Board</span></span
           ><span style="color: var(--muted)">Noto Sans Mono</span>
         </div>
       </aside>
       <main class="canvas">
+        <div class="tpick">
+          <b>Light</b>
+          <div class="sq"><i></i></div>
+          <div
+            class="bar"
+            style="
+              background: linear-gradient(
+                to right,
+                red,
+                #ff0,
+                lime,
+                cyan,
+                blue,
+                #f0f,
+                red
+              );
+            "
+          ></div>
+          <div
+            class="bar"
+            style="
+              background:
+                linear-gradient(to right, transparent, #4338ca),
+                repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0/8px 8px;
+            "
+          ></div>
+          <div class="hexrow">
+            <span class="hf">Hex</span><span class="hf v">4338CA</span
+            ><span class="hf">100%</span>
+          </div>
+        </div>
         <div class="flabel" style="left: 120px; top: 96px">Hello world</div>
         <div
           class="frame"

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -131,7 +132,37 @@ describe('readTokenTable', () => {
         light: '#f59e0b',
         dark: '#fb7185',
         sheet: 'site/tokens.css',
+        overrides: true,
       })
+    })
+
+    it('marks no override on a token only one sheet sets', () => {
+      board = writeBoard({
+        'tokens.css': ':root { --board-only: 1px }',
+        'site/tokens.css': ':root { --project-only: 2px }',
+      })
+
+      const table = readTokenTable(board.root, {
+        board: join(board.root, 'tokens.css'),
+        project: join(board.root, 'site/tokens.css'),
+      })
+
+      expect(rowOf(table, '--board-only')?.overrides).toBe(false)
+      expect(rowOf(table, '--project-only')?.overrides).toBe(false)
+    })
+
+    it("hashes each sheet's bytes as read, so an edit can tell a changed sheet", () => {
+      const css = ':root { --a: 1px }'
+      board = writeBoard({ 'tokens.css': css })
+
+      const table = readTokenTable(board.root, {
+        board: join(board.root, 'tokens.css'),
+        project: null,
+      })
+
+      expect(table.sheets[0]?.hash).toBe(
+        createHash('sha256').update(css).digest('hex'),
+      )
     })
 
     it('names both sheets in cascade order', () => {
@@ -146,8 +177,18 @@ describe('readTokenTable', () => {
       })
 
       expect(table.sheets).toEqual([
-        { path: 'tokens.css', kind: 'board', error: null },
-        { path: 'site/tokens.css', kind: 'project', error: null },
+        {
+          path: 'tokens.css',
+          kind: 'board',
+          error: null,
+          hash: expect.any(String),
+        },
+        {
+          path: 'site/tokens.css',
+          kind: 'project',
+          error: null,
+          hash: expect.any(String),
+        },
       ])
     })
 

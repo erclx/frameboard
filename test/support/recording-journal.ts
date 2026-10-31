@@ -23,6 +23,13 @@ export type JournalCall =
   | { kind: 'moved'; from: string; to: string }
   | { kind: 'created'; path: string }
   | { kind: 'removed'; path: string }
+  | {
+      kind: 'token'
+      path: string
+      name: string
+      before: unknown
+      after: unknown
+    }
 
 /**
  * A journal that does what a verb asks of it on disk and lists each call, so a
@@ -49,6 +56,9 @@ export function recordingJournal(root: string): {
       moved: async (from, to) => {
         await rename(from, to)
         calls.push({ kind: 'moved', from: at(from), to: at(to) })
+      },
+      token: (path, name, before, after) => {
+        calls.push({ kind: 'token', path: at(path), name, before, after })
       },
       created: async (path) => {
         calls.push({ kind: 'created', path: at(path) })

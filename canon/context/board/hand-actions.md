@@ -91,7 +91,7 @@ A frame draws at its pending box over its stored one at the previewed width, and
 Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
-- A change is one layout or section entry, page order, rename, path with its hash, or hand-edited or placed element, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
+- A change is one layout or section entry, page order, rename, hashed path, hand-edited or placed element, or token, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - A page or project rename, its undo, and its redo each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route to the new name

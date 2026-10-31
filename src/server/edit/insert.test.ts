@@ -25,7 +25,14 @@ const BODY = 2
 const FIRST = 3
 
 function token(name: string, group: TokenRow['group'] = 'color'): TokenRow {
-  return { name, group, light: '#fff', dark: '#000', sheet: 'tokens.css' }
+  return {
+    name,
+    group,
+    light: '#fff',
+    dark: '#000',
+    sheet: 'tokens.css',
+    overrides: false,
+  }
 }
 
 describe('elementMarkup', () => {
