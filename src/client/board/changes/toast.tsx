@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { useEffect } from 'react'
+import { type MouseEvent, useEffect, useRef } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
@@ -161,6 +161,9 @@ function OpenWhileUnseen({
  * The change toast in the kit's stack, its copy with Show, Previous, Next,
  * and Mark all seen, or Undo once Mark all seen cleared the pile, at the
  * width its form draws. Enter on the toast itself runs Show.
+ *
+ * Mark all seen run from its own focused button takes that button away, so
+ * focus moves to Undo on the cleared form rather than falling to the page.
  */
 export function ChangeToastBody({
   toast: item,
@@ -174,8 +177,19 @@ export function ChangeToastBody({
     'changes.markAllSeen',
     'changes.undoMarkAll',
   ])
+  const undoButton = useRef<HTMLButtonElement>(null)
+  const focusUndo = useRef(false)
   const copy = item.data
+  const offersUndo = copy?.undo ?? false
+  useEffect(() => {
+    if (offersUndo && focusUndo.current) undoButton.current?.focus()
+    focusUndo.current = false
+  }, [offersUndo])
   if (!copy) return null
+  const markAllFromButton = (event: MouseEvent<HTMLButtonElement>) => {
+    focusUndo.current = event.currentTarget === document.activeElement
+    markAll?.run()
+  }
   return (
     <Toast
       toast={item}
@@ -223,10 +237,12 @@ export function ChangeToastBody({
             action={markAll}
             label="Mark all seen"
             keys={MARK_ALL_KEYS}
+            onClick={markAllFromButton}
           />
         ) : null}
         {copy.undo ? (
           <button
+            ref={undoButton}
             type="button"
             onClick={() => undo?.run()}
             className={cn(TOAST_BUTTON, 'bg-secondary text-foreground')}
@@ -245,19 +261,22 @@ function KeyedButton({
   label,
   keys,
   className = 'bg-secondary text-foreground',
+  onClick,
 }: {
   action: Action | undefined
   label: string
   /** The key shown before the action registers, matching what it registers. */
   keys: readonly string[]
   className?: string
+  /** Runs in place of the action, for a press that needs its event. */
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void
 }) {
   const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
   return (
     <button
       type="button"
       aria-keyshortcuts={key ? keyLabel(key) : undefined}
-      onClick={() => action?.run()}
+      onClick={onClick ?? (() => action?.run())}
       className={cn(TOAST_BUTTON, className)}
     >
       {key ? `${label} ${keyLabel(key)}` : label}

@@ -413,6 +413,32 @@ describe('ChangesToast', () => {
       expect(await screen.findByText('Claude changed 3 frames')).toBeVisible()
     })
 
+    it('moves focus to Undo when Mark all seen runs from the keyboard', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const markAll = await screen.findByRole('button', {
+        name: /^Mark all seen/,
+      })
+
+      act(() => markAll.focus())
+      await userEvent.keyboard('{Enter}')
+
+      expect(await screen.findByRole('button', { name: 'Undo' })).toHaveFocus()
+    })
+
+    it('leaves focus alone when ⇧] runs Mark all seen', async () => {
+      unbind = bindKeys(window)
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      await screen.findByRole('button', { name: /^Mark all seen/ })
+
+      await userEvent.keyboard('{Shift>}]{/Shift}')
+
+      expect(
+        await screen.findByRole('button', { name: 'Undo' }),
+      ).not.toHaveFocus()
+    })
+
     it('keeps Undo on screen when a change lands after the clear', async () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
