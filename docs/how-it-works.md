@@ -17,9 +17,9 @@ A board folder holds projects, a project holds pages, and a page holds frames.
 
 ## Tokens and themes
 
-Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab tags each token Board or Project and edits a value in place into the project's sheet, as one undo step, leaving the board sheet as written.
+Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab tags each token Board or Project and edits a value in place into the sheet its tag names, as one undo step. A Board edit changes every project that does not override the token.
 
-- `serve --tokens <path>` takes a sheet another tool manages instead
+- `serve --tokens <path>` takes a sheet another tool manages instead, and the Theme tab leaves one outside the board folder read-only
 - `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
 - The server puts the sheets and five faces, Geist, Geist Mono, Inter, Source Serif 4, and Caveat, ahead of each frame's own styles as it serves the frame
 - The file on disk stays as written

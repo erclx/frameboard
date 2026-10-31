@@ -32,9 +32,10 @@ const NAME = /^--[\w-]+$/
 const UNSAFE_VALUE = /[;{}\n\r]|\/\*/
 
 /**
- * The project sheet with `edit` applied, every byte outside the token's
- * declarations left as it stood. `board` is the token's declarations in the
- * board sheet. A one-theme edit keeps the other theme rendering as it did,
+ * The project or board sheet with `edit` applied, every byte outside the
+ * token's declarations left as it stood. `board` is the token's declarations
+ * in the board sheet under it, none when `css` is the board sheet itself. A
+ * one-theme edit keeps the other theme rendering as it did,
  * pinning its old value under that theme's rule when the new declaration
  * would reach it, since a project `:root` ties a board dark rule on
  * specificity and wins by coming later. Refuses `invalid-edit` for a name or
@@ -114,7 +115,7 @@ export function tokenSides(css: string, name: string): TokenSides {
 export type SheetWrite = 'written' | 'created' | 'stale'
 
 /**
- * Writes the project sheet at `path` through a temporary file and a rename,
+ * Writes the token sheet at `path` through a temporary file and a rename,
  * reading the sheet again just before the rename and leaving it as it is
  * when its hash is no longer `hash`. A null `hash` means the sheet did not
  * exist, so it is created only while none does. Takes no lock, since an
@@ -169,7 +170,7 @@ function parseSheet(css: string): Root {
   } catch (error) {
     const reason =
       error instanceof postcss.CssSyntaxError ? error.reason : String(error)
-    return refuse(`The project token sheet does not parse: ${reason}.`)
+    return refuse(`The token sheet does not parse: ${reason}.`)
   }
 }
 

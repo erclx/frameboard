@@ -259,13 +259,14 @@ describe('ThemeTab', () => {
   })
 
   describe('editing', () => {
+    const BOARD_HASH = 'b'.repeat(64)
     const PROJECT_HASH = 'c'.repeat(64)
     const WRITTEN_HASH = 'd'.repeat(64)
 
     function both(tokens: TokenRow[]): TokenTable {
       return table(tokens, {
         sheets: [
-          { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+          { path: 'tokens.css', kind: 'board', error: null, hash: BOARD_HASH },
           {
             path: 'studio/tokens.css',
             kind: 'project',
@@ -281,7 +282,10 @@ describe('ThemeTab', () => {
       change: TokenChange
     }
 
-    function recordingWrite(sent: Sent[]): typeof writeToken {
+    function recordingWrite(
+      sent: Sent[],
+      written = () => WRITTEN_HASH,
+    ): typeof writeToken {
       return async (project, hash, change) => {
         sent.push({ hash, change })
         return {
@@ -289,7 +293,8 @@ describe('ThemeTab', () => {
           name: change.name,
           light: null,
           dark: null,
-          hash: WRITTEN_HASH,
+          hash: written(),
+          sheet: change.sheet ?? 'project',
           created: false,
         }
       }
@@ -414,11 +419,14 @@ describe('ThemeTab', () => {
       await userEvent.keyboard('{Enter}')
 
       expect(sent).toEqual([
-        { hash: PROJECT_HASH, change: { name: '--primary', reset: true } },
+        {
+          hash: PROJECT_HASH,
+          change: { name: '--primary', reset: true, sheet: 'project' },
+        },
       ])
     })
 
-    it('opens the picker on Custom for the swatch and writes once as it closes', async () => {
+    it('opens the picker on Custom for the swatch and writes the board sheet once as it closes', async () => {
       const sent: Sent[] = []
       render(
         <ThemeTab
@@ -440,8 +448,13 @@ describe('ThemeTab', () => {
       expect(screen.queryByRole('tab', { name: 'Tokens' })).toBeNull()
       expect(sent).toEqual([
         {
-          hash: PROJECT_HASH,
-          change: { name: '--primary', side: 'dark', value: '#112233' },
+          hash: BOARD_HASH,
+          change: {
+            name: '--primary',
+            side: 'dark',
+            value: '#112233',
+            sheet: 'board',
+          },
         },
       ])
     })
@@ -492,7 +505,7 @@ describe('ThemeTab', () => {
       await userEvent.type(field, '6{Enter}')
 
       expect(sent.map((call) => call.change)).toEqual([
-        { name: '--radius-sm', side: 'both', value: '6px' },
+        { name: '--radius-sm', side: 'both', value: '6px', sheet: 'board' },
       ])
     })
 
@@ -520,7 +533,7 @@ describe('ThemeTab', () => {
       await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
 
       expect(sent.map((call) => call.change)).toEqual([
-        { name: '--radius-sm', side: 'both', value: '0px' },
+        { name: '--radius-sm', side: 'both', value: '0px', sheet: 'board' },
       ])
     })
 
@@ -552,7 +565,12 @@ describe('ThemeTab', () => {
       await userEvent.type(field, 'Inter, sans-serif{Enter}')
 
       expect(sent.map((call) => call.change)).toEqual([
-        { name: '--font-text', side: 'both', value: 'Inter, sans-serif' },
+        {
+          name: '--font-text',
+          side: 'both',
+          value: 'Inter, sans-serif',
+          sheet: 'board',
+        },
       ])
     })
 
@@ -666,10 +684,35 @@ describe('ThemeTab', () => {
       expect(field).toHaveValue('4')
     })
 
-    it('stays read-only while the project sheet does not parse', async () => {
+    it('stays read-only while neither sheet parses', async () => {
       const broken: TokenTable = {
         sheets: [
-          { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+          {
+            path: 'tokens.css',
+            kind: 'board',
+            error: 'Unclosed block at line 3',
+            hash: BOARD_HASH,
+          },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: 'Unclosed block at line 1',
+            hash: PROJECT_HASH,
+          },
+        ],
+        tokens: [],
+      }
+
+      render(<ThemeTab project="studio" load={async () => broken} />)
+
+      expect(await screen.findByText(/^From board/)).toBeInTheDocument()
+      expect(screen.queryByText(/Click a value to edit it/)).toBeNull()
+    })
+
+    it('keeps the board rows editable while the project sheet does not parse', async () => {
+      const broken: TokenTable = {
+        sheets: [
+          { path: 'tokens.css', kind: 'board', error: null, hash: BOARD_HASH },
           {
             path: 'studio/tokens.css',
             kind: 'project',
@@ -683,9 +726,88 @@ describe('ThemeTab', () => {
       render(<ThemeTab project="studio" load={async () => broken} />)
 
       expect(
+        await screen.findByRole('button', { name: 'Light: #4f46e5' }),
+      ).toBeInTheDocument()
+    })
+
+    it('keeps the board rows read-only for a --tokens sheet outside the board folder', async () => {
+      const outside = table(
+        [
+          row('--primary', { light: '#4f46e5' }),
+          row('--accent', { sheet: 'studio/tokens.css', light: '#e11d48' }),
+        ],
+        {
+          sheets: [
+            {
+              path: '/work/app/tokens.css',
+              kind: 'board',
+              error: null,
+              hash: BOARD_HASH,
+            },
+            {
+              path: 'studio/tokens.css',
+              kind: 'project',
+              error: null,
+              hash: PROJECT_HASH,
+            },
+          ],
+        },
+      )
+
+      render(<ThemeTab project="studio" load={async () => outside} />)
+
+      expect(
         await screen.findByRole('img', { name: 'Light: #4f46e5' }),
       ).toBeInTheDocument()
-      expect(screen.queryByText(/Click a value to edit it/)).toBeNull()
+      expect(
+        screen.getByRole('button', { name: 'Light: #e11d48' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/^From board/)).toHaveTextContent(
+        'From board /work/app/tokens.css, overridden by project studio/tokens.css. Click a value to edit it. Board values stay read-only here, since that sheet sits outside the board folder.',
+      )
+    })
+
+    it('sends each sheet the hash its own last edit wrote', async () => {
+      const sent: Sent[] = []
+      let next = 0
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--radius-sm', {
+                group: 'radius',
+                light: '4px',
+                dark: '4px',
+              }),
+              row('--radius-md', {
+                group: 'radius',
+                light: '8px',
+                dark: '8px',
+              }),
+            ])
+          }
+          write={recordingWrite(sent, () => String(++next).repeat(64))}
+        />,
+      )
+
+      for (const name of ['radius-sm value', 'radius-md value']) {
+        const field = await screen.findByRole('textbox', { name })
+        await userEvent.clear(field)
+        await userEvent.type(field, '2{Enter}')
+      }
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'Reset primary to the board value',
+        }),
+      )
+
+      expect(sent.map((call) => [call.change.sheet, call.hash])).toEqual([
+        ['board', BOARD_HASH],
+        ['board', '1'.repeat(64)],
+        ['project', PROJECT_HASH],
+      ])
     })
   })
 })

@@ -9,7 +9,7 @@ import {
 
 import { fetchTokenTable, useTokenTable } from '../../tokens'
 import { ColorRow, ValueRow } from './rows'
-import { type TokenChange, writeToken } from './write'
+import { type TokenChange, type TokenSheet, writeToken } from './write'
 
 const GROUP_TITLES: Record<TokenRow['group'], string> = {
   color: 'Color',
@@ -28,7 +28,7 @@ interface ThemeTabProps {
   write?: typeof writeToken
 }
 
-/** The project sheet hash an edit landed over and the hash it wrote, until the table reads the sheet again. */
+/** The sheet hash an edit landed over and the hash it wrote, until the table reads the sheet again. */
 interface Landed {
   over: string | null
   hash: string
@@ -38,10 +38,12 @@ interface Landed {
  * The Theme tab of `canon/design/tabs/theme`: the sheets it read, then the
  * project's tokens by group, each tagged Board or Project, colors with a
  * light and a dark swatch and the rest as a value. A writing tab edits a
- * value in place into the project's sheet while that sheet parses, and a
- * row the project overrides resets to the board's value. It reads the table
- * again on every board message while open, so an edited sheet shows without
- * a reload.
+ * value in place into the sheet its tag names while that sheet parses, so a
+ * Board row changes every project without an override, and a row the
+ * project overrides resets to the board's value. A `--tokens` sheet outside
+ * the board folder belongs to whatever handed it over, so its rows stay
+ * read-only. It reads the table again on every board message while open, so
+ * an edited sheet shows without a reload.
  */
 export function ThemeTab({
   project,
@@ -52,7 +54,7 @@ export function ThemeTab({
   const canWrite = useLive((state) => state.canWrite)
   // Edits go one at a time, each made from the sheet the last one wrote.
   const queue = useRef<Promise<unknown>>(Promise.resolve())
-  const landed = useRef<Landed | null>(null)
+  const landed = useRef<Partial<Record<TokenSheet, Landed>>>({})
 
   if (table === undefined) return null
   if (table === null) {
@@ -66,20 +68,41 @@ export function ThemeTab({
 
   const boardSheet = table.sheets.find((sheet) => sheet.kind === 'board')
   const projectSheet = table.sheets.find((sheet) => sheet.kind === 'project')
-  const editable = canWrite && (projectSheet?.error ?? null) === null
-  const readHash = projectSheet?.hash ?? null
-
-  const onWrite = (change: TokenChange): Promise<boolean> => {
-    const run = queue.current.then(async () => {
-      const held = landed.current
-      const hash = held && held.over === readHash ? held.hash : readHash
-      const result = await write(project, hash, change)
-      if (result) landed.current = { over: readHash, hash: result.hash }
-      return result !== null
-    })
-    queue.current = run
-    return run
+  // The table names a `--tokens` sheet outside the board by its absolute path.
+  const boardOutside = boardSheet?.path.startsWith('/') ?? false
+  const editable: Record<TokenSheet, boolean> = {
+    project: canWrite && (projectSheet?.error ?? null) === null,
+    board:
+      canWrite &&
+      boardSheet !== undefined &&
+      boardSheet.error === null &&
+      !boardOutside,
   }
+  const readHash: Record<TokenSheet, string | null> = {
+    project: projectSheet?.hash ?? null,
+    board: boardSheet?.hash ?? null,
+  }
+
+  const writerFor =
+    (sheet: TokenSheet) =>
+    (change: TokenChange): Promise<boolean> => {
+      const run = queue.current.then(async () => {
+        const read = readHash[sheet]
+        const held = landed.current[sheet]
+        const hash = held && held.over === read ? held.hash : read
+        const result = await write(project, hash, { ...change, sheet })
+        if (result) {
+          landed.current = {
+            ...landed.current,
+            [sheet]: { over: read, hash: result.hash },
+          }
+        }
+        return result !== null
+      })
+      queue.current = run
+      return run
+    }
+  const onWrite = { project: writerFor('project'), board: writerFor('board') }
 
   return (
     <div className="flex flex-col pb-2">
@@ -96,7 +119,13 @@ export function ThemeTab({
             project <code className={CODE}>{projectSheet.path}</code>
           </>
         ) : null}
-        .{editable ? ' Click a value to edit it.' : null}
+        .
+        {editable.project || editable.board
+          ? ' Click a value to edit it.'
+          : null}
+        {canWrite && boardOutside
+          ? ' Board values stay read-only here, since that sheet sits outside the board folder.'
+          : null}
       </p>
       {table.sheets
         .filter((sheet) => sheet.error !== null)
@@ -130,15 +159,19 @@ export function ThemeTab({
             </h3>
             {group === 'color' ? <SwatchHeader /> : null}
             <ul>
-              {rows.map((row) => (
-                <Row
-                  key={row.name}
-                  row={row}
-                  fromProject={row.sheet === projectSheet?.path}
-                  editable={editable}
-                  onWrite={onWrite}
-                />
-              ))}
+              {rows.map((row) => {
+                const sheet: TokenSheet =
+                  row.sheet === projectSheet?.path ? 'project' : 'board'
+                return (
+                  <Row
+                    key={row.name}
+                    row={row}
+                    fromProject={sheet === 'project'}
+                    editable={editable[sheet]}
+                    onWrite={onWrite[sheet]}
+                  />
+                )
+              })}
             </ul>
           </section>
         )

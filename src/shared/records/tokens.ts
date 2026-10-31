@@ -37,15 +37,17 @@ export const tokenTableSchema = z.object({
 
 export type TokenTable = z.infer<typeof tokenTableSchema>
 
-/** What a landed token edit answers: the token's row values after it and the project sheet as written. */
+/** What a landed token edit answers: the token's row values after it and the sheet as written. */
 export interface TokenEditResult {
   project: string
   name: string
   /** The token's light value after the edit, null when neither sheet sets one. */
   light: string | null
   dark: string | null
-  /** The project sheet's content hash as written, which the next edit sends. */
+  /** The written sheet's content hash, which the next edit of that sheet sends. */
   hash: string
+  /** The sheet the edit wrote. */
+  sheet: 'project' | 'board'
   /** True when the edit created the project's `tokens.css`. */
   created: boolean
 }

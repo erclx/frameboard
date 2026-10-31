@@ -1635,6 +1635,16 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(themeTab),
       },
       {
+        // A writing tab, where Board rows take edits into the board sheet.
+        section: 'theme-tab-writer',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, themeTab)),
+      },
+      {
         section: 'theme-tab-empty',
         theme,
         route: '/p/webapp/home',
