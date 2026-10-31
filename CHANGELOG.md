@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.24.0](https://github.com/erclx/frameboard/compare/v0.23.0...v0.24.0) (2026-10-31)
+
+
+### Features
+
+* **clipboard:** copy every selected frame to the clipboard in one paste ([#203](https://github.com/erclx/frameboard/issues/203)) ([195eace](https://github.com/erclx/frameboard/commit/195eacea3b15e255d935cd1fe612a801429f632d))
+* **notes:** keep a pinned note on its element through a hand edit ([#204](https://github.com/erclx/frameboard/issues/204)) ([fa1af5a](https://github.com/erclx/frameboard/commit/fa1af5a6a8b8d697df5f1539814d2fb735377bd0))
+* **palette:** open on what fits and give every action a row ([#207](https://github.com/erclx/frameboard/issues/207)) ([f2e7dd4](https://github.com/erclx/frameboard/commit/f2e7dd4ce63f2b8de119e778597e5be2a4e5f5b1))
+
+
+### Bug Fixes
+
+* **plugin:** inform on a version mismatch and name a checkout rebuild ([#205](https://github.com/erclx/frameboard/issues/205)) ([9365ee5](https://github.com/erclx/frameboard/commit/9365ee5dd9c48237d81c939cde5aa8663b2ce9f2))
+
 ## [0.23.0](https://github.com/erclx/frameboard/compare/v0.22.0...v0.23.0) (2026-10-31)
 
 
