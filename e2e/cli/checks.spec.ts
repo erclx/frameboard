@@ -222,6 +222,65 @@ function rowsFrame(gap: string, second = 'Two'): string {
   return `<style>body { font-family: Geist } .row { display: flex; gap: ${gap} }</style><div class="row" style="gap: 24px"><p>One</p></div><div class="row"><p>${second}</p></div>`
 }
 
+test.describe('check levels on a running board', () => {
+  let board: TempBoard
+  let server: BoardServer
+
+  test.beforeAll(async () => {
+    board = writeBoard({
+      'site/drive/card.html':
+        '<p style="font-family: system-ui">A card set in system-ui</p>',
+      'site/drive/gone.html':
+        '<p style="font-family: Geist">x</p><img src="gone.png" alt="">',
+      'site/drive/site.css':
+        '.card { font-family: Geist, sans-serif; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }\n.absent-elsewhere { gap: var(--set-inline-on-another-page); }\n',
+      'site/drive/lifted.html':
+        '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Lifted</title>\n<link rel="stylesheet" href="site.css">\n</head>\n<body>\n  <p class="card">A component lifted from a built site</p>\n</body>\n</html>\n',
+    })
+    server = await serveBoard(board.root)
+  })
+
+  test.afterAll(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  function check(ref: string) {
+    return cli(['check', ref, '--json'], { cwd: board.root })
+  }
+
+  test('passes a card set in system-ui with a generic-font warning', async () => {
+    const run = await check('site/drive/card')
+
+    expect(run.exitCode).toBe(0)
+    const result = checkResultSchema.parse(run.json().data)
+    expect(
+      result.findings.map((finding) => `${finding.severity} ${finding.rule}`),
+    ).toContain('warning generic-font')
+  })
+
+  test('still fails a frame whose image is missing, exit 8', async () => {
+    const run = await check('site/drive/gone')
+
+    expect(run.exitCode).toBe(8)
+    const result = checkResultSchema.parse(run.json().error?.details)
+    expect(
+      result.findings.map((finding) => `${finding.severity} ${finding.rule}`),
+    ).toContain('error missing-file')
+  })
+
+  test('reports nothing from a linked site sheet the frame barely uses', async () => {
+    const run = await check('site/drive/lifted')
+
+    expect(run.exitCode).toBe(0)
+    expect(run.json().data).toMatchObject({
+      checked: 1,
+      findings: [],
+      browser: { ran: true },
+    })
+  })
+})
+
 test.describe('a hand value an agent write outranks', () => {
   let board: TempBoard
   let server: BoardServer
