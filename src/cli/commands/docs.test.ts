@@ -111,6 +111,17 @@ describe('docs', () => {
     )
   })
 
+  it('gives every check rule a level', async () => {
+    const { checks } = await docs()
+
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({ id: 'missing-file', severity: 'error' }),
+    )
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({ id: 'generic-font', severity: 'warning' }),
+    )
+  })
+
   it('lists the browser rules with their tier', async () => {
     const { checks } = await docs()
 
@@ -166,7 +177,7 @@ describe('docs', () => {
       expect(stdout).toMatch(/^ {2}server-not-running +3$/m)
       expect(stdout).toContain('checkResult')
       expect(stdout).toContain('A frame is any *.html file directly in a page')
-      expect(stdout).toMatch(/^ {2}outside-link /m)
+      expect(stdout).toMatch(/^ {2}outside-link {2}error, exact/m)
       expect(stdout).toContain('frameboard open  ')
       expect(stdout).toContain(
         '--theme <theme>  the theme to capture (one of light, dark, both, default "both")',

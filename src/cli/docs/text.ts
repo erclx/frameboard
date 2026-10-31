@@ -32,7 +32,7 @@ export function renderDocs(docs: DocsPayload): string {
       'Check rules',
       docs.checks.rules.map(
         (rule) =>
-          `${INDENT}${rule.id}  ${rule.tier}${rule.configKey ? `, on with checks.${rule.configKey}` : ''}. ${rule.description}`,
+          `${INDENT}${rule.id}  ${rule.severity}, ${rule.tier}${rule.configKey ? `, on with checks.${rule.configKey}` : ''}. ${rule.description}`,
       ),
     ),
   ].join('\n\n')
