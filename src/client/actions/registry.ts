@@ -22,13 +22,16 @@ export type Action = ActionBase &
  * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
  * enabled actions carrying it. `hint` prints on the row's right, such as the
  * project a Rename acts on. `keywords` are further words the palette finds it
- * by, such as `dark` for Toggle theme.
+ * by, such as `dark` for Toggle theme. `searchOnly` keeps the row out of the
+ * palette until a query is typed, as one of many frame sizes would bury the
+ * rows an empty palette opens on.
  */
 export interface Command {
   label: string
   icon?: LucideIcon
   hint?: () => string
   keywords?: readonly string[]
+  searchOnly?: boolean
 }
 
 interface ActionBase {
