@@ -16,6 +16,7 @@ import { type Access } from './access/guard'
 import { cookieName, loadBoardKey } from './access/key'
 import { createTickets } from './access/tickets'
 import { createApp, isBoardHost } from './app'
+import { createAssetUsage } from './board/asset-usage'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser, type Launcher } from './capture/browser'
 import { measureContent } from './capture/fit'
@@ -367,6 +368,7 @@ async function listen({
       fonts: 'wait',
     })
   const hug = createHug({ root, measure })
+  const assetUsage = createAssetUsage(root)
   const app = createApp({
     clientDir,
     facesDir,
@@ -387,6 +389,7 @@ async function listen({
     // sends the edit it queued behind the claim, so the lookup waits its turn.
     settledVersion: (ref, hash) =>
       inTurn(async () => tracker.version(ref, hash)),
+    assetUsage,
     checks: {
       refresh: (refs) =>
         inTurn(async () => {
@@ -473,6 +476,7 @@ async function listen({
   // A claims file left by an earlier server arms the expiry from what it holds.
   void claims.push()
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
+  watcher.onBatch(assetUsage.drop)
   watcher.onBatch((paths) => {
     // A claim or a renewal sends the claims alone, never a rescan or a check.
     const rest = paths.filter((path) => path !== claims.path)
