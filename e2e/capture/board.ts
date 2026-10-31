@@ -1115,7 +1115,8 @@ async function longThread(page: Page): Promise<void> {
 /**
  * Hands the board three frame notes on hero through the socket's notes
  * message, so they stack into one count pin on its corner with no note
- * written into the fixture.
+ * written into the fixture. The fixture's Note 2 on hero's heading draws a few
+ * pixels below that corner, so it joins them and the pin reads 4.
  */
 async function stackedNotes(page: Page): Promise<void> {
   const notes: BoardNote[] = [
@@ -2004,7 +2005,7 @@ export const BOARD_CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        setup: themed(both(stackedNotes, pressOnLoad('^3 notes on hero$'))),
+        setup: themed(both(stackedNotes, pressOnLoad('^4 notes on hero$'))),
       },
       {
         section: 'note-composer',
