@@ -16,12 +16,22 @@ plugin=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$manifest" 2>/dev/null | 
 [[ -n "$plugin" ]] || exit 0
 
 if ! dist=$(frameboard_dist) || ! runtime=$(frameboard_runtime); then
-  printf "frameboard plugin %s is installed but the frameboard command is not found. Tell the developer to run 'npm install -g frameboard'.\n" "$plugin"
+  printf "frameboard plugin %s is installed but the frameboard command is not found. Install it with 'npm install -g frameboard'.\n" "$plugin"
   exit 0
 fi
 
 cli=$("$runtime" "$dist/cli.js" --version 2>/dev/null) || exit 0
 [[ -n "$cli" && "$cli" != "$plugin" ]] || exit 0
 
-printf "frameboard plugin %s does not match the installed frameboard %s. Stop and tell the developer, who can update the CLI with 'npm install -g frameboard'.\n" "$plugin" "$cli"
+# The fix depends on which side is older and where the CLI resolved from, so
+# the note names the install it found and the side to update.
+if [[ "$(printf '%s\n%s\n' "$cli" "$plugin" | sort -V | head -n 1)" == "$plugin" ]]; then
+  fix="Tell the developer to update the plugin, since the CLI is newer."
+elif [[ -n "${CLAUDE_PROJECT_DIR:-}" && "$dist" == "$CLAUDE_PROJECT_DIR/node_modules/frameboard/dist" ]]; then
+  fix="Tell the developer to update the frameboard dependency of this project, which a global install would not change."
+else
+  fix="Tell the developer to update the CLI with 'npm install -g frameboard'."
+fi
+
+printf "frameboard plugin %s does not match the frameboard %s at %s. Stop. %s\n" "$plugin" "$cli" "$dist" "$fix"
 exit 0
