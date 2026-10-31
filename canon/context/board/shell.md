@@ -66,7 +66,12 @@ Owns the left panel, being `project-header.tsx` with the way home, the project n
 
 - Design holds a searchable pages list and a layers tree under a per-project divider fit to 4 to 8 rows, grown on a page add, and reset on a double-click. Theme holds the project's tokens read-only.
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
-- Assets, in `src/client/board/assets/`, lists the project's `assets/` files as tiles with a thumbnail, name, and `<type> · <size>` line, and a tile click copies `../assets/<name>`, each segment encoded
+
+The Assets tab, in `src/client/board/assets/`, lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips.
+
+- Root files come first, each folder's group collapses from its heading, and a chip with no files hides
+- A tile's `<type> · <frames>` line reads `Unused` for a file no frame links, and its size stays in its accessible name
+- A tile click copies `../assets/<path>`, each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
