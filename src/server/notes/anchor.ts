@@ -34,9 +34,22 @@ export async function anchorFor(
 }
 
 /**
- * The element each anchored note still points at, by note id: its index while
- * the frame file hashes as it did when pinned, else null, being the frame
- * itself. A frame note has no entry.
+ * The element an anchor points at while the frame file hashes as `hash`: its
+ * pinned index under the pinned hash, the index a board write carried it to
+ * under a hash it has followed, else null, being the frame itself.
+ */
+export function indexAt(
+  anchor: NoteAnchor,
+  hash: string | null,
+): number | null {
+  if (hash === null) return null
+  if (hash === anchor.hash) return anchor.index
+  return anchor.known?.[hash] ?? null
+}
+
+/**
+ * The element each anchored note still points at, by note id, as `indexAt`
+ * reads it under the frame file's current hash. A frame note has no entry.
  */
 export async function resolveAnchors(
   pageDir: string,
@@ -59,8 +72,7 @@ export async function resolveAnchors(
   const resolved: Record<string, number | null> = {}
   for (const note of notes) {
     if (!note.anchor) continue
-    resolved[note.id] =
-      hashes.get(note.frame) === note.anchor.hash ? note.anchor.index : null
+    resolved[note.id] = indexAt(note.anchor, hashes.get(note.frame) ?? null)
   }
   return resolved
 }
