@@ -114,6 +114,33 @@ describe('ThemeTab', () => {
         contrastOnPage(await screen.findByText('L')),
       ).toBeGreaterThanOrEqual(4.5)
     })
+
+    it('reads the Project tag at 4.5:1 or better on the sidebar', async () => {
+      render(
+        <div className="bg-sidebar">
+          <ThemeTab
+            project="studio"
+            load={async () =>
+              table([row('--primary', { sheet: 'studio/tokens.css' })], {
+                sheets: [
+                  { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+                  {
+                    path: 'studio/tokens.css',
+                    kind: 'project',
+                    error: null,
+                    hash: 'p',
+                  },
+                ],
+              })
+            }
+          />
+        </div>,
+      )
+
+      expect(
+        contrastOnPage(await screen.findByText('Project')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 
   it('marks a side a color does not set', async () => {
@@ -426,6 +453,34 @@ describe('ThemeTab', () => {
 
       expect(sent.map((call) => call.change)).toEqual([
         { name: '--radius-sm', side: 'both', value: '6px' },
+      ])
+    })
+
+    it('keeps a number set at zero or above from going below zero', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '1px',
+                dark: '1px',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('textbox', { name: 'radius-sm value' }),
+      )
+      await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        { name: '--radius-sm', side: 'both', value: '0px' },
       ])
     })
 

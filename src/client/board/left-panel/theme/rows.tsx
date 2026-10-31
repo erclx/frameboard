@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { RotateCcw } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { type RefObject, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
 import type { TokenRow } from '@/shared/records/tokens'
@@ -34,8 +34,9 @@ const ROW = 'mx-1.5 grid h-7 items-center gap-1.5 rounded-md px-1.5'
 
 /** A color token: its name, tag, and reset, then a light and a dark swatch, each opening the picker. */
 export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
+  const item = useRef<HTMLLIElement>(null)
   return (
-    <li className={cn(ROW, 'grid-cols-[1fr_18px_18px]')}>
+    <li ref={item} className={cn(ROW, 'grid-cols-[1fr_18px_18px]')}>
       <RowHead
         row={row}
         fromProject={fromProject}
@@ -49,6 +50,7 @@ export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
             name={row.name}
             side={side}
             value={row[side]}
+            row={item}
             onWrite={onWrite}
           />
         ) : (
@@ -111,7 +113,7 @@ function RowHead({ row, fromProject, editable, onWrite }: RowProps) {
         className={cn(
           'shrink-0 rounded-[3px] border px-1 text-[9px] leading-[14px]',
           fromProject
-            ? 'border-primary text-primary'
+            ? 'border-primary text-foreground'
             : 'border-border text-muted-foreground',
         )}
       >
@@ -123,7 +125,7 @@ function RowHead({ row, fromProject, editable, onWrite }: RowProps) {
           aria-label={`Reset ${row.name.replace(/^--/, '')} to the board value`}
           title="Reset to the board value"
           onClick={() => void onWrite({ name: row.name, reset: true })}
-          className="grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="-mx-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <RotateCcw aria-hidden className="size-3" />
         </button>
@@ -183,11 +185,14 @@ function SwatchPicker({
   name,
   side,
   value,
+  row,
   onWrite,
 }: {
   name: string
   side: 'light' | 'dark'
   value: string | null
+  /** The row the picker opens beside, so it clears both swatches. */
+  row: RefObject<HTMLLIElement | null>
   onWrite: WriteRow
 }) {
   const anchor = useRef<HTMLButtonElement>(null)
@@ -212,18 +217,24 @@ function SwatchPicker({
 
   return (
     <>
+      {/* A 24px target around the 16px swatch, spilling into the column gap. */}
       <button
         ref={anchor}
         type="button"
         aria-label={`${title}: ${value ?? 'not set'}`}
         title={value ?? `Not set in ${side}`}
         onClick={open}
-        className={cn(
-          'size-4 rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-          shown === null ? 'border border-dashed border-faint' : SWATCH_RING,
-        )}
-        style={shown === null ? undefined : { background: shown }}
-      />
+        className="-m-[3px] grid size-6 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'size-4 rounded-[4px]',
+            shown === null ? 'border border-dashed border-faint' : SWATCH_RING,
+          )}
+          style={shown === null ? undefined : { background: shown }}
+        />
+      </button>
       <Popover
         open={picking !== null}
         onOpenChange={(next, details) => {
@@ -231,7 +242,7 @@ function SwatchPicker({
         }}
       >
         <PopoverContent
-          anchor={anchor}
+          anchor={row}
           side="right"
           align="start"
           sideOffset={16}
@@ -280,6 +291,8 @@ function NumberValue({
         className="w-12"
         inputClassName="h-5 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
         value={value}
+        // A token set at zero or above stays there, as a radius or a space does.
+        min={value >= 0 ? 0 : undefined}
         format={{ maximumFractionDigits: 3 }}
         disabled={false}
         scrubValue
