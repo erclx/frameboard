@@ -43,12 +43,6 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const notes = useLive((state) => state.notes[page])
   const playing = useMode((state) => state.mode === 'play')
   const open = useNotesUi((state) => state.open)
-  // Pins keep screen size, so whether two overlap turns on the zoom.
-  const zoom = useSyncExternalStore(
-    canvasView.onZoom,
-    canvasView.zoom,
-    canvasView.zoom,
-  )
   // The spot whose count pin has its list open.
   const [listed, setListed] = useState<string | null>(null)
   // Markers read their elements' boxes from the live frames as they render,
@@ -59,20 +53,27 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   // released box the board has not carried back yet, so a pin a drag shifted
   // stays where the drag left it.
   const shown = useDrawnFrames(frames)
-  if (playing) return null
 
   const framesByName = new Map(shown.map((frame) => [frame.name, frame]))
   const place = (note: BoardNote): BoardPoint | null => {
     const frame = framesByName.get(note.frame)
     return frame ? cornerOf(frame, note.element, container) : null
   }
-  const spots = spotsOf(
-    (notes ?? []).filter(
-      (note) => note.thread === null && note.state !== 'done',
-    ),
-    place,
-    zoom,
+  const placed = playing
+    ? []
+    : placedRoots(
+        (notes ?? []).filter(
+          (note) => note.thread === null && note.state !== 'done',
+        ),
+        place,
+      )
+  const spots = useSpots(placed)
+  const list = spots.find(
+    (spot) => spot.key === listed && spot.notes.length > 1,
   )
+  const listFocus = useRefocusOnSplit(list, spots)
+  if (playing) return null
+
   const nextNumber =
     Math.max(0, ...(notes ?? []).map((note) => note.number ?? 0)) + 1
   const openThread = (id: string) => {
@@ -92,9 +93,6 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
     ? (spots.find((spot) => spot.notes.some((n) => n.id === threadRoot.id))
         ?.at ?? place(threadRoot))
     : null
-  const list = spots.find(
-    (spot) => spot.key === listed && spot.notes.length > 1,
-  )
   // A zoom can split the listed spot, so its list closes rather than
   // reopening on whichever spot later takes its key.
   if (listed !== null && !list) setListed(null)
@@ -119,6 +117,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
               at={spot.at}
               frame={frame}
               element={first.element}
+              pin={spot.key}
               active={open?.kind === 'thread' && open.id === first.id}
               label={`Note ${first.number} on ${first.frame}`}
               onOpen={() => openThread(first.id)}
@@ -135,6 +134,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
             at={spot.at}
             frame={frame}
             element={first.element}
+            pin={spot.key}
             spot={spot.key}
             active={threadOpen || listed === spot.key}
             expanded={listed === spot.key}
@@ -161,15 +161,21 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
       ) : null}
       {list ? (
         <Popover at={list.at} onDismiss={() => setListed(null)}>
-          <PinList
-            title={`${list.notes.length} notes on ${list.notes[0]?.frame}`}
-            notes={list.notes}
-            onPick={(id) => {
-              closeList(list.key)
-              openThread(id)
-            }}
-            onClose={() => closeList(list.key)}
-          />
+          <div
+            className="contents"
+            onFocus={listFocus.onFocus}
+            onBlur={listFocus.onBlur}
+          >
+            <PinList
+              title={`${list.notes.length} notes on ${list.notes[0]?.frame}`}
+              notes={list.notes}
+              onPick={(id) => {
+                closeList(list.key)
+                openThread(id)
+              }}
+              onClose={() => closeList(list.key)}
+            />
+          </div>
         </Popover>
       ) : null}
       {thread && threadAt ? (
@@ -181,6 +187,96 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   )
 }
 
+/** An open root note with the point its pin draws at. */
+interface Placed {
+  note: BoardNote
+  at: BoardPoint
+}
+
+/** The root notes that draw, each with its point. A note with no number or no point draws nowhere. */
+function placedRoots(
+  roots: readonly BoardNote[],
+  place: (note: BoardNote) => BoardPoint | null,
+): Placed[] {
+  const placed: Placed[] = []
+  for (const note of roots) {
+    const at = place(note)
+    if (at && note.number !== null) placed.push({ note, at })
+  }
+  return placed
+}
+
+/**
+ * The pins the placed notes draw at the canvas zoom. The canvas zoom changes on
+ * every frame of a gesture, so the layer subscribes to which notes share a pin
+ * rather than to the zoom, and a gesture renders it, and reads every pinned
+ * element's box, only on a frame that regroups the pins.
+ */
+function useSpots(placed: readonly Placed[]): Spot[] {
+  const groups = () => groupsOf(placed, canvasView.zoom())
+  const key = useSyncExternalStore(canvasView.onZoom, groups, groups)
+  const byId = new Map(placed.map((entry) => [entry.note.id, entry]))
+  return key === ''
+    ? []
+    : key.split('|').map((group) => {
+        const [founder = '', members = ''] = group.split(':')
+        return {
+          key: founder,
+          at: byId.get(founder)?.at ?? { x: 0, y: 0 },
+          notes: members.split(',').flatMap((id) => byId.get(id)?.note ?? []),
+        }
+      })
+}
+
+/**
+ * Which notes share a pin at `zoom`, as `<key>:<id>,<id>` per spot joined by
+ * `|`, a string two readings compare by value.
+ */
+function groupsOf(placed: readonly Placed[], zoom: number): string {
+  return spotsOf(placed, zoom)
+    .map((spot) => `${spot.key}:${spot.notes.map((note) => note.id).join(',')}`)
+    .join('|')
+}
+
+/**
+ * Moves focus to the pin now drawing the first note of a count list that
+ * closed with focus inside it, as a zoom splitting its spot closes it, so
+ * focus never drops to the page. Returns the focus handlers the list's
+ * wrapper carries.
+ */
+function useRefocusOnSplit(
+  list: Spot | undefined,
+  spots: readonly Spot[],
+): {
+  onFocus: () => void
+  onBlur: (event: React.FocusEvent<HTMLElement>) => void
+} {
+  const focused = useRef(false)
+  const shown = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    const was = shown.current
+    shown.current = list?.notes[0]?.id ?? null
+    if (list || was === null || !focused.current) return
+    focused.current = false
+    const pin = spots.find((spot) => spot.notes.some((n) => n.id === was))
+    if (!pin) return
+    document
+      .querySelector<HTMLElement>(`[data-note-pin="${CSS.escape(pin.key)}"]`)
+      ?.focus()
+  })
+  return {
+    onFocus: () => {
+      focused.current = true
+    },
+    onBlur: (event) => {
+      const next = event.relatedTarget
+      if (!(next instanceof Node && event.currentTarget.contains(next))) {
+        focused.current = false
+      }
+    },
+  }
+}
+
 /** Open root notes sharing one pin, with the point the pin draws at. */
 interface Spot {
   /** The id of the note whose point the spot took. */
@@ -190,24 +286,17 @@ interface Spot {
 }
 
 /**
- * Groups the root notes by where their pins draw at `zoom`, a note joining the
- * first spot whose pin its own would overlap, each spot's notes in number
+ * Groups the placed notes by where their pins draw at `zoom`, a note joining
+ * the first spot whose pin its own would overlap, each spot's notes in number
  * order. A note joins a spot by the spot's point rather than its last member's,
- * so a row of close notes never chains into one pin wider than a pin. A note
- * with no number or no point draws nowhere.
+ * so a row of close notes never chains into one pin wider than a pin.
  */
-function spotsOf(
-  roots: readonly BoardNote[],
-  place: (note: BoardNote) => BoardPoint | null,
-  zoom: number,
-): Spot[] {
+function spotsOf(placed: readonly Placed[], zoom: number): Spot[] {
   // Pins share their offset from their points, so two overlap when their
   // points sit closer than a pin's side on both axes.
   const reach = PIN_SIZE / zoom
   const spots: Spot[] = []
-  for (const note of roots) {
-    const at = place(note)
-    if (!at || note.number === null) continue
+  for (const { note, at } of placed) {
     const spot = spots.find(
       (s) => Math.abs(s.at.x - at.x) < reach && Math.abs(s.at.y - at.y) < reach,
     )
@@ -228,6 +317,8 @@ interface MarkerProps {
   frame?: string
   /** The note's element index, whose corner a frame resize moves the pin to. */
   element?: number | null
+  /** The key of the spot the pin draws, which focus finds it by. */
+  pin?: string
   /** A count pin's spot, which its list returns focus to on closing. */
   spot?: string
   active: boolean
@@ -261,6 +352,7 @@ function Marker({
   at,
   frame,
   element,
+  pin,
   spot,
   active,
   expanded = active,
@@ -284,6 +376,7 @@ function Marker({
       data-note-marker
       data-note-frame={frame}
       data-note-element={element ?? undefined}
+      data-note-pin={pin}
       data-note-spot={spot}
       aria-label={label}
       aria-haspopup={spot === undefined ? undefined : 'menu'}

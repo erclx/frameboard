@@ -2,6 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Profiler } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
@@ -966,6 +967,40 @@ describe('NotesLayer', () => {
       act(() => reportZoom(1))
 
       expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('moves focus from a list a zoom closes to the pin of its first note', async () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      renderNear()
+      await userEvent.click(
+        screen.getByRole('button', { name: '2 notes on hero' }),
+      )
+
+      act(() => reportZoom(10))
+
+      expect(
+        screen.getByRole('button', { name: 'Note 1 on hero' }),
+      ).toHaveFocus()
+    })
+
+    it('renders nothing for a zoom that regroups no pin', () => {
+      live({ notes: { 'studio/home': [ON_HERO, ON_NEAR] } })
+      let commits = 0
+      render(
+        <Profiler id="notes" onRender={() => commits++}>
+          <NotesLayer
+            page="studio/home"
+            frames={[HERO, NEAR]}
+            container={null}
+          />
+        </Profiler>,
+      )
+      const before = commits
+
+      act(() => reportZoom(2))
+      act(() => reportZoom(3))
+
+      expect(commits - before).toBe(0)
     })
   })
 
