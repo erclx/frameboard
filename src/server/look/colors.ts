@@ -9,6 +9,8 @@ import type {
   StyleValue,
 } from '@/shared/records/elements'
 
+import { FLOW_PROPERTIES, flowOf } from './flow'
+
 /** What the inspector reads, with the shorthands that set it. */
 const PROPERTIES: ReadonlySet<string> = new Set([
   'color',
@@ -121,6 +123,10 @@ export function frameStyles(
         borderWidth: read(target, 'border-width'),
         boxShadow: read(target, 'box-shadow'),
         fontFamily: family(target),
+        flow: flowOf(
+          buildCascade(source, tokens, { properties: FLOW_PROPERTIES }),
+          target,
+        ),
       }
     : null
 
