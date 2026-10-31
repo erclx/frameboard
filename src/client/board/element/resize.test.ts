@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { isShape, isShownShape, shapeSize } from './resize'
+import { isShape, isShownShape, placedOffsets, shapeSize } from './resize'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
 
@@ -111,5 +111,53 @@ describe('isShownShape', () => {
     const shown = await mountShape('width: 40px; height: 40px; rotate: 30deg')
 
     expect(isShownShape(shown, KEY)).toBe(false)
+  })
+})
+
+describe('placedOffsets', () => {
+  const HASH = 'e'.repeat(64)
+  const KEY = { frame: 'studio/home/hero', index: 3, hash: HASH }
+  let container: HTMLDivElement | undefined
+
+  // Indices past the skipped injected style: html 0, head 1, body 2, then the body's children.
+  async function mountElement(style: string): Promise<HTMLDivElement> {
+    container = document.createElement('div')
+    const frame = document.createElement('div')
+    frame.dataset.frame = KEY.frame
+    const iframe = document.createElement('iframe')
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    )
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><div style="${style}"></div></body></html>`
+    frame.append(iframe)
+    container.append(frame)
+    document.body.append(container)
+    await loaded
+    return container
+  }
+
+  afterEach(() => {
+    container?.remove()
+    container = undefined
+  })
+
+  it('reads the offsets a placed element holds', async () => {
+    const shown = await mountElement(
+      'position: absolute; left: 12px; top: 34px',
+    )
+
+    expect(placedOffsets(shown, KEY)).toEqual({ left: 12, top: 34 })
+  })
+
+  it('reads an element in the flow as unplaced', async () => {
+    const shown = await mountElement('position: relative; left: 12px')
+
+    expect(placedOffsets(shown, KEY)).toBeNull()
+  })
+
+  it('reads nothing from a frame showing other bytes', async () => {
+    const shown = await mountElement('position: absolute; left: 0; top: 0')
+
+    expect(placedOffsets(shown, { ...KEY, hash: 'f'.repeat(64) })).toBeNull()
   })
 })
