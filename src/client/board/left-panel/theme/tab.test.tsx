@@ -1,6 +1,7 @@
 import '../../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
@@ -9,6 +10,7 @@ import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 import { contrastOnPage } from '@/test/contrast'
 
 import { ThemeTab } from './tab'
+import { type TokenChange, writeToken } from './write'
 
 function row(name: string, extra: Partial<TokenRow> = {}): TokenRow {
   return {
@@ -42,15 +44,15 @@ afterEach(() => {
 })
 
 describe('ThemeTab', () => {
-  it('names the sheet it read and says it is read-only', async () => {
+  it('names the board sheet it read', async () => {
     render(<ThemeTab project="studio" load={async () => table([])} />)
 
-    expect(
-      await screen.findByText(/read-only\. Edit the file or ask the agent\./),
-    ).toHaveTextContent('From tokens.css, read-only.')
+    expect(await screen.findByText(/^From board/)).toHaveTextContent(
+      /^From board tokens\.css\.$/,
+    )
   })
 
-  it('names the board and the project sheet in cascade order', async () => {
+  it('names the board sheet and the project sheet overriding it', async () => {
     const both = table([], {
       sheets: [
         { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
@@ -60,8 +62,8 @@ describe('ThemeTab', () => {
 
     render(<ThemeTab project="studio" load={async () => both} />)
 
-    expect(await screen.findByText(/read-only/)).toHaveTextContent(
-      'From tokens.css and studio/tokens.css, read-only.',
+    expect(await screen.findByText(/^From board/)).toHaveTextContent(
+      'From board tokens.css, overridden by project studio/tokens.css.',
     )
   })
 
@@ -227,5 +229,368 @@ describe('ThemeTab', () => {
     act(() => liveStore.setState({ board: board() }))
 
     expect(await screen.findByText('read-2')).toBeInTheDocument()
+  })
+
+  describe('editing', () => {
+    const PROJECT_HASH = 'c'.repeat(64)
+    const WRITTEN_HASH = 'd'.repeat(64)
+
+    function both(tokens: TokenRow[]): TokenTable {
+      return table(tokens, {
+        sheets: [
+          { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: null,
+            hash: PROJECT_HASH,
+          },
+        ],
+      })
+    }
+
+    interface Sent {
+      hash: string | null
+      change: TokenChange
+    }
+
+    function recordingWrite(sent: Sent[]): typeof writeToken {
+      return async (project, hash, change) => {
+        sent.push({ hash, change })
+        return {
+          project,
+          name: change.name,
+          light: null,
+          dark: null,
+          hash: WRITTEN_HASH,
+          created: false,
+        }
+      }
+    }
+
+    beforeEach(() => {
+      act(() => liveStore.setState({ canWrite: true }))
+    })
+
+    afterEach(() => {
+      act(() => liveStore.setState({ canWrite: false }))
+    })
+
+    it('ends the note on how to edit', async () => {
+      render(<ThemeTab project="studio" load={async () => both([])} />)
+
+      expect(await screen.findByText(/^From board/)).toHaveTextContent(
+        /overridden by project studio\/tokens\.css\. Click a value to edit it\.$/,
+      )
+    })
+
+    it('tags a project value Project and any other Board', async () => {
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--secondary'),
+            ])
+          }
+        />,
+      )
+
+      expect(
+        (await screen.findByText('primary')).closest('li'),
+      ).toHaveTextContent('Project')
+      expect(screen.getByText('secondary').closest('li')).toHaveTextContent(
+        'Board',
+      )
+    })
+
+    it('offers a reset only on a row the project overrides', async () => {
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--own', { sheet: 'studio/tokens.css' }),
+            ])
+          }
+        />,
+      )
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Reset own to the board value' }),
+      ).toBeNull()
+    })
+
+    it('reaches the reset by Tab and sends it from the sheet the tab read', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+      await screen.findByText('primary')
+
+      await userEvent.tab()
+      await userEvent.keyboard('{Enter}')
+
+      expect(sent).toEqual([
+        { hash: PROJECT_HASH, change: { name: '--primary', reset: true } },
+      ])
+    })
+
+    it('opens the picker on Custom for the swatch and writes once as it closes', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([row('--primary', { light: '#4f46e5', dark: '#818cf8' })])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Dark: #818cf8' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      await userEvent.clear(hex)
+      await userEvent.type(hex, '112233{Enter}')
+
+      expect(screen.queryByRole('tab', { name: 'Tokens' })).toBeNull()
+      expect(sent).toEqual([
+        {
+          hash: PROJECT_HASH,
+          change: { name: '--primary', side: 'dark', value: '#112233' },
+        },
+      ])
+    })
+
+    it('writes nothing when the picker closes on Escape', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () => both([row('--primary', { light: '#4f46e5' })])}
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Light: #4f46e5' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      await userEvent.clear(hex)
+      await userEvent.type(hex, '112233')
+      await userEvent.keyboard('{Escape}')
+
+      expect(sent).toEqual([])
+    })
+
+    it('writes a typed number with its unit on Enter', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '4px',
+                dark: '4px',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      const field = await screen.findByRole('textbox', {
+        name: 'radius-sm value',
+      })
+      await userEvent.clear(field)
+      await userEvent.type(field, '6{Enter}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        { name: '--radius-sm', side: 'both', value: '6px' },
+      ])
+    })
+
+    it('edits a font as text, Enter writing the whole value', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--font-text', {
+                group: 'font',
+                light: 'Geist, sans-serif',
+                dark: 'Geist, sans-serif',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      )
+      const field = screen.getByRole('textbox', { name: 'font-text value' })
+      await userEvent.clear(field)
+      await userEvent.type(field, 'Inter, sans-serif{Enter}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        { name: '--font-text', side: 'both', value: 'Inter, sans-serif' },
+      ])
+    })
+
+    it('puts the stored text back on Escape and writes nothing', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--font-text', {
+                group: 'font',
+                light: 'Geist, sans-serif',
+                dark: 'Geist, sans-serif',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      )
+      await userEvent.type(
+        screen.getByRole('textbox', { name: 'font-text value' }),
+        'x{Escape}',
+      )
+
+      expect(sent).toEqual([])
+      expect(
+        screen.getByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      ).toHaveFocus()
+    })
+
+    it('sends the next edit from the hash the last one wrote', async () => {
+      const sent: Sent[] = []
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--accent', { sheet: 'studio/tokens.css', overrides: true }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        }),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Reset accent to the board value' }),
+      )
+
+      expect(sent.map((call) => call.hash)).toEqual([
+        PROJECT_HASH,
+        WRITTEN_HASH,
+      ])
+    })
+
+    it('raises the error toast on a refused write and keeps the stored value', async () => {
+      const refusals: { title: string; description: string }[] = []
+      const refuse: typeof fetch = async () =>
+        Response.json(
+          { ok: false, error: { code: 'stale-tokens', message: 'changed' } },
+          { status: 409 },
+        )
+      render(
+        <ThemeTab
+          project="studio"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '4px',
+                dark: '4px',
+              }),
+            ])
+          }
+          write={(project, hash, change) =>
+            writeToken(project, hash, change, {
+              send: refuse,
+              notify: (refusal) => refusals.push(refusal),
+            })
+          }
+        />,
+      )
+
+      const field = await screen.findByRole('textbox', {
+        name: 'radius-sm value',
+      })
+      await userEvent.clear(field)
+      await userEvent.type(field, '6{Enter}')
+
+      expect(refusals).toEqual([
+        {
+          title: "Couldn't change radius-sm",
+          description:
+            'The token sheet changed since the tab read it. Try again on the value it shows now.',
+        },
+      ])
+      expect(field).toHaveValue('4')
+    })
+
+    it('stays read-only while the project sheet does not parse', async () => {
+      const broken: TokenTable = {
+        sheets: [
+          { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: 'Unclosed block at line 1',
+            hash: PROJECT_HASH,
+          },
+        ],
+        tokens: [row('--primary', { light: '#4f46e5' })],
+      }
+
+      render(<ThemeTab project="studio" load={async () => broken} />)
+
+      expect(
+        await screen.findByRole('img', { name: 'Light: #4f46e5' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Click a value to edit it/)).toBeNull()
+    })
   })
 })
