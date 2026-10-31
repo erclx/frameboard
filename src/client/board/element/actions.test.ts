@@ -162,6 +162,27 @@ describe('elementActions', () => {
       expect(action('element.down').enabled?.()).toBe(false)
     })
 
+    it('stands aside while a row of a note card on the canvas holds focus, so Enter and Tab press it', () => {
+      const { action, at } = setup({ boardFocused: focusOnBoard })
+      at(6)
+
+      const canvas = document.createElement('div')
+      canvas.setAttribute('data-canvas', '')
+      const card = document.createElement('section')
+      card.setAttribute('data-note-card', '')
+      const row = document.createElement('button')
+      card.append(row)
+      canvas.append(card)
+      document.body.append(canvas)
+      cleanups.push(() => canvas.remove())
+      row.focus()
+
+      expect([
+        action('element.down').enabled?.(),
+        action('element.next').enabled?.(),
+      ]).toEqual([false, false])
+    })
+
     it('stands aside with several frames selected', () => {
       const { selection, action } = setup()
       select(selection, PAGE, [HERO, 'studio/home/about'])
