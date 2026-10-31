@@ -2193,6 +2193,23 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        // The Element menu with its four restack rows above Copy frame as PNG.
+        section: 'menu-element-restack',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            menuOn({ element: true }),
+            readyWhen('[data-slot="context-menu-content"]'),
+          ),
+        ),
+      },
+      {
         section: 'menu-empty',
         theme,
         route: '/p/webapp/home',
