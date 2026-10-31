@@ -60,7 +60,7 @@ const RESOURCE_ATTRIBUTES: Record<string, string[]> = {
   use: ['href', 'xlink:href'],
 }
 
-interface Load {
+export interface Load {
   url: string
   /** The folder a relative `url` resolves against. */
   base: string
@@ -73,6 +73,15 @@ interface Load {
 
 /** `outside-link`, `network`, and `missing-file` over every load a frame makes. */
 export function checkLinks(source: FrameSource): Finding[] {
+  return frameLoads(source).flatMap((load) => judge(source, load))
+}
+
+/**
+ * Every resource a frame loads, from its elements' attributes and inline
+ * styles and from each sheet it renders with, unjudged. The link check and the
+ * asset usage count read this one list, so they never disagree on a load.
+ */
+export function frameLoads(source: FrameSource): Load[] {
   const framePath = boardPath(source.root, source.path)
   const loads: Load[] = []
 
@@ -107,7 +116,7 @@ export function checkLinks(source: FrameSource): Finding[] {
 
   for (const sheet of source.sheets) loads.push(...sheetLoads(source, sheet))
 
-  return loads.flatMap((load) => judge(source, load))
+  return loads
 }
 
 function sheetLoads(source: FrameSource, sheet: Sheet): Load[] {
