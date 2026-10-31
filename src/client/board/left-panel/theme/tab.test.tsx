@@ -355,6 +355,46 @@ describe('ThemeTab', () => {
       ).toBeNull()
     })
 
+    it('gives the reset and the swatches 24px targets that do not overlap', async () => {
+      render(
+        <div className="w-60 bg-sidebar">
+          <ThemeTab
+            project="studio"
+            load={async () =>
+              both([
+                row('--primary', {
+                  sheet: 'studio/tokens.css',
+                  overrides: true,
+                }),
+              ])
+            }
+          />
+        </div>,
+      )
+
+      const reset = (
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        })
+      ).getBoundingClientRect()
+      const light = screen
+        .getByRole('button', { name: /^Light:/ })
+        .getBoundingClientRect()
+      const dark = screen
+        .getByRole('button', { name: /^Dark:/ })
+        .getBoundingClientRect()
+
+      expect(
+        [reset, light, dark].map((box) => [box.width, box.height]),
+      ).toEqual([
+        [24, 24],
+        [24, 24],
+        [24, 24],
+      ])
+      expect(reset.right).toBeLessThanOrEqual(light.left)
+      expect(light.right).toBeLessThanOrEqual(dark.left)
+    })
+
     it('reaches the reset by Tab and sends it from the sheet the tab read', async () => {
       const sent: Sent[] = []
       render(

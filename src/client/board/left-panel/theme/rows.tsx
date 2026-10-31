@@ -125,7 +125,8 @@ function RowHead({ row, fromProject, editable, onWrite }: RowProps) {
           aria-label={`Reset ${row.name.replace(/^--/, '')} to the board value`}
           title="Reset to the board value"
           onClick={() => void onWrite({ name: row.name, reset: true })}
-          className="-mx-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          // A left margin alone, since a negative right one reaches the light swatch's target.
+          className="-ml-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <RotateCcw aria-hidden className="size-3" />
         </button>
