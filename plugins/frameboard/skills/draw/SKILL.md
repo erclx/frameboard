@@ -10,6 +10,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 ## Read the facts first
 
 - Run `frameboard docs --json` once per session, before the first verb
+- Read the version note the plugin's session hook prints. Stop and say so on a mismatch, and when `frameboard` is not on PATH, install it with `npm install -g frameboard` rather than running a checkout's `dist/`.
 - Take every verb, flag, exit code, record shape, content rule, and check rule from that output rather than from memory, since it describes the installed version
 - Branch on the `ok` key of each envelope and on the exit code, never on the wording of a message
 
@@ -17,6 +18,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 - Run `frameboard serve --json` in the background. It creates a board in a folder that has none, and on a board already served it reports `reused: true` and binds nothing, so a second call is safe.
 - Run `frameboard list --json` to see the projects, pages, and frames before adding any.
+- Run `frameboard project add`, `rename`, or `delete` to manage projects, and `project tokens` to give one with no token sheet a starter. Take the arguments from `docs`.
 - Run `frameboard open --no-open --json` when the developer needs a second tab that can edit, and hand them its `writeUrl`. The link works once and expires at `expiresAt`, and a tab opened on the plain address only reads.
 
 ## Draw a frame
@@ -36,6 +38,18 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
 7. Run `frameboard show <page>/<frame>` so the developer's board turns to the frame you drew.
+
+## Keep frames in their sections
+
+The developer draws sections on the board, and `list --json` names each section's frames. A frame belongs to the section holding its center, so moving a frame out of the box takes it out of the section. Place a new frame inside a section's box to put it there, and never write a section yourself.
+
+## Lift an existing page
+
+Lift the live DOM after the page's scripts ran, never the source markup, and copy the attributes on `<html>` with it. Bake each `<canvas>` to an image and pin animated text to its reduced-motion state before stripping scripts. Cut fixed chrome on a long page into a viewport-sized frame. Link the site's built CSS as one sheet rather than inlining matched rules, since a rewritten shorthand drops its `var()` values.
+
+### What a finding means
+
+A finding at error means the frame renders wrong or cannot load, so fix it. A finding at warning is a style call the frame still renders through. A finding whose path names a linked sheet comes from that sheet, not from the frame's own markup.
 
 ## Make every frame work in both themes
 
@@ -80,3 +94,5 @@ A line beginning `frameboard note` is a request the developer sent you from the 
 A line carrying `(images: <path>, ...)` names images the developer pasted into the note, by absolute path. Open each one before acting, since it shows what the words describe.
 
 Read the whole thread with `frameboard notes --json` when the line was cut short, answer in the note with `frameboard notes reply <id> "<text>"` saying what you changed, and close it with `frameboard notes done <id>` once the request is met.
+
+Run `frameboard inbox` to read the notes queued to this session when none arrived as a line, such as before the monitor starts. Add `--follow` to keep printing each note as the board sends it.
