@@ -32,12 +32,21 @@ export interface BoardFindings {
   setRendered: (ref: string, findings: Finding[]) => Record<string, Finding[]>
   /** The browser findings held for each of `refs`, an unchecked one as empty. */
   rendered: (refs: string[]) => Record<string, Finding[]>
+  /**
+   * Holds the findings an agent's latest write to a frame raised against the
+   * bytes it replaced, in place of its previous write's, returning the
+   * frame's merged list as `setRendered` does.
+   */
+  setChanged: (ref: string, findings: Finding[]) => Record<string, Finding[]>
+  /** The change findings held for each of `refs`, a frame with none as empty. */
+  changed: (refs: string[]) => Record<string, Finding[]>
 }
 
 /**
  * The board's check findings, held between batches so a hello needs no
- * check. Each frame's list is its static findings followed by the browser
- * findings the server's warm checker last landed for it. `tokens` is the
+ * check. Each frame's list is its static findings, then those its last agent
+ * write raised against the bytes it replaced, then the browser findings the
+ * server's warm checker last landed for it. `tokens` is the
  * server's `--tokens` sheet, null for none.
  */
 export function createBoardFindings(
@@ -45,9 +54,11 @@ export function createBoardFindings(
   tokens: string | null = null,
 ): BoardFindings {
   const held = new Map<string, Finding[]>()
+  const change = new Map<string, Finding[]>()
   const browser = new Map<string, Finding[]>()
   const merged = (ref: string, own: Finding[]) => [
     ...own,
+    ...(change.get(ref) ?? []),
     ...(browser.get(ref) ?? []),
   ]
 
@@ -63,11 +74,19 @@ export function createBoardFindings(
     },
     rendered: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, browser.get(ref) ?? []])),
+    setChanged: (ref, findings) => {
+      change.set(ref, findings)
+      const own = held.get(ref)
+      return own ? { [ref]: merged(ref, own) } : {}
+    },
+    changed: (refs) =>
+      Object.fromEntries(refs.map((ref) => [ref, change.get(ref) ?? []])),
     update: (board, paths) => {
       const frames = framesOf(board)
-      for (const ref of [...held.keys(), ...browser.keys()]) {
+      for (const ref of [...held.keys(), ...change.keys(), ...browser.keys()]) {
         if (!frames.has(ref)) {
           held.delete(ref)
+          change.delete(ref)
           browser.delete(ref)
         }
       }

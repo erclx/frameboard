@@ -71,6 +71,7 @@ export function contentFormat() {
       `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own. A project adds other faces in its ${ASSETS_FOLDER}/ folder.`,
       "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
       `A change to a token sheet reloads every frame it reaches.`,
+      "A style attribute outranks every rule, and may hold a value the developer set by hand, so read it before changing a rule the element matches. While a server runs, check warns as outranked when an agent's write changed a rule in the frame's own <style> that an unchanged style attribute also sets.",
     ],
   }
 }
