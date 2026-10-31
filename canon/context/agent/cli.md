@@ -1,13 +1,13 @@
 ---
 title: CLI
-description: The commands agents run, the docs verb, the frameboard skill, and the plugin hook
+description: The commands agents run, the docs verb, the frameboard:draw skill, and the plugin hooks
 ---
 
 # CLI
 
 ## Overview
 
-Owns the agent interface, being every verb an agent or script runs, the `docs` verb that prints the facts about them, and the `frameboard` skill, check hook, and inbox monitor shipped as a Claude Code plugin. Anything the mouse does on the board, a verb does too.
+Owns the agent interface, being every verb an agent or script runs, the `docs` verb that prints the facts about them, and the `frameboard:draw` skill, check and version hooks, and inbox monitor shipped as a Claude Code plugin. Anything the mouse does on the board, a verb does too.
 
 ## Layout
 
@@ -61,7 +61,7 @@ Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a
 
 ### `plugins/frameboard/`
 
-Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hook and the monitor share.
+Owns the `frameboard:draw` skill in `skills/draw/`, the check hook, the version hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hooks and the monitor share. The version hook compares `plugin.json` with the installed `--version` at `SessionStart` and prints only on a mismatch.
 
 - The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then the install on PATH, so the checkout checks itself
 
