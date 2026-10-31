@@ -19,7 +19,7 @@ export interface ToastCopy {
    * unseen-many's 380 widened by the Previous and Mark all seen buttons it
    * predates.
    */
-  width: 300 | 340 | 560
+  width: 300 | 340 | 600
 }
 
 /**
@@ -71,7 +71,7 @@ export function toastCopy(
     next: true,
     markAll: true,
     undo: false,
-    width: 560,
+    width: 600,
   }
 }
 
