@@ -11,7 +11,12 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { contentHash } from './address'
-import { editFrameFile, insertFrameFile } from './frame-file'
+import {
+  editFrameFile,
+  insertFrameFile,
+  moveFrameFile,
+  removeFrameFile,
+} from './frame-file'
 
 // Lets a test land a write on the frame while the editor holds its temporary
 // file, which is the window the reread before the rename guards.
@@ -304,5 +309,59 @@ describe('insertFrameFile', () => {
     expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
     expect(readFileSync(frame, 'utf8')).toBe('<main>Agent</main>')
     expect(readdirSync(dir)).toEqual(['hero.html'])
+  })
+})
+
+describe('the remap a write answers', () => {
+  // main 3, h1 4, div 5, span 6, p 7
+  const SOURCE = '<main><h1>A</h1><div><span>x</span></div><p>B</p></main>'
+  const hash = contentHash(SOURCE)
+
+  beforeEach(() => {
+    writeFileSync(frame, SOURCE)
+  })
+
+  it('should keep every index through an edit', () => {
+    const result = editFrameFile(
+      frame,
+      { index: 4, hash },
+      { kind: 'style', property: 'color', value: 'red' },
+    )
+
+    if (!result.ok) throw new Error(result.detail)
+    expect([3, 4, 5, 6, 7].map(result.remap)).toEqual([3, 4, 5, 6, 7])
+  })
+
+  it('should push every element after an insert on by one', () => {
+    const result = insertFrameFile(
+      frame,
+      hash,
+      { parent: 3, before: 4 },
+      '<p data-name="Text">Text</p>',
+    )
+
+    if (!result.ok) throw new Error(result.detail)
+    expect([3, 4, 5, 6, 7].map(result.remap)).toEqual([3, 5, 6, 7, 8])
+  })
+
+  it('should map a removed element and its descendants to nothing', () => {
+    const result = removeFrameFile(frame, hash, 5)
+
+    if (!result.ok) throw new Error(result.detail)
+    expect([3, 4, 5, 6, 7].map(result.remap)).toEqual([3, 4, null, null, 5])
+  })
+
+  it('should carry a moved element with its descendants to the new gap', () => {
+    const result = moveFrameFile(frame, hash, 5, { parent: 3, before: 4 })
+
+    if (!result.ok) throw new Error(result.detail)
+    expect([3, 4, 5, 6, 7].map(result.remap)).toEqual([3, 6, 4, 5, 7])
+  })
+
+  it('should pull the elements a moved element passes back by its size', () => {
+    const result = moveFrameFile(frame, hash, 4, { parent: 3, before: null })
+
+    if (!result.ok) throw new Error(result.detail)
+    expect([3, 4, 5, 6, 7].map(result.remap)).toEqual([3, 7, 4, 5, 6])
   })
 })
