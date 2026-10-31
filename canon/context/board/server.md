@@ -61,6 +61,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
 - `access.ts` trades a ticket for the cookie, mints one with its `expiresAt` for a bearer, and lands a failed redeem on `/?link=expired`. `api.ts` mounts every write route behind `requireWriter`
   - Under the hidden `serve --open-route` alone, `access.ts` also answers `GET /api/access/open` with a 303 to a fresh redeem URL
 - `structure.ts` answers `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags and one step each, and `history.ts` answers `POST /api/undo` and `/api/redo`, sharing `envelope.ts` refusals
+  - `tokens.ts` answers `POST /api/tokens/edit` behind `requireWriter`, writing one token into the project's `tokens.css` as one step, and shares those refusals
 - `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
 ## Gotchas

@@ -39,6 +39,12 @@ import {
   removeInserted,
   restoreInserted,
 } from '@/server/edit/insert'
+import {
+  setTokenSides,
+  type TokenSides,
+  tokenSides,
+  writeTokenSheet,
+} from '@/server/look/token-edit'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { LayoutEntry, SectionEntry } from '@/shared/records/board'
@@ -106,6 +112,18 @@ export type Change =
    * the new one by its bytes and puts it back by its old gap's anchors.
    */
   | { kind: 'relocated'; path: string; ref: string; span: MovedSpan }
+  /**
+   * One token's declarations in a project token sheet on each side, so an
+   * undo puts that token back as the project stated it and keeps every other
+   * byte of the sheet as it stands.
+   */
+  | {
+      kind: 'token'
+      path: string
+      name: string
+      before: TokenSides
+      after: TokenSides
+    }
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
@@ -180,6 +198,8 @@ async function reads(change: Change, side: Side): Promise<boolean> {
           side === change.present ? 'after' : 'before',
         )
       )
+    case 'token':
+      return (await exists(change.path)) && holdsToken(change, side)
     case 'relocated':
       // The frame stands at this side while the move to the other still finds both gaps.
       return (
@@ -296,7 +316,40 @@ export async function restore(
           }
         )
       })
+    case 'token':
+      return rewriteToken(change, side)
   }
+}
+
+/** Whether the sheet sets the token exactly as `side` holds it, false for a sheet that no longer parses. */
+async function holdsToken(
+  change: Extract<Change, { kind: 'token' }>,
+  side: Side,
+): Promise<boolean> {
+  try {
+    const css = await readFile(change.path, 'utf8')
+    return isDeepStrictEqual(tokenSides(css, change.name), change[side])
+  } catch (error) {
+    if (error instanceof FrameboardError) return false
+    throw error
+  }
+}
+
+/** Writes `side` of a token change, refusing a sheet that changed between its read and the rename. */
+async function rewriteToken(
+  change: Extract<Change, { kind: 'token' }>,
+  side: Side,
+): Promise<undefined> {
+  const css = await readFile(change.path, 'utf8')
+  const written = setTokenSides(css, change.name, change[side])
+  if (writeTokenSheet(change.path, contentHash(css), written) === 'stale') {
+    throw new FrameboardError(
+      'undo-overtaken',
+      `An agent changed ${change.name} after your edit, so that step was dropped.`,
+      { change: change.kind },
+    )
+  }
+  return undefined
 }
 
 /**
@@ -405,6 +458,16 @@ export class StepJournal implements Journal {
   /** The element a hand move took to another gap of a frame file, which this journal does not write. */
   relocated(path: string, ref: string, span: MovedSpan): void {
     this.changes.push({ kind: 'relocated', path, ref, span })
+  }
+
+  /** One token's project declarations a hand token edit rewrote, which this journal does not write. */
+  token(
+    path: string,
+    name: string,
+    before: TokenSides,
+    after: TokenSides,
+  ): void {
+    this.changes.push({ kind: 'token', path, name, before, after })
   }
 
   async created(path: string): Promise<void> {

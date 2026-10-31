@@ -1,14 +1,15 @@
-import { cn } from 'cn'
-import { Fragment } from 'react'
+import { useRef } from 'react'
 
+import { useLive } from '@/client/live/store'
 import {
   TOKEN_GROUPS,
   type TokenRow,
   type TokenTable,
 } from '@/shared/records/tokens'
 
-import { SWATCH_RING } from '../inspector/element/values'
-import { fetchTokenTable, useTokenTable } from '../tokens'
+import { fetchTokenTable, useTokenTable } from '../../tokens'
+import { ColorRow, ValueRow } from './rows'
+import { type TokenChange, writeToken } from './write'
 
 const GROUP_TITLES: Record<TokenRow['group'], string> = {
   color: 'Color',
@@ -23,16 +24,36 @@ interface ThemeTabProps {
   project: string
   /** Reads the project's table, the API in the app. */
   load?: (project: string) => Promise<TokenTable | null>
+  /** Sends one token edit, the API in the app. */
+  write?: typeof writeToken
+}
+
+/** The project sheet hash an edit landed over and the hash it wrote, until the table reads the sheet again. */
+interface Landed {
+  over: string | null
+  hash: string
 }
 
 /**
  * The Theme tab of `canon/design/tabs/theme`: the sheets it read, then the
- * project's tokens by group, colors with a light and a dark swatch and the
- * rest as text. It reads the table again on every board message while
- * open, so an edited sheet shows without a reload.
+ * project's tokens by group, each tagged Board or Project, colors with a
+ * light and a dark swatch and the rest as a value. A writing tab edits a
+ * value in place into the project's sheet while that sheet parses, and a
+ * row the project overrides resets to the board's value. It reads the table
+ * again on every board message while open, so an edited sheet shows without
+ * a reload.
  */
-export function ThemeTab({ project, load = fetchTokenTable }: ThemeTabProps) {
+export function ThemeTab({
+  project,
+  load = fetchTokenTable,
+  write = writeToken,
+}: ThemeTabProps) {
   const table = useTokenTable(project, load)
+  const canWrite = useLive((state) => state.canWrite)
+  // Edits go one at a time, each made from the sheet the last one wrote.
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  const landed = useRef<Landed | null>(null)
+
   if (table === undefined) return null
   if (table === null) {
     return (
@@ -43,17 +64,39 @@ export function ThemeTab({ project, load = fetchTokenTable }: ThemeTabProps) {
   }
   if (table.sheets.length === 0) return <NoTokens />
 
+  const boardSheet = table.sheets.find((sheet) => sheet.kind === 'board')
+  const projectSheet = table.sheets.find((sheet) => sheet.kind === 'project')
+  const editable = canWrite && (projectSheet?.error ?? null) === null
+  const readHash = projectSheet?.hash ?? null
+
+  const onWrite = (change: TokenChange): Promise<boolean> => {
+    const run = queue.current.then(async () => {
+      const held = landed.current
+      const hash = held && held.over === readHash ? held.hash : readHash
+      const result = await write(project, hash, change)
+      if (result) landed.current = { over: readHash, hash: result.hash }
+      return result !== null
+    })
+    queue.current = run
+    return run
+  }
+
   return (
     <div className="flex flex-col pb-2">
       <p className="mx-3 mt-1 mb-2 rounded-lg bg-muted px-2.5 py-2 leading-[1.45] text-muted-foreground">
         From{' '}
-        {table.sheets.map((sheet, index) => (
-          <Fragment key={sheet.path}>
-            {index > 0 ? ' and ' : null}
-            <code className={CODE}>{sheet.path}</code>
-          </Fragment>
-        ))}
-        , read-only. Edit the file or ask the agent.
+        {boardSheet ? (
+          <>
+            board <code className={CODE}>{boardSheet.path}</code>
+            {projectSheet ? ', overridden by ' : null}
+          </>
+        ) : null}
+        {projectSheet ? (
+          <>
+            project <code className={CODE}>{projectSheet.path}</code>
+          </>
+        ) : null}
+        .{editable ? ' Click a value to edit it.' : null}
       </p>
       {table.sheets
         .filter((sheet) => sheet.error !== null)
@@ -76,6 +119,7 @@ export function ThemeTab({ project, load = fetchTokenTable }: ThemeTabProps) {
       {TOKEN_GROUPS.map((group) => {
         const rows = table.tokens.filter((row) => row.group === group)
         if (rows.length === 0) return null
+        const Row = group === 'color' ? ColorRow : ValueRow
         return (
           <section key={group} aria-labelledby={`tokens-${group}`}>
             <h3
@@ -86,13 +130,15 @@ export function ThemeTab({ project, load = fetchTokenTable }: ThemeTabProps) {
             </h3>
             {group === 'color' ? <SwatchHeader /> : null}
             <ul>
-              {rows.map((row) =>
-                group === 'color' ? (
-                  <ColorRow key={row.name} row={row} />
-                ) : (
-                  <ValueRow key={row.name} row={row} />
-                ),
-              )}
+              {rows.map((row) => (
+                <Row
+                  key={row.name}
+                  row={row}
+                  fromProject={row.sheet === projectSheet?.path}
+                  editable={editable}
+                  onWrite={onWrite}
+                />
+              ))}
             </ul>
           </section>
         )
@@ -122,70 +168,5 @@ function SwatchHeader() {
       <span>L</span>
       <span>D</span>
     </div>
-  )
-}
-
-function ColorRow({ row }: { row: TokenRow }) {
-  return (
-    <li className="mx-1.5 grid h-7 grid-cols-[1fr_18px_18px] items-center gap-1.5 rounded-md px-1.5">
-      <TokenName name={row.name} />
-      <Swatch theme="Light" value={row.light} />
-      <Swatch theme="Dark" value={row.dark} />
-    </li>
-  )
-}
-
-function ValueRow({ row }: { row: TokenRow }) {
-  const value = shownValue(row)
-  return (
-    <li className="mx-1.5 grid h-7 grid-cols-[1fr_auto] items-center gap-1.5 rounded-md px-1.5">
-      <TokenName name={row.name} />
-      <span className="max-w-32 truncate text-muted-foreground" title={value}>
-        {value}
-      </span>
-    </li>
-  )
-}
-
-function TokenName({ name }: { name: string }) {
-  return (
-    <span className="truncate" title={name}>
-      <span className="text-faint">--</span>
-      {name.replace(/^--/, '')}
-    </span>
-  )
-}
-
-function Swatch({ theme, value }: { theme: string; value: string | null }) {
-  if (value === null) {
-    return (
-      <span
-        role="img"
-        aria-label={`${theme}: not set`}
-        title={`Not set in ${theme.toLowerCase()}`}
-        className="size-4 rounded-[4px] border border-dashed border-faint"
-      />
-    )
-  }
-  return (
-    <span
-      role="img"
-      aria-label={`${theme}: ${value}`}
-      title={value}
-      className={cn('size-4 rounded-[4px]', SWATCH_RING)}
-      style={{ background: value }}
-    />
-  )
-}
-
-/** The light value, else the dark, with a font stack shown by its first family. */
-function shownValue(row: TokenRow): string {
-  const value = row.light ?? row.dark ?? ''
-  if (row.group !== 'font') return value
-  return (
-    value
-      .split(',')[0]
-      ?.trim()
-      .replace(/^["']|["']$/g, '') ?? value
   )
 }

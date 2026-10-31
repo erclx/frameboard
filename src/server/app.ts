@@ -26,6 +26,7 @@ import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
 import { structureRoutes } from './routes/structure'
 import { thumbnailRoutes } from './routes/thumbnails'
+import { tokenRoutes } from './routes/tokens'
 
 const LOOPBACK_NAMES = new Set(['127.0.0.1', 'localhost'])
 
@@ -142,6 +143,7 @@ export function createApp({
   app.route('/', assetsRoutes(root, actions.access, { usage: assetUsage }))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
+  app.route('/', tokenRoutes(root, actions.access, history, frames.look))
   app.route(
     '/',
     editRoutes(

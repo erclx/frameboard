@@ -47,7 +47,7 @@ function startBoard() {
 
 const NO_SHEET = async (): Promise<TokenTable> => ({ sheets: [], tokens: [] })
 const BOARD_SHEET = async (): Promise<TokenTable> => ({
-  sheets: [{ path: 'tokens.css', kind: 'board', error: null }],
+  sheets: [{ path: 'tokens.css', kind: 'board', error: null, hash: 'h' }],
   tokens: [],
 })
 

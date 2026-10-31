@@ -44,7 +44,14 @@ import {
 } from './write'
 
 function tokenOf(name: string, light: string, dark = light): TokenRow {
-  return { name, group: 'color', light, dark, sheet: 'tokens.css' }
+  return {
+    name,
+    group: 'color',
+    light,
+    dark,
+    sheet: 'tokens.css',
+    overrides: false,
+  }
 }
 
 const PRIMARY = tokenOf('--primary', '#4f46e5', '#818cf8')
@@ -55,6 +62,7 @@ const SHADOW: TokenRow = {
   light: '0 1px 2px rgba(0,0,0,.1)',
   dark: '0 1px 2px rgba(0,0,0,.5)',
   sheet: 'tokens.css',
+  overrides: false,
 }
 
 /** The kit's tooltip popup, apart from a caption carrying the same words. */
@@ -503,6 +511,7 @@ describe('TypographySection', () => {
     light: 'Geist, sans-serif',
     dark: null,
     sheet: 'tokens.css',
+    overrides: false,
   }
   const FONT_SIZE: TokenRow = {
     name: '--font-size-sm',
@@ -510,6 +519,7 @@ describe('TypographySection', () => {
     light: '12px',
     dark: null,
     sheet: 'tokens.css',
+    overrides: false,
   }
 
   it('binds a raw family equal to a token’s stack to that token on a pick', async () => {

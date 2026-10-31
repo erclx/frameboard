@@ -19,6 +19,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'undo-overtaken': 409,
   'nothing-to-undo': 409,
   'tokens-exist': 409,
+  'stale-tokens': 409,
+  'invalid-edit': 409,
   'frame-locked': 423,
   'layout-invalid': 422,
   'project-file-invalid': 422,
