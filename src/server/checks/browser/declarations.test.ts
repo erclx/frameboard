@@ -139,6 +139,24 @@ describe.skipIf(shell === null)(
       ).toEqual([])
     })
 
+    it('passes a -webkit- fallback beside its standard property in the rule', async () => {
+      expect(
+        await dropped(
+          '<style>.a { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); -webkit-text-decoration: underline; text-decoration: underline }</style>',
+        ),
+      ).toEqual([])
+    })
+
+    it('reports a -webkit- property the rule never states in standard form', async () => {
+      expect(
+        await dropped(
+          '<style>.a { -webkit-backdrop-filter: blur(8px) }\n.b { backdrop-filter: blur(8px) }</style>',
+        ),
+      ).toMatchObject([
+        { message: expect.stringContaining('-webkit-backdrop-filter') },
+      ])
+    })
+
     it('passes descriptors, guarded blocks, and prefixes for other engines', async () => {
       expect(
         await dropped(
