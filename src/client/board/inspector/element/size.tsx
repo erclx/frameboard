@@ -59,7 +59,11 @@ function sizeDeclarations(
     return declarations
   }
   if (to === 'fill') {
-    if (from === 'fixed') declarations.push({ property: axis, value: 'auto' })
+    // A declared size holds the child at it, a `fit-content` Hug included, so
+    // across the parent it would block the stretch.
+    if (from === 'fixed' || (!main && from === 'hug')) {
+      declarations.push({ property: axis, value: 'auto' })
+    }
     declarations.push(
       main
         ? { property: 'flex', value: '1 1 0' }
@@ -74,11 +78,16 @@ function sizeDeclarations(
     })
     return declarations
   }
-  if (from === 'fixed') declarations.push({ property: axis, value: 'auto' })
-  if (main && from === 'fill') {
+  // A null mode is a parent the static read could not see as flex, so Hug
+  // writes everything that could be holding the child at another size.
+  if (from === 'fixed' || from === null) {
+    declarations.push({ property: axis, value: 'auto' })
+  }
+  if (main && (from === 'fill' || from === null)) {
     declarations.push({ property: 'flex', value: '0 1 auto' })
   }
-  if (!main && from === 'fill') {
+  // An auto size across a stretching parent stretches, so Hug stops it.
+  if (!main) {
     declarations.push({
       property: 'align-self',
       value: STRETCHING.has(layout.parentAlignItems) ? 'flex-start' : 'auto',
@@ -122,6 +131,8 @@ export function SizeRow({
     const label = axis === 'width' ? 'Width' : 'Height'
     const send = (to: SizeMode, px?: number) => {
       const declarations = sizeDeclarations(layout, axis, mode, to, px)
+      // The writer refuses an edit with no declarations.
+      if (declarations.length === 0) return Promise.resolve(false)
       return write({ kind: 'styles', declarations })
     }
     return (

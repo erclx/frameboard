@@ -441,4 +441,70 @@ describe('LayoutSection size', () => {
       },
     ])
   })
+
+  it('writes Hug across a stretching column from Fixed by stopping the stretch', async () => {
+    const changes = renderSection(
+      layoutOf({ parent: 'vertical' }),
+      flowOf({ width: 'fixed', height: 'hug' }),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Width mode' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Hug' }),
+    )
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [
+          { property: 'width', value: 'auto' },
+          { property: 'align-self', value: 'flex-start' },
+        ],
+      },
+    ])
+  })
+
+  it('writes Fill across a row from a fit-content Hug by dropping the size', async () => {
+    const changes = renderSection(
+      { ...CHILD_OF_ROW, parentAlignItems: 'center' },
+      flowOf({ width: 'hug', height: 'hug' }),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Height mode' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Fill' }),
+    )
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [
+          { property: 'height', value: 'auto' },
+          { property: 'align-self', value: 'stretch' },
+        ],
+      },
+    ])
+  })
+
+  it('writes Hug along a flex parent the static read missed', async () => {
+    const changes = renderSection(
+      CHILD_OF_ROW,
+      flowOf({ width: null, height: 'hug' }),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Width mode' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Hug' }),
+    )
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [
+          { property: 'width', value: 'auto' },
+          { property: 'flex', value: '0 1 auto' },
+        ],
+      },
+    ])
+  })
 })
