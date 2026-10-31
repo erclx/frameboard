@@ -13,7 +13,7 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 ### `src/server/look/`
 
-Owns the head spliced into a served frame and the Theme tab's token table.
+Owns the head spliced into a served frame, the Theme tab's token table, and the static reads of an element's colors and flow that the inspector shows.
 
 - The frame route splices one `<style data-frameboard>` first in `head`, importing the faces, then the board sheet, then the project sheet, so a frame's own stylesheet still wins
 - The splice lands after a stated `head` start tag, else a stated `html` start tag, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
