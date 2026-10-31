@@ -52,9 +52,11 @@ export function ChangesToast({
  * the last clears, writing what it says into the toast as the stores move,
  * so a closing toast keeps the words of the last change.
  *
- * Mark all seen turns the toast into its cleared form. A change landing
- * within its 5 seconds opens a fresh toast rather than taking that one over,
- * so the Undo stays on screen beside the change it would now leave marked.
+ * Mark all seen turns the toast into its cleared form, closed by the kit's
+ * own timer, which pauses while the stack is hovered or focused, since the
+ * Undo it holds is the only way back. A change landing within its 5 seconds
+ * opens a fresh toast rather than taking that one over, so the Undo stays on
+ * screen beside the change it would now leave marked.
  */
 function OpenWhileUnseen({
   store,
@@ -67,50 +69,38 @@ function OpenWhileUnseen({
     let id: string | null = null
     let closing: ReturnType<typeof setTimeout> | undefined
     let showsCleared = false
-    // The cleared toast a later change handed off, closing on its own timer.
-    let handed: { id: string; closing: ReturnType<typeof setTimeout> } | null =
-      null
+    // The cleared toast a later change handed off, left to the kit's timer.
+    let handed: string | null = null
 
     const closeHanded = () => {
-      if (!handed) return
-      clearTimeout(handed.closing)
-      toasts.close(handed.id)
+      if (handed !== null) toasts.close(handed)
       handed = null
     }
-    const closeLater = (closed: string) =>
-      setTimeout(() => {
-        closing = undefined
-        if (id === closed) toasts.close(closed)
-      }, CLOSE_AFTER_MS)
 
-    const write = (data: ToastCopy) => {
+    // A timeout of 0 keeps the toast open, so every write but the cleared
+    // form's stops a kit timer the cleared form started.
+    const write = (data: ToastCopy, timeout = 0) => {
       if (id === null) {
         const opened = toasts.add({
           type: CHANGE_TOAST,
-          timeout: 0,
+          timeout,
           data,
           onClose: () => {
             if (id === opened) id = null
+            if (handed === opened) handed = null
           },
         })
         id = opened
       } else {
-        toasts.update(id, { data })
+        toasts.update(id, { data, timeout })
       }
     }
 
     const follow = () => {
       const current = currentChange(store)
       if (current) {
-        if (id !== null && showsCleared && closing !== undefined) {
-          const handedId = id
-          handed = {
-            id: handedId,
-            closing: setTimeout(() => {
-              handed = null
-              toasts.close(handedId)
-            }, CLOSE_AFTER_MS),
-          }
+        if (id !== null && showsCleared) {
+          handed = id
           id = null
         }
         showsCleared = false
@@ -123,33 +113,32 @@ function OpenWhileUnseen({
             current.frame in glowStore.getState().glowing,
           ),
         )
-      } else if (id !== null && closing === undefined) {
-        closing = closeLater(id)
+      } else if (id !== null && !showsCleared && closing === undefined) {
+        const closed = id
+        closing = setTimeout(() => {
+          closing = undefined
+          if (id === closed) toasts.close(closed)
+        }, CLOSE_AFTER_MS)
       }
     }
 
     const cleared = (count: number) => {
       closeHanded()
       clearTimeout(closing)
-      write(clearedCopy(count))
+      closing = undefined
+      write(clearedCopy(count), CLOSE_AFTER_MS)
       showsCleared = true
-      if (id !== null) closing = closeLater(id)
     }
 
     const onUnseen = (state: UnseenState, previous: UnseenState) => {
-      if (state.lastCleared && state.lastCleared !== previous.lastCleared) {
+      if (state.clears !== previous.clears && state.lastCleared) {
         cleared(Object.keys(state.lastCleared).length)
         return
       }
       if (previous.lastCleared && !state.lastCleared) {
         // Undo puts the pile back under the toast it ran from.
-        if (handed) {
-          closeHanded()
-        } else if (showsCleared) {
-          showsCleared = false
-          clearTimeout(closing)
-          closing = undefined
-        }
+        if (handed !== null) closeHanded()
+        else showsCleared = false
       }
       follow()
     }

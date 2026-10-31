@@ -13,6 +13,7 @@ import {
   markAllSeen,
   markSeen,
   receiveChanges,
+  renameUnseen,
   type UnseenStore,
   unseenStore,
 } from '@/client/live/unseen'
@@ -507,6 +508,52 @@ describe('ChangesToast', () => {
       await vi.waitFor(() =>
         expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(),
       )
+    })
+
+    it('keeps Undo past 5 seconds while the pointer rests on the toast', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      render(<Harness />)
+      act(() =>
+        receiveChanges(store, [
+          change('studio/home/hero'),
+          change('studio/home/about'),
+        ]),
+      )
+      await screen.findByText('Claude changed 2 frames')
+      act(() => markAllSeen(store))
+      const undo = await screen.findByRole('button', { name: 'Undo' })
+
+      await user.hover(undo)
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeVisible()
+    })
+
+    it('keeps a later change on its own toast when a page is renamed after the clear closed', async () => {
+      render(<Harness />)
+      act(() =>
+        receiveChanges(store, [
+          change('studio/home/hero'),
+          change('studio/home/about'),
+        ]),
+      )
+      await screen.findByText('Claude changed 2 frames')
+      act(() => markAllSeen(store))
+      act(() => vi.advanceTimersByTime(5100))
+      await vi.waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull(),
+      )
+      act(() =>
+        receiveChanges(store, [
+          change('studio/pricing/plans', { id: 'later', hash: 'd'.repeat(64) }),
+        ]),
+      )
+      await screen.findByText('Claude updated plans')
+
+      act(() => renameUnseen(store, 'studio/home', 'studio/start'))
+
+      expect(screen.getByText('Claude updated plans')).toBeVisible()
+      expect(screen.queryByText(/marked seen/)).toBeNull()
     })
   })
 })

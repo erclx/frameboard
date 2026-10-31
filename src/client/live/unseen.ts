@@ -30,6 +30,11 @@ export interface UnseenState {
   base: Readonly<Record<string, string>>
   /** What the last Mark all seen cleared, which its Undo restores, null once undone or before any. */
   lastCleared: Readonly<Record<string, ClearedFrame>> | null
+  /**
+   * How many times Mark all seen has run, which the toast watches for a
+   * clear, since a rename or prune rebuilds `lastCleared` without one.
+   */
+  clears: number
 }
 
 /** One frame Mark all seen cleared: the change it unmarked and the hash seen before it. */
@@ -54,6 +59,7 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
     cursor: null,
     base: {},
     lastCleared: null,
+    clears: 0,
   }))
   return Object.assign(store, { storage })
 }
@@ -100,7 +106,7 @@ export function markSeen(store: UnseenStore, ref: string): void {
  * each held so `undoMarkAll` can put the pile back.
  */
 export function markAllSeen(store: UnseenStore): void {
-  const { unseen, seen } = store.getState()
+  const { unseen, seen, clears } = store.getState()
   const changes = Object.values(unseen)
   if (changes.length === 0) return
   const lastCleared = Object.fromEntries(
@@ -113,7 +119,12 @@ export function markAllSeen(store: UnseenStore): void {
     ...seen,
     ...Object.fromEntries(changes.map((change) => [change.frame, change.hash])),
   }
-  store.setState({ unseen: {}, seen: nextSeen, lastCleared })
+  store.setState({
+    unseen: {},
+    seen: nextSeen,
+    lastCleared,
+    clears: clears + 1,
+  })
   writeSeen(store.storage, nextSeen)
 }
 
