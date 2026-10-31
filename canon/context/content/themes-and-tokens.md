@@ -31,11 +31,13 @@ The routes a frame imports from sit in `src/server/routes/`, which `canon/contex
 - `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`
 - `/frames/<project>/tokens.css` serves the project's sheet, so its relative `url(assets/...)` resolves
 - `GET /api/projects/<project>/tokens` answers the token table, naming a sheet that fails to parse rather than answering an empty table
-  - `POST /api/tokens/edit` takes the project sheet's hash as the Theme tab read it, or null for none, and records one undo step per landed edit
+  - `POST /api/tokens/edit` takes an optional `sheet` of `project`, the default, or `board`, and records one undo step per landed edit
+  - Its `hash` is the named sheet's as the Theme tab read it, or null for a project with no sheet of its own
+  - A Board row on the Theme tab writes the board sheet and a Project row the project's, and the rows of a `--tokens` sheet outside the board folder stay read-only
 
 ### `src/server/look/token-edit.ts`
 
-Writes one hand edit from the Theme tab into the project's `tokens.css`, creating it when the project has none, and never writes the board or `--tokens` sheet.
+Writes one hand edit from the Theme tab into the project's `tokens.css`, creating it when the project has none, or into the board's sheet, which every project without an override follows. The route never writes a `--tokens` sheet outside the board folder, since it belongs to whatever handed it over.
 
 - It splices declarations inside the existing rules through postcss, so every byte outside the token's declarations stays as it was
   - It reads the written sheet back, refusing `invalid-edit` for a value such as an unclosed quote or bracket that would leave it unreadable
