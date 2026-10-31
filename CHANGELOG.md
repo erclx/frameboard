@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.21.0](https://github.com/erclx/frameboard/compare/v0.20.0...v0.21.0) (2026-10-31)
+
+
+### Features
+
+* **assets:** group, filter, and count files in the Assets tab ([#187](https://github.com/erclx/frameboard/issues/187)) ([69cdcf5](https://github.com/erclx/frameboard/commit/69cdcf5395d63bdad9410df7d8b614af7dfe3373))
+* **avatar:** set the name notes are signed with per machine ([#186](https://github.com/erclx/frameboard/issues/186)) ([a37d8ff](https://github.com/erclx/frameboard/commit/a37d8ff2c6730653058e96611739b25b4ceb986e))
+* **checks:** warn when a hand value outranks an agent rule change ([#189](https://github.com/erclx/frameboard/issues/189)) ([2607a49](https://github.com/erclx/frameboard/commit/2607a49ddb47529375c853454e757774a329e6e9))
+* **inspector:** place an element free in its parent and restack it ([#192](https://github.com/erclx/frameboard/issues/192)) ([ab119c9](https://github.com/erclx/frameboard/commit/ab119c9bb50d98a2fe32d6e58c9b543ded72ebb5))
+* **inspector:** set a container's flow, gap, padding, and child size ([#190](https://github.com/erclx/frameboard/issues/190)) ([8a3ad8d](https://github.com/erclx/frameboard/commit/8a3ad8d0eb23b062ffd831df6dfad9a0156bde75))
+* **notes:** stack notes on one spot into a count pin with a list ([#188](https://github.com/erclx/frameboard/issues/188)) ([b725b6e](https://github.com/erclx/frameboard/commit/b725b6e516190d8e2e2b226120dabbd8976f47e1))
+* **theme:** edit a token in place on the Theme tab ([#191](https://github.com/erclx/frameboard/issues/191)) ([a9c2a31](https://github.com/erclx/frameboard/commit/a9c2a31380ac1b2d46b74cd5b0d62ab0923ec6c5))
+
 ## [0.20.0](https://github.com/erclx/frameboard/compare/v0.19.0...v0.20.0) (2026-10-28)
 
 
