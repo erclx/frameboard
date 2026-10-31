@@ -38,6 +38,13 @@ Selector rules read the cascade rather than the parsed file.
 - `theme` passes a `box-shadow` or `text-shadow` whose colors are all black or white at or under 0.2 alpha, since a faint shadow reads the same on either theme
 - The cascade matches with css-select, weighs with `@bramus/specificity`, resolves custom properties per element, and reads token sheets ahead of the frame's own
 
+One rule reads two versions of a frame rather than one.
+
+- `outranked` warns when an agent's write changed a rule in the frame's own `<style>` that an element's `style` attribute also sets, since an inline value beats every normal rule
+- It counts only an inline declaration the replaced bytes already held, so a value the write added never trips it
+- It matches a shorthand to the longhands it sets, so a `padding` rule reaches an inline `padding-left`
+- `frameFrom` reads the replaced bytes from memory, since `readFrame` reads the file as it stands now
+
 The hook's entry is `src/cli/hook.ts`, bundled to `dist/hook.js` beside the CLI, in the folder `canon/context/agent/cli.md` owns.
 
 - The hook prints `decision: "block"` with the findings as `reason`, which Claude Code places beside the tool result as feedback on that write
@@ -62,7 +69,7 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - It skips custom properties, declarations inside `@font-face`, `@property`, `@page`, `@counter-style`, `@font-palette-values`, and `@supports`, and the `-moz-`, `-ms-`, and `-o-` prefixes
 - It reads no theme, so `checkRendered` runs it once and appends its findings after the merged themed rules, and it takes the board `root` to read the frame
 
-The findings the board holds between watch batches, and the warm checker that runs this tier, sit in `src/server/live/`, which `canon/context/board/server.md` owns. Each frame's list is its static findings followed by the browser findings last landed for it, so the client keeps one list per ref.
+The findings the board holds between watch batches, and the warm checker that runs this tier, sit in `src/server/live/`, which `canon/context/board/server.md` owns. Each frame's list is its static findings, then the change findings its last agent write raised, then the browser findings last landed for it, so the client keeps one list per ref.
 
 - The server sends the whole findings map after the board on hello, then a partial map per batch where an empty list clears a frame
 - A change to a token sheet rechecks and reloads every frame it reaches, and a change to a project's `project.json` rechecks them without a reload
@@ -70,12 +77,15 @@ The findings the board holds between watch batches, and the warm checker that ru
 - A batch queues the frames `recheckRefs` names plus every frame whose box or file time changed, since a resize writes `layout.json` alone
 - A frame queued again before its result lands drops that result, a failed recheck lands an empty list, and a reading of a file since rewritten lands nothing
 
+`start.ts` runs `outranked` as the tracker settles an agent's write, past the one-second grace, against the source `version` holds for its `before` hash. The result replaces the previous write's and stays through a hand edit until the next agent write. The hook holds no copy of the replaced bytes, so it never raises `outranked`.
+
 ### `src/server/routes/checks.ts`
 
 Owns `POST /api/checks`, behind the write token, which `check` calls with the refs it read.
 
-- It rescans the board first, queueing a write the watcher has not batched yet, then waits until no recheck of those frames is pending and answers the held browser findings and `browser: { ran: true }`
-- A browser that does not launch answers `browser: { ran: false, reason: 'browser-not-found' }` with no findings, so the board says nothing and `check` alone reports it
+- It rescans the board first, queueing a write the watcher has not batched yet and handing it to the change tracker, then waits out that write's grace and every pending recheck of those frames
+- It answers the held change findings, then the held browser findings, and `browser: { ran: true }`
+- A browser that does not launch answers `browser: { ran: false, reason: 'browser-not-found' }` with the change findings alone, so the board says nothing of the browser and `check` alone reports it
 - `check` with no live server, or one that does not answer in 120 seconds, sets `browser.reason` to `server-not-running` and closes its human output on a line saying so
 
 ### Other folders

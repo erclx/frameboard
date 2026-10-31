@@ -23,6 +23,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 - The board runs the same rules on each change, and a frame's findings badge opens the list, which the inspector shows too
 - A running server adds the rules only a browser can see, being clipped content, an inner scrollbar, content sized off the viewport, text under a project's minimum size, and dropped CSS
+- A running server also warns when an agent's write changes a rule that an element's own `style` attribute overrides, since that element keeps the value you may have set by hand
 
 ## Claims
 
