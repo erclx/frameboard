@@ -38,9 +38,10 @@ The routes a frame imports from sit in `src/server/routes/`, which `canon/contex
 Writes one hand edit from the Theme tab into the project's `tokens.css`, creating it when the project has none, and never writes the board or `--tokens` sheet.
 
 - It splices declarations inside the existing rules through postcss, so every byte outside the token's declarations stays as it was
+  - It reads the written sheet back, refusing `invalid-edit` for a value such as an unclosed quote or bracket that would leave it unreadable
 - A one-theme edit pins the other theme's old value under its rule when the new declaration would reach it, since a project `:root` ties a board dark rule and wins by coming later
   - The table never compares specificity, so a board `:root[data-theme=dark]` beats a project `[data-theme='dark']` in a frame while the tab shows the project's value
-- A new `:root` goes ahead of every rule and a new `[data-theme='dark']` goes last, so dark still wins in dark
+- A light or `:root` declaration lands ahead of every dark declaration of the token, in a new rule when need be, so dark still wins in dark
 - A reset takes out every project declaration of the token and any rule it leaves empty, and refuses a token the board does not set
 - The write goes through a temporary file and a rename after reading the sheet again, refusing a sheet whose hash moved, and takes no lock
 
