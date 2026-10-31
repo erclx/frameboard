@@ -162,8 +162,10 @@ function OpenWhileUnseen({
  * and Mark all seen, or Undo once Mark all seen cleared the pile, at the
  * width its form draws. Enter on the toast itself runs Show.
  *
- * Mark all seen run from its own focused button takes that button away, so
- * focus moves to Undo on the cleared form rather than falling to the page.
+ * Mark all seen or Undo run from its own focused button takes that button
+ * away, so focus moves into the form that replaces it, Undo on the cleared
+ * form and the first button on the change form, rather than falling to the
+ * page.
  */
 export function ChangeToastBody({
   toast: item,
@@ -177,19 +179,26 @@ export function ChangeToastBody({
     'changes.markAllSeen',
     'changes.undoMarkAll',
   ])
-  const undoButton = useRef<HTMLButtonElement>(null)
-  const focusUndo = useRef(false)
+  const content = useRef<HTMLDivElement>(null)
+  // Whether the button that switched the form held focus as it ran.
+  const refocus = useRef(false)
   const copy = item.data
   const offersUndo = copy?.undo ?? false
   useEffect(() => {
-    if (offersUndo && focusUndo.current) undoButton.current?.focus()
-    focusUndo.current = false
+    if (!refocus.current) return
+    refocus.current = false
+    const box = content.current
+    const target =
+      box?.querySelector<HTMLButtonElement>('button') ??
+      box?.closest<HTMLElement>('[data-slot="toast"]')
+    target?.focus()
   }, [offersUndo])
   if (!copy) return null
-  const markAllFromButton = (event: MouseEvent<HTMLButtonElement>) => {
-    focusUndo.current = event.currentTarget === document.activeElement
-    markAll?.run()
-  }
+  const runFromButton =
+    (action: Action | undefined) => (event: MouseEvent<HTMLButtonElement>) => {
+      refocus.current = event.currentTarget === document.activeElement
+      action?.run()
+    }
   return (
     <Toast
       toast={item}
@@ -204,7 +213,7 @@ export function ChangeToastBody({
         show?.run()
       }}
     >
-      <ToastContent className="items-center">
+      <ToastContent ref={content} className="items-center">
         {copy.initial ? (
           <span aria-hidden className="font-bold text-claim">
             {copy.initial}
@@ -237,14 +246,13 @@ export function ChangeToastBody({
             action={markAll}
             label="Mark all seen"
             keys={MARK_ALL_KEYS}
-            onClick={markAllFromButton}
+            onClick={runFromButton(markAll)}
           />
         ) : null}
         {copy.undo ? (
           <button
-            ref={undoButton}
             type="button"
-            onClick={() => undo?.run()}
+            onClick={runFromButton(undo)}
             className={cn(TOAST_BUTTON, 'bg-secondary text-foreground')}
           >
             Undo

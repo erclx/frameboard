@@ -426,6 +426,23 @@ describe('ChangesToast', () => {
       expect(await screen.findByRole('button', { name: 'Undo' })).toHaveFocus()
     })
 
+    it('moves focus to the restored toast when Undo runs from the keyboard', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const markAll = await screen.findByRole('button', {
+        name: /^Mark all seen/,
+      })
+      act(() => markAll.focus())
+      await userEvent.keyboard('{Enter}')
+      await screen.findByRole('button', { name: 'Undo' })
+
+      await userEvent.keyboard('{Enter}')
+
+      expect(
+        await screen.findByRole('button', { name: 'Show \\' }),
+      ).toHaveFocus()
+    })
+
     it('leaves focus alone when ⇧] runs Mark all seen', async () => {
       unbind = bindKeys(window)
       render(<Harness />)
