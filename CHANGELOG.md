@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.23.0](https://github.com/erclx/frameboard/compare/v0.22.0...v0.23.0) (2026-10-31)
+
+
+### Features
+
+* **changes:** mark every agent change seen from the toast, with undo ([#201](https://github.com/erclx/frameboard/issues/201)) ([50c32d7](https://github.com/erclx/frameboard/commit/50c32d7353433e263b8194a163553cb98b0510d2))
+* **sizes:** read presets as width ranges and add social card sizes ([#199](https://github.com/erclx/frameboard/issues/199)) ([943e3b1](https://github.com/erclx/frameboard/commit/943e3b148a16bbd64fb8847abe400a38762b7a64))
+* **theme:** edit the board token sheet from the Theme tab ([#200](https://github.com/erclx/frameboard/issues/200)) ([856d782](https://github.com/erclx/frameboard/commit/856d782003df0faf197759cf97e6e4d4c9de6b8c))
+
 ## [0.22.0](https://github.com/erclx/frameboard/compare/v0.21.0...v0.22.0) (2026-10-31)
 
 
