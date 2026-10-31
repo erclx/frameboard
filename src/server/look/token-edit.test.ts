@@ -100,6 +100,36 @@ describe('editTokenCss', () => {
         ":root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #818cf8;\n}\n",
       )
     })
+
+    it("adds a :root ahead of the project's dark value when the existing :root follows it", () => {
+      const css =
+        "[data-theme='dark'] {\n  --primary: #111;\n}\n\n:root {\n  --x: 1px;\n}\n"
+
+      const written = editTokenCss(
+        css,
+        { base: '#4f46e5' },
+        { name: '--primary', side: 'light', value: '#222' },
+      )
+
+      expect(written).toBe(
+        ":root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #111;\n}\n\n:root {\n  --x: 1px;\n}\n",
+      )
+    })
+
+    it('adds a :root ahead of a dark prefers-color-scheme block holding the token', () => {
+      const css =
+        '@media (prefers-color-scheme: dark) {\n  :root { --primary: #111 }\n}\n\n:root {\n  --x: 1px;\n}\n'
+
+      const written = editTokenCss(
+        css,
+        { base: '#4f46e5' },
+        { name: '--primary', side: 'light', value: '#222' },
+      )
+
+      expect(written.indexOf('--primary: #222')).toBeLessThan(
+        written.indexOf('@media'),
+      )
+    })
   })
 
   describe('a dark edit', () => {
@@ -228,6 +258,21 @@ describe('editTokenCss', () => {
         ),
       ).toBe('invalid-edit')
     })
+
+    it.each([['"abc'], ['url(x'], ['calc(1px']])(
+      'refuses %j, which would leave the sheet unreadable',
+      (value) => {
+        expect(
+          refusal(() =>
+            editTokenCss(':root {\n  --bg: #fff;\n}\n', SPLIT_BOARD, {
+              name: '--primary',
+              side: 'light',
+              value,
+            }),
+          ),
+        ).toBe('invalid-edit')
+      },
+    )
 
     it('refuses a project sheet that does not parse', () => {
       expect(

@@ -1,7 +1,14 @@
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
-import postcss, { type Declaration, type Root, type Rule } from 'postcss'
+import postcss, {
+  type ChildNode,
+  type Declaration,
+  type Node,
+  type Root,
+  type Rule,
+} from 'postcss'
 
 import { isCode } from '@/server/board/json-record'
 import { contentHash } from '@/server/edit/address'
@@ -70,7 +77,19 @@ export function editTokenCss(
     if (next.light !== undefined) next.light = value
     if (next.dark !== undefined) next.dark = value
   }
-  return writeSides(root, edit.name, next)
+  const written = writeSides(root, edit.name, next)
+  // An unclosed quote or bracket passes the character guard and breaks the
+  // whole sheet, so the sheet is read back before anything is written.
+  let readBack: TokenSides | undefined
+  try {
+    readBack = sidesIn(postcss.parse(written), edit.name)
+  } catch {
+    readBack = undefined
+  }
+  if (!isDeepStrictEqual(readBack, next)) {
+    refuse(`${JSON.stringify(edit.value)} would leave the sheet unreadable.`)
+  }
+  return written
 }
 
 /**
@@ -178,7 +197,9 @@ function sidesIn(root: Root, name: string): TokenSides {
 
 function writeSides(root: Root, name: string, sides: TokenSides): string {
   const found = declsIn(root, name)
-  for (const side of ['base', 'light', 'dark'] as const) {
+  // Dark first, so a light or `:root` declaration added after it can be
+  // placed ahead of every dark declaration the sheet then holds.
+  for (const side of ['dark', 'base', 'light'] as const) {
     const value = sides[side]
     const decls = found[side]
     const last = decls.at(-1)
@@ -191,12 +212,31 @@ function writeSides(root: Root, name: string, sides: TokenSides): string {
     } else if (last) {
       if (last.value.trim() !== value) last.value = value
     } else {
-      ruleFor(root, side).append(
+      const before =
+        side === 'dark'
+          ? undefined
+          : firstTopLevel(root, declsIn(root, name).dark)
+      ruleFor(root, side, before).append(
         postcss.decl({ prop: name, value, raws: declRaws(root) }),
       )
     }
   }
   return root.toString()
+}
+
+/** The earliest top-level node holding any of `decls`, undefined for none. */
+function firstTopLevel(
+  root: Root,
+  decls: Declaration[],
+): ChildNode | undefined {
+  let first: ChildNode | undefined
+  for (const decl of decls) {
+    let node: Node = decl
+    while (node.parent && node.parent !== root) node = node.parent
+    const top = node as ChildNode
+    if (!first || root.index(top) < root.index(first)) first = top
+  }
+  return first
 }
 
 /** The spacing of the sheet's first declaration, so an added one reads like its neighbors. */
@@ -222,11 +262,16 @@ const NEW_SELECTOR: Record<Side, string> = {
  * The top-level rule a new declaration on `side` goes into: the last such
  * rule outside any at-rule, else a new one. A new `:root` or light rule goes
  * ahead of every other rule, so a dark rule that ties it on specificity
- * still comes later and wins in dark, and a new dark rule goes last.
+ * still comes later and wins in dark, and a new dark rule goes last. With
+ * `before`, the token's first dark declaration, a rule must come ahead of
+ * it, and a new one goes just before it when none does.
  */
-function ruleFor(root: Root, side: Side): Rule {
+function ruleFor(root: Root, side: Side, before?: ChildNode): Rule {
   const held = root.nodes.filter(
-    (node): node is Rule => node.type === 'rule' && sideOf(node) === side,
+    (node): node is Rule =>
+      node.type === 'rule' &&
+      sideOf(node) === side &&
+      (!before || root.index(node) < root.index(before)),
   )
   const last = held.at(-1)
   if (last) return last
@@ -234,10 +279,12 @@ function ruleFor(root: Root, side: Side): Rule {
     selector: NEW_SELECTOR[side],
     raws: { between: ' ', semicolon: true, after: '\n' },
   })
-  const first = root.nodes.find((node) => node.type === 'rule')
+  const first = before ?? root.nodes.find((node) => node.type === 'rule')
   if (side !== 'dark' && first) {
+    // Read first, since postcss rewrites the spacing of a node prepended to.
+    const spacing = first.raws.before ?? ''
     root.insertBefore(first, rule)
-    rule.raws.before = first.raws.before ?? ''
+    rule.raws.before = spacing
     first.raws.before = '\n\n'
   } else {
     rule.raws.before = root.nodes.length > 0 ? '\n\n' : ''
