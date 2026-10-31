@@ -346,11 +346,14 @@ function AlignmentGrid({
     const crossAt = PLACES[vertical ? column : row]
     return crossAt === cross && (main === null || mainAt === main)
   }
-  // One tab stop, on the first lit cell, so Tab leaves the grid in one press.
+  // The focused cell while focus is inside the grid, null once it leaves.
+  const [focused, setFocused] = useState<number | null>(null)
   const lit = Array.from({ length: 9 }, (_, at) =>
     litAt(Math.floor(at / 3), at % 3),
   ).indexOf(true)
-  const stop = lit === -1 ? 0 : lit
+  // One tab stop, following focus inside the grid and resting on the first
+  // lit cell outside it, so Tab leaves the grid in one press from any cell.
+  const stop = focused ?? (lit === -1 ? 0 : lit)
   const onKeyDown = (event: KeyboardEvent, at: number) => {
     const step = GRID_STEPS[event.key]
     if (!step) return
@@ -361,6 +364,11 @@ function AlignmentGrid({
     <div
       role="group"
       aria-label="Alignment"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(null)
+        }
+      }}
       className="grid h-[58px] grid-cols-3 grid-rows-3 rounded-md bg-input p-1"
     >
       {PLACES.flatMap((row, rowAt) =>
@@ -382,6 +390,7 @@ function AlignmentGrid({
               aria-pressed={lit}
               tabIndex={at === stop ? 0 : -1}
               disabled={disabled}
+              onFocus={() => setFocused(at)}
               onKeyDown={(event) => onKeyDown(event, at)}
               onClick={() => onPick(mainAt, crossAt)}
               className="group/cell grid place-items-center rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"

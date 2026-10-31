@@ -284,6 +284,16 @@ describe('LayoutSection gap and alignment', () => {
     expect(screen.getByRole('textbox', { name: 'Gap' })).toHaveFocus()
   })
 
+  it('leaves the grid on Tab from a cell an arrow key reached', async () => {
+    renderSection({ ...ROW, justify: 'flex-end', alignItems: 'flex-end' })
+
+    screen.getByRole('button', { name: 'Align bottom right' }).focus()
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}{ArrowLeft}')
+    await userEvent.tab()
+
+    expect(screen.getByRole('textbox', { name: 'Gap' })).toHaveFocus()
+  })
+
   it('moves focus across the cells with the arrow keys and writes nothing', async () => {
     const changes = renderSection({
       ...ROW,
