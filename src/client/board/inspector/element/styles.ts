@@ -40,6 +40,7 @@ export interface LiveElement {
   textOnly: boolean
   text: string
   rotation: Rotation
+  placement: Placement
   /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
   inline: {
     color: boolean
@@ -48,6 +49,24 @@ export interface LiveElement {
     background: boolean
     border: boolean
   }
+}
+
+/**
+ * Where the element sits for the Position section. Its offsets count from
+ * the box a placement anchors it to, being its containing block once placed,
+ * and for one in the flow the box a placement would give it: any parent but
+ * `body`, which the place writes `relative` on when static, else the nearest
+ * positioned ancestor, else the frame.
+ */
+export interface Placement {
+  /** Whether it is out of the flow, as `position: absolute` or `fixed`. */
+  free: boolean
+  /** The `left` and `top` that hold it where it renders, in px. */
+  left: number
+  top: number
+  /** The width and height it renders at, null where `auto` resolves to no length, as on an inline box. */
+  width: number | null
+  height: number | null
 }
 
 /** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
@@ -180,7 +199,69 @@ function readLive(element: Element, view: Window): LiveElement {
       own: beneathOwn(element, view),
       translated: translates(style.transform),
     },
+    placement: placementOf(element, style, view),
     inline: inlinePaints(element),
+  }
+}
+
+function placementOf(
+  element: Element,
+  style: CSSStyleDeclaration,
+  view: Window,
+): Placement {
+  const free = style.position === 'absolute' || style.position === 'fixed'
+  const size = (length: string) => {
+    const value = parseFloat(length)
+    return Number.isNaN(value) ? null : Math.round(value)
+  }
+  const width = size(style.width)
+  const height = size(style.height)
+  // A placed element's computed offsets are the ones it holds, unswung by a rotation.
+  if (free && style.left.endsWith('px') && style.top.endsWith('px')) {
+    return {
+      free,
+      left: Math.round(parseFloat(style.left)),
+      top: Math.round(parseFloat(style.top)),
+      width,
+      height,
+    }
+  }
+  const doc = element.ownerDocument
+  const parent = element.parentElement
+  const anchors = (node: Element) => {
+    const computed = view.getComputedStyle(node)
+    return computed.position !== 'static' || computed.transform !== 'none'
+  }
+  let anchor: Element | null = null
+  if (style.position !== 'fixed') {
+    if (
+      !free &&
+      parent &&
+      parent !== doc.body &&
+      parent !== doc.documentElement
+    ) {
+      anchor = parent
+    } else {
+      for (let node = parent; node && !anchor; node = node.parentElement) {
+        if (anchors(node)) anchor = node
+      }
+    }
+  }
+  // The padding box an anchor's offsets count from, or the frame's own origin.
+  let originX = style.position === 'fixed' ? 0 : -view.scrollX
+  let originY = style.position === 'fixed' ? 0 : -view.scrollY
+  if (anchor) {
+    const box = anchor.getBoundingClientRect()
+    originX = box.left + anchor.clientLeft - anchor.scrollLeft
+    originY = box.top + anchor.clientTop - anchor.scrollTop
+  }
+  const box = element.getBoundingClientRect()
+  return {
+    free,
+    left: Math.round(box.left - originX - (parseFloat(style.marginLeft) || 0)),
+    top: Math.round(box.top - originY - (parseFloat(style.marginTop) || 0)),
+    width,
+    height,
   }
 }
 
