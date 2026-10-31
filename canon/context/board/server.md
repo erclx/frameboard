@@ -64,6 +64,14 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
   - `tokens.ts` answers `POST /api/tokens/edit` behind `requireWriter`, writing one token into the project's `tokens.css` or the board's sheet as one step, and shares those refusals
 - `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
+### `src/server/clipboard/`
+
+Owns putting copied frames on the OS clipboard as one file list. `routes/clipboard.ts` answers `POST /api/frames/clipboard` with `{ refs, theme }` behind `requireWriter`, rendering each frame at 2x in turn on the renderer `png.ts` uses.
+
+- `files.ts` picks the backend at start, and only WSL with `powershell.exe` on its `PATH` has one
+- `wsl.ts` writes the images into Windows' temp folder and runs `Set-Clipboard -Path`
+- With no backend the route refuses `clipboard-unsupported` and `/api/health` reports `clipboard: null`, so the board stitches several frames into one image
+
 ## Gotchas
 
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
