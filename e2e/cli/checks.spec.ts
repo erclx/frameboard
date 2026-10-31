@@ -218,8 +218,8 @@ test.describe('the browser rules on a running board', () => {
 })
 
 /** A frame with a hand gap on its first `.row`, beside a second row the rule reaches. */
-function rowsFrame(gap: string): string {
-  return `<style>body { font-family: Geist } .row { display: flex; gap: ${gap} }</style><div class="row" style="gap: 24px"><p>One</p></div><div class="row"><p>Two</p></div>`
+function rowsFrame(gap: string, second = 'Two'): string {
+  return `<style>body { font-family: Geist } .row { display: flex; gap: ${gap} }</style><div class="row" style="gap: 24px"><p>One</p></div><div class="row"><p>${second}</p></div>`
 }
 
 test.describe('a hand value an agent write outranks', () => {
@@ -227,7 +227,10 @@ test.describe('a hand value an agent write outranks', () => {
   let server: BoardServer
 
   test.beforeAll(async () => {
-    board = writeBoard({ 'site/home/rows.html': rowsFrame('8px') })
+    board = writeBoard({
+      'site/home/rows.html': rowsFrame('8px'),
+      'site/home/later.html': rowsFrame('8px'),
+    })
     server = await serveBoard(board.root)
     // check runs behind the start scan, so the server holds the hand gap's
     // bytes before the agent's write replaces them.
@@ -247,6 +250,22 @@ test.describe('a hand value an agent write outranks', () => {
     })
 
     expect(run.exitCode).toBe(0)
+    const result = checkResultSchema.parse(run.json().data)
+    expect(
+      result.findings.map((finding) => `${finding.severity} ${finding.rule}`),
+    ).toContain('warning outranked')
+  })
+
+  test('keeps the warning through a later write that leaves the rule alone', async () => {
+    const later = join(board.root, 'site/home/later.html')
+    writeFileSync(later, rowsFrame('12px'))
+    await cli(['check', 'site/home/later', '--json'], { cwd: board.root })
+    writeFileSync(later, rowsFrame('12px', 'Three'))
+
+    const run = await cli(['check', 'site/home/later', '--json'], {
+      cwd: board.root,
+    })
+
     const result = checkResultSchema.parse(run.json().data)
     expect(
       result.findings.map((finding) => `${finding.severity} ${finding.rule}`),

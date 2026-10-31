@@ -77,7 +77,10 @@ The findings the board holds between watch batches, and the warm checker that ru
 - A batch queues the frames `recheckRefs` names plus every frame whose box or file time changed, since a resize writes `layout.json` alone
 - A frame queued again before its result lands drops that result, a failed recheck lands an empty list, and a reading of a file since rewritten lands nothing
 
-`start.ts` runs `outranked` as the tracker settles an agent's write, past the one-second grace, against the source `version` holds for its `before` hash. The result replaces the previous write's and stays through a hand edit until the next agent write. The hook holds no copy of the replaced bytes, so it never raises `outranked`.
+`start.ts` runs `outranked` as the tracker settles an agent's write, past the one-second grace, against the source `version` holds for its `before` hash. The hook holds no copy of the replaced bytes, so it never raises `outranked`.
+
+- A later write raising nothing keeps the held warning while it still holds against the bytes that raised it
+- A hand edit leaves a held warning as it is
 
 ### `src/server/routes/checks.ts`
 

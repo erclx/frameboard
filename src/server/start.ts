@@ -224,6 +224,8 @@ async function listen({
   await emptyTrash(root)
   const tracker = createChangeTracker(root)
   const settling = new Map<ReturnType<typeof setTimeout>, () => void>()
+  // The bytes each frame's held `outranked` warning was raised against.
+  const raised = new Map<string, string>()
   // The grace each frame's latest agent write waits out, which `check` waits on.
   const graces = new Map<string, Promise<void>>()
   const settleLater = (held: FrameChange[]) => {
@@ -237,7 +239,7 @@ async function listen({
       void inTurn(async () => {
         const changes = tracker.settle(held)
         if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
-        const sent = changeFindings(root, changes, tracker, findings)
+        const sent = changeFindings(root, changes, tracker, findings, raised)
         if (Object.keys(sent).length > 0) {
           hub.broadcast({ type: 'findings', findings: sent })
         }
@@ -637,7 +639,10 @@ async function pushBatch(
 /**
  * Runs `outranked` over each settled agent write against the bytes it
  * replaced, holding the result in place of the frame's previous write's, and
- * returns the merged lists to send. A created frame holds none. A frame
+ * returns the merged lists to send. A write raising nothing keeps a held
+ * warning while it still holds against the bytes that raised it, so a later
+ * edit elsewhere in the frame never clears it before `check` reports it.
+ * `raised` holds those bytes by ref. A created frame holds none. A frame
  * rewritten since is left to the write that rewrote it, and a removed one to
  * the batch that drops it.
  */
@@ -646,25 +651,38 @@ function changeFindings(
   changes: readonly FrameChange[],
   tracker: ChangeTracker,
   findings: BoardFindings,
+  raised: Map<string, string>,
 ): Record<string, Finding[]> {
   const sent: Record<string, Finding[]> = {}
   for (const change of changes) {
-    const [project = '', page = '', name = ''] = change.frame.split('/')
+    const ref = change.frame
+    const [project = '', page = '', name = ''] = ref.split('/')
     const target = { root, project, page, name }
-    const before = change.before
-      ? tracker.version(change.frame, change.before)
-      : null
-    let list: Finding[] = []
-    if (before !== null) {
-      try {
-        const after = readFrame(target)
-        if (contentHash(after.html) !== change.hash) continue
-        list = checkOutranked(frameFrom(target, before), after)
-      } catch {
-        continue
+    if (change.created) raised.delete(ref)
+    const before =
+      !change.created && change.before
+        ? tracker.version(ref, change.before)
+        : null
+    let list: Finding[]
+    try {
+      const after = readFrame(target)
+      if (contentHash(after.html) !== change.hash) continue
+      const against = (bytes: string | null | undefined) =>
+        bytes === null || bytes === undefined
+          ? []
+          : checkOutranked(frameFrom(target, bytes), after)
+      list = against(before)
+      if (list.length > 0 && before !== null) {
+        raised.set(ref, before)
+      } else {
+        list = against(raised.get(ref))
+        if (list.length === 0) raised.delete(ref)
       }
+    } catch {
+      raised.delete(ref)
+      continue
     }
-    Object.assign(sent, findings.setChanged(change.frame, list))
+    Object.assign(sent, findings.setChanged(ref, list))
   }
   return sent
 }
