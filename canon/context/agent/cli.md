@@ -1,13 +1,13 @@
 ---
 title: CLI
-description: The commands agents run, the docs verb, the frameboard skill, and the plugin hook
+description: The commands agents run, the docs verb, the frameboard:draw skill, and the plugin hooks
 ---
 
 # CLI
 
 ## Overview
 
-Owns the agent interface, being every verb an agent or script runs, the `docs` verb that prints the facts about them, and the `frameboard` skill, check hook, and inbox monitor shipped as a Claude Code plugin. Anything the mouse does on the board, a verb does too.
+Owns the agent interface, being every verb an agent or script runs, the `docs` verb that prints the facts about them, and the `frameboard:draw` skill, check and version hooks, and inbox monitor shipped as a Claude Code plugin. Anything the mouse does on the board, a verb does too.
 
 ## Layout
 
@@ -61,7 +61,7 @@ Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a
 
 ### `plugins/frameboard/`
 
-Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hook and the monitor share.
+Owns the `frameboard:draw` skill in `skills/draw/`, the check hook, the version hook, and the inbox monitor, with `lib/resolve.sh` the install lookup the hooks and the monitor share.
 
 - The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then the install on PATH, so the checkout checks itself
 
@@ -71,6 +71,8 @@ Owns the `frameboard` skill, the check hook, and the inbox monitor, with `lib/re
 - The board sends a note to the claim holder while it listens, else to the only listener, else to a new session when nobody listens and `serve` can start one, else to the one the developer picks
 
 The skill and the `docs` content format both say a `style` attribute outranks every rule and may hold a hand value, so an agent reads it before changing a rule the element matches.
+
+The version hook runs on `SessionStart`, compares `plugin.json` with the installed `--version`, and prints a note only on a mismatch or a missing install. The skill tells the agent to stop on that note.
 
 `editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. The claim is also what names the agent on the board's change toast. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
 
