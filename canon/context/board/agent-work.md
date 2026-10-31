@@ -37,7 +37,11 @@ Owns how a claimed frame shows and how an edit waits on one, apart from `frame.t
 
 ### `src/client/board/changes/`
 
-Owns the change toast with Show, Previous on `[`, and Next on `]`, Enter on the toast itself running Show, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
+Owns the change toast, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
+
+- The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, and Enter on the toast itself runs Show
+- Mark all seen clears every page and turns the toast into a cleared form whose Undo lasts its 5 seconds
+- Undo restores the `lastCleared` snapshot in `unseen.ts` and never joins `edit.undo`, since seen state touches no file
 
 Compare flips or splits one changed frame between the version before and the current one. The server holds each version, and the browser picks which one the before side shows.
 
