@@ -117,8 +117,13 @@ const SECTIONS: readonly Section[] = [
   {
     title: 'Agents',
     rows: [
+      { label: 'Show the agent change', actions: ['changes.show'] },
       { label: 'Next change', actions: ['changes.next'] },
       { label: 'Previous change', actions: ['changes.previous'] },
+      {
+        label: 'Mark all agent changes seen',
+        actions: ['changes.markAllSeen'],
+      },
     ],
   },
 ]
