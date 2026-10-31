@@ -1,8 +1,13 @@
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { Action } from '@/client/actions/registry'
+import { type Action, registerActions } from '@/client/actions/registry'
 import { createLiveStore } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
+import { CommandPalette } from '@/client/palette/commands'
+import { openOverlay } from '@/client/palette/overlay'
 import type { SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
@@ -142,6 +147,22 @@ describe('sectionActions', () => {
       expect(enabled(id)).toBe(false)
     },
   )
+
+  it('is found in the palette by the word group', async () => {
+    const { selection, action } = setup()
+    select(selection, PAGE, [A.ref])
+    const unregister = registerActions([action('section.wrap')])
+    render(createElement(CommandPalette))
+    act(() => openOverlay('commands'))
+
+    await userEvent.type(await screen.findByRole('combobox'), 'group')
+
+    expect(
+      await screen.findByRole('option', { name: /^Wrap frames in a section/ }),
+    ).toBeInTheDocument()
+    act(() => openOverlay(null))
+    unregister()
+  })
 
   it('nudges the selected section 10 px with its frames in one write', () => {
     const { selection, writes, action } = setup()

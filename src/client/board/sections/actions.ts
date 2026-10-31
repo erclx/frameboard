@@ -155,7 +155,11 @@ export function sectionActions(context: SectionContext): Action[] {
       id: 'section.wrap',
       label: 'Wrap in section',
       group: 'frame',
-      command: { label: 'Wrap frames in a section', icon: PanelTop },
+      command: {
+        label: 'Wrap frames in a section',
+        icon: PanelTop,
+        keywords: ['group'],
+      },
       keys: ['$mod+Alt+KeyG'],
       enabled: () => writable() && chosenFrames().length > 0,
       run: () => {
