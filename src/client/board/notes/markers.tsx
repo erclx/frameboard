@@ -5,6 +5,7 @@ import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
+import { HANDLE_REACH } from '../geometry/hit'
 import { useDrawnFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { cornerOf } from '../pin-corner'
@@ -117,9 +118,23 @@ interface MarkerProps {
   onOpen?: () => void
 }
 
+/** The pin's side, in screen pixels. */
+const PIN_SIZE = 22
 /**
- * A 22 px amber pin centered on its spot, as the design sits one on a
- * frame's corner, kept at screen size whatever the zoom, ringed while its
+ * How far the pin's bottom-left tail sits up and right of its spot, in screen
+ * pixels: one past the reach of a frame's corner handle, so a press on the
+ * north-east handle of a pinned frame still takes the handle.
+ */
+const TAIL_GAP = HANDLE_REACH + 1
+/** Where the pin's center sits from its spot, in screen pixels. */
+const PIN_CENTER = {
+  x: TAIL_GAP + PIN_SIZE / 2,
+  y: -(TAIL_GAP + PIN_SIZE / 2),
+}
+
+/**
+ * A 22 px amber pin whose bottom-left tail points at its spot from just up
+ * and right of it, kept at screen size whatever the zoom, ringed while its
  * note is open.
  */
 function Marker({
@@ -132,11 +147,16 @@ function Marker({
   onOpen,
 }: MarkerProps) {
   const className = cn(
-    'pointer-events-auto absolute grid size-[22px] place-items-center rounded-[11px_11px_11px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] focus-visible:ring-3 focus-visible:ring-ring/50',
+    'pointer-events-auto absolute grid size-[22px] origin-top-left place-items-center rounded-[11px_11px_11px_2px] bg-note text-label font-semibold text-[#1a1a1a] shadow-[0_2px_6px_rgba(0,0,0,.25)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     active &&
       'shadow-[0_0_0_3px_color-mix(in_srgb,var(--note)_35%,transparent),0_2px_6px_rgba(0,0,0,.25)]',
   )
-  const style = { left: at.x, top: at.y }
+  // The scale comes first, so the translate after it reads in screen pixels.
+  const style = {
+    left: at.x,
+    top: at.y,
+    transform: `scale(calc(1 / var(--zoom, 1))) translate(${TAIL_GAP}px, ${-(TAIL_GAP + PIN_SIZE)}px)`,
+  }
   return onOpen ? (
     <button
       type="button"
@@ -161,6 +181,15 @@ function Marker({
 
 /** How far a card sits from its marker's center, as the design sets it. */
 const CARD_OFFSET = { x: 21, y: -25 }
+/**
+ * Where a card's near edges sit from the marker's spot, in screen pixels:
+ * left of the spot on the right side, right of it once flipped, and above.
+ */
+const CARD_AT = {
+  left: PIN_CENTER.x + CARD_OFFSET.x,
+  right: CARD_OFFSET.x - PIN_CENTER.x,
+  top: PIN_CENTER.y + CARD_OFFSET.y,
+}
 /** The gap a card keeps from the canvas edge it would otherwise cross. */
 const EDGE_GAP = 12
 
@@ -269,9 +298,9 @@ function Popover({
           }
         }}
         style={{
-          top: CARD_OFFSET.y + shift.y,
+          top: CARD_AT.top + shift.y,
           maxHeight: shift.cap ?? undefined,
-          ...(shift.flip ? { right: CARD_OFFSET.x } : { left: CARD_OFFSET.x }),
+          ...(shift.flip ? { right: CARD_AT.right } : { left: CARD_AT.left }),
         }}
       >
         {children}

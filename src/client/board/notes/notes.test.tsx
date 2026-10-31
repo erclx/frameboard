@@ -11,6 +11,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 import { contrastOnPage } from '@/test/contrast'
 
+import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
@@ -774,6 +775,23 @@ describe('NotesLayer', () => {
       left: '390px',
       top: '0px',
     })
+  })
+
+  it("points a pin's tail at its corner from past the corner handle's reach", () => {
+    live({ notes: { 'studio/home': [note({ id: 'n_1' })] } })
+
+    renderLayer()
+
+    // The marker sits on no positioned ancestor, so its spot is the page's
+    // 390,0, and the page is unscrolled.
+    const origin = document.documentElement.getBoundingClientRect()
+    const pin = screen
+      .getByRole('button', { name: 'Note 1 on hero' })
+      .getBoundingClientRect()
+    expect({
+      right: pin.left - (origin.left + 390) > HANDLE_REACH,
+      up: origin.top - pin.bottom > HANDLE_REACH,
+    }).toEqual({ right: true, up: true })
   })
 
   it("tags a marker with its frame's ref, which a frame drag matches", () => {

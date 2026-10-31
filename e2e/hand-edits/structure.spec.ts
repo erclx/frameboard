@@ -395,6 +395,52 @@ test.describe('page structure by hand, and its undo', () => {
       await expect.poll(() => layout().hero?.order).toBe(0)
     })
 
+    test('resizes a frame with a note pinned from its north-east handle', async ({
+      page,
+    }) => {
+      writeFileSync(
+        at('studio/home/notes.json'),
+        `${JSON.stringify({
+          version: 1,
+          notes: [
+            {
+              id: 'n_0a0b0c01',
+              number: 1,
+              frame: 'mobile',
+              anchor: null,
+              text: 'Room above the fold',
+              from: 'developer',
+              author: 'Ada Lovelace',
+              session: null,
+              to: null,
+              state: 'open',
+              thread: null,
+              createdAt: '2026-10-19T16:08:00.000Z',
+              updatedAt: '2026-10-19T16:08:00.000Z',
+            },
+          ],
+        })}\n`,
+      )
+      await openAsWriter(page)
+      await expect(
+        page.getByRole('button', { name: 'Note 1 on mobile' }),
+      ).toBeVisible()
+      const mobile = page.locator('[data-frame="studio/home/mobile"]')
+      const box = await mobile.boundingBox()
+      if (!box) throw new Error('The mobile frame has no box on screen')
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      await expect(mobile).toHaveAttribute('data-selected', 'true')
+
+      const corner = { x: box.x + box.width, y: box.y }
+      await page.mouse.move(corner.x, corner.y)
+      await page.mouse.down()
+      await page.mouse.move(corner.x + 40, corner.y + 20, { steps: 8 })
+      await page.mouse.up()
+
+      await expect.poll(() => layout().mobile?.width).toBeGreaterThan(390)
+      await expect(page.getByRole('region', { name: 'Note 1' })).toHaveCount(0)
+    })
+
     test('adds a picked device where the Frame tool clicks, and undo takes it away', async ({
       page,
     }) => {
