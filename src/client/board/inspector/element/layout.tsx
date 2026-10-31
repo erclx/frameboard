@@ -10,7 +10,7 @@ import {
   Square,
   WrapText,
 } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
 import type { ElementFlow } from '@/shared/records/elements'
 
@@ -318,6 +318,14 @@ interface AlignmentGridProps {
   onPick: (main: Place, cross: Place) => void
 }
 
+/** Arrow keys move focus across the 3×3 cells, stopping at each edge, without writing. */
+const GRID_STEPS: Record<string, (at: number) => number> = {
+  ArrowRight: (at) => (at % 3 === 2 ? at : at + 1),
+  ArrowLeft: (at) => (at % 3 === 0 ? at : at - 1),
+  ArrowDown: (at) => (at >= 6 ? at : at + 3),
+  ArrowUp: (at) => (at < 3 ? at : at - 3),
+}
+
 const NAMES: Record<Place, [string, string]> = {
   start: ['top', 'left'],
   center: ['center', 'center'],
@@ -332,26 +340,49 @@ function AlignmentGrid({
   disabled,
   onPick,
 }: AlignmentGridProps) {
+  const cells = useRef<(HTMLButtonElement | null)[]>([])
+  const litAt = (row: number, column: number) => {
+    const mainAt = PLACES[vertical ? row : column]
+    const crossAt = PLACES[vertical ? column : row]
+    return crossAt === cross && (main === null || mainAt === main)
+  }
+  // One tab stop, on the first lit cell, so Tab leaves the grid in one press.
+  const lit = Array.from({ length: 9 }, (_, at) =>
+    litAt(Math.floor(at / 3), at % 3),
+  ).indexOf(true)
+  const stop = lit === -1 ? 0 : lit
+  const onKeyDown = (event: KeyboardEvent, at: number) => {
+    const step = GRID_STEPS[event.key]
+    if (!step) return
+    event.preventDefault()
+    cells.current[step(at)]?.focus()
+  }
   return (
     <div
       role="group"
       aria-label="Alignment"
       className="grid h-[58px] grid-cols-3 grid-rows-3 rounded-md bg-input p-1"
     >
-      {PLACES.flatMap((row) =>
-        PLACES.map((column) => {
+      {PLACES.flatMap((row, rowAt) =>
+        PLACES.map((column, columnAt) => {
           // A row runs its main axis across the columns, a column down the rows.
           const mainAt = vertical ? row : column
           const crossAt = vertical ? column : row
-          const lit = crossAt === cross && (main === null || mainAt === main)
+          const at = rowAt * 3 + columnAt
+          const lit = litAt(rowAt, columnAt)
           const label = `Align ${NAMES[row][0]} ${NAMES[column][1]}`
           return (
             <button
               key={`${row}-${column}`}
+              ref={(cell) => {
+                cells.current[at] = cell
+              }}
               type="button"
               aria-label={label}
               aria-pressed={lit}
+              tabIndex={at === stop ? 0 : -1}
               disabled={disabled}
+              onKeyDown={(event) => onKeyDown(event, at)}
               onClick={() => onPick(mainAt, crossAt)}
               className="group/cell grid place-items-center rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
             >

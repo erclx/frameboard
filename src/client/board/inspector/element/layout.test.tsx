@@ -275,6 +275,31 @@ describe('LayoutSection gap and alignment', () => {
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('holds one tab stop on the lit cell, so Tab leaves the grid in one press', async () => {
+    renderSection({ ...ROW, justify: 'center', alignItems: 'center' })
+
+    screen.getByRole('button', { name: 'Align center center' }).focus()
+    await userEvent.tab()
+
+    expect(screen.getByRole('textbox', { name: 'Gap' })).toHaveFocus()
+  })
+
+  it('moves focus across the cells with the arrow keys and writes nothing', async () => {
+    const changes = renderSection({
+      ...ROW,
+      justify: 'center',
+      alignItems: 'center',
+    })
+
+    screen.getByRole('button', { name: 'Align center center' }).focus()
+    await userEvent.keyboard('{ArrowRight}{ArrowDown}')
+
+    expect(
+      screen.getByRole('button', { name: 'Align bottom right' }),
+    ).toHaveFocus()
+    expect(changes).toEqual([])
+  })
+
   it('offers no gap on a block', () => {
     renderSection(layoutOf())
 
