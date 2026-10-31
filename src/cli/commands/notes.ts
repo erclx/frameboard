@@ -126,7 +126,7 @@ export function registerNotes(program: Command, context: ProgramContext): void {
       )
       const reply = file.notes.find((note) => note.id === replyId)
       return {
-        data: { note: reply },
+        data: { note: reply && forAgent(reply) },
         human: `Replied to ${reply?.thread ?? id} on ${found.project}/${found.page}/${found.note.frame}`,
       }
     },
@@ -145,7 +145,10 @@ export function registerNotes(program: Command, context: ProgramContext): void {
       )
       const rootId = found.note.thread ?? found.note.id
       const closed = file.notes.find((note) => note.id === rootId)
-      return { data: { note: closed }, human: `Closed ${rootId}` }
+      return {
+        data: { note: closed && forAgent(closed) },
+        human: `Closed ${rootId}`,
+      }
     },
   )
 }
