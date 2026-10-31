@@ -1,4 +1,4 @@
-import '../../styles.css'
+import '../../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -8,7 +8,7 @@ import type { ListResult } from '@/shared/records/list'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 import { contrastOnPage } from '@/test/contrast'
 
-import { ThemeTab } from './theme-tab'
+import { ThemeTab } from './tab'
 
 function row(name: string, extra: Partial<TokenRow> = {}): TokenRow {
   return {

@@ -7,8 +7,8 @@ import {
   type TokenTable,
 } from '@/shared/records/tokens'
 
-import { SWATCH_RING } from '../inspector/element/values'
-import { fetchTokenTable, useTokenTable } from '../tokens'
+import { SWATCH_RING } from '../../inspector/element/values'
+import { fetchTokenTable, useTokenTable } from '../../tokens'
 
 const GROUP_TITLES: Record<TokenRow['group'], string> = {
   color: 'Color',
