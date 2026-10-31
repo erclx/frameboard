@@ -128,6 +128,30 @@ test.describe('what an agent changed', () => {
     ).toBeVisible()
   })
 
+  test('opens a fresh toast for a change landing after Mark all seen and keeps the Undo', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+    writeAsAgent('studio/pricing/plans.html', 'Plans for teams')
+    writeFileSync(
+      at('studio/pricing/faq.html'),
+      '<!doctype html><title>faq</title><h1>FAQ</h1>',
+    )
+    const toasts = page.locator('[data-change-toast]')
+    await expect(toasts).toContainText('2 frames changed')
+    await toasts.getByRole('button', { name: /^Mark all seen/ }).click()
+    await expect(toasts).toContainText('2 changes marked seen')
+
+    writeAsAgent('studio/pricing/plans.html', 'Plans for agencies')
+
+    await expect(toasts.filter({ hasText: 'plans changed' })).toBeVisible()
+    await expect(
+      toasts
+        .filter({ hasText: '2 changes marked seen' })
+        .getByRole('button', { name: 'Undo' }),
+    ).toBeVisible()
+  })
+
   test('marks nothing for a page renamed through the board', async ({
     page,
   }) => {
