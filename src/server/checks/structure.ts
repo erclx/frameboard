@@ -10,45 +10,53 @@ import {
   locate,
   startTagLocation,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const STRUCTURE_RULES: RuleDoc[] = [
   {
     id: 'naming',
     tier: 'exact',
+    severity: 'error',
     description:
       'A page or frame name uses letters, digits, dots, dashes, and underscores, opening with a letter or digit, at most 64 characters',
   },
   {
     id: 'dot-folder',
     tier: 'exact',
+    severity: 'error',
     description:
       'No folder in a project opens with a dot, since the board never shows it',
   },
   {
     id: 'head-body',
     tier: 'exact',
+    severity: 'error',
     description: 'A frame stating <head> states <body> too',
   },
   {
     id: 'table-tbody',
     tier: 'exact',
+    severity: 'error',
     description:
       'A table holding rows states its <tbody>, since the browser adds one the file does not hold',
   },
   {
     id: 'malformed-tag',
     tier: 'exact',
+    severity: 'error',
     description:
       'A tag or attribute the HTML tokenizer cannot read as written, such as a quote ending an attribute early, which the browser recovers from silently',
   },
   {
     id: 'nesting',
     tier: 'exact',
+    severity: 'error',
     description:
       'The browser rebuilds the tree the file writes, adding an element it never opens, closing one it never closed, or moving one out of a table',
   },
 ]
+
+const finding = findingFor(STRUCTURE_RULES)
 
 /**
  * Elements a parser may imply with no start tag in a valid file. A `tbody`

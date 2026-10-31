@@ -5,17 +5,20 @@ import type { Finding } from '@/shared/records/check'
 import type { Cascade } from './cascade'
 import { described, textElements } from './fonts'
 import { boardPath, type FrameSource, startTagLocation } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const UPPERCASE_RULES: RuleDoc[] = [
   {
     id: 'uppercase',
     tier: 'selector',
+    severity: 'warning',
     configKey: 'noUppercase',
     description:
       'No text is set in capitals, through text-transform: uppercase or a word of more than three capital letters',
   },
 ]
+
+const finding = findingFor(UPPERCASE_RULES)
 
 const CAPITALS = /(?<![\p{L}\p{N}])\p{Lu}{4,}(?![\p{L}\p{N}])/u
 

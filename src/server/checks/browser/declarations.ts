@@ -19,16 +19,19 @@ import {
   parseSheet,
   type Sheet,
 } from '../frame-source'
-import { finding, type RuleDoc } from '../rule'
+import { findingFor, type RuleDoc } from '../rule'
 
 export const DECLARATION_RULES: RuleDoc[] = [
   {
     id: 'dropped-declaration',
     tier: 'browser',
+    severity: 'warning',
     description:
       "A declaration the page's own CSS parser drops, being a misspelled property, a value it cannot read, or a sheet that stops parsing",
   },
 ]
+
+const finding = findingFor(DECLARATION_RULES)
 
 /**
  * At-rules whose blocks hold descriptors rather than properties, which

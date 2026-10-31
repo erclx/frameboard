@@ -10,16 +10,19 @@ import {
   parseSheet,
   type Sheet,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const CUSTOM_PROPERTY_RULES: RuleDoc[] = [
   {
     id: 'unknown-token',
     tier: 'exact',
+    severity: 'warning',
     description:
       'A var() with no fallback names a custom property no token sheet, frame sheet, or style attribute declares',
   },
 ]
+
+const finding = findingFor(CUSTOM_PROPERTY_RULES)
 
 /** A `var()` naming its property, with no fallback after a comma. */
 const BARE_VAR = /var\(\s*(--[\w-]+)\s*\)/g

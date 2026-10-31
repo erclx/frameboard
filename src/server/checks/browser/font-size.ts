@@ -2,18 +2,21 @@ import type { Page } from 'playwright-core'
 
 import type { Finding } from '@/shared/records/check'
 
-import { finding, type RuleDoc } from '../rule'
+import { findingFor, type RuleDoc } from '../rule'
 import type { RenderedTarget } from './layout'
 
 export const FONT_SIZE_RULES: RuleDoc[] = [
   {
     id: 'min-font-size',
     tier: 'browser',
+    severity: 'warning',
     configKey: 'minFontSize',
     description:
       'Text renders smaller than the project sets as its minimum size in pixels',
   },
 ]
+
+const finding = findingFor(FONT_SIZE_RULES)
 
 interface SizedText {
   index: number

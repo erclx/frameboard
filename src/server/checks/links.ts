@@ -18,27 +18,32 @@ import {
   type Sheet,
   sheetBase,
 } from './frame-source'
-import { finding, type RuleDoc } from './rule'
+import { findingFor, type RuleDoc } from './rule'
 
 export const LINK_RULES: RuleDoc[] = [
   {
     id: 'outside-link',
     tier: 'exact',
+    severity: 'error',
     description:
       "A frame loads files from its own page folder and its project's assets/ folder alone, never from a sibling page or the server root",
   },
   {
     id: 'network',
     tier: 'exact',
+    severity: 'error',
     description:
       'A frame loads nothing over the network, while a navigation link passes',
   },
   {
     id: 'missing-file',
     tier: 'exact',
+    severity: 'error',
     description: 'Every local file a frame loads exists',
   },
 ]
+
+const finding = findingFor(LINK_RULES)
 
 /**
  * The attributes that load a resource, by element. An `a href` navigates

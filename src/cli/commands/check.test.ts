@@ -82,8 +82,8 @@ describe('check', () => {
 
   it('reads a two-part ref as a project and page on a board of several projects', async () => {
     const board: TempBoard = writeBoard({
-      'studio/home/hero.html': '<p>Hello</p>',
-      'other/home/hero.html': '<p>Hello</p>',
+      'studio/home/hero.html': '<img src="gone.png" alt="">',
+      'other/home/hero.html': '<img src="gone.png" alt="">',
     })
 
     const run = await check(['studio/home'], board.root)
@@ -111,9 +111,9 @@ describe('check', () => {
 
   it('checks the project a bare name holds on a board of several projects', async () => {
     const board: TempBoard = writeBoard({
-      'studio/home/hero.html': '<p>Hello</p>',
-      'studio/about/team.html': '<p>Hello</p>',
-      'other/home/hero.html': '<p>Hello</p>',
+      'studio/home/hero.html': '<img src="gone.png" alt="">',
+      'studio/about/team.html': '<img src="gone.png" alt="">',
+      'other/home/hero.html': '<img src="gone.png" alt="">',
     })
 
     const run = await check(['studio'], board.root)
@@ -125,8 +125,8 @@ describe('check', () => {
 
   it('reads a bare name as a page first where a page and a project share it', async () => {
     const board: TempBoard = writeBoard({
-      'home/home/hero.html': '<p>Hello</p>',
-      'home/about/team.html': '<p>Hello</p>',
+      'home/home/hero.html': '<img src="gone.png" alt="">',
+      'home/about/team.html': '<img src="gone.png" alt="">',
     })
 
     const run = await check(['home'], board.root)
