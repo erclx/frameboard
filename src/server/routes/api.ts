@@ -106,7 +106,7 @@ export function apiRoutes(
   })
 
   app.get('/api/author', async (c) =>
-    c.json({ ok: true, data: { name: await readAuthor(root) } }),
+    c.json({ ok: true, data: { name: (await readAuthor(root)).name } }),
   )
 
   app.post('/api/open', authorized, async (c) =>
