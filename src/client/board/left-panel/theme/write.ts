@@ -3,9 +3,15 @@ import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { TokenEditResult } from '@/shared/records/tokens'
 
 /** One token edit as `POST /api/tokens/edit` takes it, less the project and the hash the tab adds. */
-export type TokenChange =
+export type TokenChange = (
   | { name: string; side: 'light' | 'dark' | 'both'; value: string }
   | { name: string; reset: true }
+) & {
+  /** The sheet the edit writes, the project's own when absent. */
+  sheet?: TokenSheet
+}
+
+export type TokenSheet = 'project' | 'board'
 
 export interface TokenWriteDeps {
   send?: typeof fetch
@@ -14,8 +20,9 @@ export interface TokenWriteDeps {
 }
 
 /**
- * Sends one token edit made from the project sheet `hash` names, null for a
- * project with none, and answers what landed or null. Every refusal raises
+ * Sends one token edit made from the sheet `hash` names, the one
+ * `change.sheet` picks, null for a project with no sheet of its own, and
+ * answers what landed or null. Every refusal raises
  * one error toast, a sheet changed since the read saying so in its words.
  */
 export async function writeToken(
