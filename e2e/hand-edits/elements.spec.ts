@@ -194,4 +194,32 @@ test.describe('selecting an element inside a frame', () => {
 
     await expect.poll(order).toEqual(['Headline', 'Caption'])
   })
+
+  test('Free places an element in a static parent as two start tags, and one undo takes both back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    const original = read()
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+
+    await cmdClick(page, 'code')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.getByRole('button', { name: 'Free', exact: true }).click()
+
+    await expect
+      .poll(read)
+      .toContain('<p data-name="Caption" style="position: relative">')
+    expect(read()).toMatch(
+      /<code data-name="Command" style="font-family: var\(--font-mono\); position: absolute; left: \d+px; top: \d+px[^"]*">/,
+    )
+    await expect(
+      page.getByRole('textbox', { name: 'X position in its parent' }),
+    ).toBeVisible()
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(original)
+  })
 })
