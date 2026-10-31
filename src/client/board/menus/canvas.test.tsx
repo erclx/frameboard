@@ -1,6 +1,13 @@
 import '../../styles.css'
 
-import { act, cleanup, render, screen, within } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -528,18 +535,23 @@ describe('CanvasMenu', () => {
       rightClick(centerOf(A.ref))
 
       const menu = await screen.findByRole('menu')
-      expect(
-        [
-          'Bring to front',
-          'Bring forward',
-          'Send backward',
-          'Send to back',
-        ].map((row) =>
-          within(menu)
-            .getByRole('menuitem', { name: new RegExp(`^${row}`) })
-            .hasAttribute('data-disabled'),
-        ),
-      ).toEqual([false, false, false, false])
+      // The rows read their actions once the element keys register, which can land after the menu opens.
+      await waitFor(
+        () =>
+          expect(
+            [
+              'Bring to front',
+              'Bring forward',
+              'Send backward',
+              'Send to back',
+            ].map((row) =>
+              within(menu)
+                .getByRole('menuitem', { name: new RegExp(`^${row}`) })
+                .hasAttribute('data-disabled'),
+            ),
+          ).toEqual([false, false, false, false]),
+        { timeout: 2000 },
+      )
     })
   })
 

@@ -168,6 +168,34 @@ describe('elementsRoutes', () => {
       ).toEqual(['rgb(250, 247, 240)', 'rgb(20, 90, 60)'])
     })
 
+    it("answers a container's flow with the rule its rows share", async () => {
+      const css = join(board.root, 'studio/home/styles.css')
+      writeFileSync(css, `${readFileSync(css, 'utf8')}\n.row { display: flex }`)
+      writeFileSync(
+        join(board.root, 'studio/home/hero.html'),
+        '<!doctype html><html><head><meta charset="utf-8"><title>hero</title><link rel="stylesheet" href="styles.css"></head><body><div class="row"><p>a</p></div><div class="row"></div></body></html>',
+      )
+
+      const response = await routes.request(
+        `/api/frames/styles?ref=${encodeURIComponent(HERO)}&index=6`,
+      )
+
+      const { data } = await response.json()
+      expect(data.element.flow).toEqual({
+        rule: { selector: '.row', count: 2 },
+        size: { width: null, height: 'hug' },
+      })
+    })
+
+    it('answers no flow rule for an element no container rule reaches', async () => {
+      const response = await routes.request(
+        `/api/frames/styles?ref=${encodeURIComponent(HERO)}&index=6`,
+      )
+
+      const { data } = await response.json()
+      expect(data.element.flow.rule).toBeNull()
+    })
+
     it('refuses an index the frame holds no element at', async () => {
       const response = await routes.request(
         `/api/frames/styles?ref=${encodeURIComponent(HERO)}&index=99`,

@@ -12,7 +12,7 @@ import type { PlaceFacts } from './place'
 const NAME_LENGTH = 40
 
 /** What the layout read takes from the cascade, with the shorthand that sets the direction. */
-const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
+export const LAYOUT_PROPERTIES: ReadonlySet<string> = new Set([
   'display',
   'flex-direction',
   'flex-flow',
@@ -132,7 +132,8 @@ function isPlaced(facts: PlaceFacts | undefined): boolean {
   return position === 'absolute' || position === 'fixed'
 }
 
-function layoutOf(
+/** One element's layout off a cascade that reads `LAYOUT_PROPERTIES`. */
+export function layoutOf(
   cascade: Cascade,
   element: FrameSource['elements'][number],
 ): Layout {

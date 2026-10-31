@@ -2821,6 +2821,7 @@ describe('InspectorPanel with an element selected', () => {
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',
       'Position',
+      'Layout',
       'Appearance',
       'Typography',
       'Fill',

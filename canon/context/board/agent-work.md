@@ -18,12 +18,12 @@ Owns the Note tool, its markers, the composer, and the thread, which change toge
 - A Note tool pins a note on a frame or element, Send hands it to a listening session or, through the picker's New session, starts one, and replies show in the note's thread
 - The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection and marquee gestures bind only under the Move tool
 - A pick hit-tests inside the iframe, counting through `board/frame-dom.ts` past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
-- An amber numbered marker sits on its element's top right corner, or its frame's once the element is lost per `board/pin-corner.ts`, and hides in Play and once done
+- An amber numbered marker points its tail, clear of the corner handle, at its element's top right corner, or its frame's once the element is lost per `board/pin-corner.ts`
 - The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
 
 An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. It caps at the canvas height above the toolbar, starting below the View only pill where one shows, and scrolls a long thread's messages under its header and reply box.
 
-Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
+Markers hide in Play and once done, and notes sharing a board pixel stack into a count pin listing them in `pin-list.tsx`. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
 
 ### `src/client/board/claims/`
 

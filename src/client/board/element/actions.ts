@@ -47,14 +47,17 @@ export interface ElementContext {
 /**
  * Whether focus sits on the page itself or inside the canvas. A click on the
  * canvas's hit layer, which takes no focus, leaves it on the body, while a
- * panel row or a toolbar button keeps it until it moves on.
+ * panel row or a toolbar button keeps it until it moves on. A note pin and
+ * the card it opens sit in the canvas but are controls, so focus on either
+ * keeps Enter and Tab for them.
  */
 export function focusOnBoard(): boolean {
   const focused = document.activeElement
   return (
     !focused ||
     focused === document.body ||
-    focused.closest('[data-canvas]') !== null
+    (focused.closest('[data-canvas]') !== null &&
+      focused.closest('[data-note-marker], [data-note-card]') === null)
   )
 }
 

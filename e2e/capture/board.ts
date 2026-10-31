@@ -1113,6 +1113,46 @@ async function longThread(page: Page): Promise<void> {
 }
 
 /**
+ * Hands the board three frame notes on hero through the socket's notes
+ * message, so they stack into one count pin on its corner with no note
+ * written into the fixture.
+ */
+async function stackedNotes(page: Page): Promise<void> {
+  const notes: BoardNote[] = [
+    'Tighten the hero spacing',
+    'Make the headline bigger, it feels small next to the image',
+    'Can we try a darker surface here?',
+  ].map((text, index) => ({
+    id: `n_5ac0b00${index}`,
+    number: 3 + index,
+    frame: 'hero',
+    anchor: null,
+    text,
+    from: 'developer',
+    author: 'Ada Lovelace',
+    session: null,
+    to: null,
+    state: 'open',
+    thread: null,
+    createdAt: new Date(Date.UTC(2026, 9, 30, 10, index)).toISOString(),
+    updatedAt: new Date(Date.UTC(2026, 9, 30, 10, index)).toISOString(),
+    element: null,
+  }))
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as ServerMessage
+      socket.send(
+        parsed.type === 'notes' && parsed.page === 'webapp/home'
+          ? JSON.stringify({ ...parsed, notes: [...parsed.notes, ...notes] })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
  * Draws webapp/home with one section around hero and about, by adding it to
  * every board the server sends, so the tracked fixture holds no section.
  */
@@ -1900,6 +1940,15 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(
           both(longThread, asWriter, pressOnLoad('^Note 1 on about$')),
         ),
+      },
+      {
+        section: 'note-pin-list',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(stackedNotes, pressOnLoad('^3 notes on hero$'))),
       },
       {
         section: 'note-composer',
