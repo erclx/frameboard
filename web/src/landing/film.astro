@@ -10,7 +10,7 @@ const posterForVideo = await getImage({ src: poster, width: 1920 })
   <div class="wrap">
     <div class="film">
       <h2>Watch the whole thing</h2>
-      <p>Seventy seconds, from an empty board to a finished one.</p>
+      <p>Seventy-eight seconds, from an empty board to a finished one.</p>
       <div class="shot" data-film data-poster={posterForVideo.src}>
         <Image
           src={poster}
@@ -66,6 +66,8 @@ const posterForVideo = await getImage({ src: poster, width: 1920 })
 <script>
   // The play control is a link to the file, so with scripts off it still
   // opens the film. With them on, it swaps the poster for an inline player.
+  // The player starts with sound, since the Play click is the gesture that
+  // lets a browser play audio, and its own controls carry the mute.
   const shot = document.querySelector<HTMLElement>('[data-film]')
   const play = shot?.querySelector('.play')
   play?.addEventListener('click', (event) => {
@@ -76,7 +78,6 @@ const posterForVideo = await getImage({ src: poster, width: 1920 })
     video.poster = shot.dataset.poster ?? ''
     video.controls = true
     video.playsInline = true
-    video.muted = true
     video.setAttribute('aria-label', 'The Frameboard launch film')
     shot.replaceChildren(video)
     video.focus()
