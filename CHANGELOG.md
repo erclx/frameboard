@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/erclx/frameboard/compare/v0.24.0...v0.25.0) (2026-11-01)
+
+
+### Features
+
+* **web:** reshoot the launch film and README hero on the current board ([#209](https://github.com/erclx/frameboard/issues/209)) ([cb4ad3c](https://github.com/erclx/frameboard/commit/cb4ad3c8269b8cf420e0fb4f6213c6b66d4c1752))
+
 ## [0.24.0](https://github.com/erclx/frameboard/compare/v0.23.0...v0.24.0) (2026-10-31)
 
 
