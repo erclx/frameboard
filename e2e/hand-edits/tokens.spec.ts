@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -67,5 +67,70 @@ test.describe('editing a board token on the Theme tab', () => {
     await page.goto(`${server.url}/p/marketing/launch`)
     await expect(page.frameLocator(LANDING).locator('h1')).toBeVisible()
     expect(await tokenIn(page, LANDING, '--space')).toBe('24px')
+  })
+})
+
+test.describe('replacing a raw color with a token from Selection colors', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+  const path = () => join(board.root, 'webapp/home/hero.html')
+  const read = () => readFileSync(path(), 'utf8')
+
+  /** The hero with its headline and caption both set in raw indigo, one of them in rgb(). */
+  const RAW = `<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>hero</title></head>
+  <body style="margin: 0; padding: var(--space); background: var(--surface)">
+    <h1 data-name="Headline" style="color: #4f46e5">hero</h1>
+    <p data-name="Caption" style="border: 1px solid rgb(79, 70, 229)">caption</p>
+  </body>
+</html>
+`
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    writeFileSync(path(), RAW)
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('rewrites every element using the color, and one undo puts them back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const headline = page.frameLocator(HERO).locator('h1')
+    await expect(headline).toBeVisible()
+    // A click before the canvas fits lands beside the frame.
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Export hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+
+    await page
+      .getByRole('button', { name: 'Replace 4f46e5 with a token' })
+      .click()
+    await page
+      .getByRole('list', { name: 'Tokens to replace 4f46e5 with' })
+      .getByRole('button', { name: /^primary/ })
+      .click()
+
+    await expect
+      .poll(read)
+      .toContain('<h1 data-name="Headline" style="color: var(--primary)">')
+    expect(read()).toContain(
+      '<p data-name="Caption" style="border: 1px solid var(--primary)">',
+    )
+    await expect(headline).toHaveCSS('color', 'rgb(79, 70, 229)')
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(RAW)
   })
 })
