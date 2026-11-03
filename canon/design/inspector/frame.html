@@ -650,6 +650,16 @@
       .crow .flag {
         color: var(--note);
       }
+      .more {
+        display: block;
+        margin-top: 6px;
+        padding: 0;
+        height: 22px;
+        border: 0;
+        background: none;
+        font: inherit;
+        color: var(--muted);
+      }
       .floatname {
         position: absolute;
         left: 12px;
@@ -1739,35 +1749,29 @@
           </div>
         </div>
         <div class="isec">
-          <div class="ihead"><span>Checks · 1</span></div>
-          <div class="fb-fx">
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 3l10 18H2z" />
-              <path d="M12 10v4M12 17.5v.5" />
-            </svg>
-            <div>
-              <b>viewport</b
-              ><small
-                >The frame sizes its content off the viewport, so it grows with
-                any box. Give it a height of its own.</small
-              >
-            </div>
-          </div>
-        </div>
-        <div class="isec">
-          <div class="ihead"><span>Selection colors</span></div>
+          <div class="ihead"><span>Selection colors · 6</span></div>
           <div class="crow">
             <span class="sw" style="background: #111827"></span
             ><span class="hex">111827</span><span class="pct">100%</span
+            ><span class="flag"
+              ><svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 8v5M12 16v.5" />
+                <circle cx="12" cy="12" r="9" /></svg
+            ></span>
+          </div>
+          <div class="crow">
+            <span class="sw" style="background: #ffffff"></span
+            ><span class="hex">ffffff</span><span class="pct">100%</span
             ><span class="flag"
               ><svg
                 class="ic"
@@ -1803,6 +1807,45 @@
               />
             </svg>
           </div>
+          <div class="crow">
+            <span class="sw" style="background: #0ea5e9"></span
+            ><span class="tok">secondary</span><span class="pct">100%</span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"
+              />
+            </svg>
+          </div>
+          <div class="crow">
+            <span class="sw" style="background: #f59e0b"></span
+            ><span class="tok">accent</span><span class="pct">100%</span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"
+              />
+            </svg>
+          </div>
+          <button class="more">Show all 6</button>
         </div>
       </aside>
     </div>
