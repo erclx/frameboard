@@ -69,7 +69,7 @@ describe('placeElement', () => {
   })
 
   it('writes the rendered size only on an axis no rule sizes', () => {
-    const source = '<body><p>x</p></body>'
+    const source = '<body><div></div></body>'
 
     const placed = placeElement(
       source,
@@ -80,8 +80,42 @@ describe('placeElement', () => {
 
     expect(placed).toMatchObject({
       ok: true,
-      html: '<body><p style="position: absolute; left: 1px; top: 2px; height: 40px">x</p></body>',
+      html: '<body><div style="position: absolute; left: 1px; top: 2px; height: 40px"></div></body>',
       sized: ['height'],
+    })
+  })
+
+  it('writes no size on an element holding text alone, so placed text hugs', () => {
+    const source = '<body><p>Hello there</p></body>'
+
+    const placed = placeElement(
+      source,
+      3,
+      { left: 1, top: 2, width: 1424, height: 18 },
+      factsFor(source),
+    )
+
+    expect(placed).toMatchObject({
+      ok: true,
+      html: '<body><p style="position: absolute; left: 1px; top: 2px">Hello there</p></body>',
+      sized: [],
+    })
+  })
+
+  it('writes the rendered size on text holding an element', () => {
+    const source = '<body><p>Hello <b>there</b></p></body>'
+
+    const placed = placeElement(
+      source,
+      3,
+      { left: 1, top: 2, width: 120, height: 18 },
+      factsFor(source),
+    )
+
+    expect(placed).toMatchObject({
+      ok: true,
+      html: '<body><p style="position: absolute; left: 1px; top: 2px; width: 120px; height: 18px">Hello <b>there</b></p></body>',
+      sized: ['width', 'height'],
     })
   })
 

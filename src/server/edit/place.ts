@@ -7,13 +7,14 @@ import {
 } from './apply'
 import { rawAttribute } from './attribute'
 import type { ElementSpan } from './element-span'
+import { ownText } from './elements'
 import { declaredValues } from './style'
 
 /** Where a placed element sits, in CSS pixels against its containing block. */
 export interface Spot {
   readonly left: number
   readonly top: number
-  /** Its rendered size, written only on an axis no rule sizes. */
+  /** Its rendered size, written only on an axis no rule sizes, and never on text alone. */
   readonly width?: number
   readonly height?: number
 }
@@ -159,11 +160,13 @@ export function placeElement(
   }
 
   const own = facts[index]
-  const sized: PlacedSize[] = spot
-    ? (['width', 'height'] as const).filter(
-        (axis) => spot[axis] !== undefined && !own?.[axis],
-      )
-    : []
+  // Text alone sizes itself, and a frozen flow width runs it past its frame.
+  const sized: PlacedSize[] =
+    spot && ownText(element) === null
+      ? (['width', 'height'] as const).filter(
+          (axis) => spot[axis] !== undefined && !own?.[axis],
+        )
+      : []
   const declarations: StyleDeclaration[] = spot
     ? [
         { property: 'position', value: 'absolute' },

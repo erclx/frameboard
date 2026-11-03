@@ -335,6 +335,51 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toContain('<h1 data-name="Headline">Welcome</h1>')
   })
 
+  test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const headline = await centerOf(page, 'h1')
+
+    await tools(page).getByRole('button', { name: 'Text' }).click()
+    await page.mouse.click(headline.x, headline.y + 8)
+    await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
+    await page.keyboard.type('Hello')
+    await page.keyboard.press('Enter')
+    await expect.poll(read).toContain('>Hello</p>')
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+
+    const text = await centerOf(page, '[data-name="Text"]')
+    await page.keyboard.down('Meta')
+    await page.mouse.click(text.x, text.y)
+    await page.keyboard.up('Meta')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.getByRole('button', { name: 'Free', exact: true }).click()
+
+    await expect
+      .poll(read)
+      .toMatch(
+        /<p data-name="Text" style="font-family: var\(--font-text\); width: fit-content; position: absolute; left: [\d.]+px; top: [\d.]+px">Hello<\/p>/,
+      )
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+    const widths = await hero(page)
+      .locator('[data-name="Text"]')
+      .evaluate((element) => {
+        const words = document.createRange()
+        words.selectNodeContents(element)
+        return {
+          box: element.getBoundingClientRect().width,
+          words: words.getBoundingClientRect().width,
+        }
+      })
+    expect(widths.box).toBeLessThanOrEqual(Math.ceil(widths.words))
+  })
+
   test.describe('an image or video from assets/', () => {
     /** A 1 by 1 PNG, small enough to inline and real enough to decode. */
     const PNG = Buffer.from(
