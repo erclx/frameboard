@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { basename, dirname, isAbsolute, relative, sep } from 'node:path'
 
 import { withLocks } from '@/server/board/json-record'
-import { keepingTimes, timedPaths } from '@/server/board/projects'
+import { keepingTimes } from '@/server/board/projects'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 
@@ -159,10 +159,10 @@ export class History {
       .filter((path) => existsSync(dirname(path)))
     // A filing is not an edit to the project, so neither is its undo.
     const timed = step.changes.flatMap((change) =>
-      change.kind === 'project' ? timedPaths(change.file) : [],
+      change.kind === 'project' ? [change.file] : [],
     )
     try {
-      await keepingTimes(timed, () =>
+      await keepingTimes(timed, (keep) =>
         withLocks(locks, async () => {
           for (const change of step.changes) {
             if (!(await holds(change, was))) {
@@ -173,6 +173,7 @@ export class History {
               )
             }
           }
+          for (const file of timed) await keep(file)
           const ordered =
             to === 'before' ? [...step.changes].reverse() : step.changes
           for (const change of ordered) {

@@ -1,3 +1,4 @@
+import type { Stats } from 'node:fs'
 import { cp, mkdir, rename, rm, stat, utimes } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
@@ -118,7 +119,7 @@ export async function fileProjects(
   const paths = [
     ...new Set(projects.map((project) => join(project.path, PROJECT_FILE))),
   ]
-  await keepingTimes(paths.flatMap(timedPaths), () =>
+  await keepingTimes(paths, (keep) =>
     withLocks(paths, async () => {
       const files = await Promise.all(
         paths.map((path) =>
@@ -132,6 +133,7 @@ export async function fileProjects(
         const before = filingOf(file)
         const after = filingOf(next)
         if (isSameFiling(before, after)) continue
+        await keep(path)
         await writeRecord(path, next)
         journal?.project(path, before, after)
       }
@@ -170,38 +172,52 @@ function isSameFiling(a: ProjectFiling, b: ProjectFiling): boolean {
 }
 
 /**
- * Runs `run` and then puts back the modified times every path held before
- * it, a path missing then being left alone. A project file's and its
- * folder's times are what the scanner reads as the project's last edit, and
- * a lock taken and released beside the file moves the folder's, so the
- * times go back once the lock is gone.
+ * Runs `run`, a section holding the lock of each project file it writes, and
+ * puts back the times that file and its folder held, which the scanner reads
+ * as the project's last edit. `run` calls `keep` under the lock before each
+ * write, so the file's time is read after any writer that held the lock first.
+ * The folder's time is read before the lock, since taking and dropping the
+ * lock moves it, and goes back only where the file kept its time until `keep`,
+ * so a writer that ran in between keeps the Edited time it earned.
  */
 export async function keepingTimes<T>(
-  paths: string[],
-  run: () => Promise<T>,
+  files: string[],
+  run: (keep: (file: string) => Promise<void>) => Promise<T>,
 ): Promise<T> {
-  const times = await Promise.all(
-    paths.map((path) => stat(path).catch(() => undefined)),
+  const before = new Map(
+    await Promise.all(
+      files.map(
+        async (file) =>
+          [
+            file,
+            {
+              file: await stat(file).catch(() => undefined),
+              folder: await stat(dirname(file)).catch(() => undefined),
+            },
+          ] as const,
+      ),
+    ),
   )
+  const kept = new Map<string, Stats>()
+  const keep = async (file: string) => {
+    const time = await stat(file).catch(() => undefined)
+    if (time && !kept.has(file)) kept.set(file, time)
+  }
+  const put = (path: string, time: Stats) =>
+    utimes(path, time.atimeMs / 1000, time.mtimeMs / 1000).catch(() => {})
   try {
-    return await run()
+    return await run(keep)
   } finally {
     await Promise.all(
-      paths.map(async (path, index) => {
-        const time = times[index]
-        if (time) {
-          await utimes(path, time.atimeMs / 1000, time.mtimeMs / 1000).catch(
-            () => {},
-          )
+      [...kept].map(async ([file, time]) => {
+        await put(file, time)
+        const { file: was, folder } = before.get(file) ?? {}
+        if (folder && was?.mtimeMs === time.mtimeMs) {
+          await put(dirname(file), folder)
         }
       }),
     )
   }
-}
-
-/** A project file with the folder of its project, the two paths whose times stand for its last edit. */
-export function timedPaths(file: string): string[] {
-  return [file, dirname(file)]
 }
 
 /** Throws `name-taken` when another project holds `name` in any case. */

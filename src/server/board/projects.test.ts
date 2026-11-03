@@ -20,6 +20,7 @@ import {
   deleteProject,
   duplicateProject,
   fileProjects,
+  keepingTimes,
   renameProject,
 } from './projects'
 
@@ -281,6 +282,30 @@ describe('projects', () => {
       await expect(
         fileProjects(board.root, ['nope'], { group: 'Client' }),
       ).rejects.toMatchObject({ code: 'project-not-found' })
+    })
+  })
+
+  describe('keepingTimes', () => {
+    it("keeps the time a writer gave the file before the filing's lock", async () => {
+      const file = join(board.root, 'webapp', 'project.json')
+      const folder = join(board.root, 'webapp')
+      const past = new Date('2026-01-01T00:00:00.000Z')
+      const agent = new Date('2026-06-01T00:00:00.000Z')
+      utimesSync(file, past, past)
+      utimesSync(folder, past, past)
+
+      await keepingTimes([file], async (keep) => {
+        writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'] }))
+        utimesSync(file, agent, agent)
+        utimesSync(folder, agent, agent)
+        await keep(file)
+        writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'] }))
+      })
+
+      expect([
+        statSync(file).mtime.toISOString(),
+        statSync(folder).mtime.toISOString(),
+      ]).toEqual([agent.toISOString(), agent.toISOString()])
     })
   })
 
