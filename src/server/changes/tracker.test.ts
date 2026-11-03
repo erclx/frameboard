@@ -438,3 +438,121 @@ describe('the versions an agent write replaced', () => {
     )
   })
 })
+
+describe('a log saved across a restart', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('basic')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const at = (path: string) => join(board.root, path)
+
+  async function started() {
+    const tracker = createChangeTracker(board.root, { now: () => NOW })
+    await tracker.prime(await scanBoard(board.root))
+    return tracker
+  }
+
+  async function write(
+    tracker: ReturnType<typeof createChangeTracker>,
+    path: string,
+    source: string,
+  ) {
+    writeFileSync(at(path), source)
+    return tracker.settle(
+      await tracker.update(await scanBoard(board.root), [at(path)], []),
+    )
+  }
+
+  it('answers the same log and versions from a saved one', async () => {
+    const original = readFileSync(at('webapp/home/hero.html'), 'utf8')
+    const first = await started()
+    await write(first, 'webapp/home/hero.html', '<p>one</p>')
+    await first.save()
+
+    const next = await started()
+
+    expect(next.log()).toEqual(first.log())
+    expect(next.version('webapp/home/hero', next.log()[0]?.before ?? '')).toBe(
+      original,
+    )
+  })
+
+  it('numbers a change after the saved ones', async () => {
+    const first = await started()
+    await write(first, 'webapp/home/hero.html', '<p>one</p>')
+    await write(first, 'webapp/home/about.html', '<p>two</p>')
+    await first.save()
+
+    const next = await started()
+    const [change] = await write(next, 'webapp/home/hero.html', '<p>three</p>')
+
+    expect(change?.id).toBe('c3')
+  })
+})
+
+describe('a show', () => {
+  let board: FixtureBoard
+  let tracker: ReturnType<typeof createChangeTracker>
+
+  beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    tracker = createChangeTracker(board.root, { now: () => NOW, logCap: 3 })
+    await tracker.prime(await scanBoard(board.root))
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const author = { session: 's-1', agent: 'claude', tag: 'claude · basic' }
+
+  it('logs a shown mark per frame in the order given', () => {
+    const marks = tracker.show(
+      ['webapp/home/about', 'webapp/home/hero'],
+      author,
+    )
+
+    expect(marks).toMatchObject([
+      {
+        frame: 'webapp/home/about',
+        author,
+        elements: [],
+        whole: false,
+        created: false,
+        shown: true,
+      },
+      { frame: 'webapp/home/hero', shown: true },
+    ])
+    expect(marks[0]).not.toHaveProperty('before')
+    expect(tracker.log()).toEqual(marks)
+  })
+
+  it('marks a frame at the hash an agent write left it at', async () => {
+    const path = join(board.root, 'webapp/home/hero.html')
+    writeFileSync(path, '<p>one</p>')
+    const [write] = tracker.settle(
+      await tracker.update(await scanBoard(board.root), [path], []),
+    )
+
+    const [mark] = tracker.show(['webapp/home/hero'], null)
+
+    expect(mark?.hash).toBe(write?.hash)
+  })
+
+  it('skips a frame with no file', () => {
+    expect(tracker.show(['webapp/home/gone'], null)).toEqual([])
+  })
+
+  it('drops the oldest marks past the cap', () => {
+    tracker.show(['webapp/home/hero', 'webapp/home/about'], null)
+    tracker.show(['webapp/home/hero', 'webapp/home/about'], null)
+
+    expect(tracker.log().map((change) => change.id)).toEqual(['c2', 'c3', 'c4'])
+  })
+})

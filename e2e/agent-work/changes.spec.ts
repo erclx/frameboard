@@ -230,6 +230,44 @@ test.describe('what an agent changed', () => {
       await expect(page).toHaveURL(/\/p\/shop\/home$/)
       await expect(offer).toHaveCount(0)
     })
+
+    test('steps through several shown frames and keeps them across a restart', async ({
+      page,
+    }) => {
+      // Shown in another project, so neither frame is looked at by the jump.
+      // Copied ahead of a fresh start, so the copy is the start scan's
+      // baseline rather than three created frames a batch logs.
+      await server.stop()
+      cpSync(at('studio'), at('shop'), { recursive: true })
+      server = await serveBoard(board.root)
+      await openAsWriter(page)
+      await expect(page.locator('[data-change-toast]')).toHaveCount(0)
+
+      await run('node', [
+        CLI,
+        'show',
+        'shop/home/hero',
+        'shop/pricing/plans',
+        '--session',
+        SESSION,
+        '--root',
+        board.root,
+        '--json',
+      ])
+
+      const toast = page.locator('[data-change-toast]')
+      await expect(toast).toContainText('Claude showed 2 frames')
+      await expect(toast).toContainText('1 of 2')
+      await toast.getByRole('button', { name: 'Next' }).click()
+      await expect(toast).toContainText('2 of 2')
+
+      await server.stop()
+      server = await serveBoard(board.root)
+      // A new port is a new origin, so this browser has seen nothing.
+      await openAsWriter(page)
+
+      await expect(toast).toContainText('Claude showed 2 frames')
+    })
   })
 
   test.describe('following an agent', () => {

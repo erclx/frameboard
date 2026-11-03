@@ -143,6 +143,60 @@ describe('toastCopy', () => {
 
     expect(toastCopy(byFrame(pricing), pricing, false).markAll).toBe(false)
   })
+
+  it('says the agent showed one frame, naming its page', () => {
+    const pricing = change('studio/home/pricing', {
+      shown: true,
+      elements: [],
+    })
+
+    const copy = toastCopy(byFrame(pricing), pricing, false)
+
+    expect(copy).toMatchObject({
+      title: 'Claude showed pricing',
+      detail: 'home in studio',
+      show: true,
+    })
+  })
+
+  it('says a frame was shown when no session named the agent', () => {
+    const pricing = change('studio/home/pricing', {
+      shown: true,
+      elements: [],
+      author: null,
+    })
+
+    expect(toastCopy(byFrame(pricing), pricing, false).title).toBe(
+      'pricing shown',
+    )
+  })
+
+  it('says the agent showed several frames when every one was shown', () => {
+    const one = change('studio/home/hero', { shown: true, elements: [] })
+    const other = change('studio/home/about', { shown: true, elements: [] })
+
+    expect(toastCopy(byFrame(one, other), one, false).title).toBe(
+      'Claude showed 2 frames',
+    )
+  })
+
+  it('counts shown frames with no agent named', () => {
+    const one = change('studio/home/hero', { shown: true, author: null })
+    const other = change('studio/home/about', { shown: true, author: null })
+
+    expect(toastCopy(byFrame(one, other), one, false).title).toBe(
+      '2 frames shown',
+    )
+  })
+
+  it('says changed when shows and writes are mixed', () => {
+    const one = change('studio/home/hero', { shown: true, elements: [] })
+    const other = change('studio/home/about')
+
+    expect(toastCopy(byFrame(one, other), one, false).title).toBe(
+      'Claude changed 2 frames',
+    )
+  })
 })
 
 describe('clearedCopy', () => {

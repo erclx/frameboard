@@ -398,7 +398,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
 
     expect(await response.json()).toEqual({
       ok: true,
-      data: { ref: 'studio/pricing/plans', tabs: 1 },
+      data: {
+        ref: 'studio/pricing/plans',
+        refs: ['studio/pricing/plans'],
+        tabs: 1,
+      },
     })
     await expect
       .poll(() => messages.at(-1))

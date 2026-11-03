@@ -28,8 +28,8 @@ describe('show', { timeout: 15_000 }, () => {
     board.cleanup()
   })
 
-  function show(ref: string) {
-    return cli(['show', ref, '--json', '--root', board.root], {
+  function show(...refs: string[]) {
+    return cli(['show', ...refs, '--json', '--root', board.root], {
       cwd: board.root,
     })
   }
@@ -84,12 +84,74 @@ describe('show', { timeout: 15_000 }, () => {
     expect(run.exitCode).toBe(0)
     expect(run.json().data).toEqual({
       ref: 'studio/pricing/plans',
+      refs: ['studio/pricing/plans'],
       url: `${url}/p/studio/pricing`,
       tabs: 1,
     })
     await expect
       .poll(() => messages.at(-1))
       .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
+  })
+
+  it('marks several frames in the order given and points the tabs at the first', async () => {
+    const url = await serve()
+    const messages = await openTab(url)
+
+    const run = await cli(
+      [
+        'show',
+        'studio/pricing/plans',
+        'home/hero',
+        '--session',
+        's-1',
+        '--json',
+        '--root',
+        board.root,
+      ],
+      { cwd: board.root },
+    )
+
+    expect(run.json().data).toMatchObject({
+      ref: 'studio/pricing/plans',
+      refs: ['studio/pricing/plans', 'studio/home/hero'],
+      url: `${url}/p/studio/pricing`,
+    })
+    await expect
+      .poll(() => messages.at(-1))
+      .toEqual({ type: 'show', ref: 'studio/pricing/plans' })
+    expect(messages.at(-2)).toMatchObject({
+      type: 'changes',
+      changes: [
+        {
+          frame: 'studio/pricing/plans',
+          shown: true,
+          author: { session: 's-1', agent: 'claude' },
+        },
+        { frame: 'studio/home/hero', shown: true },
+      ],
+    })
+  })
+
+  it('stands a page ref for its frames in board order, each once', async () => {
+    await serve()
+
+    const run = await show('home/mobile', 'studio/home')
+
+    expect(run.json().data).toMatchObject({
+      refs: ['studio/home/mobile', 'studio/home/hero'],
+    })
+  })
+
+  it('refuses the whole show when one ref names nothing', async () => {
+    const url = await serve()
+    const messages = await openTab(url)
+    const before = messages.length
+
+    const run = await show('home/hero', 'home/missing')
+
+    expect(run.exitCode).toBe(3)
+    expect(run.json().error?.code).toBe('frame-not-found')
+    expect(messages).toHaveLength(before)
   })
 
   it('reports no tabs told when the board is not open anywhere', async () => {

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
 import { FRAME_EXTENSION } from '@/shared/board-files'
-import type { FrameChange } from '@/shared/records/changes'
+import type { ChangeAuthor, FrameChange } from '@/shared/records/changes'
 import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 
@@ -10,6 +10,7 @@ import { listFrames } from '../board/scan'
 import { contentHash } from '../edit/address'
 import type { Step } from '../history/stack'
 import { changedElements } from './diff'
+import { loadChanges, saveChanges } from './persist'
 
 /** The changes the log keeps, the oldest dropped past it. */
 export const LOG_CAP = 200
@@ -21,7 +22,10 @@ export const LOG_CAP = 200
 const DEPARTED_BATCHES = 4
 
 export interface ChangeTracker {
-  /** Holds every frame's source as the start scan found it. */
+  /**
+   * Holds every frame's source as the start scan found it, and takes back
+   * the log a previous server saved, so a restart replays its marks.
+   */
   prime: (board: ListResult) => Promise<void>
   /**
    * Rereads the frames a board write left, so its batch reads as nothing
@@ -36,6 +40,11 @@ export interface ChangeTracker {
   ) => Promise<FrameChange[]>
   /** Logs the held changes `own` has not withdrawn since, and answers them. */
   settle: (changes: readonly FrameChange[]) => FrameChange[]
+  /**
+   * Logs a shown mark on each frame named, in the order given, at the hash
+   * its file holds now. A frame with no file is skipped.
+   */
+  show: (refs: readonly string[], author: ChangeAuthor | null) => FrameChange[]
   /** The recent settled changes, oldest first. */
   log: () => FrameChange[]
   /**
@@ -43,6 +52,8 @@ export interface ChangeTracker {
    * it, kept while a logged change names it as `before`, else null.
    */
   version: (ref: string, hash: string) => string | null
+  /** Writes the log and the versions it names for the next server to load. */
+  save: () => Promise<void>
 }
 
 interface Held {
@@ -70,7 +81,7 @@ export function createChangeTracker(
   const changes: FrameChange[] = []
   /** Changes a batch found that `own` may still withdraw, by id. */
   const pending = new Map<string, FrameChange>()
-  /** The sources agent writes replaced, by `versionKey`, in memory alone. */
+  /** The sources agent writes replaced, by `versionKey`. */
   const versions = new Map<string, string>()
   let batches = 0
   let nextId = 1
@@ -85,6 +96,20 @@ export function createChangeTracker(
     }
   }
 
+  const append = (kept: readonly FrameChange[]) => {
+    changes.push(...kept)
+    if (changes.length > logCap) changes.splice(0, changes.length - logCap)
+    // A version leaves with the last change naming it, so the cap bounds memory.
+    const named = new Set(
+      [...changes, ...pending.values()].flatMap((change) =>
+        change.before ? [versionKey(change.frame, change.before)] : [],
+      ),
+    )
+    for (const key of versions.keys()) {
+      if (!named.has(key)) versions.delete(key)
+    }
+  }
+
   const hold = async (ref: string, path: string) => {
     const file = await read(path)
     if (file) held.set(ref, file)
@@ -93,7 +118,21 @@ export function createChangeTracker(
 
   return {
     prime: async (board) => {
-      await Promise.all(framesOf(board).map(({ ref, path }) => hold(ref, path)))
+      const [saved] = await Promise.all([
+        loadChanges(root, logCap),
+        ...framesOf(board).map(({ ref, path }) => hold(ref, path)),
+      ])
+      changes.push(...saved.changes)
+      for (const change of saved.changes) {
+        const source = change.before
+          ? saved.versions.get(change.before)
+          : undefined
+        if (change.before && source !== undefined) {
+          versions.set(versionKey(change.frame, change.before), source)
+        }
+        const id = Number(/^c(\d+)$/.exec(change.id)?.[1])
+        if (Number.isInteger(id) && id >= nextId) nextId = id + 1
+      }
     },
 
     own: async (step) => {
@@ -186,23 +225,45 @@ export function createChangeTracker(
 
     settle: (held) => {
       const kept = held.filter((change) => pending.delete(change.id))
-      changes.push(...kept)
-      if (changes.length > logCap) changes.splice(0, changes.length - logCap)
-      // A version leaves with the last change naming it, so the cap bounds memory.
-      const named = new Set(
-        [...changes, ...pending.values()].flatMap((change) =>
-          change.before ? [versionKey(change.frame, change.before)] : [],
-        ),
-      )
-      for (const key of versions.keys()) {
-        if (!named.has(key)) versions.delete(key)
-      }
+      append(kept)
       return kept
+    },
+
+    show: (refs, author) => {
+      const at = now().toISOString()
+      const marks = refs.flatMap((ref): FrameChange[] => {
+        const file = held.get(ref)
+        if (!file) return []
+        return [
+          {
+            id: `c${nextId++}`,
+            frame: ref,
+            at,
+            hash: file.hash,
+            author,
+            elements: [],
+            removed: 0,
+            whole: false,
+            created: false,
+            shown: true,
+          },
+        ]
+      })
+      append(marks)
+      return marks
     },
 
     log: () => [...changes],
 
     version: (ref, hash) => versions.get(versionKey(ref, hash)) ?? null,
+
+    save: () => {
+      const byHash = new Map<string, string>()
+      for (const [key, source] of versions) {
+        byHash.set(key.slice(key.indexOf('\n') + 1), source)
+      }
+      return saveChanges(root, changes, byHash)
+    },
   }
 }
 

@@ -9,11 +9,13 @@ import { readAuthor, writeAuthorName } from '@/server/author'
 import { setBoxes } from '@/server/board/frames'
 import { resolvePageRef } from '@/server/board/refs'
 import { scanBoard } from '@/server/board/scan'
+import { LOG_CAP } from '@/server/changes/tracker'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History } from '@/server/history/stack'
 import { readTokenTable } from '@/server/look/token-table'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
+import { type ChangeAuthor, changeAuthorSchema } from '@/shared/records/changes'
 
 import { type Access, requireWriter } from '../access/guard'
 import type { FrameLook } from './frames'
@@ -24,11 +26,21 @@ export interface BoardActions {
   access: Access
   /** Opens a browser tab when no writing board tab is connected, resolving whether it did. */
   open: () => Promise<boolean>
-  /** Tells every board tab to show a frame, returning how many were told. */
-  show: (ref: string) => number
+  /**
+   * Marks each frame shown and points every board tab at the first,
+   * resolving how many tabs were told.
+   */
+  show: (refs: string[], author: ChangeAuthor | null) => Promise<number>
 }
 
-const showBodySchema = z.object({ ref: z.string().min(1).max(1024) })
+const refSchema = z.string().min(1).max(1024)
+const showBodySchema = z.union([
+  z.object({ ref: refSchema, author: changeAuthorSchema.nullish() }),
+  z.object({
+    refs: z.array(refSchema).min(1).max(LOG_CAP),
+    author: changeAuthorSchema.nullish(),
+  }),
+])
 
 /** Longer than any name `writeAuthorName` accepts, so it, not the schema, names the limit. */
 const authorBodySchema = z.object({ name: z.string().max(1024) })
@@ -150,13 +162,18 @@ export function apiRoutes(
       return c.json(
         {
           ok: false,
-          error: { code: 'usage', message: 'Send { "ref": "<frame ref>" }.' },
+          error: {
+            code: 'usage',
+            message: `Send { "ref": "<frame ref>" } or { "refs": [...] } with 1 to ${LOG_CAP} refs.`,
+          },
         },
         400,
       )
     }
-    const tabs = actions.show(body.data.ref)
-    return c.json({ ok: true, data: { ref: body.data.ref, tabs } })
+    const refs = 'refs' in body.data ? body.data.refs : [body.data.ref]
+    const [ref = ''] = refs
+    const tabs = await actions.show(refs, body.data.author ?? null)
+    return c.json({ ok: true, data: { ref, refs, tabs } })
   })
 
   app.post('/api/frames/boxes', authorized, async (c) => {

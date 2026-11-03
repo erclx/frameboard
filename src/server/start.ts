@@ -225,6 +225,8 @@ async function listen({
   // The history lives in memory, so a trash a previous server left holds nothing it can undo.
   await emptyTrash(root)
   const tracker = createChangeTracker(root)
+  // A log that fails to save costs the next start its marks, never this one its changes.
+  const saveLog = () => tracker.save().catch(() => {})
   const settling = new Map<ReturnType<typeof setTimeout>, () => void>()
   // The bytes each frame's held `outranked` warning was raised against.
   const raised = new Map<string, string>()
@@ -240,7 +242,10 @@ async function listen({
       settling.delete(timer)
       void inTurn(async () => {
         const changes = tracker.settle(held)
-        if (changes.length > 0) hub.broadcast({ type: 'changes', changes })
+        if (changes.length > 0) {
+          hub.broadcast({ type: 'changes', changes })
+          await saveLog()
+        }
         const sent = changeFindings(root, changes, tracker, findings, raised)
         if (Object.keys(sent).length > 0) {
           hub.broadcast({ type: 'findings', findings: sent })
@@ -431,10 +436,18 @@ async function listen({
           open: openUrl,
           graceMs: 0,
         }),
-      show: (ref) => {
-        hub.broadcast({ type: 'show', ref })
-        return tabs.count
-      },
+      // Marks log in the scan turn, the one writer of the log, then the
+      // tabs hear the marks before the jump to the first frame.
+      show: (refs, author) =>
+        inTurn(async () => {
+          const changes = tracker.show(refs, author)
+          if (changes.length > 0) {
+            hub.broadcast({ type: 'changes', changes })
+            await saveLog()
+          }
+          hub.broadcast({ type: 'show', ref: refs[0] ?? '' })
+          return tabs.count
+        }),
     },
   })
 

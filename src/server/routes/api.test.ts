@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { tokenSheetPaths } from '@/server/checks/tokens'
+import type { ChangeAuthor } from '@/shared/records/changes'
 
 import {
   copyFixtureBoard,
@@ -28,7 +29,7 @@ const OWN = `http://127.0.0.1:${PORT}`
 
 describe('apiRoutes', () => {
   let board: FixtureBoard
-  let shown: string[]
+  let shown: { refs: string[]; author: ChangeAuthor | null }[]
   let opens: number
   let history: History
 
@@ -57,8 +58,8 @@ describe('apiRoutes', () => {
           opens += 1
           return true
         },
-        show: (ref) => {
-          shown.push(ref)
+        show: async (refs, author) => {
+          shown.push({ refs, author })
           return 1
         },
         ...actions,
@@ -254,9 +255,51 @@ describe('apiRoutes', () => {
 
       expect(await response.json()).toEqual({
         ok: true,
-        data: { ref: 'studio/home/hero', tabs: 1 },
+        data: { ref: 'studio/home/hero', refs: ['studio/home/hero'], tabs: 1 },
       })
-      expect(shown).toEqual(['studio/home/hero'])
+      expect(shown).toEqual([{ refs: ['studio/home/hero'], author: null }])
+    })
+
+    it('shows several frames in the order sent, with their author', async () => {
+      const author = { session: 's-1', agent: 'claude', tag: 'claude · live' }
+
+      const response = await post('/api/show', {
+        refs: ['studio/home/hero', 'studio/pricing/plans'],
+        author,
+      })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: {
+          ref: 'studio/home/hero',
+          refs: ['studio/home/hero', 'studio/pricing/plans'],
+          tabs: 1,
+        },
+      })
+      expect(shown).toEqual([
+        { refs: ['studio/home/hero', 'studio/pricing/plans'], author },
+      ])
+    })
+
+    it('shows frames for a caller that knows no session', async () => {
+      const response = await post('/api/show', {
+        refs: ['studio/home/hero'],
+        author: null,
+      })
+
+      expect(response.status).toBe(200)
+      expect(shown).toEqual([{ refs: ['studio/home/hero'], author: null }])
+    })
+
+    it('refuses an empty list of refs with usage', async () => {
+      const response = await post('/api/show', { refs: [] })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'usage' },
+      })
+      expect(shown).toEqual([])
     })
 
     it('refuses a body with no ref', async () => {
@@ -289,7 +332,7 @@ describe('apiRoutes', () => {
       })
 
       expect(response.status).toBe(200)
-      expect(shown).toEqual(['studio/home/hero'])
+      expect(shown).toEqual([{ refs: ['studio/home/hero'], author: null }])
     })
 
     it('refuses the board cookie sent from another local port', async () => {

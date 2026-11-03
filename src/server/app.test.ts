@@ -41,7 +41,7 @@ describe('createApp', () => {
           isOwnOrigin: () => false,
         },
         open: async () => false,
-        show: () => 0,
+        show: async () => 0,
       },
       renderFrame: async () => Buffer.alloc(0),
       clipboard,

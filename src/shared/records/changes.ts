@@ -1,4 +1,9 @@
-/** Who changed a frame, read off the live claim on it when the change landed. */
+import { z } from 'zod'
+
+/**
+ * Who changed a frame, read off the live claim on it when the change landed,
+ * or named by the agent that showed it.
+ */
 export interface ChangeAuthor {
   /** The session holding the claim. */
   session: string
@@ -7,6 +12,12 @@ export interface ChangeAuthor {
   /** The listener's tag form, `<agent> · <project folder>`. */
   tag: string
 }
+
+export const changeAuthorSchema = z.object({
+  session: z.string().min(1).max(256),
+  agent: z.string().min(1).max(64),
+  tag: z.string().min(1).max(256),
+})
 
 /**
  * One frame an agent wrote, as the server's change log holds it. Never a
@@ -38,4 +49,10 @@ export interface FrameChange {
    * the server's log still names it.
    */
   before?: string
+  /**
+   * A mark an agent's show made, with no file change behind it. It names no
+   * elements and no `before`, and stays unseen until the developer looks,
+   * even on a hash this browser already saw.
+   */
+  shown?: boolean
 }
