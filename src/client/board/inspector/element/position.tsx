@@ -25,8 +25,9 @@ interface PositionSectionProps {
  * The Position section of `inspector/position`: an In flow and Free toggle
  * in the header, and while Free, the `left` and `top` the element holds as
  * X and Y, each stepping and scrubbing, as `inspector/position-flow` hides
- * them in the flow. Free places it where it renders, at the size it renders
- * at, counted from its parent.
+ * them in the flow. Free places it where it renders, counted from its parent,
+ * at the size it renders at unless it holds text alone, which hugs its words
+ * from where they start.
  */
 export function PositionSection({
   placement,

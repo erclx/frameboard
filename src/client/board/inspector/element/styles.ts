@@ -305,12 +305,45 @@ function placementOf(
   const box = element.getBoundingClientRect()
   return {
     free,
-    left: Math.round(box.left - originX - (parseFloat(style.marginLeft) || 0)),
+    left: Math.round(
+      wordsLeft(element, style, box.left) -
+        originX -
+        (parseFloat(style.marginLeft) || 0),
+    ),
     top: Math.round(box.top - originY - (parseFloat(style.marginTop) || 0)),
     width,
     height,
     inline,
   }
+}
+
+/** `Node.TEXT_NODE`, read as a number since the node is from the frame's realm. */
+const TEXT_NODE = 3
+
+/**
+ * Where a hugging box would start for text alone, the left of its words less
+ * its border and padding, since the place writes no width on it and a box it
+ * aligned inside would otherwise shrink to the left edge. Anything else keeps
+ * the left of its own box.
+ */
+function wordsLeft(
+  element: Element,
+  style: CSSStyleDeclaration,
+  boxLeft: number,
+): number {
+  // Text alone as the server's `ownText` reads it, so a comment child keeps its box.
+  const textAlone =
+    element.childNodes.length > 0 &&
+    [...element.childNodes].every((node) => node.nodeType === TEXT_NODE) &&
+    !!element.textContent?.trim()
+  if (!textAlone) return boxLeft
+  const words = element.ownerDocument.createRange()
+  words.selectNodeContents(element)
+  const left = words.getBoundingClientRect().left
+  const inset =
+    (parseFloat(style.borderLeftWidth) || 0) +
+    (parseFloat(style.paddingLeft) || 0)
+  return Math.max(boxLeft, left - inset)
 }
 
 function readLayout(
