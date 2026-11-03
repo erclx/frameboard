@@ -769,7 +769,6 @@ describe('editRoutes', () => {
   describe('POST /api/frames/place', () => {
     /** The `<code>` inside the caption, a static `<p>`. */
     const COMMAND = 7
-    const CAPTION = 6
 
     function place(body: unknown) {
       return editRoutes(
