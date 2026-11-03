@@ -340,20 +340,6 @@ export function attachGestures(
         return
       }
     }
-    // A ghost shows an element past its frame's edge, which a press selects
-    // and a drag carries back, as a press on the selected outline does.
-    const ghost = ghostAt(target.layer, drawn, point)
-    if (ghost) {
-      selectElement(selection, target.page, ghost)
-      gesture = {
-        kind: 'element',
-        key: ghost,
-        frame: null,
-        shift: event.shiftKey,
-        placed: stores.placedOffsets(target.layer, ghost),
-      }
-      return
-    }
     // The selected section's corners sit over its frames, as a frame's handles do.
     const held = sectionNamed(
       selection.getState().page === target.page
@@ -378,6 +364,21 @@ export function attachGestures(
     const bounds = boundsOf(chosen.map((frame) => frame.box))
     if (bounds && corner) {
       gesture = { kind: 'resize', corner, boxes: boxesOf(chosen), bounds }
+      return
+    }
+    // A ghost shows an element past its frame's edge, which a press selects
+    // and a drag carries back, as a press on the selected outline does. A
+    // selected frame's or section's corner over it keeps the press.
+    const ghost = ghostAt(target.layer, drawn, point)
+    if (ghost) {
+      selectElement(selection, target.page, ghost)
+      gesture = {
+        kind: 'element',
+        key: ghost,
+        frame: null,
+        shift: event.shiftKey,
+        placed: stores.placedOffsets(target.layer, ghost),
+      }
       return
     }
     // A section's name is its handle, over a frame's label strip but never

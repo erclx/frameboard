@@ -1363,6 +1363,22 @@ describe('attachGestures', () => {
         ]).toEqual([GHOST.key, [{ left: 60, top: 50 }], []])
       })
 
+      it("leaves a press on the selected frame's corner to its resize", () => {
+        // Its top past LEFT's top edge at y 100, over LEFT's NE corner at 300, 100.
+        const canvas = setup(undefined, {
+          ghost: { ...GHOST, box: { x: 260, y: 80, width: 80, height: 40 } },
+        })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([303, 98], [343, 98])
+
+        expect([
+          selectionStore.getState().element,
+          canvas.writes[0]?.boxes[LEFT.ref]?.width,
+        ]).toEqual([null, 240])
+      })
+
       it('leaves a press on the part inside the frame to the frame', () => {
         const canvas = setup(undefined, { ghost: GHOST })
         detach = canvas.detach
