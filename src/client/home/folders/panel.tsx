@@ -1,15 +1,20 @@
 import { useStore } from 'zustand'
 
-import { isEnabled, useActions } from '@/client/actions/registry'
 import { Button } from '@/client/components/ui/button'
 import {
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@/client/components/ui/dialog'
+import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
-import { focusFolder, projectStore } from '@/client/projects/actions'
+import {
+  fileProjects,
+  focusFolder,
+  projectStore,
+  startFolderRename,
+} from '@/client/projects/actions'
 
 import { usePins } from '../pins'
 import { type Captures, ProjectCard } from '../project-card'
@@ -26,25 +31,22 @@ export interface PanelProps {
   captures: Captures
 }
 
-const IDS = ['folder.rename', 'folder.ungroup'] as const
-
 /**
  * The open folder over home, per `22-fix-open.png`: its name with Rename and
  * Ungroup at the top, over its members as cards that open, rename, and carry
- * the card menu as they do on home. Its parent `Dialog` holds it open.
+ * the card menu as they do on home. Its parent `Dialog` holds it open. Rename
+ * and Ungroup act on this folder rather than the focused one, since a click
+ * that never focused the card, or focus moved onto a member, leaves none.
  */
 export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
-  const [rename, ungroup] = useActions(IDS)
+  const canWrite = useLive((state) => state.canWrite)
   const unseen = useUnseen((state) => state.unseen)
   const focused = useStore(projectStore, (state) => state.focused)
   const pins = usePins()
   const rover = folder.projects.some((project) => project.name === focused)
     ? focused
     : folder.projects[0]?.name
-  const run = (action: typeof rename) => {
-    focusFolder(folder.key)
-    action?.run()
-  }
+  const members = folder.projects.map((project) => project.name)
   return (
     <DialogContent
       showCloseButton={false}
@@ -69,8 +71,11 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
           <Button
             variant="ghost"
             size="sm"
-            disabled={!rename || !isEnabled(rename)}
-            onClick={() => run(rename)}
+            disabled={!canWrite}
+            onClick={() => {
+              focusFolder(folder.key)
+              startFolderRename(folder.key, folder.name)
+            }}
           >
             Rename
           </Button>
@@ -78,8 +83,8 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
           <Button
             variant="ghost"
             size="sm"
-            disabled={!ungroup || !isEnabled(ungroup)}
-            onClick={() => run(ungroup)}
+            disabled={!canWrite}
+            onClick={() => void fileProjects(members, null, calls)}
           >
             Ungroup
           </Button>

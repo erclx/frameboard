@@ -1246,6 +1246,25 @@ describe('folders', () => {
     ])
   })
 
+  it('ungroups from the panel once focus moved onto a member card', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    act(() => within(panel).getByRole('link', { name: /^app/ }).focus())
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: null },
+      },
+    ])
+  })
+
   it('renames the folder by writing one spelling to every member', async () => {
     const { sent, calls } = server()
     renderLive(CLIENT, calls)
