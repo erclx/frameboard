@@ -39,7 +39,8 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
-7. Run `frameboard show <page>/<frame>` so the developer's board turns to the frame you drew.
+7. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
+   - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
 ## Keep frames in their sections
 
