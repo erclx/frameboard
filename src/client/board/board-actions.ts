@@ -146,6 +146,15 @@ function boardActions(): Action[] {
       checked: () => read().mode === 'play',
     },
     {
+      id: 'mode.toggle',
+      label: 'Edit or Play',
+      group: 'mode',
+      // Switch to Edit and Switch to Play are its rows, so one key never belongs to two.
+      palette: false,
+      keys: ['p'],
+      run: () => set({ mode: read().mode === 'play' ? 'edit' : 'play' }),
+    },
+    {
       id: 'mode.exitPlay',
       label: 'Exit Play',
       group: 'mode',
