@@ -51,6 +51,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Export:** one frame alone carries scale and theme menus, a button, and a caption naming each `<frame>.<theme>@<n>x.png`. Every theme renders before any file downloads.
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
+- **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
 
 The Frame section stays above an element's sections and hides its name row while an element is selected. A frame's findings show only in its label's badge popover. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
 
