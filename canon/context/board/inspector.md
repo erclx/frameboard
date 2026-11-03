@@ -37,7 +37,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
 - **Position:** an In flow and Free toggle above Appearance. Free places the element where it renders through `POST /api/frames/place`, and its X and Y then write `left` and `top` as any other edit.
 - **Placing:** the place writes `position: absolute` with pixel offsets, and `position: relative` on a static parent other than `body` in the same undo step
-- **Placed size:** the place writes the rendered size on an axis no rule sizes, and none on an element holding text alone, which hugs its words from where they start
+- **Placed size:** the place writes the rendered size on an axis no rule sizes, and none on an element holding text alone, which hugs its words from where they start unless a length sizes it
 - **Back in flow:** drops `left` and `top`, and `position` or writes `static` over a rule's. It drops each size this tab's placement wrote that the element still holds, and a reload forgets them.
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
 - **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written

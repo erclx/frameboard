@@ -187,6 +187,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         place={(spot) =>
           placeFree(page, element, spot, { inline: live.placement.inline })
         }
+        hugs={own?.flow !== undefined && own.flow.size.width !== 'fixed'}
       />
       <LayoutSection
         layout={live.layout}

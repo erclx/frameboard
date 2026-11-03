@@ -19,6 +19,8 @@ interface PositionSectionProps {
   preview?: PreviewStyle
   /** Places the element at a spot, or back in the flow on null, as one step. */
   place: (spot: FreeSpot | null) => Promise<boolean>
+  /** Whether no declared length sizes its width, so placed text alone shrinks to its words. */
+  hugs?: boolean
 }
 
 /**
@@ -35,14 +37,16 @@ export function PositionSection({
   write,
   preview,
   place,
+  hugs = false,
 }: PositionSectionProps) {
-  const { free, left, top, width, height } = placement
+  const { free, left, top, width, height, wordsLeft } = placement
+  const placedLeft = hugs && wordsLeft !== null ? wordsLeft : left
   const choose = (next: boolean) => {
     if (next === free) return
     void place(
       next
         ? {
-            left,
+            left: placedLeft,
             top,
             ...(width === null ? {} : { width }),
             ...(height === null ? {} : { height }),

@@ -2911,7 +2911,7 @@ describe('InspectorPanel with an element selected', () => {
     expect(headline()?.hasAttribute('style')).toBe(false)
   })
 
-  it('places centered text alone from where its words start, since Free drops the width it centered in', async () => {
+  it('reads where centered text alone would start once shrunk to its words, beside its own box', async () => {
     await mountFrame(
       '<p style="margin: 0; padding: 4px; border: 2px solid; text-align: center">Hi</p>',
     )
@@ -2926,29 +2926,22 @@ describe('InspectorPanel with an element selected', () => {
     words.selectNodeContents(paragraph)
 
     await waitFor(() => expect(result.current).not.toBeNull())
-    expect(result.current?.placement.left).toBe(
-      Math.round(words.getBoundingClientRect().left - 6),
-    )
-    expect(result.current?.placement.left).toBeGreaterThan(
-      Math.round(paragraph.getBoundingClientRect().left),
-    )
+    expect(result.current?.placement).toMatchObject({
+      left: Math.round(paragraph.getBoundingClientRect().left),
+      wordsLeft: Math.round(words.getBoundingClientRect().left - 6),
+    })
   })
 
-  it('places centered text holding an element from its own box', async () => {
+  it('reads no words left for text holding an element', async () => {
     await mountFrame(
       '<p style="margin: 0; text-align: center">Hi <b>there</b></p>',
     )
     const { result } = renderHook(() =>
       useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
     )
-    const paragraph = document
-      .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
-      ?.contentDocument?.querySelector('p')
 
     await waitFor(() => expect(result.current).not.toBeNull())
-    expect(result.current?.placement.left).toBe(
-      Math.round(paragraph?.getBoundingClientRect().left ?? Number.NaN),
-    )
+    expect(result.current?.placement.wordsLeft).toBeNull()
   })
 
   it('reads a background color stated alone as no shorthand', async () => {

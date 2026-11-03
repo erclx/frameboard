@@ -380,6 +380,49 @@ test.describe('placing text and shapes into a frame', () => {
     expect(widths.box).toBeLessThanOrEqual(Math.ceil(widths.words))
   })
 
+  for (const [name, style] of [
+    ['Centered', 'text-align: center'],
+    ['Boxed', 'width: 320px; text-align: center'],
+  ] as const) {
+    test(`Free keeps ${name.toLowerCase()} text's words where they rendered`, async ({
+      page,
+    }) => {
+      writeFileSync(
+        path(),
+        read().replace(
+          '</h1>',
+          `</h1>\n    <p data-name="${name}" style="${style}">Hi</p>`,
+        ),
+      )
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const words = () =>
+        hero(page)
+          .locator(`[data-name="${name}"]`)
+          .evaluate((element) => {
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            return Math.round(range.getBoundingClientRect().left)
+          })
+      const before = await words()
+
+      const text = await centerOf(page, `[data-name="${name}"]`)
+      await page.keyboard.down('Meta')
+      await page.mouse.click(text.x, text.y)
+      await page.keyboard.up('Meta')
+      await expect(page.locator('[data-element-selection]')).toBeVisible()
+      await page.getByRole('button', { name: 'Free', exact: true }).click()
+
+      await expect
+        .poll(read)
+        .toContain(`data-name="${name}" style="${style}; position: absolute`)
+      await expect
+        .poll(() => shownHash(page))
+        .toBe(createHash('sha256').update(read()).digest('hex'))
+      expect(Math.abs((await words()) - before)).toBeLessThanOrEqual(1)
+    })
+  }
+
   test.describe('an image or video from assets/', () => {
     /** A 1 by 1 PNG, small enough to inline and real enough to decode. */
     const PNG = Buffer.from(

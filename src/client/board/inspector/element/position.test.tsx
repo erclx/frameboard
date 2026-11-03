@@ -20,12 +20,13 @@ function placementOf(overrides: Partial<Placement> = {}): Placement {
     width: 120,
     height: 40,
     inline: { width: '', height: '' },
+    wordsLeft: null,
     ...overrides,
   }
 }
 
 /** Renders the section, recording each place call, write, and preview. */
-function renderSection(placement: Placement) {
+function renderSection(placement: Placement, { hugs = false } = {}) {
   const places: (FreeSpot | null)[] = []
   const changes: ElementChange[] = []
   const previews: [string, string | null][] = []
@@ -43,6 +44,7 @@ function renderSection(placement: Placement) {
           places.push(spot)
           return true
         }}
+        hugs={hugs}
       />
     </TooltipProvider>,
   )
@@ -76,6 +78,24 @@ function scrubBy(area: HTMLElement, moves: number) {
 }
 
 describe('PositionSection', () => {
+  it('places text alone no length sizes from where its words start', async () => {
+    const { places } = renderSection(placementOf({ wordsLeft: 90 }), {
+      hugs: true,
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+
+    expect(places).toEqual([{ left: 90, top: 16, width: 120, height: 40 }])
+  })
+
+  it('places text alone a stated width sizes from its own box', async () => {
+    const { places } = renderSection(placementOf({ wordsLeft: 90 }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+
+    expect(places).toEqual([{ left: 24, top: 16, width: 120, height: 40 }])
+  })
+
   it('places an in-flow element where it renders, at its size, in one call', async () => {
     const { places } = renderSection(placementOf())
 
