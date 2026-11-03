@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Fragment, type ReactNode, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { useLive } from '@/client/live/store'
@@ -8,6 +8,7 @@ import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import {
   fileInNewFolder,
   fileProjects,
+  projectHref,
   projectStore,
   useRenamingFolder,
   useRenamingProject,
@@ -66,6 +67,20 @@ export function Projects({
   const captures = { theme, stamps }
   const focused = useStore(projectStore, (state) => state.focused)
   const focusedFolder = useStore(projectStore, (state) => state.folder)
+  const focusTarget = useStore(projectStore, (state) => state.focusTarget)
+  // Focus goes to a card a write moved out of a closed panel once it draws.
+  useEffect(() => {
+    if (focusTarget === null) return
+    const project = projects.find((record) => record.name === focusTarget)
+    const link =
+      project &&
+      document.querySelector<HTMLElement>(
+        `main [data-project-link][href="${CSS.escape(projectHref(project))}"]`,
+      )
+    if (!link) return
+    link.focus()
+    projectStore.setState({ focusTarget: null })
+  }, [focusTarget, projects])
   const pins = usePins()
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set())
   const filtering = filter.trim() !== ''

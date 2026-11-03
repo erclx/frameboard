@@ -59,6 +59,10 @@ interface ProjectState {
   folder: string | null
   renaming: Renaming | null
   renamingFolder: FolderRenaming | null
+  /** The folder whose panel is open, by key, held here so a rename's new key keeps it open. */
+  openFolder: string | null
+  /** The project whose card takes focus once home draws it, after a write moved it out of a closed panel. */
+  focusTarget: string | null
 }
 
 export const projectStore = createStore<ProjectState>()(() => ({
@@ -66,6 +70,8 @@ export const projectStore = createStore<ProjectState>()(() => ({
   folder: null,
   renaming: null,
   renamingFolder: null,
+  openFolder: null,
+  focusTarget: null,
 }))
 
 export function useRenamingProject(project: string): Renaming | null {
@@ -197,7 +203,28 @@ export async function renameFolder(
   }
   stopFolderRename()
   const members = folderMembers(key).map((project) => project.name)
-  if (await fileProjects(members, name, calls)) focusFolder(folderKey(name))
+  if (!(await fileProjects(members, name, calls))) return
+  const renamed = folderKey(name)
+  projectStore.setState(({ openFolder }) => ({
+    openFolder: openFolder === key ? renamed : openFolder,
+  }))
+  focusFolder(renamed)
+}
+
+/**
+ * Takes every member out of the folder, closing its panel and handing focus
+ * to the first member's card once home draws it, so focus never falls to the
+ * page when the folder's card goes away.
+ */
+export async function ungroupFolder(
+  key: string,
+  calls: Structure = structure,
+): Promise<void> {
+  const names = folderMembers(key).map((project) => project.name)
+  if (!(await fileProjects(names, null, calls))) return
+  const first = names[0] ?? null
+  projectStore.setState({ openFolder: null, focusTarget: first })
+  if (first) focusProject(first)
 }
 
 export function startProjectRename(project: string): void {
@@ -369,11 +396,7 @@ export function useFolderActions(calls: Structure = structure): void {
         enabled: () => writable() && folder() !== undefined,
         run: () => {
           const target = folder()
-          if (!target) return
-          const names = target.members.map((member) => member.name)
-          void fileProjects(names, null, calls).then((landed) => {
-            if (landed && names[0]) focusProject(names[0])
-          })
+          if (target) void ungroupFolder(target.key, calls)
         },
       },
     ])
@@ -387,7 +410,12 @@ export function useFolderActions(calls: Structure = structure): void {
     return () => {
       unsubscribe()
       unregister()
-      projectStore.setState({ folder: null, renamingFolder: null })
+      projectStore.setState({
+        folder: null,
+        renamingFolder: null,
+        openFolder: null,
+        focusTarget: null,
+      })
     }
   }, [calls])
 }

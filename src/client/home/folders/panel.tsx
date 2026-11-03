@@ -10,10 +10,10 @@ import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import {
-  fileProjects,
   focusFolder,
   projectStore,
   startFolderRename,
+  ungroupFolder,
 } from '@/client/projects/actions'
 
 import { usePins } from '../pins'
@@ -46,7 +46,6 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
   const rover = folder.projects.some((project) => project.name === focused)
     ? focused
     : folder.projects[0]?.name
-  const members = folder.projects.map((project) => project.name)
   return (
     <DialogContent
       showCloseButton={false}
@@ -84,7 +83,7 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
             variant="ghost"
             size="sm"
             disabled={!canWrite}
-            onClick={() => void fileProjects(members, null, calls)}
+            onClick={() => void ungroupFolder(folder.key, calls)}
           >
             Ungroup
           </Button>

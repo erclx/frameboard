@@ -1190,6 +1190,8 @@ describe('folders', () => {
       folder: null,
       renaming: null,
       renamingFolder: null,
+      openFolder: null,
+      focusTarget: null,
     })
   })
 
@@ -1280,6 +1282,49 @@ describe('folders', () => {
         body: { refs: ['web', 'app', 'email'], group: 'Client B' },
       },
     ])
+  })
+
+  it('keeps the panel open on the new name once a rename lands', async () => {
+    const { calls } = server()
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: 'Client B' }
+          : record,
+      ),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', { name: 'Client B' })).toBeVisible(),
+    )
+  })
+
+  it("hands focus to the first member's card once Ungroup lands", async () => {
+    const { calls } = server()
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: null }
+          : record,
+      ),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /^web/ })).toHaveFocus(),
+    )
   })
 
   it('keeps the rename open with the reason on a name another folder holds', async () => {

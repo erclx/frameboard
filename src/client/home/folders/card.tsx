@@ -1,8 +1,13 @@
 import { cn } from 'cn'
-import { type KeyboardEvent, useState } from 'react'
+import type { KeyboardEvent } from 'react'
+import { useStore } from 'zustand'
 
 import { Dialog, DialogTrigger } from '@/client/components/ui/dialog'
-import { focusFolder, useRenamingFolder } from '@/client/projects/actions'
+import {
+  focusFolder,
+  projectStore,
+  useRenamingFolder,
+} from '@/client/projects/actions'
 
 import { type Captures, CARD } from '../project-card'
 import { runFolderKey } from '../rove'
@@ -22,7 +27,9 @@ interface FolderCardProps extends PanelProps {
 /**
  * A folder's card among the projects, per `22-fix.png`: a 2x2 preview of its
  * first four members, its name, and its count. It opens the folder's panel,
- * which hands focus back to the card when it closes. F2 renames it.
+ * which hands focus back to the card when it closes. Whether it is open sits
+ * in the project store, so a rename that remounts the card under its new key
+ * keeps the panel open. F2 renames it.
  */
 export function FolderCard({
   folder,
@@ -30,7 +37,12 @@ export function FolderCard({
   unseen,
   ...panel
 }: FolderCardProps) {
-  const [open, setOpen] = useState(false)
+  const open = useStore(
+    projectStore,
+    (state) => state.openFolder === folder.key,
+  )
+  const setOpen = (next: boolean) =>
+    projectStore.setState({ openFolder: next ? folder.key : null })
   const renaming = useRenamingFolder(folder.key)
   const body = (
     <>
