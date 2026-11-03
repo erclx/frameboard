@@ -35,10 +35,10 @@ export interface BoardActions {
 
 const refSchema = z.string().min(1).max(1024)
 const showBodySchema = z.union([
-  z.object({ ref: refSchema, author: changeAuthorSchema.optional() }),
+  z.object({ ref: refSchema, author: changeAuthorSchema.nullish() }),
   z.object({
     refs: z.array(refSchema).min(1).max(LOG_CAP),
-    author: changeAuthorSchema.optional(),
+    author: changeAuthorSchema.nullish(),
   }),
 ])
 

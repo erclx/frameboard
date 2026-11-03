@@ -281,6 +281,16 @@ describe('apiRoutes', () => {
       ])
     })
 
+    it('shows frames for a caller that knows no session', async () => {
+      const response = await post('/api/show', {
+        refs: ['studio/home/hero'],
+        author: null,
+      })
+
+      expect(response.status).toBe(200)
+      expect(shown).toEqual([{ refs: ['studio/home/hero'], author: null }])
+    })
+
     it('refuses an empty list of refs with usage', async () => {
       const response = await post('/api/show', { refs: [] })
 
