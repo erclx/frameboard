@@ -60,7 +60,10 @@ export function HomeHeader({ hasProjects }: HomeHeaderProps) {
   )
 }
 
-/** The New project button, shared by the header and the empty home. */
+/**
+ * The New project button, shared by the header and the empty home, on a fill
+ * holding its white label at 4.5:1 in both themes, at rest and on hover.
+ */
 export function NewProjectButton({
   action,
   className,
@@ -77,7 +80,7 @@ export function NewProjectButton({
       aria-label="New project"
       {...pressable(action)}
       className={cn(
-        'flex h-[30px] items-center gap-1.5 rounded-lg bg-primary px-3 font-medium text-primary-foreground outline-none hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary',
+        'flex h-[30px] items-center gap-1.5 rounded-lg bg-primary-fill px-3 font-medium text-primary-foreground outline-none hover:bg-primary-fill-hover focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary-fill',
         className,
       )}
     >

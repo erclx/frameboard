@@ -24,6 +24,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 | quiet text | `--muted-foreground` | labels, captions, chevrons, field key letters         |
 | faint      | `--faint`            | inactive marks and decoration, never text to be read  |
 | selected   | `--primary`          | selection outline and handles, the active tool, focus |
+| fill       | `--primary-fill`     | a blue fill behind white text, darker on hover        |
 | agent      | `--claim`            | an agent's dashed outline and session tag             |
 | note       | `--note`             | note pins and anything flagged for a look             |
 | guide      | `--guide`            | snapping guides and gap tags while a frame drags      |
