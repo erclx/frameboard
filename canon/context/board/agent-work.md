@@ -45,8 +45,8 @@ Owns the change toast, the glow over changed elements, and the dwell clearing a 
 
 Compare flips or splits one changed frame between the version before and the current one. The server holds each version, and the browser picks which one the before side shows.
 
-- `src/server/changes/tracker.ts` keeps, in memory alone, the source each agent write replaced, and names its hash as the change's `before`
-- A version leaves once no logged change names it, so `LOG_CAP` and a restart end it
+- `src/server/changes/tracker.ts` keeps the source each agent write replaced, and names its hash as the change's `before`
+- `persist.ts` saves the log and its versions under `.run/changes/` after each settle and show, so a restart replays them. A version leaves once no logged change names it, so `LOG_CAP` ends it.
 - The frame route serves that source under `?at=<hash>` with the same head, and answers 404 for any hash it lacks and for `at` off a frame
 - `compare.ts` holds the one frame compared and its actions, and ends compare on a selection change, Play, the Note tool, or a moved base
 - `compare-view.tsx` draws the before side as a second iframe over the live one, whose `src` it never touches, plus the label's control
@@ -77,3 +77,5 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
 `unseen.ts` also keeps each frame's compare base, the `before` of the first change since the developer last looked. It reads the base off the replayed log rather than the seen hash, keeps it past the look, and moves it on the next change after.
+
+A shown mark names a hash the developer may have seen already, so a look clears it by the show's id and time, kept in `frameboard.seen-shows`, and never by the hash.
