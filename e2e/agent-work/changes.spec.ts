@@ -235,8 +235,13 @@ test.describe('what an agent changed', () => {
       page,
     }) => {
       // Shown in another project, so neither frame is looked at by the jump.
+      // Copied ahead of a fresh start, so the copy is the start scan's
+      // baseline rather than three created frames a batch logs.
+      await server.stop()
       cpSync(at('studio'), at('shop'), { recursive: true })
+      server = await serveBoard(board.root)
       await openAsWriter(page)
+      await expect(page.locator('[data-change-toast]')).toHaveCount(0)
 
       await run('node', [
         CLI,
