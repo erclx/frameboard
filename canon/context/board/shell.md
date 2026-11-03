@@ -49,7 +49,7 @@ Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which d
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
 
-The Place toggle's `placementStore` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. Auto lands it free unless the container is flex or grid, and a Divider always joins the flow.
+The Place toggle's `placementStore` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. Auto lands it free unless the container is flex or grid, or its static parent would move an element anchored above it, and a Divider always joins the flow.
 
 The Image tool and a tile drag place a file from the project's `assets/`.
 
