@@ -530,6 +530,26 @@ async function rawIndigoHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
+/**
+ * Hands the board an empty change log on every `changes` message, since
+ * `rawIndigoHero` writes the hero as an outside write the change tracker
+ * would otherwise raise as an agent's, racing the shot.
+ */
+async function noAgentChanges(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as { type: string }
+      socket.send(
+        parsed.type === 'changes'
+          ? JSON.stringify({ type: 'changes', changes: [] })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
 /** The raw indigo row's swatch, which opens the tokens to replace it with. */
 const REPLACE_INDIGO = '^Replace 4f46e5 with a token$'
 
@@ -2535,6 +2555,7 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(
           both(
             rawIndigoHero,
+            noAgentChanges,
             asWriter,
             onCanvas({ select: ['webapp/home/hero'] }),
             pressOnLoad(REPLACE_INDIGO),
@@ -2553,6 +2574,7 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(
           both(
             rawIndigoHero,
+            noAgentChanges,
             asWriter,
             onCanvas({ select: ['webapp/home/hero'] }),
             pressOnLoad(REPLACE_INDIGO),
