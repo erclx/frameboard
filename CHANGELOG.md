@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.25.0](https://github.com/erclx/frameboard/compare/v0.24.0...v0.25.0) (2026-11-03)
+
+
+### Features
+
+* **board:** toggle Edit and Play on P ([#214](https://github.com/erclx/frameboard/issues/214)) ([339bf2b](https://github.com/erclx/frameboard/commit/339bf2b6c96364f8cb7d34271c77e0cd761e4f16))
+* **frames:** answer byte range requests so a video can seek ([#217](https://github.com/erclx/frameboard/issues/217)) ([e6b7ce2](https://github.com/erclx/frameboard/commit/e6b7ce2db56daa73e24d7c1e98a84a3023fafb26))
+* **inspector:** drop checks and cap copyable selection colors ([#215](https://github.com/erclx/frameboard/issues/215)) ([939a900](https://github.com/erclx/frameboard/commit/939a90075e1e6f3bced55d3027269d6065d306ca))
+* **inspector:** replace a raw selection color with a token ([#220](https://github.com/erclx/frameboard/issues/220)) ([5e57382](https://github.com/erclx/frameboard/commit/5e57382e86d2a8831be86a3f16dc5faaef14f6de))
+* **overlay:** hold a dropped outline and ghost an element off its frame ([#219](https://github.com/erclx/frameboard/issues/219)) ([8f3a54d](https://github.com/erclx/frameboard/commit/8f3a54d4ec793e92218d14a7a9bf147b024bcfe9))
+* **place:** land new elements where drawn, with a Place toggle ([#221](https://github.com/erclx/frameboard/issues/221)) ([94486a8](https://github.com/erclx/frameboard/commit/94486a81ed4e31d6160c4f10fda82e444e039fbc))
+* **place:** make text hug its words in the flow and when placed free ([#212](https://github.com/erclx/frameboard/issues/212)) ([a3467ae](https://github.com/erclx/frameboard/commit/a3467ae3eb6d64fd01f13a64c01229e1c1f30748))
+* **show:** show several frames and keep change marks across a restart ([#216](https://github.com/erclx/frameboard/issues/216)) ([57b3500](https://github.com/erclx/frameboard/commit/57b3500b15dc14f6745b7d422da2acde0bbc3dc2))
+* **web:** reshoot the launch film and README hero on the current board ([#209](https://github.com/erclx/frameboard/issues/209)) ([cb4ad3c](https://github.com/erclx/frameboard/commit/cb4ad3c8269b8cf420e0fb4f6213c6b66d4c1752))
+
+
+### Bug Fixes
+
+* **clipboard:** copy several frames each in the theme it shows ([#218](https://github.com/erclx/frameboard/issues/218)) ([ebacc83](https://github.com/erclx/frameboard/commit/ebacc833a764dfc9a75ef726e0004af96b9f32d3))
+* **inspector:** let tab leave a segmented row from any button ([#213](https://github.com/erclx/frameboard/issues/213)) ([2be20e3](https://github.com/erclx/frameboard/commit/2be20e366f44df90e9b356ae0c6bdb39a17f6a58))
+
 ## [0.24.0](https://github.com/erclx/frameboard/compare/v0.23.0...v0.24.0) (2026-10-31)
 
 
