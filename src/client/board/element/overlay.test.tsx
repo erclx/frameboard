@@ -206,6 +206,22 @@ describe('ElementOverlay', () => {
       ]).toEqual(['3', HASH, '450px', '70px', '100px'])
     })
 
+    it('reads again as a drag previews the element further out', async () => {
+      const container = await mountFrame(PAST)
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+      const box = container
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector<HTMLElement>('body > div')
+      expect(ghosts(drawn)).toHaveLength(1)
+
+      act(() => box?.style.setProperty('left', '380px'))
+
+      await expect.poll(() => ghosts(drawn)[0]?.style.left).toBe('480px')
+    })
+
     it('draws none while nothing on the frame is selected', async () => {
       const container = await mountFrame(PAST)
 

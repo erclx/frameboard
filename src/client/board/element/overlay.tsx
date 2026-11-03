@@ -109,8 +109,10 @@ function outsideOf(box: Box, frame: Box): string {
 
 /**
  * The elements past the edge of each named frame, read when the frames
- * change, when one loads, and when one's viewport resizes. Empty while no
- * frame is named, so the walk runs only under a selection.
+ * change, when one loads or its viewport resizes, and when an inline style
+ * inside one changes, as a drag's preview writes it. Reads coalesce to one an
+ * animation frame. Empty while no frame is named, so the walk runs only under
+ * a selection.
  */
 function useGhosts(
   container: HTMLElement | null,
@@ -128,15 +130,43 @@ function useGhosts(
       container.querySelector<HTMLIFrameElement>(
         `[data-frame="${CSS.escape(ref)}"] iframe`,
       )
-    const observer = new ResizeObserver(() => measure())
+    // Each node is observed once, since an observe fires a first callback
+    // and observing again on every read would read on every frame. That first
+    // callback reports the size the read observing it already saw, so it is
+    // skipped.
+    const sized = new WeakSet<Element>()
+    const seen = new WeakSet<Element>()
+    const styled = new WeakSet<Node>()
+    let pending = 0
+    const later = () => {
+      if (pending === 0) pending = requestAnimationFrame(measure)
+    }
+    const resizes = new ResizeObserver((entries) => {
+      const fresh = entries.filter(({ target }) => !seen.has(target))
+      for (const { target } of fresh) seen.add(target)
+      if (fresh.length < entries.length) later()
+    })
+    const styles = new MutationObserver(later)
     const measure = () => {
-      observer.disconnect()
+      pending = 0
       const ghosts = wanted.flatMap((ref) => {
         const iframe = iframeOf(ref)
-        if (iframe) observer.observe(iframe)
-        const shown = iframe?.contentDocument
+        if (!iframe) return []
+        if (!sized.has(iframe)) {
+          sized.add(iframe)
+          resizes.observe(iframe)
+        }
+        const shown = iframe.contentDocument
         const hash = shown ? renderedHash(shown) : null
         if (!shown || hash === null) return []
+        if (!styled.has(shown)) {
+          styled.add(shown)
+          styles.observe(shown, {
+            attributes: true,
+            attributeFilter: ['style'],
+            subtree: true,
+          })
+        }
         return overflowing(shown).map(({ index, box }) => ({
           key: { frame: ref, index, hash },
           box,
@@ -149,7 +179,9 @@ function useGhosts(
     container.addEventListener('load', measure, true)
     return () => {
       container.removeEventListener('load', measure, true)
-      observer.disconnect()
+      cancelAnimationFrame(pending)
+      resizes.disconnect()
+      styles.disconnect()
     }
   }, [container, key])
   return read?.key === key ? read.ghosts : []
