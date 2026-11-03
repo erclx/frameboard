@@ -188,6 +188,32 @@ describe('a shown mark', () => {
     expect(store.getState().unseen['studio/home/hero']).toEqual(write)
   })
 
+  it('stays cleared on a reload once a look took the write a show landed on', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    const write = change('studio/home/hero', 'h1', { id: 'c1' })
+    receiveChanges(store, [write, shown('h1', 'c2')])
+    markSeen(store, 'studio/home/hero')
+    const reloaded = createUnseenStore(storage)
+
+    receiveChanges(reloaded, [write, shown('h1', 'c2')])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
+  it('stays cleared on a reload once Mark all seen took the write a show landed on', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    const write = change('studio/home/hero', 'h1', { id: 'c1' })
+    receiveChanges(store, [write, shown('h1', 'c2')])
+    markAllSeen(store)
+    const reloaded = createUnseenStore(storage)
+
+    receiveChanges(reloaded, [write, shown('h1', 'c2')])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
   it('stays cleared when a reload replays the show it looked at', () => {
     const storage = memoryStorage()
     const store = createUnseenStore(storage)

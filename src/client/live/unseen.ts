@@ -28,6 +28,12 @@ export interface UnseenState {
    * the hash alone cannot tell a replayed show from a new one.
    */
   shows: Readonly<Record<string, string>>
+  /**
+   * The latest show each frame's unseen write mark absorbed, as `showKey`
+   * gives it, which a look at that write records in `shows` too, so a
+   * replay does not raise the show the look already covered.
+   */
+  absorbed: Readonly<Record<string, string>>
   /** The frame the toast is on, which Show zooms to and Next steps from. */
   cursor: string | null
   /**
@@ -65,6 +71,7 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
     unseen: {},
     seen: readSeen(storage, SEEN_KEY),
     shows: readSeen(storage, SEEN_SHOWS_KEY),
+    absorbed: {},
     cursor: null,
     base: {},
     lastCleared: null,
@@ -84,16 +91,21 @@ export function receiveChanges(
   store: UnseenStore,
   changes: readonly FrameChange[],
 ): void {
-  const { unseen, seen, shows, base } = store.getState()
+  const { unseen, seen, shows, absorbed, base } = store.getState()
   const next = { ...unseen }
   const nextBase = { ...base }
+  const nextAbsorbed = { ...absorbed }
   // Changes arrive oldest first, so a seen one also clears an older one the
   // same replay marked before it.
   for (const change of changes) {
     // A show of a frame whose write is still unseen leaves the write's
     // mark, which names what to glow and keeps the toast saying changed.
     const held = next[change.frame]
-    if (change.shown && held && !held.shown) continue
+    if (change.shown && held && !held.shown) {
+      nextAbsorbed[change.frame] = showKey(change)
+      continue
+    }
+    if (!change.shown) delete nextAbsorbed[change.frame]
     if (!next[change.frame]) {
       if (change.before) nextBase[change.frame] = change.before
       else delete nextBase[change.frame]
@@ -104,18 +116,24 @@ export function receiveChanges(
     if (looked) delete next[change.frame]
     else next[change.frame] = change
   }
-  store.setState({ unseen: next, base: nextBase })
+  store.setState({ unseen: next, base: nextBase, absorbed: nextAbsorbed })
 }
 
 /** Clears a frame's mark and remembers the hash looked at. */
 export function markSeen(store: UnseenStore, ref: string): void {
-  const { unseen, seen, shows } = store.getState()
+  const { unseen, seen, shows, absorbed } = store.getState()
   const change = unseen[ref]
   if (!change) return
   const { [ref]: _, ...rest } = unseen
   const nextSeen = { ...seen, [ref]: change.hash }
-  const nextShows = change.shown ? { ...shows, [ref]: showKey(change) } : shows
-  store.setState({ unseen: rest, seen: nextSeen, shows: nextShows })
+  const nextShows = { ...shows, ...lookedShows([change], absorbed) }
+  const { [ref]: __, ...nextAbsorbed } = absorbed
+  store.setState({
+    unseen: rest,
+    seen: nextSeen,
+    shows: nextShows,
+    absorbed: nextAbsorbed,
+  })
   writeSeen(store.storage, nextSeen, nextShows)
 }
 
@@ -124,7 +142,7 @@ export function markSeen(store: UnseenStore, ref: string): void {
  * each held so `undoMarkAll` can put the pile back.
  */
 export function markAllSeen(store: UnseenStore): void {
-  const { unseen, seen, shows, clears } = store.getState()
+  const { unseen, seen, shows, absorbed, clears } = store.getState()
   const changes = Object.values(unseen)
   if (changes.length === 0) return
   const lastCleared = Object.fromEntries(
@@ -137,18 +155,12 @@ export function markAllSeen(store: UnseenStore): void {
     ...seen,
     ...Object.fromEntries(changes.map((change) => [change.frame, change.hash])),
   }
-  const nextShows = {
-    ...shows,
-    ...Object.fromEntries(
-      changes.flatMap((change) =>
-        change.shown ? [[change.frame, showKey(change)]] : [],
-      ),
-    ),
-  }
+  const nextShows = { ...shows, ...lookedShows(changes, absorbed) }
   store.setState({
     unseen: {},
     seen: nextSeen,
     shows: nextShows,
+    absorbed: {},
     lastCleared,
     clears: clears + 1,
   })
@@ -209,7 +221,8 @@ export function renameUnseen(
   before: string,
   after: string,
 ): void {
-  const { unseen, seen, shows, base, cursor, lastCleared } = store.getState()
+  const { unseen, seen, shows, absorbed, base, cursor, lastCleared } =
+    store.getState()
   const moved = Object.fromEntries(
     Object.entries(movedKeys(unseen, before, after)).map(([ref, change]) => [
       ref,
@@ -222,6 +235,7 @@ export function renameUnseen(
     unseen: moved,
     seen: nextSeen,
     shows: nextShows,
+    absorbed: movedKeys(absorbed, before, after),
     base: movedKeys(base, before, after),
     lastCleared:
       lastCleared &&
@@ -301,6 +315,22 @@ export function previousUnseen(
   const at = ordered.findIndex((change) => change.frame === from)
   const back = at < 0 ? ordered.length - 1 : at - 1 + ordered.length
   return ordered[back % ordered.length] ?? null
+}
+
+/**
+ * The show key a look at each change records: the change's own for a
+ * shown mark, and the show its write mark absorbed for a write.
+ */
+function lookedShows(
+  changes: readonly FrameChange[],
+  absorbed: Readonly<Record<string, string>>,
+): Record<string, string> {
+  return Object.fromEntries(
+    changes.flatMap((change) => {
+      const key = change.shown ? showKey(change) : absorbed[change.frame]
+      return key === undefined ? [] : [[change.frame, key]]
+    }),
+  )
 }
 
 /**
