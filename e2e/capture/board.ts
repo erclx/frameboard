@@ -968,6 +968,73 @@ function freeBoxOnHero(left: number): (page: Page) => Promise<void> {
 }
 
 /**
+ * The hero as Free leaves text alone: the Text tool's paragraph and a
+ * centered one, each placed with offsets and no width, at the spots a
+ * Free on the board wrote, so both hug their words.
+ */
+const PLACED_TEXT =
+  '<p data-name="Text" style="font-family: var(--font-text); width: fit-content; position: absolute; left: 16px; top: 158px">Text</p>' +
+  '<p data-name="Centered" style="text-align: center; position: absolute; left: 687px; top: 84px">Centered</p>'
+
+/**
+ * Writes `PLACED_TEXT` into the served hero before its closing body tag and
+ * puts the file back when the case's page closes, so the server hashes and
+ * reads the bytes the board shows while every later case reads the fixture.
+ * A response rewritten in the browser instead would show bytes the server's
+ * element tree does not vouch for, and the pick refuses them.
+ */
+async function placedTextOnHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(path, original.replace('</body>', `${PLACED_TEXT}</body>`))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Selects the hero's element matching `selector` once the frame has loaded,
+ * as `headlineOnHero` does its headline, so the capture shows its outline,
+ * its size chip, and its inspector.
+ */
+function elementOnHero(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ target, frames }) => {
+        let left = frames
+        const pick = () => {
+          const hero = document.querySelector('[data-frame="webapp/home/hero"]')
+          const iframe = hero?.querySelector('iframe')
+          const element = iframe?.dataset.renderedAt
+            ? iframe.contentDocument?.querySelector(target)
+            : null
+          const hit = document.querySelector('[data-hit-layer]')
+          const layer = document.querySelector<HTMLElement>('[data-layer]')
+          if (!hero || !element || !hit || !layer) {
+            if (--left > 0) requestAnimationFrame(pick)
+            else console.error(`No ${target} on the hero to select`)
+            return
+          }
+          const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+          const frame = hero.getBoundingClientRect()
+          const inner = element.getBoundingClientRect()
+          const at = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX: frame.left + (inner.left + inner.width / 2) * k,
+            clientY: frame.top + (inner.top + inner.height / 2) * k,
+          }
+          hit.dispatchEvent(new MouseEvent('mousedown', at))
+          window.dispatchEvent(new MouseEvent('mouseup', at))
+          hit.dispatchEvent(new MouseEvent('dblclick', at))
+        }
+        document.addEventListener('DOMContentLoaded', pick)
+      },
+      { target: selector, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Serves the hero with its headline placed Free at 100, 300, added to the
  * bytes on the way to the tab. The headline stays the element the file's
  * tree names at that index, so a pick selects it, which an element the
@@ -2527,6 +2594,26 @@ export const BOARD_CASES: CaptureCase[] = [
             asWriter,
             headlineOnHero,
             readyWhen('#inspector-selection-colors ~ ul li'),
+          ),
+        ),
+      },
+      {
+        section: 'text-hugs',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        // The hero's write can land as an unseen change, whose toast comes and
+        // goes between runs with no code change.
+        mask: [AVATAR, '[data-slot="toast"]'],
+        // The centered paragraph Free placed, hugging its words where it
+        // rendered, beside the Text tool's paragraph placed the same way.
+        setup: themed(
+          both(
+            asWriter,
+            placedTextOnHero,
+            elementOnHero('[data-name="Centered"]'),
+            readyWhen('[data-element-selection]'),
           ),
         ),
       },
