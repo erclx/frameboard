@@ -143,6 +143,46 @@ test.describe('projects by hand from the home view', () => {
     ])
   })
 
+  test('drags a row onto a filed row in an open list folder to file it there once', async ({
+    page,
+  }) => {
+    writeFileSync(
+      at('studio/project.json'),
+      JSON.stringify({
+        version: 1,
+        pages: ['home', 'pricing'],
+        group: 'Client',
+      }),
+    )
+    mkdirSync(at('brand/home'), { recursive: true })
+    writeFileSync(
+      at('brand/project.json'),
+      JSON.stringify({ version: 1, pages: ['home'] }),
+    )
+    const groupOf = (name: string) =>
+      JSON.parse(readFileSync(at(`${name}/project.json`), 'utf8')).group
+    await page.addInitScript(() =>
+      localStorage.setItem('frameboard.home.layout', 'list'),
+    )
+    await openAsWriter(page)
+    await page.getByRole('button', { name: /^Client/ }).click()
+    const filings: string[] = []
+    page.on('request', (request) => {
+      if (request.url().endsWith('/api/project/group')) {
+        filings.push(request.postData() ?? '')
+      }
+    })
+
+    await card(page, 'brand').dragTo(card(page, 'studio'))
+
+    await expect.poll(() => groupOf('brand')).toBe('Client')
+    await page.keyboard.press(UNDO)
+    await expect.poll(() => groupOf('brand')).toBeUndefined()
+    expect(filings).toEqual([
+      JSON.stringify({ refs: ['brand'], group: 'Client' }),
+    ])
+  })
+
   test("draws a card's frame capture and redraws it once the frame changes", async ({
     page,
   }) => {

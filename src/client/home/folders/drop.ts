@@ -3,6 +3,7 @@ import {
   dropTargetForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import type { DragLocationHistory } from '@atlaskit/pragmatic-drag-and-drop/types'
 import { type RefObject, useEffect, useRef, useState } from 'react'
 
 import { folderKey } from './entries'
@@ -81,16 +82,22 @@ export function useHomeDrag(
       const dragged = sourceOf(data)
       return dragged !== null && files(dragged, self)
     }
+    // A member row sits inside its folder's row, and the library runs every
+    // target under the pointer, so only the innermost one shows the hint and
+    // files, which a drop on a member would otherwise do twice.
+    const innermost = (location: DragLocationHistory) =>
+      location.current.dropTargets[0]?.element === node
     const cleanups = [
       dropTargetForElements({
         element: node,
         canDrop: ({ source: drag }) => accepts(drag.data),
-        onDragEnter: () => setOver(true),
+        onDragEnter: ({ location }) => setOver(innermost(location)),
+        onDropTargetChange: ({ location }) => setOver(innermost(location)),
         onDragLeave: () => setOver(false),
-        onDrop: ({ source: drag }) => {
+        onDrop: ({ source: drag, location }) => {
           setOver(false)
           const dragged = sourceOf(drag.data)
-          if (dragged) dropped.current(dragged.name)
+          if (dragged && innermost(location)) dropped.current(dragged.name)
         },
       }),
     ]
