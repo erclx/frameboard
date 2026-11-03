@@ -220,6 +220,76 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
+  test('a Rectangle drawn in the block body under Auto lands on the box drawn, and one undo takes it out', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const row = await hero(page).locator('[data-name="Row"]').boundingBox()
+    if (!row) throw new Error('The hero draws no row')
+    // Below the row, on the body's own background.
+    const start = { x: row.x + 60, y: row.y + row.height + 40 }
+
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(start.x + 120, start.y + 60, { steps: 8 })
+    await page.mouse.up()
+
+    await expect
+      .poll(read)
+      .toMatch(
+        /data-name="Rectangle" style="width: \d+px; height: \d+px; background: var\(--muted\); position: absolute; left: [\d.]+px; top: [\d.]+px"><\/div><\/body>/,
+      )
+    await expect(hero(page).locator('[data-name="Rectangle"]')).toBeVisible()
+    const placed = await hero(page)
+      .locator('[data-name="Rectangle"]')
+      .boundingBox()
+    if (!placed) throw new Error('The Rectangle draws no box')
+    // On screen it covers the box the drag drew, whatever the zoom.
+    expect(placed.x).toBeCloseTo(start.x, -0.5)
+    expect(placed.y).toBeCloseTo(start.y, -0.5)
+    expect(placed.width).toBeCloseTo(120, -0.5)
+    expect(placed.height).toBeCloseTo(60, -0.5)
+    expect(read()).not.toContain('position: relative')
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(original)
+  })
+
+  test('a Rectangle clicked into a flex row under Free lands centered on the point, the row takes relative, and one undo puts both back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const one = await hero(page).locator('[data-name="One"]').boundingBox()
+    if (!one) throw new Error('The row draws no first child')
+    const point = { x: one.x + one.width + 20, y: one.y + one.height / 2 }
+
+    await tools(page).getByRole('button', { name: 'Free' }).click()
+    await tools(page).getByRole('button', { name: 'Rectangle' }).click()
+    await page.mouse.click(point.x, point.y)
+
+    await expect
+      .poll(read)
+      .toMatch(
+        /<div data-name="Row" style="display: flex; gap: 40px; position: relative">.*data-name="Rectangle" style="width: 100px; height: 100px; background: var\(--muted\); position: absolute; left: -?[\d.]+px; top: -?[\d.]+px"/,
+      )
+    const placed = await hero(page)
+      .locator('[data-name="Rectangle"]')
+      .boundingBox()
+    if (!placed) throw new Error('The Rectangle draws no box')
+    expect(placed.x + placed.width / 2).toBeCloseTo(point.x, -0.5)
+    expect(placed.y + placed.height / 2).toBeCloseTo(point.y, -0.5)
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(original)
+  })
+
   test('a corner drag on a placed Ellipse writes its width and height, and one undo puts both back', async ({
     page,
   }) => {
@@ -306,6 +376,8 @@ test.describe('placing text and shapes into a frame', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     const headline = await centerOf(page, 'h1')
 
+    // Flow keeps a Text placed in the block body in the flow, between the headline and the row.
+    await tools(page).getByRole('button', { name: 'Flow' }).click()
     await tools(page).getByRole('button', { name: 'Text' }).click()
     // On the headline's lower half, so the Text lands between it and the row.
     await page.mouse.click(headline.x, headline.y + 8)

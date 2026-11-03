@@ -206,7 +206,10 @@ test.describe('selecting an element inside a frame', () => {
 
     await cmdClick(page, 'code')
     await expect(page.locator('[data-element-selection]')).toBeVisible()
-    await page.getByRole('button', { name: 'Free', exact: true }).click()
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Free', exact: true })
+      .click()
 
     await expect
       .poll(read)
