@@ -7,6 +7,7 @@ import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
+import { heldOutline, holdOutline } from '../element/held'
 import {
   isShownShape,
   type PlacedMove,
@@ -701,9 +702,24 @@ export function attachGestures(
         resize.cancel()
       }
     } else if (gesture.kind === 'placed') {
-      const { from: start, to, move } = gesture
+      const { from: start, to, move, key } = gesture
       if (to && (to.left !== start.left || to.top !== start.top)) {
-        void move.commit(to)
+        // The outline stays at the drop until the reloaded frame measures
+        // the element, and a refusal puts it back with the element.
+        const outline = selectedElementBox(target.layer)
+        if (outline) {
+          holdOutline({
+            key,
+            box: {
+              ...outline,
+              x: outline.x + to.left - start.left,
+              y: outline.y + to.top - start.top,
+            },
+          })
+        }
+        void move.commit(to).then((landed) => {
+          if (!landed && heldOutline()?.key === key) holdOutline(null)
+        })
       } else {
         move.cancel()
       }

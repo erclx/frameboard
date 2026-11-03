@@ -9,6 +9,7 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
+import { heldOutline, holdOutline } from '../element/held'
 import type { PlacedOffsets, ShapeSize } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
@@ -277,7 +278,7 @@ function setup(
           preview: (offsets) => move.previews.push(offsets),
           commit: async (offsets) => {
             move.commits.push(offsets)
-            return true
+            return lands
           },
           cancel: () => {
             move.cancelled = true
@@ -464,6 +465,7 @@ describe('attachGestures', () => {
   afterEach(() => {
     detach()
     clear(selectionStore)
+    holdOutline(null)
   })
 
   describe('on a section', () => {
@@ -1169,15 +1171,67 @@ describe('attachGestures', () => {
     describe('that is placed', () => {
       const PLACED = { left: 40, top: 30 }
 
-      function setupPlaced(live?: string) {
+      function setupPlaced(live?: string, lands = true) {
         const canvas = setup(undefined, {
           elementBox: ELEMENT_BOX,
           placed: PLACED,
           live,
+          lands,
         })
         detach = canvas.detach
         return canvas
       }
+
+      it('holds the outline at the drop once released, until the frame reloads', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [225, 155])
+
+        expect(heldOutline()).toEqual({
+          key: ELEMENT,
+          box: { x: 175, y: 130, width: 100, height: 50 },
+        })
+      })
+
+      it('puts the outline back at the start when the write is refused', async () => {
+        const canvas = setupPlaced(undefined, false)
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [225, 155])
+
+        await expect.poll(() => heldOutline()).toBeNull()
+        expect(canvas.placedMoves[0]?.commits).toEqual([{ left: 65, top: 10 }])
+      })
+
+      it('holds nothing on a drag released where it started', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        canvas.pointer.move(200, 175)
+        canvas.pointer.up(200, 175)
+
+        expect([heldOutline(), canvas.placedMoves[0]?.cancelled]).toEqual([
+          null,
+          true,
+        ])
+      })
+
+      it('holds nothing when Esc puts the drag back', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        act(() => {
+          dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        })
+        canvas.pointer.up(225, 155)
+
+        expect(heldOutline()).toBeNull()
+      })
 
       it('moves its offsets by the drag and writes them once on release', () => {
         const canvas = setupPlaced()

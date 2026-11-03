@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -8,6 +9,7 @@ import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
 import { usePendingBox } from '../geometry/write'
 import { type ElementKey, useSelection } from '../selection'
+import { heldStore, holdOutline } from './held'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -37,17 +39,31 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const rect = useElementBox(container, element)
+  const held = useStore(heldStore, (state) => state.held)
   const at = pending ?? frame?.box
-  if (!at || !rect) return null
+  const holds = held !== null && held.key.frame === element?.frame
+  // A box measured for another key than the held one is the reloaded frame,
+  // or another element chosen, either of which the hold gives way to.
+  const settled = holds && rect !== null && !sameKey(held.key, element)
+  useEffect(() => {
+    if (held && (!holds || settled)) holdOutline(null)
+  }, [held, holds, settled])
+  const box =
+    holds && !settled
+      ? held.box
+      : at && rect
+        ? { ...rect, x: at.x + rect.x, y: at.y + rect.y }
+        : null
+  if (!box) return null
   return (
     <div
       data-element-selection
       className="pointer-events-none absolute"
       style={{
-        left: at.x + rect.x,
-        top: at.y + rect.y,
-        width: rect.width,
-        height: rect.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         outline: OUTLINE,
         outlineOffset: screen(2),
         zIndex: OVERLAY_Z,
@@ -67,7 +83,7 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
         />
       ))}
       <span data-chip className={CHIP}>
-        {sizeLabel(rect)}
+        {sizeLabel(box)}
       </span>
     </div>
   )
@@ -139,4 +155,13 @@ function useElementBox(
     }
   }, [container, key, frame, index, hash])
   return measured?.key === key ? measured.box : null
+}
+
+function sameKey(a: ElementKey, b: ElementKey | null): boolean {
+  return (
+    b !== null &&
+    a.frame === b.frame &&
+    a.index === b.index &&
+    a.hash === b.hash
+  )
 }

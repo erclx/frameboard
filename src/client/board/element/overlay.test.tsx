@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { frameOf } from '@/test/board'
 
 import { clear, selectElement, selectionStore } from '../selection'
+import { heldOutline, holdOutline } from './held'
 import { ElementOverlay } from './overlay'
 
 const HASH = 'c'.repeat(64)
@@ -17,6 +18,7 @@ const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${H
 let layer: HTMLDivElement | undefined
 
 afterEach(() => {
+  act(() => holdOutline(null))
   act(() => clear(selectionStore))
   layer?.remove()
   layer = undefined
@@ -101,5 +103,70 @@ describe('ElementOverlay', () => {
     )
 
     expect(outline(drawn)).toBeNull()
+  })
+
+  describe('holding a dropped outline', () => {
+    const HEADING = { frame: HERO.ref, index: 3, hash: HASH }
+    const DROP = { x: 300, y: 200, width: 248, height: 30 }
+
+    it('draws the held drop over the box the element still measures', async () => {
+      const container = await mountFrame()
+      act(() => selectElement(selectionStore, 'studio/home', HEADING))
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect([outline(drawn)?.style.left, outline(drawn)?.style.top]).toEqual([
+        '300px',
+        '200px',
+      ])
+    })
+
+    it('keeps drawing the drop while the written key waits on the reload', async () => {
+      const container = await mountFrame()
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          ...HEADING,
+          hash: 'd'.repeat(64),
+        }),
+      )
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect(outline(drawn)?.style.left).toBe('300px')
+      expect(heldOutline()).not.toBeNull()
+    })
+
+    it('gives way once another key measures, as the reloaded frame does', async () => {
+      const container = await mountFrame()
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      // The body, index 2, measures at once, as the reloaded element would.
+      act(() =>
+        selectElement(selectionStore, 'studio/home', { ...HEADING, index: 2 }),
+      )
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      await expect.poll(() => heldOutline()).toBeNull()
+      expect(outline(drawn)?.style.left).toBe('100px')
+    })
+
+    it('lets go when the selection leaves the frame', async () => {
+      const container = await mountFrame()
+      act(() => selectElement(selectionStore, 'studio/home', HEADING))
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      render(<ElementOverlay frames={[HERO]} container={container} />)
+
+      act(() => clear(selectionStore))
+
+      await expect.poll(() => heldOutline()).toBeNull()
+    })
   })
 })
