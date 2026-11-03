@@ -55,6 +55,7 @@ Owns who may write, apart from the route modules.
 Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing.
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so relative links resolve unrewritten, and `?at=<hash>` a replaced frame version
+  - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is always served whole since its head is spliced in memory
 - `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in `files`, behind `requireWriter` and a 64 MiB limit answering 413
   - Each listed file carries `frames`, the count of frames linking it, from the per-project cache in `src/server/board/asset-usage.ts`
   - The cache counts the loads `frameLoads` in `src/server/checks/links.ts` gathers for the link check, and a watcher batch under a project drops it

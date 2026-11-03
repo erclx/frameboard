@@ -1,5 +1,7 @@
+import { createReadStream } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, sep } from 'node:path'
+import { Readable } from 'node:stream'
 
 import { Hono } from 'hono'
 
@@ -88,7 +90,41 @@ export function frameRoutes(
       page !== ASSETS_FOLDER &&
       parts.length === 3 &&
       extname(file).toLowerCase() === FRAME_EXTENSION
+    const contentType =
+      CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream'
     const at = c.req.query(AT_QUERY)
+
+    const rangeHeader = c.req.header('Range')
+    if (!isFrame && at === undefined && rangeHeader !== undefined) {
+      const { size } = await stat(file)
+      const range = parseRange(rangeHeader, size)
+      if (range === 'unsatisfiable') {
+        return c.body(null, 416, {
+          'Content-Range': `bytes */${size}`,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-store',
+        })
+      }
+      if (range) {
+        const headers = {
+          'Content-Type': contentType,
+          'Content-Length': String(range.end - range.start + 1),
+          'Content-Range': `bytes ${range.start}-${range.end}/${size}`,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-store',
+        }
+        // Hono answers HEAD by dropping the GET body unread, which would
+        // leave an opened read stream holding its file handle.
+        if (c.req.method === 'HEAD') return c.body(null, 206, headers)
+        // Node types its web stream apart from the global one Hono takes,
+        // though at runtime they are the same class.
+        const stream = Readable.toWeb(
+          createReadStream(file, range),
+        ) as ReadableStream
+        return c.body(stream, 206, headers)
+      }
+    }
+
     let bytes: Uint8Array<ArrayBuffer>
     if (at === undefined) {
       bytes = new Uint8Array(await readFile(file))
@@ -109,14 +145,47 @@ export function frameRoutes(
       : bytes
 
     return c.body(body, 200, {
-      'Content-Type':
-        CONTENT_TYPES[extname(file).toLowerCase()] ??
-        'application/octet-stream',
+      'Content-Type': contentType,
       'Cache-Control': 'no-store',
+      ...(isFrame ? {} : { 'Accept-Ranges': 'bytes' }),
     })
   })
 
   return app
+}
+
+interface ByteRange {
+  start: number
+  end: number
+}
+
+/**
+ * The inclusive bytes a single `bytes=` range names within `size`,
+ * `'unsatisfiable'` for a valid range that names none of them, or null for a
+ * header to ignore, which RFC 9110 allows for any range a server does not
+ * support, a multi-range among them.
+ */
+function parseRange(
+  header: string,
+  size: number,
+): ByteRange | 'unsatisfiable' | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
+  if (!match) return null
+  const [, first = '', last = ''] = match
+  if (first === '') {
+    if (last === '') return null
+    const suffix = Number(last)
+    if (suffix === 0) return 'unsatisfiable'
+    // RFC 9110 counts a suffix on an empty file satisfiable, and a 206 cannot
+    // name zero bytes, so the empty file is served whole.
+    if (size === 0) return null
+    return { start: Math.max(0, size - suffix), end: size - 1 }
+  }
+  const start = Number(first)
+  const end = last === '' ? size - 1 : Number(last)
+  if (last !== '' && end < start) return null
+  if (start >= size) return 'unsatisfiable'
+  return { start, end: Math.min(end, size - 1) }
 }
 
 /** The sheets a frame imports, being every face, then the board's tokens, then the project's. */

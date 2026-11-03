@@ -242,6 +242,157 @@ describe('frameRoutes', () => {
     })
   })
 
+  describe('a byte range', () => {
+    const CLIP = `0123456789${'x'.repeat(980)}ABCDEFGHIJ`
+
+    beforeEach(() => {
+      writeFileSync(join(board.root, 'studio/assets/clip.mp4'), CLIP)
+    })
+
+    function getRange(path: string, range: string, method = 'GET') {
+      return frameRoutes(board.root, {
+        sheets: (project) => tokenSheetPaths(board.root, project, null),
+      }).request(path, { method, headers: { Range: range } })
+    }
+
+    it('advertises ranges on a whole media file', async () => {
+      const response = await get('/frames/studio/assets/clip.mp4')
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('accept-ranges')).toBe('bytes')
+      expect(response.headers.get('cache-control')).toBe('no-store')
+    })
+
+    it('answers the asked bytes with 206', async () => {
+      const response = await getRange(
+        '/frames/studio/assets/clip.mp4',
+        'bytes=0-9',
+      )
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('content-range')).toBe('bytes 0-9/1000')
+      expect(response.headers.get('content-length')).toBe('10')
+      expect(response.headers.get('content-type')).toBe('video/mp4')
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(await response.text()).toBe('0123456789')
+    })
+
+    it.each([
+      ['an open-ended range', 'bytes=990-'],
+      ['a suffix range', 'bytes=-10'],
+      ['an end past the file', 'bytes=990-5000'],
+    ])('reads the tail through %s', async (_case, range) => {
+      const response = await getRange('/frames/studio/assets/clip.mp4', range)
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('content-range')).toBe('bytes 990-999/1000')
+      expect(await response.text()).toBe('ABCDEFGHIJ')
+    })
+
+    it('answers a suffix longer than the file with the whole file', async () => {
+      const response = await getRange(
+        '/frames/studio/assets/clip.mp4',
+        'bytes=-5000',
+      )
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('content-range')).toBe('bytes 0-999/1000')
+      expect(await response.text()).toBe(CLIP)
+    })
+
+    it('answers bytes=0- on a one-byte file', async () => {
+      writeFileSync(join(board.root, 'studio/assets/one.bin'), 'Z')
+
+      const response = await getRange(
+        '/frames/studio/assets/one.bin',
+        'bytes=0-',
+      )
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('content-range')).toBe('bytes 0-0/1')
+      expect(await response.text()).toBe('Z')
+    })
+
+    it.each([
+      ['a malformed range', 'bytes=abc'],
+      ['a multi-range', 'bytes=0-1,5-6'],
+      ['an end before its start', 'bytes=5-2'],
+      ['another unit', 'items=0-9'],
+    ])('ignores %s with the whole file', async (_case, range) => {
+      const response = await getRange('/frames/studio/assets/clip.mp4', range)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-range')).toBeNull()
+      expect(await response.text()).toBe(CLIP)
+    })
+
+    it.each([
+      ['a start past the end', 'clip.mp4', 'bytes=2000-', 'bytes */1000'],
+      ['a start at the end', 'clip.mp4', 'bytes=1000-1005', 'bytes */1000'],
+      ['an empty suffix', 'clip.mp4', 'bytes=-0', 'bytes */1000'],
+      ['a start on an empty file', 'empty.bin', 'bytes=0-', 'bytes */0'],
+    ])('answers 416 for %s', async (_case, name, range, contentRange) => {
+      writeFileSync(join(board.root, 'studio/assets/empty.bin'), '')
+
+      const response = await getRange(`/frames/studio/assets/${name}`, range)
+
+      expect(response.status).toBe(416)
+      expect(response.headers.get('content-range')).toBe(contentRange)
+      expect(await response.text()).toBe('')
+    })
+
+    it('ignores a suffix on an empty file with the empty 200', async () => {
+      writeFileSync(join(board.root, 'studio/assets/empty.bin'), '')
+
+      const response = await getRange(
+        '/frames/studio/assets/empty.bin',
+        'bytes=-10',
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-range')).toBeNull()
+      expect(await response.text()).toBe('')
+    })
+
+    it('serves a ranged frame whole with its head', async () => {
+      const response = await getRange(
+        '/frames/studio/home/hero.html',
+        'bytes=0-9',
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('accept-ranges')).toBeNull()
+      expect(await response.text()).toContain('<h1>Studio</h1>')
+    })
+
+    it('answers a ranged HEAD with the headers and no body', async () => {
+      const response = await getRange(
+        '/frames/studio/assets/clip.mp4',
+        'bytes=0-9',
+        'HEAD',
+      )
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('content-range')).toBe('bytes 0-9/1000')
+      expect(response.headers.get('content-length')).toBe('10')
+      expect(await response.text()).toBe('')
+    })
+
+    it('refuses a ranged symlink that leaves the project', async () => {
+      symlinkSync(
+        join(board.root, '.run/address.json'),
+        join(board.root, 'studio/assets/leak.txt'),
+      )
+
+      const response = await getRange(
+        '/frames/studio/assets/leak.txt',
+        'bytes=0-3',
+      )
+
+      expect(response.status).toBe(404)
+    })
+  })
+
   describe('a version an agent write replaced', () => {
     const OLD = '<html><head></head><body><h1>Before</h1></body></html>'
     const OLD_HASH = contentHash(OLD)
