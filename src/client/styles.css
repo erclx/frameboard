@@ -94,6 +94,8 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-fill-hover: var(--primary-fill-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -118,6 +120,9 @@
   --popover-foreground: #1a1a1a;
   --primary: #2f7bf0;
   --primary-foreground: #ffffff;
+  /* A fill under white text, 4.70:1 at rest and 5.66:1 on hover. */
+  --primary-fill: #1f6fe5;
+  --primary-fill-hover: #1a62d1;
   --secondary: #f2f2f2;
   --secondary-foreground: #1a1a1a;
   --muted: #f2f2f2;
@@ -154,6 +159,9 @@
   --popover-foreground: #e6e6e6;
   --primary: #4e92f6;
   --primary-foreground: #ffffff;
+  /* A fill under white text, 5.15:1 at rest and 5.66:1 on hover. */
+  --primary-fill: #2068dc;
+  --primary-fill-hover: #1a62d1;
   --secondary: #363636;
   --secondary-foreground: #e6e6e6;
   --muted: #363636;

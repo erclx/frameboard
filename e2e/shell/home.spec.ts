@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -108,6 +108,79 @@ test.describe('projects by hand from the home view', () => {
     await expect(card(page, 'studio')).toBeVisible()
     expect(readFileSync(at('studio/assets/dot.svg'))).toEqual(asset)
     await expect(page).toHaveURL(`${server.url}/`)
+  })
+
+  test('drags a card onto another to make a folder, and undo takes it apart', async ({
+    page,
+  }) => {
+    mkdirSync(at('brand/home'), { recursive: true })
+    writeFileSync(
+      at('brand/project.json'),
+      JSON.stringify({ version: 1, pages: ['home'] }),
+    )
+    const groupOf = (name: string) =>
+      JSON.parse(readFileSync(at(`${name}/project.json`), 'utf8')).group
+    await openAsWriter(page)
+
+    await card(page, 'brand').dragTo(card(page, 'studio'))
+
+    await expect(
+      page.getByRole('textbox', { name: 'Rename folder Folder' }),
+    ).toBeFocused()
+    expect([groupOf('studio'), groupOf('brand')]).toEqual(['Folder', 'Folder'])
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByRole('button', { name: /^Folder\s*2 projects/ }),
+    ).toBeVisible()
+
+    await page.keyboard.press(UNDO)
+
+    await expect(card(page, 'studio')).toBeVisible()
+    await expect(card(page, 'brand')).toBeVisible()
+    expect([groupOf('studio'), groupOf('brand')]).toEqual([
+      undefined,
+      undefined,
+    ])
+  })
+
+  test('drags a row onto a filed row in an open list folder to file it there once', async ({
+    page,
+  }) => {
+    writeFileSync(
+      at('studio/project.json'),
+      JSON.stringify({
+        version: 1,
+        pages: ['home', 'pricing'],
+        group: 'Client',
+      }),
+    )
+    mkdirSync(at('brand/home'), { recursive: true })
+    writeFileSync(
+      at('brand/project.json'),
+      JSON.stringify({ version: 1, pages: ['home'] }),
+    )
+    const groupOf = (name: string) =>
+      JSON.parse(readFileSync(at(`${name}/project.json`), 'utf8')).group
+    await page.addInitScript(() =>
+      localStorage.setItem('frameboard.home.layout', 'list'),
+    )
+    await openAsWriter(page)
+    await page.getByRole('button', { name: /^Client/ }).click()
+    const filings: string[] = []
+    page.on('request', (request) => {
+      if (request.url().endsWith('/api/project/group')) {
+        filings.push(request.postData() ?? '')
+      }
+    })
+
+    await card(page, 'brand').dragTo(card(page, 'studio'))
+
+    await expect.poll(() => groupOf('brand')).toBe('Client')
+    await page.keyboard.press(UNDO)
+    await expect.poll(() => groupOf('brand')).toBeUndefined()
+    expect(filings).toEqual([
+      JSON.stringify({ refs: ['brand'], group: 'Client' }),
+    ])
   })
 
   test("draws a card's frame capture and redraws it once the frame changes", async ({

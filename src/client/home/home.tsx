@@ -5,17 +5,19 @@ import { useGuideLanding } from '@/client/board/guide/state'
 import type { Structure } from '@/client/live/structure'
 import {
   focusedProject,
+  useFolderActions,
   useNewProjectAction,
   useProjectActions,
 } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { EmptyHome } from './empty'
+import { useFilterAction, useHomeFilter } from './filter'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
 import { usePins } from './pins'
 import { Projects } from './projects'
-import { orderProjects, useHomeSort } from './sort'
+import { orderProjects, splitArchived, useHomeSort } from './sort'
 import { useThumbnails } from './thumbnails'
 
 interface HomeProps {
@@ -35,8 +37,11 @@ export function Home({ projects, calls }: HomeProps) {
   const layout = useHomeLayout()
   const sort = useHomeSort()
   const pins = usePins()
+  const filter = useHomeFilter()
+  useFilterAction()
   useNewProjectAction(calls)
   useProjectActions(focusedProject, { calls })
+  useFolderActions(calls)
   useCardKeys()
   useThumbnails()
   if (holding) return null
@@ -47,14 +52,23 @@ export function Home({ projects, calls }: HomeProps) {
         <EmptyHome />
       ) : (
         <Projects
-          projects={orderProjects(projects, sort.by, pins, sort.direction)}
+          {...splitShown(
+            orderProjects(projects, sort.by, pins, sort.direction),
+          )}
           layout={layout}
           now={now}
           calls={calls}
+          filter={filter}
         />
       )}
     </div>
   )
+}
+
+/** The ordered projects as the main list and the Archived section take them. */
+function splitShown(ordered: ProjectRecord[]) {
+  const { shown, archived } = splitArchived(ordered)
+  return { projects: shown, archived }
 }
 
 /**

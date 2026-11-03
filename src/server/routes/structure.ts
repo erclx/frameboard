@@ -25,6 +25,7 @@ import {
   addProject,
   deleteProject,
   duplicateProject,
+  fileProjects,
   renameProject,
 } from '@/server/board/projects'
 import { resolvePageRef, resolveProject } from '@/server/board/refs'
@@ -104,6 +105,16 @@ const sectionRenameSchema = z.object({ page: ref, section: name, name })
 const sectionSchema = z.object({ page: ref, section: name })
 const projectAddSchema = z.object({ name: name.optional() })
 const projectSchema = z.object({ ref })
+/** More projects than any board holds, so a body cannot grow without bound. */
+const projectRefs = z.array(ref).min(1).max(1000)
+const projectGroupSchema = z.object({
+  refs: projectRefs,
+  group: name.nullable(),
+})
+const projectArchiveSchema = z.object({
+  refs: projectRefs,
+  archived: z.boolean(),
+})
 const projectTokensSchema = z.object({
   ref,
   accent: z
@@ -509,6 +520,38 @@ export function structureRoutes(
       onHome,
     )
     return c.json({ ok: true, data: project })
+  })
+
+  /** Refuses a filing of any project another session holds, as rename does, before anything is written. */
+  const refuseHeldProjects = async (refs: string[]) => {
+    const projects = await Promise.all(
+      refs.map((project) => resolveProject(root, project)),
+    )
+    await refuseHeld(projects.map((project) => project.name))
+  }
+
+  /** Files the named projects in one folder, a null group taking them out of theirs. */
+  app.post('/api/project/group', async (c) => {
+    const body = await parseBody(c.req.raw, projectGroupSchema)
+    await refuseHeldProjects(body.refs)
+    const projects = await recorded(
+      (journal) =>
+        fileProjects(root, body.refs, { group: body.group }, { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: projects })
+  })
+
+  /** Moves the named projects into home's Archived section, or back out of it. */
+  app.post('/api/project/archive', async (c) => {
+    const body = await parseBody(c.req.raw, projectArchiveSchema)
+    await refuseHeldProjects(body.refs)
+    const projects = await recorded(
+      (journal) =>
+        fileProjects(root, body.refs, { archived: body.archived }, { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: projects })
   })
 
   /** Creates the project's `tokens.css` from a preset, refusing where any sheet already reaches it. */

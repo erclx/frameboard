@@ -28,6 +28,11 @@ export const projectFileSchema = z.looseObject({
   // verb keeps the file and its page order, and the check reads that rule as
   // off, the way it reads a missing key.
   checks: z.union([projectChecksSchema, z.unknown()]).optional(),
+  // The folder home files the project under, one level deep, and whether it
+  // sits in the Archived section. A value of another type parses as written
+  // and reads as ungrouped or unarchived, as createdAt does.
+  group: z.union([z.string(), z.unknown()]).optional(),
+  archived: z.union([z.boolean(), z.unknown()]).optional(),
 })
 
 export type ProjectFile = z.infer<typeof projectFileSchema>

@@ -63,6 +63,10 @@ export const projectRecordSchema = z.object({
   modifiedAt: z.string(),
   /** When the project was made, null for one made before the time was recorded. */
   createdAt: z.string().nullable(),
+  /** The folder home files the project under, null for one in no folder. */
+  group: z.string().nullable(),
+  /** Whether home holds the project out of the main list, in its Archived section. */
+  archived: z.boolean(),
   projectFileError: recordErrorSchema,
   pages: z.array(pageRecordSchema),
 })

@@ -1,4 +1,11 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -12,6 +19,8 @@ import {
   addProject,
   deleteProject,
   duplicateProject,
+  fileProjects,
+  keepingTimes,
   renameProject,
 } from './projects'
 
@@ -135,6 +144,15 @@ describe('projects', () => {
       })
     })
 
+    it('keeps the folder on the copy and leaves the archive behind', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' })
+      await fileProjects(board.root, ['webapp'], { archived: true })
+
+      const copy = await duplicateProject(board.root, 'webapp')
+
+      expect([copy.group, copy.archived]).toEqual(['Client', false])
+    })
+
     it('takes the next free name past an earlier copy', async () => {
       await duplicateProject(board.root, 'webapp')
 
@@ -170,6 +188,127 @@ describe('projects', () => {
     })
   })
 
+  describe('fileProjects', () => {
+    const projectFile = (name: string) => join(board.root, name, 'project.json')
+    const read = (name: string) =>
+      JSON.parse(readFileSync(projectFile(name), 'utf8'))
+
+    it('files several projects in one folder, keeping every other key', async () => {
+      writeFileSync(
+        projectFile('webapp'),
+        JSON.stringify({
+          version: 1,
+          pages: ['settings', 'home'],
+          createdAt: '2026-09-02T08:00:00.000Z',
+          checks: { noUppercase: true },
+          later: { kept: 1 },
+        }),
+      )
+
+      const records = await fileProjects(board.root, ['webapp', 'marketing'], {
+        group: '  Client work ',
+      })
+
+      expect(records.map((record) => record.group)).toEqual([
+        'Client work',
+        'Client work',
+      ])
+      expect(read('webapp')).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+        createdAt: '2026-09-02T08:00:00.000Z',
+        checks: { noUppercase: true },
+        later: { kept: 1 },
+        group: 'Client work',
+      })
+    })
+
+    it('leaves the project file and folder times as they were', async () => {
+      const past = new Date('2026-01-01T00:00:00.000Z')
+      utimesSync(projectFile('webapp'), past, past)
+      utimesSync(join(board.root, 'webapp'), past, past)
+
+      await fileProjects(board.root, ['webapp'], { group: 'Client' })
+
+      expect([
+        statSync(projectFile('webapp')).mtime.toISOString(),
+        statSync(join(board.root, 'webapp')).mtime.toISOString(),
+      ]).toEqual([past.toISOString(), past.toISOString()])
+    })
+
+    it('takes a project out of its folder on a null group', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' })
+
+      const [record] = await fileProjects(board.root, ['webapp'], {
+        group: null,
+      })
+
+      expect(record?.group).toBeNull()
+      expect(read('webapp')).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+      })
+    })
+
+    it('archives and restores a project, keeping its folder', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' })
+
+      const [archived] = await fileProjects(board.root, ['webapp'], {
+        archived: true,
+      })
+      const [restored] = await fileProjects(board.root, ['webapp'], {
+        archived: false,
+      })
+
+      expect([archived?.archived, restored?.archived]).toEqual([true, false])
+      expect(read('webapp')).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+        group: 'Client',
+      })
+    })
+
+    it('refuses the whole filing when one project file fails to parse', async () => {
+      writeFileSync(projectFile('webapp'), '{ not json')
+
+      await expect(
+        fileProjects(board.root, ['marketing', 'webapp'], { group: 'Client' }),
+      ).rejects.toMatchObject({ code: 'project-file-invalid' })
+      expect(readFileSync(projectFile('webapp'), 'utf8')).toBe('{ not json')
+      expect(read('marketing')).toEqual({ version: 1, pages: ['launch'] })
+    })
+
+    it('fails not-found on a project the board lacks', async () => {
+      await expect(
+        fileProjects(board.root, ['nope'], { group: 'Client' }),
+      ).rejects.toMatchObject({ code: 'project-not-found' })
+    })
+  })
+
+  describe('keepingTimes', () => {
+    it("keeps the time a writer gave the file before the filing's lock", async () => {
+      const file = join(board.root, 'webapp', 'project.json')
+      const folder = join(board.root, 'webapp')
+      const past = new Date('2026-01-01T00:00:00.000Z')
+      const agent = new Date('2026-06-01T00:00:00.000Z')
+      utimesSync(file, past, past)
+      utimesSync(folder, past, past)
+
+      await keepingTimes([file], async (keep) => {
+        writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'] }))
+        utimesSync(file, agent, agent)
+        utimesSync(folder, agent, agent)
+        await keep(file)
+        writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'] }))
+      })
+
+      expect([
+        statSync(file).mtime.toISOString(),
+        statSync(folder).mtime.toISOString(),
+      ]).toEqual([agent.toISOString(), agent.toISOString()])
+    })
+  })
+
   describe('with a journal', () => {
     it('add reports the project folder it created', async () => {
       const { journal, calls } = recordingJournal(board.root)
@@ -193,6 +332,40 @@ describe('projects', () => {
       await deleteProject(board.root, 'webapp', { journal })
 
       expect(calls).toEqual([{ kind: 'removed', path: 'webapp' }])
+    })
+
+    it('a filing reports both keys on each side of each file it changed', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await fileProjects(
+        board.root,
+        ['webapp', 'marketing'],
+        { archived: true },
+        { journal },
+      )
+
+      expect(calls).toEqual([
+        {
+          kind: 'project',
+          file: 'webapp/project.json',
+          before: {},
+          after: { archived: true },
+        },
+        {
+          kind: 'project',
+          file: 'marketing/project.json',
+          before: {},
+          after: { archived: true },
+        },
+      ])
+    })
+
+    it('a filing that changes nothing reports nothing', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await fileProjects(board.root, ['webapp'], { group: null }, { journal })
+
+      expect(calls).toEqual([])
     })
 
     it('duplicate reports the copy it created', async () => {

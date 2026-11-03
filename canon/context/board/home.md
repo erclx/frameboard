@@ -31,6 +31,21 @@ The header and each card's menu run the `project.*` actions.
 A card or row takes the menu and the keys the same way.
 
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
+- `project-card.tsx` draws a project's card and row for the main list, a folder's panel, and the Archived section alike, and `rove.ts` holds the arrow keys all three share
+
+**Folders**
+
+`folders/` files projects into one-level folders by the `group` key in `project.json`, so a folder is board state an agent reads in `list --json`.
+
+- `entries.ts` turns the shown order into cards, a folder standing where its first member would. It sorts and rises with the pinned through that member
+- Two groups differing only in case or trailing space read as one folder, and a folder whose last member leaves shows nothing
+- A grid folder card opens `panel.tsx`, a kit dialog with Rename and Ungroup over its members, and a list folder row opens in place on a click, Enter, Space, or Right
+- Move to folder in the card menu lists every other folder and New folder, which files under the next free `Folder` and opens its name, as a drag of one card onto another does through `drop.ts`
+- A rename writes the new name to every member and refuses one another folder holds in any case, since writing it would merge the two
+
+A typed name in `filter-field.tsx` shows its matches flat, archived ones included, along with every member of a folder whose name matches. Cmd+F focuses it through `home.filter`.
+
+`archived.tsx` holds archived projects in a collapsed section after the rest, and the card menu reads Restore on them in place of Archive.
 
 **Focus keys**
 
@@ -50,6 +65,7 @@ A card or row takes the menu and the keys the same way.
 The browser keeps both, and neither reaches the board.
 
 - `localStorage` holds `frameboard.home.layout`, `frameboard.home.sort` and its `frameboard.home.sortDirection`, and the pins in `frameboard.home.pins`, falling back to defaults when storage refuses
+- It holds the filter text in `frameboard.home.filter` and whether the Archived section is open in `frameboard.home.archivedOpen` too
 - No pin reaches the board folder, so a second browser or an agent sees none, and a pin naming no project is ignored where it is read
 - Neither waits on `canWrite`, so both work in a read-only tab
 

@@ -1,31 +1,33 @@
 import { cn } from 'cn'
-import { Pin } from 'lucide-react'
-import { Fragment, type KeyboardEvent, type ReactNode } from 'react'
-import { Link } from 'wouter'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
-import { characterKeysOn } from '@/client/actions/character-keys'
-import { findAction, isEnabled } from '@/client/actions/registry'
-import { RenameField } from '@/client/components/rename-field'
-import { UnseenCount } from '@/client/components/unseen-count'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import {
-  focusProject,
+  fileInNewFolder,
+  fileProjects,
   projectHref,
   projectStore,
-  renameProject,
-  stopProjectRename,
+  settleOpenFolder,
+  useRenamingFolder,
   useRenamingProject,
 } from '@/client/projects/actions'
 import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
+import { Archived } from './archived'
+import { filterProjects, setHomeFilter } from './filter'
+import { FilterField } from './filter-field'
+import { FolderCard } from './folders/card'
+import { type DropTarget, useHomeDrag } from './folders/drop'
+import { homeEntries, type HomeEntry } from './folders/entries'
+import { FolderRow } from './folders/row'
 import type { HomeLayout } from './layout'
 import { usePins } from './pins'
-import { ProjectMenu } from './project-menu'
-import { FrameSkeleton } from './skeleton'
+import { ProjectCard, ProjectRow, ROW_COLUMNS } from './project-card'
+import { roveFocus } from './rove'
 import { SortMenu } from './sort-menu'
 
 interface ProjectsProps {
@@ -36,42 +38,115 @@ interface ProjectsProps {
   now: number
   /** Stands in for the server's structure routes, as a test's server does. */
   calls?: Structure
+  /** The name filter typed, which shows its matches flat, out of their folders. */
+  filter?: string
+  /** The archived projects in the order shown, in their own section after the rest. */
+  archived?: readonly ProjectRecord[]
 }
 
 /**
  * Every project on the board as cards, per `canon/design/home/grid`, or as
  * rows, per `canon/design/home/list`, each opening its board and the menu of
- * `canon/design/menus/home`. A card's well draws its first page's frames
- * with their captures in the theme shown, and a pinned project carries the
- * pin mark after its name.
+ * `canon/design/menus/home`. A project filed in a folder sits in the folder's
+ * card, which opens a panel, or under the folder's row, which opens in place.
+ * A pinned project carries the pin mark after its name, and a folder holding
+ * one rises with the pinned. Archived projects sit in a collapsed section
+ * after the rest. A typed filter shows its matches flat, archived ones
+ * included, and says so with a way to clear it when nothing matches.
  */
-export function Projects({ projects, layout, now, calls }: ProjectsProps) {
+export function Projects({
+  projects,
+  layout,
+  now,
+  calls,
+  filter = '',
+  archived = [],
+}: ProjectsProps) {
   const unseen = useUnseen((state) => state.unseen)
   const theme = useShownTheme()
   const stamps = useLive((state) => state.thumbnails[theme])
   const captures = { theme, stamps }
   const focused = useStore(projectStore, (state) => state.focused)
+  const focusedFolder = useStore(projectStore, (state) => state.folder)
+  const focusTarget = useStore(projectStore, (state) => state.focusTarget)
+  // Focus goes to a card a write moved out of a closed panel once it draws.
+  useEffect(() => {
+    if (focusTarget === null) return
+    const project = projects.find((record) => record.name === focusTarget)
+    const link =
+      project &&
+      document.querySelector<HTMLElement>(
+        `main [data-project-link][href="${CSS.escape(projectHref(project))}"]`,
+      )
+    if (!link) return
+    link.focus()
+    projectStore.setState({ focusTarget: null })
+  }, [focusTarget, projects])
   const pins = usePins()
-  const rover = projects.some((project) => project.name === focused)
-    ? focused
-    : projects[0]?.name
-  // The pinned come first, so the rest start at the first unpinned project,
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set())
+  const filtering = filter.trim() !== ''
+  const shown = filtering
+    ? filterProjects([...projects, ...archived], filter)
+    : projects
+  const entries: HomeEntry[] = filtering
+    ? shown.map((project) => ({ kind: 'project', project }))
+    : homeEntries(shown)
+  // Held as one string, so the effect runs when the set of folders changes rather than on every render.
+  const shownFolders = JSON.stringify(
+    entries.flatMap((entry) =>
+      entry.kind === 'folder' ? [entry.folder.key] : [],
+    ),
+  )
+  useEffect(() => {
+    settleOpenFolder(new Set(JSON.parse(shownFolders) as string[]))
+  }, [shownFolders])
+  const isOpen = (key: string) => layout === 'list' && opened.has(key)
+  const toggle = (key: string) =>
+    setOpened((current) => {
+      const next = new Set(current)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+  const rover = roverOf(entries, focused, focusedFolder, isOpen)
+  const pinnedEntry = (entry: HomeEntry) =>
+    entry.kind === 'project'
+      ? pins.has(entry.project.name)
+      : entry.folder.projects.some((project) => pins.has(project.name))
+  // The pinned come first, so the rest start at the first unpinned entry,
   // and a divider sits there only when both groups hold one.
-  const firstUnpinned = projects.findIndex((project) => !pins.has(project.name))
+  const firstUnpinned = entries.findIndex((entry) => !pinnedEntry(entry))
   const divideAt = firstUnpinned > 0 ? firstUnpinned : -1
+  const item = (project: ProjectRecord) => ({
+    project,
+    tabbable: project.name === rover,
+    calls,
+    unseen: unseenUnder(unseen, project.name),
+    pinned: pins.has(project.name),
+    now,
+  })
+  const folderUnseen = (projects: readonly ProjectRecord[]) =>
+    projects.reduce(
+      (sum, project) => sum + unseenUnder(unseen, project.name),
+      0,
+    )
   return (
     <main className="px-4 py-8 sm:px-12">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h1 className="text-title">Projects</h1>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <h1 className="mr-auto text-title">Projects</h1>
+        <FilterField />
         <SortMenu />
       </div>
-      {layout === 'grid' ? (
+      {entries.length === 0 ? (
+        filtering ? (
+          <NoMatch filter={filter} />
+        ) : null
+      ) : layout === 'grid' ? (
         <ul
           onKeyDown={(event) => roveFocus(event, 'grid')}
           className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5"
         >
-          {projects.map((project, at) => (
-            <Fragment key={project.name}>
+          {entries.map((entry, at) => (
+            <Fragment key={keyOf(entry)}>
               {at === divideAt ? (
                 <li
                   aria-hidden
@@ -79,34 +154,20 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                   className="col-span-full h-px bg-border"
                 />
               ) : null}
-              <li>
-                <ProjectLink
-                  project={project}
-                  tabbable={project.name === rover}
-                  className="block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary data-popup-open:ring-2 data-popup-open:ring-primary"
-                >
-                  <span
-                    aria-hidden
-                    className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
-                  >
-                    <FrameSkeleton
-                      project={project}
-                      captures={captures}
-                      className="size-full"
-                    />
-                  </span>
-                  <span className="flex flex-col px-3 pt-1.5 pb-3">
-                    <ProjectName
-                      project={project}
-                      calls={calls}
-                      type="text-panel"
-                      unseen={unseenUnder(unseen, project.name)}
-                      pinned={pins.has(project.name)}
-                    />
-                    <Edited project={project} now={now} prefix="Edited " />
-                  </span>
-                </ProjectLink>
-              </li>
+              <DropItem entry={entry} calls={calls}>
+                {entry.kind === 'project' ? (
+                  <ProjectCard {...item(entry.project)} captures={captures} />
+                ) : (
+                  <FolderCard
+                    folder={entry.folder}
+                    tabbable={keyOf(entry) === rover}
+                    unseen={folderUnseen(entry.folder.projects)}
+                    now={now}
+                    calls={calls}
+                    captures={captures}
+                  />
+                )}
+              </DropItem>
             </Fragment>
           ))}
         </ul>
@@ -114,7 +175,10 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
         <div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
           <div
             aria-hidden
-            className="grid h-9 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center border-b border-border px-4 text-label text-muted-foreground"
+            className={cn(
+              'grid h-9 items-center border-b border-border px-4 text-label text-muted-foreground',
+              ROW_COLUMNS,
+            )}
           >
             <span />
             <span>Name</span>
@@ -122,8 +186,8 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
             <span className="hidden sm:block">Created</span>
           </div>
           <ul onKeyDown={(event) => roveFocus(event, 'list')}>
-            {projects.map((project, at) => (
-              <Fragment key={project.name}>
+            {entries.map((entry, at) => (
+              <Fragment key={keyOf(entry)}>
                 {at === divideAt ? (
                   // Every row already ends on a hairline, so the groups part on a band.
                   <li
@@ -132,308 +196,162 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     className="h-1.5 border-b border-border bg-muted"
                   />
                 ) : null}
-                <li className="not-last:border-b">
-                  <ProjectLink
-                    project={project}
-                    tabbable={project.name === rover}
-                    className="grid h-12 grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_160px_160px] items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-popup-open:ring-2 data-popup-open:ring-primary data-popup-open:ring-inset"
-                  >
-                    <Mini project={project} />
-                    <ProjectName
-                      project={project}
+                <DropItem
+                  entry={entry}
+                  calls={calls}
+                  className="not-last:border-b"
+                >
+                  {entry.kind === 'project' ? (
+                    <ProjectRow {...item(entry.project)} />
+                  ) : (
+                    <FolderRow
+                      folder={entry.folder}
+                      open={isOpen(entry.folder.key)}
+                      onToggle={() => toggle(entry.folder.key)}
+                      tabbable={keyOf(entry) === rover}
+                      unseen={folderUnseen(entry.folder.projects)}
+                      now={now}
                       calls={calls}
-                      type="font-medium"
-                      unseen={unseenUnder(unseen, project.name)}
-                      pinned={pins.has(project.name)}
-                      className="pr-4"
-                    />
-                    {/* Below sm the row keeps its name, so a narrow window never scrolls sideways. */}
-                    <span className="hidden truncate sm:block">
-                      <Edited project={project} now={now} prefix="" />
-                    </span>
-                    <span className="hidden sm:block">
-                      <Created project={project} />
-                    </span>
-                  </ProjectLink>
-                </li>
+                    >
+                      {entry.folder.projects.map((project) => (
+                        <DropItem
+                          key={project.name}
+                          entry={{ kind: 'project', project }}
+                          calls={calls}
+                          className="not-last:border-b"
+                        >
+                          <ProjectRow {...item(project)} className="pl-11" />
+                        </DropItem>
+                      ))}
+                    </FolderRow>
+                  )}
+                </DropItem>
               </Fragment>
             ))}
           </ul>
         </div>
       )}
+      {filtering ? null : (
+        <Archived
+          projects={archived}
+          layout={layout}
+          now={now}
+          calls={calls}
+          captures={captures}
+        />
+      )}
     </main>
   )
 }
 
-/**
- * Moves focus across the cards by the arrow keys, or h, j, k, and l while
- * single-key shortcuts are on, Up and Down stepping to the nearest card in
- * the grid's next row as it is laid out, and down the list, with Home and End for the ends. Keys
- * typed into a rename field stay in the field.
- */
-function roveFocus(event: KeyboardEvent<HTMLElement>, layout: HomeLayout) {
-  const from = event.target
-  if (!(from instanceof HTMLElement) || !from.matches(LINK)) return
-  const links = [...event.currentTarget.querySelectorAll<HTMLElement>(LINK)]
-  const at = links.indexOf(from)
-  const grid = layout === 'grid'
-  const key = pressedKey(event)
-  const to = {
-    ArrowLeft: grid ? at - 1 : at,
-    ArrowRight: grid ? at + 1 : at,
-    ArrowUp: grid ? rowStep(links, at, -1) : at - 1,
-    ArrowDown: grid ? rowStep(links, at, 1) : at + 1,
-    Home: 0,
-    End: links.length - 1,
-  }[key]
-  if (to === undefined) return
-  event.preventDefault()
-  links[Math.min(Math.max(to, 0), links.length - 1)]?.focus()
+/** What home shows when a filter matches no project, with the way back to every one. */
+function NoMatch({ filter }: { filter: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-12 text-center">
+      <p className="text-body text-muted-foreground">
+        No projects match “{filter.trim()}”.
+      </p>
+      <button
+        type="button"
+        onClick={() => setHomeFilter('')}
+        className="h-7 rounded-lg border border-border bg-card px-3 font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        Clear filter
+      </button>
+    </div>
+  )
 }
 
-/**
- * The arrow a bare h, j, k, or l stands for, or the key itself. These read
- * the Single-key shortcuts switch here, since the cards' own keys never pass
- * through the registry's `press`.
- */
-function pressedKey(event: KeyboardEvent<HTMLElement>): string {
-  const modified = event.ctrlKey || event.metaKey || event.altKey
-  const arrow = VIM_KEYS[event.key]
-  return arrow && !modified && characterKeysOn() ? arrow : event.key
-}
-
-const VIM_KEYS: Readonly<Record<string, string>> = {
-  h: 'ArrowLeft',
-  j: 'ArrowDown',
-  k: 'ArrowUp',
-  l: 'ArrowRight',
-}
-
-/**
- * The card in the next row up or down nearest the one at `at`, read off
- * where the grid laid them out rather than counted, since the pinned row
- * may end short of a full row. Stays put at the first or last row.
- */
-function rowStep(
-  links: readonly HTMLElement[],
-  at: number,
-  direction: 1 | -1,
-): number {
-  const boxes = links.map((link) => link.getBoundingClientRect())
-  const from = boxes[at]
-  if (!from) return at
-  const tops = boxes
-    .map((box) => box.top)
-    .filter((top) => (top - from.top) * direction > 0)
-  if (tops.length === 0) return at
-  const row = direction > 0 ? Math.min(...tops) : Math.max(...tops)
-  let nearest = at
-  boxes.forEach((box, index) => {
-    if (box.top !== row) return
-    const near = boxes[nearest]
-    if (
-      nearest === at ||
-      (near && Math.abs(box.left - from.left) < Math.abs(near.left - from.left))
-    )
-      nearest = index
-  })
-  return nearest
-}
-
-const LINK = '[data-project-link]'
-
-interface ProjectLinkProps {
-  project: ProjectRecord
-  /** The one card the tab sequence holds, the focused one or else the first. */
-  tabbable: boolean
-  className: string
+interface DropItemProps {
+  entry: HomeEntry
+  calls: Structure | undefined
+  className?: string
   children: ReactNode
 }
 
 /**
- * A card or row opening its project, and the menu on a right click or the
- * menu key. F2 renames the focused project and Delete or Backspace deletes
- * it. While its name is a rename field it stops being a link, so the field's
- * clicks and keys stay in the field.
+ * One card or row as a list item a project drops on, per `22-fix.png`. A
+ * project dropped on a project in no folder makes a folder of the two, named
+ * and opened for renaming as New folder is, and one dropped on a folder, or
+ * on a project in one, files into it. While a project is over it, the item
+ * says what the drop does.
  */
-function ProjectLink({
-  project,
-  tabbable,
-  className,
-  children,
-}: ProjectLinkProps) {
-  const renaming = useRenamingProject(project.name) !== null
-  if (renaming) return <div className={className}>{children}</div>
+function DropItem({ entry, calls, className, children }: DropItemProps) {
+  const element = useRef<HTMLLIElement>(null)
+  const canWrite = useLive((state) => state.canWrite)
+  const project = entry.kind === 'project' ? entry.project : null
+  const renamingProject = useRenamingProject(project?.name ?? '') !== null
+  const renamingFolder =
+    useRenamingFolder(entry.kind === 'folder' ? entry.folder.key : '') !== null
+  const target: DropTarget =
+    entry.kind === 'folder'
+      ? { kind: 'folder', key: entry.folder.key, name: entry.folder.name }
+      : {
+          kind: 'project',
+          name: entry.project.name,
+          group: entry.project.group,
+        }
+  const into = entry.kind === 'folder' ? entry.folder.name : entry.project.group
+  const over = useHomeDrag(element, {
+    source: project ? { name: project.name, group: project.group } : undefined,
+    target,
+    enabled: canWrite && !renamingProject && !renamingFolder,
+    onDrop: (dropped) => {
+      if (into !== null) void fileProjects([dropped], into, calls)
+      else if (project) void fileInNewFolder([project.name, dropped], calls)
+    },
+  })
   return (
-    <ProjectMenu
-      project={project.name}
-      trigger={
-        <Link
-          href={projectHref(project)}
-          data-project-link
-          // One card sits in the tab sequence, so Tab leaves the set in one press.
-          tabIndex={tabbable ? 0 : -1}
-          onFocus={() => focusProject(project.name)}
-          onKeyDown={(event: KeyboardEvent) => {
-            const id = CARD_KEYS[event.key]
-            if (!id) return
-            focusProject(project.name)
-            const action = findAction(id)
-            if (action && isEnabled(action)) action.run()
-            event.preventDefault()
-          }}
-          className={className}
+    <li
+      ref={element}
+      data-drop-over={over || undefined}
+      className={cn(
+        'relative data-drop-over:[&>:first-child]:ring-2 data-drop-over:[&>:first-child]:ring-primary',
+        className,
+      )}
+    >
+      {children}
+      {over ? (
+        <span
+          role="status"
+          className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md"
         >
-          {children}
-        </Link>
-      }
-    />
+          {into === null
+            ? `Drop on ${target.name} to make a folder`
+            : `Drop to move into ${into}`}
+        </span>
+      ) : null}
+    </li>
   )
 }
 
-/** The actions a key runs on the focused card, Enter opening it as a link does. */
-const CARD_KEYS: Readonly<Record<string, string>> = {
-  F2: 'project.rename',
-  Delete: 'project.delete',
-  Backspace: 'project.delete',
-}
-
-interface ProjectNameProps {
-  project: ProjectRecord
-  calls: Structure | undefined
-  /** The name's type, which the rename field takes too. */
-  type: string
-  /** How many of the project's frames an agent changed unseen, counted after the name. */
-  unseen: number
-  pinned: boolean
-  /** Added to the name's line, such as the list cell's gap before Edited. */
-  className?: string
+/** A folder's key never collides with a project's name, since a name holds no slash. */
+function keyOf(entry: HomeEntry): string {
+  return entry.kind === 'project'
+    ? entry.project.name
+    : `folder/${entry.folder.key}`
 }
 
 /**
- * The project's name, or the field renaming it with the reason its last name
- * was refused. The field sits in the name's own line box, so the card or row
- * keeps its height while it is open.
+ * The one card or row the tab sequence holds: the focused project where it
+ * shows, else the folder holding it or the focused folder, else the first.
  */
-function ProjectName({
-  project,
-  calls,
-  type,
-  unseen,
-  pinned,
-  className,
-}: ProjectNameProps) {
-  const renaming = useRenamingProject(project.name)
-  if (!renaming) {
-    return (
-      <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
-        <span className={cn('truncate', type)} title={project.name}>
-          {project.name}
-        </span>
-        <span className="ml-auto flex items-center gap-1.5">
-          {pinned ? (
-            <Pin
-              role="img"
-              aria-label="Pinned"
-              className="size-[13px] shrink-0 fill-current text-foreground"
-            />
-          ) : null}
-          <UnseenCount count={unseen} />
-        </span>
-      </span>
+function roverOf(
+  entries: readonly HomeEntry[],
+  focused: string | null,
+  focusedFolder: string | null,
+  isOpen: (key: string) => boolean,
+): string | undefined {
+  for (const entry of entries) {
+    if (entry.kind === 'project') {
+      if (entry.project.name === focused) return focused
+      continue
+    }
+    const holds = entry.folder.projects.some(
+      (project) => project.name === focused,
     )
+    if (holds && isOpen(entry.folder.key)) return focused ?? undefined
+    if (holds || entry.folder.key === focusedFolder) return keyOf(entry)
   }
-  return (
-    <span className={cn('flex min-w-0 flex-col', type)}>
-      <span className="flex h-lh items-center pl-1.5">
-        <RenameField
-          key={renaming.attempt}
-          name={renaming.draft}
-          label={`Rename project ${project.name}`}
-          onCommit={(name) => void renameProject(project.name, name, calls)}
-          onCancel={stopProjectRename}
-        />
-      </span>
-      {renaming.refusal ? (
-        <span
-          role="alert"
-          className="mt-1 text-label font-normal text-destructive"
-        >
-          {renaming.refusal}
-        </span>
-      ) : null}
-    </span>
-  )
-}
-
-/** The row's small mark, being the card's skeleton at the size of a list row. */
-function Mini({ project }: { project: ProjectRecord }) {
-  return (
-    <span
-      aria-hidden
-      className="block h-[22px] w-8 overflow-hidden rounded bg-background p-[5px]"
-    >
-      <FrameSkeleton project={project} className="size-full" />
-    </span>
-  )
-}
-
-interface DateProps {
-  project: ProjectRecord
-}
-
-function Edited({
-  project,
-  now,
-  prefix,
-}: DateProps & { now: number; prefix: string }) {
-  return (
-    <span
-      data-edited
-      className="truncate text-body text-muted-foreground"
-      title={new Date(project.modifiedAt).toLocaleString()}
-    >
-      {prefix}
-      {formatAgo(Date.parse(project.modifiedAt), now)}
-    </span>
-  )
-}
-
-/** The day the project was made, empty for one made before the time was recorded. */
-function Created({ project }: DateProps) {
-  if (!project.createdAt) return <span />
-  const created = new Date(project.createdAt)
-  return (
-    <time
-      dateTime={project.createdAt}
-      className="text-body text-muted-foreground"
-      title={created.toLocaleString()}
-    >
-      {formatDay(created)}
-    </time>
-  )
-}
-
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 365 * 24 * 3600],
-  ['month', 30 * 24 * 3600],
-  ['week', 7 * 24 * 3600],
-  ['day', 24 * 3600],
-  ['hour', 3600],
-  ['minute', 60],
-]
-
-function formatAgo(then: number, now: number): string {
-  const seconds = Math.max(0, (now - then) / 1000)
-  const format = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
-  for (const [unit, size] of UNITS) {
-    if (seconds >= size) return format.format(-Math.floor(seconds / size), unit)
-  }
-  return 'just now'
-}
-
-/** The local day as `2026-09-02`, as `canon/design/home/list` prints it. */
-function formatDay(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return entries[0] && keyOf(entries[0])
 }

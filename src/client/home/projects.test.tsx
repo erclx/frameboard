@@ -14,6 +14,7 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys } from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
@@ -23,6 +24,7 @@ import { projectStore } from '@/client/projects/actions'
 import { themeStore } from '@/client/theme/store'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
+import { setHomeFilter } from './filter'
 import { Home } from './home'
 import type { HomeLayout } from './layout'
 import { dropPin, togglePin } from './pins'
@@ -42,6 +44,8 @@ function project(
     path: `/board/${name}`,
     modifiedAt,
     createdAt,
+    group: null,
+    archived: false,
     projectFileError: null,
     pages: pages.map((page, index) => ({
       ref: `${name}/${page}`,
@@ -705,17 +709,19 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, Pin, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, Archive, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, pin, remove, ...rest] =
+    const [open, rename, duplicate, pin, move, archive, remove, ...rest] =
       within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
     expect(rename).toHaveAccessibleName('Rename')
     expect(duplicate).toHaveAccessibleName('Duplicate')
     expect(pin).toHaveAccessibleName('Pin')
+    expect(move).toHaveAccessibleName('Move to folder')
+    expect(archive).toHaveAccessibleName('Archive')
     expect(remove).toHaveAccessibleName('Delete')
     expect(rest).toEqual([])
     expect(
@@ -1157,5 +1163,504 @@ describe('Home order and pins', () => {
       'tabindex',
       '0',
     )
+  })
+})
+
+describe('folders', () => {
+  const filed = (record: ProjectRecord, group: string): ProjectRecord => ({
+    ...record,
+    group,
+  })
+  const CLIENT = [
+    filed(project('web', '2026-10-15T09:00:00.000Z'), 'Client A'),
+    project('drawings', '2026-10-14T09:00:00.000Z'),
+    filed(project('app', '2026-10-13T09:00:00.000Z'), 'Client A'),
+    filed(project('email', '2026-10-12T09:00:00.000Z'), 'client a'),
+    filed(project('notes', '2026-10-01T09:00:00.000Z'), 'Personal'),
+  ]
+
+  const folderCard = (name: string) =>
+    screen.getByRole('button', { name: new RegExp(`^${name}`) })
+
+  afterEach(() => {
+    cleanup()
+    liveStore.setState({ canWrite: false, board: null })
+    projectStore.setState({
+      focused: null,
+      folder: null,
+      renaming: null,
+      renamingFolder: null,
+      openFolder: null,
+      pendingRename: null,
+      focusTarget: null,
+    })
+  })
+
+  it('shows a folder card naming its count in place of its members', () => {
+    renderLive(CLIENT, server().calls)
+
+    expect(folderCard('Client A')).toHaveAccessibleName(
+      /^Client A\s*3 projects$/,
+    )
+    expect(screen.queryByRole('link', { name: /^web/ })).toBeNull()
+    expect(screen.getByRole('link', { name: /^drawings/ })).toBeVisible()
+  })
+
+  it('opens a panel of the members with Rename and Ungroup', async () => {
+    renderLive(CLIENT, server().calls)
+
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog', { name: 'Client A' })
+
+    expect(
+      within(panel)
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['web', 'app', 'email'])
+    expect(within(panel).getByRole('button', { name: 'Rename' })).toBeEnabled()
+    expect(within(panel).getByRole('button', { name: 'Ungroup' })).toBeEnabled()
+  })
+
+  it('returns focus to the folder card when Esc closes the panel', async () => {
+    renderLive(CLIENT, server().calls)
+    await userEvent.click(folderCard('Client A'))
+    await screen.findByRole('dialog')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => expect(folderCard('Client A')).toHaveFocus())
+  })
+
+  it('ungroups every member from the panel', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: null },
+      },
+    ])
+  })
+
+  it('ungroups from the panel once focus moved onto a member card', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    act(() => within(panel).getByRole('link', { name: /^app/ }).focus())
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: null },
+      },
+    ])
+  })
+
+  it('renames the folder by writing one spelling to every member', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: 'Client B' },
+      },
+    ])
+  })
+
+  it('keeps the panel open on the new name once a rename lands', async () => {
+    const { calls } = server()
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: 'Client B' }
+          : record,
+      ),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', { name: 'Client B' })).toBeVisible(),
+    )
+  })
+
+  it('keeps the panel open when the renamed board lands before the write answers', async () => {
+    let answer: (response: Response) => void = () => {}
+    const calls = createStructure(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    )
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: 'Client B' }
+          : record,
+      ),
+    )
+    await act(async () => answer(Response.json({ ok: true, data: [] })))
+
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', { name: 'Client B' })).toBeVisible(),
+    )
+  })
+
+  it('opens no panel unasked for a later folder under the key an emptied one held', async () => {
+    const home = renderLive(CLIENT, server().calls)
+    await userEvent.click(folderCard('Personal'))
+    await screen.findByRole('dialog', { name: 'Personal' })
+    const emptied = CLIENT.map((record) =>
+      record.name === 'notes' ? { ...record, group: null } : record,
+    )
+    home.receive(emptied)
+
+    home.receive(
+      emptied.map((record) =>
+        record.name === 'drawings' || record.name === 'notes'
+          ? { ...record, group: 'Personal' }
+          : record,
+      ),
+    )
+
+    expect(folderCard('Personal')).toBeVisible()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it("hands focus to the first member's card once Ungroup lands", async () => {
+    const { calls } = server()
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: null }
+          : record,
+      ),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /^web/ })).toHaveFocus(),
+    )
+  })
+
+  it('keeps the rename open with the reason on a name another folder holds', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    act(() => folderCard('Personal').focus())
+
+    await userEvent.keyboard('{F2}')
+    await userEvent.keyboard('client a{Enter}')
+
+    expect(sent).toEqual([])
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'A folder named Client A already exists.',
+    )
+  })
+
+  it('opens a list folder in place, its members under it', async () => {
+    renderLive(CLIENT, server().calls, 'list')
+    const row = screen.getByRole('button', { name: /^Client A/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: /^web/ })).toBeNull()
+
+    await userEvent.click(row)
+
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      within(screen.getByRole('list', { name: 'Client A' }))
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['web', 'app', 'email'])
+  })
+
+  it('opens and closes a list folder on Right and Left', async () => {
+    renderLive(CLIENT, server().calls, 'list')
+    const row = screen.getByRole('button', { name: /^Client A/ })
+    act(() => row.focus())
+
+    await userEvent.keyboard('{ArrowRight}')
+    const opened = row.getAttribute('aria-expanded')
+    await userEvent.keyboard('{ArrowLeft}')
+
+    expect([opened, row.getAttribute('aria-expanded')]).toEqual([
+      'true',
+      'false',
+    ])
+  })
+
+  it('moves across folder and project cards by the arrow keys', async () => {
+    renderLive(CLIENT, server().calls)
+    act(() => folderCard('Client A').focus())
+
+    await userEvent.keyboard('{ArrowRight}')
+    const next = document.activeElement
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect([next, document.activeElement]).toEqual([
+      screen.getByRole('link', { name: /^drawings/ }),
+      folderCard('Personal'),
+    ])
+  })
+
+  it('raises a folder holding a pinned member with the pinned', () => {
+    act(() => togglePin('notes'))
+    renderLive(CLIENT, server().calls)
+
+    const [first] = screen.getAllByRole('listitem')
+
+    expect(first).toContainElement(folderCard('Personal'))
+    act(() => dropPin('notes'))
+  })
+
+  it('moves a project to another folder from the menu', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+
+    const menu = await openMenu(/^drawings/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Move to folder' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Personal' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['drawings'], group: 'Personal' },
+      },
+    ])
+  })
+
+  it('files a project in a new folder named Folder and opens its name', async () => {
+    const { sent, calls } = server()
+    const home = renderLive(CLIENT, calls)
+
+    const menu = await openMenu(/^drawings/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Move to folder' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'New folder' }),
+    )
+    home.receive(
+      CLIENT.map((record) =>
+        record.name === 'drawings' ? filed(record, 'Folder') : record,
+      ),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['drawings'], group: 'Folder' },
+      },
+    ])
+    expect(
+      await screen.findByRole('textbox', { name: 'Rename folder Folder' }),
+    ).toHaveFocus()
+  })
+
+  it('takes a filed project out of its folder from the menu', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls, 'list')
+    await userEvent.click(screen.getByRole('button', { name: /^Personal/ }))
+
+    const menu = await openMenu(/^notes/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Remove from folder' }),
+    )
+
+    expect(sent).toEqual([
+      { path: '/api/project/group', body: { refs: ['notes'], group: null } },
+    ])
+  })
+})
+
+describe('the name filter', () => {
+  const BOARD = [
+    { ...project('client-web', '2026-10-15T09:00:00.000Z'), group: 'Acme' },
+    project('drawings', '2026-10-14T09:00:00.000Z'),
+    { ...project('notes', '2026-10-13T09:00:00.000Z'), group: 'Acme' },
+  ]
+
+  const shown = () =>
+    screen
+      .getAllByRole('link')
+      .map((link) => link.querySelector('[title]')?.getAttribute('title'))
+
+  const field = () => screen.getByRole('searchbox', { name: 'Filter projects' })
+
+  afterEach(() => {
+    cleanup()
+    act(() => setHomeFilter(''))
+    liveStore.setState({ canWrite: false, board: null })
+  })
+
+  it('shows the projects a typed name matches, folder members flat', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(field(), 'n')
+
+    expect(shown()).toEqual(['client-web', 'drawings', 'notes'])
+    expect(screen.queryByRole('button', { name: /^Acme/ })).toBeNull()
+  })
+
+  it('shows every member of a folder whose name matches', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(field(), 'acme')
+
+    expect(shown()).toEqual(['client-web', 'notes'])
+  })
+
+  it('says nothing matches and clears back to the folders', async () => {
+    renderLive(BOARD, server().calls)
+    await userEvent.type(field(), 'zzz')
+    expect(screen.getByText('No projects match “zzz”.')).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+
+    expect(screen.getByRole('button', { name: /^Acme/ })).toBeVisible()
+  })
+
+  it('clears a typed filter on Esc', async () => {
+    renderLive(BOARD, server().calls)
+    await userEvent.type(field(), 'zzz')
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(field()).toHaveValue('')
+  })
+
+  it('focuses the filter on Cmd+F', async () => {
+    renderLive(BOARD, server().calls)
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard(
+      IS_MAC ? '{Meta>}f{/Meta}' : '{Control>}f{/Control}',
+    )
+
+    expect(field()).toHaveFocus()
+    unbind()
+  })
+})
+
+describe('the Archived section', () => {
+  const BOARD = [
+    project('studio', '2026-10-15T09:00:00.000Z'),
+    { ...project('old-site', '2026-10-01T09:00:00.000Z'), archived: true },
+    { ...project('older-site', '2026-09-01T09:00:00.000Z'), archived: true },
+  ]
+
+  const archivedHeader = () => screen.getByRole('button', { name: /^Archived/ })
+
+  afterEach(() => {
+    cleanup()
+    act(() => setHomeFilter(''))
+    liveStore.setState({ canWrite: false, board: null })
+    projectStore.setState({ focused: null, renaming: null })
+  })
+
+  it('holds archived projects in a collapsed section naming their count', () => {
+    renderLive(BOARD, server().calls)
+
+    expect(archivedHeader()).toHaveAttribute('aria-expanded', 'false')
+    expect(archivedHeader()).toHaveTextContent('Archived2')
+    expect(screen.queryByRole('link', { name: /^old-site/ })).toBeNull()
+  })
+
+  it('opens to show them, and stays open on the next visit', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.click(archivedHeader())
+    cleanup()
+    renderLive(BOARD, server().calls)
+
+    expect(
+      within(screen.getByRole('list', { name: 'Archived projects' }))
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['old-site', 'older-site'])
+  })
+
+  it('archives a project from its menu', async () => {
+    const { sent, calls } = server()
+    renderLive(BOARD, calls)
+
+    const menu = await openMenu(/^studio/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Archive' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/archive',
+        body: { refs: ['studio'], archived: true },
+      },
+    ])
+  })
+
+  it('restores an archived project from its menu', async () => {
+    const { sent, calls } = server()
+    renderLive(BOARD, calls)
+    await userEvent.click(archivedHeader())
+
+    const menu = await openMenu(/^old-site/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Restore' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/archive',
+        body: { refs: ['old-site'], archived: false },
+      },
+    ])
+  })
+
+  it('shows archived projects a filter matches among the rest', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Filter projects' }),
+      'site',
+    )
+
+    expect(
+      screen
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['old-site', 'older-site'])
   })
 })

@@ -14,6 +14,7 @@ In a folder with no board above it, `serve` creates `.frameboard/` there with on
 A board folder holds projects, a project holds pages, and a page holds frames.
 
 - Each frame is one `.html` file beside a `layout.json` that records where it sits and the page's sections, which group frames by where they sit
+- A project's `project.json` lists its pages in order, and may name the `group` home files it under and mark it `archived`, so a folder never moves a project on disk
 
 ## Tokens and themes
 

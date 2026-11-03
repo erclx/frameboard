@@ -19,6 +19,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 - Projects, pages, and frames share one name rule in `src/shared/names.ts`, so the verbs and the naming check agree on which names are valid
 - Two names collide when they match case-insensitively, because the default macOS volume is case-insensitive, and `assets` is reserved as a page name
 - `project.json` gains a `createdAt` once, from `project add` or the first `serve` of an empty folder, and an older project reads as made at no time, never at a file's birth time
+- `project.json` may hold `group`, the one-level folder home files it under, and `archived: true`. A value of another type reads as absent, so a hand edit never fails the scan
 
 ### `src/server/board/`
 
@@ -29,6 +30,11 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 - A frame file with no layout entry reads as unplaced at desktop size and 80 px past the last placed frame, and `frame add` places it past the placed frames, ignoring other unplaced files
 - Frame order is stacking order, so reordering in the layers panel changes what draws on top and leaves positions alone, while pages reorder in the pages list
 - `board.json` lets a verb find a standalone board by walking up from the working folder, and a project's `project.json` lists its pages in display order and may hold `checks`
+
+`fileProjects` in `projects.ts` files projects into folders and the archive.
+
+- It writes `group` and `archived` under each file's lock, keeping every other key as written
+- It puts the file's and folder's modified times back once the lock drops, and its undo does the same, so a filing never moves a project's Edited time
 
 `layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
 

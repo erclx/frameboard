@@ -77,6 +77,52 @@ describe('scanBoard', () => {
       ])
     })
 
+    it("reads a project's folder trimmed and its archive flag", async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({
+          version: 1,
+          pages: ['home'],
+          group: ' Client ',
+          archived: true,
+        }),
+      )
+
+      const [marketing, webapp] = (await scanBoard(board.root)).projects
+
+      expect([
+        [marketing?.group, marketing?.archived],
+        [webapp?.group, webapp?.archived],
+      ]).toEqual([
+        [null, false],
+        ['Client', true],
+      ])
+    })
+
+    it.each([
+      ['a number', 7, 'yes'],
+      ['a blank', '   ', 1],
+      ['a list', ['Client'], null],
+    ])(
+      'reads a folder that is %s and an archive flag that is not true as absent',
+      async (_, group, archived) => {
+        board = copyFixtureBoard('basic')
+        writeFileSync(
+          join(board.root, 'webapp', 'project.json'),
+          JSON.stringify({ version: 1, pages: ['home'], group, archived }),
+        )
+
+        const [, webapp] = (await scanBoard(board.root)).projects
+
+        expect([
+          webapp?.group,
+          webapp?.archived,
+          webapp?.projectFileError,
+        ]).toEqual([null, false, null])
+      },
+    )
+
     it('reads a placed frame from its layout entry', async () => {
       board = copyFixtureBoard('basic')
 

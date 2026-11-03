@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { basename, dirname, isAbsolute, relative, sep } from 'node:path'
 
 import { withLocks } from '@/server/board/json-record'
+import { keepingTimes } from '@/server/board/projects'
 import { FRAME_EXTENSION } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 
@@ -156,24 +157,31 @@ export class History {
     const locks = step.changes
       .flatMap(lockPaths)
       .filter((path) => existsSync(dirname(path)))
+    // A filing is not an edit to the project, so neither is its undo.
+    const timed = step.changes.flatMap((change) =>
+      change.kind === 'project' ? [change.file] : [],
+    )
     try {
-      await withLocks(locks, async () => {
-        for (const change of step.changes) {
-          if (!(await holds(change, was))) {
-            throw new FrameboardError(
-              'undo-overtaken',
-              `An agent changed ${nameOf(change)} after your edit, so that step was dropped.`,
-              { change: change.kind },
-            )
+      await keepingTimes(timed, (keep) =>
+        withLocks(locks, async () => {
+          for (const change of step.changes) {
+            if (!(await holds(change, was))) {
+              throw new FrameboardError(
+                'undo-overtaken',
+                `An agent changed ${nameOf(change)} after your edit, so that step was dropped.`,
+                { change: change.kind },
+              )
+            }
           }
-        }
-        const ordered =
-          to === 'before' ? [...step.changes].reverse() : step.changes
-        for (const change of ordered) {
-          const hash = await restore(change, to)
-          if (hash !== undefined && 'ref' in change) hashes[change.ref] = hash
-        }
-      })
+          for (const file of timed) await keep(file)
+          const ordered =
+            to === 'before' ? [...step.changes].reverse() : step.changes
+          for (const change of ordered) {
+            const hash = await restore(change, to)
+            if (hash !== undefined && 'ref' in change) hashes[change.ref] = hash
+          }
+        }),
+      )
     } catch (error) {
       // Only an overtaken step is dropped. One that waited out a lock stays to try again.
       const overtaken =
@@ -199,11 +207,12 @@ export class History {
   }
 }
 
-/** What a refusal names as overtaken, being a frame, a section, a page, or the page order. */
+/** What a refusal names as overtaken, being a frame, a section, a page, the page order, or a filed project. */
 function nameOf(change: Change): string {
   if (change.kind === 'entry') return change.frame
   if (change.kind === 'section') return `section ${change.section}`
   if (change.kind === 'pages') return 'the page order'
+  if (change.kind === 'project') return basename(dirname(change.file))
   if (change.kind === 'token') return change.name
   const path = change.kind === 'moved' ? change.to : change.path
   return basename(path, FRAME_EXTENSION)

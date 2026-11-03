@@ -10,15 +10,26 @@ import {
   ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
-import { focusProject } from '@/client/projects/actions'
+import { useLive } from '@/client/live/store'
+import type { Structure } from '@/client/live/structure'
+import { fileProjects, focusProject } from '@/client/projects/actions'
+
+import { folderKey, folderNames } from './folders/entries'
 
 const IDS = [
   'project.open',
   'project.rename',
   'project.duplicate',
   'project.pin',
+  'project.group',
+  'project.ungroup',
+  'project.archive',
+  'project.restore',
   'project.delete',
 ] as const
 
@@ -26,15 +37,36 @@ interface ProjectMenuProps {
   project: string
   /** The card or row the menu opens on, which keeps focus when it closes. */
   trigger: ReactElement
+  /** Stands in for the server's structure routes, as a test's server does. */
+  calls?: Structure
 }
 
 /**
  * The right-click menu of `canon/design/menus/home` on a project's card or
  * row, its items running the `project.*` actions on the project it opened
- * from, Pin reading Unpin on a pinned one. The menu key and Shift+F10 open it too, with focus on its first item.
+ * from, Pin reading Unpin on a pinned one. Move to folder lists every other
+ * folder and New folder, Remove from folder shows on a filed project, and
+ * Archive reads Restore on an archived one. The menu key and Shift+F10 open it too, with focus on its first item.
  */
-export function ProjectMenu({ project, trigger }: ProjectMenuProps) {
-  const [open, rename, duplicate, pin, remove] = useActions(IDS)
+export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
+  const [
+    open,
+    rename,
+    duplicate,
+    pin,
+    newFolder,
+    ungroup,
+    archive,
+    restore,
+    remove,
+  ] = useActions(IDS)
+  const projects = useLive((state) => state.board?.projects)
+  const record = projects?.find((candidate) => candidate.name === project)
+  const group = record?.group ?? null
+  const others = folderNames(projects ?? []).filter(
+    (name) => group === null || folderKey(name) !== folderKey(group),
+  )
+  const canWrite = useLive((state) => state.canWrite)
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
   return (
@@ -54,6 +86,37 @@ export function ProjectMenu({ project, trigger }: ProjectMenuProps) {
           <MenuItem action={rename}>Rename</MenuItem>
           <MenuItem action={duplicate}>Duplicate</MenuItem>
           <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger
+              disabled={!canWrite || !record}
+              className="h-7 px-2 py-0 text-xs"
+            >
+              Move to folder
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              {others.map((name) => (
+                <ContextMenuItem
+                  key={name}
+                  onClick={() => void fileProjects([project], name, calls)}
+                >
+                  {name}
+                </ContextMenuItem>
+              ))}
+              {others.length > 0 ? <ContextMenuSeparator /> : null}
+              <MenuItem action={newFolder}>New folder</MenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          {group === null ? null : (
+            <MenuItem action={ungroup}>Remove from folder</MenuItem>
+          )}
+          {record?.archived ? (
+            <MenuItem action={restore}>Restore</MenuItem>
+          ) : (
+            <MenuItem action={archive}>Archive</MenuItem>
+          )}
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <MenuItem
