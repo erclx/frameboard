@@ -175,7 +175,10 @@ function parseRange(
   if (first === '') {
     if (last === '') return null
     const suffix = Number(last)
-    if (suffix === 0 || size === 0) return 'unsatisfiable'
+    if (suffix === 0) return 'unsatisfiable'
+    // RFC 9110 counts a suffix on an empty file satisfiable, and a 206 cannot
+    // name zero bytes, so the empty file is served whole.
+    if (size === 0) return null
     return { start: Math.max(0, size - suffix), end: size - 1 }
   }
   const start = Number(first)
