@@ -438,3 +438,60 @@ describe('the versions an agent write replaced', () => {
     )
   })
 })
+
+describe('a log saved across a restart', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('basic')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const at = (path: string) => join(board.root, path)
+
+  async function started() {
+    const tracker = createChangeTracker(board.root, { now: () => NOW })
+    await tracker.prime(await scanBoard(board.root))
+    return tracker
+  }
+
+  async function write(
+    tracker: ReturnType<typeof createChangeTracker>,
+    path: string,
+    source: string,
+  ) {
+    writeFileSync(at(path), source)
+    return tracker.settle(
+      await tracker.update(await scanBoard(board.root), [at(path)], []),
+    )
+  }
+
+  it('answers the same log and versions from a saved one', async () => {
+    const original = readFileSync(at('webapp/home/hero.html'), 'utf8')
+    const first = await started()
+    await write(first, 'webapp/home/hero.html', '<p>one</p>')
+    await first.save()
+
+    const next = await started()
+
+    expect(next.log()).toEqual(first.log())
+    expect(next.version('webapp/home/hero', next.log()[0]?.before ?? '')).toBe(
+      original,
+    )
+  })
+
+  it('numbers a change after the saved ones', async () => {
+    const first = await started()
+    await write(first, 'webapp/home/hero.html', '<p>one</p>')
+    await write(first, 'webapp/home/about.html', '<p>two</p>')
+    await first.save()
+
+    const next = await started()
+    const [change] = await write(next, 'webapp/home/hero.html', '<p>three</p>')
+
+    expect(change?.id).toBe('c3')
+  })
+})

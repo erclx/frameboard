@@ -10,6 +10,7 @@ import { listFrames } from '../board/scan'
 import { contentHash } from '../edit/address'
 import type { Step } from '../history/stack'
 import { changedElements } from './diff'
+import { loadChanges, saveChanges } from './persist'
 
 /** The changes the log keeps, the oldest dropped past it. */
 export const LOG_CAP = 200
@@ -21,7 +22,10 @@ export const LOG_CAP = 200
 const DEPARTED_BATCHES = 4
 
 export interface ChangeTracker {
-  /** Holds every frame's source as the start scan found it. */
+  /**
+   * Holds every frame's source as the start scan found it, and takes back
+   * the log a previous server saved, so a restart replays its marks.
+   */
   prime: (board: ListResult) => Promise<void>
   /**
    * Rereads the frames a board write left, so its batch reads as nothing
@@ -43,6 +47,8 @@ export interface ChangeTracker {
    * it, kept while a logged change names it as `before`, else null.
    */
   version: (ref: string, hash: string) => string | null
+  /** Writes the log and the versions it names for the next server to load. */
+  save: () => Promise<void>
 }
 
 interface Held {
@@ -70,7 +76,7 @@ export function createChangeTracker(
   const changes: FrameChange[] = []
   /** Changes a batch found that `own` may still withdraw, by id. */
   const pending = new Map<string, FrameChange>()
-  /** The sources agent writes replaced, by `versionKey`, in memory alone. */
+  /** The sources agent writes replaced, by `versionKey`. */
   const versions = new Map<string, string>()
   let batches = 0
   let nextId = 1
@@ -93,7 +99,21 @@ export function createChangeTracker(
 
   return {
     prime: async (board) => {
-      await Promise.all(framesOf(board).map(({ ref, path }) => hold(ref, path)))
+      const [saved] = await Promise.all([
+        loadChanges(root, logCap),
+        ...framesOf(board).map(({ ref, path }) => hold(ref, path)),
+      ])
+      changes.push(...saved.changes)
+      for (const change of saved.changes) {
+        const source = change.before
+          ? saved.versions.get(change.before)
+          : undefined
+        if (change.before && source !== undefined) {
+          versions.set(versionKey(change.frame, change.before), source)
+        }
+        const id = Number(/^c(\d+)$/.exec(change.id)?.[1])
+        if (Number.isInteger(id) && id >= nextId) nextId = id + 1
+      }
     },
 
     own: async (step) => {
@@ -203,6 +223,14 @@ export function createChangeTracker(
     log: () => [...changes],
 
     version: (ref, hash) => versions.get(versionKey(ref, hash)) ?? null,
+
+    save: () => {
+      const byHash = new Map<string, string>()
+      for (const [key, source] of versions) {
+        byHash.set(key.slice(key.indexOf('\n') + 1), source)
+      }
+      return saveChanges(root, changes, byHash)
+    },
   }
 }
 
