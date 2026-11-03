@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
 import { FRAME_EXTENSION } from '@/shared/board-files'
-import type { FrameChange } from '@/shared/records/changes'
+import type { ChangeAuthor, FrameChange } from '@/shared/records/changes'
 import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
 
@@ -40,6 +40,11 @@ export interface ChangeTracker {
   ) => Promise<FrameChange[]>
   /** Logs the held changes `own` has not withdrawn since, and answers them. */
   settle: (changes: readonly FrameChange[]) => FrameChange[]
+  /**
+   * Logs a shown mark on each frame named, in the order given, at the hash
+   * its file holds now. A frame with no file is skipped.
+   */
+  show: (refs: readonly string[], author: ChangeAuthor | null) => FrameChange[]
   /** The recent settled changes, oldest first. */
   log: () => FrameChange[]
   /**
@@ -88,6 +93,20 @@ export function createChangeTracker(
     } catch {
       // A frame removed since the batch named it has nothing to hold.
       return null
+    }
+  }
+
+  const append = (kept: readonly FrameChange[]) => {
+    changes.push(...kept)
+    if (changes.length > logCap) changes.splice(0, changes.length - logCap)
+    // A version leaves with the last change naming it, so the cap bounds memory.
+    const named = new Set(
+      [...changes, ...pending.values()].flatMap((change) =>
+        change.before ? [versionKey(change.frame, change.before)] : [],
+      ),
+    )
+    for (const key of versions.keys()) {
+      if (!named.has(key)) versions.delete(key)
     }
   }
 
@@ -206,18 +225,32 @@ export function createChangeTracker(
 
     settle: (held) => {
       const kept = held.filter((change) => pending.delete(change.id))
-      changes.push(...kept)
-      if (changes.length > logCap) changes.splice(0, changes.length - logCap)
-      // A version leaves with the last change naming it, so the cap bounds memory.
-      const named = new Set(
-        [...changes, ...pending.values()].flatMap((change) =>
-          change.before ? [versionKey(change.frame, change.before)] : [],
-        ),
-      )
-      for (const key of versions.keys()) {
-        if (!named.has(key)) versions.delete(key)
-      }
+      append(kept)
       return kept
+    },
+
+    show: (refs, author) => {
+      const at = now().toISOString()
+      const marks = refs.flatMap((ref): FrameChange[] => {
+        const file = held.get(ref)
+        if (!file) return []
+        return [
+          {
+            id: `c${nextId++}`,
+            frame: ref,
+            at,
+            hash: file.hash,
+            author,
+            elements: [],
+            removed: 0,
+            whole: false,
+            created: false,
+            shown: true,
+          },
+        ]
+      })
+      append(marks)
+      return marks
     },
 
     log: () => [...changes],

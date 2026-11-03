@@ -38,4 +38,10 @@ export interface FrameChange {
    * the server's log still names it.
    */
   before?: string
+  /**
+   * A mark an agent's show made, with no file change behind it. It names no
+   * elements and no `before`, and stays unseen until the developer looks,
+   * even on a hash this browser already saw.
+   */
+  shown?: boolean
 }

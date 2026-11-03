@@ -495,3 +495,64 @@ describe('a log saved across a restart', () => {
     expect(change?.id).toBe('c3')
   })
 })
+
+describe('a show', () => {
+  let board: FixtureBoard
+  let tracker: ReturnType<typeof createChangeTracker>
+
+  beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    tracker = createChangeTracker(board.root, { now: () => NOW, logCap: 3 })
+    await tracker.prime(await scanBoard(board.root))
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const author = { session: 's-1', agent: 'claude', tag: 'claude · basic' }
+
+  it('logs a shown mark per frame in the order given', () => {
+    const marks = tracker.show(
+      ['webapp/home/about', 'webapp/home/hero'],
+      author,
+    )
+
+    expect(marks).toMatchObject([
+      {
+        frame: 'webapp/home/about',
+        author,
+        elements: [],
+        whole: false,
+        created: false,
+        shown: true,
+      },
+      { frame: 'webapp/home/hero', shown: true },
+    ])
+    expect(marks[0]).not.toHaveProperty('before')
+    expect(tracker.log()).toEqual(marks)
+  })
+
+  it('marks a frame at the hash an agent write left it at', async () => {
+    const path = join(board.root, 'webapp/home/hero.html')
+    writeFileSync(path, '<p>one</p>')
+    const [write] = tracker.settle(
+      await tracker.update(await scanBoard(board.root), [path], []),
+    )
+
+    const [mark] = tracker.show(['webapp/home/hero'], null)
+
+    expect(mark?.hash).toBe(write?.hash)
+  })
+
+  it('skips a frame with no file', () => {
+    expect(tracker.show(['webapp/home/gone'], null)).toEqual([])
+  })
+
+  it('drops the oldest marks past the cap', () => {
+    tracker.show(['webapp/home/hero', 'webapp/home/about'], null)
+    tracker.show(['webapp/home/hero', 'webapp/home/about'], null)
+
+    expect(tracker.log().map((change) => change.id)).toEqual(['c2', 'c3', 'c4'])
+  })
+})
