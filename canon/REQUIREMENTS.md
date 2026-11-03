@@ -65,6 +65,6 @@ This record holds at most 600 words.
 ## Constraints
 
 - Runs on macOS and Linux
-- A hand edit writes ordinary HTML and CSS on the element it names, its parent when placing it freely, each element a color replace names, or a token sheet, and the browser lays out the rest.
+- A hand edit writes ordinary HTML and CSS on each element it names, its parent when placing one freely, or a token sheet, and the browser lays out the rest.
 - Human and agent edits never silently overwrite each other.
 - Frameboard knows nothing about any consumer, which hands it a board folder and token stylesheet.
