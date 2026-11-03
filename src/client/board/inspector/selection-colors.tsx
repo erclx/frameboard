@@ -185,11 +185,17 @@ function RawColorRow({
   onReplace: (token: string) => void
 }) {
   const row = useRef<HTMLDivElement>(null)
+  const swatch = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
+  // The pick waits for the list to finish closing, since the replace turns
+  // this row into a token row and unmounting a closing popup strands focus
+  // inside it, where no board key fires.
+  const picked = useRef<string | null>(null)
   const shown = color.value.replace(/^#/, '')
   return (
     <div ref={row} className={cn(COLOR_ROW, 'hover:bg-accent')}>
       <button
+        ref={swatch}
         type="button"
         aria-label={`Replace ${shown} with a token`}
         aria-haspopup="dialog"
@@ -211,13 +217,22 @@ function RawColorRow({
         </span>
         <RawFlag />
       </button>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        onOpenChangeComplete={(isOpen) => {
+          const token = picked.current
+          picked.current = null
+          if (!isOpen && token !== null) onReplace(token)
+        }}
+      >
         <PopoverContent
           anchor={row}
           side="left"
           align="start"
           sideOffset={12}
           aria-label={`Replace ${shown}`}
+          finalFocus={swatch}
           className="w-[230px] gap-0 rounded-xl p-2 text-xs shadow-[0_14px_40px_rgba(0,0,0,.28)]"
         >
           <p className="mb-1.5 px-1 text-muted-foreground">
@@ -237,8 +252,8 @@ function RawColorRow({
                   <button
                     type="button"
                     onClick={() => {
+                      picked.current = token.name
                       setOpen(false)
-                      onReplace(token.name)
                     }}
                     className="flex h-7 w-full items-center gap-2 rounded-md px-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
                   >

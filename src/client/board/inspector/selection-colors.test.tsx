@@ -238,7 +238,9 @@ describe('SelectionColors', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /^primary/ }))
 
-      expect(replaced).toEqual([[raw('#4f46e5'), '--primary']])
+      await waitFor(() =>
+        expect(replaced).toEqual([[raw('#4f46e5'), '--primary']]),
+      )
       await waitFor(() =>
         expect(
           screen.queryByRole('list', {
@@ -265,6 +267,9 @@ describe('SelectionColors', () => {
         ).toBeNull(),
       )
       expect(replaced).toEqual([])
+      expect(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      ).toHaveFocus()
     })
 
     it('offers no replace on a token row', () => {
