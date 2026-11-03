@@ -101,6 +101,8 @@ function boardWith(...refs: string[]): ListResult {
       path: `/board/${name}`,
       modifiedAt: '2026-10-19T12:00:00.000Z',
       createdAt: null,
+      group: null,
+      archived: false,
       projectFileError: null,
       pages: list,
     })),

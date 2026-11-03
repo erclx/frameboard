@@ -23,6 +23,8 @@ export interface Journal {
   ): void
   /** The page order `project.json` holds in the project folder `project`. */
   pages(project: string, before: string[], after: string[]): void
+  /** The folder and archive keys the `project.json` at `file` holds on each side of a filing. */
+  project(file: string, before: ProjectFiling, after: ProjectFiling): void
   /** One token's declarations in the project token sheet at `path`, on each side of a hand edit that already wrote it. */
   token(path: string, name: string, before: TokenSides, after: TokenSides): void
   /** Renames `from` to `to`, in place of the verb's own rename. */
@@ -31,6 +33,15 @@ export interface Journal {
   created(path: string): Promise<void>
   /** Takes the path out of the board where an undo can bring it back, in place of the verb's `rm`. */
   removed(path: string): Promise<void>
+}
+
+/**
+ * The keys a filing writes in `project.json`, each present only where the file
+ * holds it, so an absent key and a written one never read as equal.
+ */
+export interface ProjectFiling {
+  group?: unknown
+  archived?: unknown
 }
 
 export interface JournalOptions {

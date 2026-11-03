@@ -28,6 +28,8 @@ function project(name: string, pages: PageRecord[]): ProjectRecord {
     path: `/board/${name}`,
     modifiedAt: '2026-10-25T09:00:00.000Z',
     createdAt: '2026-10-25T09:00:00.000Z',
+    group: null,
+    archived: false,
     projectFileError: null,
     pages,
   }

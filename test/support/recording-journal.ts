@@ -20,6 +20,7 @@ export type JournalCall =
       after: unknown
     }
   | { kind: 'pages'; project: string; before: string[]; after: string[] }
+  | { kind: 'project'; file: string; before: unknown; after: unknown }
   | { kind: 'moved'; from: string; to: string }
   | { kind: 'created'; path: string }
   | { kind: 'removed'; path: string }
@@ -52,6 +53,9 @@ export function recordingJournal(root: string): {
       },
       pages: (project, before, after) => {
         calls.push({ kind: 'pages', project: at(project), before, after })
+      },
+      project: (file, before, after) => {
+        calls.push({ kind: 'project', file: at(file), before, after })
       },
       moved: async (from, to) => {
         await rename(from, to)

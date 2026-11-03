@@ -9,6 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
 import { addPage, deletePage, movePage, renamePage } from '../board/pages'
+import { fileProjects } from '../board/projects'
 import { addSection, renameSection } from '../board/sections'
 import { contentHash } from '../edit/address'
 import {
@@ -212,6 +213,53 @@ describe('changes', () => {
         'settings',
         'home',
       ])
+    })
+  })
+
+  describe('project', () => {
+    it('restores the folder alone and keeps a page order written since', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' }, options())
+      writeFileSync(
+        at('webapp/project.json'),
+        JSON.stringify({
+          version: 1,
+          pages: ['home', 'settings'],
+          group: 'Client',
+        }),
+      )
+
+      await restore(first(), 'before')
+
+      expect(JSON.parse(read('webapp/project.json'))).toEqual({
+        version: 1,
+        pages: ['home', 'settings'],
+      })
+    })
+
+    it('redoes the archive it undid', async () => {
+      await fileProjects(board.root, ['webapp'], { archived: true }, options())
+      await restore(first(), 'before')
+
+      await restore(first(), 'after')
+
+      expect(JSON.parse(read('webapp/project.json')).archived).toBe(true)
+    })
+
+    it('fails once an agent wrote another folder', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' }, options())
+      writeFileSync(
+        at('webapp/project.json'),
+        JSON.stringify({ version: 1, pages: ['settings'], group: 'Other' }),
+      )
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('fails once the project file no longer parses', async () => {
+      await fileProjects(board.root, ['webapp'], { group: 'Client' }, options())
+      writeFileSync(at('webapp/project.json'), '{ broken')
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
     })
   })
 

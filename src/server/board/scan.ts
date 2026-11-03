@@ -90,11 +90,14 @@ export async function listFrames(pageDir: string): Promise<string[]> {
 /**
  * The page order a reader shows: listed pages that exist in that order, then
  * unlisted ones by name. A file that fails to read orders every page by name.
- * The creation time comes from the same read, null when the file holds none.
+ * The creation time, folder, and archive flag come from the same read, each
+ * read as absent when the file holds none or holds one of another type.
  */
 export async function readPageOrder(projectDir: string): Promise<{
   pages: string[]
   createdAt: string | null
+  group: string | null
+  archived: boolean
   error: { path: string; message: string } | null
 }> {
   const folders = await listPageFolders(projectDir)
@@ -107,14 +110,25 @@ export async function readPageOrder(projectDir: string): Promise<{
     return {
       pages: folders,
       createdAt: null,
+      group: null,
+      archived: false,
       error: { path, message: error.message },
     }
   }
   return {
     pages: orderPages(file.pages, folders),
     createdAt: isTime(file.createdAt) ? file.createdAt : null,
+    group: groupOf(file.group),
+    archived: file.archived === true,
     error: null,
   }
+}
+
+/** A folder name as home shows it, trimmed, null for a blank or a non-string. */
+export function groupOf(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
 }
 
 function isTime(value: unknown): value is string {
@@ -215,7 +229,13 @@ export async function scanProject(
   name: string,
 ): Promise<ProjectRecord> {
   const path = join(root, name)
-  const { pages: order, createdAt, error } = await readPageOrder(path)
+  const {
+    pages: order,
+    createdAt,
+    group,
+    archived,
+    error,
+  } = await readPageOrder(path)
   const pages = await Promise.all(
     order.map((page, index) => scanPage(root, name, page, index)),
   )
@@ -232,6 +252,8 @@ export async function scanProject(
     path,
     modifiedAt: new Date(Math.max(...times)).toISOString(),
     createdAt,
+    group,
+    archived,
     projectFileError: error,
     pages,
   }

@@ -10,7 +10,7 @@ import {
 import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
-import type { Journal } from '@/server/board/journal'
+import type { Journal, ProjectFiling } from '@/server/board/journal'
 import {
   isCode,
   LOCK_SUFFIX,
@@ -18,6 +18,7 @@ import {
   TEMP_SUFFIX,
   writeRecord,
 } from '@/server/board/json-record'
+import { filingOf } from '@/server/board/projects'
 import {
   emptyProject,
   LAYOUT_FILE,
@@ -78,6 +79,13 @@ export type Change =
     }
   /** The page order one `project.json` holds. */
   | { kind: 'pages'; file: string; before: string[]; after: string[] }
+  /** The folder and archive keys one `project.json` holds, with the others left as they stand. */
+  | {
+      kind: 'project'
+      file: string
+      before: ProjectFiling
+      after: ProjectFiling
+    }
   /** A file or folder renamed from `from` to `to`. */
   | { kind: 'moved'; from: string; to: string }
   /**
@@ -130,7 +138,9 @@ export function lockPaths(change: Change): string[] {
   if (change.kind === 'entry' || change.kind === 'section') {
     return [change.layout]
   }
-  if (change.kind === 'pages') return [change.file]
+  if (change.kind === 'pages' || change.kind === 'project') {
+    return [change.file]
+  }
   return []
 }
 
@@ -173,6 +183,10 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         empty: emptyProject,
       })
       return isDeepStrictEqual(file.pages, change[side])
+    }
+    case 'project': {
+      const file = await readRecord(change.file, projectSpec)
+      return isDeepStrictEqual(filingOf(file), change[side])
     }
     case 'moved': {
       const [present, absent] =
@@ -267,6 +281,12 @@ export async function restore(
         empty: emptyProject,
       })
       await writeRecord(change.file, { ...file, pages: change[side] })
+      return
+    }
+    case 'project': {
+      const file = await readRecord(change.file, projectSpec)
+      const { group: _group, archived: _archived, ...rest } = file
+      await writeRecord(change.file, { ...rest, ...change[side] })
       return
     }
     case 'moved':
@@ -433,6 +453,10 @@ export class StepJournal implements Journal {
   pages(project: string, before: string[], after: string[]): void {
     const file = join(project, PROJECT_FILE)
     this.changes.push({ kind: 'pages', file, before, after })
+  }
+
+  project(file: string, before: ProjectFiling, after: ProjectFiling): void {
+    this.changes.push({ kind: 'project', file, before, after })
   }
 
   async moved(from: string, to: string): Promise<void> {

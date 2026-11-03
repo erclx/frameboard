@@ -9,6 +9,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { scanProject } from '../board/scan'
 import { claim, release } from '../claims/store'
 import { History } from '../history/stack'
 import { structureRoutes } from './structure'
@@ -708,6 +709,91 @@ describe('structureRoutes', () => {
       expect(existsSync(join(board.root, 'studio/home'))).toBe(false)
     })
 
+    describe('filing', () => {
+      const projectFile = (name: string) =>
+        JSON.parse(readFileSync(join(board.root, name, 'project.json'), 'utf8'))
+
+      beforeEach(async () => {
+        await post('/api/project/add', { name: 'brand' })
+      })
+
+      it('files several projects in one folder as one undo step', async () => {
+        const response = await post('/api/project/group', {
+          refs: ['studio', 'brand'],
+          group: 'Client',
+        })
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          data: [
+            { name: 'studio', group: 'Client' },
+            { name: 'brand', group: 'Client' },
+          ],
+        })
+
+        await history.undo()
+
+        expect([
+          projectFile('studio').group,
+          projectFile('brand').group,
+        ]).toEqual([undefined, undefined])
+      })
+
+      it('leaves the Edited time where it was through a filing and its undo', async () => {
+        const before = (await scanProject(board.root, 'studio')).modifiedAt
+
+        await post('/api/project/group', { refs: ['studio'], group: 'Client' })
+        const filed = (await scanProject(board.root, 'studio')).modifiedAt
+        await history.undo()
+        const undone = (await scanProject(board.root, 'studio')).modifiedAt
+
+        expect([filed, undone]).toEqual([before, before])
+      })
+
+      it('takes projects out of their folder on a null group', async () => {
+        await post('/api/project/group', {
+          refs: ['studio', 'brand'],
+          group: 'Client',
+        })
+
+        await post('/api/project/group', { refs: ['studio'], group: null })
+
+        expect([
+          projectFile('studio').group,
+          projectFile('brand').group,
+        ]).toEqual([undefined, 'Client'])
+      })
+
+      it('archives a project and restores it', async () => {
+        const archived = await post('/api/project/archive', {
+          refs: ['studio'],
+          archived: true,
+        })
+        expect(await archived.json()).toMatchObject({
+          ok: true,
+          data: [{ name: 'studio', archived: true }],
+        })
+
+        await post('/api/project/archive', {
+          refs: ['studio'],
+          archived: false,
+        })
+
+        expect(projectFile('studio').archived).toBeUndefined()
+      })
+
+      it('answers usage for an empty ref list and records nothing', async () => {
+        const undo = history.counts().undo
+
+        const response = await post('/api/project/group', {
+          refs: [],
+          group: 'Client',
+        })
+
+        expect(response.status).toBe(400)
+        expect(history.counts().undo).toBe(undo)
+      })
+    })
+
     it('writes a starter token sheet and undoes it away', async () => {
       const response = await post('/api/project/tokens', {
         ref: 'studio',
@@ -810,6 +896,12 @@ describe('structureRoutes', () => {
         { ref: 'studio', name: 'site' },
       ],
       ['a project delete', '/api/project/delete', { ref: 'studio' }],
+      ['a filing', '/api/project/group', { refs: ['studio'], group: 'Client' }],
+      [
+        'an archive',
+        '/api/project/archive',
+        { refs: ['studio'], archived: true },
+      ],
     ])(
       'refuses %s with frame-claimed and writes nothing',
       async (_, path, body) => {

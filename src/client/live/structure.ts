@@ -50,6 +50,11 @@ export function createStructure(send: typeof fetch = fetch) {
       post<ProjectRecord>('/api/project/duplicate', { ref }),
     deleteProject: (ref: string) =>
       post<{ deleted: string }>('/api/project/delete', { ref }),
+    /** Files the projects in one folder, `null` taking them out of theirs. */
+    groupProjects: (refs: readonly string[], group: string | null) =>
+      post<ProjectRecord[]>('/api/project/group', { refs, group }),
+    archiveProjects: (refs: readonly string[], archived: boolean) =>
+      post<ProjectRecord[]>('/api/project/archive', { refs, archived }),
     /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
     projectTokens: (ref: string, look: StarterLook) =>
       post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),

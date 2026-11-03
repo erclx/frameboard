@@ -33,6 +33,8 @@ function boardWith(...names: string[]): ListResult {
         path: '/board/studio',
         modifiedAt: '2026-10-15T00:00:00.000Z',
         createdAt: null,
+        group: null,
+        archived: false,
         projectFileError: null,
         pages: [
           {

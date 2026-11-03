@@ -14,6 +14,8 @@ function project(
     path: `/board/${name}`,
     modifiedAt,
     createdAt,
+    group: null,
+    archived: false,
     projectFileError: null,
     pages: [],
   }
