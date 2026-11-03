@@ -770,6 +770,105 @@ function onHomeCard(act: 'menu' | 'rename'): (page: Page) => Promise<void> {
   }
 }
 
+type ProjectRecord = ListResult['projects'][number]
+
+/** A copy of `source` under `name`, every page and frame ref moved with it. */
+function renamedProject(source: ProjectRecord, name: string): ProjectRecord {
+  return {
+    ...source,
+    name,
+    path: source.path.replace(/[^/]+$/, name),
+    pages: source.pages.map((page) => ({
+      ...page,
+      ref: `${name}/${page.name}`,
+      project: name,
+      frames: page.frames.map((frame) => ({
+        ...frame,
+        ref: `${name}/${page.name}/${frame.name}`,
+        project: name,
+      })),
+    })),
+  }
+}
+
+/**
+ * Serves home a board with `webapp` and two copies of it filed in Client A,
+ * and with an archived copy when `archived` is set, by rewriting the board
+ * message on the live socket, so the fixture on disk keeps no folder. A copy
+ * names frames the server never captured, so its well draws boxes alone.
+ */
+function filedBoard({ archived = false }: { archived?: boolean } = {}): (
+  page: Page,
+) => Promise<void> {
+  return async (page) => {
+    await page.routeWebSocket('**/api/live', (socket) => {
+      const server = socket.connectToServer()
+      server.onMessage((message) => {
+        const parsed = JSON.parse(String(message)) as ServerMessage
+        if (parsed.type !== 'board') {
+          socket.send(message)
+          return
+        }
+        const webapp = parsed.data.projects.find(
+          (project) => project.name === 'webapp',
+        )
+        if (!webapp) {
+          socket.send(message)
+          return
+        }
+        const filed = (project: ProjectRecord): ProjectRecord => ({
+          ...project,
+          group: 'Client A',
+        })
+        const projects = [
+          ...parsed.data.projects.map((project) =>
+            project.name === 'webapp' ? filed(project) : project,
+          ),
+          filed(renamedProject(webapp, 'client-app')),
+          filed(renamedProject(webapp, 'client-email')),
+          ...(archived
+            ? [{ ...renamedProject(webapp, 'old-site'), archived: true }]
+            : []),
+        ]
+        socket.send(
+          JSON.stringify({ ...parsed, data: { ...parsed.data, projects } }),
+        )
+      })
+      socket.onMessage((message) => server.send(message))
+    })
+  }
+}
+
+/** Sets a home view choice the browser keeps before the page loads. */
+function homeStored(key: string, value: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ key, value }) => localStorage.setItem(key, value),
+      { key, value },
+    )
+  }
+}
+
+/** Clicks the Client A folder's card or row once home draws it. */
+async function openClientFolder(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const run = () => {
+      const folder = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          'main button[data-project-link]',
+        ),
+      ].find((button) => button.textContent?.startsWith('Client A'))
+      if (folder) folder.click()
+      else if (--left > 0) requestAnimationFrame(run)
+      else console.error('The Client A folder never drew')
+    }
+    document.addEventListener('DOMContentLoaded', () =>
+      requestAnimationFrame(run),
+    )
+  }, ROW_FRAMES)
+}
+
 /**
  * Tells the board `serve` holds a dispatch command, so a note can start a
  * session. Faked on the access message, since the capture server runs with
@@ -1921,6 +2020,96 @@ export const BOARD_CASES: CaptureCase[] = [
         asWriter,
         onHomeCard('rename'),
         readyWhen('input[aria-label="Rename project webapp"]', CARD_UNCAPTURED),
+      ),
+    },
+    {
+      section: 'home-folders',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard(),
+        readyWhen('main button[data-project-link]'),
+      ),
+    },
+    {
+      section: 'home-folder-open',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard(),
+        openClientFolder,
+        readyWhen('[role="dialog"] li a'),
+      ),
+    },
+    {
+      section: 'home-folders-list',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        homeStored('frameboard.home.layout', 'list'),
+        filedBoard(),
+        openClientFolder,
+        readyWhen('ul[aria-label="Client A"] li a'),
+      ),
+    },
+    {
+      section: 'home-filter',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        homeStored('frameboard.home.filter', 'client'),
+        filedBoard(),
+        readyWhen('main li a[href*="client-app"]'),
+      ),
+    },
+    {
+      section: 'home-archived',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard({ archived: true }),
+        readyWhen('#home-archived'),
+      ),
+    },
+    {
+      section: 'home-new-project',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      sections: [
+        { name: 'button', selector: 'button[aria-label="New project"]' },
+      ],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        readyWhen(CARD_CAPTURED, CARD_UNCAPTURED),
       ),
     },
     {
