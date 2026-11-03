@@ -1,4 +1,9 @@
-/** Who changed a frame, read off the live claim on it when the change landed. */
+import { z } from 'zod'
+
+/**
+ * Who changed a frame, read off the live claim on it when the change landed,
+ * or named by the agent that showed it.
+ */
 export interface ChangeAuthor {
   /** The session holding the claim. */
   session: string
@@ -7,6 +12,12 @@ export interface ChangeAuthor {
   /** The listener's tag form, `<agent> · <project folder>`. */
   tag: string
 }
+
+export const changeAuthorSchema = z.object({
+  session: z.string().min(1).max(256),
+  agent: z.string().min(1).max(64),
+  tag: z.string().min(1).max(256),
+})
 
 /**
  * One frame an agent wrote, as the server's change log holds it. Never a

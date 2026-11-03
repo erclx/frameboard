@@ -436,10 +436,18 @@ async function listen({
           open: openUrl,
           graceMs: 0,
         }),
-      show: (ref) => {
-        hub.broadcast({ type: 'show', ref })
-        return tabs.count
-      },
+      // Marks log in the scan turn, the one writer of the log, then the
+      // tabs hear the marks before the jump to the first frame.
+      show: (refs, author) =>
+        inTurn(async () => {
+          const changes = tracker.show(refs, author)
+          if (changes.length > 0) {
+            hub.broadcast({ type: 'changes', changes })
+            await saveLog()
+          }
+          hub.broadcast({ type: 'show', ref: refs[0] ?? '' })
+          return tabs.count
+        }),
     },
   })
 
