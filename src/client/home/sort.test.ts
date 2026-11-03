@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ProjectRecord } from '@/shared/records/list'
 
-import { orderProjects } from './sort'
+import { orderProjects, splitArchived } from './sort'
 
 function project(
   name: string,
@@ -175,5 +175,27 @@ describe('orderProjects', () => {
     expect(names(orderProjects(projects, 'edited', new Set(['gone'])))).toEqual(
       ['studio', 'atlas'],
     )
+  })
+})
+
+describe('splitArchived', () => {
+  it('holds archived projects out of the main list, each side in the order given', () => {
+    const archived = (name: string) => ({
+      ...project(name, '2026-10-01T00:00:00.000Z'),
+      archived: true,
+    })
+    const ordered = [
+      project('studio', '2026-10-15T00:00:00.000Z'),
+      archived('old'),
+      project('webapp', '2026-10-08T00:00:00.000Z'),
+      archived('older'),
+    ]
+
+    const split = splitArchived(ordered)
+
+    expect([names(split.shown), names(split.archived)]).toEqual([
+      ['studio', 'webapp'],
+      ['old', 'older'],
+    ])
   })
 })

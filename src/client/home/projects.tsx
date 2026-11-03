@@ -15,6 +15,7 @@ import {
 import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
+import { Archived } from './archived'
 import { filterProjects, setHomeFilter } from './filter'
 import { FilterField } from './filter-field'
 import { FolderCard } from './folders/card'
@@ -37,6 +38,8 @@ interface ProjectsProps {
   calls?: Structure
   /** The name filter typed, which shows its matches flat, out of their folders. */
   filter?: string
+  /** The archived projects in the order shown, in their own section after the rest. */
+  archived?: readonly ProjectRecord[]
 }
 
 /**
@@ -45,8 +48,9 @@ interface ProjectsProps {
  * `canon/design/menus/home`. A project filed in a folder sits in the folder's
  * card, which opens a panel, or under the folder's row, which opens in place.
  * A pinned project carries the pin mark after its name, and a folder holding
- * one rises with the pinned. A typed filter shows its matches flat, and says
- * so with a way to clear it when nothing matches.
+ * one rises with the pinned. Archived projects sit in a collapsed section
+ * after the rest. A typed filter shows its matches flat, archived ones
+ * included, and says so with a way to clear it when nothing matches.
  */
 export function Projects({
   projects,
@@ -54,6 +58,7 @@ export function Projects({
   now,
   calls,
   filter = '',
+  archived = [],
 }: ProjectsProps) {
   const unseen = useUnseen((state) => state.unseen)
   const theme = useShownTheme()
@@ -64,7 +69,9 @@ export function Projects({
   const pins = usePins()
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set())
   const filtering = filter.trim() !== ''
-  const shown = filterProjects(projects, filter)
+  const shown = filtering
+    ? filterProjects([...projects, ...archived], filter)
+    : projects
   const entries: HomeEntry[] = filtering
     ? shown.map((project) => ({ kind: 'project', project }))
     : homeEntries(shown)
@@ -105,7 +112,9 @@ export function Projects({
         <SortMenu />
       </div>
       {entries.length === 0 ? (
-        <NoMatch filter={filter} />
+        filtering ? (
+          <NoMatch filter={filter} />
+        ) : null
       ) : layout === 'grid' ? (
         <ul
           onKeyDown={(event) => roveFocus(event, 'grid')}
@@ -196,6 +205,15 @@ export function Projects({
             ))}
           </ul>
         </div>
+      )}
+      {filtering ? null : (
+        <Archived
+          projects={archived}
+          layout={layout}
+          now={now}
+          calls={calls}
+          captures={captures}
+        />
       )}
     </main>
   )

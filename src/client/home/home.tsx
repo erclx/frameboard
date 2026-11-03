@@ -17,7 +17,7 @@ import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
 import { usePins } from './pins'
 import { Projects } from './projects'
-import { orderProjects, useHomeSort } from './sort'
+import { orderProjects, splitArchived, useHomeSort } from './sort'
 import { useThumbnails } from './thumbnails'
 
 interface HomeProps {
@@ -52,7 +52,9 @@ export function Home({ projects, calls }: HomeProps) {
         <EmptyHome />
       ) : (
         <Projects
-          projects={orderProjects(projects, sort.by, pins, sort.direction)}
+          {...splitShown(
+            orderProjects(projects, sort.by, pins, sort.direction),
+          )}
           layout={layout}
           now={now}
           calls={calls}
@@ -61,6 +63,12 @@ export function Home({ projects, calls }: HomeProps) {
       )}
     </div>
   )
+}
+
+/** The ordered projects as the main list and the Archived section take them. */
+function splitShown(ordered: ProjectRecord[]) {
+  const { shown, archived } = splitArchived(ordered)
+  return { projects: shown, archived }
 }
 
 /**

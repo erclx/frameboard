@@ -28,6 +28,8 @@ const IDS = [
   'project.pin',
   'project.group',
   'project.ungroup',
+  'project.archive',
+  'project.restore',
   'project.delete',
 ] as const
 
@@ -43,11 +45,21 @@ interface ProjectMenuProps {
  * The right-click menu of `canon/design/menus/home` on a project's card or
  * row, its items running the `project.*` actions on the project it opened
  * from, Pin reading Unpin on a pinned one. Move to folder lists every other
- * folder and New folder, and Remove from folder shows on a filed project. The menu key and Shift+F10 open it too, with focus on its first item.
+ * folder and New folder, Remove from folder shows on a filed project, and
+ * Archive reads Restore on an archived one. The menu key and Shift+F10 open it too, with focus on its first item.
  */
 export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
-  const [open, rename, duplicate, pin, newFolder, ungroup, remove] =
-    useActions(IDS)
+  const [
+    open,
+    rename,
+    duplicate,
+    pin,
+    newFolder,
+    ungroup,
+    archive,
+    restore,
+    remove,
+  ] = useActions(IDS)
   const projects = useLive((state) => state.board?.projects)
   const record = projects?.find((candidate) => candidate.name === project)
   const group = record?.group ?? null
@@ -99,6 +111,11 @@ export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
           </ContextMenuSub>
           {group === null ? null : (
             <MenuItem action={ungroup}>Remove from folder</MenuItem>
+          )}
+          {record?.archived ? (
+            <MenuItem action={restore}>Restore</MenuItem>
+          ) : (
+            <MenuItem action={archive}>Archive</MenuItem>
           )}
         </ContextMenuGroup>
         <ContextMenuSeparator />

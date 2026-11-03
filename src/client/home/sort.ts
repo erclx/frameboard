@@ -102,6 +102,20 @@ export function orderProjects(
   )
 }
 
+/**
+ * Ordered projects split into the main list and the Archived section, each
+ * keeping the order it came in.
+ */
+export function splitArchived(projects: readonly ProjectRecord[]): {
+  shown: ProjectRecord[]
+  archived: ProjectRecord[]
+} {
+  return {
+    shown: projects.filter((project) => !project.archived),
+    archived: projects.filter((project) => project.archived),
+  }
+}
+
 type Compare = (a: ProjectRecord, b: ProjectRecord) => number
 
 const byName: Compare = (a, b) =>

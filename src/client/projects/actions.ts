@@ -1,4 +1,6 @@
 import {
+  Archive,
+  ArchiveRestore,
   Copy,
   FolderMinus,
   FolderOpen,
@@ -139,6 +141,22 @@ export async function fileProjects(
   }
 }
 
+/** Moves projects into home's Archived section or back, raising the error toast on a refusal. */
+export async function archiveProjects(
+  projects: readonly string[],
+  archived: boolean,
+  calls: Structure = structure,
+): Promise<void> {
+  try {
+    await calls.archiveProjects(projects, archived)
+  } catch (error) {
+    const what = projects.length === 1 ? projects[0] : 'the projects'
+    reportRefusal(
+      archived ? `Couldn't archive ${what}` : `Couldn't restore ${what}`,
+    )(error)
+  }
+}
+
 /**
  * Files projects in a new folder under the next free `Folder` name and opens
  * that name for renaming, as a new project opens its own.
@@ -245,9 +263,10 @@ export function focusedProject(): string | null {
 /**
  * Registers the filing actions while the home view is mounted:
  * `project.group` filing the focused project in a new folder,
- * `project.ungroup` taking it out of its own, and `folder.rename` and
- * `folder.ungroup` acting on the focused folder. Each is lit while the tab
- * may write and its target exists.
+ * `project.ungroup` taking it out of its own, `project.archive` and
+ * `project.restore` moving it into the Archived section and back, and
+ * `folder.rename` and `folder.ungroup` acting on the focused folder. Each is
+ * lit while the tab may write and its target exists.
  */
 export function useFolderActions(calls: Structure = structure): void {
   useEffect(() => {
@@ -295,6 +314,32 @@ export function useFolderActions(calls: Structure = structure): void {
         run: () => {
           const target = project()
           if (target) void fileProjects([target.name], null, calls)
+        },
+      },
+      {
+        id: 'project.archive',
+        label: 'Archive',
+        group: 'project',
+        command: { label: 'Archive project', icon: Archive, hint: projectHint },
+        enabled: () => writable() && project()?.archived === false,
+        run: () => {
+          const target = project()
+          if (target) void archiveProjects([target.name], true, calls)
+        },
+      },
+      {
+        id: 'project.restore',
+        label: 'Restore',
+        group: 'project',
+        command: {
+          label: 'Restore archived project',
+          icon: ArchiveRestore,
+          hint: projectHint,
+        },
+        enabled: () => writable() && project()?.archived === true,
+        run: () => {
+          const target = project()
+          if (target) void archiveProjects([target.name], false, calls)
         },
       },
       {

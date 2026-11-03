@@ -709,11 +709,11 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, Archive, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, pin, move, remove, ...rest] =
+    const [open, rename, duplicate, pin, move, archive, remove, ...rest] =
       within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
@@ -721,6 +721,7 @@ describe('project actions', () => {
     expect(duplicate).toHaveAccessibleName('Duplicate')
     expect(pin).toHaveAccessibleName('Pin')
     expect(move).toHaveAccessibleName('Move to folder')
+    expect(archive).toHaveAccessibleName('Archive')
     expect(remove).toHaveAccessibleName('Delete')
     expect(rest).toEqual([])
     expect(
@@ -1461,5 +1462,94 @@ describe('the name filter', () => {
 
     expect(field()).toHaveFocus()
     unbind()
+  })
+})
+
+describe('the Archived section', () => {
+  const BOARD = [
+    project('studio', '2026-10-15T09:00:00.000Z'),
+    { ...project('old-site', '2026-10-01T09:00:00.000Z'), archived: true },
+    { ...project('older-site', '2026-09-01T09:00:00.000Z'), archived: true },
+  ]
+
+  const archivedHeader = () => screen.getByRole('button', { name: /^Archived/ })
+
+  afterEach(() => {
+    cleanup()
+    act(() => setHomeFilter(''))
+    liveStore.setState({ canWrite: false, board: null })
+    projectStore.setState({ focused: null, renaming: null })
+  })
+
+  it('holds archived projects in a collapsed section naming their count', () => {
+    renderLive(BOARD, server().calls)
+
+    expect(archivedHeader()).toHaveAttribute('aria-expanded', 'false')
+    expect(archivedHeader()).toHaveTextContent('Archived2')
+    expect(screen.queryByRole('link', { name: /^old-site/ })).toBeNull()
+  })
+
+  it('opens to show them, and stays open on the next visit', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.click(archivedHeader())
+    cleanup()
+    renderLive(BOARD, server().calls)
+
+    expect(
+      within(screen.getByRole('list', { name: 'Archived projects' }))
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['old-site', 'older-site'])
+  })
+
+  it('archives a project from its menu', async () => {
+    const { sent, calls } = server()
+    renderLive(BOARD, calls)
+
+    const menu = await openMenu(/^studio/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Archive' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/archive',
+        body: { refs: ['studio'], archived: true },
+      },
+    ])
+  })
+
+  it('restores an archived project from its menu', async () => {
+    const { sent, calls } = server()
+    renderLive(BOARD, calls)
+    await userEvent.click(archivedHeader())
+
+    const menu = await openMenu(/^old-site/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Restore' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/archive',
+        body: { refs: ['old-site'], archived: false },
+      },
+    ])
+  })
+
+  it('shows archived projects a filter matches among the rest', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Filter projects' }),
+      'site',
+    )
+
+    expect(
+      screen
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['old-site', 'older-site'])
   })
 })
