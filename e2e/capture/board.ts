@@ -849,6 +849,22 @@ function homeStored(key: string, value: string): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Hides what `selector` matches without moving the layout, for a value that
+ * changes between runs under an overlay a mask would paint over.
+ */
+function hiddenBehind(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript((rule) => {
+      document.addEventListener('DOMContentLoaded', () => {
+        const style = document.createElement('style')
+        style.textContent = `${rule} { visibility: hidden; }`
+        document.head.append(style)
+      })
+    }, selector)
+  }
+}
+
 /** Clicks the Client A folder's card or row once home draws it. */
 async function openClientFolder(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
@@ -2042,11 +2058,13 @@ export const BOARD_CASES: CaptureCase[] = [
       route: '/',
       evidence: true,
       excludeViewports: STATE_ONLY,
-      mask: ['[data-edited]'],
+      // A mask paints above the dialog, so the cards behind it hide their times instead.
+      mask: ['[role="dialog"] [data-edited]'],
       setup: both(
         chosenTheme(theme),
         asWriter,
         filedBoard(),
+        hiddenBehind('main [data-edited]'),
         openClientFolder,
         readyWhen('[role="dialog"] li a'),
       ),
