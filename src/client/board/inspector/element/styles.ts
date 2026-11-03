@@ -70,6 +70,8 @@ export interface Placement {
   height: number | null
   /** Its own `width` and `height` as its style attribute states them, empty when unset. */
   inline: { width: string; height: string }
+  /** The `left` a box shrunk to its words would take, for text alone in the flow, else null. */
+  wordsLeft: number | null
 }
 
 /** How a container lays out what it holds, as the Layout section names it. */
@@ -271,6 +273,7 @@ function placementOf(
       width,
       height,
       inline,
+      wordsLeft: null,
     }
   }
   const doc = element.ownerDocument
@@ -303,14 +306,44 @@ function placementOf(
     originY = box.top + anchor.clientTop - anchor.scrollTop
   }
   const box = element.getBoundingClientRect()
+  const marginLeft = parseFloat(style.marginLeft) || 0
+  const words = wordsLeft(element, style)
   return {
     free,
-    left: Math.round(box.left - originX - (parseFloat(style.marginLeft) || 0)),
+    left: Math.round(box.left - originX - marginLeft),
     top: Math.round(box.top - originY - (parseFloat(style.marginTop) || 0)),
     width,
     height,
     inline,
+    wordsLeft: words === null ? null : Math.round(words - originX - marginLeft),
   }
+}
+
+/** `Node.TEXT_NODE`, read as a number since the node is from the frame's realm. */
+const TEXT_NODE = 3
+
+/**
+ * Where a box shrunk to its words would start for text alone, the left of
+ * its words less its border and padding, or null for anything else. A
+ * placement writes no width on text alone, so where no length sizes it the
+ * box shrinks, and its own left would move aligned words to the left edge.
+ */
+function wordsLeft(
+  element: Element,
+  style: CSSStyleDeclaration,
+): number | null {
+  // Text alone as the server's `ownText` reads it, so a comment child keeps its box.
+  const textAlone =
+    element.childNodes.length > 0 &&
+    [...element.childNodes].every((node) => node.nodeType === TEXT_NODE) &&
+    !!element.textContent?.trim()
+  if (!textAlone) return null
+  const words = element.ownerDocument.createRange()
+  words.selectNodeContents(element)
+  const inset =
+    (parseFloat(style.borderLeftWidth) || 0) +
+    (parseFloat(style.paddingLeft) || 0)
+  return words.getBoundingClientRect().left - inset
 }
 
 function readLayout(

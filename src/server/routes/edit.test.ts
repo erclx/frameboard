@@ -858,21 +858,22 @@ describe('editRoutes', () => {
 
     it('answers the sizes a placement wrote, and drops them back in flow', async () => {
       const original = read()
+      // The Caption holds an element, so a placement sizes it, where text alone it would not.
       const response = await place({
         ...commandAt(),
+        index: CAPTION,
         spot: { left: 12, top: 8, width: 120 },
       })
       const answered = (await response.json()) as { data: { sized: string[] } }
 
-      await place({ ...commandAt(), spot: null, drop: answered.data.sized })
+      await place({
+        ...commandAt(),
+        index: CAPTION,
+        spot: null,
+        drop: answered.data.sized,
+      })
 
-      expect([answered.data.sized, read()]).toEqual([
-        ['width'],
-        original.replace(
-          '<p data-name="Caption">',
-          '<p data-name="Caption" style="position: relative">',
-        ),
-      ])
+      expect([answered.data.sized, read()]).toEqual([['width'], original])
     })
 
     it('refuses stale-address on the old hash, writing nothing', async () => {

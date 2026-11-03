@@ -316,7 +316,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect
       .poll(read)
       .toContain(
-        '</h1>\n    <p data-name="Text" style="font-family: var(--font-text)">Hello</p><div data-name="Row"',
+        '</h1>\n    <p data-name="Text" style="font-family: var(--font-text); width: fit-content">Hello</p><div data-name="Row"',
       )
 
     // The pick vouches only for bytes the frame shows, so it waits out the reload.
@@ -334,6 +334,94 @@ test.describe('placing text and shapes into a frame', () => {
 
     await expect.poll(read).toContain('<h1 data-name="Headline">Welcome</h1>')
   })
+
+  test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const headline = await centerOf(page, 'h1')
+
+    await tools(page).getByRole('button', { name: 'Text' }).click()
+    await page.mouse.click(headline.x, headline.y + 8)
+    await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
+    await page.keyboard.type('Hello')
+    await page.keyboard.press('Enter')
+    await expect.poll(read).toContain('>Hello</p>')
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+
+    const text = await centerOf(page, '[data-name="Text"]')
+    await page.keyboard.down('Meta')
+    await page.mouse.click(text.x, text.y)
+    await page.keyboard.up('Meta')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.getByRole('button', { name: 'Free', exact: true }).click()
+
+    await expect
+      .poll(read)
+      .toMatch(
+        /<p data-name="Text" style="font-family: var\(--font-text\); width: fit-content; position: absolute; left: [\d.]+px; top: [\d.]+px">Hello<\/p>/,
+      )
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+    const widths = await hero(page)
+      .locator('[data-name="Text"]')
+      .evaluate((element) => {
+        const words = document.createRange()
+        words.selectNodeContents(element)
+        return {
+          box: element.getBoundingClientRect().width,
+          words: words.getBoundingClientRect().width,
+        }
+      })
+    expect(widths.box).toBeLessThanOrEqual(Math.ceil(widths.words))
+  })
+
+  for (const [name, style] of [
+    ['Centered', 'text-align: center'],
+    ['Boxed', 'width: 320px; text-align: center'],
+  ] as const) {
+    test(`Free keeps ${name.toLowerCase()} text's words where they rendered`, async ({
+      page,
+    }) => {
+      writeFileSync(
+        path(),
+        read().replace(
+          '</h1>',
+          `</h1>\n    <p data-name="${name}" style="${style}">Hi</p>`,
+        ),
+      )
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const words = () =>
+        hero(page)
+          .locator(`[data-name="${name}"]`)
+          .evaluate((element) => {
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            return Math.round(range.getBoundingClientRect().left)
+          })
+      const before = await words()
+
+      const text = await centerOf(page, `[data-name="${name}"]`)
+      await page.keyboard.down('Meta')
+      await page.mouse.click(text.x, text.y)
+      await page.keyboard.up('Meta')
+      await expect(page.locator('[data-element-selection]')).toBeVisible()
+      await page.getByRole('button', { name: 'Free', exact: true }).click()
+
+      await expect
+        .poll(read)
+        .toContain(`data-name="${name}" style="${style}; position: absolute`)
+      await expect
+        .poll(() => shownHash(page))
+        .toBe(createHash('sha256').update(read()).digest('hex'))
+      expect(Math.abs((await words()) - before)).toBeLessThanOrEqual(1)
+    })
+  }
 
   test.describe('an image or video from assets/', () => {
     /** A 1 by 1 PNG, small enough to inline and real enough to decode. */

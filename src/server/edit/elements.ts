@@ -169,7 +169,7 @@ export function elementName(element: Element): string {
 }
 
 /** The whitespace-collapsed text of an element holding text alone, else null. */
-function ownText(element: Element): string | null {
+export function ownText(element: Element): string | null {
   const texts = element.childNodes.filter(isText)
   if (texts.length === 0 || texts.length !== element.childNodes.length) {
     return null

@@ -19,14 +19,17 @@ interface PositionSectionProps {
   preview?: PreviewStyle
   /** Places the element at a spot, or back in the flow on null, as one step. */
   place: (spot: FreeSpot | null) => Promise<boolean>
+  /** Whether no declared length sizes its width, so placed text alone shrinks to its words. */
+  hugs?: boolean
 }
 
 /**
  * The Position section of `inspector/position`: an In flow and Free toggle
  * in the header, and while Free, the `left` and `top` the element holds as
  * X and Y, each stepping and scrubbing, as `inspector/position-flow` hides
- * them in the flow. Free places it where it renders, at the size it renders
- * at, counted from its parent.
+ * them in the flow. Free places it where it renders, counted from its parent,
+ * at the size it renders at unless it holds text alone, which hugs its words
+ * from where they start.
  */
 export function PositionSection({
   placement,
@@ -34,14 +37,16 @@ export function PositionSection({
   write,
   preview,
   place,
+  hugs = false,
 }: PositionSectionProps) {
-  const { free, left, top, width, height } = placement
+  const { free, left, top, width, height, wordsLeft } = placement
+  const placedLeft = hugs && wordsLeft !== null ? wordsLeft : left
   const choose = (next: boolean) => {
     if (next === free) return
     void place(
       next
         ? {
-            left,
+            left: placedLeft,
             top,
             ...(width === null ? {} : { width }),
             ...(height === null ? {} : { height }),

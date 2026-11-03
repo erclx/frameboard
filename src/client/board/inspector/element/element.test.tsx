@@ -2911,6 +2911,39 @@ describe('InspectorPanel with an element selected', () => {
     expect(headline()?.hasAttribute('style')).toBe(false)
   })
 
+  it('reads where centered text alone would start once shrunk to its words, beside its own box', async () => {
+    await mountFrame(
+      '<p style="margin: 0; padding: 4px; border: 2px solid; text-align: center">Hi</p>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+    const paragraph = document
+      .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+      ?.contentDocument?.querySelector('p')
+    const words = paragraph?.ownerDocument.createRange()
+    if (!paragraph || !words) throw new Error('the frame holds no paragraph')
+    words.selectNodeContents(paragraph)
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.placement).toMatchObject({
+      left: Math.round(paragraph.getBoundingClientRect().left),
+      wordsLeft: Math.round(words.getBoundingClientRect().left - 6),
+    })
+  })
+
+  it('reads no words left for text holding an element', async () => {
+    await mountFrame(
+      '<p style="margin: 0; text-align: center">Hi <b>there</b></p>',
+    )
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.placement.wordsLeft).toBeNull()
+  })
+
   it('reads a background color stated alone as no shorthand', async () => {
     await mountFrame(
       '<div style="background-color: red; background-image: none"></div>',
