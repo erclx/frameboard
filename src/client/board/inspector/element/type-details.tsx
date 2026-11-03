@@ -274,8 +274,10 @@ const STEPS: Record<string, (at: number, count: number) => number> = {
 
 /**
  * A row of icon buttons, one `aria-pressed` per value, each named in a
- * tooltip. The row holds one tab stop, on the lit button or the first, and
- * the arrow keys, Home, and End move focus along it without writing.
+ * tooltip. The row holds one tab stop, following focus inside the row and
+ * resting on the lit button or the first outside it, so Tab leaves the row
+ * in one press from any button. The arrow keys, Home, and End move focus
+ * along it without writing.
  */
 export function Segmented({
   labelledBy,
@@ -285,8 +287,10 @@ export function Segmented({
   onPick,
 }: SegmentedProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
+  // The focused button while focus is inside the row, null once it leaves.
+  const [focused, setFocused] = useState<number | null>(null)
   const lit = options.findIndex(({ value }) => value === current)
-  const stop = lit === -1 ? 0 : lit
+  const stop = focused ?? (lit === -1 ? 0 : lit)
   const onKeyDown = (event: KeyboardEvent, at: number) => {
     const step = STEPS[event.key]
     if (!step) return
@@ -297,6 +301,11 @@ export function Segmented({
     <div
       role="group"
       aria-labelledby={labelledBy}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(null)
+        }
+      }}
       className="flex w-max gap-0.5 rounded-md bg-input p-0.5"
     >
       {options.map(({ value, label, icon: Icon }, at) => (
@@ -310,6 +319,7 @@ export function Segmented({
             aria-pressed={value === current}
             tabIndex={at === stop ? 0 : -1}
             disabled={disabled}
+            onFocus={() => setFocused(at)}
             onKeyDown={(event) => onKeyDown(event, at)}
             onClick={() => {
               if (value !== current) onPick(value)
