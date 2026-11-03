@@ -24,6 +24,15 @@ export interface Gap {
   before: number | null
   /** Whether the container lays its children out along x, where a divider draws vertical. */
   row: boolean
+  /** Whether the container lays its children out as flex or grid, where a placed element joins that flow. */
+  flow: boolean
+  /**
+   * The frame point an element placed out of the flow here counts its `left`
+   * and `top` from: the container's padding box for any container but `body`,
+   * which a placement makes relative when static, else the nearest positioned
+   * ancestor's, else the document's origin.
+   */
+  origin: FramePoint
   /** The container's content width in frame pixels, which a placed file is capped at. */
   room: number
   line: GapLine
@@ -101,14 +110,41 @@ function holds(element: Element, view: Window): boolean {
 function flowOf(style: CSSStyleDeclaration): {
   row: boolean
   reverse: boolean
+  flow: boolean
 } {
   const display = style.display
-  if (display.endsWith('grid')) return { row: true, reverse: false }
-  if (!display.endsWith('flex')) return { row: false, reverse: false }
+  if (display.endsWith('grid')) return { row: true, reverse: false, flow: true }
+  if (!display.endsWith('flex')) {
+    return { row: false, reverse: false, flow: false }
+  }
   const direction = style.flexDirection
   return {
     row: direction.startsWith('row'),
     reverse: direction.endsWith('reverse'),
+    flow: true,
+  }
+}
+
+/** Where an element placed out of the flow in `container` counts its offsets from, in frame pixels. */
+function originOf(container: Element, view: Window): FramePoint {
+  const document = container.ownerDocument
+  const positioned = (node: Element) => {
+    const style = view.getComputedStyle(node)
+    return style.position !== 'static' || style.transform !== 'none'
+  }
+  let anchor: Element | null =
+    container === document.body || container === document.documentElement
+      ? null
+      : container
+  for (let node: Element | null = container; node && !anchor;) {
+    if (positioned(node)) anchor = node
+    node = node.parentElement
+  }
+  if (!anchor) return { x: 0 - view.scrollX, y: 0 - view.scrollY }
+  const box = anchor.getBoundingClientRect()
+  return {
+    x: box.left + anchor.clientLeft - anchor.scrollLeft,
+    y: box.top + anchor.clientTop - anchor.scrollTop,
   }
 }
 
@@ -151,7 +187,7 @@ export function gapAt(document: Document, at: FramePoint): Gap | null {
   if (!container || parent === null || parent === undefined) return null
 
   const style = view.getComputedStyle(container)
-  const { row, reverse } = flowOf(style)
+  const { row, reverse, flow } = flowOf(style)
   const children = [...container.children].flatMap((child) => {
     const index = elementIndex(document, child)
     const box = child.getBoundingClientRect()
@@ -171,6 +207,8 @@ export function gapAt(document: Document, at: FramePoint): Gap | null {
     parent,
     before: ahead?.index ?? null,
     row,
+    flow,
+    origin: originOf(container, view),
     room: Math.max(
       0,
       container.clientWidth - padding('left') - padding('right'),

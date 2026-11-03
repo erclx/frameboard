@@ -37,6 +37,8 @@ describe('gapAt', () => {
       parent: 4,
       before: 6,
       row: false,
+      flow: false,
+      origin: { x: 0, y: 0 },
       room: 380,
       line: { x: 10, y: 50, width: 380, height: 0 },
     })
@@ -51,6 +53,8 @@ describe('gapAt', () => {
       parent: 4,
       before: 6,
       row: true,
+      flow: true,
+      origin: { x: 0, y: 0 },
       room: 400,
       line: { x: 100, y: 0, width: 0, height: 40 },
     })
@@ -114,6 +118,8 @@ describe('gapAt', () => {
       parent: 3,
       before: null,
       row: false,
+      flow: false,
+      origin: { x: 0, y: 0 },
       room: 400,
       line: { x: 0, y: 40, width: 400, height: 0 },
     })
@@ -129,9 +135,38 @@ describe('gapAt', () => {
       parent: 4,
       before: 5,
       row: false,
+      flow: false,
+      origin: { x: 0, y: 0 },
       room: 400,
       line: { x: 0, y: 0, width: 400, height: 0 },
     })
+  })
+
+  it('should count a body placement from the document origin, past the scroll', async () => {
+    const shown = await mount('<div style="height:1000px"></div>')
+    shown.defaultView?.scrollTo(0, 120)
+
+    expect(gapAt(shown, { x: 100, y: 20 })).toMatchObject({
+      parent: 3,
+      origin: { x: 0, y: -120 },
+    })
+  })
+
+  it('should count a placement in a container from inside its border', async () => {
+    const shown = await mount(
+      '<main style="margin:30px 0 0 20px;border:4px solid;padding:10px"><div></div></main>',
+    )
+
+    expect(gapAt(shown, { x: 100, y: 60 })).toMatchObject({
+      parent: 4,
+      origin: { x: 24, y: 34 },
+    })
+  })
+
+  it('should read a grid as a flow a placed element joins', async () => {
+    const shown = await mount('<main style="display:grid"><div></div></main>')
+
+    expect(gapAt(shown, { x: 100, y: 20 })).toMatchObject({ flow: true })
   })
 
   it('should land in an empty body at its top', async () => {
@@ -141,6 +176,8 @@ describe('gapAt', () => {
       parent: 3,
       before: null,
       row: false,
+      flow: false,
+      origin: { x: 0, y: 0 },
       room: 400,
       line: { x: 0, y: 0, width: 400, height: 0 },
     })
