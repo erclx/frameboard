@@ -604,6 +604,50 @@ describe('editRoutes', () => {
         expect(read()).toBe(placed)
       })
 
+      describe('in a static parent holding an element anchored above it', () => {
+        /** The static Box, whose badge anchors to the relative Card around it. */
+        const INNER = 6
+        const ANCHORED =
+          '<!doctype html>\n<html><head><meta charset="utf-8"><title>hero</title></head><body><div data-name="Card" style="position: relative"><div data-name="Box"><h1>Hi</h1><span data-name="Badge" style="position: absolute; top: 0">x</span></div></div></body></html>\n'
+
+        const into = (at: Record<string, unknown>) => ({
+          ref: HERO,
+          hash: hash(),
+          parent: INNER,
+          before: null,
+          element: { kind: 'rectangle' },
+          at,
+        })
+
+        it('refuses reanchors-descendant, writing nothing', async () => {
+          writeFileSync(path(), ANCHORED)
+
+          const response = await insert(into({ left: 8, top: 12 }))
+
+          expect(response.status).toBe(409)
+          expect(await response.json()).toMatchObject({
+            error: { code: 'reanchors-descendant' },
+          })
+          expect(read()).toBe(ANCHORED)
+        })
+
+        it('joins the flow at the gap instead under orFlow', async () => {
+          writeFileSync(path(), ANCHORED)
+
+          const response = await insert(
+            into({ left: 8, top: 12, orFlow: true }),
+          )
+
+          expect(response.status).toBe(200)
+          expect(read()).toBe(
+            ANCHORED.replace(
+              'x</span></div>',
+              'x</span><div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted)"></div></div>',
+            ),
+          )
+        })
+      })
+
       it('writes text with no margin, so it sits at the spot', async () => {
         await insert({
           ...rectangle(),
