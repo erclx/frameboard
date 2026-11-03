@@ -326,6 +326,22 @@ describe('frameRoutes', () => {
       expect(await response.text()).toBe(CLIP)
     })
 
+    it.each([
+      ['a start past the end', 'clip.mp4', 'bytes=2000-', 'bytes */1000'],
+      ['a start at the end', 'clip.mp4', 'bytes=1000-1005', 'bytes */1000'],
+      ['an empty suffix', 'clip.mp4', 'bytes=-0', 'bytes */1000'],
+      ['any range on an empty file', 'empty.bin', 'bytes=0-', 'bytes */0'],
+      ['a suffix on an empty file', 'empty.bin', 'bytes=-10', 'bytes */0'],
+    ])('answers 416 for %s', async (_case, name, range, contentRange) => {
+      writeFileSync(join(board.root, 'studio/assets/empty.bin'), '')
+
+      const response = await getRange(`/frames/studio/assets/${name}`, range)
+
+      expect(response.status).toBe(416)
+      expect(response.headers.get('content-range')).toBe(contentRange)
+      expect(await response.text()).toBe('')
+    })
+
     it('serves a ranged frame whole with its head', async () => {
       const response = await getRange(
         '/frames/studio/home/hero.html',

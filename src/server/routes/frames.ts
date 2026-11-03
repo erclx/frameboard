@@ -98,6 +98,13 @@ export function frameRoutes(
     if (!isFrame && at === undefined && rangeHeader !== undefined) {
       const { size } = await stat(file)
       const range = parseRange(rangeHeader, size)
+      if (range === 'unsatisfiable') {
+        return c.body(null, 416, {
+          'Content-Range': `bytes */${size}`,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'no-store',
+        })
+      }
       if (range) {
         const headers = {
           'Content-Type': contentType,
@@ -153,22 +160,28 @@ interface ByteRange {
 }
 
 /**
- * The inclusive bytes a single `bytes=` range names within `size`, or null
- * for a header to ignore, which RFC 9110 allows for any range a server does
- * not support, a multi-range among them.
+ * The inclusive bytes a single `bytes=` range names within `size`,
+ * `'unsatisfiable'` for a valid range that names none of them, or null for a
+ * header to ignore, which RFC 9110 allows for any range a server does not
+ * support, a multi-range among them.
  */
-function parseRange(header: string, size: number): ByteRange | null {
+function parseRange(
+  header: string,
+  size: number,
+): ByteRange | 'unsatisfiable' | null {
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
   if (!match) return null
   const [, first = '', last = ''] = match
   if (first === '') {
+    if (last === '') return null
     const suffix = Number(last)
-    if (last === '' || suffix === 0 || size === 0) return null
+    if (suffix === 0 || size === 0) return 'unsatisfiable'
     return { start: Math.max(0, size - suffix), end: size - 1 }
   }
   const start = Number(first)
   const end = last === '' ? size - 1 : Number(last)
-  if (end < start || start >= size) return null
+  if (last !== '' && end < start) return null
+  if (start >= size) return 'unsatisfiable'
   return { start, end: Math.min(end, size - 1) }
 }
 
