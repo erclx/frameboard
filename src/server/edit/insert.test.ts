@@ -17,7 +17,7 @@ import {
 const PAINT = { fill: 'var(--muted)', line: 'var(--border)' }
 const FONT = 'var(--font-text)'
 const TEXT =
-  '<p data-name="Text" style="font-family: var(--font-text)">Text</p>'
+  '<p data-name="Text" style="font-family: var(--font-text); width: fit-content">Text</p>'
 
 // In a bare fragment the implied html, head, and body take 0 to 2, so the
 // first stated element is 3.
