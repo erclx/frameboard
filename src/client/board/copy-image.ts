@@ -32,19 +32,25 @@ export interface CopiedFrames {
 /**
  * Asks the server to put the frames on the OS clipboard as one file list,
  * which only a server holding a clipboard backend accepts, so one paste lands
- * every image.
+ * every image. A ref in `themes` renders in that theme and the rest in
+ * `theme`, and an empty `themes` posts no map at all.
  */
 export function copyFramesToClipboard(
   refs: readonly string[],
   theme: Theme,
+  themes: Readonly<Record<string, Theme>> = {},
   send: typeof fetch = fetch,
 ): Promise<CopiedFrames> {
-  return writeBoard<CopiedFrames>(
-    '/api/frames/clipboard',
-    { refs, theme },
-    'POST',
-    send,
-  )
+  const body =
+    Object.keys(themes).length > 0 ? { refs, theme, themes } : { refs, theme }
+  return writeBoard<CopiedFrames>('/api/frames/clipboard', body, 'POST', send)
+}
+
+/** A frame to stitch, carrying `theme` only where it differs from the board. */
+export interface StitchFrame {
+  ref: string
+  box: Box
+  theme?: Theme
 }
 
 interface Box {
@@ -93,12 +99,13 @@ export function stitchLayout(
 
 /**
  * Copies the frames as one PNG laid out as on the canvas, over `background`,
- * for a system the server holds no clipboard backend for. The write starts
+ * each in its own `theme` where it carries one and in `theme` otherwise, for
+ * a system the server holds no clipboard backend for. The write starts
  * inside the key press with the composition as its pending value, as
  * `copyFrameImage` does.
  */
 export function copyStitchedImage(
-  frames: readonly { ref: string; box: Box }[],
+  frames: readonly StitchFrame[],
   theme: Theme,
   background: string,
   clipboard: Pick<Clipboard, 'write'> = navigator.clipboard,
@@ -108,14 +115,14 @@ export function copyStitchedImage(
 }
 
 async function stitch(
-  frames: readonly { ref: string; box: Box }[],
+  frames: readonly StitchFrame[],
   theme: Theme,
   background: string,
 ): Promise<Blob> {
   const layout = stitchLayout(frames.map((frame) => frame.box))
   const images = await Promise.all(
     frames.map(async (frame) =>
-      createImageBitmap(await fetchFrameImage(frame.ref, theme)),
+      createImageBitmap(await fetchFrameImage(frame.ref, frame.theme ?? theme)),
     ),
   )
   const canvas = new OffscreenCanvas(layout.width, layout.height)

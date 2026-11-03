@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   copyFrameImage,
   copyFramesToClipboard,
+  copyStitchedImage,
   stitchLayout,
 } from './copy-image'
 
@@ -71,6 +72,7 @@ describe('copyFramesToClipboard', () => {
     const copied = await copyFramesToClipboard(
       ['studio/home/hero', 'studio/home/about'],
       'light',
+      {},
       send,
     )
 
@@ -86,6 +88,29 @@ describe('copyFramesToClipboard', () => {
     expect(copied).toEqual({ copied: 2, backend: 'wsl' })
   })
 
+  it('posts the per-frame themes beside the board theme', async () => {
+    const sent: unknown[] = []
+    const send = (async (_path: string, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body)))
+      return Response.json({ ok: true, data: { copied: 2, backend: 'wsl' } })
+    }) as typeof fetch
+
+    await copyFramesToClipboard(
+      ['studio/home/hero', 'studio/home/about'],
+      'light',
+      { 'studio/home/about': 'dark' },
+      send,
+    )
+
+    expect(sent).toEqual([
+      {
+        refs: ['studio/home/hero', 'studio/home/about'],
+        theme: 'light',
+        themes: { 'studio/home/about': 'dark' },
+      },
+    ])
+  })
+
   it('rejects with the refusal the route answers', async () => {
     const send = (async () =>
       Response.json(
@@ -97,7 +122,44 @@ describe('copyFramesToClipboard', () => {
       )) as typeof fetch
 
     await expect(
-      copyFramesToClipboard(['studio/home/hero'], 'dark', send),
+      copyFramesToClipboard(['studio/home/hero'], 'dark', {}, send),
     ).rejects.toMatchObject({ code: 'clipboard-unsupported' })
+  })
+})
+
+describe('copyStitchedImage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetches each frame in its own theme, falling back to the board theme', async () => {
+    const requested: string[] = []
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+      const query = new URL(String(input), location.href).searchParams
+      requested.push(`${query.get('ref')} ${query.get('theme')}`)
+      return new Response(null, { status: 404 })
+    })
+    const clipboard = {
+      write: async (data: ClipboardItem[]) => {
+        // No board serves the images here, so the composition refuses.
+        await data[0]?.getType('image/png').catch(() => null)
+      },
+    }
+    const box = { x: 0, y: 0, width: 10, height: 10 }
+
+    await copyStitchedImage(
+      [
+        { ref: 'studio/home/hero', box },
+        { ref: 'studio/home/about', box, theme: 'dark' },
+      ],
+      'light',
+      'white',
+      clipboard,
+    )
+
+    expect(requested).toEqual([
+      'studio/home/hero light',
+      'studio/home/about dark',
+    ])
   })
 })
