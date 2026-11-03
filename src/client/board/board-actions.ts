@@ -25,6 +25,7 @@ import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { frameTheme, shownTheme, themeStore } from '@/client/theme/store'
 import type { FrameRecord } from '@/shared/records/list'
+import type { Theme } from '@/shared/theme'
 
 import {
   clipboardBackend,
@@ -401,25 +402,36 @@ function boardActions(): Action[] {
 }
 
 /**
- * Copies several frames in the board's theme: as files on the OS clipboard
- * where the server holds a backend and this tab may write, so one paste lands
- * each, and otherwise as one image laid out as on the canvas. A view-only tab
- * stitches, since the route takes the board key and the PNG route does not.
+ * Copies several frames, each in the theme it shows: as files on the OS
+ * clipboard where the server holds a backend and this tab may write, so one
+ * paste lands each, and otherwise as one image laid out as on the canvas. A
+ * view-only tab stitches, since the route takes the board key and the PNG
+ * route does not. Only a frame flipped from the board's theme names its own,
+ * so an unflipped selection posts the body it always did.
  */
 function copyFrames(frames: readonly FrameRecord[]): void {
   const theme = shownTheme(themeStore.getState())
+  const flips: Record<string, Theme> = {}
+  for (const frame of frames) {
+    const own = frameTheme(frame.ref)
+    if (own !== theme) flips[frame.ref] = own
+  }
   const count = frames.length
   if (clipboardBackend() !== null && liveStore.getState().canWrite) {
+    const mixed = Object.keys(flips).length > 0
     toast.promise(
       copyFramesToClipboard(
         frames.map((frame) => frame.ref),
         theme,
+        flips,
       ),
       {
         loading: { title: `Copying ${count} frames`, type: 'loading' },
         success: {
           title: `Copied ${count} frames`,
-          description: `${count} PNG files on the clipboard, in the ${theme} theme.`,
+          description: mixed
+            ? `${count} PNG files on the clipboard, each in the theme it shows.`
+            : `${count} PNG files on the clipboard, in the ${theme} theme.`,
           type: 'success',
         },
         error: copyRefusal,
@@ -429,7 +441,12 @@ function copyFrames(frames: readonly FrameRecord[]): void {
   }
   const canvas = document.querySelector('[data-canvas]')
   const background = canvas ? getComputedStyle(canvas).backgroundColor : 'white'
-  toast.promise(copyStitchedImage(frames, theme, background), {
+  const stitched = frames.map((frame) => ({
+    ref: frame.ref,
+    box: frame.box,
+    theme: flips[frame.ref],
+  }))
+  toast.promise(copyStitchedImage(stitched, theme, background), {
     loading: { title: `Copying ${count} frames`, type: 'loading' },
     success: {
       title: `Copied ${count} frames as one image`,
