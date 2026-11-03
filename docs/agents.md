@@ -9,10 +9,10 @@ The commands, checks, claims, and plugin a coding agent works with on the board.
 
 ## Commands
 
-The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it.
+The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it. `show` marks several frames, or a page, for the toast to step through and points the open board at the first, or offers Go while you are mid-action or it sits in another project.
 
 - `edit` changes one style, attribute, or text on one element without touching another byte
-- `show` points the open board at a frame, or offers Go while you are mid-action or it sits in another project, and `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`
+- `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`
 - `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
