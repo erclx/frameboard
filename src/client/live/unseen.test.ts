@@ -163,6 +163,57 @@ describe('receiveChanges', () => {
   })
 })
 
+describe('a shown mark', () => {
+  const shown = (hash: string, id: string) =>
+    change('studio/home/hero', hash, { id, shown: true, elements: [] })
+
+  it('stays unseen on a hash this browser already saw', () => {
+    const store = createUnseenStore(
+      memoryStorage({
+        [SEEN_KEY]: JSON.stringify({ 'studio/home/hero': 'h1' }),
+      }),
+    )
+
+    receiveChanges(store, [shown('h1', 'c1')])
+
+    expect(Object.keys(store.getState().unseen)).toEqual(['studio/home/hero'])
+  })
+
+  it('stays cleared when a reload replays the show it looked at', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [shown('h1', 'c1')])
+    markSeen(store, 'studio/home/hero')
+    const reloaded = createUnseenStore(storage)
+
+    receiveChanges(reloaded, [shown('h1', 'c1')])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+
+  it('marks the frame again on a later show of the same hash', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [shown('h1', 'c1')])
+    markSeen(store, 'studio/home/hero')
+
+    receiveChanges(store, [shown('h1', 'c2')])
+
+    expect(store.getState().unseen['studio/home/hero']?.id).toBe('c2')
+  })
+
+  it('stays cleared on a replay once Mark all seen took it', () => {
+    const storage = memoryStorage()
+    const store = createUnseenStore(storage)
+    receiveChanges(store, [shown('h1', 'c1')])
+    markAllSeen(store)
+    const reloaded = createUnseenStore(storage)
+
+    receiveChanges(reloaded, [shown('h1', 'c1')])
+
+    expect(reloaded.getState().unseen).toEqual({})
+  })
+})
+
 describe('the compare base', () => {
   const HERO = 'studio/home/hero'
 
