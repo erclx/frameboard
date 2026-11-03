@@ -29,7 +29,7 @@ import {
 } from '../selection'
 import { type AssetSize, naturalSize, placedSize } from './asset-size'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
-import { placesFree } from './tool'
+import { placementStore, placesFree } from './tool'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider' | 'asset'
@@ -94,7 +94,13 @@ export async function placeElement(
   const { gap } = under
   const spot =
     kind !== 'divider' && placesFree(gap)
-      ? spotFor(kind, corner ?? at, under, !corner && !size)
+      ? {
+          ...spotFor(kind, corner ?? at, under, !corner && !size),
+          // Auto chose Free on its own, so a parent that cannot take it joins the flow instead.
+          ...(placementStore.getState().placing === 'auto'
+            ? { orFlow: true }
+            : {}),
+        }
       : undefined
   const element =
     kind === 'asset' && asset

@@ -303,7 +303,7 @@ describe('placeElement under each placing mode', () => {
     expect(sent).toMatchObject({
       parent: 3,
       before: null,
-      at: { left: 30, top: 20 },
+      at: { left: 30, top: 20, orFlow: true },
     })
   })
 
@@ -340,6 +340,7 @@ describe('placeElement under each placing mode', () => {
     const sent = await sendAt(ROW, 'text', { x: 120, y: 20 })
 
     expect(sent).toMatchObject({ at: { left: 120, top: 20 } })
+    expect(sent).not.toHaveProperty('at.orFlow')
   })
 
   it('joins a block parent at the gap with no spot under Flow', async () => {
@@ -413,7 +414,7 @@ describe('placeFile', () => {
           width: 400,
           height: 225,
         },
-        at: { left: 50, top: 30 },
+        at: { left: 50, top: 30, orFlow: true },
       },
     ])
   })
