@@ -133,6 +133,10 @@ test.describe('placing text and shapes into a frame', () => {
     const rectangles = elements.getByRole('button', { name: 'Rectangle' })
     /** The 40px row gap just past the hero's first element named `name`, level with One. */
     async function gapAfter(name: string) {
+      // Layers lists a placed element before the frame reloads to draw it.
+      await expect(
+        hero(page).locator(`[data-name="${name}"]`).last(),
+      ).toBeVisible()
       const [box, one] = await Promise.all([
         hero(page).locator(`[data-name="${name}"]`).first().boundingBox(),
         hero(page).locator('[data-name="One"]').boundingBox(),
