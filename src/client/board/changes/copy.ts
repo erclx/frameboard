@@ -25,8 +25,10 @@ export interface ToastCopy {
 /**
  * What the toast says. One frame names the frame and how many of its
  * elements changed, several name how many frames on how many pages and
- * which one the toast is on. An unclaimed change names no agent, since a
- * wrong name is worse than none.
+ * which one the toast is on. A pile an agent only showed says showed
+ * rather than changed, and a pile mixing shows with writes says changed,
+ * since claiming every frame was shown would hide a write. An unclaimed
+ * change names no agent, since a wrong name is worse than none.
  */
 export function toastCopy(
   unseen: Readonly<Record<string, FrameChange>>,
@@ -35,9 +37,23 @@ export function toastCopy(
 ): ToastCopy {
   const ordered = inLandingOrder(unseen)
   const count = ordered.length
+  const shown = ordered.length > 0 && ordered.every((change) => change.shown)
   if (count <= 1) {
     const agent = current.author?.agent ?? null
-    const name = current.frame.split('/').at(-1) ?? current.frame
+    const [project = '', page = '', name = current.frame] =
+      current.frame.split('/')
+    if (current.shown) {
+      return {
+        initial: initialOf(agent),
+        title: agent ? `${capitalized(agent)} showed ${name}` : `${name} shown`,
+        detail: `${page} in ${project}`,
+        show: true,
+        next: false,
+        markAll: false,
+        undo: false,
+        width: 340,
+      }
+    }
     // A whole-frame change glows once, so it counts once.
     const changes = current.whole ? 1 : Math.max(current.elements.length, 1)
     const counted = `${changes} ${changes === 1 ? 'change' : 'changes'}`
@@ -63,9 +79,13 @@ export function toastCopy(
   const at = ordered.findIndex((change) => change.id === current.id) + 1
   return {
     initial: initialOf(agent),
-    title: agent
-      ? `${capitalized(agent)} changed ${count} frames`
-      : `${count} frames changed`,
+    title: shown
+      ? agent
+        ? `${capitalized(agent)} showed ${count} frames`
+        : `${count} frames shown`
+      : agent
+        ? `${capitalized(agent)} changed ${count} frames`
+        : `${count} frames changed`,
     detail: `on ${pages} ${pages === 1 ? 'page' : 'pages'} · ${at} of ${count}`,
     show: true,
     next: true,
