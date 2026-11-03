@@ -16,6 +16,7 @@ import {
   insertFrameFile,
   moveFrameFile,
   placeFrameFile,
+  recolorFrameFile,
   type Remap,
   removeFrameFile,
 } from '@/server/edit/frame-file'
@@ -26,6 +27,7 @@ import {
   textFont,
 } from '@/server/edit/insert'
 import type { History } from '@/server/history/stack'
+import { styleValue } from '@/server/look/colors'
 import { readTokenTable } from '@/server/look/token-table'
 import { followEdit, notesPath } from '@/server/notes/store'
 import {
@@ -34,6 +36,7 @@ import {
   type MoveResult,
   placedSizeSchema,
   type PlaceResult,
+  type RecolorResult,
   type RemoveResult,
 } from '@/shared/records/edit'
 
@@ -122,6 +125,26 @@ const placeSchema = z.object({
   drop: z.array(placedSizeSchema).max(2).optional(),
 })
 
+const recolorSchema = z.object({
+  ref: z.string().min(1).max(1024),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The selected element, whose subtree the replace covers, or none for the whole frame. */
+  index: z.int().min(0).optional(),
+  /** A raw color as Selection colors lists it, never a token. */
+  from: z.object({
+    value: z
+      .string()
+      .min(1)
+      .max(200)
+      .refine((written) => styleValue(written).token === null, {
+        message: 'from is a raw color, not a token',
+      }),
+    percent: z.int().min(0).max(100),
+  }),
+  /** A color token's custom property, with its leading `--`. */
+  to: z.string().regex(/^--[\w-]+$/),
+})
+
 /** The source a frame held under a hash an agent's write replaced, or null when none is kept. */
 export type SettledVersion = (
   ref: string,
@@ -172,6 +195,14 @@ export type SettledVersion = (
  * index, the hash written, and the sizes a placement wrote, refuses as the move
  * does, and refuses `reanchors-descendant` where a positioned parent would
  * move another element anchored above it.
+ *
+ * The recolor writes the color token `to` in place of the raw color `from`
+ * on every element under `index`, or under the frame's body without one,
+ * that states it inline, rule-set values left as they are, and records every
+ * rewritten start tag as one step. It answers the hash written and how many
+ * elements it rewrote, zero writing and recording nothing. A `to` the
+ * project's color tokens do not hold answers 409 `unknown-token`, and a
+ * moved file `stale-address`, each writing nothing.
  *
  * Each landed write carries the notes pinned on the frame's elements to the
  * bytes it wrote, through the writer's remap, so a pin stays on its element.
@@ -433,6 +464,63 @@ export function editRoutes(
       index: body.index,
       hash: result.hash,
       sized: [...result.sized],
+    }
+    return c.json({ ok: true, data })
+  })
+
+  app.post('/api/frames/recolor', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, recolorSchema)
+    const frame = await resolveFrameRef(root, body.ref, { cwd: root })
+    const ref = `${frame.project}/${frame.page}/${frame.name}`
+    await refuseClaimed(root, [ref], new Date())
+    const tokens = sheets
+      ? readTokenTable(root, sheets(frame.project)).tokens
+      : []
+    if (!tokens.some((row) => row.group === 'color' && row.name === body.to)) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'unknown-token',
+            message: `${body.to} is not one of ${frame.project}'s color tokens, so nothing was written`,
+            details: { ref, to: body.to },
+          },
+        },
+        409,
+      )
+    }
+    const result = recolorFrameFile(frame.path, body.hash, body.index, {
+      from: body.from,
+      token: body.to,
+    })
+    if (!result.ok) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: result.reason,
+            message: result.detail,
+            details: { ref, index: body.index ?? null },
+          },
+        },
+        409,
+      )
+    }
+    if (result.spans.length > 0) {
+      const journal = history.journal()
+      for (const span of result.spans) journal.element(frame.path, ref, span)
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: [ref],
+      })
+    }
+    await follow(frame, body.hash, result.hash, result.remap)
+    const data: RecolorResult = {
+      ref,
+      hash: result.hash,
+      count: result.spans.length,
     }
     return c.json({ ok: true, data })
   })

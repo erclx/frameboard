@@ -1004,4 +1004,149 @@ describe('editRoutes', () => {
       expect(read()).toBe(original)
     })
   })
+
+  describe('POST /api/frames/recolor', () => {
+    /** The hero with its headline and caption set in raw indigo, one of them in rgb(). */
+    const RAW =
+      '<!doctype html><html><head></head><body><h1 style="color: #4F46E5">a</h1><p style="border: 1px solid rgb(79, 70, 229)">b</p></body></html>'
+    const SWAPPED =
+      '<!doctype html><html><head></head><body><h1 style="color: var(--primary)">a</h1><p style="border: 1px solid var(--primary)">b</p></body></html>'
+
+    beforeEach(() => {
+      writeFileSync(path(), RAW)
+    })
+
+    function recolor(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+        undefined,
+        (project) => ({
+          board: join(board.root, 'tokens.css'),
+          project: join(board.root, project, 'tokens.css'),
+        }),
+      ).request('/api/frames/recolor', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    const toPrimary = () => ({
+      ref: HERO,
+      hash: hash(),
+      from: { value: '#4f46e5', percent: 100 },
+      to: '--primary',
+    })
+
+    it('writes the token on every element using the color and answers how many', async () => {
+      const response = await recolor(toPrimary())
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, hash: contentHash(SWAPPED), count: 2 },
+      })
+      expect(read()).toBe(SWAPPED)
+    })
+
+    it('records one step, which one undo reverts byte for byte', async () => {
+      await recolor(toPrimary())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toBe(RAW)
+    })
+
+    it('answers zero and records nothing when no element states the color inline', async () => {
+      const response = await recolor({
+        ...toPrimary(),
+        from: { value: '#0ea5e9', percent: 100 },
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { count: 0, hash: contentHash(RAW) },
+      })
+      expect(read()).toBe(RAW)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a token the project does not hold as unknown-token, writing nothing', async () => {
+      const response = await recolor({ ...toPrimary(), to: '--brand' })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'unknown-token' },
+      })
+      expect(read()).toBe(RAW)
+    })
+
+    it('refuses a token that holds no color as unknown-token', async () => {
+      const response = await recolor({ ...toPrimary(), to: '--space' })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'unknown-token' },
+      })
+    })
+
+    it('refuses a token as the color to replace as usage', async () => {
+      const response = await recolor({
+        ...toPrimary(),
+        from: { value: 'var(--accent)', percent: 100 },
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('refuses stale-address once the file moved, writing nothing', async () => {
+      const sent = toPrimary()
+      writeFileSync(path(), RAW.replace('>a<', '>Agent<'))
+      const agent = read()
+
+      const response = await recolor(sent)
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(agent)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a frame another session holds as frame-claimed', async () => {
+      await claim(
+        board.root,
+        {
+          frame: HERO,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await recolor(toPrimary())
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'frame-claimed' },
+      })
+      expect(read()).toBe(RAW)
+    })
+  })
 })
