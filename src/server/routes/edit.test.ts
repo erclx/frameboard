@@ -656,7 +656,7 @@ describe('editRoutes', () => {
         })
 
         expect(read()).toContain(
-          '<p data-name="Text" style="font-family: var(--font-text); margin: 0; position: absolute; left: 40px; top: 24px">Text</p>',
+          '<p data-name="Text" style="font-family: var(--font-text); width: fit-content; margin: 0; position: absolute; left: 40px; top: 24px">Text</p>',
         )
       })
     })

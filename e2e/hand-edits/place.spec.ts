@@ -418,6 +418,8 @@ test.describe('placing text and shapes into a frame', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     const headline = await centerOf(page, 'h1')
 
+    // Flow places the Text in the block body's flow, so the inspector's Free is what takes it out.
+    await tools(page).getByRole('button', { name: 'Flow' }).click()
     await tools(page).getByRole('button', { name: 'Text' }).click()
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
@@ -433,7 +435,10 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.click(text.x, text.y)
     await page.keyboard.up('Meta')
     await expect(page.locator('[data-element-selection]')).toBeVisible()
-    await page.getByRole('button', { name: 'Free', exact: true }).click()
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Free', exact: true })
+      .click()
 
     await expect
       .poll(read)
@@ -487,7 +492,10 @@ test.describe('placing text and shapes into a frame', () => {
       await page.mouse.click(text.x, text.y)
       await page.keyboard.up('Meta')
       await expect(page.locator('[data-element-selection]')).toBeVisible()
-      await page.getByRole('button', { name: 'Free', exact: true }).click()
+      await page
+        .getByRole('group', { name: 'Placement' })
+        .getByRole('button', { name: 'Free', exact: true })
+        .click()
 
       await expect
         .poll(read)
