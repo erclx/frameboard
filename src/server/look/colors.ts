@@ -140,7 +140,7 @@ export function frameStyles(
     for (const property of COLOR_PROPERTIES) {
       const value = read(candidate, property)
       if (!value || NO_COLOR.has(value.value.trim().toLowerCase())) continue
-      const key = `${value.token ?? value.value.toLowerCase()}:${value.percent}`
+      const key = colorKey(value)
       if (!colors.has(key)) colors.set(key, value)
     }
   }
@@ -165,6 +165,58 @@ export function styleValue(written: string): StyleValue {
     }
   }
   return { value, token: null, percent: 100 }
+}
+
+const SHORT_HEX = /^#([0-9a-f]{3,4})$/i
+const LONG_HEX = /^#([0-9a-f]{6})$/i
+const RGB =
+  /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/i
+
+/**
+ * One color however the source writes it, so `#4F46E5`, `#4f46e5`, and
+ * `rgb(79, 70, 229)` group as one Selection colors row and one color
+ * replace reaches each. A token keys by its name, and an alpha
+ * a raw value carries joins its percent.
+ */
+export function colorKey(value: StyleValue): string {
+  if (value.token) return `${value.token}:${value.percent}`
+  const raw = rawColor(value.value.trim())
+  const percent = Math.round((raw.percent * value.percent) / 100)
+  return `${raw.color}:${percent}`
+}
+
+function rawColor(written: string): { color: string; percent: number } {
+  const short = SHORT_HEX.exec(written)?.[1]
+  if (short) {
+    const [r = '', g = '', b = '', a] = [...short.toLowerCase()]
+    return {
+      color: `#${r}${r}${g}${g}${b}${b}`,
+      percent: a === undefined ? 100 : alphaPercent(parseInt(a + a, 16) / 255),
+    }
+  }
+  if (LONG_HEX.test(written))
+    return { color: written.toLowerCase(), percent: 100 }
+  const rgb = RGB.exec(written)
+  if (rgb?.[1] && rgb[2] && rgb[3]) {
+    const channels = [rgb[1], rgb[2], rgb[3]].map((channel) =>
+      Math.min(255, Math.round(Number(channel)))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    const alpha = rgb[4]
+    const percent =
+      alpha === undefined
+        ? 100
+        : alpha.endsWith('%')
+          ? Math.round(Number(alpha.slice(0, -1)))
+          : alphaPercent(Number(alpha))
+    return { color: `#${channels.join('')}`, percent }
+  }
+  return { color: written.toLowerCase(), percent: 100 }
+}
+
+function alphaPercent(alpha: number): number {
+  return Math.round(Math.min(1, alpha) * 100)
 }
 
 /** The custom properties the token sheets declare, which alone are tokens. */

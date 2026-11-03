@@ -46,6 +46,8 @@ The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a
 
 A Free element dragged past its frame's edge shows there as a dashed ghost, which a press drags back. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
 
+Selection colors lists every color the selection uses, and a raw color's swatch swaps it for a token on each element setting it inline, as one undo step.
+
 Images and videos come from the project's `assets/` folder and land in the layout the same way.
 
 - Image or video in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width

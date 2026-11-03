@@ -1,11 +1,12 @@
 import '../../styles.css'
 
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
 import type { StyleValue } from '@/shared/records/elements'
+import type { TokenRow } from '@/shared/records/tokens'
 
 import { SelectionColors } from './selection-colors'
 
@@ -24,6 +25,53 @@ function renderColors(colors: StyleValue[]) {
       <Toaster />
     </>,
   )
+}
+
+/** A project color token with one value in both themes. */
+function colorToken(name: string, value: string): TokenRow {
+  return {
+    name,
+    group: 'color',
+    light: value,
+    dark: value,
+    sheet: 'tokens.css',
+    overrides: false,
+  }
+}
+
+const TOKENS = [
+  colorToken('--accent', '#f59e0b'),
+  colorToken('--text', '#111827'),
+  colorToken('--primary', '#4f46e5'),
+]
+
+/** Selection colors that can replace, handing each pick to `onReplace`. */
+function renderReplacing(
+  colors: StyleValue[],
+  onReplace: (color: StyleValue, token: string) => void = () => {},
+  tokens: TokenRow[] = TOKENS,
+) {
+  return render(
+    <>
+      <SelectionColors
+        colors={colors}
+        tokens={tokens}
+        theme="light"
+        onReplace={onReplace}
+      />
+      <Toaster />
+    </>,
+  )
+}
+
+/** The token list a raw swatch opened, by its tokens' names, top to bottom. */
+function offered(value: string): string[] {
+  const list = screen.getByRole('list', {
+    name: `Tokens to replace ${value} with`,
+  })
+  return within(list)
+    .getAllByRole('button')
+    .map((button) => button.textContent?.replace(/[0-9a-f]{6}$/, '') ?? '')
 }
 
 /** Each listed row's text, top to bottom. */
@@ -165,6 +213,100 @@ describe('SelectionColors', () => {
 
       expect(await screen.findByText('Nothing was copied')).toBeVisible()
       expect(screen.queryByText('Copied #4f46e5')).toBeNull()
+    })
+  })
+
+  describe('replace', () => {
+    it('opens the color tokens from a raw row’s swatch, nearest value first', async () => {
+      renderReplacing([raw('#4f46e5')])
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      )
+
+      expect(offered('4f46e5')).toEqual(['primary', 'text', 'accent'])
+    })
+
+    it('hands the pick to the replace and closes the list', async () => {
+      const replaced: [StyleValue, string][] = []
+      renderReplacing([raw('#4f46e5')], (color, token) =>
+        replaced.push([color, token]),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: /^primary/ }))
+
+      await waitFor(() =>
+        expect(replaced).toEqual([[raw('#4f46e5'), '--primary']]),
+      )
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('list', {
+            name: 'Tokens to replace 4f46e5 with',
+          }),
+        ).toBeNull(),
+      )
+    })
+
+    it('closes the list on Escape, replacing nothing', async () => {
+      const replaced: string[] = []
+      renderReplacing([raw('#4f46e5')], (_, token) => replaced.push(token))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      )
+
+      await userEvent.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('list', {
+            name: 'Tokens to replace 4f46e5 with',
+          }),
+        ).toBeNull(),
+      )
+      expect(replaced).toEqual([])
+      expect(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      ).toHaveFocus()
+    })
+
+    it('offers no replace on a token row', () => {
+      renderReplacing([token('--primary')])
+
+      expect(screen.queryByRole('button', { name: /^Replace/ })).toBeNull()
+    })
+
+    it('offers no replace where the selection cannot take one', () => {
+      renderColors([raw('#4f46e5')])
+
+      expect(screen.queryByRole('button', { name: /^Replace/ })).toBeNull()
+    })
+
+    it('still copies the raw value from the rest of the row', async () => {
+      const written = stubClipboard()
+      renderReplacing([raw('#4f46e5')])
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Copy #4f46e5' }),
+      )
+
+      expect(written).toEqual(['#4f46e5'])
+    })
+
+    it('says the project names no color tokens when it has none', async () => {
+      renderReplacing([raw('#4f46e5')], () => {}, [])
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      )
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/This project names no color tokens/),
+        ).toBeVisible(),
+      )
     })
   })
 })

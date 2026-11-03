@@ -2,6 +2,7 @@ import { cn } from 'cn'
 import { useEffect, useState } from 'react'
 
 import { useViewOnly } from '@/client/access/view-only'
+import { toast } from '@/client/components/ui/toast'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
 import type { StyleValue } from '@/shared/records/elements'
@@ -34,10 +35,11 @@ import {
 } from './element/styles'
 import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
-import { type ElementChange, writeElement } from './element/write'
+import { type ElementChange, shownHash, writeElement } from './element/write'
 import { ExportSection } from './export-section'
 import { FrameSection } from './frame-section'
 import { FRAME_TOOL_GROUPS } from './presets'
+import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
 
 /**
@@ -104,7 +106,7 @@ export function InspectorPanel() {
           {inFrame ? (
             <ElementSections page={page} element={inFrame} />
           ) : (
-            <FramesColors frames={frames} />
+            <FramesColors page={page} frames={frames} />
           )}
         </>
       ) : (
@@ -263,6 +265,11 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         colors={styles?.colors ?? []}
         tokens={colors}
         theme={theme}
+        onReplace={
+          disabled
+            ? undefined
+            : (color, token) => void replaceColor(page, element, color, token)
+        }
       />
     </>
   )
@@ -301,9 +308,18 @@ function FrameFill({ page, frame }: { page: string; frame: string }) {
 
 /**
  * Selection colors for one frame or several, merged across them once each,
- * read again whenever one of them reloads.
+ * read again whenever one of them reloads. One frame replaces a raw color
+ * across the whole frame, from the bytes it shows, and several replace
+ * nothing, since one replace is one write to one file.
  */
-function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
+function FramesColors({
+  page,
+  frames,
+}: {
+  page: string
+  frames: readonly FrameRecord[]
+}) {
+  const canWrite = useLive((state) => state.canWrite)
   const [first] = frames
   const theme = useFrameTheme(first?.ref ?? '')
   const { colors: tokens } = useProjectTokens(first?.ref ?? '')
@@ -343,6 +359,23 @@ function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
       colors={held?.refs === refs ? held.colors : []}
       tokens={tokens}
       theme={theme}
+      onReplace={
+        canWrite && frames.length === 1 && first
+          ? (color, token) => {
+              const hash = shownHash(first.ref)
+              if (hash === null) {
+                toast.add({
+                  title: 'Nothing replaced',
+                  description:
+                    'The frame is not on screen, so the bytes it shows could not be read. Scroll to it and try again.',
+                  type: 'warning',
+                })
+                return
+              }
+              void replaceColor(page, { frame: first.ref, hash }, color, token)
+            }
+          : undefined
+      }
     />
   )
 }

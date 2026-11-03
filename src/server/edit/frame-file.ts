@@ -25,6 +25,7 @@ import {
   type PlaceFacts,
   type Spot,
 } from './place'
+import { type Recolor, recolorElements } from './recolor'
 
 export type FrameFileEdit =
   | {
@@ -283,6 +284,47 @@ export function placeFrameFile(
     hash: contentHash(placed.html),
     spans: placed.spans,
     sized: placed.sized,
+    remap: identity,
+  }
+}
+
+export type FrameFileRecolor =
+  | {
+      readonly ok: true
+      /** The file's hash after the replace, the one sent when nothing stated the color inline. */
+      readonly hash: string
+      /** Each rewritten element's start tag, empty when nothing was written. */
+      readonly spans: readonly ElementSpan[]
+      /** Every element keeps its index, since a replace writes start tags alone. */
+      readonly remap: Remap
+    }
+  | EditRefused
+
+/**
+ * Replaces a raw color with a token across the subtree `root` names, or the
+ * frame's body when undefined, written as `placeFrameFile` writes and refused
+ * as stale on a hash the file no longer has, so a retried replace lands once.
+ * A subtree stating the color nowhere inline writes nothing.
+ */
+export function recolorFrameFile(
+  path: string,
+  hash: string,
+  root: number | undefined,
+  recolor: Recolor,
+): FrameFileRecolor {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const recolored = recolorElements(read.source, root, recolor)
+  if (!recolored.ok) return recolored
+  if (recolored.spans.length === 0) {
+    return { ok: true, hash, spans: [], remap: identity }
+  }
+  if (!replaceFile(path, hash, recolored.html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(recolored.html),
+    spans: recolored.spans,
     remap: identity,
   }
 }

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { Page } from '@playwright/test'
@@ -506,6 +506,52 @@ function claimed(frame: string): (page: Page) => Promise<void> {
 }
 
 const claimedHero = claimed('webapp/home/hero')
+
+/**
+ * Sets the hero's headline and caption in a raw indigo no token names, since
+ * the fixture paints only through tokens, and puts the file back once the
+ * capture page closes so no later case shows it.
+ */
+async function rawIndigoHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    original
+      .replace(
+        '<h1 data-name="Headline">',
+        '<h1 data-name="Headline" style="color: #4f46e5">',
+      )
+      .replace(
+        '<p data-name="Caption">',
+        '<p data-name="Caption" style="border: 1px solid #4f46e5">',
+      ),
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Hands the board an empty change log on every `changes` message, since
+ * `rawIndigoHero` writes the hero as an outside write the change tracker
+ * would otherwise raise as an agent's, racing the shot.
+ */
+async function noAgentChanges(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as { type: string }
+      socket.send(
+        parsed.type === 'changes'
+          ? JSON.stringify({ type: 'changes', changes: [] })
+          : message,
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/** The raw indigo row's swatch, which opens the tokens to replace it with. */
+const REPLACE_INDIGO = '^Replace 4f46e5 with a token$'
 
 /**
  * Picks the Note tool and clicks the hero frame once the board has drawn it,
@@ -2495,6 +2541,48 @@ export const BOARD_CASES: CaptureCase[] = [
           both(
             onCanvas({ select: ['webapp/home/hero'] }),
             readyWhen('#inspector-selection-colors ~ ul li'),
+          ),
+        ),
+      },
+      {
+        section: 'replace-colors',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The hero's Selection colors with the raw indigo row's token list open.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            pressOnLoad(REPLACE_INDIGO),
+            readyWhen('[data-slot="popover-content"] li button'),
+          ),
+        ),
+      },
+      {
+        section: 'replace-colors-done',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The same row once primary replaced it, with the toast counting the elements.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            pressOnLoad(REPLACE_INDIGO),
+            pressOnLoad('^primary'),
+            readyWhen(
+              'button[aria-label="Copy var(--primary)"]',
+              'button[aria-label="Replace 4f46e5 with a token"]',
+            ),
           ),
         ),
       },

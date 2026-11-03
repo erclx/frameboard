@@ -4,7 +4,7 @@ import { readFrame } from '@/server/checks/frame-source'
 import { tokenSheets } from '@/server/checks/tokens'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
-import { frameStyles } from './colors'
+import { colorKey, frameStyles, styleValue } from './colors'
 
 let board: TempBoard | undefined
 
@@ -236,5 +236,44 @@ describe('frameStyles', () => {
       '--text',
       '--primary',
     ])
+  })
+
+  it('lists one color written in hex case and rgb() once', () => {
+    const { colors } = stylesOf(
+      `<p style="color: #4F46E5">a</p>
+      <p style="color: #4f46e5">b</p>
+      <p style="color: rgb(79, 70, 229)">c</p>`,
+    )
+
+    expect(colors).toEqual([{ value: '#4F46E5', token: null, percent: 100 }])
+  })
+})
+
+describe('colorKey', () => {
+  it.each([
+    ['#4f46e5', '#4F46E5'],
+    ['#4f46e5', 'rgb(79, 70, 229)'],
+    ['#4f46e5', 'rgb(79 70 229)'],
+    ['#4f46e5cc', 'rgba(79, 70, 229, 0.8)'],
+    ['#4f46e5cc', 'rgb(79 70 229 / 80%)'],
+    ['#ffffff', '#fff'],
+    ['var(--primary)', 'var( --primary )'],
+  ])('reads %s and %s as one color', (one, other) => {
+    expect(colorKey(styleValue(one))).toBe(colorKey(styleValue(other)))
+  })
+
+  it.each([
+    ['#4f46e5', '#4f46e5cc'],
+    ['#4f46e5', '#4f46e6'],
+    ['var(--primary)', 'color-mix(in srgb, var(--primary) 50%, transparent)'],
+    ['#ffffff', 'var(--white)'],
+  ])('reads %s and %s as two colors', (one, other) => {
+    expect(colorKey(styleValue(one))).not.toBe(colorKey(styleValue(other)))
+  })
+
+  it('joins a stated percent to the alpha a raw value carries', () => {
+    expect(colorKey({ value: '#4f46e5', token: null, percent: 80 })).toBe(
+      colorKey(styleValue('#4f46e5cc')),
+    )
   })
 })
