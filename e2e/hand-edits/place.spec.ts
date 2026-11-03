@@ -421,6 +421,9 @@ test.describe('placing text and shapes into a frame', () => {
       '<div data-name="Box" style="position: absolute; left: 100px; top: 300px; width: 160px; height: 120px; background: var(--muted)"></div>'
     const left = () =>
       Number(/data-name="Box" style="[^"]*left: (-?\d+)px/.exec(read())?.[1])
+    /** Whether the Box's left sits within the 2 px a fractional zoom rounds a screen drag by. */
+    const leftNear = (expected: number) => () =>
+      Math.abs(left() - expected) <= 2
 
     test.beforeEach(() => {
       writeFileSync(path(), read().replace('</body>', `${BOX}\n  </body>`))
@@ -487,6 +490,37 @@ test.describe('placing text and shapes into a frame', () => {
       expect(
         samples.filter((x) => x === null || Math.abs(x - drop) > 2),
       ).toEqual([])
+    })
+
+    test('a drag past the edge leaves a ghost there, which a press grabs to drag the element back', async ({
+      page,
+    }) => {
+      const { center, zoom } = await selectBox(page)
+
+      // 1240 px right puts the Box at 1340 in the 1440 px hero, its last 60 px outside.
+      await page.mouse.move(center.x, center.y)
+      await page.mouse.down()
+      await page.mouse.move(center.x + 1240 * zoom, center.y, { steps: 8 })
+      await page.mouse.up()
+
+      await expect.poll(leftNear(1340)).toBe(true)
+      const ghost = page.locator('[data-element-ghost]')
+      await expect(ghost).toBeVisible()
+      const frame = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
+      if (!frame) throw new Error('The hero draws no box')
+      // A plain click on the hero's empty lower left selects the frame alone.
+      await page.mouse.click(frame.x + 20, frame.y + frame.height - 20)
+      await expect(page.locator('[data-element-selection]')).toHaveCount(0)
+      await expect(ghost).toBeVisible()
+      const grab = { x: frame.x + frame.width + 30 * zoom, y: center.y }
+
+      await page.mouse.move(grab.x, grab.y)
+      await page.mouse.down()
+      await page.mouse.move(grab.x - 400 * zoom, grab.y, { steps: 8 })
+      await page.mouse.up()
+
+      await expect.poll(leftNear(940)).toBe(true)
+      await expect(ghost).toHaveCount(0)
     })
   })
 })

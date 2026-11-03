@@ -30,6 +30,7 @@ import {
   clear,
   type ElementKey,
   select,
+  selectElement,
   type SelectionStore,
   selectionStore,
   selectSection,
@@ -43,6 +44,7 @@ import {
   drawnAt,
   frameAt,
   framesIn,
+  ghostAt,
   onOutline,
   selectedElementBox,
 } from './hit'
@@ -337,6 +339,20 @@ export function attachGestures(
         }
         return
       }
+    }
+    // A ghost shows an element past its frame's edge, which a press selects
+    // and a drag carries back, as a press on the selected outline does.
+    const ghost = ghostAt(target.layer, drawn, point)
+    if (ghost) {
+      selectElement(selection, target.page, ghost)
+      gesture = {
+        kind: 'element',
+        key: ghost,
+        frame: null,
+        shift: event.shiftKey,
+        placed: stores.placedOffsets(target.layer, ghost),
+      }
+      return
     }
     // The selected section's corners sit over its frames, as a frame's handles do.
     const held = sectionNamed(

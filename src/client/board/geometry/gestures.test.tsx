@@ -68,6 +68,7 @@ function setup(
     divider,
     shape,
     placed,
+    ghost,
     live,
     sections = [],
     lands = true,
@@ -92,6 +93,8 @@ function setup(
     shape?: 'free' | 'held'
     /** The selected element is placed at these offsets, out of the flow. */
     placed?: PlacedOffsets
+    /** An element's ghost drawn past its frame's edge, at a canvas box. */
+    ghost?: { key: ElementKey; box: Box }
     /**
      * A body LEFT renders live in an iframe filling its box, whose pin is
      * anchored to the element at file index 3, the first in the body.
@@ -162,6 +165,21 @@ function setup(
                 top: elementBox.y,
                 width: elementBox.width,
                 height: elementBox.height,
+              }}
+            />
+          ) : null}
+          {ghost ? (
+            <div
+              data-element-ghost
+              data-ghost-frame={ghost.key.frame}
+              data-ghost-index={ghost.key.index}
+              data-ghost-hash={ghost.key.hash}
+              className="pointer-events-none absolute"
+              style={{
+                left: ghost.box.x,
+                top: ghost.box.y,
+                width: ghost.box.width,
+                height: ghost.box.height,
               }}
             />
           ) : null}
@@ -1308,6 +1326,53 @@ describe('attachGestures', () => {
         expect(
           canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
         ).toBe('25px -20px')
+      })
+    })
+
+    describe('past its frame edge', () => {
+      // LEFT's element 7, its right half past LEFT's right edge at x 300.
+      const GHOST = {
+        key: { frame: LEFT.ref, index: 7, hash: 'b'.repeat(64) },
+        box: { x: 260, y: 150, width: 80, height: 40 },
+      }
+
+      it('selects the element on a press of its ghost outside the frame', () => {
+        const canvas = setup(undefined, { ghost: GHOST })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.click(320, 170)
+
+        expect(selectionStore.getState().element).toEqual(GHOST.key)
+      })
+
+      it('drags a placed element back from its ghost in the same press', () => {
+        const canvas = setup(undefined, {
+          ghost: GHOST,
+          placed: { left: 160, top: 50 },
+        })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([320, 170], [220, 170])
+
+        expect([
+          canvas.placedMoves[0]?.key,
+          canvas.placedMoves[0]?.commits,
+          canvas.writes,
+        ]).toEqual([GHOST.key, [{ left: 60, top: 50 }], []])
+      })
+
+      it('leaves a press on the part inside the frame to the frame', () => {
+        const canvas = setup(undefined, { ghost: GHOST })
+        detach = canvas.detach
+
+        canvas.pointer.click(280, 170)
+
+        expect([selectionStore.getState().element, selectedRefs()]).toEqual([
+          null,
+          [LEFT.ref],
+        ])
       })
     })
 

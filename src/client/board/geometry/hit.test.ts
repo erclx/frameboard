@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { cornerAt, frameAt, framesIn, onOutline } from './hit'
+import { cornerAt, frameAt, framesIn, ghostAt, onOutline } from './hit'
 
 const BACK = frameOf('back', {
   box: { x: 0, y: 0, width: 400, height: 300 },
@@ -107,5 +107,45 @@ describe('framesIn', () => {
     expect(
       framesIn([BACK, FRONT], { x: 700, y: 700, width: 50, height: 50 }),
     ).toEqual([])
+  })
+})
+
+describe('ghostAt', () => {
+  const HASH = 'a'.repeat(64)
+
+  /** A layer drawing BACK's element 4 as a ghost at a canvas box running past its right edge. */
+  function layerWithGhost() {
+    const layer = document.createElement('div')
+    const ghost = document.createElement('div')
+    Object.assign(ghost.dataset, {
+      elementGhost: '',
+      ghostFrame: BACK.ref,
+      ghostIndex: '4',
+      ghostHash: HASH,
+    })
+    Object.assign(ghost.style, {
+      left: '350px',
+      top: '20px',
+      width: '100px',
+      height: '50px',
+    })
+    layer.append(ghost)
+    return layer
+  }
+
+  it('answers the element whose ghost sits under the point, past the frame', () => {
+    expect(ghostAt(layerWithGhost(), [BACK], { x: 420, y: 40 })).toEqual({
+      frame: BACK.ref,
+      index: 4,
+      hash: HASH,
+    })
+  })
+
+  it('leaves a point inside the frame to the frame', () => {
+    expect(ghostAt(layerWithGhost(), [BACK], { x: 380, y: 40 })).toBeNull()
+  })
+
+  it('answers nothing beside the ghost', () => {
+    expect(ghostAt(layerWithGhost(), [BACK], { x: 420, y: 90 })).toBeNull()
   })
 })
