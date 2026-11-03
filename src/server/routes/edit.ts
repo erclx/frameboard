@@ -7,15 +7,17 @@ import { z } from 'zod'
 
 import { resolveAsset } from '@/server/board/assets'
 import { resolveFrameRef } from '@/server/board/refs'
-import { readFrame, type Sheet } from '@/server/checks/frame-source'
+import { frameFrom, readFrame, type Sheet } from '@/server/checks/frame-source'
 import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
+import { applyEdit } from '@/server/edit/apply'
 import { elementPlaceFacts } from '@/server/edit/elements'
 import {
   editFrameFile,
   insertFrameFile,
   moveFrameFile,
   placeFrameFile,
+  type PlaceInserted,
   recolorFrameFile,
   type Remap,
   removeFrameFile,
@@ -26,6 +28,7 @@ import {
   shapePaint,
   textFont,
 } from '@/server/edit/insert'
+import { placeElement } from '@/server/edit/place'
 import type { History } from '@/server/history/stack'
 import { styleValue } from '@/server/look/colors'
 import { readTokenTable } from '@/server/look/token-table'
@@ -49,6 +52,8 @@ const value = z.string().max(10_000)
 const name = z.string().min(1).max(256)
 /** A dragged shape's side in CSS pixels. */
 const side = z.int().min(1).max(10_000)
+/** A spot in CSS pixels, bounded well past any frame. */
+const offset = z.number().min(-100_000).max(100_000)
 
 const editSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -90,6 +95,15 @@ const insertSchema = z.object({
       height: side,
     }),
   ]),
+  /** Where the element lands out of the flow, against the box it counts from, else it joins the flow at the gap. */
+  at: z
+    .object({
+      left: offset,
+      top: offset,
+      /** Joins the flow at the gap instead when placing would move another element anchored above the parent. */
+      orFlow: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 const removeSchema = z.object({
@@ -105,9 +119,6 @@ const moveSchema = z.object({
   parent: z.int().min(0),
   before: z.int().min(0).nullable(),
 })
-
-/** A spot in CSS pixels, bounded well past any frame. */
-const offset = z.number().min(-100_000).max(100_000)
 
 const placeSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -171,6 +182,10 @@ export type SettledVersion = (
  * has answers 409 `stale-address` with nothing written, since the gap's
  * indices name nothing past an agent's write, and a retried insert lands once.
  * A rectangle or an ellipse takes an optional width and height a drag drew.
+ * Given `at`, the element lands out of the flow there in the same write and
+ * step, placed as the place below places one, a text's margin set to zero,
+ * and refused as the place refuses, save that `orFlow` joins the flow instead
+ * of refusing `reanchors-descendant`. Without `at`, the element joins the flow.
  * An asset names a file under the project's `assets/` and the size it
  * shows at, and the server picks its tag from the file's kind. A file
  * outside that folder or not there answers 409 `asset-missing`, and one that
@@ -316,12 +331,45 @@ export function editRoutes(
       }
       element = { ...body.element, video: asset.kind === 'video' }
     }
-    const result = insertFrameFile(
-      frame.path,
-      body.hash,
-      { parent: body.parent, before: body.before },
-      elementMarkup(element, shapePaint(tokens), textFont(tokens)),
-    )
+    const { at } = body
+    const insert = (place?: PlaceInserted) =>
+      insertFrameFile(
+        frame.path,
+        body.hash,
+        { parent: body.parent, before: body.before },
+        elementMarkup(element, shapePaint(tokens), textFont(tokens)),
+        place,
+      )
+    const placed =
+      at &&
+      insert((html, index) => {
+        // A paragraph's own margin would push it off the point it was placed at.
+        const bare =
+          element.kind === 'text'
+            ? applyEdit(
+                html,
+                { index },
+                { kind: 'style', property: 'margin', value: '0' },
+              )
+            : { ok: true as const, html }
+        if (!bare.ok) return bare
+        const facts = elementPlaceFacts(
+          frameFrom(frame, bare.html),
+          tokenSheets(frame.project),
+        )
+        return placeElement(
+          bare.html,
+          index,
+          { left: at.left, top: at.top },
+          facts,
+        )
+      })
+    // A refused placement wrote nothing, so the flow insert goes from the same bytes.
+    const result =
+      !placed ||
+      (!placed.ok && placed.reason === 'reanchors-descendant' && at.orFlow)
+        ? insert()
+        : placed
     if (!result.ok) {
       return c.json(
         {
@@ -337,6 +385,7 @@ export function editRoutes(
     }
     const journal = history.journal()
     journal.inserted(frame.path, ref, result.span)
+    if (result.parent) journal.element(frame.path, ref, result.parent)
     history.record({
       id: journal.id,
       changes: journal.changes,

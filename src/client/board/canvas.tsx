@@ -754,12 +754,13 @@ export function Canvas({
                     withDrawn(frames),
                     draft?.from ?? { x, y },
                     file,
-                    { size: draft?.size },
+                    { size: draft?.size, corner: draft?.at },
                   )
                   return
                 }
                 if (kind) {
-                  // A Rectangle or Ellipse drag lands where it started, at the size drawn.
+                  // A Rectangle or Ellipse drag reads its gap where it started,
+                  // at the size drawn, and lands on the box drawn when placed free.
                   const draft = takeDraft()
                   void placeElement(
                     layer,
@@ -767,7 +768,7 @@ export function Canvas({
                     withDrawn(frames),
                     draft?.from ?? { x, y },
                     kind,
-                    { size: draft?.size },
+                    { size: draft?.size, corner: draft?.at },
                   ).then((placed) => {
                     // A placed Text opens for typing once its frame shows it.
                     if (placed && kind === 'text') editText(placed, true)

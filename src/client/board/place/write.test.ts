@@ -6,6 +6,7 @@ import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
+import { placementStore } from './tool'
 import {
   deleteElement,
   moveElement,
@@ -32,6 +33,7 @@ let layer: HTMLDivElement | undefined
 afterEach(() => {
   layer?.remove()
   layer = undefined
+  placementStore.setState({ placing: 'auto' })
 })
 
 /** A canvas layer holding one live frame showing `body`, resolved once it has loaded. */
@@ -70,6 +72,7 @@ function server(status: number, body: unknown) {
 
 describe('placeElement', () => {
   it('sends the gap under the point from the rendered hash, then selects the new element and returns to Move', async () => {
+    placementStore.setState({ placing: 'flow' })
     const container = await mount(COLUMN)
     const selection = createSelectionStore()
     const mode = createModeStore(1280)
@@ -257,6 +260,117 @@ describe('placeElement', () => {
   })
 })
 
+describe('placeElement under each placing mode', () => {
+  /** Places `kind` at a frame point in a frame showing `body`, answering the one body sent. */
+  async function sendAt(
+    body: string,
+    kind: 'text' | 'rectangle' | 'divider',
+    at: { x: number; y: number },
+    drawn?: {
+      corner: { x: number; y: number }
+      size: { width: number; height: number }
+    },
+  ) {
+    const container = await mount(body)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+    await placeElement(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + at.x, y: HERO.box.y + at.y },
+      kind,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        size: drawn?.size,
+        corner: drawn && {
+          x: HERO.box.x + drawn.corner.x,
+          y: HERO.box.y + drawn.corner.y,
+        },
+      },
+    )
+    return sent[0]
+  }
+
+  it('centers a clicked rectangle on the point under Auto in a block parent', async () => {
+    const sent = await sendAt(COLUMN, 'rectangle', { x: 80, y: 70 })
+
+    expect(sent).toMatchObject({
+      parent: 3,
+      before: null,
+      at: { left: 30, top: 20, orFlow: true },
+    })
+  })
+
+  it('lands a drawn rectangle at the corner of its box, at its size, under Auto', async () => {
+    const sent = await sendAt(
+      COLUMN,
+      'rectangle',
+      { x: 200, y: 60 },
+      { corner: { x: 120, y: 24 }, size: { width: 80, height: 36 } },
+    )
+
+    expect(sent).toMatchObject({
+      element: { kind: 'rectangle', width: 80, height: 36 },
+      at: { left: 120, top: 24 },
+    })
+  })
+
+  it('places text at the point rather than centered on it', async () => {
+    const sent = await sendAt(COLUMN, 'text', { x: 80, y: 70 })
+
+    expect(sent).toMatchObject({ at: { left: 80, top: 70 } })
+  })
+
+  it('joins a flex parent at the gap with no spot under Auto', async () => {
+    const sent = await sendAt(ROW, 'text', { x: 120, y: 20 })
+
+    expect(sent).toMatchObject({ parent: 3, before: 5 })
+    expect(sent).not.toHaveProperty('at')
+  })
+
+  it('places out of the flow in a flex parent under Free', async () => {
+    placementStore.setState({ placing: 'free' })
+
+    const sent = await sendAt(ROW, 'text', { x: 120, y: 20 })
+
+    expect(sent).toMatchObject({ at: { left: 120, top: 20 } })
+    expect(sent).not.toHaveProperty('at.orFlow')
+  })
+
+  it('joins a block parent at the gap with no spot under Flow', async () => {
+    placementStore.setState({ placing: 'flow' })
+
+    const sent = await sendAt(COLUMN, 'rectangle', { x: 80, y: 70 })
+
+    expect(sent).toMatchObject({ parent: 3, before: null })
+    expect(sent).not.toHaveProperty('at')
+  })
+
+  it('keeps a divider in the flow under Free', async () => {
+    placementStore.setState({ placing: 'free' })
+
+    const sent = await sendAt(COLUMN, 'divider', { x: 80, y: 70 })
+
+    expect(sent).not.toHaveProperty('at')
+  })
+
+  it('counts the spot from a bordered container past its border', async () => {
+    const sent = await sendAt(
+      '<main style="margin:20px 0 0 10px;border:5px solid"><div style="height:40px"></div><div style="height:40px"></div></main>',
+      'text',
+      { x: 60, y: 90 },
+    )
+
+    expect(sent).toMatchObject({ at: { left: 45, top: 65 } })
+  })
+})
+
 describe('placeFile', () => {
   const PHOTO = {
     project: 'studio',
@@ -286,7 +400,8 @@ describe('placeFile', () => {
       },
     )
 
-    // The main spans the frame's 400px, so a 1600 by 900 photo lands at 400 by 225.
+    // The main spans the frame's 400px, so a 1600 by 900 photo lands at 400 by 225,
+    // and a block main places it out of the flow at the point.
     expect(sent).toEqual([
       {
         ref: HERO.ref,
@@ -299,6 +414,7 @@ describe('placeFile', () => {
           width: 400,
           height: 225,
         },
+        at: { left: 50, top: 30, orFlow: true },
       },
     ])
   })

@@ -29,6 +29,7 @@ import {
 } from '../selection'
 import { type AssetSize, naturalSize, placedSize } from './asset-size'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
+import { placementStore, placesFree } from './tool'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider' | 'asset'
@@ -47,13 +48,22 @@ export interface PlaceDeps {
   size?: { width: number; height: number }
   /** The file an asset places, with the size it draws at on its own. */
   asset?: { path: string; natural: AssetSize | null }
+  /** The top left corner of the box a drag drew, where an element placed out of the flow lands. */
+  corner?: BoardPoint
 }
+
+/** The side a Rectangle or an Ellipse takes with no drag, as the insert route writes it. */
+const SHAPE_SIDE = 100
 
 /**
  * Places one element of `kind` into the frame under a board point, at the
  * gap between children `gapUnder` reads there, an asset naming the file it
  * shows, then selects it and returns to
- * Move, as one click of a placement tool. It answers the new element, or
+ * Move, as one click of a placement tool. Where `placesFree` says so for
+ * the gap, the element lands out of the flow in the same write: at the drawn
+ * box's corner after a drag, centered on the point for a clicked Rectangle
+ * or Ellipse, and at the point otherwise. A Divider always joins the flow,
+ * since it spans its container and has no spot of its own. It answers the new element, or
  * null when nothing was written. A frame another session holds is refused
  * with nothing sent, since its indices go stale when that session writes,
  * and so is one whose iframe has not finished a load.
@@ -76,11 +86,22 @@ export async function placeElement(
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
     size,
     asset,
+    corner,
   }: PlaceDeps = {},
 ): Promise<ElementKey | null> {
   const under = gapUnder(container, frames, at)
   if (!under || (kind === 'asset' && !asset)) return null
   const { gap } = under
+  const spot =
+    kind !== 'divider' && placesFree(gap)
+      ? {
+          ...spotFor(kind, corner ?? at, under, !corner && !size),
+          // Auto chose Free on its own, so a parent that cannot take it joins the flow instead.
+          ...(placementStore.getState().placing === 'auto'
+            ? { orFlow: true }
+            : {}),
+        }
+      : undefined
   const element =
     kind === 'asset' && asset
       ? {
@@ -104,6 +125,7 @@ export async function placeElement(
         parent: gap.parent,
         before: gap.before,
         element,
+        ...(spot ? { at: spot } : {}),
       },
     }),
     (placed) => {
@@ -112,6 +134,26 @@ export async function placeElement(
     },
     { live, send, notify },
   )
+}
+
+/**
+ * The `left` and `top` an element placed out of the flow at `point` takes,
+ * against the box the gap's container anchors it to. A clicked shape centers
+ * on the point, so it sits under the pointer.
+ */
+function spotFor(
+  kind: PlacedKind,
+  point: BoardPoint,
+  { frame, gap }: FrameGap,
+  clicked: boolean,
+): { left: number; top: number } {
+  const centered = clicked && (kind === 'rectangle' || kind === 'ellipse')
+  const inset = centered ? SHAPE_SIDE / 2 : 0
+  const round = (value: number) => Math.round(value * 100) / 100
+  return {
+    left: round(point.x - frame.box.x - gap.origin.x - inset),
+    top: round(point.y - frame.box.y - gap.origin.y - inset),
+  }
 }
 
 /**

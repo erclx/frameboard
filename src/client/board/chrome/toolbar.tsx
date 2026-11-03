@@ -17,7 +17,8 @@ import {
   Type,
   Undo2,
 } from 'lucide-react'
-import { Fragment, useRef } from 'react'
+import { Fragment, type KeyboardEvent, useRef, useState } from 'react'
+import { useStore } from 'zustand'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
@@ -31,7 +32,14 @@ import {
 } from '@/client/components/ui/dropdown-menu'
 
 import { AssetPicker } from '../place/asset-picker'
-import { IMAGE_TOOL, shapeRow, SHAPES, useShape } from '../place/tool'
+import {
+  IMAGE_TOOL,
+  placementStore,
+  type Placing,
+  shapeRow,
+  SHAPES,
+  useShape,
+} from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
@@ -52,6 +60,27 @@ interface Slot {
 const SHAPE_SLOT = 'tool.shape'
 const FRAME_SLOT = 'tool.frame'
 const SECTION_TOOL = 'tool.section'
+const MOVE_SLOT = 'tool.move'
+const HAND_TOOL = 'tool.hand'
+/** Stands for the Place toggle, which holds no action, after the tools. */
+const PLACE_SLOT = 'place'
+
+/** The tools the Move slot's caret lists, Move and Hand both pointing rather than drawing. */
+const POINTER_TOOLS = [
+  { id: MOVE_SLOT, label: 'Move', key: 'v', icon: MousePointer2 },
+  { id: HAND_TOOL, label: 'Hand', key: 'h', icon: Hand },
+] as const
+
+/** The Place toggle's choices, each named in its tooltip by where a new element lands. */
+const PLACINGS: readonly { value: Placing; label: string; tip: string }[] = [
+  {
+    value: 'auto',
+    label: 'Auto',
+    tip: 'Place where drawn, or in the flow of a flex or grid',
+  },
+  { value: 'flow', label: 'Flow', tip: 'Place in the flow' },
+  { value: 'free', label: 'Free', tip: 'Place where drawn' },
+]
 
 /** The tools the Frame slot's caret lists, Frame and Section both drawing a box on the page. */
 const BOX_TOOLS = [
@@ -68,8 +97,8 @@ const BOX_TOOLS = [
 /** The groups in the order `canon/design/toolbar/floating` draws them, divided by a rule. */
 const GROUPS: readonly (readonly Slot[])[] = [
   [
-    { id: 'tool.move', label: 'Move', keys: ['v'], icon: MousePointer2 },
-    { id: 'tool.hand', label: 'Hand', keys: ['h'], icon: Hand },
+    // Stands in for the Move slot, which `PointerTool` draws from Move or Hand, whichever is on.
+    { id: MOVE_SLOT, label: 'Move', keys: ['v'], icon: MousePointer2 },
     // Stands in for the Frame slot, which `BoxTool` draws from Frame or Section, the last chosen.
     { id: FRAME_SLOT, label: 'Frame', keys: ['f'], icon: Frame },
     { id: 'tool.text', label: 'Text', keys: ['t'], icon: Type },
@@ -77,6 +106,7 @@ const GROUPS: readonly (readonly Slot[])[] = [
     { id: SHAPE_SLOT, label: 'Shape', icon: SHAPES[0].icon },
     { id: 'tool.note', label: 'Note', keys: ['n'], icon: MessageSquare },
   ],
+  [{ id: PLACE_SLOT, label: 'Place', icon: MousePointer2 }],
   [
     { id: 'edit.undo', label: 'Undo', icon: Undo2 },
     { id: 'edit.redo', label: 'Redo', icon: Redo2 },
@@ -103,7 +133,10 @@ const MODE_TOGGLE = 'mode.toggle'
 const SLOTS = [...GROUPS.flat(), ...MODES]
 const IDS = [
   MODE_TOGGLE,
-  ...SLOTS.map((slot) => slot.id).filter((id) => id !== SHAPE_SLOT),
+  HAND_TOOL,
+  ...SLOTS.map((slot) => slot.id).filter(
+    (id) => id !== SHAPE_SLOT && id !== PLACE_SLOT,
+  ),
   ...SHAPES.map((row) => row.id),
   IMAGE_TOOL,
   SECTION_TOOL,
@@ -132,6 +165,10 @@ export function Toolbar({ project }: { project?: string }) {
           {group.map((slot) =>
             slot.id === SHAPE_SLOT ? (
               <ShapeTool key={slot.id} actions={actions} />
+            ) : slot.id === MOVE_SLOT ? (
+              <PointerTool key={slot.id} actions={actions} />
+            ) : slot.id === PLACE_SLOT ? (
+              <PlaceToggle key={slot.id} />
             ) : slot.id === FRAME_SLOT ? (
               <BoxTool key={slot.id} actions={actions} />
             ) : (
@@ -351,6 +388,142 @@ function BoxTool({
         </ChromeMenuContent>
       </DropdownMenu>
     </>
+  )
+}
+
+/**
+ * The Move slot: a button turning on Move, or Hand while Hand is on, pressed
+ * while either is, and a caret opening the menu of both, the one on marked,
+ * each naming its key, so V and H stay the way in.
+ */
+function PointerTool({
+  actions,
+}: {
+  actions: ReadonlyMap<string, Action | undefined>
+}) {
+  const keysOn = useCharacterKeysOn()
+  const handOn = actions.get(HAND_TOOL)?.checked?.() ?? false
+  const shown = POINTER_TOOLS[handOn ? 1 : 0]
+  const slot = {
+    id: shown.id,
+    label: shown.label,
+    keys: [shown.key],
+    icon: shown.icon,
+  }
+  const on = POINTER_TOOLS.some(
+    (row) => actions.get(row.id)?.checked?.() ?? false,
+  )
+  return (
+    <>
+      <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Pointer tools"
+          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+        >
+          <ChevronDown aria-hidden className="size-[9px]" />
+        </DropdownMenuTrigger>
+        <ChromeMenuContent
+          side="top"
+          align="start"
+          sideOffset={8}
+          className="w-[196px]"
+        >
+          <DropdownMenuRadioGroup
+            value={on ? shown.id : ''}
+            onValueChange={(id) => {
+              const action = actions.get(id)
+              if (action && isEnabled(action)) action.run()
+            }}
+          >
+            {POINTER_TOOLS.map((row) => {
+              const registered = actions.get(row.id)
+              const key = liveKey(registered?.keys ?? [row.key], keysOn)
+              const Icon = row.icon
+              return (
+                <DropdownMenuRadioItem
+                  key={row.id}
+                  value={row.id}
+                  closeOnClick
+                  disabled={!registered || !isEnabled(registered)}
+                  className={cn(
+                    MENU_ROW,
+                    'gap-2 pr-2 data-checked:bg-primary data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
+                  )}
+                >
+                  <Icon aria-hidden className="size-[13px]" />
+                  {row.label}
+                  {key ? <MenuKey>{keyLabel(key)}</MenuKey> : null}
+                </DropdownMenuRadioItem>
+              )
+            })}
+          </DropdownMenuRadioGroup>
+        </ChromeMenuContent>
+      </DropdownMenu>
+    </>
+  )
+}
+
+const PLACE_STEPS: Record<string, (at: number, count: number) => number> = {
+  ArrowRight: (at, count) => (at + 1) % count,
+  ArrowLeft: (at, count) => (at - 1 + count) % count,
+  Home: () => 0,
+  End: (_, count) => count - 1,
+}
+
+/**
+ * The Place toggle: Auto, Flow, and Free, setting how Text, Shape, and Image
+ * place what they add, drawn as the Edit and Play segment is. It holds one
+ * tab stop, resting on the choice on, and the arrow keys, Home, and End move
+ * along it, as the inspector's segmented rows do. It writes nothing, so it
+ * stays on whether or not this tab may write.
+ */
+function PlaceToggle() {
+  const placing = useStore(placementStore, (state) => state.placing)
+  const buttons = useRef<(HTMLButtonElement | null)[]>([])
+  // The focused button while focus is inside the toggle, null once it leaves.
+  const [focused, setFocused] = useState<number | null>(null)
+  const lit = PLACINGS.findIndex(({ value }) => value === placing)
+  const stop = focused ?? lit
+  const onKeyDown = (event: KeyboardEvent, at: number) => {
+    const step = PLACE_STEPS[event.key]
+    if (!step) return
+    event.preventDefault()
+    buttons.current[step(at, PLACINGS.length)]?.focus()
+  }
+  return (
+    <div
+      role="group"
+      aria-label="Place new elements"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(null)
+        }
+      }}
+      className="flex shrink-0 rounded-lg bg-muted p-0.5"
+    >
+      {PLACINGS.map(({ value, label, tip }, at) => (
+        <ActionTooltip key={value} label={tip}>
+          <button
+            ref={(button) => {
+              buttons.current[at] = button
+            }}
+            type="button"
+            aria-pressed={value === placing}
+            tabIndex={at === stop ? 0 : -1}
+            onFocus={() => setFocused(at)}
+            onKeyDown={(event) => onKeyDown(event, at)}
+            onClick={() => placementStore.setState({ placing: value })}
+            className={cn(
+              'flex h-[26px] items-center rounded-md px-[9px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
+              value === placing && 'bg-card text-foreground ring-1 ring-border',
+            )}
+          >
+            {label}
+          </button>
+        </ActionTooltip>
+      ))}
+    </div>
   )
 }
 

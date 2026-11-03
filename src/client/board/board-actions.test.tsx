@@ -134,7 +134,13 @@ describe('useBoardActions', () => {
           <Toolbar />
         </TooltipProvider>,
       )
-      await userEvent.click(screen.getByRole('button', { name: 'Hand' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Pointer tools' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: /Hand/ }),
+      )
+      expect(document.activeElement).not.toBe(document.body)
 
       board.action('tool.disarm').run()
 

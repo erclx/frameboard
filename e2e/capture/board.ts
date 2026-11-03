@@ -1,7 +1,8 @@
+import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
@@ -1786,6 +1787,57 @@ function findingsOn(frame: string): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Draws a Rectangle under Free across empty space in the hero's body, with
+ * real pointer input, and waits for the write to land, so the reload the
+ * harness makes next shows it out of the flow where it was drawn. The board
+ * undoes it when the page closes, through its own undo rather than a file
+ * write, which would mark hero changed by an agent in every later case. The
+ * close handler cannot await, so the undo goes out synchronously.
+ */
+async function rectangleDrawnFree(page: Page): Promise<void> {
+  const hero = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const base = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:4173'
+  const { token } = JSON.parse(
+    readFileSync(join(SERVED_BOARD, '.run/address.json'), 'utf8'),
+  ) as { token: string }
+  page.on('close', () => {
+    execFileSync('curl', [
+      '-sf',
+      '-X',
+      'POST',
+      '-H',
+      `authorization: Bearer ${token}`,
+      `${base}/api/undo`,
+    ])
+  })
+  await page.goto(`${base}/p/webapp/home`)
+  const tools = page.getByRole('toolbar', { name: 'Tools' })
+  await tools.getByRole('button', { name: 'Free' }).click()
+  await tools.getByRole('button', { name: 'Rectangle' }).click()
+  const frame = await page
+    .locator('[data-frame="webapp/home/hero"] iframe')
+    .boundingBox()
+  if (!frame) throw new Error('The hero draws no frame to draw in')
+  const k = frame.width / 1440
+  const at = (x: number, y: number) => ({
+    x: frame.x + x * k,
+    y: frame.y + y * k,
+  })
+  const from = at(560, 360)
+  const to = at(900, 560)
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, {
+    steps: 4,
+  })
+  await page.mouse.move(to.x, to.y, { steps: 4 })
+  await page.mouse.up()
+  await expect
+    .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
+    .toContain('position: absolute')
+}
+
 function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {
@@ -1937,6 +1989,33 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, pressOnLoad('^Shapes$'))),
+      },
+      {
+        section: 'place-toggle',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, pressOnLoad('^Free$'))),
+      },
+      {
+        section: 'pointer-caret',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, pressOnLoad('^Pointer tools$'))),
+      },
+      {
+        section: 'rectangle-drawn-free',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(asWriter, rectangleDrawnFree)),
       },
       {
         section: 'image-picker',

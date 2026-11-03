@@ -10,7 +10,7 @@ import {
   refuse,
   scopeOf,
 } from './apply'
-import { type ElementSpan, relocate } from './element-span'
+import { type ElementSpan, relocate, spanText } from './element-span'
 import {
   type InsertedSpan,
   insertElement,
@@ -20,6 +20,7 @@ import {
   removeElement,
 } from './insert'
 import {
+  type Placed,
   type PlacedSize,
   placeElement,
   type PlaceFacts,
@@ -137,10 +138,20 @@ export type FrameFileInsert =
       readonly hash: string
       /** The new element's index in the file as written. */
       readonly index: number
+      /** The new element as it was written, placed or not. */
       readonly span: InsertedSpan
+      /** The parent's start tag, when a placement wrote `position: relative` on it. */
+      readonly parent: ElementSpan | null
       readonly remap: Remap
     }
   | EditRefused
+
+/**
+ * Places the element an insert wrote at `index` in `html`, the inserted
+ * source, as `placeElement` does, so the cascade facts it reads are the
+ * inserted source's own.
+ */
+export type PlaceInserted = (html: string, index: number) => Placed
 
 /**
  * Writes one new element into a frame file the way `editFrameFile` writes an
@@ -148,28 +159,39 @@ export type FrameFileInsert =
  * A hash the file no longer has is refused as stale with no search, since the
  * gap's indices name nothing once the file moved, which also lands a retried
  * insert at most once.
+ *
+ * Given `place`, the element is placed out of the flow in the same write.
+ * Its span then carries the element's placed bytes, and `parent` the start
+ * tag a static parent took, so undoing both changes as one step takes the
+ * element out after the parent's tag goes back, and a redo finds the gap
+ * under the parent as it first stood.
  */
 export function insertFrameFile(
   path: string,
   hash: string,
   placement: Placement,
   markup: string,
+  place?: PlaceInserted,
 ): FrameFileInsert {
   const read = readSource(path)
   if (!read.ok) return read
   if (read.hash !== hash) return stale(path)
   const inserted = insertElement(read.source, placement, markup)
   if (!inserted.ok) return inserted
-  if (!replaceFile(path, hash, inserted.html)) return stale(path)
+  const placed = place?.(inserted.html, inserted.index)
+  if (placed && !placed.ok) return placed
+  const html = placed ? placed.html : inserted.html
+  const element = parseFrame(html).elements[inserted.index]
+  if (!element) return stale(path)
+  if (!replaceFile(path, hash, html)) return stale(path)
   return {
     ok: true,
-    hash: contentHash(inserted.html),
+    hash: contentHash(html),
     index: inserted.index,
-    span: inserted.span,
-    remap: shiftedPast(
-      inserted.index,
-      subtreeSize(inserted.html, inserted.index),
-    ),
+    span: { ...inserted.span, markup: spanText(html, element, 'element') },
+    parent:
+      placed && placed.spans.length > 1 ? (placed.spans[0] ?? null) : null,
+    remap: shiftedPast(inserted.index, subtreeSize(html, inserted.index)),
   }
 }
 

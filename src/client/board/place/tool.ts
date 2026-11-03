@@ -17,6 +17,7 @@ import type { PlaceableFile } from '../assets/drag'
 import { modeStore, type Tool } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey } from '../selection'
+import type { Gap } from './gap'
 import type { PlacedKind } from './write'
 
 export type ShapeKind = Exclude<PlacedKind, 'text' | 'asset'>
@@ -62,6 +63,27 @@ export const SHAPES = [
 export const shapeStore = createStore<{ shape: ShapeKind }>()(() => ({
   shape: 'rectangle',
 }))
+
+/** How Text, Shape, and Image place what they add, which the toolbar's Place toggle sets. */
+export type Placing = 'auto' | 'flow' | 'free'
+
+/**
+ * The Place toggle's choice, Auto until changed, held in the tab's memory so
+ * a reload starts on Auto again rather than on a forced mode left on.
+ */
+export const placementStore = createStore<{ placing: Placing }>()(() => ({
+  placing: 'auto',
+}))
+
+/**
+ * Whether an element added at `gap` lands out of the flow: always under
+ * Free, never under Flow, and under Auto only in a container laying out
+ * neither flex nor grid, where a flow insert would land away from the point.
+ */
+export function placesFree(gap: Pick<Gap, 'flow'>): boolean {
+  const { placing } = placementStore.getState()
+  return placing === 'free' || (placing === 'auto' && !gap.flow)
+}
 
 /** The file the Image tool places, chosen in the picker, null until one is. */
 export const armedStore = createStore<{ file: PlaceableFile | null }>()(() => ({
