@@ -5,6 +5,7 @@ import { useGuideLanding } from '@/client/board/guide/state'
 import type { Structure } from '@/client/live/structure'
 import {
   focusedProject,
+  useFolderActions,
   useNewProjectAction,
   useProjectActions,
 } from '@/client/projects/actions'
@@ -37,6 +38,7 @@ export function Home({ projects, calls }: HomeProps) {
   const pins = usePins()
   useNewProjectAction(calls)
   useProjectActions(focusedProject, { calls })
+  useFolderActions(calls)
   useCardKeys()
   useThumbnails()
   if (holding) return null

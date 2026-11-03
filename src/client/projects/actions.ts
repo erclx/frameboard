@@ -1,4 +1,13 @@
-import { Copy, FolderPlus, House, PencilLine, Pin, Trash2 } from 'lucide-react'
+import {
+  Copy,
+  FolderMinus,
+  FolderOpen,
+  FolderPlus,
+  House,
+  PencilLine,
+  Pin,
+  Trash2,
+} from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
@@ -10,6 +19,11 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
+import {
+  folderKey,
+  folderNames,
+  nextFolderName,
+} from '@/client/home/folders/entries'
 import { dropPin, movePin, pinnedProjects, togglePin } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
@@ -28,15 +42,28 @@ interface Renaming {
   attempt: number
 }
 
+/** The folder whose name shows as a rename field, keyed as `folderKey` reads it. */
+interface FolderRenaming {
+  folder: string
+  draft: string
+  refusal: string | null
+  attempt: number
+}
+
 interface ProjectState {
   /** The card or row that last took focus or opened the menu, which the card actions act on. */
   focused: string | null
+  /** The folder card or row that last took focus, by key, which the folder actions act on. */
+  folder: string | null
   renaming: Renaming | null
+  renamingFolder: FolderRenaming | null
 }
 
 export const projectStore = createStore<ProjectState>()(() => ({
   focused: null,
+  folder: null,
   renaming: null,
+  renamingFolder: null,
 }))
 
 export function useRenamingProject(project: string): Renaming | null {
@@ -46,9 +73,113 @@ export function useRenamingProject(project: string): Renaming | null {
 }
 
 export function focusProject(project: string): void {
-  if (projectStore.getState().focused === project) return
-  projectStore.setState({ focused: project })
+  const { focused, folder } = projectStore.getState()
+  if (focused === project && folder === null) return
+  projectStore.setState({ focused: project, folder: null })
   refreshActions()
+}
+
+/** Focuses a folder card or row by its key, which leaves no project focused. */
+export function focusFolder(key: string): void {
+  const { focused, folder } = projectStore.getState()
+  if (folder === key && focused === null) return
+  projectStore.setState({ focused: null, folder: key })
+  refreshActions()
+}
+
+export function useRenamingFolder(key: string): FolderRenaming | null {
+  return useStore(projectStore, (state) =>
+    state.renamingFolder?.folder === key ? state.renamingFolder : null,
+  )
+}
+
+export function startFolderRename(key: string, name: string): void {
+  projectStore.setState({
+    renamingFolder: { folder: key, draft: name, refusal: null, attempt: 0 },
+  })
+}
+
+export function stopFolderRename(): void {
+  projectStore.setState({ renamingFolder: null })
+}
+
+/** The board's projects as the live store holds them. */
+function boardProjects(): readonly ProjectRecord[] {
+  return liveStore.getState().board?.projects ?? []
+}
+
+/** The projects filed under the folder `key`. */
+export function folderMembers(key: string): ProjectRecord[] {
+  return boardProjects().filter(
+    (project) => project.group !== null && folderKey(project.group) === key,
+  )
+}
+
+/**
+ * Files projects under `group` through the server, `null` taking them out of
+ * their folder, raising the error toast on a refusal. Resolves whether the
+ * write landed.
+ */
+export async function fileProjects(
+  projects: readonly string[],
+  group: string | null,
+  calls: Structure = structure,
+): Promise<boolean> {
+  try {
+    await calls.groupProjects(projects, group)
+    return true
+  } catch (error) {
+    const what = projects.length === 1 ? projects[0] : 'the projects'
+    reportRefusal(
+      group === null
+        ? `Couldn't take ${what} out of its folder`
+        : `Couldn't move ${what} to ${group}`,
+    )(error)
+    return false
+  }
+}
+
+/**
+ * Files projects in a new folder under the next free `Folder` name and opens
+ * that name for renaming, as a new project opens its own.
+ */
+export async function fileInNewFolder(
+  projects: readonly string[],
+  calls: Structure = structure,
+): Promise<void> {
+  const name = nextFolderName(folderNames(boardProjects()))
+  if (!(await fileProjects(projects, name, calls))) return
+  focusFolder(folderKey(name))
+  startFolderRename(folderKey(name), name)
+}
+
+/**
+ * Renames a folder by writing the new name to every member, so two spellings
+ * become one. A name another folder holds in any case keeps the field open
+ * with the reason, since writing it would merge the two.
+ */
+export async function renameFolder(
+  key: string,
+  name: string,
+  calls: Structure = structure,
+): Promise<void> {
+  const taken = folderNames(boardProjects()).find(
+    (other) => folderKey(other) === folderKey(name) && folderKey(other) !== key,
+  )
+  if (taken) {
+    projectStore.setState(({ renamingFolder }) => ({
+      renamingFolder: renamingFolder && {
+        ...renamingFolder,
+        draft: name,
+        refusal: `A folder named ${taken} already exists.`,
+        attempt: renamingFolder.attempt + 1,
+      },
+    }))
+    return
+  }
+  stopFolderRename()
+  const members = folderMembers(key).map((project) => project.name)
+  if (await fileProjects(members, name, calls)) focusFolder(folderKey(name))
 }
 
 export function startProjectRename(project: string): void {
@@ -109,6 +240,111 @@ export async function renameProject(
 /** The focused card or row, which the home view's project actions act on. */
 export function focusedProject(): string | null {
   return projectStore.getState().focused
+}
+
+/**
+ * Registers the filing actions while the home view is mounted:
+ * `project.group` filing the focused project in a new folder,
+ * `project.ungroup` taking it out of its own, and `folder.rename` and
+ * `folder.ungroup` acting on the focused folder. Each is lit while the tab
+ * may write and its target exists.
+ */
+export function useFolderActions(calls: Structure = structure): void {
+  useEffect(() => {
+    const writable = () => liveStore.getState().canWrite
+    const project = () => {
+      const name = projectStore.getState().focused
+      return boardProjects().find((record) => record.name === name)
+    }
+    const folder = () => {
+      const key = projectStore.getState().folder
+      const members = key === null ? [] : folderMembers(key)
+      const first = members[0]
+      return key !== null && first?.group
+        ? { key, name: first.group, members }
+        : undefined
+    }
+    const projectHint = () => project()?.name ?? ''
+    const folderHint = () => folder()?.name ?? ''
+    const unregister = registerActions([
+      {
+        id: 'project.group',
+        label: 'New folder',
+        group: 'project',
+        command: {
+          label: 'Move project to a new folder',
+          icon: FolderPlus,
+          hint: projectHint,
+        },
+        enabled: () => writable() && project() !== undefined,
+        run: () => {
+          const target = project()
+          if (target) void fileInNewFolder([target.name], calls)
+        },
+      },
+      {
+        id: 'project.ungroup',
+        label: 'Remove from folder',
+        group: 'project',
+        command: {
+          label: 'Remove project from its folder',
+          icon: FolderMinus,
+          hint: projectHint,
+        },
+        enabled: () => writable() && (project()?.group ?? null) !== null,
+        run: () => {
+          const target = project()
+          if (target) void fileProjects([target.name], null, calls)
+        },
+      },
+      {
+        id: 'folder.rename',
+        label: 'Rename',
+        group: 'project',
+        command: {
+          label: 'Rename folder',
+          icon: PencilLine,
+          hint: folderHint,
+        },
+        enabled: () => writable() && folder() !== undefined,
+        run: () => {
+          const target = folder()
+          if (target) startFolderRename(target.key, target.name)
+        },
+      },
+      {
+        id: 'folder.ungroup',
+        label: 'Ungroup',
+        group: 'project',
+        command: {
+          label: 'Ungroup folder',
+          icon: FolderOpen,
+          hint: folderHint,
+        },
+        enabled: () => writable() && folder() !== undefined,
+        run: () => {
+          const target = folder()
+          if (!target) return
+          const names = target.members.map((member) => member.name)
+          void fileProjects(names, null, calls).then((landed) => {
+            if (landed && names[0]) focusProject(names[0])
+          })
+        },
+      },
+    ])
+    const unsubscribe = liveStore.subscribe((state, previous) => {
+      if (
+        state.canWrite !== previous.canWrite ||
+        state.board !== previous.board
+      )
+        refreshActions()
+    })
+    return () => {
+      unsubscribe()
+      unregister()
+      projectStore.setState({ folder: null, renamingFolder: null })
+    }
+  }, [calls])
 }
 
 interface ProjectActionsOptions {

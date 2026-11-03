@@ -1,8 +1,19 @@
 import type { KeyboardEvent } from 'react'
 
 import { characterKeysOn } from '@/client/actions/character-keys'
+import { findAction, isEnabled } from '@/client/actions/registry'
+import { focusFolder } from '@/client/projects/actions'
 
 import type { HomeLayout } from './layout'
+
+/** Runs the folder action a key names on a focused folder card or row, F2 renaming it. */
+export function runFolderKey(event: KeyboardEvent, key: string): void {
+  if (event.key !== 'F2') return
+  focusFolder(key)
+  const action = findAction('folder.rename')
+  if (action && isEnabled(action)) action.run()
+  event.preventDefault()
+}
 
 /**
  * Moves focus across the cards by the arrow keys, or h, j, k, and l while

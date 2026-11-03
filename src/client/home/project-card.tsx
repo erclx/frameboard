@@ -61,7 +61,12 @@ export function ProjectCard({
   captures,
 }: ProjectItemProps & { captures: Captures }) {
   return (
-    <ProjectLink project={project} tabbable={tabbable} className={CARD}>
+    <ProjectLink
+      project={project}
+      tabbable={tabbable}
+      calls={calls}
+      className={CARD}
+    >
       <span
         aria-hidden
         className="m-1.5 block h-[150px] overflow-hidden rounded-lg bg-background p-3.5"
@@ -100,6 +105,7 @@ export function ProjectRow({
     <ProjectLink
       project={project}
       tabbable={tabbable}
+      calls={calls}
       className={cn(ROW, ROW_COLUMNS, className)}
     >
       <Mini project={project} />
@@ -125,6 +131,7 @@ export function ProjectRow({
 interface ProjectLinkProps {
   project: ProjectRecord
   tabbable: boolean
+  calls: Structure | undefined
   className: string
   children: ReactNode
 }
@@ -138,6 +145,7 @@ interface ProjectLinkProps {
 function ProjectLink({
   project,
   tabbable,
+  calls,
   className,
   children,
 }: ProjectLinkProps) {
@@ -146,6 +154,7 @@ function ProjectLink({
   return (
     <ProjectMenu
       project={project.name}
+      calls={calls}
       trigger={
         <Link
           href={projectHref(project)}

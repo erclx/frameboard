@@ -707,17 +707,18 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, Pin, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, pin, remove, ...rest] =
+    const [open, rename, duplicate, pin, move, remove, ...rest] =
       within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
     expect(rename).toHaveAccessibleName('Rename')
     expect(duplicate).toHaveAccessibleName('Duplicate')
     expect(pin).toHaveAccessibleName('Pin')
+    expect(move).toHaveAccessibleName('Move to folder')
     expect(remove).toHaveAccessibleName('Delete')
     expect(rest).toEqual([])
     expect(
@@ -1159,5 +1160,235 @@ describe('Home order and pins', () => {
       'tabindex',
       '0',
     )
+  })
+})
+
+describe('folders', () => {
+  const filed = (record: ProjectRecord, group: string): ProjectRecord => ({
+    ...record,
+    group,
+  })
+  const CLIENT = [
+    filed(project('web', '2026-10-15T09:00:00.000Z'), 'Client A'),
+    project('drawings', '2026-10-14T09:00:00.000Z'),
+    filed(project('app', '2026-10-13T09:00:00.000Z'), 'Client A'),
+    filed(project('email', '2026-10-12T09:00:00.000Z'), 'client a'),
+    filed(project('notes', '2026-10-01T09:00:00.000Z'), 'Personal'),
+  ]
+
+  const folderCard = (name: string) =>
+    screen.getByRole('button', { name: new RegExp(`^${name}`) })
+
+  afterEach(() => {
+    cleanup()
+    liveStore.setState({ canWrite: false, board: null })
+    projectStore.setState({
+      focused: null,
+      folder: null,
+      renaming: null,
+      renamingFolder: null,
+    })
+  })
+
+  it('shows a folder card naming its count in place of its members', () => {
+    renderLive(CLIENT, server().calls)
+
+    expect(folderCard('Client A')).toHaveAccessibleName(
+      /^Client A\s*3 projects$/,
+    )
+    expect(screen.queryByRole('link', { name: /^web/ })).toBeNull()
+    expect(screen.getByRole('link', { name: /^drawings/ })).toBeVisible()
+  })
+
+  it('opens a panel of the members with Rename and Ungroup', async () => {
+    renderLive(CLIENT, server().calls)
+
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog', { name: 'Client A' })
+
+    expect(
+      within(panel)
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['web', 'app', 'email'])
+    expect(within(panel).getByRole('button', { name: 'Rename' })).toBeEnabled()
+    expect(within(panel).getByRole('button', { name: 'Ungroup' })).toBeEnabled()
+  })
+
+  it('returns focus to the folder card when Esc closes the panel', async () => {
+    renderLive(CLIENT, server().calls)
+    await userEvent.click(folderCard('Client A'))
+    await screen.findByRole('dialog')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => expect(folderCard('Client A')).toHaveFocus())
+  })
+
+  it('ungroups every member from the panel', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Ungroup' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: null },
+      },
+    ])
+  })
+
+  it('renames the folder by writing one spelling to every member', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['web', 'app', 'email'], group: 'Client B' },
+      },
+    ])
+  })
+
+  it('keeps the rename open with the reason on a name another folder holds', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+    act(() => folderCard('Personal').focus())
+
+    await userEvent.keyboard('{F2}')
+    await userEvent.keyboard('client a{Enter}')
+
+    expect(sent).toEqual([])
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'A folder named Client A already exists.',
+    )
+  })
+
+  it('opens a list folder in place, its members under it', async () => {
+    renderLive(CLIENT, server().calls, 'list')
+    const row = screen.getByRole('button', { name: /^Client A/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: /^web/ })).toBeNull()
+
+    await userEvent.click(row)
+
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      within(screen.getByRole('list', { name: 'Client A' }))
+        .getAllByRole('link')
+        .map((link) => link.querySelector('[title]')?.getAttribute('title')),
+    ).toEqual(['web', 'app', 'email'])
+  })
+
+  it('opens and closes a list folder on Right and Left', async () => {
+    renderLive(CLIENT, server().calls, 'list')
+    const row = screen.getByRole('button', { name: /^Client A/ })
+    act(() => row.focus())
+
+    await userEvent.keyboard('{ArrowRight}')
+    const opened = row.getAttribute('aria-expanded')
+    await userEvent.keyboard('{ArrowLeft}')
+
+    expect([opened, row.getAttribute('aria-expanded')]).toEqual([
+      'true',
+      'false',
+    ])
+  })
+
+  it('moves across folder and project cards by the arrow keys', async () => {
+    renderLive(CLIENT, server().calls)
+    act(() => folderCard('Client A').focus())
+
+    await userEvent.keyboard('{ArrowRight}')
+    const next = document.activeElement
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect([next, document.activeElement]).toEqual([
+      screen.getByRole('link', { name: /^drawings/ }),
+      folderCard('Personal'),
+    ])
+  })
+
+  it('raises a folder holding a pinned member with the pinned', () => {
+    act(() => togglePin('notes'))
+    renderLive(CLIENT, server().calls)
+
+    const [first] = screen.getAllByRole('listitem')
+
+    expect(first).toContainElement(folderCard('Personal'))
+    act(() => dropPin('notes'))
+  })
+
+  it('moves a project to another folder from the menu', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls)
+
+    const menu = await openMenu(/^drawings/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Move to folder' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Personal' }),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['drawings'], group: 'Personal' },
+      },
+    ])
+  })
+
+  it('files a project in a new folder named Folder and opens its name', async () => {
+    const { sent, calls } = server()
+    const home = renderLive(CLIENT, calls)
+
+    const menu = await openMenu(/^drawings/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Move to folder' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'New folder' }),
+    )
+    home.receive(
+      CLIENT.map((record) =>
+        record.name === 'drawings' ? filed(record, 'Folder') : record,
+      ),
+    )
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/group',
+        body: { refs: ['drawings'], group: 'Folder' },
+      },
+    ])
+    expect(
+      await screen.findByRole('textbox', { name: 'Rename folder Folder' }),
+    ).toHaveFocus()
+  })
+
+  it('takes a filed project out of its folder from the menu', async () => {
+    const { sent, calls } = server()
+    renderLive(CLIENT, calls, 'list')
+    await userEvent.click(screen.getByRole('button', { name: /^Personal/ }))
+
+    const menu = await openMenu(/^notes/)
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Remove from folder' }),
+    )
+
+    expect(sent).toEqual([
+      { path: '/api/project/group', body: { refs: ['notes'], group: null } },
+    ])
   })
 })
