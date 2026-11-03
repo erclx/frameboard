@@ -181,3 +181,28 @@ export function setDeclaration(
   })
   return { ok: true, style: next.join(';') }
 }
+
+/**
+ * Rewrites each declaration's value in a raw style through `rewrite`, which
+ * takes the property and the value with its spacing and answers the value to
+ * keep, so every byte it leaves alone is written back as it was. A
+ * declaration carrying a comment is kept as written, since its `:` may sit
+ * inside the comment. Null for a style ending inside an open quote or comment.
+ */
+export function rewriteValues(
+  style: string,
+  rewrite: (property: string, value: string) => string,
+): string | null {
+  const parsed = declarations(style)
+  if (parsed.isOpen) return null
+  return parsed.segments
+    .map((segment) => {
+      const colon = segment.indexOf(':')
+      if (colon < 0 || segment.includes('/*')) return segment
+      return (
+        segment.slice(0, colon + 1) +
+        rewrite(propertyOf(segment), segment.slice(colon + 1))
+      )
+    })
+    .join(';')
+}
