@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -15,7 +15,12 @@ import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 
 import { modeStore } from '../mode'
-import { pickerStore, shapeStore, usePlaceTools } from '../place/tool'
+import {
+  pickerStore,
+  placementStore,
+  shapeStore,
+  usePlaceTools,
+} from '../place/tool'
 import { boxToolStore } from '../sections/actions'
 import { Toolbar } from './toolbar'
 
@@ -65,7 +70,10 @@ describe('Toolbar', () => {
     )
     renderToolbar()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Hand' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pointer tools' }))
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: /Hand/ }),
+    )
 
     expect(screen.getByRole('button', { name: 'Hand' })).toHaveAttribute(
       'aria-pressed',
@@ -109,7 +117,7 @@ describe('Toolbar', () => {
         .map((button) => button.getAttribute('aria-label')),
     ).toEqual([
       'Move',
-      'Hand',
+      'Pointer tools',
       'Frame',
       'Frame tools',
       'Text',
@@ -117,6 +125,124 @@ describe('Toolbar', () => {
       'Shapes',
       'Note',
     ])
+  })
+
+  describe('the Move slot', () => {
+    function renderWithPointerTools() {
+      const tool = (
+        id: string,
+        name: 'move' | 'hand',
+        key: string,
+      ): Action => ({
+        id,
+        label: name === 'move' ? 'Move' : 'Hand',
+        group: 'tool',
+        palette: false,
+        keys: [key],
+        run: () => {
+          modeStore.setState({ tool: name })
+          refreshActions()
+        },
+        checked: () => modeStore.getState().tool === name,
+      })
+      register(tool('tool.move', 'move', 'v'), tool('tool.hand', 'hand', 'h'))
+      return renderToolbar()
+    }
+
+    afterEach(() => {
+      modeStore.setState({ tool: 'move', mode: 'edit' })
+    })
+
+    it('lists Move and Hand in its menu, keeping V and H', async () => {
+      renderWithPointerTools()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Pointer tools' }),
+      )
+
+      const rows = await screen.findAllByRole('menuitemradio')
+      expect(rows.map((row) => row.textContent)).toEqual(['MoveV', 'HandH'])
+    })
+
+    it('shows Hand in the slot while H holds it on, and Move again after V', () => {
+      renderWithPointerTools()
+
+      act(() => {
+        modeStore.setState({ tool: 'hand' })
+        refreshActions()
+      })
+      expect(screen.getByRole('button', { name: 'Hand' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      act(() => {
+        modeStore.setState({ tool: 'move' })
+        refreshActions()
+      })
+
+      expect(screen.getByRole('button', { name: 'Move' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+  })
+
+  describe('the Place toggle', () => {
+    afterEach(() => {
+      placementStore.setState({ placing: 'auto' })
+    })
+
+    it('starts on Auto', () => {
+      renderToolbar()
+
+      const toggle = screen.getByRole('group', { name: 'Place new elements' })
+      expect(
+        within(toggle)
+          .getAllByRole('button')
+          .map((button) => [
+            button.textContent,
+            button.getAttribute('aria-pressed'),
+          ]),
+      ).toEqual([
+        ['Auto', 'true'],
+        ['Flow', 'false'],
+        ['Free', 'false'],
+      ])
+    })
+
+    it.each([
+      ['Flow', 'flow'],
+      ['Free', 'free'],
+      ['Auto', 'auto'],
+    ] as const)('sets %s on a press', async (label, placing) => {
+      placementStore.setState({ placing: label === 'Auto' ? 'free' : 'auto' })
+      renderToolbar()
+
+      await userEvent.click(screen.getByRole('button', { name: label }))
+
+      expect(placementStore.getState().placing).toBe(placing)
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('holds one tab stop on the choice on, and moves along it by arrow', async () => {
+      placementStore.setState({ placing: 'flow' })
+      renderToolbar()
+      const flow = screen.getByRole('button', { name: 'Flow' })
+
+      expect(
+        within(screen.getByRole('group', { name: 'Place new elements' }))
+          .getAllByRole('button')
+          .map((button) => button.tabIndex),
+      ).toEqual([-1, 0, -1])
+      act(() => flow.focus())
+      await userEvent.keyboard('{ArrowRight}')
+
+      expect(screen.getByRole('button', { name: 'Free' })).toHaveFocus()
+      expect(placementStore.getState().placing).toBe('flow')
+    })
   })
 
   describe('the Frame slot', () => {
@@ -272,37 +398,37 @@ describe('Toolbar', () => {
 
   it("names a tool's key on hover while single-key shortcuts are on", async () => {
     register({
-      id: 'tool.hand',
-      label: 'Hand',
+      id: 'tool.text',
+      label: 'Text',
       group: 'tool',
       palette: false,
-      keys: ['h'],
+      keys: ['t'],
       run: () => {},
     })
     renderToolbar()
 
-    await userEvent.hover(screen.getByRole('button', { name: 'Hand' }))
+    await userEvent.hover(screen.getByRole('button', { name: 'Text' }))
 
-    expect(await screen.findByText('Hand H')).toBeInTheDocument()
+    expect(await screen.findByText('Text T')).toBeInTheDocument()
   })
 
   it("drops a tool's key on hover while single-key shortcuts are off", async () => {
     setCharacterKeys(false)
     cleanups.push(() => setCharacterKeys(true))
     register({
-      id: 'tool.hand',
-      label: 'Hand',
+      id: 'tool.text',
+      label: 'Text',
       group: 'tool',
       palette: false,
-      keys: ['h'],
+      keys: ['t'],
       run: () => {},
     })
     renderToolbar()
 
-    await userEvent.hover(screen.getByRole('button', { name: 'Hand' }))
+    await userEvent.hover(screen.getByRole('button', { name: 'Text' }))
 
-    expect(await screen.findByText('Hand')).toBeInTheDocument()
-    expect(screen.queryByText('Hand H')).toBeNull()
+    expect(await screen.findByText('Text')).toBeInTheDocument()
+    expect(screen.queryByText('Text T')).toBeNull()
   })
 
   it.each(['Edit', 'Play'])(
