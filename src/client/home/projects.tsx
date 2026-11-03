@@ -15,6 +15,8 @@ import {
 import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
+import { filterProjects, setHomeFilter } from './filter'
+import { FilterField } from './filter-field'
 import { FolderCard } from './folders/card'
 import { type DropTarget, useHomeDrag } from './folders/drop'
 import { homeEntries, type HomeEntry } from './folders/entries'
@@ -33,6 +35,8 @@ interface ProjectsProps {
   now: number
   /** Stands in for the server's structure routes, as a test's server does. */
   calls?: Structure
+  /** The name filter typed, which shows its matches flat, out of their folders. */
+  filter?: string
 }
 
 /**
@@ -41,9 +45,16 @@ interface ProjectsProps {
  * `canon/design/menus/home`. A project filed in a folder sits in the folder's
  * card, which opens a panel, or under the folder's row, which opens in place.
  * A pinned project carries the pin mark after its name, and a folder holding
- * one rises with the pinned.
+ * one rises with the pinned. A typed filter shows its matches flat, and says
+ * so with a way to clear it when nothing matches.
  */
-export function Projects({ projects, layout, now, calls }: ProjectsProps) {
+export function Projects({
+  projects,
+  layout,
+  now,
+  calls,
+  filter = '',
+}: ProjectsProps) {
   const unseen = useUnseen((state) => state.unseen)
   const theme = useShownTheme()
   const stamps = useLive((state) => state.thumbnails[theme])
@@ -52,7 +63,11 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
   const focusedFolder = useStore(projectStore, (state) => state.folder)
   const pins = usePins()
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set())
-  const entries = homeEntries(projects)
+  const filtering = filter.trim() !== ''
+  const shown = filterProjects(projects, filter)
+  const entries: HomeEntry[] = filtering
+    ? shown.map((project) => ({ kind: 'project', project }))
+    : homeEntries(shown)
   const isOpen = (key: string) => layout === 'list' && opened.has(key)
   const toggle = (key: string) =>
     setOpened((current) => {
@@ -84,11 +99,14 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
     )
   return (
     <main className="px-4 py-8 sm:px-12">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h1 className="text-title">Projects</h1>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <h1 className="mr-auto text-title">Projects</h1>
+        <FilterField />
         <SortMenu />
       </div>
-      {layout === 'grid' ? (
+      {entries.length === 0 ? (
+        <NoMatch filter={filter} />
+      ) : layout === 'grid' ? (
         <ul
           onKeyDown={(event) => roveFocus(event, 'grid')}
           className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5"
@@ -180,6 +198,24 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
         </div>
       )}
     </main>
+  )
+}
+
+/** What home shows when a filter matches no project, with the way back to every one. */
+function NoMatch({ filter }: { filter: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-12 text-center">
+      <p className="text-body text-muted-foreground">
+        No projects match “{filter.trim()}”.
+      </p>
+      <button
+        type="button"
+        onClick={() => setHomeFilter('')}
+        className="h-7 rounded-lg border border-border bg-card px-3 font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        Clear filter
+      </button>
+    </div>
   )
 }
 

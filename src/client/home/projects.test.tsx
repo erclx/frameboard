@@ -14,6 +14,7 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys } from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
@@ -23,6 +24,7 @@ import { projectStore } from '@/client/projects/actions'
 import { themeStore } from '@/client/theme/store'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
 
+import { setHomeFilter } from './filter'
 import { Home } from './home'
 import type { HomeLayout } from './layout'
 import { dropPin, togglePin } from './pins'
@@ -1390,5 +1392,74 @@ describe('folders', () => {
     expect(sent).toEqual([
       { path: '/api/project/group', body: { refs: ['notes'], group: null } },
     ])
+  })
+})
+
+describe('the name filter', () => {
+  const BOARD = [
+    { ...project('client-web', '2026-10-15T09:00:00.000Z'), group: 'Acme' },
+    project('drawings', '2026-10-14T09:00:00.000Z'),
+    { ...project('notes', '2026-10-13T09:00:00.000Z'), group: 'Acme' },
+  ]
+
+  const shown = () =>
+    screen
+      .getAllByRole('link')
+      .map((link) => link.querySelector('[title]')?.getAttribute('title'))
+
+  const field = () => screen.getByRole('searchbox', { name: 'Filter projects' })
+
+  afterEach(() => {
+    cleanup()
+    act(() => setHomeFilter(''))
+    liveStore.setState({ canWrite: false, board: null })
+  })
+
+  it('shows the projects a typed name matches, folder members flat', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(field(), 'n')
+
+    expect(shown()).toEqual(['client-web', 'drawings', 'notes'])
+    expect(screen.queryByRole('button', { name: /^Acme/ })).toBeNull()
+  })
+
+  it('shows every member of a folder whose name matches', async () => {
+    renderLive(BOARD, server().calls)
+
+    await userEvent.type(field(), 'acme')
+
+    expect(shown()).toEqual(['client-web', 'notes'])
+  })
+
+  it('says nothing matches and clears back to the folders', async () => {
+    renderLive(BOARD, server().calls)
+    await userEvent.type(field(), 'zzz')
+    expect(screen.getByText('No projects match “zzz”.')).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+
+    expect(screen.getByRole('button', { name: /^Acme/ })).toBeVisible()
+  })
+
+  it('clears a typed filter on Esc', async () => {
+    renderLive(BOARD, server().calls)
+    await userEvent.type(field(), 'zzz')
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(field()).toHaveValue('')
+  })
+
+  it('focuses the filter on Cmd+F', async () => {
+    renderLive(BOARD, server().calls)
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard(
+      IS_MAC ? '{Meta>}f{/Meta}' : '{Control>}f{/Control}',
+    )
+
+    expect(field()).toHaveFocus()
+    unbind()
   })
 })

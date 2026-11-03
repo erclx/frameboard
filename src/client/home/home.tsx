@@ -12,6 +12,7 @@ import {
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { EmptyHome } from './empty'
+import { useFilterAction, useHomeFilter } from './filter'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
 import { usePins } from './pins'
@@ -36,6 +37,8 @@ export function Home({ projects, calls }: HomeProps) {
   const layout = useHomeLayout()
   const sort = useHomeSort()
   const pins = usePins()
+  const filter = useHomeFilter()
+  useFilterAction()
   useNewProjectAction(calls)
   useProjectActions(focusedProject, { calls })
   useFolderActions(calls)
@@ -53,6 +56,7 @@ export function Home({ projects, calls }: HomeProps) {
           layout={layout}
           now={now}
           calls={calls}
+          filter={filter}
         />
       )}
     </div>
