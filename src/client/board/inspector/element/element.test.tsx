@@ -1375,6 +1375,56 @@ describe('TypographySection', () => {
       expect(changes).toEqual([])
     })
 
+    it('leaves a row on Tab from a button an arrow key reached behind the lit one', async () => {
+      const { write } = recorder()
+      renderDetails(write, { textTransform: 'lowercase' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      const none = await screen.findByRole('button', { name: 'No case' })
+      act(() => none.focus())
+      await userEvent.keyboard('{ArrowRight}')
+      await userEvent.tab()
+
+      expect(
+        screen.getByRole('button', { name: 'No truncation' }),
+      ).toHaveFocus()
+    })
+
+    it('leaves a row on Shift+Tab from a button an arrow key reached past the lit one', async () => {
+      const { write } = recorder()
+      renderDetails(write, { textTransform: 'uppercase' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      const upper = await screen.findByRole('button', { name: 'Uppercase' })
+      act(() => upper.focus())
+      await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+      await userEvent.tab({ shift: true })
+
+      expect(
+        screen.getByRole('button', { name: 'No decoration' }),
+      ).toHaveFocus()
+    })
+
+    it('returns to the lit button on Shift+Tab once focus has left the row', async () => {
+      const { write } = recorder()
+      renderDetails(write, { textTransform: 'uppercase' })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Type details' }),
+      )
+      const upper = await screen.findByRole('button', { name: 'Uppercase' })
+      act(() => upper.focus())
+      await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+      await userEvent.tab()
+      await userEvent.tab({ shift: true })
+
+      expect(upper).toHaveFocus()
+    })
+
     it('closes on one Escape from a button showing its tooltip', async () => {
       const { write } = recorder()
       renderDetails(write)
