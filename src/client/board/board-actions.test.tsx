@@ -8,6 +8,7 @@ import {
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { setCharacterKeys } from '@/client/actions/character-keys'
 import {
   bindKeys,
   findAction,
@@ -582,5 +583,47 @@ describe('Shift+0', () => {
     unbind()
     unmount()
     detach()
+  })
+})
+
+describe('P', () => {
+  afterEach(() => {
+    setCharacterKeys(true)
+    modeStore.setState({ mode: 'edit', tool: 'move' })
+  })
+
+  it('enters Play from Edit', async () => {
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('p')
+
+    expect(modeStore.getState().mode).toBe('play')
+    unbind()
+    unmount()
+  })
+
+  it('returns to Edit from Play', async () => {
+    modeStore.setState({ mode: 'play' })
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('p')
+
+    expect(modeStore.getState().mode).toBe('edit')
+    unbind()
+    unmount()
+  })
+
+  it('does nothing while single-key shortcuts are off', async () => {
+    setCharacterKeys(false)
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('p')
+
+    expect(modeStore.getState().mode).toBe('edit')
+    unbind()
+    unmount()
   })
 })

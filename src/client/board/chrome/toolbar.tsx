@@ -97,8 +97,12 @@ const MODES: readonly Slot[] = [
   { id: 'mode.play', label: 'Play', icon: Play },
 ]
 
+/** The one key flipping between the two modes, which both halves of the segment name. */
+const MODE_TOGGLE = 'mode.toggle'
+
 const SLOTS = [...GROUPS.flat(), ...MODES]
 const IDS = [
+  MODE_TOGGLE,
   ...SLOTS.map((slot) => slot.id).filter((id) => id !== SHAPE_SLOT),
   ...SHAPES.map((row) => row.id),
   IMAGE_TOOL,
@@ -143,7 +147,12 @@ export function Toolbar({ project }: { project?: string }) {
       <Rule />
       <div className="flex shrink-0 rounded-lg bg-muted p-0.5">
         {MODES.map((slot) => (
-          <ModeButton key={slot.id} slot={slot} action={actions.get(slot.id)} />
+          <ModeButton
+            key={slot.id}
+            slot={slot}
+            action={actions.get(slot.id)}
+            toggleKeys={actions.get(MODE_TOGGLE)?.keys}
+          />
         ))}
       </div>
       {project === undefined ? null : (
@@ -346,11 +355,15 @@ function BoxTool({
 }
 
 /** One half of the Edit and Play segment, where Play shows on in the selection blue. */
-function ModeButton({ slot, action }: ButtonProps) {
+function ModeButton({
+  slot,
+  action,
+  toggleKeys,
+}: ButtonProps & { toggleKeys: readonly string[] | undefined }) {
   const { label, keys, on, enabled, run } = read(slot, action)
   const Icon = slot.icon
   return (
-    <ActionTooltip label={label} keys={keys}>
+    <ActionTooltip label={label} keys={keys ?? toggleKeys}>
       <button
         type="button"
         aria-pressed={on}
