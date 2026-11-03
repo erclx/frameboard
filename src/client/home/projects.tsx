@@ -1,15 +1,22 @@
 import { cn } from 'cn'
-import { Fragment, useState } from 'react'
+import { Fragment, type ReactNode, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
-import { projectStore } from '@/client/projects/actions'
+import {
+  fileInNewFolder,
+  fileProjects,
+  projectStore,
+  useRenamingFolder,
+  useRenamingProject,
+} from '@/client/projects/actions'
 import { useShownTheme } from '@/client/theme/store'
 import type { ProjectRecord } from '@/shared/records/list'
 
 import { FolderCard } from './folders/card'
+import { type DropTarget, useHomeDrag } from './folders/drop'
 import { homeEntries, type HomeEntry } from './folders/entries'
 import { FolderRow } from './folders/row'
 import type { HomeLayout } from './layout'
@@ -95,7 +102,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                   className="col-span-full h-px bg-border"
                 />
               ) : null}
-              <li>
+              <DropItem entry={entry} calls={calls}>
                 {entry.kind === 'project' ? (
                   <ProjectCard {...item(entry.project)} captures={captures} />
                 ) : (
@@ -108,7 +115,7 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     captures={captures}
                   />
                 )}
-              </li>
+              </DropItem>
             </Fragment>
           ))}
         </ul>
@@ -137,7 +144,11 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                     className="h-1.5 border-b border-border bg-muted"
                   />
                 ) : null}
-                <li className="not-last:border-b">
+                <DropItem
+                  entry={entry}
+                  calls={calls}
+                  className="not-last:border-b"
+                >
                   {entry.kind === 'project' ? (
                     <ProjectRow {...item(entry.project)} />
                   ) : (
@@ -151,19 +162,87 @@ export function Projects({ projects, layout, now, calls }: ProjectsProps) {
                       calls={calls}
                     >
                       {entry.folder.projects.map((project) => (
-                        <li key={project.name} className="not-last:border-b">
+                        <DropItem
+                          key={project.name}
+                          entry={{ kind: 'project', project }}
+                          calls={calls}
+                          className="not-last:border-b"
+                        >
                           <ProjectRow {...item(project)} className="pl-11" />
-                        </li>
+                        </DropItem>
                       ))}
                     </FolderRow>
                   )}
-                </li>
+                </DropItem>
               </Fragment>
             ))}
           </ul>
         </div>
       )}
     </main>
+  )
+}
+
+interface DropItemProps {
+  entry: HomeEntry
+  calls: Structure | undefined
+  className?: string
+  children: ReactNode
+}
+
+/**
+ * One card or row as a list item a project drops on, per `22-fix.png`. A
+ * project dropped on a project in no folder makes a folder of the two, named
+ * and opened for renaming as New folder is, and one dropped on a folder, or
+ * on a project in one, files into it. While a project is over it, the item
+ * says what the drop does.
+ */
+function DropItem({ entry, calls, className, children }: DropItemProps) {
+  const element = useRef<HTMLLIElement>(null)
+  const canWrite = useLive((state) => state.canWrite)
+  const project = entry.kind === 'project' ? entry.project : null
+  const renamingProject = useRenamingProject(project?.name ?? '') !== null
+  const renamingFolder =
+    useRenamingFolder(entry.kind === 'folder' ? entry.folder.key : '') !== null
+  const target: DropTarget =
+    entry.kind === 'folder'
+      ? { kind: 'folder', key: entry.folder.key, name: entry.folder.name }
+      : {
+          kind: 'project',
+          name: entry.project.name,
+          group: entry.project.group,
+        }
+  const into = entry.kind === 'folder' ? entry.folder.name : entry.project.group
+  const over = useHomeDrag(element, {
+    source: project ? { name: project.name, group: project.group } : undefined,
+    target,
+    enabled: canWrite && !renamingProject && !renamingFolder,
+    onDrop: (dropped) => {
+      if (into !== null) void fileProjects([dropped], into, calls)
+      else if (project) void fileInNewFolder([project.name, dropped], calls)
+    },
+  })
+  return (
+    <li
+      ref={element}
+      data-drop-over={over || undefined}
+      className={cn(
+        'relative data-drop-over:[&>:first-child]:ring-2 data-drop-over:[&>:first-child]:ring-primary',
+        className,
+      )}
+    >
+      {children}
+      {over ? (
+        <span
+          role="status"
+          className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md"
+        >
+          {into === null
+            ? `Drop on ${target.name} to make a folder`
+            : `Drop to move into ${into}`}
+        </span>
+      ) : null}
+    </li>
   )
 }
 
