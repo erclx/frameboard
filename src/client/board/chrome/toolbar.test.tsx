@@ -305,6 +305,34 @@ describe('Toolbar', () => {
     expect(screen.queryByText('Hand H')).toBeNull()
   })
 
+  it.each(['Edit', 'Play'])(
+    'names the Edit and Play toggle key on hovering %s',
+    async (label) => {
+      register(
+        {
+          id: `mode.${label.toLowerCase()}`,
+          label,
+          group: 'mode',
+          palette: false,
+          run: () => {},
+        },
+        {
+          id: 'mode.toggle',
+          label: 'Edit or Play',
+          group: 'mode',
+          palette: false,
+          keys: ['p'],
+          run: () => {},
+        },
+      )
+      renderToolbar()
+
+      await userEvent.hover(screen.getByRole('button', { name: label }))
+
+      expect(await screen.findByText(`${label} P`)).toBeInTheDocument()
+    },
+  )
+
   it('turns a button enabled when its action registers after it mounted', () => {
     renderToolbar()
 
