@@ -191,6 +191,16 @@ describe('ShortcutsSheet', () => {
     )
   })
 
+  it('lists Play or Edit under Tools with P', async () => {
+    register(action('mode.toggle', { keys: ['p'] }))
+    renderOnBoard(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    expect(row('Play or Edit').querySelector('kbd')?.textContent).toBe('P')
+  })
+
   it('greys a row whose action is not registered yet', async () => {
     register(action('tool.move', { keys: ['v'] }))
     renderOnBoard(<ShortcutsSheet />)
