@@ -537,6 +537,86 @@ describe('editRoutes', () => {
       expect(response.status).toBe(400)
     })
 
+    describe('at a spot', () => {
+      /** A static `<div>` in the body, holding one heading, by `querySelectorAll('*')` order. */
+      const BOX = 5
+      const BOXED =
+        '<!doctype html>\n<html><head><meta charset="utf-8"><title>hero</title></head><body><div data-name="Box"><h1>Hi</h1></div></body></html>\n'
+
+      it('writes the shape out of the flow at the spot inside body, leaving body as it was', async () => {
+        const original = read()
+
+        const response = await insert({
+          ...rectangle(),
+          at: { left: 40, top: 24 },
+        })
+
+        expect(response.status).toBe(200)
+        expect(read()).toBe(
+          original.replace(
+            '<p data-name="Caption">',
+            '<div data-name="Rectangle" style="width: 100px; height: 100px; background: var(--muted); position: absolute; left: 40px; top: 24px"></div><p data-name="Caption">',
+          ),
+        )
+      })
+
+      it('writes relative on a static parent and the shape in one write', async () => {
+        writeFileSync(path(), BOXED)
+
+        const response = await insert({
+          ref: HERO,
+          hash: hash(),
+          parent: BOX,
+          before: null,
+          element: { kind: 'rectangle', width: 60, height: 30 },
+          at: { left: 8, top: 12.5 },
+        })
+
+        expect(await response.json()).toEqual({
+          ok: true,
+          data: { ref: HERO, index: 7, hash: hash() },
+        })
+        expect(read()).toBe(
+          BOXED.replace(
+            '<div data-name="Box"><h1>Hi</h1></div>',
+            '<div data-name="Box" style="position: relative"><h1>Hi</h1><div data-name="Rectangle" style="width: 60px; height: 30px; background: var(--muted); position: absolute; left: 8px; top: 12.5px"></div></div>',
+          ),
+        )
+      })
+
+      it('records the shape and its parent as one step, which one undo takes out and a redo puts back', async () => {
+        writeFileSync(path(), BOXED)
+        await insert({
+          ref: HERO,
+          hash: hash(),
+          parent: BOX,
+          before: null,
+          element: { kind: 'rectangle' },
+          at: { left: 8, top: 12 },
+        })
+        const placed = read()
+
+        expect(history.counts().undo).toBe(1)
+        await history.undo()
+        expect(read()).toBe(BOXED)
+        await history.redo()
+
+        expect(read()).toBe(placed)
+      })
+
+      it('writes text with no margin, so it sits at the spot', async () => {
+        await insert({
+          ...rectangle(),
+          element: { kind: 'text' },
+          at: { left: 40, top: 24 },
+        })
+
+        expect(read()).toContain(
+          '<p data-name="Text" style="font-family: var(--font-text); margin: 0; position: absolute; left: 40px; top: 24px">Text</p>',
+        )
+      })
+    })
+
     it('writes the width and height a drag gave a shape', async () => {
       await insert({
         ...rectangle(),
