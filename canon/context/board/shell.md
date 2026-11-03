@@ -41,13 +41,15 @@ Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which
 
 ### `src/client/board/place/`
 
-Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which drop one new element into a frame's layout at the click and move nothing else, and the drop of a selected element a Move drag carries or an Assets tile.
+Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which drop one new element into a frame at the click and move nothing else, and the drop of a selected element a Move drag carries or an Assets tile.
 
 - `gap.ts` reads the container and the sibling gap under the pointer from the live DOM, along x in a flex row or a grid and along y otherwise, as the insert route's file indices
 - A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
 - `drop-line.tsx` draws a 2px selection-blue line at that gap while a tool is on, an element is carried, or a tile is dragged, never over bare canvas, a loading frame, or a carried element's own spot
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
+
+The Place toggle's `placementStore` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. Auto lands it free unless the container is flex or grid, and a Divider always joins the flow.
 
 The Image tool and a tile drag place a file from the project's `assets/`.
 
@@ -114,8 +116,8 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
-- The toolbar floats bottom center on the canvas column with Move, Hand, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
-- The Frame button turns on Frame or Section, whichever was chosen last, and its caret opens both, keys F and Shift+S
+- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, the Place toggle, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- The Move button shows Hand while Hand is on, and the Frame button Frame or Section, whichever was chosen last, and each caret opens both, keys V and H, and F and Shift+S
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
