@@ -593,6 +593,18 @@ describe('nextUnseen', () => {
       'studio/home/hero',
     )
   })
+
+  it('steps through changes landing together in the order logged', () => {
+    const store = createUnseenStore(memoryStorage())
+    receiveChanges(store, [
+      change('studio/home/hero', 'h1', { id: 'c9' }),
+      change('studio/pricing/plans', 'p1', { id: 'c10' }),
+    ])
+
+    expect(nextUnseen(store.getState().unseen, null)?.frame).toBe(
+      'studio/home/hero',
+    )
+  })
 })
 
 describe('previousUnseen', () => {

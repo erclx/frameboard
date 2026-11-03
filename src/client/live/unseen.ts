@@ -272,7 +272,9 @@ export function inLandingOrder(
   unseen: Readonly<Record<string, FrameChange>>,
 ): FrameChange[] {
   return Object.values(unseen).sort(
-    (a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id),
+    (a, b) =>
+      a.at.localeCompare(b.at) ||
+      a.id.localeCompare(b.id, undefined, { numeric: true }),
   )
 }
 
