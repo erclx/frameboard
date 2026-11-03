@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -6,8 +7,11 @@ import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
-import { usePendingBox } from '../geometry/write'
+import { usePendingBox, usePendingFrames } from '../geometry/write'
+import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
+import { heldStore, holdOutline } from './held'
+import { overflowing } from './overflow'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -15,6 +19,12 @@ const CORNERS = [
   { left: 0, top: '100%' },
   { left: '100%', top: '100%' },
 ] as const
+
+/** An element past its frame's edge, its box in the frame's own pixels. */
+interface Ghost {
+  key: ElementKey
+  box: Box
+}
 
 interface ElementOverlayProps {
   /** The page's shown frames, which the selected element's frame is found among. */
@@ -24,8 +34,9 @@ interface ElementOverlayProps {
 }
 
 /**
- * The selected element's outline, its four corner marks, and its size chip,
- * at a constant screen size through `--zoom` as the frame selection draws
+ * The ghosts of elements past their frame's edge, under the selected
+ * element's outline, its four corner marks, and its size chip, the marks at
+ * a constant screen size through `--zoom` as the frame selection draws
  * them. It is placed from the live element's box inside the frame's iframe
  * and follows that element as it resizes, so it draws nothing while the
  * frame is a placeholder or shows other bytes than the selection names. The
@@ -33,21 +44,180 @@ interface ElementOverlayProps {
  * where it draws, and a shape's corner drag resizes it there.
  */
 export function ElementOverlay({ frames, container }: ElementOverlayProps) {
+  return (
+    <>
+      <ElementGhosts frames={frames} container={container} />
+      <ElementOutline frames={frames} container={container} />
+    </>
+  )
+}
+
+/**
+ * A faint dashed box over the part of each element past its frame's edge,
+ * for every selected frame, where the iframe cannot paint it. It is the
+ * element's measured box rather than its pixels, and draws in Edit with the
+ * Move tool alone, the one place a press on it is taken.
+ */
+function ElementGhosts({ frames, container }: ElementOverlayProps) {
+  const selected = useSelection((state) => state.frames)
+  const moving = useMode(
+    (state) => state.mode === 'edit' && state.tool === 'move',
+  )
+  const drawn = usePendingFrames(frames)
+  const ghosts = useGhosts(container, moving ? selected : [])
+  return ghosts.map(({ key, box }) => {
+    const frame = drawn.find(({ ref }) => ref === key.frame)
+    if (!frame) return null
+    return (
+      <div
+        key={`${key.frame}:${key.index}`}
+        data-element-ghost
+        data-ghost-frame={key.frame}
+        data-ghost-index={key.index}
+        data-ghost-hash={key.hash}
+        className="pointer-events-none absolute bg-primary/28"
+        style={{
+          left: frame.box.x + box.x,
+          top: frame.box.y + box.y,
+          width: box.width,
+          height: box.height,
+          outline: `${screen(1.5)} dashed var(--primary)`,
+          outlineOffset: screen(2),
+          clipPath: outsideOf(box, frame.box),
+          zIndex: OVERLAY_Z,
+        }}
+      />
+    )
+  })
+}
+
+/**
+ * A clip showing an element's box and its outline only past its frame's
+ * edge: a ring wider than the outline reaches, less the frame's viewport in
+ * the element's own coordinates, cut out by the even-odd rule.
+ */
+function outsideOf(box: Box, frame: Box): string {
+  const pad = screen(8)
+  const near = `calc(0px - ${pad})`
+  const far = `calc(100% + ${pad})`
+  const x0 = `${-box.x}px`
+  const y0 = `${-box.y}px`
+  const x1 = `${frame.width - box.x}px`
+  const y1 = `${frame.height - box.y}px`
+  return `polygon(evenodd, ${near} ${near}, ${far} ${near}, ${far} ${far}, ${near} ${far}, ${near} ${near}, ${x0} ${y0}, ${x0} ${y1}, ${x1} ${y1}, ${x1} ${y0}, ${x0} ${y0})`
+}
+
+/**
+ * The elements past the edge of each named frame, read when the frames
+ * change, when one loads or its viewport resizes, and when an inline style
+ * inside one changes, as a drag's preview writes it. Reads coalesce to one an
+ * animation frame. Empty while no frame is named, so the walk runs only under
+ * a selection.
+ */
+function useGhosts(
+  container: HTMLElement | null,
+  refs: readonly string[],
+): Ghost[] {
+  const [read, setRead] = useState<{
+    key: string
+    ghosts: Ghost[]
+  } | null>(null)
+  const key = refs.join('\n')
+  useEffect(() => {
+    if (!container || key === '') return
+    const wanted = key.split('\n')
+    const iframeOf = (ref: string) =>
+      container.querySelector<HTMLIFrameElement>(
+        `[data-frame="${CSS.escape(ref)}"] iframe`,
+      )
+    // Each node is observed once, since an observe fires a first callback
+    // and observing again on every read would read on every frame. That first
+    // callback reports the size the read observing it already saw, so it is
+    // skipped.
+    const sized = new WeakSet<Element>()
+    const seen = new WeakSet<Element>()
+    const styled = new WeakSet<Node>()
+    let pending = 0
+    const later = () => {
+      if (pending === 0) pending = requestAnimationFrame(measure)
+    }
+    const resizes = new ResizeObserver((entries) => {
+      const fresh = entries.filter(({ target }) => !seen.has(target))
+      for (const { target } of fresh) seen.add(target)
+      if (fresh.length < entries.length) later()
+    })
+    const styles = new MutationObserver(later)
+    const measure = () => {
+      pending = 0
+      const ghosts = wanted.flatMap((ref) => {
+        const iframe = iframeOf(ref)
+        if (!iframe) return []
+        if (!sized.has(iframe)) {
+          sized.add(iframe)
+          resizes.observe(iframe)
+        }
+        const shown = iframe.contentDocument
+        const hash = shown ? renderedHash(shown) : null
+        if (!shown || hash === null) return []
+        if (!styled.has(shown)) {
+          styled.add(shown)
+          styles.observe(shown, {
+            attributes: true,
+            attributeFilter: ['style'],
+            subtree: true,
+          })
+        }
+        return overflowing(shown).map(({ index, box }) => ({
+          key: { frame: ref, index, hash },
+          box,
+        }))
+      })
+      setRead({ key, ghosts })
+    }
+    measure()
+    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
+    container.addEventListener('load', measure, true)
+    return () => {
+      container.removeEventListener('load', measure, true)
+      cancelAnimationFrame(pending)
+      resizes.disconnect()
+      styles.disconnect()
+    }
+  }, [container, key])
+  return read?.key === key ? read.ghosts : []
+}
+
+/** The selected element's outline, corner marks, and size chip. */
+function ElementOutline({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const rect = useElementBox(container, element)
+  const held = useStore(heldStore, (state) => state.held)
   const at = pending ?? frame?.box
-  if (!at || !rect) return null
+  const holds = held !== null && held.key.frame === element?.frame
+  // A box measured for another key than the held one is the reloaded frame,
+  // or another element chosen, either of which the hold gives way to.
+  const settled = holds && rect !== null && !sameKey(held.key, element)
+  useEffect(() => {
+    if (held && (!holds || settled)) holdOutline(null)
+  }, [held, holds, settled])
+  const box =
+    holds && !settled
+      ? held.box
+      : at && rect
+        ? { ...rect, x: at.x + rect.x, y: at.y + rect.y }
+        : null
+  if (!box) return null
   return (
     <div
       data-element-selection
       className="pointer-events-none absolute"
       style={{
-        left: at.x + rect.x,
-        top: at.y + rect.y,
-        width: rect.width,
-        height: rect.height,
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
         outline: OUTLINE,
         outlineOffset: screen(2),
         zIndex: OVERLAY_Z,
@@ -67,7 +237,7 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
         />
       ))}
       <span data-chip className={CHIP}>
-        {sizeLabel(rect)}
+        {sizeLabel(box)}
       </span>
     </div>
   )
@@ -139,4 +309,13 @@ function useElementBox(
     }
   }, [container, key, frame, index, hash])
   return measured?.key === key ? measured.box : null
+}
+
+function sameKey(a: ElementKey, b: ElementKey | null): boolean {
+  return (
+    b !== null &&
+    a.frame === b.frame &&
+    a.index === b.index &&
+    a.hash === b.hash
+  )
 }

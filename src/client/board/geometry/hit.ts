@@ -1,5 +1,6 @@
 import type { FrameRecord } from '@/shared/records/list'
 
+import type { ElementKey } from '../selection'
 import type { Box, Point } from './box'
 import type { Corner } from './resize'
 
@@ -94,6 +95,47 @@ export function selectedElementBox(layer: ParentNode): Box | null {
     width: parseFloat(width),
     height: parseFloat(height),
   }
+}
+
+/**
+ * The element whose ghost draws under a canvas point, null when none does.
+ * A ghost shows only the part of an element past its frame's edge, so a
+ * point inside the frame is left to the frame. It reads the boxes the layer
+ * drew in canvas units, so the zoom moves nothing.
+ */
+export function ghostAt(
+  layer: ParentNode,
+  frames: readonly FrameRecord[],
+  point: Point,
+): ElementKey | null {
+  const ghosts = [
+    ...layer.querySelectorAll<HTMLElement>('[data-element-ghost]'),
+  ].reverse()
+  for (const ghost of ghosts) {
+    const { ghostFrame, ghostIndex, ghostHash } = ghost.dataset
+    const frame = frames.find(({ ref }) => ref === ghostFrame)
+    if (!frame || ghostIndex === undefined || ghostHash === undefined) continue
+    const { left, top, width, height } = ghost.style
+    const box = {
+      x: parseFloat(left),
+      y: parseFloat(top),
+      width: parseFloat(width),
+      height: parseFloat(height),
+    }
+    if (within(box, point) && !within(frame.box, point)) {
+      return { frame: frame.ref, index: Number(ghostIndex), hash: ghostHash }
+    }
+  }
+  return null
+}
+
+function within(box: Box, point: Point): boolean {
+  return (
+    point.x >= box.x &&
+    point.x <= box.x + box.width &&
+    point.y >= box.y &&
+    point.y <= box.y + box.height
+  )
 }
 
 /**

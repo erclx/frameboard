@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { clear, selectElement, selectionStore } from '../selection'
+import { modeStore } from '../mode'
+import { clear, select, selectElement, selectionStore } from '../selection'
+import { heldOutline, holdOutline } from './held'
 import { ElementOverlay } from './overlay'
 
 const HASH = 'c'.repeat(64)
@@ -17,12 +19,13 @@ const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${H
 let layer: HTMLDivElement | undefined
 
 afterEach(() => {
+  act(() => holdOutline(null))
   act(() => clear(selectionStore))
   layer?.remove()
   layer = undefined
 })
 
-async function mountFrame(): Promise<HTMLDivElement> {
+async function mountFrame(source = SOURCE): Promise<HTMLDivElement> {
   layer = document.createElement('div')
   const frame = document.createElement('div')
   frame.dataset.frame = HERO.ref
@@ -32,7 +35,7 @@ async function mountFrame(): Promise<HTMLDivElement> {
   const loaded = new Promise((resolve) =>
     iframe.addEventListener('load', resolve, { once: true }),
   )
-  iframe.srcdoc = SOURCE
+  iframe.srcdoc = source
   frame.append(iframe)
   layer.append(frame)
   document.body.append(layer)
@@ -101,5 +104,147 @@ describe('ElementOverlay', () => {
     )
 
     expect(outline(drawn)).toBeNull()
+  })
+
+  describe('holding a dropped outline', () => {
+    const HEADING = { frame: HERO.ref, index: 3, hash: HASH }
+    const DROP = { x: 300, y: 200, width: 248, height: 30 }
+
+    it('draws the held drop over the box the element still measures', async () => {
+      const container = await mountFrame()
+      act(() => selectElement(selectionStore, 'studio/home', HEADING))
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect([outline(drawn)?.style.left, outline(drawn)?.style.top]).toEqual([
+        '300px',
+        '200px',
+      ])
+    })
+
+    it('keeps drawing the drop while the written key waits on the reload', async () => {
+      const container = await mountFrame()
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          ...HEADING,
+          hash: 'd'.repeat(64),
+        }),
+      )
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect(outline(drawn)?.style.left).toBe('300px')
+      expect(heldOutline()).not.toBeNull()
+    })
+
+    it('gives way once another key measures, as the reloaded frame does', async () => {
+      const container = await mountFrame()
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      // The body, index 2, measures at once, as the reloaded element would.
+      act(() =>
+        selectElement(selectionStore, 'studio/home', { ...HEADING, index: 2 }),
+      )
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      await expect.poll(() => heldOutline()).toBeNull()
+      expect(outline(drawn)?.style.left).toBe('100px')
+    })
+
+    it('lets go when the selection leaves the frame', async () => {
+      const container = await mountFrame()
+      act(() => selectElement(selectionStore, 'studio/home', HEADING))
+      act(() => holdOutline({ key: HEADING, box: DROP }))
+      render(<ElementOverlay frames={[HERO]} container={container} />)
+
+      act(() => clear(selectionStore))
+
+      await expect.poll(() => heldOutline()).toBeNull()
+    })
+  })
+
+  describe('ghosting an element past the edge', () => {
+    // A box at 350, 20 in the 400 px wide hero, its right 50 px past the edge.
+    const PAST = SOURCE.replace(
+      '<h1>Hello, world</h1>',
+      '<div style="position:absolute;left:350px;top:20px;width:100px;height:50px"></div>',
+    )
+
+    function ghosts(container: HTMLElement): HTMLElement[] {
+      return [
+        ...container.querySelectorAll<HTMLElement>('[data-element-ghost]'),
+      ]
+    }
+
+    afterEach(() => {
+      act(() => modeStore.setState({ mode: 'edit', tool: 'move' }))
+    })
+
+    it('draws a ghost at the element box while its frame is selected', async () => {
+      const container = await mountFrame(PAST)
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      const [ghost] = ghosts(drawn)
+      expect([
+        ghost?.dataset.ghostIndex,
+        ghost?.dataset.ghostHash,
+        ghost?.style.left,
+        ghost?.style.top,
+        ghost?.style.width,
+      ]).toEqual(['3', HASH, '450px', '70px', '100px'])
+    })
+
+    it('reads again as a drag previews the element further out', async () => {
+      const container = await mountFrame(PAST)
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+      const box = container
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector<HTMLElement>('body > div')
+      expect(ghosts(drawn)).toHaveLength(1)
+
+      act(() => box?.style.setProperty('left', '380px'))
+
+      await expect.poll(() => ghosts(drawn)[0]?.style.left).toBe('480px')
+    })
+
+    it('draws none while nothing on the frame is selected', async () => {
+      const container = await mountFrame(PAST)
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect(ghosts(drawn)).toEqual([])
+    })
+
+    it.each([
+      ['Play', { mode: 'play' }],
+      ['the Note tool', { tool: 'note' }],
+    ] as const)('draws none in %s', async (_name, state) => {
+      const container = await mountFrame(PAST)
+      act(() => modeStore.setState(state))
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect(ghosts(drawn)).toEqual([])
+    })
   })
 })

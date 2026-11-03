@@ -7,6 +7,7 @@ import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
+import { heldOutline, holdOutline } from '../element/held'
 import {
   isShownShape,
   type PlacedMove,
@@ -29,6 +30,7 @@ import {
   clear,
   type ElementKey,
   select,
+  selectElement,
   type SelectionStore,
   selectionStore,
   selectSection,
@@ -42,6 +44,7 @@ import {
   drawnAt,
   frameAt,
   framesIn,
+  ghostAt,
   onOutline,
   selectedElementBox,
 } from './hit'
@@ -361,6 +364,21 @@ export function attachGestures(
     const bounds = boundsOf(chosen.map((frame) => frame.box))
     if (bounds && corner) {
       gesture = { kind: 'resize', corner, boxes: boxesOf(chosen), bounds }
+      return
+    }
+    // A ghost shows an element past its frame's edge, which a press selects
+    // and a drag carries back, as a press on the selected outline does. A
+    // selected frame's or section's corner over it keeps the press.
+    const ghost = ghostAt(target.layer, drawn, point)
+    if (ghost) {
+      selectElement(selection, target.page, ghost)
+      gesture = {
+        kind: 'element',
+        key: ghost,
+        frame: null,
+        shift: event.shiftKey,
+        placed: stores.placedOffsets(target.layer, ghost),
+      }
       return
     }
     // A section's name is its handle, over a frame's label strip but never
@@ -701,9 +719,24 @@ export function attachGestures(
         resize.cancel()
       }
     } else if (gesture.kind === 'placed') {
-      const { from: start, to, move } = gesture
+      const { from: start, to, move, key } = gesture
       if (to && (to.left !== start.left || to.top !== start.top)) {
-        void move.commit(to)
+        // The outline stays at the drop until the reloaded frame measures
+        // the element, and a refusal puts it back with the element.
+        const outline = selectedElementBox(target.layer)
+        if (outline) {
+          holdOutline({
+            key,
+            box: {
+              ...outline,
+              x: outline.x + to.left - start.left,
+              y: outline.y + to.top - start.top,
+            },
+          })
+        }
+        void move.commit(to).then((landed) => {
+          if (!landed && heldOutline()?.key === key) holdOutline(null)
+        })
       } else {
         move.cancel()
       }

@@ -904,6 +904,129 @@ async function headlineOnHero(page: Page): Promise<void> {
 }
 
 /**
+ * Serves the hero with a Free 160 by 120 box at `left` in its 1440 px width,
+ * added to the bytes on the way to the tab, so the fixture on disk never
+ * holds it and the frame keeps the hash its file stamps.
+ */
+function freeBoxOnHero(left: number): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.route('**/frames/webapp/home/hero.html*', async (route) => {
+      const response = await route.fetch()
+      const box = `<div data-name="Box" style="position: absolute; left: ${left}px; top: 300px; width: 160px; height: 120px; background: var(--primary)"></div>`
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace('</body>', `${box}</body>`),
+      })
+    })
+  }
+}
+
+/**
+ * Serves the hero with its headline placed Free at 100, 300, added to the
+ * bytes on the way to the tab. The headline stays the element the file's
+ * tree names at that index, so a pick selects it, which an element the
+ * file never held would not be.
+ */
+async function freeHeadlineOnHero(page: Page): Promise<void> {
+  await page.route('**/frames/webapp/home/hero.html*', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace(
+        '<h1 data-name="Headline">',
+        '<h1 data-name="Headline" style="position: absolute; left: 100px; top: 300px; margin: 0">',
+      ),
+    })
+  })
+}
+
+/**
+ * Drags the hero's Free headline 200 px right and 100 px down and releases it,
+ * answering the write as landed on the bytes the frame already shows, so no
+ * reload comes and the capture holds the outline at the drop as it stands
+ * between a release and the reload. The release marks the root
+ * `data-free-dropped` for the capture to wait on.
+ */
+async function freeDragReleased(page: Page): Promise<void> {
+  await page.route('**/api/frames/edit', async (route) => {
+    const { ref, index, hash } = route.request().postDataJSON() as {
+      ref: string
+      index: number
+      hash: string
+    }
+    await route.fulfill({ json: { ok: true, data: { ref, index, hash } } })
+  })
+  await page.addInitScript((frames) => {
+    let left = frames
+    const send = (
+      target: EventTarget | null,
+      type: string,
+      x: number,
+      y: number,
+    ) =>
+      target?.dispatchEvent(
+        new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: x,
+          clientY: y,
+        }),
+      )
+    const drag = (x: number, y: number, k: number) => {
+      const hit = document.querySelector('[data-hit-layer]')
+      send(hit, 'mousedown', x, y)
+      for (let step = 1; step <= 8; step += 1) {
+        send(
+          window,
+          'mousemove',
+          x + (200 * k * step) / 8,
+          y + (100 * k * step) / 8,
+        )
+      }
+      send(window, 'mouseup', x + 200 * k, y + 100 * k)
+      document.documentElement.setAttribute('data-free-dropped', '')
+    }
+    const run = () => {
+      const hero = document.querySelector('[data-frame="webapp/home/hero"]')
+      const iframe = hero?.querySelector('iframe')
+      const box = iframe?.dataset.renderedAt
+        ? iframe.contentDocument?.querySelector('h1')
+        : null
+      const hit = document.querySelector('[data-hit-layer]')
+      const layer = document.querySelector<HTMLElement>('[data-layer]')
+      // The element's X field, which enables once the server grants writes.
+      const writable = document.querySelector<HTMLInputElement>(
+        'input[aria-label^="X position"]',
+      )
+      if (!hero || !box || !hit || !layer) {
+        if (--left > 0) requestAnimationFrame(run)
+        else console.error('No Free headline on the hero to drag')
+        return
+      }
+      const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+      const frame = hero.getBoundingClientRect()
+      const inner = box.getBoundingClientRect()
+      const x = frame.left + (inner.left + inner.width / 2) * k
+      const y = frame.top + (inner.top + inner.height / 2) * k
+      const outline = document.querySelector('[data-element-selection]')
+      if (!outline) {
+        send(hit, 'mousedown', x, y)
+        send(window, 'mouseup', x, y)
+        send(hit, 'dblclick', x, y)
+      }
+      // The drag needs the outline drawn and the tab granted writes.
+      if (outline && writable && !writable.disabled) drag(x, y, k)
+      else if (--left > 0) requestAnimationFrame(run)
+      else console.error('The Free headline never took a drag')
+    }
+    document.addEventListener('DOMContentLoaded', () =>
+      requestAnimationFrame(run),
+    )
+  }, PRESS_FRAMES)
+}
+
+/**
  * Lists a hidden `sketch` frame at the bottom of `webapp/home` through the
  * socket's board message, so the layers list shows a hidden row with no
  * frame joining the fixture.
@@ -1977,6 +2100,39 @@ export const BOARD_CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(headlineOnHero),
+      },
+      {
+        // A Free headline dragged and released, its outline and size chip held at the drop.
+        section: 'free-drag-held',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            freeHeadlineOnHero,
+            freeDragReleased,
+            readyWhen('[data-free-dropped]'),
+          ),
+        ),
+      },
+      {
+        // A Free box running 60 px past the hero's right edge, ghosted there while the hero is selected.
+        section: 'free-drag-ghost',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            freeBoxOnHero(1340),
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen('[data-element-ghost]'),
+          ),
+        ),
       },
       {
         // A section around both frames, its box on the canvas and its row in Layers.

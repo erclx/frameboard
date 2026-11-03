@@ -29,7 +29,10 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 - A placement, a delete, or a move shifts indices, so a kept index would name another element or none, which the styles read refuses
 - Alt+Shift+ArrowUp and ArrowDown move the selected element among its siblings, because Alt+ArrowUp alone is `nav.home` and the registry gives a shared key to whichever action registered first
 - A move key reads the tree inside the frame's turn rather than at the press, so a press queued behind a move in flight goes from the index and hash that move answered
-- A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside a shape's corner drag. Esc writes nothing.
+
+A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside a shape's corner drag. Esc writes nothing.
+
+The released outline stays at the drop through `held.ts` until the reloaded frame measures the element, since `ResizeObserver` never fires on a move, and a refused write lets it go. An element past its frame's edge draws a dashed ghost there while its frame is selected, read by `overflow.ts`, and a press on the ghost selects and drags it.
 
 ### `src/client/board/menus/`
 

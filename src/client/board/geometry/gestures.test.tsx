@@ -9,6 +9,7 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
+import { heldOutline, holdOutline } from '../element/held'
 import type { PlacedOffsets, ShapeSize } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
@@ -67,6 +68,7 @@ function setup(
     divider,
     shape,
     placed,
+    ghost,
     live,
     sections = [],
     lands = true,
@@ -91,6 +93,8 @@ function setup(
     shape?: 'free' | 'held'
     /** The selected element is placed at these offsets, out of the flow. */
     placed?: PlacedOffsets
+    /** An element's ghost drawn past its frame's edge, at a canvas box. */
+    ghost?: { key: ElementKey; box: Box }
     /**
      * A body LEFT renders live in an iframe filling its box, whose pin is
      * anchored to the element at file index 3, the first in the body.
@@ -161,6 +165,21 @@ function setup(
                 top: elementBox.y,
                 width: elementBox.width,
                 height: elementBox.height,
+              }}
+            />
+          ) : null}
+          {ghost ? (
+            <div
+              data-element-ghost
+              data-ghost-frame={ghost.key.frame}
+              data-ghost-index={ghost.key.index}
+              data-ghost-hash={ghost.key.hash}
+              className="pointer-events-none absolute"
+              style={{
+                left: ghost.box.x,
+                top: ghost.box.y,
+                width: ghost.box.width,
+                height: ghost.box.height,
               }}
             />
           ) : null}
@@ -277,7 +296,7 @@ function setup(
           preview: (offsets) => move.previews.push(offsets),
           commit: async (offsets) => {
             move.commits.push(offsets)
-            return true
+            return lands
           },
           cancel: () => {
             move.cancelled = true
@@ -464,6 +483,7 @@ describe('attachGestures', () => {
   afterEach(() => {
     detach()
     clear(selectionStore)
+    holdOutline(null)
   })
 
   describe('on a section', () => {
@@ -1169,15 +1189,67 @@ describe('attachGestures', () => {
     describe('that is placed', () => {
       const PLACED = { left: 40, top: 30 }
 
-      function setupPlaced(live?: string) {
+      function setupPlaced(live?: string, lands = true) {
         const canvas = setup(undefined, {
           elementBox: ELEMENT_BOX,
           placed: PLACED,
           live,
+          lands,
         })
         detach = canvas.detach
         return canvas
       }
+
+      it('holds the outline at the drop once released, until the frame reloads', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [225, 155])
+
+        expect(heldOutline()).toEqual({
+          key: ELEMENT,
+          box: { x: 175, y: 130, width: 100, height: 50 },
+        })
+      })
+
+      it('puts the outline back at the start when the write is refused', async () => {
+        const canvas = setupPlaced(undefined, false)
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [225, 155])
+
+        await expect.poll(() => heldOutline()).toBeNull()
+        expect(canvas.placedMoves[0]?.commits).toEqual([{ left: 65, top: 10 }])
+      })
+
+      it('holds nothing on a drag released where it started', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        canvas.pointer.move(200, 175)
+        canvas.pointer.up(200, 175)
+
+        expect([heldOutline(), canvas.placedMoves[0]?.cancelled]).toEqual([
+          null,
+          true,
+        ])
+      })
+
+      it('holds nothing when Esc puts the drag back', () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        act(() => {
+          dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        })
+        canvas.pointer.up(225, 155)
+
+        expect(heldOutline()).toBeNull()
+      })
 
       it('moves its offsets by the drag and writes them once on release', () => {
         const canvas = setupPlaced()
@@ -1254,6 +1326,69 @@ describe('attachGestures', () => {
         expect(
           canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
         ).toBe('25px -20px')
+      })
+    })
+
+    describe('past its frame edge', () => {
+      // LEFT's element 7, its right half past LEFT's right edge at x 300.
+      const GHOST = {
+        key: { frame: LEFT.ref, index: 7, hash: 'b'.repeat(64) },
+        box: { x: 260, y: 150, width: 80, height: 40 },
+      }
+
+      it('selects the element on a press of its ghost outside the frame', () => {
+        const canvas = setup(undefined, { ghost: GHOST })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.click(320, 170)
+
+        expect(selectionStore.getState().element).toEqual(GHOST.key)
+      })
+
+      it('drags a placed element back from its ghost in the same press', () => {
+        const canvas = setup(undefined, {
+          ghost: GHOST,
+          placed: { left: 160, top: 50 },
+        })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([320, 170], [220, 170])
+
+        expect([
+          canvas.placedMoves[0]?.key,
+          canvas.placedMoves[0]?.commits,
+          canvas.writes,
+        ]).toEqual([GHOST.key, [{ left: 60, top: 50 }], []])
+      })
+
+      it("leaves a press on the selected frame's corner to its resize", () => {
+        // Its top past LEFT's top edge at y 100, over LEFT's NE corner at 300, 100.
+        const canvas = setup(undefined, {
+          ghost: { ...GHOST, box: { x: 260, y: 80, width: 80, height: 40 } },
+        })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([303, 98], [343, 98])
+
+        expect([
+          selectionStore.getState().element,
+          canvas.writes[0]?.boxes[LEFT.ref]?.width,
+        ]).toEqual([null, 240])
+      })
+
+      it('leaves a press on the part inside the frame to the frame', () => {
+        const canvas = setup(undefined, { ghost: GHOST })
+        detach = canvas.detach
+
+        canvas.pointer.click(280, 170)
+
+        expect([selectionStore.getState().element, selectedRefs()]).toEqual([
+          null,
+          [LEFT.ref],
+        ])
       })
     })
 
