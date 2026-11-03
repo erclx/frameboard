@@ -20,6 +20,7 @@ import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import { CommandPalette } from '@/client/palette/commands'
 import { openOverlay } from '@/client/palette/overlay'
+import { flipFrame, themeStore } from '@/client/theme/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { useBoardActions } from './board-actions'
@@ -287,16 +288,24 @@ describe('useBoardActions', () => {
         vi.unstubAllGlobals()
         vi.restoreAllMocks()
         liveStore.setState({ canWrite: false })
+        themeStore.setState({ flipped: new Set() })
       })
 
-      /** Answers health with `clipboard`, records each clipboard route body, and serves no PNG. */
+      /** Answers health with `clipboard`, records each clipboard route body and PNG request, and serves no PNG. */
       function stubServer(clipboard: string | null) {
         const posted: unknown[] = []
+        const pngs: string[] = []
         vi.stubGlobal(
           'fetch',
           async (input: RequestInfo | URL, init?: RequestInit) => {
-            const path = new URL(String(input), location.href).pathname
+            const url = new URL(String(input), location.href)
+            const path = url.pathname
             if (path === '/api/health') return Response.json({ clipboard })
+            if (path === '/api/frames/png') {
+              pngs.push(
+                `${url.searchParams.get('ref')} ${url.searchParams.get('theme')}`,
+              )
+            }
             if (path === '/api/frames/clipboard') {
               posted.push(JSON.parse(String(init?.body)))
               return Response.json({
@@ -312,7 +321,7 @@ describe('useBoardActions', () => {
           .mockImplementation(async (items) => {
             await items[0]?.getType('image/png').catch(() => null)
           })
-        return { posted, writes }
+        return { posted, pngs, writes }
       }
 
       async function copyBoth(backend: string | null) {
@@ -351,6 +360,44 @@ describe('useBoardActions', () => {
 
         expect(writes).toHaveBeenCalledOnce()
         expect(posted).toEqual([])
+      })
+
+      it('posts a flipped frame in its own theme to the clipboard route', async () => {
+        const { posted } = stubServer('wsl')
+        liveStore.setState({ canWrite: true })
+        flipFrame(ABOUT.ref)
+
+        await copyBoth('wsl')
+
+        expect(
+          await screen.findByText(
+            'Copied 2 frames',
+            {},
+            { timeout: TOAST_WAIT_MS },
+          ),
+        ).toBeVisible()
+        expect(
+          screen.getByText(
+            '2 PNG files on the clipboard, each in the theme it shows.',
+          ),
+        ).toBeVisible()
+        expect(posted).toEqual([
+          {
+            refs: [HERO.ref, ABOUT.ref],
+            theme: 'light',
+            themes: { [ABOUT.ref]: 'dark' },
+          },
+        ])
+      })
+
+      it('stitches a flipped frame from its own theme', async () => {
+        const { pngs, writes } = stubServer(null)
+        flipFrame(ABOUT.ref)
+
+        await copyBoth(null)
+
+        await vi.waitFor(() => expect(writes).toHaveBeenCalledOnce())
+        expect(pngs).toEqual([`${HERO.ref} light`, `${ABOUT.ref} dark`])
       })
 
       it('stitches them in a tab without the board key, which the route refuses', async () => {

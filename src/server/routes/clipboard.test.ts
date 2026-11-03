@@ -82,6 +82,23 @@ describe('POST /api/frames/clipboard', () => {
     ])
   })
 
+  it('renders a ref named in themes in its own theme and the rest in theme', async () => {
+    const { clipboard } = recordingClipboard()
+    const { post, renders } = setup(clipboard)
+
+    const response = await post({
+      refs: ['home/hero', 'home/about'],
+      theme: 'light',
+      themes: { 'home/about': 'dark', 'home/elsewhere': 'dark' },
+    })
+
+    expect(response.status).toBe(200)
+    expect(renders).toEqual([
+      'studio/home/hero light 2',
+      'studio/home/about dark 2',
+    ])
+  })
+
   it('refuses a request without the board key before rendering', async () => {
     const { clipboard, written } = recordingClipboard()
     const { post, renders } = setup(clipboard)
@@ -97,6 +114,10 @@ describe('POST /api/frames/clipboard', () => {
     [
       'a theme other than light or dark',
       { refs: ['home/hero'], theme: 'both' },
+    ],
+    [
+      'a per-frame theme other than light or dark',
+      { refs: ['home/hero'], theme: 'light', themes: { 'home/hero': 'both' } },
     ],
   ])('refuses usage for %s', async (_case, body) => {
     const { clipboard } = recordingClipboard()

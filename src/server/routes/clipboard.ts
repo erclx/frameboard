@@ -32,13 +32,16 @@ const COPY_SCALE = 2
 const CopyBody = z.object({
   refs: z.array(z.string().min(1)).min(1),
   theme: z.enum(['light', 'dark']),
+  themes: z.record(z.string(), z.enum(['light', 'dark'])).optional(),
 })
 
 /**
- * `POST /api/frames/clipboard` with `{ refs, theme }`, rendering each frame
- * at twice its layout size and putting the images on the OS clipboard as one
- * file list. It sits behind `requireWriter`, since it replaces whatever the
- * developer held, and a system with no backend refuses before any render.
+ * `POST /api/frames/clipboard` with `{ refs, theme, themes? }`, rendering each
+ * frame at twice its layout size in `themes[ref]` where given and `theme`
+ * otherwise, and putting the images on the OS clipboard as one file list. A
+ * `themes` key naming no ref in `refs` is ignored. It sits behind
+ * `requireWriter`, since it replaces whatever the developer held, and a
+ * system with no backend refuses before any render.
  */
 export function clipboardRoutes(
   root: string,
@@ -64,7 +67,7 @@ export function clipboardRoutes(
   app.use('/api/frames/clipboard', requireWriter(access))
 
   app.post('/api/frames/clipboard', async (c) => {
-    const { refs, theme } = await parseBody(c.req.raw, CopyBody)
+    const { refs, theme, themes } = await parseBody(c.req.raw, CopyBody)
     if (clipboard === null) throw clipboardUnsupported()
     const files: ClipboardFile[] = []
     // One render at a time, so a large selection queues on the warm browser
@@ -73,7 +76,7 @@ export function clipboardRoutes(
       const frame = await readFrame(root, ref, { cwd: root })
       files.push({
         name: frame.name,
-        bytes: await render(frame, theme, COPY_SCALE),
+        bytes: await render(frame, themes?.[ref] ?? theme, COPY_SCALE),
       })
     }
     await clipboard.write(files)

@@ -45,7 +45,7 @@ The Element menu ends with Delete, which posts to `POST /api/frames/remove` and 
 
 ### `src/client/board/structure/`
 
-Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller.
+Owns the frame structure actions, being rename, duplicate, delete, hide, lock, copy, cut, and paste, and the Frame tool, which change together. Copy, cut, and Copy as PNG toast once they land, since nothing on the canvas shows them, and a refused write raises one error toast from its caller. Copy as PNG keeps each frame in its own theme.
 
 The Frame tool, New frame here, and the guide send the picked size's width and height, and a Frame tool drag sends the box it drew, so a hand-placed frame keeps its size and hugs neither axis. An agent's `frame add --size` still hugs its height.
 
