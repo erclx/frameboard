@@ -408,6 +408,67 @@ test.describe('exporting a selected frame', () => {
   })
 })
 
+test.describe('the colors a selected frame uses', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('Selection colors follows Export, and pressing a row puts its color on the clipboard', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+      origin: new URL(server.url).origin,
+    })
+    const headline = page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toBeVisible()
+    // As above, a click before the canvas fits lands beside the frame.
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Export hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+    const colors = page.getByRole('region', { name: /^Selection colors/ })
+    await expect(colors).toBeVisible()
+
+    const order = await page
+      .getByRole('complementary', { name: 'Inspector' })
+      .getByRole('region')
+      .evaluateAll((regions) =>
+        regions.map((region) => region.getAttribute('aria-labelledby')),
+      )
+    expect(order.slice(-2)).toEqual([
+      'inspector-export',
+      'inspector-selection-colors',
+    ])
+
+    const row = colors.getByRole('button', { name: /^Copy / }).first()
+    const label = (await row.getAttribute('aria-label')) ?? ''
+    expect(label).toMatch(/^Copy (#|var\()/)
+    await row.click()
+
+    await expect(
+      page.getByText(label.replace(/^Copy/, 'Copied'), { exact: true }),
+    ).toBeVisible()
+    const copied = await page.evaluate(() => navigator.clipboard.readText())
+    expect(copied).toBe(label.replace(/^Copy /, ''))
+  })
+})
+
 test.describe('setting the flow of one row a shared rule styles', () => {
   const ROWS = `<!doctype html>
 <html lang="en">
