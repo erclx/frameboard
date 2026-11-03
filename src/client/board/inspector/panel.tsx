@@ -259,6 +259,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         write={write}
       />
       <SelectionColors
+        key={`${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}
         tokens={colors}
         theme={theme}
@@ -338,6 +339,7 @@ function FramesColors({ frames }: { frames: readonly FrameRecord[] }) {
 
   return (
     <SelectionColors
+      key={refs}
       colors={held?.refs === refs ? held.colors : []}
       tokens={tokens}
       theme={theme}

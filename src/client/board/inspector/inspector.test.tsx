@@ -289,13 +289,46 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      await screen.findByRole('heading', { name: 'Selection colors' })
+      await screen.findByRole('heading', { name: 'Selection colors · 3' })
       const rows = await screen.findAllByRole('listitem')
       expect(rows.map((row) => row.textContent)).toEqual([
-        'primary100%',
         'ABCDEF100%',
         '00ff00100%',
+        'primary100%',
       ])
+    })
+
+    describe('with six colors on each frame', () => {
+      const answered = { ...ANSWERS }
+      const six = (start: number) =>
+        [0, 1, 2, 3, 4, 5].map((n) => ({
+          value: `#00000${start + n}`,
+          token: null,
+          percent: 100,
+        }))
+
+      beforeEach(() => {
+        ANSWERS[SWATCHES.ref] = six(0)
+        ANSWERS[SUNSET.ref] = six(1)
+      })
+
+      afterEach(() => {
+        Object.assign(ANSWERS, answered)
+      })
+
+      it('caps the list again on a new selection after Show all', async () => {
+        act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+        renderPanel()
+        await userEvent.click(
+          await screen.findByRole('button', { name: 'Show all 6' }),
+        )
+
+        act(() => select(selectionStore, PAGE, [SUNSET.ref]))
+
+        expect(
+          await screen.findByRole('button', { name: 'Show all 6' }),
+        ).toBeVisible()
+      })
     })
 
     it('ends one frame’s sections on Export, then Selection colors', async () => {
