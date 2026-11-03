@@ -10,6 +10,7 @@ import {
   fileProjects,
   projectHref,
   projectStore,
+  settleOpenFolder,
   useRenamingFolder,
   useRenamingProject,
 } from '@/client/projects/actions'
@@ -90,6 +91,15 @@ export function Projects({
   const entries: HomeEntry[] = filtering
     ? shown.map((project) => ({ kind: 'project', project }))
     : homeEntries(shown)
+  // Held as one string, so the effect runs when the set of folders changes rather than on every render.
+  const shownFolders = JSON.stringify(
+    entries.flatMap((entry) =>
+      entry.kind === 'folder' ? [entry.folder.key] : [],
+    ),
+  )
+  useEffect(() => {
+    settleOpenFolder(new Set(JSON.parse(shownFolders) as string[]))
+  }, [shownFolders])
   const isOpen = (key: string) => layout === 'list' && opened.has(key)
   const toggle = (key: string) =>
     setOpened((current) => {

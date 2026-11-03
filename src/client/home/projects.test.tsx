@@ -1191,6 +1191,7 @@ describe('folders', () => {
       renaming: null,
       renamingFolder: null,
       openFolder: null,
+      pendingRename: null,
       focusTarget: null,
     })
   })
@@ -1303,6 +1304,52 @@ describe('folders', () => {
     await waitFor(() =>
       expect(screen.getByRole('dialog', { name: 'Client B' })).toBeVisible(),
     )
+  })
+
+  it('keeps the panel open when the renamed board lands before the write answers', async () => {
+    let answer: (response: Response) => void = () => {}
+    const calls = createStructure(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    )
+    const home = renderLive(CLIENT, calls)
+    await userEvent.click(folderCard('Client A'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await userEvent.keyboard('Client B{Enter}')
+
+    home.receive(
+      CLIENT.map((record) =>
+        record.group?.toLowerCase() === 'client a'
+          ? { ...record, group: 'Client B' }
+          : record,
+      ),
+    )
+    await act(async () => answer(Response.json({ ok: true, data: [] })))
+
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', { name: 'Client B' })).toBeVisible(),
+    )
+  })
+
+  it('opens no panel unasked for a later folder under the key an emptied one held', async () => {
+    const home = renderLive(CLIENT, server().calls)
+    await userEvent.click(folderCard('Personal'))
+    await screen.findByRole('dialog', { name: 'Personal' })
+    const emptied = CLIENT.map((record) =>
+      record.name === 'notes' ? { ...record, group: null } : record,
+    )
+    home.receive(emptied)
+
+    home.receive(
+      emptied.map((record) =>
+        record.name === 'drawings' || record.name === 'notes'
+          ? { ...record, group: 'Personal' }
+          : record,
+      ),
+    )
+
+    expect(folderCard('Personal')).toBeVisible()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it("hands focus to the first member's card once Ungroup lands", async () => {

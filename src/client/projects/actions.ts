@@ -61,6 +61,8 @@ interface ProjectState {
   renamingFolder: FolderRenaming | null
   /** The folder whose panel is open, by key, held here so a rename's new key keeps it open. */
   openFolder: string | null
+  /** An open folder's rename in flight, held until home draws the new key, so the panel stays open whichever lands first. */
+  pendingRename: { from: string; to: string } | null
   /** The project whose card takes focus once home draws it, after a write moved it out of a closed panel. */
   focusTarget: string | null
 }
@@ -71,6 +73,7 @@ export const projectStore = createStore<ProjectState>()(() => ({
   renaming: null,
   renamingFolder: null,
   openFolder: null,
+  pendingRename: null,
   focusTarget: null,
 }))
 
@@ -203,12 +206,35 @@ export async function renameFolder(
   }
   stopFolderRename()
   const members = folderMembers(key).map((project) => project.name)
-  if (!(await fileProjects(members, name, calls))) return
   const renamed = folderKey(name)
-  projectStore.setState(({ openFolder }) => ({
-    openFolder: openFolder === key ? renamed : openFolder,
-  }))
+  const open = projectStore.getState().openFolder === key
+  if (open) {
+    projectStore.setState({
+      openFolder: renamed,
+      pendingRename: { from: key, to: renamed },
+    })
+  }
+  if (!(await fileProjects(members, name, calls))) {
+    if (open) projectStore.setState({ openFolder: key, pendingRename: null })
+    return
+  }
   focusFolder(renamed)
+}
+
+/**
+ * Closes a panel whose folder home no longer draws, as when its last member
+ * left from inside it, so a later folder under that key never opens unasked.
+ * A rename in flight keeps its panel until home draws the new key.
+ */
+export function settleOpenFolder(shown: ReadonlySet<string>): void {
+  const { openFolder, pendingRename } = projectStore.getState()
+  if (pendingRename && shown.has(pendingRename.to)) {
+    projectStore.setState({ pendingRename: null })
+    return
+  }
+  if (openFolder === null || shown.has(openFolder)) return
+  if (pendingRename?.to === openFolder) return
+  projectStore.setState({ openFolder: null })
 }
 
 /**
@@ -414,6 +440,7 @@ export function useFolderActions(calls: Structure = structure): void {
         folder: null,
         renamingFolder: null,
         openFolder: null,
+        pendingRename: null,
         focusTarget: null,
       })
     }

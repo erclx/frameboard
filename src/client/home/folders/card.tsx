@@ -37,9 +37,13 @@ export function FolderCard({
   unseen,
   ...panel
 }: FolderCardProps) {
+  // The old card stays open while a rename it started waits on home drawing the new key.
   const open = useStore(
     projectStore,
-    (state) => state.openFolder === folder.key,
+    (state) =>
+      state.openFolder === folder.key ||
+      (state.pendingRename?.from === folder.key &&
+        state.openFolder === state.pendingRename.to),
   )
   const setOpen = (next: boolean) =>
     projectStore.setState({ openFolder: next ? folder.key : null })
