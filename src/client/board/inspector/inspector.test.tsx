@@ -252,7 +252,7 @@ describe('InspectorPanel', () => {
     expect(screen.getByRole('heading', { name: 'Arrange' })).toBeInTheDocument()
   })
 
-  describe('with several frames’ styles answered', () => {
+  describe('with the frames’ styles answered', () => {
     const BASE = { element: null, hash: 'a'.repeat(64) }
     const ANSWERS: Record<string, unknown[]> = {
       [SWATCHES.ref]: [
@@ -295,6 +295,23 @@ describe('InspectorPanel', () => {
         'primary100%',
         'ABCDEF100%',
         '00ff00100%',
+      ])
+    })
+
+    it('ends one frame’s sections on Export, then Selection colors', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      await screen.findByRole('region', { name: /^Selection colors/ })
+      const regions = within(
+        screen.getByRole('complementary', { name: 'Inspector' }),
+      )
+        .getAllByRole('region')
+        .map((region) => region.getAttribute('aria-labelledby'))
+      expect(regions.slice(-2)).toEqual([
+        'inspector-export',
+        'inspector-selection-colors',
       ])
     })
   })
@@ -365,36 +382,20 @@ describe('InspectorPanel', () => {
       act(() => receiveFindings(liveStore, { [SWATCHES.ref]: [] }))
     })
 
-    const finding = {
-      rule: 'viewport',
-      severity: 'warning',
-      frame: SWATCHES.ref,
-      path: 'studio/home/swatches.html',
-      message: 'Grows with the viewport.',
-      location: null,
-    } as const
-
-    it('lists one selected frame’s findings', () => {
-      receiveFindings(liveStore, { [SWATCHES.ref]: [finding] })
+    it('draws no section for a frame with findings, which its label’s badge lists', () => {
+      receiveFindings(liveStore, {
+        [SWATCHES.ref]: [
+          {
+            rule: 'viewport',
+            severity: 'warning',
+            frame: SWATCHES.ref,
+            path: 'studio/home/swatches.html',
+            message: 'Grows with the viewport.',
+            location: null,
+          },
+        ],
+      })
       act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
-
-      renderPanel()
-
-      const section = screen.getByRole('region', { name: 'Checks · 1' })
-      expect(section).toHaveTextContent('viewportGrows with the viewport.')
-    })
-
-    it('draws no section for a frame with no findings', () => {
-      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
-
-      renderPanel()
-
-      expect(screen.queryByRole('region', { name: /Checks/ })).toBeNull()
-    })
-
-    it('draws no section for several frames', () => {
-      receiveFindings(liveStore, { [SWATCHES.ref]: [finding] })
-      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
 
       renderPanel()
 

@@ -1571,8 +1571,8 @@ const STATE_ONLY = ['320', '768', '1536']
  * inspector for the hero's headline with its token menu open, the hero's
  * Selection colors, and with the Theme
  * tab open, with tokens and with none, the Assets tab with the reference's
- * six files, a frame's findings list open from its badge and listed under
- * Checks, and the right-click menus on a frame, beside its copy toast, on
+ * six files, a frame's findings list open from its badge, a frame with
+ * findings selected, whose inspector lists none, and the right-click menus on a frame, beside its copy toast, on
  * the selected element, on empty canvas, and on a page and a layers row, and
  * the guide a new board's start page shows. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
@@ -1881,7 +1881,7 @@ export const BOARD_CASES: CaptureCase[] = [
           both(
             asWriter,
             onCanvas({ select: ['webapp/home/about'] }),
-            readyWhen('[aria-labelledby="inspector-checks"]'),
+            readyWhen('[aria-labelledby="inspector-export"]'),
           ),
         ),
       },

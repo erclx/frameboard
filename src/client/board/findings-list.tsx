@@ -4,9 +4,9 @@ import type { Finding } from '@/shared/records/check'
 
 /**
  * A frame's findings, each as its rule, the file it sits in when that is not
- * the frame's own, the line when it has one, and its message, which already ends on the fix. The badge's popover and
- * the inspector's Checks both draw it, the warning glyph in the destructive
- * hue for an error and the note hue for a warning.
+ * the frame's own, the line when it has one, and its message, which already ends on the fix. The badge's popover draws
+ * it, the warning glyph in the destructive hue for an error and the note hue
+ * for a warning.
  */
 export function FindingsList({ findings }: { findings: readonly Finding[] }) {
   return (

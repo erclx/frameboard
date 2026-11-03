@@ -19,7 +19,6 @@ import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
 import { ArrangeSection } from './arrange-section'
-import { ChecksSection } from './checks-section'
 import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
@@ -44,8 +43,8 @@ import { SelectionColors } from './selection-colors'
 /**
  * The right panel: the header of the avatar and the zoom level, over the
  * Frame tool's presets while that tool is on, else the Frame section for one
- * selected frame, or the `N frames` section and
- * Arrange for several, each with the colors they use, and a hint while
+ * selected frame with its Fill and Export, or the `N frames` section and
+ * Arrange for several, each ending on the colors they use, and a hint while
  * nothing is selected. An element selected inside the frame adds its
  * sections under Frame, whose name row it hides. A tab that reads opens the
  * panel on one View only line, since every field under it reads greyed.
@@ -99,7 +98,7 @@ export function InspectorPanel() {
           {frames.length === 1 && !inFrame && frames[0] ? (
             <>
               <FrameFill page={page} frame={frames[0].ref} />
-              <ChecksSection frame={frames[0].ref} />
+              <ExportSection key={frames[0].ref} frame={frames[0]} />
             </>
           ) : null}
           {inFrame ? (
@@ -107,9 +106,6 @@ export function InspectorPanel() {
           ) : (
             <FramesColors frames={frames} />
           )}
-          {frames.length === 1 && !inFrame && frames[0] ? (
-            <ExportSection key={frames[0].ref} frame={frames[0]} />
-          ) : null}
         </>
       ) : (
         <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
