@@ -90,6 +90,10 @@ export function receiveChanges(
   // Changes arrive oldest first, so a seen one also clears an older one the
   // same replay marked before it.
   for (const change of changes) {
+    // A show of a frame whose write is still unseen leaves the write's
+    // mark, which names what to glow and keeps the toast saying changed.
+    const held = next[change.frame]
+    if (change.shown && held && !held.shown) continue
     if (!next[change.frame]) {
       if (change.before) nextBase[change.frame] = change.before
       else delete nextBase[change.frame]

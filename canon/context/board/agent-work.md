@@ -78,4 +78,4 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 `unseen.ts` also keeps each frame's compare base, the `before` of the first change since the developer last looked. It reads the base off the replayed log rather than the seen hash, keeps it past the look, and moves it on the next change after.
 
-A shown mark names a hash the developer may have seen already, so a look clears it by the show's id and time, kept in `frameboard.seen-shows`, and never by the hash.
+A shown mark names a hash the developer may have seen already, so a look clears it by the show's id and time, kept in `frameboard.seen-shows`, and never by the hash. A show of a frame whose write is still unseen leaves the write's mark, so its glow and the changed title stay.

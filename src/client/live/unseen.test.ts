@@ -179,6 +179,15 @@ describe('a shown mark', () => {
     expect(Object.keys(store.getState().unseen)).toEqual(['studio/home/hero'])
   })
 
+  it('keeps an unseen write on the frame rather than the show after it', () => {
+    const store = createUnseenStore(memoryStorage())
+    const write = change('studio/home/hero', 'h1', { id: 'c1' })
+
+    receiveChanges(store, [write, shown('h1', 'c2')])
+
+    expect(store.getState().unseen['studio/home/hero']).toEqual(write)
+  })
+
   it('stays cleared when a reload replays the show it looked at', () => {
     const storage = memoryStorage()
     const store = createUnseenStore(storage)
