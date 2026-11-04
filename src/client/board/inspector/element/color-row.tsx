@@ -47,6 +47,20 @@ export function Swatch({
   )
 }
 
+/** The hatched swatch of a row whose colors differ, as `inspector/multi-elements` draws it. */
+function MixedSwatch() {
+  return (
+    <span
+      aria-hidden
+      className={cn('size-3.5 shrink-0 rounded-[3px]', SWATCH_RING)}
+      style={{
+        background:
+          'repeating-linear-gradient(45deg, var(--faint) 0 3px, transparent 3px 6px)',
+      }}
+    />
+  )
+}
+
 /** The mark on a raw value, which no token names. */
 export function RawFlag() {
   return (
@@ -60,6 +74,8 @@ interface ColorRowProps {
   /** Names the row's controls, such as `Fill` or `Stroke`. */
   label: string
   value: StyleValue
+  /** True where the selected elements' colors differ, which reads `Mixed`, holding no one percent or token. */
+  mixed?: boolean
   /** The project's color tokens, offered first. */
   tokens: readonly TokenRow[]
   /** The theme the frame shows, which a swatch and a detach read. */
@@ -109,6 +125,7 @@ const PERCENT: Intl.NumberFormatOptions = {
 export function ColorRow({
   label,
   value,
+  mixed = false,
   tokens,
   theme,
   disabled,
@@ -141,7 +158,11 @@ export function ColorRow({
     if (!picking) return
     setPicking(null)
     const css = pickedCss(picking.color)
-    if (css === pickedCss(picking.from)) return
+    // A Mixed row opens on one member's color, which picking writes on them all.
+    const unchanged = mixed
+      ? picking.color === picking.from
+      : css === pickedCss(picking.from)
+    if (unchanged) return
     if (!write) {
       onPreview?.(null)
       return
@@ -167,7 +188,7 @@ export function ColorRow({
         onClick={() => open('custom')}
         className="grid shrink-0 place-items-center rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <Swatch color={swatch} />
+        {mixed ? <MixedSwatch /> : <Swatch color={swatch} />}
       </button>
       <button
         type="button"
@@ -176,10 +197,18 @@ export function ColorRow({
         onClick={() => open('tokens')}
         className={cn(
           'min-w-0 truncate text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-default',
-          value.token ? TOKEN_CHIP : 'flex-1 tabular-nums',
+          mixed
+            ? 'flex-1 text-muted-foreground italic'
+            : value.token
+              ? TOKEN_CHIP
+              : 'flex-1 tabular-nums',
         )}
       >
-        {value.token ? chipName(value.token) : value.value.replace(/^#/, '')}
+        {mixed
+          ? 'Mixed'
+          : value.token
+            ? chipName(value.token)
+            : value.value.replace(/^#/, '')}
       </button>
       <Popover
         open={picking !== null}
@@ -208,28 +237,32 @@ export function ColorRow({
               onTab={(tab) => setPicking({ ...picking, tab })}
               tokens={tokens}
               theme={theme}
-              token={value.token}
+              token={mixed ? null : value.token}
               onToken={pickToken}
             />
           ) : null}
         </PopoverContent>
       </Popover>
-      <NumberField
-        label={`${label} opacity`}
-        className="ml-auto w-12 shrink-0"
-        inputClassName="h-5 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
-        value={value.percent}
-        min={0}
-        max={100}
-        format={PERCENT}
-        disabled={disabled || !mixable}
-        scrubValue
-        onPreview={(change) =>
-          onPreview?.(change ? colorCss(source, change(value.percent)) : null)
-        }
-        onCommit={(change) => onWrite(colorCss(source, change(value.percent)))}
-      />
-      {value.token ? (
+      {mixed ? null : (
+        <NumberField
+          label={`${label} opacity`}
+          className="ml-auto w-12 shrink-0"
+          inputClassName="h-5 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
+          value={value.percent}
+          min={0}
+          max={100}
+          format={PERCENT}
+          disabled={disabled || !mixable}
+          scrubValue
+          onPreview={(change) =>
+            onPreview?.(change ? colorCss(source, change(value.percent)) : null)
+          }
+          onCommit={(change) =>
+            onWrite(colorCss(source, change(value.percent)))
+          }
+        />
+      )}
+      {mixed ? null : value.token ? (
         <button
           type="button"
           aria-label={`Detach ${chipName(value.token)}`}

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>multi-element inspector</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #ffffff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --claim: #7f2db5;
+        --note: #c77a00;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --claim: #e8b4ff;
+        --note: #f5b84a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        -webkit-font-smoothing: antialiased;
+      }
+      .tag {
+        padding: 10px 12px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+        border-bottom: 1px solid var(--border);
+        background: var(--canvas);
+      }
+      .tag b {
+        color: var(--text);
+      }
+      .p {
+        background: var(--panel);
+        min-height: 760px;
+      }
+      .isec {
+        padding: 10px 12px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .ihead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .ihead .n {
+        font-weight: 400;
+        color: var(--muted);
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .fld {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+      }
+      .fld .k {
+        color: var(--muted);
+        width: 12px;
+      }
+      .fld .mx {
+        color: var(--muted);
+        font-style: italic;
+      }
+      .cap {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin: 8px 0 4px;
+      }
+      .seg {
+        display: flex;
+        background: var(--raised);
+        border-radius: 6px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .seg span {
+        flex: 1;
+        text-align: center;
+        padding: 4px 0;
+        border-radius: 4px;
+        color: var(--muted);
+      }
+      .seg .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      }
+      .crow {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        margin-bottom: 5px;
+      }
+      .sw {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+      }
+      .pct {
+        margin-left: auto;
+        color: var(--muted);
+      }
+      .sub {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .chips {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+      }
+      .chip .x {
+        margin-left: auto;
+        color: var(--muted);
+      }
+      .chip .ic {
+        color: var(--muted);
+        width: 12px;
+        text-align: center;
+      }
+      .part {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="p">
+      <div class="isec">
+        <div class="ihead">
+          <span>3 elements</span><span class="n">in desktop</span>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead"><span>Position</span></div>
+        <div class="seg"><span>In flow</span><span class="on">Free</span></div>
+        <div class="grid2" style="margin-top: 6px">
+          <div class="fld">
+            <span class="k">X</span><span class="mx">Mixed</span>
+          </div>
+          <div class="fld">
+            <span class="k">Y</span><span class="mx">Mixed</span>
+          </div>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead"><span>Layout</span></div>
+        <span class="cap" style="margin-top: 0">Size</span>
+        <div class="grid2">
+          <div class="fld">
+            <span class="k">W</span><span class="mx">Mixed</span>
+          </div>
+          <div class="fld">
+            <span class="k">H</span><span class="mx">Mixed</span>
+          </div>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead"><span>Appearance</span></div>
+        <div class="grid2">
+          <div>
+            <span class="cap" style="margin-top: 0">Opacity</span>
+            <div class="fld"><span class="k">◐</span>100%</div>
+          </div>
+          <div>
+            <span class="cap" style="margin-top: 0">Corner radius</span>
+            <div class="fld">
+              <span class="k">╭</span><span class="mx">Mixed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead">
+          <span>Typography <span class="part">· 1 of 3</span></span>
+        </div>
+        <div class="fld" style="margin-bottom: 6px">Geist</div>
+        <div class="grid2">
+          <div class="fld">Medium</div>
+          <div class="fld">24</div>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead">
+          <span>Fill <span class="part">· 2 of 3</span></span
+          ><span class="n">+</span>
+        </div>
+        <div class="crow">
+          <span
+            class="sw"
+            style="
+              background: repeating-linear-gradient(
+                45deg,
+                var(--faint) 0 3px,
+                transparent 3px 6px
+              );
+            "
+          ></span
+          ><span style="color: var(--muted); font-style: italic">Mixed</span>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead"><span>Selection colors · 3</span></div>
+        <div class="crow">
+          <span class="sw" style="background: #4f46e5"></span>4f46e5<span
+            class="pct"
+            >100%</span
+          >
+        </div>
+        <div class="crow">
+          <span class="sw" style="background: #1a1a1a"></span>1a1a1a<span
+            class="pct"
+            >100%</span
+          >
+        </div>
+        <div class="crow">
+          <span class="sw" style="background: #ffffff"></span>ffffff<span
+            class="pct"
+            >100%</span
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

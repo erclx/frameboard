@@ -15,7 +15,8 @@ import {
   awaitHash,
   rememberHash,
   select,
-  selectElement,
+  selectedElements,
+  selectElements,
   type SelectionStore,
   selectionStore,
   settleLanded,
@@ -114,7 +115,15 @@ export function registerHistoryActions({
           after &&
           keepsElement(before, after, element.index)
         ) {
-          selectElement(selection, shown, { ...element, hash })
+          const kept = selectedElements(selection.getState()).filter(
+            ({ index }) =>
+              index === element.index || keepsElement(before, after, index),
+          )
+          selectElements(
+            selection,
+            shown,
+            kept.map((key) => ({ ...key, hash })),
+          )
         } else {
           select(selection, shown, [element.frame])
         }

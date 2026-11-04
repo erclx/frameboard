@@ -38,7 +38,9 @@ interface ElementOverlayProps {
  * The ghosts of elements past their frame's edge, under the selected
  * element's outline, its size chip, and the four corner marks of an element
  * a corner drag resizes, the marks at a constant screen size through `--zoom`
- * as the frame selection draws them. It is placed from the live element's box
+ * as the frame selection draws them. Several selected draw one bare outline
+ * each, the last picked last, since a corner drag and a size name one element.
+ * Each is placed from the live element's box
  * inside the frame's iframe and follows that element as it resizes, so it
  * draws nothing while the frame is a placeholder or shows other bytes than
  * the selection names. The marks take no pointer events, since the gestures
@@ -48,7 +50,7 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   return (
     <>
       <ElementGhosts frames={frames} container={container} />
-      <ElementOutline frames={frames} container={container} />
+      <ElementOutlines frames={frames} container={container} />
     </>
   )
 }
@@ -188,9 +190,61 @@ function useGhosts(
   return read?.key === key ? read.ghosts : []
 }
 
-/** The selected element's outline, corner marks where a drag resizes it, and size chip. */
-function ElementOutline({ frames, container }: ElementOverlayProps) {
+/** One outline per selected element, the marks and the chip on a single selection only. */
+function ElementOutlines({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
+  const members = useSelection((state) => state.elements)
+  const several = (members?.length ?? 0) > 1 ? members : undefined
+  if (several) {
+    return several.map((key) => (
+      <MemberOutline
+        key={key.index}
+        element={key}
+        frames={frames}
+        container={container}
+      />
+    ))
+  }
+  return (
+    <ElementOutline element={element} frames={frames} container={container} />
+  )
+}
+
+interface MemberOutlineProps extends ElementOverlayProps {
+  element: ElementKey
+}
+
+/** One of several selected elements' outline, bare, which never holds a dropped box. */
+function MemberOutline({ element, frames, container }: MemberOutlineProps) {
+  const frame = frames.find((candidate) => candidate.ref === element.frame)
+  const pending = usePendingBox(frame?.ref ?? '')
+  const rect = useElementMeasure(container, element)?.box
+  const at = pending ?? frame?.box
+  if (!at || !rect) return null
+  return (
+    <div
+      data-element-selection
+      data-element-index={element.index}
+      className="pointer-events-none absolute"
+      style={{
+        left: at.x + rect.x,
+        top: at.y + rect.y,
+        width: rect.width,
+        height: rect.height,
+        outline: OUTLINE,
+        outlineOffset: screen(2),
+        zIndex: OVERLAY_Z,
+      }}
+    />
+  )
+}
+
+interface ElementOutlineProps extends ElementOverlayProps {
+  element: ElementKey | null
+}
+
+/** The selected element's outline, corner marks where a drag resizes it, and size chip. */
+function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const measure = useElementMeasure(container, element)

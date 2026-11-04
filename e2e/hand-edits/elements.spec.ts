@@ -264,6 +264,86 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('Shift-click selects two elements, Free places both, and one undo takes them back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    const original = read()
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const outlines = page.locator('[data-element-selection]')
+
+    await cmdClick(page, 'h1')
+    await expect(outlines).toHaveCount(1)
+    const caption = await page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('p')
+      .boundingBox()
+    if (!caption) throw new Error('the caption has no box on screen')
+    await page.keyboard.down('Shift')
+    await page.mouse.click(
+      caption.x + caption.width / 2,
+      caption.y + caption.height / 2,
+    )
+    await page.keyboard.up('Shift')
+
+    await expect(outlines).toHaveCount(2)
+    await expect(
+      page.getByRole('heading', { name: '2 elements' }),
+    ).toBeVisible()
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Free', exact: true })
+      .click()
+
+    await expect.poll(() => read().match(/position: absolute/g)).toHaveLength(2)
+    await expect(outlines).toHaveCount(2)
+
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect.poll(read).toBe(original)
+  })
+
+  test('a marquee from the selected frame’s bare body selects what it touches, and Delete takes them out', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const hero = page.locator(`[data-frame="${HERO}"]`)
+    const box = await hero.boundingBox()
+    if (!box) throw new Error('the hero has no box on screen')
+    const headline = await page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+      .boundingBox()
+    if (!headline) throw new Error('the headline has no box on screen')
+    const bare = { x: box.x + box.width / 2, y: box.y + box.height - 8 }
+
+    await page.mouse.click(bare.x, bare.y)
+    await page
+      .getByRole('button', { name: 'Show the elements of hero' })
+      .click()
+    await expect(
+      page.getByRole('list', { name: 'Elements of hero' }),
+    ).toBeVisible()
+    await page.mouse.move(bare.x, bare.y)
+    await page.mouse.down()
+    await page.mouse.move(bare.x - 20, headline.y + 2, { steps: 4 })
+    await page.mouse.up()
+
+    await expect(page.locator('[data-element-selection]')).toHaveCount(2)
+    await page.keyboard.press('Delete')
+
+    await expect.poll(read).not.toContain('data-name="Headline"')
+    expect(read()).not.toContain('data-name="Caption"')
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect.poll(read).toContain('data-name="Headline"')
+    expect(read()).toContain('data-name="Caption"')
+  })
+
   test('a note pinned on an element stays on it through a fill change and an insert before it, and through both undos', async ({
     page,
   }) => {

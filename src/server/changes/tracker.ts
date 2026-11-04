@@ -277,6 +277,7 @@ function writtenPaths(step: Step): string[] {
     if (
       change.kind === 'element' ||
       change.kind === 'inserted' ||
+      change.kind === 'deleted' ||
       change.kind === 'relocated' ||
       change.kind === 'path'
     )

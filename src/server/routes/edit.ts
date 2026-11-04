@@ -14,13 +14,16 @@ import { applyEdit } from '@/server/edit/apply'
 import { elementPlaceFacts } from '@/server/edit/elements'
 import {
   editFrameFile,
+  editFrameFileAll,
   insertFrameFile,
   moveFrameFile,
   placeFrameFile,
+  placeFrameFileAll,
   type PlaceInserted,
   recolorFrameFile,
   type Remap,
   removeFrameFile,
+  removeFrameFileAll,
 } from '@/server/edit/frame-file'
 import {
   elementMarkup,
@@ -55,20 +58,35 @@ const side = z.int().min(1).max(10_000)
 /** A spot in CSS pixels, bounded well past any frame. */
 const offset = z.number().min(-100_000).max(100_000)
 
-const editSchema = z.object({
-  ref: z.string().min(1).max(1024),
-  index: z.int().min(0),
-  hash: z.string().regex(/^[0-9a-f]{64}$/),
-  change: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('style'), property: name, value }),
-    z.object({ kind: z.literal('attribute'), name, value }),
-    z.object({ kind: z.literal('text'), value }),
-    z.object({
-      kind: z.literal('styles'),
-      declarations: z.array(z.object({ property: name, value })).max(16),
-    }),
-  ]),
-})
+/** How many elements one batch names, well past any selection a hand makes. */
+const BATCH = 1024
+
+const changeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('style'), property: name, value }),
+  z.object({ kind: z.literal('attribute'), name, value }),
+  z.object({ kind: z.literal('text'), value }),
+  z.object({
+    kind: z.literal('styles'),
+    declarations: z.array(z.object({ property: name, value })).max(16),
+  }),
+])
+
+const editSchema = z.union([
+  z.object({
+    ref: z.string().min(1).max(1024),
+    index: z.int().min(0),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    change: changeSchema,
+  }),
+  z.object({
+    ref: z.string().min(1).max(1024),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    edits: z
+      .array(z.object({ index: z.int().min(0), change: changeSchema }))
+      .min(1)
+      .max(BATCH),
+  }),
+])
 
 const insertSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -106,11 +124,18 @@ const insertSchema = z.object({
     .optional(),
 })
 
-const removeSchema = z.object({
-  ref: z.string().min(1).max(1024),
-  index: z.int().min(0),
-  hash: z.string().regex(/^[0-9a-f]{64}$/),
-})
+const removeSchema = z.union([
+  z.object({
+    ref: z.string().min(1).max(1024),
+    index: z.int().min(0),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+  z.object({
+    ref: z.string().min(1).max(1024),
+    indexes: z.array(z.int().min(0)).min(1).max(BATCH),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+])
 
 const moveSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -120,10 +145,7 @@ const moveSchema = z.object({
   before: z.int().min(0).nullable(),
 })
 
-const placeSchema = z.object({
-  ref: z.string().min(1).max(1024),
-  hash: z.string().regex(/^[0-9a-f]{64}$/),
-  index: z.int().min(0),
+const spotFields = {
   spot: z
     .object({
       left: offset,
@@ -134,7 +156,24 @@ const placeSchema = z.object({
     .nullable(),
   /** Back in flow, the sizes to drop, being ones a placement wrote that nothing changed since. */
   drop: z.array(placedSizeSchema).max(2).optional(),
-})
+}
+
+const placeSchema = z.union([
+  z.object({
+    ref: z.string().min(1).max(1024),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    index: z.int().min(0),
+    ...spotFields,
+  }),
+  z.object({
+    ref: z.string().min(1).max(1024),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    places: z
+      .array(z.object({ index: z.int().min(0), ...spotFields }))
+      .min(1)
+      .max(BATCH),
+  }),
+])
 
 const recolorSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -174,6 +213,9 @@ export type SettledVersion = (
  * records the edited element's span as one step. It answers the `edit`
  * record with the index written and the hash written over. Each refusal the
  * writer returns answers 409 with its code, `stale-address` among them.
+ * Given `edits` in place of `index` and `change`, it writes each as one
+ * write and one step, refused whole on any refusal, and answers `indexes` in
+ * the order sent, `index` being the last.
  *
  * The insert takes an element kind, never markup, and writes that kind's one
  * tag into the gap `parent` and `before` name, painted from the project's
@@ -194,7 +236,9 @@ export type SettledVersion = (
  * The remove takes out the element at `index`, with what it holds, from the
  * bytes `hash` names, and records it as one step whose undo puts it back
  * under its parent. It answers the frame and the hash written, and refuses a
- * moved file as `stale-address` the way the insert does.
+ * moved file as `stale-address` the way the insert does. Given `indexes` in
+ * place of `index`, it takes out each as one write and one step, one held
+ * inside another named going with that one, refused whole on any refusal.
  *
  * The move takes one element by index and the gap it goes into, both read
  * in the frame as the hash names it, and records it as one step an undo
@@ -209,7 +253,9 @@ export type SettledVersion = (
  * both as one step, so one undo restores both. It answers the element's
  * index, the hash written, and the sizes a placement wrote, refuses as the move
  * does, and refuses `reanchors-descendant` where a positioned parent would
- * move another element anchored above it.
+ * move another element anchored above it. Given `places` in place of
+ * `index`, `spot`, and `drop`, it places each as one write and one step,
+ * refused whole on any refusal, and answers `placed` in the order sent.
  *
  * The recolor writes the color token `to` in place of the raw color `from`
  * on every element under `index`, or under the frame's body without one,
@@ -256,6 +302,51 @@ export function editRoutes(
     // The lookup waits on the scan turn, so an edit on the file's own hash skips it.
     const moved = contentHash(await readFile(frame.path)) !== body.hash
     const was = moved ? ((await version?.(ref, body.hash)) ?? null) : null
+    if ('edits' in body) {
+      const result = editFrameFileAll(
+        frame.path,
+        body.hash,
+        body.edits,
+        (hash) => (hash === body.hash ? was : null),
+      )
+      if (!result.ok) {
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: result.reason,
+              message: result.detail,
+              details: {
+                ref,
+                ...('moved' in result ? { moved: result.moved } : {}),
+              },
+            },
+          },
+          409,
+        )
+      }
+      // Edits that leave the bytes as they were record nothing to undo.
+      const written = result.spans.filter((span) => span.before !== span.after)
+      if (written.length > 0) {
+        const journal = history.journal()
+        for (const span of written) journal.element(frame.path, ref, span)
+        history.record({
+          id: journal.id,
+          changes: journal.changes,
+          page: null,
+          frames: [ref],
+        })
+      }
+      await follow(frame, result.from, result.hash, result.remap)
+      const data: EditResult = {
+        ref,
+        index: result.indexes.at(-1) ?? 0,
+        indexes: [...result.indexes],
+        hash: result.hash,
+        from: result.from,
+      }
+      return c.json({ ok: true, data })
+    }
     const result = editFrameFile(
       frame.path,
       { index: body.index, hash: body.hash },
@@ -402,6 +493,33 @@ export function editRoutes(
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
     await refuseClaimed(root, [ref], new Date())
+    if ('indexes' in body) {
+      const result = removeFrameFileAll(frame.path, body.hash, body.indexes)
+      if (!result.ok) {
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: result.reason,
+              message: result.detail,
+              details: { ref },
+            },
+          },
+          409,
+        )
+      }
+      const journal = history.journal()
+      journal.deletedElements(frame.path, ref, result.spans)
+      history.record({
+        id: journal.id,
+        changes: journal.changes,
+        page: null,
+        frames: [ref],
+      })
+      await follow(frame, body.hash, result.hash, result.remap)
+      const data: RemoveResult = { ref, hash: result.hash }
+      return c.json({ ok: true, data })
+    }
     const result = removeFrameFile(frame.path, body.hash, body.index)
     if (!result.ok) {
       return c.json(
@@ -469,6 +587,56 @@ export function editRoutes(
     const frame = await resolveFrameRef(root, body.ref, { cwd: root })
     const ref = `${frame.project}/${frame.page}/${frame.name}`
     await refuseClaimed(root, [ref], new Date())
+    if ('places' in body) {
+      const result = placeFrameFileAll(
+        frame.path,
+        body.hash,
+        body.places.map(({ index, spot, drop }) => ({
+          index,
+          spot,
+          drop: spot ? [] : (drop ?? []),
+        })),
+        (html) =>
+          elementPlaceFacts(frameFrom(frame, html), tokenSheets(frame.project)),
+      )
+      if (!result.ok) {
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: result.reason,
+              message: result.detail,
+              details: { ref },
+            },
+          },
+          409,
+        )
+      }
+      const written = result.spans.filter((span) => span.before !== span.after)
+      if (written.length > 0) {
+        const journal = history.journal()
+        for (const span of written) journal.element(frame.path, ref, span)
+        history.record({
+          id: journal.id,
+          changes: journal.changes,
+          page: null,
+          frames: [ref],
+        })
+      }
+      await follow(frame, body.hash, result.hash, result.remap)
+      const placed = body.places.map(({ index }, at) => ({
+        index,
+        sized: [...(result.sized[at] ?? [])],
+      }))
+      const data: PlaceResult = {
+        ref,
+        index: placed.at(-1)?.index ?? 0,
+        hash: result.hash,
+        sized: placed.at(-1)?.sized ?? [],
+        placed,
+      }
+      return c.json({ ok: true, data })
+    }
     const source = readFrame(frame)
     // Facts read from other bytes than the hash names would pick the wrong tags.
     const facts =

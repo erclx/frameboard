@@ -4,7 +4,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { frameOf } from '@/test/board'
 
 import { modeStore } from '../mode'
-import { clear, select, selectElement, selectionStore } from '../selection'
+import {
+  clear,
+  select,
+  selectElement,
+  selectElements,
+  selectionStore,
+} from '../selection'
 import { heldOutline, holdOutline } from './held'
 import { ElementOverlay } from './overlay'
 
@@ -48,6 +54,48 @@ function outline(container: HTMLElement): HTMLElement | null {
 }
 
 describe('ElementOverlay', () => {
+  describe('with several selected', () => {
+    // Indices past the skipped injected style: html 0, head 1, body 2, h1 3, h2 4.
+    const TWO = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1,h2{margin:0;height:40px}</style></head><body><h1>One</h1><h2>Two</h2></body></html>`
+    const members = [
+      { frame: HERO.ref, index: 3, hash: HASH },
+      { frame: HERO.ref, index: 4, hash: HASH },
+    ]
+
+    it('draws one outline each, with no corner marks or size chip', async () => {
+      const mounted = await mountFrame(TWO)
+      act(() => selectElements(selectionStore, 'studio/home', members))
+
+      const { container } = render(
+        <ElementOverlay frames={[HERO]} container={mounted} />,
+      )
+
+      const drawn = container.querySelectorAll<HTMLElement>(
+        '[data-element-selection]',
+      )
+      expect([...drawn].map((outline) => outline.dataset.elementIndex)).toEqual(
+        ['3', '4'],
+      )
+      expect(container.querySelector('[data-element-corner]')).toBeNull()
+      expect(container.querySelector('[data-chip]')).toBeNull()
+    })
+
+    it('draws the marks again once one is left', async () => {
+      const mounted = await mountFrame(TWO)
+      act(() => selectElements(selectionStore, 'studio/home', members))
+      const { container } = render(
+        <ElementOverlay frames={[HERO]} container={mounted} />,
+      )
+
+      act(() => selectElement(selectionStore, 'studio/home', members[1]!))
+
+      expect(
+        container.querySelectorAll('[data-element-selection]'),
+      ).toHaveLength(1)
+      expect(container.querySelector('[data-chip]')).not.toBeNull()
+    })
+  })
+
   it("outlines the selected element at its box within the frame's box, with its size", async () => {
     const container = await mountFrame()
     act(() =>

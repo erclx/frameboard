@@ -89,17 +89,52 @@ export function badgeAt(
   )
 }
 
-/** The selected element's outline box on the canvas, as the layer draws it, null while none draws. */
-export function selectedElementBox(layer: ParentNode): Box | null {
-  const drawn = layer.querySelector<HTMLElement>('[data-element-selection]')
-  if (!drawn) return null
-  const { left, top, width, height } = drawn.style
+function drawnBox({ style }: HTMLElement): Box {
   return {
-    x: parseFloat(left),
-    y: parseFloat(top),
-    width: parseFloat(width),
-    height: parseFloat(height),
+    x: parseFloat(style.left),
+    y: parseFloat(style.top),
+    width: parseFloat(style.width),
+    height: parseFloat(style.height),
   }
+}
+
+/**
+ * The selected element's outline box on the canvas, as the layer draws it,
+ * null while none draws. With several selected, the last picked's, which the
+ * layer draws last.
+ */
+export function selectedElementBox(layer: ParentNode): Box | null {
+  const drawn = [
+    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+  ].at(-1)
+  return drawn ? drawnBox(drawn) : null
+}
+
+/**
+ * The outline of the selected element under a canvas point, the last picked
+ * winning where they overlap, else the last picked's, for a menu to read as
+ * the element a right-click landed on or the frame around it.
+ */
+export function selectedElementBoxAt(
+  layer: ParentNode,
+  point: Point,
+): Box | null {
+  const under = selectedElementBoxes(layer)
+    .reverse()
+    .find(({ box }) => within(box, point))
+  return under?.box ?? selectedElementBox(layer)
+}
+
+/** Every selected element's outline on the canvas by its index, the last picked last. */
+export function selectedElementBoxes(
+  layer: ParentNode,
+): { index: number; box: Box }[] {
+  return [
+    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+  ].flatMap((drawn) => {
+    const index = Number(drawn.dataset.elementIndex)
+    return Number.isInteger(index) ? [{ index, box: drawnBox(drawn) }] : []
+  })
 }
 
 /**

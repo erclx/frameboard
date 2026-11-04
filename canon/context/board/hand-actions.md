@@ -21,6 +21,12 @@ Owns picking, walking, and outlining an element, and with the board folder's `se
 - Alt+A, D, W, S align, Alt+H and Alt+V center, and Ctrl+Alt+H and Ctrl+Alt+V distribute, each writing the page's layout alone
 - Cmd+Shift+H hides, Cmd+Shift+L locks, and Cmd+Shift+C copies a frame as a PNG in the theme on screen, rendered by the browser `capture` uses
 
+Several elements in one frame select together, all at one hash, with `element` holding the last picked.
+
+- With an element selected, Shift-click on the canvas or in Layers adds an element or takes it out, and Cmd+A selects its siblings. An element in another frame starts over there.
+- A drag from a selected frame's bare `body` marquees the elements it touches, outermost first, and a drag from an element it holds still moves the frame
+- Several draw bare outlines, with marks and the chip on one alone. Delete, from its key or the menu, takes all as one step, and restack and the menu's other items act on the last picked.
+
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
@@ -120,5 +126,5 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - Hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, since it would write `display` into the frame, which no hand edit writes yet
-- A drag on a selected element or its outline carries it, and one on a corner mark resizes it, which only text, a shape, an image, or a video draws. Its frame moves by the label strip or after Esc.
+- A drag on a selected element or its outline carries it, and one on a corner mark resizes it. Its frame moves from the label strip or an element it holds, since its bare `body` marquees.
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one

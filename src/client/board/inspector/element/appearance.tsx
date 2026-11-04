@@ -10,7 +10,7 @@ const PERCENT: Intl.NumberFormatOptions = {
 }
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-function OpacityIcon() {
+export function OpacityIcon() {
   return (
     <svg
       aria-hidden
@@ -28,7 +28,7 @@ function OpacityIcon() {
   )
 }
 
-function RadiusIcon() {
+export function RadiusIcon() {
   return (
     <svg
       aria-hidden

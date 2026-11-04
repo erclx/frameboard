@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import {
   DropdownMenu,
@@ -24,6 +25,10 @@ import type { WriteElement } from './write'
 
 interface ShadowSectionProps {
   boxShadow: StyleValue | null
+  /** True where the selected elements' shadows differ, which reads `Mixed`. */
+  mixed?: boolean
+  /** Set beside the title, as the count of members holding it. */
+  note?: ReactNode
   /** The project's `--shadow*` tokens. */
   shadows: readonly TokenRow[]
   theme: Theme
@@ -39,6 +44,8 @@ interface ShadowSectionProps {
  */
 export function ShadowSection({
   boxShadow,
+  mixed = false,
+  note,
   shadows,
   theme,
   disabled,
@@ -59,6 +66,7 @@ export function ShadowSection({
     >
       <h2 id="inspector-shadow" className="mb-2 text-xs font-semibold">
         Shadow
+        {note}
       </h2>
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -66,15 +74,17 @@ export function ShadowSection({
           disabled={disabled}
           className={`${COLOR_ROW} w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50`}
         >
-          <ShadowSwatch shadow={shown} />
-          {none ? (
+          <ShadowSwatch shadow={mixed ? null : shown} />
+          {mixed ? (
+            <span className="flex-1 text-muted-foreground italic">Mixed</span>
+          ) : none ? (
             <span className="flex-1 text-muted-foreground">None</span>
           ) : boxShadow.token ? (
             <span className={TOKEN_CHIP}>{chipName(boxShadow.token)}</span>
           ) : (
             <span className="flex-1 truncate">{boxShadow.value}</span>
           )}
-          {!none && !boxShadow.token ? <RawFlag /> : null}
+          {!mixed && !none && !boxShadow.token ? <RawFlag /> : null}
           <ChevronDown
             aria-hidden
             className="ml-auto size-2.5 shrink-0 text-muted-foreground"

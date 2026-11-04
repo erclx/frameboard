@@ -8,7 +8,9 @@ import {
   awaitHash,
   type ElementKey,
   rememberHash,
+  selectedElements,
   selectElement,
+  selectElements,
   type SelectionStore,
   selectionStore,
   settleLanded,
@@ -26,6 +28,12 @@ export type ElementChange =
       kind: 'styles'
       declarations: readonly { property: string; value: string }[]
     }
+
+/** One element's change in a batch, all of one frame at one hash. */
+export interface ElementEdit {
+  key: ElementKey
+  change: ElementChange
+}
 
 /** Sends one change for the selected element and answers whether it was written. */
 export type WriteElement = (change: ElementChange) => Promise<boolean>
@@ -113,6 +121,25 @@ export function writeElement(
 }
 
 /**
+ * Writes these changes, all to elements of one frame at one hash, as one write
+ * and one undo step, in that frame's turn as `writeElement` does one, refused
+ * whole. Every selected element stays selected at the hash answered, and one
+ * the batch left alone is dropped once the server found the others elsewhere,
+ * since its index may then name another element.
+ */
+export function writeElements(
+  page: string,
+  edits: readonly ElementEdit[],
+  deps: WriteDeps = {},
+): Promise<boolean> {
+  const [first] = edits
+  if (!first) return Promise.resolve(false)
+  return inFrameTurn(first.key.frame, (prior) =>
+    batchInTurn(prior, page, first.key, edits, deps),
+  ).then((landed) => landed !== null)
+}
+
+/**
  * Runs one write of `frame`'s file behind the element edits and inserts
  * already queued on it, handing it what the one before it landed, so a
  * write made from the hash that one started from is sent from the hash it
@@ -129,29 +156,117 @@ export function inFrameTurn(
   })
 }
 
+function showRefusal({ copy, ...refusal }: Refusal): void {
+  // It leaves after Base UI's 5 s default, which hover or focus pauses.
+  toast.add({
+    ...refusal,
+    type: 'warning',
+    ...(copy === undefined
+      ? {}
+      : {
+          actionProps: {
+            children: 'Copy text',
+            onClick: () => void navigator.clipboard.writeText(copy),
+          },
+        }),
+  })
+}
+
+async function batchInTurn(
+  prior: Promise<Landed> | undefined,
+  page: string,
+  { frame, hash: read }: ElementKey,
+  edits: readonly ElementEdit[],
+  { selection = selectionStore, send = fetch, notify = showRefusal }: WriteDeps,
+): Promise<Landed> {
+  const before = prior ? await prior : undefined
+  if (before === null) {
+    settleRefused(selection, shownHash)
+    return null
+  }
+  const follows = before !== undefined && before.from.includes(read)
+  const rebased =
+    follows &&
+    (!before.shifted || edits.every(({ key }) => before.at.has(key.index)))
+  const hash = rebased ? before.to : read
+  const sent = edits.map(({ key, change }) => ({
+    index: rebased ? (before.at.get(key.index) ?? key.index) : key.index,
+    change,
+  }))
+  let done = () => {}
+  try {
+    const answer = await whenFree([frame], 'edit', async () => {
+      done = awaitHash(frame)
+      rememberHash(frame, hash)
+      try {
+        return await writeBoard<EditResult>(
+          '/api/frames/edit',
+          { ref: frame, hash, edits: sent },
+          'POST',
+          send,
+        )
+      } catch (error) {
+        done()
+        throw error
+      }
+    })
+    const relocated = answer.from !== undefined && answer.from !== hash
+    if (relocated && answer.from) rememberHash(frame, answer.from)
+    rememberHash(frame, answer.hash)
+    const landedAt = new Map(
+      edits.map(({ key }, at) => [
+        key.index,
+        answer.indexes?.[at] ?? sent[at]?.index ?? key.index,
+      ]),
+    )
+    const state = selection.getState()
+    if (state.page === page && state.frames.includes(frame)) {
+      const held = selectedElements(state)
+      const named = held.length > 0 ? held : edits.map(({ key }) => key)
+      if (held.length > 0 || relocated) {
+        selectElements(
+          selection,
+          page,
+          named.flatMap((key) => {
+            const index = landedAt.get(key.index)
+            if (index === undefined && relocated) return []
+            return [{ frame, index: index ?? key.index, hash: answer.hash }]
+          }),
+        )
+      }
+    }
+    done()
+    settleLanded(selection, shownHash)
+    const at = new Map(follows ? before.at : [])
+    for (const [from, to] of landedAt) at.set(from, to)
+    return {
+      from: follows ? [...before.from, hash] : [read],
+      to: answer.hash,
+      at,
+      shifted: (follows && before.shifted) || relocated,
+    }
+  } catch (error) {
+    if (!(error instanceof WaitDropped)) {
+      notify({
+        title: 'Edit not saved',
+        description:
+          error instanceof BoardWriteError
+            ? sentence(error.message)
+            : 'The board could not be reached, so nothing was written.',
+      })
+    }
+    done()
+    settleRefused(selection, shownHash)
+    return null
+  }
+}
+
 async function editInTurn(
   prior: Promise<Landed> | undefined,
   page: string,
   key: ElementKey,
   change: ElementChange,
-  {
-    selection = selectionStore,
-    send = fetch,
-    notify = ({ copy, ...refusal }) =>
-      // It leaves after Base UI's 5 s default, which hover or focus pauses.
-      toast.add({
-        ...refusal,
-        type: 'warning',
-        ...(copy === undefined
-          ? {}
-          : {
-              actionProps: {
-                children: 'Copy text',
-                onClick: () => void navigator.clipboard.writeText(copy),
-              },
-            }),
-      }),
-  }: WriteDeps,
+  { selection = selectionStore, send = fetch, notify = showRefusal }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
   // The refused edit's toast speaks for the ones queued behind it.

@@ -131,6 +131,79 @@ export function editFrameFile(
   }
 }
 
+/** One element's change in a batch, by its index in the bytes the batch was made from. */
+export interface ElementEdit {
+  readonly index: number
+  readonly change: EditChange
+}
+
+export type FrameFileEdits =
+  | {
+      readonly ok: true
+      /** The file's hash after the edits, which the next edit is made from. */
+      readonly hash: string
+      /** The hash the edits were written over, which differs from the sent one once relocated. */
+      readonly from: string
+      /** Each edit's element index in the file as written, in the order sent. */
+      readonly indexes: readonly number[]
+      /** Each edited element's bytes, in the order sent, which one undo puts back together. */
+      readonly spans: readonly ElementSpan[]
+      /** Every element keeps its index, since an edit writes inside one. */
+      readonly remap: Remap
+    }
+  | EditRefused
+  | Collided
+
+/**
+ * Edits several elements of a frame file as one write, each found again and
+ * verified as `editFrameFile` does one, in the order sent through the bytes
+ * the one before it left. Any refusal writes nothing, so a batch never lands
+ * in part, and naming one element twice is refused since one undo could not
+ * put both spans back.
+ */
+export function editFrameFileAll(
+  path: string,
+  hash: string,
+  edits: readonly ElementEdit[],
+  sourceAt?: SourceAt,
+): FrameFileEdits {
+  const read = readSource(path)
+  if (!read.ok) return read
+  const { source } = read
+  const indexes: number[] = []
+  for (const { index, change } of edits) {
+    if (hash === read.hash) {
+      indexes.push(index)
+      continue
+    }
+    const was = sourceAt?.(hash)
+    if (!was) return stale(path)
+    const found = relocate(was, index, scopeOf(change), source)
+    if (!found) return collided(path, was, index, source)
+    indexes.push(found.index)
+  }
+  if (new Set(indexes).size !== indexes.length) {
+    return refuse('invalid-edit', 'a batch names one element twice')
+  }
+  let html = source
+  const spans: ElementSpan[] = []
+  for (const [at, { change }] of edits.entries()) {
+    const applied = applyEdit(html, { index: indexes[at] ?? -1 }, change)
+    if (!applied.ok) return applied
+    html = applied.html
+    spans.push(applied.span)
+  }
+  if (!replaceFile(path, read.hash, html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(html),
+    from: read.hash,
+    indexes,
+    spans,
+    remap: identity,
+  }
+}
+
 export type FrameFileInsert =
   | {
       readonly ok: true
@@ -230,6 +303,64 @@ export function removeFrameFile(
   }
 }
 
+export type FrameFileRemoveAll =
+  | {
+      readonly ok: true
+      readonly hash: string
+      /** The deleted elements in the order taken out, last in the file first. */
+      readonly spans: readonly InsertedSpan[]
+      readonly remap: Remap
+    }
+  | EditRefused
+
+/**
+ * Takes several elements out of a frame file as one write, refused as
+ * `removeFrameFile` refuses one. Each goes last in the file first, so the
+ * indices ahead of it hold, and one inside another named element goes with
+ * that one rather than on its own.
+ */
+export function removeFrameFileAll(
+  path: string,
+  hash: string,
+  indexes: readonly number[],
+): FrameFileRemoveAll {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const { elements } = parseFrame(read.source)
+  const named = new Set<unknown>(indexes.map((index) => elements[index]))
+  const outermost = [...new Set(indexes)].filter((index) => {
+    let node: unknown = elements[index]?.parentNode
+    while (node && typeof node === 'object') {
+      if (named.has(node)) return false
+      node = 'parentNode' in node ? node.parentNode : null
+    }
+    return true
+  })
+  let html = read.source
+  const spans: InsertedSpan[] = []
+  const remaps: Remap[] = []
+  for (const index of outermost.toSorted((a, b) => b - a)) {
+    const size = subtreeSize(html, index)
+    const removed = removeElement(html, index)
+    if (!removed.ok) return removed
+    html = removed.html
+    spans.push(removed.span)
+    remaps.push(takenOut(index, size))
+  }
+  if (!replaceFile(path, hash, html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(html),
+    spans,
+    remap: (index) =>
+      remaps.reduce<number | null>(
+        (at, remap) => (at === null ? null : remap(at)),
+        index,
+      ),
+  }
+}
+
 export type FrameFileMove =
   | {
       readonly ok: true
@@ -306,6 +437,65 @@ export function placeFrameFile(
     hash: contentHash(placed.html),
     spans: placed.spans,
     sized: placed.sized,
+    remap: identity,
+  }
+}
+
+/** One element's placement in a batch, by its index in the bytes the batch was made from. */
+export interface ElementPlace {
+  readonly index: number
+  readonly spot: Spot | null
+  /** Back in flow, the sizes to drop. */
+  readonly drop?: readonly PlacedSize[]
+}
+
+export type FrameFilePlaceAll =
+  | {
+      readonly ok: true
+      readonly hash: string
+      /** Every start tag written, in the order written, which one undo puts back together. */
+      readonly spans: readonly ElementSpan[]
+      /** The sizes each placement wrote, in the order sent. */
+      readonly sized: readonly (readonly PlacedSize[])[]
+      /** Every element keeps its index, since a placement writes start tags alone. */
+      readonly remap: Remap
+    }
+  | EditRefused
+
+/**
+ * Places several elements of a frame file as one write, refused whole as
+ * `placeFrameFile` refuses one. They go in file order, so a parent placed too
+ * is positioned ahead of its child, which then writes no second span on its
+ * tag that would strand the undo. `factsOf` reads the static cascade of the
+ * bytes the one before left, so siblings share the parent the first one made
+ * relative rather than writing it twice.
+ */
+export function placeFrameFileAll(
+  path: string,
+  hash: string,
+  places: readonly ElementPlace[],
+  factsOf: (html: string) => readonly PlaceFacts[],
+): FrameFilePlaceAll {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  let html = read.source
+  const spans: ElementSpan[] = []
+  const sized = new Map<ElementPlace, readonly PlacedSize[]>()
+  for (const place of places.toSorted((a, b) => a.index - b.index)) {
+    const { index, spot, drop } = place
+    const placed = placeElement(html, index, spot, factsOf(html), drop ?? [])
+    if (!placed.ok) return placed
+    html = placed.html
+    spans.push(...placed.spans)
+    sized.set(place, placed.sized)
+  }
+  if (!replaceFile(path, hash, html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(html),
+    spans,
+    sized: places.map((place) => sized.get(place) ?? []),
     remap: identity,
   }
 }
