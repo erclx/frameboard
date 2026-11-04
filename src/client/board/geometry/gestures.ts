@@ -381,6 +381,9 @@ export function attachGestures(
       return 'corner' in gesture ? cornerCursor(gesture.corner) : null
     }
     if (!moveToolOn() || !stores.canWrite()) return null
+    // A card over the mark takes the press itself, so its move bubbles here
+    // with nothing to resize.
+    if (event.target !== hit) return null
     const mark = markAt(event, toCanvas(event), withDrawn(target.frames()))
     if (!mark) return null
     // `begin` turns a press on a locked frame's handle into no drag.

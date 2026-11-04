@@ -355,7 +355,8 @@ function setup(
     part,
     pointer,
     detach,
-    cursorOver: (x: number, y: number) => cursorAt(pointer.at(x, y)),
+    cursorOver: (x: number, y: number, over?: HTMLElement) =>
+      cursorAt(pointer.at(x, y, over)),
   }
 }
 
@@ -393,8 +394,11 @@ class Pointer {
     this.up(...to, init)
   }
 
-  at(x: number, y: number) {
-    return this.event('pointermove', x, y, {})
+  /** A move at this point, dispatched on `over`, the hit layer unless another element is on top. */
+  at(x: number, y: number, over: HTMLElement = this.hit) {
+    const event = this.event('pointermove', x, y, {})
+    over.dispatchEvent(event)
+    return event
   }
 
   private event(type: string, x: number, y: number, init: MouseEventInit) {
@@ -581,6 +585,16 @@ describe('attachGestures', () => {
       act(() => select(selectionStore, PAGE, [LEFT.ref]))
 
       expect(canvas.cursorOver(300, 100)).toBeNull()
+    })
+
+    it('leaves a card drawn over the corner its own cursor, since a press there reaches no mark', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(
+        canvas.cursorOver(300, 300, canvas.part('[data-notes-layer]')),
+      ).toBeNull()
     })
 
     it('holds through a resize drag that outruns the mark, until release', () => {
