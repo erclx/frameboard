@@ -1219,6 +1219,7 @@ describe('attachGestures', () => {
         expect(heldOutline()).toEqual({
           key: ELEMENT,
           box: { x: 175, y: 130, width: 100, height: 50 },
+          read: null,
         })
       })
 

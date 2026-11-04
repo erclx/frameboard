@@ -14,7 +14,7 @@ const HERO = frameOf('hero', {
 })
 
 // Indices past the skipped injected style: html 0, head 1, body 2, h1 3.
-const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:20px 0 0 30px;width:248px;height:30px}</style></head><body><h1>Hello, world</h1></body></html>`
+const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:20px 0 0 30px;width:248px}</style></head><body><h1>Hello, world</h1></body></html>`
 
 let layer: HTMLDivElement | undefined
 
@@ -65,7 +65,118 @@ describe('ElementOverlay', () => {
     const box = outline(drawn)
     expect(box?.style.left).toBe('130px')
     expect(box?.style.top).toBe('70px')
-    expect(box?.querySelector('[data-chip]')).toHaveTextContent('248 × 30')
+  })
+
+  describe('corner marks and the size chip', () => {
+    /** Draws the overlay with the frame's first body element selected. */
+    async function selecting(body: string): Promise<HTMLElement> {
+      const container = await mountFrame(
+        SOURCE.replace('<h1>Hello, world</h1>', body),
+      )
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO.ref,
+          index: 3,
+          hash: HASH,
+        }),
+      )
+      return render(<ElementOverlay frames={[HERO]} container={container} />)
+        .container
+    }
+    const marks = (drawn: HTMLElement) =>
+      drawn.querySelectorAll('[data-element-corner]').length
+    const chip = (drawn: HTMLElement) => drawn.querySelector('[data-chip]')
+
+    it('draws four marks on text, whose chip names its height as hugging', async () => {
+      const drawn = await selecting('<h1>Hello, world</h1>')
+
+      expect(marks(drawn)).toBe(4)
+      expect(chip(drawn)).toHaveTextContent(/^248 × Hug$/)
+    })
+
+    it('names a height text states on itself in px', async () => {
+      const drawn = await selecting(
+        '<h1 style="height: 30px">Hello, world</h1>',
+      )
+
+      expect(marks(drawn)).toBe(4)
+      expect(chip(drawn)).toHaveTextContent(/^248 × 30$/)
+    })
+
+    it.each([
+      ['a shape', '<div style="width: 80px; height: 40px"></div>', /^80 × 40$/],
+      [
+        'an image',
+        '<img alt="" style="width: 80px; height: 40px">',
+        /^80 × 40$/,
+      ],
+      [
+        'a video',
+        '<video style="width: 80px; height: 40px"></video>',
+        /^80 × 40$/,
+      ],
+    ])(
+      'draws four marks on %s, with both sides in px',
+      async (_name, body, size) => {
+        const drawn = await selecting(body)
+
+        expect(marks(drawn)).toBe(4)
+        expect(chip(drawn)).toHaveTextContent(size)
+      },
+    )
+
+    it.each([
+      [
+        'a container',
+        '<section style="width: 80px; height: 40px"><p>Held</p></section>',
+        /^80 × 40$/,
+      ],
+      [
+        'text holding an inline element',
+        '<p style="width: 80px; height: 40px">Some <b>bold</b></p>',
+        /^80 × 40$/,
+      ],
+      [
+        'a divider',
+        '<hr style="width: 80px; height: 2px; border: 0">',
+        /^80 × 2$/,
+      ],
+      [
+        'rotated text',
+        '<p style="width: 80px; height: 40px; rotate: 90deg">Turned</p>',
+        /^40 × 80$/,
+      ],
+    ])('draws no marks on %s', async (_name, body, size) => {
+      const drawn = await selecting(body)
+
+      expect(marks(drawn)).toBe(0)
+      expect(chip(drawn)).toHaveTextContent(size)
+    })
+
+    it('keeps the marks a held drop read while the written key waits on the reload', async () => {
+      const container = await mountFrame()
+      const key = { frame: HERO.ref, index: 3, hash: HASH }
+      act(() =>
+        holdOutline({
+          key,
+          box: { x: 300, y: 200, width: 248, height: 30 },
+          read: { kind: 'text', natural: null, hugsHeight: true },
+        }),
+      )
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          ...key,
+          hash: 'd'.repeat(64),
+        }),
+      )
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+
+      expect(marks(drawn)).toBe(4)
+      expect(chip(drawn)).toHaveTextContent(/^248 × Hug$/)
+    })
   })
 
   it('follows the element as it resizes', async () => {
@@ -113,7 +224,7 @@ describe('ElementOverlay', () => {
     it('draws the held drop over the box the element still measures', async () => {
       const container = await mountFrame()
       act(() => selectElement(selectionStore, 'studio/home', HEADING))
-      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() => holdOutline({ key: HEADING, box: DROP, read: null }))
 
       const { container: drawn } = render(
         <ElementOverlay frames={[HERO]} container={container} />,
@@ -127,7 +238,7 @@ describe('ElementOverlay', () => {
 
     it('keeps drawing the drop while the written key waits on the reload', async () => {
       const container = await mountFrame()
-      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() => holdOutline({ key: HEADING, box: DROP, read: null }))
       act(() =>
         selectElement(selectionStore, 'studio/home', {
           ...HEADING,
@@ -145,7 +256,7 @@ describe('ElementOverlay', () => {
 
     it('gives way once another key measures, as the reloaded frame does', async () => {
       const container = await mountFrame()
-      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() => holdOutline({ key: HEADING, box: DROP, read: null }))
       // The body, index 2, measures at once, as the reloaded element would.
       act(() =>
         selectElement(selectionStore, 'studio/home', { ...HEADING, index: 2 }),
@@ -162,7 +273,7 @@ describe('ElementOverlay', () => {
     it('lets go when the selection leaves the frame', async () => {
       const container = await mountFrame()
       act(() => selectElement(selectionStore, 'studio/home', HEADING))
-      act(() => holdOutline({ key: HEADING, box: DROP }))
+      act(() => holdOutline({ key: HEADING, box: DROP, read: null }))
       render(<ElementOverlay frames={[HERO]} container={container} />)
 
       act(() => clear(selectionStore))

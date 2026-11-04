@@ -750,6 +750,7 @@ export function attachGestures(
               x: outline.x + to.left - start.left,
               y: outline.y + to.top - start.top,
             },
+            read: stores.resizeOf(target.layer, key),
           })
         }
         void move.commit(to).then((landed) => {
