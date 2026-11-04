@@ -296,6 +296,22 @@ test.describe('projects by hand from the home view', () => {
     expect(overlaps(onMember, memberName)).toBe(false)
   })
 
+  test("draws a list row's drop ring inside the row, where the list's clip cannot cut it", async ({
+    page,
+  }) => {
+    addProject('brand')
+    addProject('cover')
+    await page.addInitScript(() =>
+      localStorage.setItem('frameboard.home.layout', 'list'),
+    )
+    await openAsWriter(page)
+    const target = card(page, 'cover')
+
+    await holdOver(page, card(page, 'brand'), target)
+
+    await expect(target).toHaveCSS('box-shadow', /inset/)
+  })
+
   test("draws a card's frame capture and redraws it once the frame changes", async ({
     page,
   }) => {

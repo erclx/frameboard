@@ -322,6 +322,8 @@ function DropItem({ entry, calls, hint, className, children }: DropItemProps) {
       data-drop-over={over || undefined}
       className={cn(
         'relative data-drop-over:[&>:first-child]:ring-2 data-drop-over:[&>:first-child]:ring-primary',
+        // A full-width row sits inside the list's `overflow-hidden`, which clips an outer ring's sides.
+        hint === 'row' && 'data-drop-over:[&>:first-child]:ring-inset',
         className,
       )}
     >
