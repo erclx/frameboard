@@ -274,7 +274,7 @@ export function GuideCard({
             type="submit"
             aria-disabled={state.busy}
             className={cn(
-              'h-[30px] rounded-lg bg-primary px-3 font-medium text-primary-foreground outline-none hover:bg-primary/85 focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:opacity-60',
+              'h-[30px] rounded-lg bg-primary-fill px-3 font-medium text-primary-foreground outline-none hover:bg-primary-fill-hover focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:opacity-60',
               at === 0 && 'ml-auto',
             )}
           >

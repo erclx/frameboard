@@ -11,6 +11,8 @@ import { liveStore, receiveBoard } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { PageRecord } from '@/shared/records/list'
 import type { TokenTable } from '@/shared/records/tokens'
+import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { Canvas } from '../canvas'
 import { GuideCard } from './card'
@@ -98,7 +100,21 @@ describe('GuideCard', () => {
     localStorage.clear()
     resetGuide()
     liveStore.setState({ canWrite: false, board: null })
+    document.documentElement.classList.remove('dark')
   })
+
+  it.each(['light', 'dark'])(
+    'reads Next at 4.5:1 or better at rest and hovered in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+
+      renderCard()
+      const next = screen.getByRole('button', { name: 'Next' })
+
+      expect(contrastOnPage(next)).toBeGreaterThanOrEqual(4.5)
+      expect(await contrastHovered(next)).toBeGreaterThanOrEqual(4.5)
+    },
+  )
 
   it('renames the project to the folder the typed name makes', async () => {
     const user = userEvent.setup()

@@ -11,6 +11,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
@@ -115,6 +116,24 @@ function boardRecording(): { path: string; body: unknown }[] {
 }
 
 describe('Composer', () => {
+  it.each(['light', 'dark'])(
+    'reads Send at 4.5:1 or better at rest and hovered in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      live({ canWrite: true, dispatch: true })
+
+      try {
+        render(<Composer pick={PICK} onClose={() => {}} />)
+        const send = screen.getByRole('button', { name: 'Send' })
+
+        expect(contrastOnPage(send)).toBeGreaterThanOrEqual(4.5)
+        expect(await contrastHovered(send)).toBeGreaterThanOrEqual(4.5)
+      } finally {
+        document.documentElement.classList.remove('dark')
+      }
+    },
+  )
+
   it('says no session is listening and holds Send', () => {
     live({ canWrite: true })
 

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { modeStore } from '../mode'
 import { AssetPicker } from './asset-picker'
@@ -54,9 +56,23 @@ afterEach(() => {
     armedStore.setState({ file: null })
     modeStore.setState({ tool: 'move', mode: 'edit' })
   })
+  document.documentElement.classList.remove('dark')
 })
 
 describe('AssetPicker', () => {
+  it.each(['light', 'dark'])(
+    'reads Add files at 4.5:1 or better at rest and hovered in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+
+      renderPicker([])
+      const add = await screen.findByRole('button', { name: 'Add files' })
+
+      expect(contrastOnPage(add)).toBeGreaterThanOrEqual(4.5)
+      expect(await contrastHovered(add)).toBeGreaterThanOrEqual(4.5)
+    },
+  )
+
   it('lists the images, GIFs, SVGs, and videos and leaves out every other kind', async () => {
     renderPicker(FILES)
 
