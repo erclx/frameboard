@@ -21,12 +21,13 @@ function ToastPortal({ ...props }: ToastPrimitive.Portal.Props) {
   return <ToastPrimitive.Portal data-slot="toast-portal" {...props} />
 }
 
+/** The board's toolbar publishes `--toast-lift` while it shows, so no toast lands on it. */
 function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   return (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
       className={cn(
-        'pointer-events-none fixed right-4 bottom-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] outline-none',
+        'pointer-events-none fixed right-4 bottom-[var(--toast-lift,1rem)] z-50 w-[340px] max-w-[calc(100vw-2rem)] outline-none',
         className,
       )}
       {...props}
@@ -207,9 +208,10 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
 }
 
 /**
- * The one toast stack, in the corner of the window. A toast whose `type`
- * `bodies` names draws that body, so a surface with its own controls joins
- * the same stack rather than a second viewport that cannot see its heights.
+ * The one toast stack, in the corner of the window and above the toolbar on
+ * the board. A toast whose `type` `bodies` names draws that body, so a surface
+ * with its own controls joins the same stack rather than a second viewport
+ * that cannot see its heights.
  */
 function Toaster({
   children,

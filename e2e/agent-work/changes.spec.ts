@@ -152,6 +152,40 @@ test.describe('what an agent changed', () => {
     ).toBeVisible()
   })
 
+  for (const width of [1280, 1100]) {
+    test(`keeps the many form clear of the toolbar at ${width} wide`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 })
+      await openAsWriter(page)
+      writeAsAgent('studio/pricing/plans.html', 'Plans for teams')
+      writeFileSync(
+        at('studio/pricing/faq.html'),
+        '<!doctype html><title>faq</title><h1>FAQ</h1>',
+      )
+      const toast = page.locator('[data-change-toast]')
+      await expect(toast).toContainText('2 frames changed')
+      await expect(
+        toast.getByRole('button', { name: /^Mark all seen/ }),
+      ).toBeVisible()
+      const toolbar = page.getByRole('toolbar', { name: 'Tools' })
+
+      await expect
+        .poll(async () => {
+          const [stack, bar] = await Promise.all([
+            toast.boundingBox(),
+            toolbar.boundingBox(),
+          ])
+          if (!stack || !bar) throw new Error('A box did not render')
+          return stack.y + stack.height <= bar.y
+        })
+        .toBe(true)
+      // A click lands only where the button is the topmost thing at its center.
+      await toolbar.getByRole('button', { name: 'Theme', exact: true }).click()
+      await expect(page.locator('html')).toHaveClass(/\bdark\b/)
+    })
+  }
+
   test('marks nothing for a page renamed through the board', async ({
     page,
   }) => {

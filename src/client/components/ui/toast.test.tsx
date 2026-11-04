@@ -1,3 +1,5 @@
+import '../../styles.css'
+
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -14,6 +16,16 @@ const cleanups: (() => void)[] = []
 
 afterEach(() => {
   while (cleanups.length) cleanups.pop()?.()
+})
+
+describe('the toast stack', () => {
+  it('sits in the corner on a screen with no toolbar', () => {
+    render(<Toaster />)
+
+    const viewport = screen.getByRole('region', { name: /notifications/i })
+
+    expect(getComputedStyle(viewport).bottom).toBe('16px')
+  })
 })
 
 describe('a focused toast', () => {

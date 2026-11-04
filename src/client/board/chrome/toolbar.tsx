@@ -17,7 +17,14 @@ import {
   Type,
   Undo2,
 } from 'lucide-react'
-import { Fragment, type KeyboardEvent, useRef, useState } from 'react'
+import {
+  Fragment,
+  type KeyboardEvent,
+  type RefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useStore } from 'zustand'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
@@ -143,6 +150,32 @@ const IDS = [
 ]
 
 /**
+ * Publishes the bar's top edge, plus a 0.5rem gap, on the document root for
+ * the toast viewport, which is portaled outside this tree. Measured rather
+ * than fixed, since a horizontal scrollbar under the bar's `max-w` adds height.
+ */
+function usePublishToastLift(bar: RefObject<HTMLElement | null>): void {
+  useLayoutEffect(() => {
+    const element = bar.current
+    if (!element) return
+    const root = document.documentElement
+    const publish = () => {
+      root.style.setProperty(
+        '--toast-lift',
+        `calc(${element.offsetHeight}px + 1.5rem)`,
+      )
+    }
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--toast-lift')
+    }
+  }, [bar])
+}
+
+/**
  * The floating pill centered at the foot of the canvas column. Every button
  * runs its action from the registry, and one whose action no row has
  * registered yet shows disabled with its name and key on hover. Given the
@@ -152,6 +185,7 @@ export function Toolbar({ project }: { project?: string }) {
   const registered = useActions(IDS)
   const actions = new Map(IDS.map((id, index) => [id, registered[index]]))
   const bar = useRef<HTMLDivElement>(null)
+  usePublishToastLift(bar)
   return (
     <div
       ref={bar}

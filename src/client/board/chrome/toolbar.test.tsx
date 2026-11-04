@@ -2,7 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
@@ -11,6 +11,7 @@ import {
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
+import { Toaster } from '@/client/components/ui/toast'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
 
@@ -40,6 +41,46 @@ function renderToolbar() {
 
 afterEach(() => {
   while (cleanups.length > 0) cleanups.pop()?.()
+})
+
+describe('the toast stack beside the toolbar', () => {
+  function Screen({ toolbar }: { toolbar: boolean }) {
+    return (
+      <TooltipProvider>
+        <Toaster />
+        {toolbar ? <Toolbar /> : null}
+      </TooltipProvider>
+    )
+  }
+
+  const stackBottom = () =>
+    getComputedStyle(screen.getByRole('region', { name: /notifications/i }))
+      .bottom
+
+  it('sits above the bar by its height, its 16px offset, and an 8px gap', () => {
+    render(<Screen toolbar />)
+
+    const bar = screen.getByRole('toolbar', { name: 'Tools' })
+
+    expect(stackBottom()).toBe(`${bar.offsetHeight + 24}px`)
+  })
+
+  it('follows the bar when its height changes', async () => {
+    render(<Screen toolbar />)
+    const bar = screen.getByRole('toolbar', { name: 'Tools' })
+
+    bar.style.height = '90px'
+
+    await vi.waitFor(() => expect(stackBottom()).toBe('114px'))
+  })
+
+  it('returns to the corner when the bar unmounts', () => {
+    const { rerender } = render(<Screen toolbar />)
+
+    rerender(<Screen toolbar={false} />)
+
+    expect(stackBottom()).toBe('16px')
+  })
 })
 
 describe('Toolbar', () => {
