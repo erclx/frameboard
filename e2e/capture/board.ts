@@ -1127,25 +1127,43 @@ async function placedTextOnHero(page: Page): Promise<void> {
  * its size chip, and its inspector.
  */
 function elementOnHero(selector: string): (page: Page) => Promise<void> {
+  return elementInFrame('webapp/home/hero', selector)
+}
+
+/**
+ * Selects the element matching `selector` in the frame `ref` once the frame
+ * has loaded and every video on the canvas has decoded its first frame, which
+ * a capture would otherwise race.
+ */
+function elementInFrame(
+  ref: string,
+  selector: string,
+): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ target, frames }) => {
+      ({ owner, target, frames }) => {
         let left = frames
         const pick = () => {
-          const hero = document.querySelector('[data-frame="webapp/home/hero"]')
-          const iframe = hero?.querySelector('iframe')
+          const shown = document.querySelector(`[data-frame="${owner}"]`)
+          const iframe = shown?.querySelector('iframe')
           const element = iframe?.dataset.renderedAt
             ? iframe.contentDocument?.querySelector(target)
             : null
           const hit = document.querySelector('[data-hit-layer]')
           const layer = document.querySelector<HTMLElement>('[data-layer]')
-          if (!hero || !element || !hit || !layer) {
+          const decoded = [...document.querySelectorAll('iframe')].every(
+            (each) =>
+              [
+                ...(each.contentDocument?.querySelectorAll('video') ?? []),
+              ].every((video) => video.readyState >= 2),
+          )
+          if (!shown || !element || !hit || !layer || !decoded) {
             if (--left > 0) requestAnimationFrame(pick)
-            else console.error(`No ${target} on the hero to select`)
+            else console.error(`No ${target} on ${owner} to select`)
             return
           }
           const k = Number(layer.style.getPropertyValue('--zoom') || 1)
-          const frame = hero.getBoundingClientRect()
+          const frame = shown.getBoundingClientRect()
           const inner = element.getBoundingClientRect()
           const at = {
             bubbles: true,
@@ -1160,7 +1178,7 @@ function elementOnHero(selector: string): (page: Page) => Promise<void> {
         }
         document.addEventListener('DOMContentLoaded', pick)
       },
-      { target: selector, frames: PRESS_FRAMES },
+      { owner: ref, target: selector, frames: PRESS_FRAMES },
     )
   }
 }
@@ -2632,6 +2650,38 @@ export const BOARD_CASES: CaptureCase[] = [
           ),
         ),
       },
+      ...(
+        [
+          // Text wearing its marks, its chip naming the height as hugging.
+          ['corner-marks-text', 'free', '[data-name="Free text"]'],
+          // An image and a video wearing their marks, both sides in px.
+          ['corner-marks-image', 'free', '[data-name="Free image"]'],
+          ['corner-marks-video', 'free', '[data-name="Free video"]'],
+          // A shape keeps its marks and its size.
+          ['corner-marks-shape', 'free', '[data-name="Free shape"]'],
+          // A container takes no resize, so it wears none.
+          ['corner-marks-container', 'free', '[data-name="Column"]'],
+          // Text at the width a corner writes, wrapping with its height hugging.
+          ['corner-resized-text', 'sized', '[data-name="Sized text"]'],
+          // An image and a video at the size a corner writes, stating both sides.
+          ['corner-resized-image', 'sized', '[data-name="Sized image"]'],
+          ['corner-resized-video', 'sized', '[data-name="Sized video"]'],
+        ] as const
+      ).map(([section, frame, target]) => ({
+        section,
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            elementInFrame(`marketing/states/${frame}`, target),
+            readyWhen('[data-element-selection]'),
+          ),
+        ),
+      })),
       {
         // A Free box running 60 px past the hero's right edge, ghosted there while the hero is selected.
         section: 'free-drag-ghost',

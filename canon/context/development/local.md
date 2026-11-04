@@ -103,7 +103,7 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 
 - `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
 - The `capture` board names only generic families and a Geist face in its `assets/`, so it renders alike on Linux CI and macOS
-- `basic`'s `marketing/states` page holds what a drive needs, with a Free text and shape in `free`, and six tokens and one raw hex in `colors`, whose `theme` finding is intended
+- `basic`'s `marketing/states` page holds what a drive needs, with a Free text, shape, image, and video in `free`, the sizes a corner drag writes in `sized`, and six tokens and one raw hex in `colors`, whose `theme` finding is intended
 
 ### `web/`
 
