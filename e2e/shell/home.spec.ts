@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -11,6 +11,8 @@ import { type BoardServer, serveBoard } from '../support/board-server'
 import { openSheetAtDesktop } from '../support/shortcuts-sheet'
 
 const UNDO = 'ControlOrMeta+KeyZ'
+
+type Box = NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -181,6 +183,150 @@ test.describe('projects by hand from the home view', () => {
     expect(filings).toEqual([
       JSON.stringify({ refs: ['brand'], group: 'Client' }),
     ])
+  })
+
+  /** Adds a project in no folder, enough to drag or to drop on. */
+  function addProject(name: string): void {
+    mkdirSync(at(`${name}/home`), { recursive: true })
+    writeFileSync(
+      at(`${name}/project.json`),
+      JSON.stringify({ version: 1, pages: ['home'] }),
+    )
+  }
+
+  /** The box of a shown element, raising rather than letting an overlap read false on nothing. */
+  async function boxOf(locator: Locator): Promise<Box> {
+    const box = await locator.boundingBox()
+    if (!box) throw new Error(`No box for ${locator}`)
+    return box
+  }
+
+  function overlaps(a: Box, b: Box): boolean {
+    return (
+      a.x < b.x + b.width &&
+      b.x < a.x + a.width &&
+      a.y < b.y + b.height &&
+      b.y < a.y + a.height
+    )
+  }
+
+  /** The hint of the one item a held project is over. */
+  function dropHint(page: Page) {
+    return page.locator('li[data-drop-over] > [role="status"]')
+  }
+
+  /** Picks `source` up and holds it over `target`, never dropped, until the target says what a drop does. */
+  async function holdOver(
+    page: Page,
+    source: Locator,
+    target: Locator,
+  ): Promise<void> {
+    await source.hover()
+    await page.mouse.down()
+    await moveOver(page, target)
+  }
+
+  /**
+   * Carries the held project to `target`, the second hover being the move that
+   * reaches it. Forced, since the library's honey pot sits under the pointer
+   * through a drag and would fail the hover's hit check.
+   */
+  async function moveOver(page: Page, target: Locator): Promise<void> {
+    await target.hover({ force: true })
+    await target.hover({ force: true })
+    await expect(
+      page.locator('li[data-drop-over]').filter({ has: target }),
+    ).toBeVisible()
+    await expect(dropHint(page)).toBeVisible()
+  }
+
+  test("keeps a target card's name and edited line clear of the drop hint", async ({
+    page,
+  }) => {
+    addProject('brand')
+    await openAsWriter(page)
+    const target = card(page, 'studio')
+
+    await holdOver(page, card(page, 'brand'), target)
+
+    const hint = await boxOf(dropHint(page))
+    const name = await boxOf(target.locator('[title="studio"]'))
+    const edited = await boxOf(target.locator('[data-edited]'))
+    expect(overlaps(hint, name)).toBe(false)
+    expect(overlaps(hint, edited)).toBe(false)
+  })
+
+  test('keeps the drop hint for a long project name inside its card', async ({
+    page,
+  }) => {
+    const long = 'a-project-name-long-enough-to-run-past-the-card-edge'
+    addProject('brand')
+    addProject(long)
+    await openAsWriter(page)
+    const target = card(page, long)
+
+    await holdOver(page, card(page, 'brand'), target)
+
+    const hint = await boxOf(dropHint(page))
+    const box = await boxOf(target)
+    expect(hint.x).toBeGreaterThanOrEqual(box.x)
+    expect(hint.x + hint.width).toBeLessThanOrEqual(box.x + box.width)
+  })
+
+  test('keeps every list name clear of the drop hint, in and on an open folder', async ({
+    page,
+  }) => {
+    writeFileSync(
+      at('studio/project.json'),
+      JSON.stringify({
+        version: 1,
+        pages: ['home', 'pricing'],
+        group: 'Client',
+      }),
+    )
+    addProject('brand')
+    addProject('cover')
+    await page.addInitScript(() =>
+      localStorage.setItem('frameboard.home.layout', 'list'),
+    )
+    await openAsWriter(page)
+    const folder = page.getByRole('button', { name: /^Client/ })
+    await folder.click()
+    const member = card(page, 'studio')
+    const memberName = await boxOf(member.locator('[title="studio"]'))
+    const folderBand = await boxOf(folder)
+
+    await holdOver(page, card(page, 'brand'), card(page, 'cover'))
+    const onRow = await boxOf(dropHint(page))
+    const coverName = await boxOf(
+      card(page, 'cover').locator('[title="cover"]'),
+    )
+    expect(overlaps(onRow, coverName)).toBe(false)
+
+    await moveOver(page, folder)
+    const onFolder = await boxOf(dropHint(page))
+    expect(overlaps(onFolder, folderBand)).toBe(true)
+    expect(overlaps(onFolder, memberName)).toBe(false)
+
+    await moveOver(page, member)
+    const onMember = await boxOf(dropHint(page))
+    expect(overlaps(onMember, memberName)).toBe(false)
+  })
+
+  test("draws a list row's drop ring inside the row, where the list's clip cannot cut it", async ({
+    page,
+  }) => {
+    addProject('brand')
+    addProject('cover')
+    await page.addInitScript(() =>
+      localStorage.setItem('frameboard.home.layout', 'list'),
+    )
+    await openAsWriter(page)
+    const target = card(page, 'cover')
+
+    await holdOver(page, card(page, 'brand'), target)
+
+    await expect(target).toHaveCSS('box-shadow', /inset/)
   })
 
   test("draws a card's frame capture and redraws it once the frame changes", async ({

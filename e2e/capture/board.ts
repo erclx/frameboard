@@ -785,6 +785,58 @@ function onHomeCard(act: 'menu' | 'rename'): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Waits for New project to light, then picks up the `marketing` card or row
+ * and holds it over the `webapp` one, never dropped, until the target raises
+ * its hint. Both are found by name, since the fixture's order can change.
+ */
+async function holdDragOverWebapp(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const item = (name: string) =>
+      [...document.querySelectorAll<HTMLAnchorElement>('main li a')].find(
+        (link) => link.textContent?.startsWith(name),
+      )
+    const dataTransfer = new DataTransfer()
+    const on = (link: HTMLElement) => {
+      const box = link.getBoundingClientRect()
+      return {
+        bubbles: true,
+        cancelable: true,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2,
+        dataTransfer,
+      }
+    }
+    const hold = (over: HTMLElement) => {
+      over.dispatchEvent(new DragEvent('dragover', on(over)))
+      if (document.querySelector('li[data-drop-over]')) return
+      if (--left > 0) requestAnimationFrame(() => hold(over))
+      else console.error('The webapp item never raised its drop hint')
+    }
+    const run = () => {
+      const add = document.querySelector(
+        'button[aria-label="New project"]:not([aria-disabled])',
+      )
+      const source = item('marketing')
+      const target = item('webapp')
+      if (!add || !source || !target) {
+        if (--left > 0) requestAnimationFrame(run)
+        else console.error('The home view never granted writes')
+        return
+      }
+      source.dispatchEvent(new DragEvent('dragstart', on(source)))
+      requestAnimationFrame(() => {
+        target.dispatchEvent(new DragEvent('dragenter', on(target)))
+        hold(target)
+      })
+    }
+    document.addEventListener('DOMContentLoaded', () =>
+      requestAnimationFrame(run),
+    )
+  }, ROW_FRAMES)
+}
+
 type ProjectRecord = ListResult['projects'][number]
 
 /** A copy of `source` under `name`, every page and frame ref moved with it. */
@@ -1039,6 +1091,8 @@ function readyWhen(
 const CARD_CAPTURED = '[data-skeleton] image'
 /** A frame in a card's well still showing its box alone. */
 const CARD_UNCAPTURED = 'main li [data-skeleton] g:not(:has(image))'
+/** The hint on the one home item a held project is over. */
+const DROP_HINT = 'li[data-drop-over] > [role="status"]'
 
 /**
  * Selects the hero frame and double-clicks its headline once the frame has
@@ -2139,6 +2193,36 @@ export const BOARD_CASES: CaptureCase[] = [
         filedBoard(),
         openClientFolder,
         readyWhen('ul[aria-label="Client A"] li a'),
+      ),
+    },
+    {
+      section: 'home-drop-hint',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        holdDragOverWebapp,
+        readyWhen(DROP_HINT, CARD_UNCAPTURED),
+      ),
+    },
+    {
+      section: 'home-drop-hint-list',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        homeStored('frameboard.home.layout', 'list'),
+        // A mask paints above the hint, which sits over the row's date columns.
+        hiddenBehind('main [data-edited]'),
+        holdDragOverWebapp,
+        readyWhen(DROP_HINT),
       ),
     },
     {

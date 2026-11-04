@@ -154,7 +154,7 @@ export function Projects({
                   className="col-span-full h-px bg-border"
                 />
               ) : null}
-              <DropItem entry={entry} calls={calls}>
+              <DropItem entry={entry} calls={calls} hint="well">
                 {entry.kind === 'project' ? (
                   <ProjectCard {...item(entry.project)} captures={captures} />
                 ) : (
@@ -199,6 +199,7 @@ export function Projects({
                 <DropItem
                   entry={entry}
                   calls={calls}
+                  hint="row"
                   className="not-last:border-b"
                 >
                   {entry.kind === 'project' ? (
@@ -218,6 +219,7 @@ export function Projects({
                           key={project.name}
                           entry={{ kind: 'project', project }}
                           calls={calls}
+                          hint="row"
                           className="not-last:border-b"
                         >
                           <ProjectRow {...item(project)} className="pl-11" />
@@ -262,9 +264,22 @@ function NoMatch({ filter }: { filter: string }) {
   )
 }
 
+/**
+ * Where a drop hint sits so it covers no name. `well` centers it on a card's
+ * 150 px well, whose middle is 82 px down past the border and margin. `row`
+ * sits it over a row's two date columns, anchored from the top so an open
+ * folder's hint stays on its header band. Below `sm` a row shows only its name,
+ * so the ring cues the target there and the hint stays for assistive tech.
+ */
+const DROP_HINT = {
+  well: 'inset-x-3 top-[82px] mx-auto w-fit max-w-[calc(100%-1.5rem)] -translate-y-1/2',
+  row: 'top-3 right-4 max-w-80 max-sm:sr-only',
+} as const
+
 interface DropItemProps {
   entry: HomeEntry
   calls: Structure | undefined
+  hint: keyof typeof DROP_HINT
   className?: string
   children: ReactNode
 }
@@ -276,7 +291,7 @@ interface DropItemProps {
  * on a project in one, files into it. While a project is over it, the item
  * says what the drop does.
  */
-function DropItem({ entry, calls, className, children }: DropItemProps) {
+function DropItem({ entry, calls, hint, className, children }: DropItemProps) {
   const element = useRef<HTMLLIElement>(null)
   const canWrite = useLive((state) => state.canWrite)
   const project = entry.kind === 'project' ? entry.project : null
@@ -307,6 +322,8 @@ function DropItem({ entry, calls, className, children }: DropItemProps) {
       data-drop-over={over || undefined}
       className={cn(
         'relative data-drop-over:[&>:first-child]:ring-2 data-drop-over:[&>:first-child]:ring-primary',
+        // A full-width row sits inside the list's `overflow-hidden`, which clips an outer ring's sides.
+        hint === 'row' && 'data-drop-over:[&>:first-child]:ring-inset',
         className,
       )}
     >
@@ -314,7 +331,7 @@ function DropItem({ entry, calls, className, children }: DropItemProps) {
       {over ? (
         <span
           role="status"
-          className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md"
+          className={`pointer-events-none absolute truncate rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md ${DROP_HINT[hint]}`}
         >
           {into === null
             ? `Drop on ${target.name} to make a folder`
