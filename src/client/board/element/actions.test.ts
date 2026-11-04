@@ -13,7 +13,12 @@ import { openOverlay } from '@/client/palette/overlay'
 import type { ElementTree } from '@/shared/records/elements'
 
 import { createModeStore } from '../mode'
-import { createSelectionStore, select, selectElement } from '../selection'
+import {
+  createSelectionStore,
+  select,
+  selectElement,
+  selectElements,
+} from '../selection'
 import { elementActions, focusOnBoard } from './actions'
 
 const PAGE = 'studio/home'
@@ -339,7 +344,20 @@ describe('element.delete', () => {
 
     action('element.delete').run()
 
-    expect(deleted).toEqual([[PAGE, { frame: HERO, index: 7, hash: HASH }]])
+    expect(deleted).toEqual([[PAGE, [{ frame: HERO, index: 7, hash: HASH }]]])
+  })
+
+  it('deletes every selected element in one call', () => {
+    const { action, selection, deleted } = setup()
+    const keys = [
+      { frame: HERO, index: 7, hash: HASH },
+      { frame: HERO, index: 8, hash: HASH },
+    ]
+    selectElements(selection, PAGE, keys)
+
+    action('element.delete').run()
+
+    expect(deleted).toEqual([[PAGE, keys]])
   })
 
   it('stands aside with a frame selected, so the frame delete runs', () => {

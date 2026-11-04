@@ -17,10 +17,11 @@ import type { ElementTree } from '@/shared/records/elements'
 
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
-import { deleteElement, moveElementTo } from '../place/write'
+import { deleteElements, moveElementTo } from '../place/write'
 import {
   type ElementKey,
   select,
+  selectedElements,
   selectElement,
   type SelectionStore,
   selectionStore,
@@ -44,8 +45,8 @@ export interface ElementContext {
   boardFocused: () => boolean
   /** True while this tab may write. */
   writable: () => boolean
-  /** Deletes an element, which `deleteElement` does on the board. */
-  remove: (page: string, key: ElementKey) => void
+  /** Deletes the selected elements, which `deleteElements` does on the board. */
+  remove: (page: string, keys: readonly ElementKey[]) => void
   /** Moves an element to the place `to` maps its own to among its siblings, which `moveElementTo` does on the board. */
   move: (
     page: string,
@@ -218,8 +219,9 @@ export function elementActions(context: ElementContext): Action[] {
       keys: ['Backspace', 'Delete'],
       enabled: () => elementSelected() && context.writable(),
       run: () => {
-        const { page, element } = selection.getState()
-        if (page && element) context.remove(page, element)
+        const state = selection.getState()
+        const keys = selectedElements(state)
+        if (state.page && keys.length > 0) context.remove(state.page, keys)
       },
     },
     {
@@ -312,7 +314,7 @@ export function useElementActions(page: string): void {
         noteOpen: () => notesUi.getState().open !== null,
         boardFocused: focusOnBoard,
         writable: () => liveStore.getState().canWrite,
-        remove: (at, key) => void deleteElement(at, key),
+        remove: (at, keys) => void deleteElements(at, keys),
         move: (at, key, to) => void moveElementTo(at, key, to),
       }),
     )

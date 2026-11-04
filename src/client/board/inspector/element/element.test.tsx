@@ -23,6 +23,7 @@ import {
   createSelectionStore,
   select,
   selectElement,
+  selectElements,
   selectionStore,
 } from '../../selection'
 import { InspectorPanel } from '../panel'
@@ -41,6 +42,7 @@ import {
   type Refusal,
   type WriteElement,
   writeElement,
+  writeElements,
 } from './write'
 
 function tokenOf(name: string, light: string, dark = light): TokenRow {
@@ -2365,6 +2367,128 @@ describe('SelectionColors', () => {
     expect(
       screen.getAllByRole('img', { name: 'Raw value, not a token' }),
     ).toHaveLength(1)
+  })
+})
+
+describe('writeElements', () => {
+  const FIRST = { frame: 'studio/home/hero', index: 5, hash: 'a'.repeat(64) }
+  const SECOND = { ...FIRST, index: 7 }
+  const THIRD = { ...FIRST, index: 9 }
+  const CHANGE: ElementChange = {
+    kind: 'style',
+    property: 'opacity',
+    value: '0.5',
+  }
+
+  function answering(status: number, body: unknown, seen?: unknown[]) {
+    const send: typeof fetch = async (_url, init) => {
+      seen?.push(JSON.parse(String(init?.body)))
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    return send
+  }
+
+  it('sends every edit in one write and keeps every member selected at the answered hash', async () => {
+    const selection = createSelectionStore()
+    selectElements(selection, 'studio/home', [FIRST, SECOND, THIRD])
+    const seen: unknown[] = []
+
+    const written = await writeElements(
+      'studio/home',
+      [
+        { key: FIRST, change: CHANGE },
+        { key: SECOND, change: CHANGE },
+      ],
+      {
+        selection,
+        send: answering(
+          200,
+          {
+            ok: true,
+            data: {
+              ref: FIRST.frame,
+              index: 7,
+              indexes: [5, 7],
+              hash: 'b'.repeat(64),
+              from: 'a'.repeat(64),
+            },
+          },
+          seen,
+        ),
+        notify: () => {},
+      },
+    )
+
+    expect(written).toBe(true)
+    expect(seen).toEqual([
+      {
+        ref: FIRST.frame,
+        hash: 'a'.repeat(64),
+        edits: [
+          { index: 5, change: CHANGE },
+          { index: 7, change: CHANGE },
+        ],
+      },
+    ])
+    expect(selection.getState().elements).toEqual([
+      { ...FIRST, hash: 'b'.repeat(64) },
+      { ...SECOND, hash: 'b'.repeat(64) },
+      { ...THIRD, hash: 'b'.repeat(64) },
+    ])
+    expect(selection.getState().element).toEqual({
+      ...THIRD,
+      hash: 'b'.repeat(64),
+    })
+  })
+
+  it('drops a member the batch left alone once the others were found elsewhere', async () => {
+    const selection = createSelectionStore()
+    selectElements(selection, 'studio/home', [FIRST, SECOND])
+
+    await writeElements('studio/home', [{ key: FIRST, change: CHANGE }], {
+      selection,
+      send: answering(200, {
+        ok: true,
+        data: {
+          ref: FIRST.frame,
+          index: 6,
+          indexes: [6],
+          hash: 'b'.repeat(64),
+          from: 'c'.repeat(64),
+        },
+      }),
+      notify: () => {},
+    })
+
+    expect(selection.getState().elements).toEqual([
+      { ...FIRST, index: 6, hash: 'b'.repeat(64) },
+    ])
+  })
+
+  it('answers false and raises the refusal, keeping the members', async () => {
+    const selection = createSelectionStore()
+    selectElements(selection, 'studio/home', [FIRST, SECOND])
+    const refusals: Refusal[] = []
+
+    const written = await writeElements(
+      'studio/home',
+      [{ key: FIRST, change: CHANGE }],
+      {
+        selection,
+        send: answering(409, {
+          ok: false,
+          error: { code: 'invalid-address', message: 'no such element' },
+        }),
+        notify: (refusal) => refusals.push(refusal),
+      },
+    )
+
+    expect(written).toBe(false)
+    expect(refusals[0]?.title).toBe('Edit not saved')
+    expect(selection.getState().elements).toHaveLength(2)
   })
 })
 

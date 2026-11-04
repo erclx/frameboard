@@ -23,7 +23,9 @@ import {
   type ElementKey,
   rememberHash,
   select,
+  selectedElements,
   selectElement,
+  selectElements,
   type SelectionStore,
   selectionStore,
 } from '../selection'
@@ -428,9 +430,21 @@ async function writeAtGap(
  * another session holds waits under the claim card, as an element edit
  * does, rather than racing that session's write. Answers whether it landed.
  */
-export async function deleteElement(
+export function deleteElement(
   page: string,
   key: ElementKey,
+  deps: Omit<PlaceDeps, 'mode'> = {},
+): Promise<boolean> {
+  return deleteElements(page, [key], deps)
+}
+
+/**
+ * Deletes these elements of one frame as `deleteElement` does one, as one
+ * write and one undo step, refused whole, then selects their frame.
+ */
+export async function deleteElements(
+  page: string,
+  keys: readonly ElementKey[],
   {
     selection = selectionStore,
     live = liveStore,
@@ -438,6 +452,8 @@ export async function deleteElement(
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
   }: Omit<PlaceDeps, 'mode'> = {},
 ): Promise<boolean> {
+  const [key] = keys
+  if (!key) return false
   const ref = key.frame
   const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
@@ -459,7 +475,9 @@ export async function deleteElement(
           try {
             return await writeBoard<RemoveResult>(
               '/api/frames/remove',
-              { ref, index: key.index, hash: from },
+              keys.length === 1
+                ? { ref, index: key.index, hash: from }
+                : { ref, indexes: keys.map(({ index }) => index), hash: from },
               'POST',
               send,
             )
@@ -600,6 +618,120 @@ export async function placeFree(
         from: rebased ? [...before.from, from] : [from],
         to: answer.hash,
         at,
+        shifted: false,
+      }
+    } catch (error) {
+      notify({
+        title,
+        description:
+          error instanceof BoardWriteError
+            ? sentence(error.message)
+            : 'The board could not be reached, so nothing was written.',
+      })
+      return null
+    } finally {
+      done()
+    }
+  })
+  return landed !== null
+}
+
+/** One element's placement in a batch: where it goes, null for back in flow, and the sizes its style holds. */
+export interface FreePlace {
+  key: ElementKey
+  spot: FreeSpot | null
+  inline?: InlineSize
+}
+
+/**
+ * Places these elements of one frame as `placeFree` does one, as one write and
+ * one undo step, refused whole, keeping every selected element selected at the
+ * bytes written. Answers whether it landed.
+ */
+export async function placeFreeAll(
+  page: string,
+  places: readonly FreePlace[],
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+): Promise<boolean> {
+  const key = places[0]?.key
+  if (!key) return false
+  const ref = key.frame
+  const title = places.some(({ spot }) => spot)
+    ? 'Nothing placed'
+    : 'Nothing moved'
+  const holder = live.getState().claims[ref]
+  if (holder) {
+    notify({
+      title,
+      description: `${holder.tag} is editing ${ref.split('/').at(-1) ?? ref}, so nothing was written.`,
+    })
+    return false
+  }
+  const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
+    const before = prior ? await prior : undefined
+    if (before === null) return null
+    const rebased =
+      before !== undefined && before.from.includes(key.hash) && !before.shifted
+    const from = rebased ? before.to : key.hash
+    const done = awaitHash(ref)
+    rememberHash(ref, from)
+    try {
+      const sent = places.map(({ key: at, spot, inline }) => {
+        const written = sizesWritten.get(sizeSlot(at)) ?? {}
+        const drop = spot
+          ? []
+          : (['width', 'height'] as const).filter(
+              (axis) =>
+                written[axis] !== undefined && inline?.[axis] === written[axis],
+            )
+        return {
+          index: rebased ? (before.at.get(at.index) ?? at.index) : at.index,
+          spot,
+          ...(drop.length > 0 ? { drop } : {}),
+        }
+      })
+      const answer = await writeBoard<PlaceResult>(
+        '/api/frames/place',
+        { ref, hash: from, places: sent },
+        'POST',
+        send,
+      )
+      rememberHash(ref, answer.hash)
+      void catchUpTree(ref, answer.hash)
+      for (const [at, { index, spot }] of sent.entries()) {
+        const slot = sizeSlot({ frame: ref, index })
+        const sized = answer.placed?.[at]?.sized ?? []
+        if (spot) {
+          sizesWritten.set(
+            slot,
+            Object.fromEntries(
+              sized.map((axis) => [axis, `${spot[axis] ?? 0}px`]),
+            ),
+          )
+        } else {
+          sizesWritten.delete(slot)
+        }
+      }
+      const state = selection.getState()
+      if (state.page === page && state.element?.frame === ref) {
+        selectElements(
+          selection,
+          page,
+          selectedElements(state).map((held) => ({
+            ...held,
+            hash: answer.hash,
+          })),
+        )
+      }
+      return {
+        from: rebased ? [...before.from, from] : [from],
+        to: answer.hash,
+        at: new Map(rebased ? before.at : []),
         shifted: false,
       }
     } catch (error) {
