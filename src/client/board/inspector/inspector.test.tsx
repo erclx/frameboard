@@ -611,6 +611,68 @@ describe('InspectorPanel', () => {
     })
   })
 
+  describe('with a text element selected', () => {
+    const HASH = 'd'.repeat(64)
+    let layer: HTMLElement | undefined
+
+    beforeEach(() => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) =>
+        String(input).includes('/styles')
+          ? Response.json({
+              ok: true,
+              data: {
+                ref: SWATCHES.ref,
+                hash: HASH,
+                element: null,
+                colors: [],
+              },
+            })
+          : Response.json({ ok: false }),
+      )
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      vi.restoreAllMocks()
+      layer?.remove()
+      layer = undefined
+    })
+
+    it('raises no duplicate key among its sections', async () => {
+      layer = document.createElement('div')
+      const frame = document.createElement('div')
+      frame.dataset.frame = SWATCHES.ref
+      const iframe = document.createElement('iframe')
+      const loaded = new Promise((resolve) =>
+        iframe.addEventListener('load', resolve, { once: true }),
+      )
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1></body></html>`
+      frame.append(iframe)
+      layer.append(frame)
+      document.body.append(layer)
+      await loaded
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      // The file counts html, head, and body ahead of the h1.
+      act(() =>
+        selectElement(selectionStore, PAGE, {
+          frame: SWATCHES.ref,
+          index: 3,
+          hash: HASH,
+        }),
+      )
+
+      renderPanel()
+
+      expect(
+        await screen.findByRole('region', { name: 'Text' }),
+      ).toBeInTheDocument()
+      const duplicates = logged.mock.calls.filter(([message]) =>
+        String(message).includes('same key'),
+      )
+      expect(duplicates).toEqual([])
+    })
+  })
+
   it('disables the fields while the tab may not write', () => {
     liveStore.setState({ canWrite: false })
     act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
