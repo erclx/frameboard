@@ -12,24 +12,24 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 - Give every hue one meaning. A second use, such as a blue guide or a red badge, blurs what the operator reads at a glance.
 - Set dark with the `.dark` class on the chrome root. Frames switch on their own `data-theme`, and one toggle sets both.
 
-| Role       | Property             | Intent                                                |
-| ---------- | -------------------- | ----------------------------------------------------- |
-| canvas     | `--background`       | the ground behind frames and the home view            |
-| text       | `--foreground`       | primary text                                          |
-| panel      | `--sidebar`          | both side panels                                      |
-| floating   | `--card`             | toolbar pill, home cards, menus, the palette          |
-| field      | `--input`            | number fields and color rows, which carry no outline  |
-| hover      | `--accent`           | hover fill on buttons, menu items, and rows           |
-| line       | `--border`           | dividers, panel edges, pill and popover outlines      |
-| quiet text | `--muted-foreground` | labels, captions, chevrons, field key letters         |
-| faint      | `--faint`            | inactive marks and decoration, never text to be read  |
-| selected   | `--primary`          | selection outline and handles, the active tool, focus |
-| fill       | `--primary-fill`     | a blue fill behind white text, darker on hover        |
-| agent      | `--claim`            | an agent's dashed outline and session tag             |
-| note       | `--note`             | note pins and anything flagged for a look             |
-| guide      | `--guide`            | snapping guides and gap tags while a frame drags      |
-| delete     | `--destructive`      | Delete, and error findings                            |
-| done       | `--success`          | a finished action's toast                             |
+| Role       | Property             | Intent                                               |
+| ---------- | -------------------- | ---------------------------------------------------- |
+| canvas     | `--background`       | the ground behind frames and the home view           |
+| text       | `--foreground`       | primary text                                         |
+| panel      | `--sidebar`          | both side panels                                     |
+| floating   | `--card`             | toolbar pill, home cards, menus, the palette         |
+| field      | `--input`            | number fields and color rows, which carry no outline |
+| hover      | `--accent`           | hover fill on buttons, menu items, and rows          |
+| line       | `--border`           | dividers, panel edges, pill and popover outlines     |
+| quiet text | `--muted-foreground` | labels, captions, chevrons, field key letters        |
+| faint      | `--faint`            | inactive marks and decoration, never text to be read |
+| selected   | `--primary`          | selection outline and handles, focus                 |
+| fill       | `--primary-fill`     | white text on blue, the active tool, darker on hover |
+| agent      | `--claim`            | an agent's dashed outline and session tag            |
+| note       | `--note`             | note pins and anything flagged for a look            |
+| guide      | `--guide`            | snapping guides and gap tags while a frame drags     |
+| delete     | `--destructive`      | Delete, and error findings                           |
+| done       | `--success`          | a finished action's toast                            |
 
 ## Typography
 
