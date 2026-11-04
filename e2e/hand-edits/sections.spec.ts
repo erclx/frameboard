@@ -74,6 +74,13 @@ test.describe('page sections by hand', () => {
         .getByRole('listitem'),
     ).toHaveCount(2)
 
+    const corner = await center(page.locator('[data-section-corner="se"]'))
+    await page.mouse.move(corner.x, corner.y)
+    await expect(page.locator('[data-canvas]')).toHaveCSS(
+      'cursor',
+      'nwse-resize',
+    )
+
     // Pressed at its left end, which sits clear of hero's label and its buttons.
     const label = await page
       .locator('[data-section-label="section"]')

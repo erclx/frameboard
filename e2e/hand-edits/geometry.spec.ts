@@ -67,6 +67,12 @@ test.describe('frame geometry by hand', () => {
     await openAsWriter(page, server)
     const mobile = page.locator(MOBILE)
     await expect(mobile).toBeVisible()
+    const handle = await center(page.locator('[data-handle="ne"]'))
+    await page.mouse.move(handle.x, handle.y)
+    await expect(page.locator('[data-canvas]')).toHaveCSS(
+      'cursor',
+      'nesw-resize',
+    )
     const from = await center(mobile)
 
     await drag(page, from, { x: from.x + 120, y: from.y + 60 })

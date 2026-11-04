@@ -135,6 +135,9 @@ export function Canvas({
   const layerRef = useRef<HTMLDivElement>(null)
   const hitRef = useRef<HTMLDivElement>(null)
   const notesLayerRef = useRef<HTMLDivElement>(null)
+  const cursorAtRef = useRef<
+    ReturnType<typeof attachGestures>['cursorAt'] | null
+  >(null)
   // The markers read the live frames, so they render again once the layer exists.
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
@@ -409,8 +412,14 @@ export function Canvas({
         frameAt(withDrawn(framesRef.current), { x, y }, transform.k)?.ref ??
           null,
       )
+      // The marks draw in a layer that takes no pointer, so they cannot carry
+      // a cursor themselves.
+      viewport.style.cursor = cursorAtRef.current?.(event) ?? ''
     }
-    const leave = () => hover(null)
+    const leave = () => {
+      hover(null)
+      viewport.style.cursor = ''
+    }
     viewport.addEventListener('pointermove', track)
     viewport.addEventListener('pointerleave', leave)
 
@@ -500,14 +509,26 @@ export function Canvas({
     const layer = layerRef.current
     const hit = hitRef.current
     if (!viewport || !layer || !hit) return
-    return attachGestures(hit, {
+    const { detach, cursorAt } = attachGestures(hit, {
       viewport,
       layer,
       page: page.ref,
       frames: () => framesRef.current,
       sections: () => sectionsRef.current,
       pageFrames: () => pageFramesRef.current,
-    }).detach
+    })
+    cursorAtRef.current = cursorAt
+    // An inline cursor beats a tool's class, so a tool armed with the pointer
+    // still over a mark takes the cursor back, and the next move reads it again.
+    const stopMode = modeStore.subscribe(() => {
+      viewport.style.cursor = ''
+    })
+    return () => {
+      stopMode()
+      detach()
+      cursorAtRef.current = null
+      viewport.style.cursor = ''
+    }
   }, [page.ref, playing])
 
   useEffect(() => {

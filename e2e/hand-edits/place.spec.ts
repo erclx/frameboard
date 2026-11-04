@@ -638,8 +638,12 @@ test.describe('placing text and shapes into a frame', () => {
         )
       const corner = { x: box.x + box.width, y: box.y + box.height }
       await page.mouse.move(corner.x, corner.y)
+      const canvas = page.locator('[data-canvas]')
+      await expect(canvas).toHaveCSS('cursor', 'nwse-resize')
       await page.mouse.down()
       await page.mouse.move(corner.x + dx, corner.y + dy, { steps: 8 })
+      // The drag outruns the mark, and the cursor stays until release.
+      await expect(canvas).toHaveCSS('cursor', 'nwse-resize')
       await page.mouse.up()
       return { original, height, zoom }
     }
