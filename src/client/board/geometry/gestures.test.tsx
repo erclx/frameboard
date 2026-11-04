@@ -1783,7 +1783,8 @@ describe('attachGestures', () => {
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
         const canvas = setup(undefined, { outlines: OUTLINES, shape: 'free' })
 
-        expect(canvas.cursorOver(110, 110)).toBeNull()
+        // The last picked's corner, which the gate alone keeps from answering.
+        expect(canvas.cursorOver(110, 200)).toBeNull()
       })
     })
 
