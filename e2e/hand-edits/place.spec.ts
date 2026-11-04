@@ -588,6 +588,124 @@ test.describe('placing text and shapes into a frame', () => {
     })
   })
 
+  test.describe('a corner drag', () => {
+    const TEXT =
+      '<p data-name="Note" style="position: absolute; left: 20px; top: 300px; margin: 0; width: fit-content">Words that wrap onto a second line once a corner narrows them</p>'
+    const IMAGE =
+      '<img data-name="Pic" src="../assets/hero.png" alt="" style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px">'
+    const VIDEO =
+      '<video data-name="Clip" src="../assets/demo.mp4" muted style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px"></video>'
+
+    /**
+     * Adds `markup` to the hero, selects the element named `name`, and drags
+     * its south-east corner by a screen offset. Answers the bytes it started
+     * from, the element's height then, and the canvas zoom.
+     */
+    async function dragCorner(
+      page: Page,
+      markup: string,
+      name: string,
+      dx: number,
+      dy: number,
+    ) {
+      const assets = join(board.root, 'webapp/assets')
+      mkdirSync(assets, { recursive: true })
+      writeFileSync(
+        join(assets, 'hero.png'),
+        Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+      )
+      writeFileSync(join(assets, 'demo.mp4'), 'not a video')
+      writeFileSync(path(), read().replace('</body>', `${markup}\n  </body>`))
+      const original = read()
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const center = await centerOf(page, `[data-name="${name}"]`)
+      const height = await heightOf(page, name)
+      await page.keyboard.down('Meta')
+      await page.mouse.click(center.x, center.y)
+      await page.keyboard.up('Meta')
+      const outline = page.locator('[data-element-selection]')
+      await expect(outline.locator('[data-element-corner]')).toHaveCount(4)
+      const box = await outline.boundingBox()
+      if (!box) throw new Error(`${name} draws no outline`)
+      const zoom = await page
+        .locator('[data-layer]')
+        .evaluate(
+          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+        )
+      const corner = { x: box.x + box.width, y: box.y + box.height }
+      await page.mouse.move(corner.x, corner.y)
+      await page.mouse.down()
+      await page.mouse.move(corner.x + dx, corner.y + dy, { steps: 8 })
+      await page.mouse.up()
+      return { original, height, zoom }
+    }
+
+    /** The named element's height in the hero's own pixels. */
+    const heightOf = (page: Page, name: string) =>
+      hero(page)
+        .locator(`[data-name="${name}"]`)
+        .evaluate((element) => element.getBoundingClientRect().height)
+
+    test('on text writes a width alone, so it wraps with its height hugging, and one undo puts it back', async ({
+      page,
+    }) => {
+      const { original, height } = await dragCorner(page, TEXT, 'Note', -80, 60)
+
+      await expect.poll(read).not.toBe(original)
+      const [, style = ''] =
+        /data-name="Note" style="([^"]*)"/.exec(read()) ?? []
+      expect(style).not.toContain('fit-content')
+      expect(style).not.toContain('height')
+      const width = Number(/width: (\d+)px/.exec(style)?.[1])
+      expect(width).toBeGreaterThan(0)
+      await expect.poll(() => heightOf(page, 'Note')).toBeGreaterThan(height)
+      await expect(
+        page.locator('[data-element-selection] [data-chip]'),
+      ).toHaveText(`${width} × Hug`)
+
+      await page.keyboard.press('ControlOrMeta+z')
+
+      await expect.poll(read).toBe(original)
+    })
+
+    test('on an image writes its width and height, and one undo puts them back', async ({
+      page,
+    }) => {
+      const { original, zoom } = await dragCorner(page, IMAGE, 'Pic', 80, 40)
+
+      await expect.poll(read).not.toBe(original)
+      const [, width, height] =
+        /data-name="Pic"[^>]*width: (\d+)px; height: (\d+)px/.exec(read()) ?? []
+      expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
+      expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
+
+      await page.keyboard.press('ControlOrMeta+z')
+
+      await expect.poll(read).toBe(original)
+    })
+
+    test('on a video writes its width and height, and one undo puts them back', async ({
+      page,
+    }) => {
+      const { original, zoom } = await dragCorner(page, VIDEO, 'Clip', 80, 40)
+
+      await expect.poll(read).not.toBe(original)
+      const [, width, height] =
+        /data-name="Clip"[^>]*width: (\d+)px; height: (\d+)px/.exec(read()) ??
+        []
+      expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
+      expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
+
+      await page.keyboard.press('ControlOrMeta+z')
+
+      await expect.poll(read).toBe(original)
+    })
+  })
+
   test.describe('a free element', () => {
     const BOX =
       '<div data-name="Box" style="position: absolute; left: 100px; top: 300px; width: 160px; height: 120px; background: var(--muted)"></div>'

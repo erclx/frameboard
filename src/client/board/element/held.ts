@@ -2,11 +2,14 @@ import { createStore } from 'zustand/vanilla'
 
 import type { Box } from '../geometry/box'
 import type { ElementKey } from '../selection'
+import type { ResizeRead } from './resize'
 
 /** A released free drag's outline, held at the drop in canvas units. */
 export interface HeldOutline {
   key: ElementKey
   box: Box
+  /** How the element took a corner resize at release, which keeps its marks through the reload. */
+  read: ResizeRead | null
 }
 
 /**

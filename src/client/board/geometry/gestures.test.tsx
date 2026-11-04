@@ -10,7 +10,12 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { heldOutline, holdOutline } from '../element/held'
-import type { PlacedOffsets, ShapeSize } from '../element/resize'
+import type {
+  ElementSize,
+  PlacedOffsets,
+  ResizeKind,
+  ResizeRead,
+} from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
@@ -67,6 +72,12 @@ function setup(
     control,
     divider,
     shape,
+    resizeRead = {
+      kind: 'box',
+      natural: null,
+      hugsHeight: false,
+      inset: { width: 0, height: 0 },
+    },
     placed,
     ghost,
     live,
@@ -89,8 +100,10 @@ function setup(
     control?: { box: Box; onClick: () => void }
     /** A compared frame's split divider, at a canvas box. */
     divider?: Box
-    /** The selected element is a shape, in a frame free to write or held by another session. */
+    /** The selected element takes a corner resize, in a frame free to write or held by another session. */
     shape?: 'free' | 'held'
+    /** What the corner resize `shape` grants reads off the element, a box by default. */
+    resizeRead?: ResizeRead
     /** The selected element is placed at these offsets, out of the flow. */
     placed?: PlacedOffsets
     /** An element's ghost drawn past its frame's edge, at a canvas box. */
@@ -114,8 +127,9 @@ function setup(
   const resizes: {
     page: string
     key: ElementKey
-    previews: ShapeSize[]
-    commits: ShapeSize[]
+    kind: ResizeKind
+    previews: ElementSize[]
+    commits: ElementSize[]
     cancelled: boolean
   }[] = []
   const placedMoves: {
@@ -281,7 +295,7 @@ function setup(
         moves.push({ page, at, key })
         return null
       },
-      isShape: () => shape !== undefined,
+      resizeOf: () => (shape === undefined ? null : resizeRead),
       placedOffsets: () => placed ?? null,
       movePlaced: (page, key) => {
         const move = {
@@ -303,13 +317,14 @@ function setup(
           },
         }
       },
-      resizeShape: (page, key) => {
+      resizeElement: (page, key, { kind }) => {
         if (shape !== 'free') return null
         const resize = {
           page,
           key,
-          previews: [] as ShapeSize[],
-          commits: [] as ShapeSize[],
+          kind,
+          previews: [] as ElementSize[],
+          commits: [] as ElementSize[],
           cancelled: false,
         }
         resizes.push(resize)
@@ -1209,6 +1224,7 @@ describe('attachGestures', () => {
         expect(heldOutline()).toEqual({
           key: ELEMENT,
           box: { x: 175, y: 130, width: 100, height: 50 },
+          read: null,
         })
       })
 
@@ -1488,6 +1504,108 @@ describe('attachGestures', () => {
 
         expect(canvas.resizes).toEqual([])
       })
+
+      it('puts the preview back on Esc and writes nothing on release', () => {
+        const canvas = setupWithShape()
+
+        canvas.pointer.down(250, 200)
+        canvas.pointer.move(290, 230)
+        act(() => {
+          dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        })
+        canvas.pointer.up(290, 230)
+
+        expect(canvas.resizes[0]?.cancelled).toBe(true)
+        expect(canvas.resizes[0]?.commits).toEqual([])
+      })
+    })
+
+    describe('that is text', () => {
+      function setupWithText() {
+        const canvas = setup(undefined, {
+          elementBox: ELEMENT_BOX,
+          shape: 'free',
+          resizeRead: {
+            kind: 'text',
+            natural: null,
+            hugsHeight: true,
+            inset: { width: 0, height: 0 },
+          },
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        return canvas
+      }
+
+      it('resizes from a corner, starting a text resize at the dragged width', () => {
+        const canvas = setupWithText()
+
+        canvas.pointer.drag([250, 200], [290, 230], { shiftKey: true })
+
+        expect(canvas.resizes).toMatchObject([
+          {
+            kind: 'text',
+            commits: [{ width: 140, height: 50 }],
+          },
+        ])
+        expect(canvas.moves).toEqual([])
+      })
+
+      it('writes nothing on a drag that only moves up or down', () => {
+        const canvas = setupWithText()
+
+        canvas.pointer.drag([250, 200], [250, 260])
+
+        expect(canvas.resizes[0]?.commits).toEqual([])
+        expect(canvas.resizes[0]?.cancelled).toBe(true)
+      })
+    })
+
+    describe('that is an image', () => {
+      function setupWithImage() {
+        const canvas = setup(undefined, {
+          elementBox: ELEMENT_BOX,
+          shape: 'free',
+          resizeRead: {
+            kind: 'media',
+            natural: { width: 1, height: 1 },
+            hugsHeight: false,
+            inset: { width: 0, height: 0 },
+          },
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        return canvas
+      }
+
+      it('writes both sides from a corner', () => {
+        const canvas = setupWithImage()
+
+        canvas.pointer.drag([250, 200], [290, 230])
+
+        expect(canvas.resizes).toMatchObject([
+          { kind: 'media', commits: [{ width: 140, height: 80 }] },
+        ])
+      })
+
+      it('keeps its natural ratio while Shift is held', () => {
+        const canvas = setupWithImage()
+
+        canvas.pointer.drag([250, 200], [350, 210], { shiftKey: true })
+
+        expect(canvas.resizes[0]?.commits).toEqual([
+          { width: 200, height: 200 },
+        ])
+      })
+    })
+
+    it('carries a container on a drag from its corner', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.drag([250, 200], [290, 230])
+
+      expect(canvas.resizes).toEqual([])
+      expect(canvas.moves).toMatchObject([{ key: ELEMENT }])
     })
 
     it('keeps the element on a click on its outline', () => {

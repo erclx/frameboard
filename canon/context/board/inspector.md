@@ -78,9 +78,16 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 ## Gotchas
 
 - Element border width and vertical text alignment have no control. A placement tool sets a new element's place once.
-- A Rectangle or Ellipse drag sets a new shape's size, and a corner drag sets a placed one's as one `styles` edit. A drag on the selected element moves it to another gap, or a Free one's offsets.
+- A Rectangle or Ellipse drag sets a new shape's size. A drag on the selected element moves it to another gap, or a Free one's offsets.
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
+
+A corner drag writes one `styles` edit, and Esc writes nothing.
+
+- Text takes width alone, so its height keeps hugging, and a shape, an image, or a video takes width and height
+- A write takes a `content-box` element's padding and border off the drawn size, so the outline lands where the drag ends
+- Shift holds a shape's drawn ratio and media's decoded one. Inline text, a container, or a divider takes no corner drag and draws no marks.
+- The chip reads `Hug` for text with no height on its own `style`, so a height a rule states also reads as `Hug`
 
 A place reads the parent's position from the static cascade.
 
@@ -95,7 +102,7 @@ The Layout section leaves some sizing to the browser.
 
 Rotation leaves two gaps in what the canvas draws.
 
-- A shape whose `rotate` turns it takes no corner resize, since its outline is the turned bounding box
+- An element whose `rotate` turns it takes no corner resize and draws no marks, since its outline is the turned bounding box
 - A rotation preview fires no resize or load, so the selection outline lags a scrub until the write reloads the frame
 
 The number field works around two base-ui behaviors.

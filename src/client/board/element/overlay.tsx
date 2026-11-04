@@ -12,6 +12,7 @@ import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
 import { heldStore, holdOutline } from './held'
 import { overflowing } from './overflow'
+import { readResize, type ResizeRead } from './resize'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -35,13 +36,13 @@ interface ElementOverlayProps {
 
 /**
  * The ghosts of elements past their frame's edge, under the selected
- * element's outline, its four corner marks, and its size chip, the marks at
- * a constant screen size through `--zoom` as the frame selection draws
- * them. It is placed from the live element's box inside the frame's iframe
- * and follows that element as it resizes, so it draws nothing while the
- * frame is a placeholder or shows other bytes than the selection names. The
- * marks take no pointer events, since the gestures find a press on one by
- * where it draws, and a shape's corner drag resizes it there.
+ * element's outline, its size chip, and the four corner marks of an element
+ * a corner drag resizes, the marks at a constant screen size through `--zoom`
+ * as the frame selection draws them. It is placed from the live element's box
+ * inside the frame's iframe and follows that element as it resizes, so it
+ * draws nothing while the frame is a placeholder or shows other bytes than
+ * the selection names. The marks take no pointer events, since the gestures
+ * find a press on one by where it draws.
  */
 export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   return (
@@ -187,12 +188,13 @@ function useGhosts(
   return read?.key === key ? read.ghosts : []
 }
 
-/** The selected element's outline, corner marks, and size chip. */
+/** The selected element's outline, corner marks where a drag resizes it, and size chip. */
 function ElementOutline({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const rect = useElementBox(container, element)
+  const measure = useElementMeasure(container, element)
+  const rect = measure?.box ?? null
   const held = useStore(heldStore, (state) => state.held)
   const at = pending ?? frame?.box
   const holds = held !== null && held.key.frame === element?.frame
@@ -209,6 +211,7 @@ function ElementOutline({ frames, container }: ElementOverlayProps) {
         ? { ...rect, x: at.x + rect.x, y: at.y + rect.y }
         : null
   if (!box) return null
+  const read = holds && !settled ? held.read : (measure?.read ?? null)
   return (
     <div
       data-element-selection
@@ -223,39 +226,42 @@ function ElementOutline({ frames, container }: ElementOverlayProps) {
         zIndex: OVERLAY_Z,
       }}
     >
-      {CORNERS.map((corner) => (
-        <span
-          key={`${corner.left}-${corner.top}`}
-          data-element-corner
-          className="absolute -translate-1/2 border-primary bg-white"
-          style={{
-            ...corner,
-            width: screen(7),
-            height: screen(7),
-            borderWidth: screen(1.5),
-          }}
-        />
-      ))}
+      {read
+        ? CORNERS.map((corner) => (
+            <span
+              key={`${corner.left}-${corner.top}`}
+              data-element-corner
+              className="absolute -translate-1/2 border-primary bg-white"
+              style={{
+                ...corner,
+                width: screen(7),
+                height: screen(7),
+                borderWidth: screen(1.5),
+              }}
+            />
+          ))
+        : null}
       <span data-chip className={CHIP}>
-        {sizeLabel(box)}
+        {sizeLabel(box, read?.hugsHeight ? 'height' : undefined)}
       </span>
     </div>
   )
 }
 
 /**
- * The element's box inside its frame, in the frame's own pixels, measured
- * again whenever the frame loads, the element resizes, or the frame's page
- * scrolls. Null while no live iframe shows the bytes the key was read from.
+ * The element's box inside its frame, in the frame's own pixels, and how it
+ * takes a corner resize, measured again whenever the frame loads, the element
+ * resizes, or the frame's page scrolls. Null while no live iframe shows the
+ * bytes the key was read from.
  */
-function useElementBox(
+function useElementMeasure(
   container: HTMLElement | null,
   element: ElementKey | null,
-): Box | null {
+): { box: Box; read: ResizeRead | null } | null {
   // Held with the key it was measured for, so one element's box never draws on the next.
   const [measured, setMeasured] = useState<{
     key: string
-    box: Box | null
+    at: { box: Box; read: ResizeRead | null } | null
   } | null>(null)
   const frame = element?.frame
   const index = element?.index
@@ -264,7 +270,6 @@ function useElementBox(
   useEffect(() => {
     if (!container || key === null) return
     if (frame === undefined || index === undefined) return
-    const setBox = (box: Box | null) => setMeasured({ key, box })
     let stopWatching = () => {}
     const measure = () => {
       stopWatching()
@@ -277,16 +282,22 @@ function useElementBox(
           : null
       const view = document?.defaultView
       if (!target || !view) {
-        setBox(null)
+        setMeasured({ key, at: null })
         return
       }
       const read = () => {
         const rect = target.getBoundingClientRect()
-        setBox({
-          x: Math.round(rect.left),
-          y: Math.round(rect.top),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
+        setMeasured({
+          key,
+          at: {
+            box: {
+              x: Math.round(rect.left),
+              y: Math.round(rect.top),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+            },
+            read: readResize(target),
+          },
         })
       }
       read()
@@ -308,7 +319,7 @@ function useElementBox(
       stopWatching()
     }
   }, [container, key, frame, index, hash])
-  return measured?.key === key ? measured.box : null
+  return measured?.key === key ? measured.at : null
 }
 
 function sameKey(a: ElementKey, b: ElementKey | null): boolean {
