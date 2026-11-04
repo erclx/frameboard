@@ -27,7 +27,13 @@ import { trees } from '../element/tree'
 import { modeStore } from '../mode'
 import { notesUi, useNoteTool } from '../notes/tool'
 import { useSectionActions } from '../sections/actions'
-import { clear, select, selectElement, selectionStore } from '../selection'
+import {
+  clear,
+  select,
+  selectElement,
+  selectElements,
+  selectionStore,
+} from '../selection'
 import { clipboardStore, useStructureActions } from '../structure/actions'
 import { useFrameTool } from '../structure/tool'
 
@@ -439,6 +445,39 @@ describe('CanvasMenu', () => {
       within(menu).getByText('Element'),
       selectionStore.getState().element?.index,
     ]).toEqual([expect.anything(), 2])
+  })
+
+  it('opens the element menu on any selected member, keeping them all', async () => {
+    render(<Board page={PAGE} />)
+    const member = { frame: A.ref, hash: 'h' }
+    selectElements(selectionStore, PAGE.ref, [
+      { ...member, index: 2 },
+      { ...member, index: 3 },
+    ])
+    const layer = document.querySelector('[data-layer]')
+    // The first picked sits under the click, the last picked far off it.
+    for (const [index, at] of [
+      [2, '100px'],
+      [3, '1000px'],
+    ] as const) {
+      const outline = document.createElement('div')
+      outline.dataset.elementSelection = ''
+      outline.dataset.elementIndex = String(index)
+      Object.assign(outline.style, {
+        position: 'absolute',
+        left: at,
+        top: at,
+        width: '100px',
+        height: '100px',
+      })
+      layer?.append(outline)
+    }
+
+    rightClick(centerOf(A.ref))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getByText('Element')).toBeInTheDocument()
+    expect(selectionStore.getState().elements).toHaveLength(2)
   })
 
   it('ends the element menu with Delete', async () => {

@@ -464,7 +464,9 @@ export type FrameFilePlaceAll =
 
 /**
  * Places several elements of a frame file as one write, refused whole as
- * `placeFrameFile` refuses one. `factsOf` reads the static cascade of the
+ * `placeFrameFile` refuses one. They go in file order, so a parent placed too
+ * is positioned ahead of its child, which then writes no second span on its
+ * tag that would strand the undo. `factsOf` reads the static cascade of the
  * bytes the one before left, so siblings share the parent the first one made
  * relative rather than writing it twice.
  */
@@ -479,20 +481,21 @@ export function placeFrameFileAll(
   if (read.hash !== hash) return stale(path)
   let html = read.source
   const spans: ElementSpan[] = []
-  const sized: (readonly PlacedSize[])[] = []
-  for (const { index, spot, drop } of places) {
+  const sized = new Map<ElementPlace, readonly PlacedSize[]>()
+  for (const place of places.toSorted((a, b) => a.index - b.index)) {
+    const { index, spot, drop } = place
     const placed = placeElement(html, index, spot, factsOf(html), drop ?? [])
     if (!placed.ok) return placed
     html = placed.html
     spans.push(...placed.spans)
-    sized.push(placed.sized)
+    sized.set(place, placed.sized)
   }
   if (!replaceFile(path, hash, html)) return stale(path)
   return {
     ok: true,
     hash: contentHash(html),
     spans,
-    sized,
+    sized: places.map((place) => sized.get(place) ?? []),
     remap: identity,
   }
 }

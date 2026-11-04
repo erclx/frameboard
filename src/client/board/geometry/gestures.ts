@@ -259,6 +259,8 @@ export function attachGestures(
   let from: Point = { x: 0, y: 0 }
   let pressed = { x: 0, y: 0 }
   let moved = false
+  // Counts presses, so a Shift-click waiting on a tree yields to any made after it.
+  let presses = 0
   // The press took focus out of an inspector field, so a click only leaves it.
   let leaving = false
   let last: MouseEvent | null = null
@@ -446,6 +448,7 @@ export function attachGestures(
     const drawn = withDrawn(target.frames())
     const point = toCanvas(event)
     from = point
+    presses += 1
     pressed = { x: event.clientX, y: event.clientY }
     moved = false
     last = event
@@ -637,6 +640,7 @@ export function attachGestures(
     if (
       gesture.kind === 'press' &&
       gesture.inner &&
+      !last?.altKey &&
       stores.onBareFrame(target.layer, withDrawn(target.frames()), from)
     ) {
       gesture = {
@@ -875,10 +879,13 @@ export function attachGestures(
    * element in another frame starts a new selection there.
    */
   const pickToggle = (event: MouseEvent) => {
+    const turn = presses
     void stores
       .pickElement(target.layer, withDrawn(target.frames()), toCanvas(event))
       .then((key) => {
-        if (key) toggleElement(selection, target.page, key)
+        if (key && turn === presses) {
+          toggleElement(selection, target.page, key)
+        }
       })
   }
 

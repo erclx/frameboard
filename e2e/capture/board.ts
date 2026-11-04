@@ -1310,17 +1310,33 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
     await page.addInitScript(
       ({ owner, frames }) => {
         let left = frames
+        // The press reads the frame's tree, so it waits on that answer being read.
+        let treeRead = false
+        const elements = `/api/frames/elements?ref=${encodeURIComponent(owner)}`
+        const sent = window.fetch.bind(window)
+        window.fetch = async (...args) => {
+          const answer = await sent(...args)
+          if (String(args[0]).includes(elements)) {
+            void answer
+              .clone()
+              .text()
+              .then(() => {
+                treeRead = true
+              })
+          }
+          return answer
+        }
         const run = () => {
           const shown = document.querySelector(`[data-frame="${owner}"]`)
           const hit = document.querySelector('[data-hit-layer]')
           const layer = document.querySelector<HTMLElement>('[data-layer]')
           const iframe = shown?.querySelector('iframe')
-          // The frame's tree answers a beat after its selection, and the press reads it.
           if (
             !shown ||
             !hit ||
             !layer ||
             !iframe?.dataset.renderedAt ||
+            !treeRead ||
             !document.querySelector('[data-overlay]')
           ) {
             if (--left > 0) requestAnimationFrame(run)
@@ -1345,7 +1361,8 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
             )
           const startX = box.left + box.width * 0.7
           const startY = box.bottom - 12
-          setTimeout(() => {
+          // The store takes the tree a frame after the answer is read.
+          requestAnimationFrame(() => {
             send(hit, 'mousedown', startX, startY)
             send(window, 'mousemove', startX - 10, startY - 20)
             send(
@@ -1354,8 +1371,15 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
               box.left + box.width * 0.2,
               box.top + box.height * 0.3,
             )
-            document.documentElement.setAttribute('data-marquee-held', '')
-          }, 600)
+            const drawn =
+              document.querySelector('[data-marquee]:not([hidden])') &&
+              document.querySelector('[data-marquee-hits] > *')
+            if (drawn) {
+              document.documentElement.setAttribute('data-marquee-held', '')
+            } else {
+              console.error(`No marquee drew inside ${owner}`)
+            }
+          })
         }
         document.addEventListener('DOMContentLoaded', () =>
           requestAnimationFrame(run),

@@ -114,7 +114,7 @@ function setup(
     /** An element's ghost drawn past its frame's edge, at a canvas box. */
     ghost?: { key: ElementKey; box: Box }
     /** What a Shift-click picks at each point, null by default. */
-    pick?: (at: Point) => ElementKey | null
+    pick?: (at: Point) => ElementKey | null | Promise<ElementKey | null>
     /** Whether a point inside a selected frame is its bare body, false by default. */
     bare?: (at: Point) => boolean
     /** The elements a marquee inside a frame touches, none by default. */
@@ -1712,6 +1712,35 @@ describe('attachGestures', () => {
 
         expect(selectionStore.getState().element).toBeNull()
         expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('copies the selected frame on an Alt-drag from its bare body', () => {
+        select(selectionStore, PAGE, [LEFT.ref])
+        const canvas = setup(undefined, { bare: () => true })
+
+        canvas.pointer.drag([150, 150], [190, 210], { altKey: true })
+
+        expect(canvas.duplicates).toHaveLength(1)
+      })
+
+      it('drops a Shift-click still waiting once a later press landed', async () => {
+        selectElement(selectionStore, PAGE, FIRST)
+        let answer: (key: ElementKey) => void = () => {}
+        const canvas = setup(undefined, {
+          pick: () =>
+            new Promise<ElementKey>((resolve) => {
+              answer = resolve
+            }),
+        })
+
+        canvas.pointer.click(130, 210, { shiftKey: true })
+        canvas.pointer.click(450, 150)
+        answer(SECOND)
+        await Promise.resolve()
+        await Promise.resolve()
+
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+        expect(held()).toBeUndefined()
       })
 
       it('moves the selected frame on a drag from an element it holds', () => {

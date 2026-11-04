@@ -110,6 +110,21 @@ export function selectedElementBox(layer: ParentNode): Box | null {
   return drawn ? drawnBox(drawn) : null
 }
 
+/**
+ * The outline of the selected element under a canvas point, the last picked
+ * winning where they overlap, else the last picked's, for a menu to read as
+ * the element a right-click landed on or the frame around it.
+ */
+export function selectedElementBoxAt(
+  layer: ParentNode,
+  point: Point,
+): Box | null {
+  const under = selectedElementBoxes(layer)
+    .reverse()
+    .find(({ box }) => within(box, point))
+  return under?.box ?? selectedElementBox(layer)
+}
+
 /** Every selected element's outline on the canvas by its index, the last picked last. */
 export function selectedElementBoxes(
   layer: ParentNode,

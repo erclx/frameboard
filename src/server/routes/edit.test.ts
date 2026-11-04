@@ -1051,6 +1051,30 @@ describe('editRoutes', () => {
         expect(read()).toBe(original)
       })
 
+      it('undoes a child picked ahead of the static parent also placed', async () => {
+        const original = read()
+
+        const response = await place({
+          ref: HERO,
+          hash: hash(),
+          places: [
+            { index: COMMAND, spot: { left: 1, top: 2 } },
+            { index: CAPTION, spot: { left: 3, top: 4 } },
+          ],
+        })
+
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          data: {
+            index: CAPTION,
+            placed: [{ index: COMMAND }, { index: CAPTION }],
+          },
+        })
+        expect(read()).not.toContain('position: relative')
+        await history.undo()
+        expect(read()).toBe(original)
+      })
+
       it('writes a static parent the siblings share once', async () => {
         writeFileSync(
           path(),

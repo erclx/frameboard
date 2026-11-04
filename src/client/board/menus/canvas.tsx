@@ -14,7 +14,7 @@ import type { FrameRecord } from '@/shared/records/list'
 
 import { treeOf } from '../element/tree'
 import { up } from '../element/walk'
-import { selectedElementBox } from '../geometry/hit'
+import { selectedElementBoxAt } from '../geometry/hit'
 import { select, selectionStore, useSelection } from '../selection'
 import { menuPlace } from './actions'
 import { DeleteRow, MenuRow, MenuTitle } from './items'
@@ -64,7 +64,7 @@ export function CanvasMenu({
     const transform = zoomTransform(view)
     const [x, y] = transform.invert(pointer(event, view))
     const { element } = selectionStore.getState()
-    const box = element ? selectedElementBox(drawn) : null
+    const box = element ? selectedElementBoxAt(drawn, { x, y }) : null
     return menuTarget(
       frames(),
       { x, y },

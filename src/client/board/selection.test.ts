@@ -512,7 +512,7 @@ describe('toggleElement', () => {
     expect(store.getState()).toMatchObject({ elements: [moved] })
   })
 
-  it('selects nothing from the frame with no element held', () => {
+  it('selects the element from the frame with no element held', () => {
     const store = createSelectionStore()
     select(store, PAGE, [HERO])
 
@@ -560,21 +560,28 @@ describe('selectElements', () => {
   })
 
   it.each([
-    ['select', (store: SelectionStore) => select(store, PAGE, [ABOUT])],
-    ['toggle', (store: SelectionStore) => toggle(store, PAGE, ABOUT)],
-    ['clear', (store: SelectionStore) => clear(store)],
+    [
+      'select',
+      (store: SelectionStore) => select(store, PAGE, [ABOUT]),
+      undefined,
+    ],
+    [
+      'toggle',
+      (store: SelectionStore) => toggle(store, PAGE, ABOUT),
+      undefined,
+    ],
+    ['clear', (store: SelectionStore) => clear(store), undefined],
     [
       'selectElement',
       (store: SelectionStore) => selectElement(store, PAGE, two),
+      [two],
     ],
-  ])('is replaced by %s', (name, act) => {
+  ])('is replaced by %s', (_name, act, expected) => {
     const store = createSelectionStore()
     selectElements(store, PAGE, [one, two])
 
     act(store)
 
-    expect(store.getState().elements).toEqual(
-      name === 'selectElement' ? [two] : undefined,
-    )
+    expect(store.getState().elements).toEqual(expected)
   })
 })
