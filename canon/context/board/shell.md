@@ -132,6 +132,10 @@ Owns the app shell and the controls around the canvas.
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
 - Hide UI, through Cmd+\ or a button, hides both panels and keeps the way home, the project name with its menu, the toolbar, the avatar, and the zoom level
 
+### `src/client/lib/`
+
+Owns `cn.ts`, the one import of `cn`, which registers the `--text-*` steps as font sizes. `cn.test.ts` reads the steps out of `styles.css`, so a step added there alone fails it.
+
 ### `src/client/access/`
 
 Owns what a tab shows about its write access, mirroring `src/server/access/`.
@@ -152,3 +156,4 @@ The favicon files sit beside the app.
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a wheel carrying `ctrlKey` zooms
 - `wheel.ts` reads an axis in line mode or of 50 pixels or more as a mouse notch, which zooms one 1.2 step or pans over 120 ms, so a unit test polls the view after a notch-sized pan
 - Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
+- A text step sets its weight as well as its size, so `text-label` draws at 600 unless a `font-*` class beside it says otherwise
