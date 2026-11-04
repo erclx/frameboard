@@ -77,6 +77,8 @@ A move released with Alt held puts the frames back and sends one duplicate carry
 - A corner drag on a selected section resizes the box alone, and a frame its new edge crosses joins or leaves it by its center
 - A refused section write puts the box back where the board holds it, since no newer board redraws it
 
+Esc during a frame move or resize puts the frames, the overlay, and the pins back at the press and writes nothing, an Alt copy included, and the next Esc reaches the registry. A cancelled resize redraws the overlay from its start boxes, since `drawRest` clears only a move's transform and no write lands for React to redraw from.
+
 ### `src/client/board/preview/`
 
 Owns the width a frame is previewed at, held in this tab's memory alone, so a reload drops it and nothing reaches the server, the history, or the hug step. The palette carries a preview at each preset and End preview, with no key, keeping a width already in the preset's range and taking its default otherwise.

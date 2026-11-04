@@ -652,6 +652,19 @@ export function attachGestures(
     }
   }
 
+  const putFramesBack = (boxes: Readonly<Record<string, Box>>) => {
+    for (const [ref, box] of Object.entries(boxes)) {
+      const element = elements.get(ref)
+      if (!element) continue
+      Object.assign(element.style, {
+        left: `${box.x}px`,
+        top: `${box.y}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+      })
+    }
+  }
+
   /**
    * Puts the dragged frames back and copies them at the drop, as a move
    * released with Alt held. One duplicate write lands the copies, and no box
@@ -665,12 +678,7 @@ export function attachGestures(
       x: parseFloat(dropped.style.left) - first[1].x,
       y: parseFloat(dropped.style.top) - first[1].y,
     }
-    for (const [ref, box] of Object.entries(boxes)) {
-      const element = elements.get(ref)
-      if (!element) continue
-      element.style.left = `${box.x}px`
-      element.style.top = `${box.y}px`
-    }
+    putFramesBack(boxes)
     if (offset.x === 0 && offset.y === 0) return
     const refs = Object.keys(boxes)
     stores.duplicate(refs, offset).then(
@@ -842,21 +850,42 @@ export function attachGestures(
       })
   }
 
-  // Esc puts a placed element's drag or a corner resize back, writing nothing.
-  // It listens in the capture phase and stops the press there, since the key
-  // registry's window listener registered first and would also run Esc's
-  // `element.up` on the same press.
+  // Esc puts a frame move or resize, a placed element's drag, or a corner resize
+  // back, writing nothing. It listens in the capture phase and stops the press
+  // there, since the key registry's window listener registered first and would
+  // also run Esc's `selection.clear` or `element.up` on the same press. The button
+  // may stay down long after, so everything goes back now rather than on release.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
-    if (gesture.kind !== 'placed' && gesture.kind !== 'element-resize') return
+    // A corner press is already a `resize`, ahead of the click distance and the
+    // lock check, and with no drag there is nothing to put back.
+    if (!moved) return
+    if (
+      gesture.kind !== 'placed' &&
+      gesture.kind !== 'element-resize' &&
+      gesture.kind !== 'move' &&
+      gesture.kind !== 'resize'
+    ) {
+      return
+    }
     event.preventDefault()
     event.stopImmediatePropagation()
     if (gesture.kind === 'placed') {
       gesture.move.cancel()
       shiftElementOutline(0, 0)
       shiftElementPins(gesture.key, 0, 0)
-    } else {
+    } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()
+    } else {
+      putFramesBack(gesture.boxes)
+      const root = overlay()
+      if (root) {
+        // No write lands, so React has no changed prop to redraw a resize from.
+        if (gesture.kind === 'resize') drawResize(root, gesture.boxes)
+        drawRest(root)
+      }
+      shiftElementOutline(0, 0)
+      shiftPins([], 0, 0)
     }
     gesture = { kind: 'none' }
   }

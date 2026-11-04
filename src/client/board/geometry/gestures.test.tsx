@@ -408,6 +408,12 @@ function selectedRefs(): readonly string[] {
   return selectionStore.getState().frames
 }
 
+function pressEscape() {
+  act(() => {
+    dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  })
+}
+
 describe('attachGestures', () => {
   // First in the file, since d3-drag swallows the next click for one timer
   // tick after a drag, and a drag ending the test before would eat this one.
@@ -914,6 +920,187 @@ describe('attachGestures', () => {
 
       expect(left).toBe('203px')
     })
+
+    describe('when Esc cancels it', () => {
+      const element = { x: 120, y: 120, width: 20, height: 20 }
+
+      it('puts the frame back and writes nothing on release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(180, 175)
+        pressEscape()
+        canvas.pointer.up(180, 175)
+
+        const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+        expect([left.style.left, left.style.top, canvas.writes]).toEqual([
+          '100px',
+          '100px',
+          [],
+        ])
+      })
+
+      it('puts back every selected frame and pin at the press, with the button still down', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(150, 200)
+        pressEscape()
+
+        expect([
+          canvas.part(`[data-frame="${LEFT.ref}"]`).style.top,
+          canvas.part(`[data-frame="${RIGHT.ref}"]`).style.top,
+          canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
+          canvas.part(`[data-note-frame="${RIGHT.ref}"]`).style.translate,
+        ]).toEqual(['100px', '100px', '', ''])
+        canvas.pointer.up(150, 200)
+      })
+
+      it('puts the drawn selection and the element outline back at the press', () => {
+        const canvas = setup(undefined, { elementBox: element })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(180, 175)
+        pressEscape()
+
+        expect([
+          canvas.part('[data-selection]').style.transform,
+          canvas.part('[data-element-selection]').style.transform,
+          canvas.part('[data-move-chip]').hidden,
+        ]).toEqual(['', '', true])
+        canvas.pointer.up(180, 175)
+      })
+
+      it('clears a snap guide at the press', () => {
+        const canvas = setup()
+        detach = canvas.detach
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(150 + 103, 150)
+        pressEscape()
+
+        expect(canvas.part('[data-guides]').childElementCount).toBe(0)
+        canvas.pointer.up(150 + 103, 150)
+      })
+
+      it('lands no copy of an Alt-drag', () => {
+        const canvas = setup()
+        detach = canvas.detach
+
+        canvas.pointer.down(150, 150, { altKey: true })
+        canvas.pointer.move(190, 210, { altKey: true })
+        pressEscape()
+        canvas.pointer.up(190, 210, { altKey: true })
+
+        expect([canvas.duplicates, canvas.writes]).toEqual([[], []])
+      })
+
+      it('stays cancelled through more movement before release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(180, 175)
+        pressEscape()
+        canvas.pointer.move(260, 240)
+        dispatchEvent(new KeyboardEvent('keydown', { key: 'Control' }))
+        canvas.pointer.up(260, 240)
+
+        expect([
+          canvas.part(`[data-frame="${LEFT.ref}"]`).style.left,
+          canvas.writes,
+        ]).toEqual(['100px', []])
+      })
+
+      it('keeps the selection from the first Esc and hands the second to the key registry', async () => {
+        const canvas = setup()
+        detach = canvas.detach
+        const ran: string[] = []
+        const unregister = registerActions([
+          {
+            id: 'test.escape',
+            label: 'Escape',
+            group: 'selection',
+            palette: false,
+            keys: ['Escape'],
+            run: () => ran.push('escape'),
+          },
+        ])
+        const unbind = bindKeys(window)
+
+        canvas.pointer.down(150, 150)
+        canvas.pointer.move(180, 175)
+        await userEvent.keyboard('{Escape}')
+        const afterFirst = [...ran]
+        await userEvent.keyboard('{Escape}')
+        const afterSecond = [...ran]
+        canvas.pointer.up(180, 175)
+        unbind()
+        unregister()
+
+        expect([afterFirst, afterSecond, selectedRefs()]).toEqual([
+          [],
+          ['escape'],
+          [LEFT.ref],
+        ])
+      })
+
+      it('leaves Esc to the key registry before the press becomes a drag', async () => {
+        const canvas = setup()
+        detach = canvas.detach
+        const ran: string[] = []
+        const unregister = registerActions([
+          {
+            id: 'test.escape',
+            label: 'Escape',
+            group: 'selection',
+            palette: false,
+            keys: ['Escape'],
+            run: () => ran.push('escape'),
+          },
+        ])
+        const unbind = bindKeys(window)
+
+        canvas.pointer.down(150, 150)
+        await userEvent.keyboard('{Escape}')
+        canvas.pointer.up(150, 150)
+        unbind()
+        unregister()
+
+        expect([ran, selectedRefs()]).toEqual([['escape'], [LEFT.ref]])
+      })
+
+      it('leaves Esc to the key registry on a locked frame', async () => {
+        const canvas = setup()
+        detach = canvas.detach
+        const ran: string[] = []
+        const unregister = registerActions([
+          {
+            id: 'test.escape',
+            label: 'Escape',
+            group: 'selection',
+            palette: false,
+            keys: ['Escape'],
+            run: () => ran.push('escape'),
+          },
+        ])
+        const unbind = bindKeys(window)
+
+        canvas.pointer.down(150, 450)
+        canvas.pointer.move(250, 480)
+        await userEvent.keyboard('{Escape}')
+        canvas.pointer.up(250, 480)
+        unbind()
+        unregister()
+
+        expect([ran, canvas.writes]).toEqual([['escape'], []])
+      })
+    })
   })
 
   describe('resizing', () => {
@@ -943,6 +1130,100 @@ describe('attachGestures', () => {
 
       expect(canvas.part('[data-chip]')).toHaveTextContent('240 × 220')
       canvas.pointer.up(60, 80)
+    })
+
+    describe('when Esc cancels it', () => {
+      it('puts the frame back and writes nothing on release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(100, 100)
+        canvas.pointer.move(60, 80)
+        pressEscape()
+        canvas.pointer.up(60, 80)
+
+        const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+        expect([
+          left.style.left,
+          left.style.top,
+          left.style.width,
+          left.style.height,
+          canvas.writes,
+        ]).toEqual(['100px', '100px', '200px', '200px', []])
+      })
+
+      // No write lands, so React has no new prop to redraw the overlay from.
+      it('leaves the drawn selection and its chip at the start size after release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(100, 100)
+        canvas.pointer.move(60, 80)
+        pressEscape()
+        canvas.pointer.up(60, 80)
+
+        const drawn = canvas.part('[data-selection]')
+        expect([
+          drawn.style.left,
+          drawn.style.top,
+          drawn.style.width,
+          drawn.style.height,
+        ]).toEqual(['100px', '100px', '200px', '200px'])
+        expect(canvas.part('[data-chip]')).toHaveTextContent('200 × 200')
+      })
+
+      it('puts back each frame, outline, and pin of several at the press', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+        canvas.pointer.down(600, 300)
+        canvas.pointer.move(700, 300)
+        pressEscape()
+
+        expect([
+          canvas.part(`[data-frame="${RIGHT.ref}"]`).style.left,
+          canvas.part(`[data-frame="${RIGHT.ref}"]`).style.width,
+          canvas.part(`[data-outline="${RIGHT.ref}"]`).style.left,
+          canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
+          canvas.part(`[data-note-frame="${RIGHT.ref}"]`).style.translate,
+        ]).toEqual(['400px', '200px', '300px', '', ''])
+        canvas.pointer.up(700, 300)
+      })
+
+      it.each([
+        ['a free frame', LEFT, 300, 300],
+        ['a locked frame', LOCKED, 300, 500],
+      ] as const)(
+        "leaves Esc to the key registry on %s's corner pressed but not dragged",
+        async (_name, frame, x, y) => {
+          const canvas = setup()
+          detach = canvas.detach
+          act(() => select(selectionStore, PAGE, [frame.ref]))
+          const ran: string[] = []
+          const unregister = registerActions([
+            {
+              id: 'test.escape',
+              label: 'Escape',
+              group: 'selection',
+              palette: false,
+              keys: ['Escape'],
+              run: () => ran.push('escape'),
+            },
+          ])
+          const unbind = bindKeys(window)
+
+          canvas.pointer.down(x, y)
+          await userEvent.keyboard('{Escape}')
+          canvas.pointer.up(x, y)
+          unbind()
+          unregister()
+
+          expect([ran, canvas.writes]).toEqual([['escape'], []])
+        },
+      )
     })
 
     describe('a frame with a pin', () => {
@@ -1745,6 +2026,45 @@ describe('attachGestures', () => {
         },
       ])
       expect(previewOf(LEFT.ref)).toBeUndefined()
+    })
+
+    it('puts a move Esc cancels back at the stored box, with the preview ended', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.down(450, 150)
+      canvas.pointer.move(480, 175)
+      pressEscape()
+      canvas.pointer.up(480, 175)
+
+      const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+      expect([left.style.left, left.style.width, canvas.writes]).toEqual([
+        '100px',
+        '200px',
+        [],
+      ])
+      expect(previewOf(LEFT.ref)).toBeUndefined()
+    })
+
+    it('keeps the overlay at the previewed width on Esc at a corner pressed but not dragged', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      act(() => {
+        setPreview([LEFT.ref], 500)
+        select(selectionStore, PAGE, [LEFT.ref])
+      })
+      const before = canvas.part('[data-selection]').style.width
+
+      canvas.pointer.down(600, 300)
+      pressEscape()
+      canvas.pointer.up(600, 300)
+
+      expect([
+        before,
+        canvas.part('[data-selection]').style.width,
+        previewOf(LEFT.ref),
+      ]).toEqual(['500px', '500px', { width: 500 }])
     })
 
     it('keeps the preview through a click', () => {
