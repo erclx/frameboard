@@ -1,7 +1,10 @@
 import './styles.css'
 
 import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { Button } from './components/ui/button'
 import { cn } from './lib/cn'
@@ -11,22 +14,44 @@ describe('Button', () => {
     document.documentElement.classList.remove('dark')
   })
 
-  it('should paint the kit button with the light primary blue', () => {
+  it('should paint the kit button with the light fill blue', () => {
     render(<Button>New board</Button>)
 
     const button = screen.getByRole('button')
 
-    expect(getComputedStyle(button).backgroundColor).toBe('rgb(47, 123, 240)')
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(31, 111, 229)')
   })
 
-  it('should paint the kit button with the dark primary blue under .dark', () => {
+  it('should paint the kit button with the dark fill blue under .dark', () => {
     document.documentElement.classList.add('dark')
 
     render(<Button>New board</Button>)
 
     const button = screen.getByRole('button')
 
-    expect(getComputedStyle(button).backgroundColor).toBe('rgb(78, 146, 246)')
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(32, 104, 220)')
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    it('should read its label at 4.5:1 or better at rest', () => {
+      render(<Button>New board</Button>)
+
+      expect(contrastOnPage(screen.getByRole('button'))).toBeGreaterThanOrEqual(
+        4.5,
+      )
+    })
+
+    it('should read its label at 4.5:1 or better hovered', async () => {
+      render(<Button>New board</Button>)
+
+      expect(
+        await contrastHovered(screen.getByRole('button')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
   })
 })
 
