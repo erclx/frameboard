@@ -14,12 +14,15 @@ import {
   rememberHash,
   renameSelection,
   select,
+  selectedElements,
   selectElement,
+  selectElements,
   type SelectionStore,
   selectSection,
   settleLanded,
   settleRefused,
   toggle,
+  toggleElement,
 } from './selection'
 
 const HERO = 'studio/home/hero'
@@ -125,6 +128,7 @@ describe('selectElement', () => {
       page: 'studio/home',
       frames: [HERO],
       element: HEADLINE,
+      elements: [HEADLINE],
     })
   })
 
@@ -266,6 +270,7 @@ describe('renameSelection', () => {
       page: 'atelier/home',
       frames: ['atelier/home/hero'],
       element: { frame: 'atelier/home/hero', index: 3, hash: 'h1' },
+      elements: [{ frame: 'atelier/home/hero', index: 3, hash: 'h1' }],
     })
   })
 
@@ -438,5 +443,138 @@ describe('settleLanded', () => {
     settleLanded(store, () => KEY.hash)
 
     expect(store.getState().element).toEqual(KEY)
+  })
+})
+
+describe('toggleElement', () => {
+  const PAGE = 'studio/home'
+  const HASH = 'a'.repeat(64)
+  const one = { frame: HERO, index: 3, hash: HASH }
+  const two = { frame: HERO, index: 5, hash: HASH }
+  const three = { frame: HERO, index: 7, hash: HASH }
+
+  it('adds an element and keeps the one last picked as `element`', () => {
+    const store = createSelectionStore()
+    selectElement(store, PAGE, one)
+
+    toggleElement(store, PAGE, two)
+
+    expect(store.getState()).toMatchObject({
+      frames: [HERO],
+      element: two,
+      elements: [one, two],
+    })
+  })
+
+  it('takes a held element out, the last one left becoming `element`', () => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two, three])
+
+    toggleElement(store, PAGE, three)
+
+    expect(store.getState()).toMatchObject({
+      element: two,
+      elements: [one, two],
+    })
+  })
+
+  it('leaves the frame selected once the last element is taken out', () => {
+    const store = createSelectionStore()
+    selectElement(store, PAGE, one)
+
+    toggleElement(store, PAGE, one)
+
+    expect(store.getState()).toMatchObject({ frames: [HERO], element: null })
+    expect(selectedElements(store.getState())).toEqual([])
+  })
+
+  it('starts over in another frame with the element alone', () => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two])
+    const elsewhere = { frame: ABOUT, index: 3, hash: HASH }
+
+    toggleElement(store, PAGE, elsewhere)
+
+    expect(store.getState()).toMatchObject({
+      frames: [ABOUT],
+      element: elsewhere,
+      elements: [elsewhere],
+    })
+  })
+
+  it('starts over on bytes other than the ones held', () => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two])
+    const moved = { frame: HERO, index: 7, hash: 'b'.repeat(64) }
+
+    toggleElement(store, PAGE, moved)
+
+    expect(store.getState()).toMatchObject({ elements: [moved] })
+  })
+
+  it('selects nothing from the frame with no element held', () => {
+    const store = createSelectionStore()
+    select(store, PAGE, [HERO])
+
+    toggleElement(store, PAGE, one)
+
+    expect(store.getState()).toMatchObject({ element: one, elements: [one] })
+  })
+})
+
+describe('selectElements', () => {
+  const PAGE = 'studio/home'
+  const HASH = 'a'.repeat(64)
+  const one = { frame: HERO, index: 3, hash: HASH }
+  const two = { frame: HERO, index: 5, hash: HASH }
+
+  it("keeps only the last key's frame and hash, each element once", () => {
+    const store = createSelectionStore()
+
+    selectElements(store, PAGE, [
+      { frame: ABOUT, index: 1, hash: HASH },
+      { frame: HERO, index: 1, hash: 'b'.repeat(64) },
+      one,
+      one,
+      two,
+    ])
+
+    expect(store.getState()).toMatchObject({
+      frames: [HERO],
+      element: two,
+      elements: [one, two],
+    })
+  })
+
+  it('moves the elements under a renamed project', () => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two])
+
+    renameSelection(store, 'studio', 'atelier')
+
+    expect(store.getState().elements?.map(({ frame }) => frame)).toEqual([
+      'atelier/home/hero',
+      'atelier/home/hero',
+    ])
+    expect(store.getState().element?.frame).toBe('atelier/home/hero')
+  })
+
+  it.each([
+    ['select', (store: SelectionStore) => select(store, PAGE, [ABOUT])],
+    ['toggle', (store: SelectionStore) => toggle(store, PAGE, ABOUT)],
+    ['clear', (store: SelectionStore) => clear(store)],
+    [
+      'selectElement',
+      (store: SelectionStore) => selectElement(store, PAGE, two),
+    ],
+  ])('is replaced by %s', (name, act) => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two])
+
+    act(store)
+
+    expect(store.getState().elements).toEqual(
+      name === 'selectElement' ? [two] : undefined,
+    )
   })
 })

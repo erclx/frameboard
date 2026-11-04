@@ -25,8 +25,16 @@ export interface SelectionState {
   /** The page the frames sit on, null with nothing selected. */
   page: string | null
   frames: readonly string[]
-  /** An element inside the one selected frame, absent or null when the frame itself is selected. */
+  /**
+   * An element inside the one selected frame, absent or null when the frame
+   * itself is selected. With several selected, the last one picked.
+   */
   element?: ElementKey | null
+  /**
+   * Every selected element, `element` last and holding it too, all in that one
+   * frame at one hash. Absent when no element is selected.
+   */
+  elements?: readonly ElementKey[]
   /**
    * A section on `page`, by name, selected alone with no frame. Every other
    * setter leaves it absent, so a frame selection never carries one.
@@ -50,6 +58,7 @@ export function select(
     page,
     frames: [...new Set(frames)],
     element: null,
+    elements: undefined,
     section: undefined,
   })
 }
@@ -60,7 +69,13 @@ export function selectSection(
   page: string,
   section: string,
 ): void {
-  store.setState({ page, frames: [], element: null, section })
+  store.setState({
+    page,
+    frames: [],
+    element: null,
+    elements: undefined,
+    section,
+  })
 }
 
 /** Selects one element, and with it its frame alone, on `page`. */
@@ -73,8 +88,73 @@ export function selectElement(
     page,
     frames: [element.frame],
     element,
+    elements: [element],
     section: undefined,
   })
+}
+
+/**
+ * Selects these elements, and with them their frame alone, on `page`. The
+ * last is the one picked, and only those at its frame and hash are kept, once
+ * each, since one write addresses one frame's bytes.
+ */
+export function selectElements(
+  store: SelectionStore,
+  page: string,
+  keys: readonly ElementKey[],
+): void {
+  const element = keys.at(-1)
+  if (!element) return
+  const held = keys.filter(
+    (key, at) =>
+      key.frame === element.frame &&
+      key.hash === element.hash &&
+      keys.findIndex(({ index }) => index === key.index) === at,
+  )
+  store.setState({
+    page,
+    frames: [element.frame],
+    element,
+    elements: held.some((key) => key === element)
+      ? held
+      : [...held.filter((key) => key.index !== element.index), element],
+    section: undefined,
+  })
+}
+
+/**
+ * Adds an element to the selected ones or takes it out, leaving its frame
+ * selected once none is left. An element in another frame, or at other bytes
+ * than the held ones, starts a new selection of it alone.
+ */
+export function toggleElement(
+  store: SelectionStore,
+  page: string,
+  key: ElementKey,
+): void {
+  const state = store.getState()
+  const held = selectedElements(state)
+  const [first] = held
+  if (
+    state.page !== page ||
+    first?.frame !== key.frame ||
+    first.hash !== key.hash
+  ) {
+    selectElement(store, page, key)
+    return
+  }
+  const kept = held.filter(({ index }) => index !== key.index)
+  if (kept.length === held.length) selectElements(store, page, [...held, key])
+  else if (kept.length > 0) selectElements(store, page, kept)
+  else select(store, page, [key.frame])
+}
+
+/** Every selected element, for a state a setter wrote or one holding `element` alone. */
+export function selectedElements({
+  element,
+  elements,
+}: SelectionState): readonly ElementKey[] {
+  return elements ?? (element ? [element] : [])
 }
 
 /** Adds a frame to the selection or takes it out, starting over on another page. */
@@ -91,6 +171,7 @@ export function toggle(store: SelectionStore, page: string, ref: string): void {
     page: next.length === 0 ? null : page,
     frames: next,
     element: null,
+    elements: undefined,
     section: undefined,
   })
 }
@@ -98,7 +179,13 @@ export function toggle(store: SelectionStore, page: string, ref: string): void {
 export function clear(store: SelectionStore): void {
   const { page, frames, element, section } = store.getState()
   if (page === null && frames.length === 0 && !element && !section) return
-  store.setState({ page: null, frames: [], element: null, section: undefined })
+  store.setState({
+    page: null,
+    frames: [],
+    element: null,
+    elements: undefined,
+    section: undefined,
+  })
 }
 
 /**
@@ -110,13 +197,17 @@ export function renameSelection(
   before: string,
   after: string,
 ): void {
-  const { page, frames, element } = store.getState()
+  const { page, frames, element, elements } = store.getState()
   if (page === null) return
   const move = (ref: string) => movedRef(ref, before, after)
+  const moved = elements?.map((key) => ({ ...key, frame: move(key.frame) }))
   store.setState({
     page: move(page),
     frames: frames.map(move),
-    element: element ? { ...element, frame: move(element.frame) } : element,
+    element: element
+      ? (moved?.at(-1) ?? { ...element, frame: move(element.frame) })
+      : element,
+    elements: moved,
   })
 }
 
@@ -142,7 +233,7 @@ export function pruneSelection(store: SelectionStore, board: ListResult): void {
   const kept = frames.filter((frame) => shown.has(frame))
   if (kept.length === frames.length) return
   if (kept.length === 0) clear(store)
-  else store.setState({ frames: kept, element: null })
+  else store.setState({ frames: kept, element: null, elements: undefined })
 }
 
 /**

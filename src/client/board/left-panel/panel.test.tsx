@@ -854,6 +854,7 @@ describe('LeftPanel', () => {
         page: 'studio/home',
         frames: [HERO],
         element: { frame: HERO, index: 8, hash: HASH },
+        elements: [{ frame: HERO, index: 8, hash: HASH }],
       })
     })
 

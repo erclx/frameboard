@@ -78,6 +78,9 @@ describe('pickHit', () => {
         page: 'studio/onboarding',
         frames: ['studio/onboarding/welcome'],
         element: { frame: 'studio/onboarding/welcome', index: 5, hash: HASH },
+        elements: [
+          { frame: 'studio/onboarding/welcome', index: 5, hash: HASH },
+        ],
       },
       zooms: 1,
     })
