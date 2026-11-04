@@ -3,17 +3,24 @@ name: Frameboard Checks
 # Project-owned checks the golden verify.yml has no seat for. A tooling sync
 # rewrites verify.yml, so these live here where a sync never reaches.
 
+# The macOS job runs on a push to main and on dispatch, never on a pull
+# request, so a runner shortage cannot hold a merge.
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
+# GitHub cancels a pending run when a newer one queues in the same group,
+# and a cancelled run on main would turn grey, so a push keys on its run id.
 concurrency:
-  group: frameboard-checks-${{ github.ref }}
+  group: frameboard-checks-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   browser-tests:
+    if: github.event_name != 'push'
     name: 🧩 Browser Component Tests
     runs-on: ubuntu-latest
     steps:
@@ -42,6 +49,7 @@ jobs:
         run: bunx vitest run --project browser
 
   cli-runtimes:
+    if: github.event_name != 'push'
     name: 📦 CLI on Node and Bun
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +81,7 @@ jobs:
           bun frameboard-dist/cli.js --version
 
   edit-parity:
+    if: github.event_name != 'push'
     name: ✂️ Edit Writer on Node and Bun
     runs-on: ubuntu-latest
     steps:
@@ -104,6 +113,7 @@ jobs:
         run: cmp "$RUNNER_TEMP/node.digest" "$RUNNER_TEMP/bun.digest"
 
   macos:
+    if: github.event_name != 'pull_request'
     name: 🍎 macOS Unit and CLI Smoke
     runs-on: macos-latest
     timeout-minutes: 15
@@ -135,6 +145,7 @@ jobs:
         run: bash scripts/smoke-cli.sh dist
 
   web:
+    if: github.event_name != 'push'
     name: 🌐 Landing Page Gate
     runs-on: ubuntu-latest
     defaults:
