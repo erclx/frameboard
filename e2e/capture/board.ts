@@ -44,6 +44,21 @@ async function noTokens(page: Page): Promise<void> {
   )
 }
 
+/**
+ * Answers the author read as a machine with no name, whatever git or the saved
+ * config holds, and aborts any write on that path, since the preview server
+ * would save it under the developer's real config folder.
+ */
+async function noAuthor(page: Page): Promise<void> {
+  await page.route('**/api/author', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: { ok: true, data: { name: null, source: null } },
+        })
+      : route.abort(),
+  )
+}
+
 /** How many frames a left panel tab waits for its trigger, about ten seconds. */
 const TAB_FRAMES = 600
 
@@ -2309,6 +2324,21 @@ export const BOARD_CASES: CaptureCase[] = [
             asWriter,
             nameEditOnLoad,
             readyWhen('input[aria-label="Your name"]'),
+          ),
+        ),
+      },
+      {
+        section: 'avatar-name-set',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            asWriter,
+            noAuthor,
+            pressOnLoad('^Account$'),
+            readyWhen('[role="menuitem"][aria-label="Set your name"]'),
           ),
         ),
       },
