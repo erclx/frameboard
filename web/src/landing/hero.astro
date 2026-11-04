@@ -21,8 +21,18 @@ import { REPO_URL } from './links'
     <div class="shot footage">
       <picture>
         <source
+          media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)"
+          srcset="/hero-still-dark.png"
+        />
+        <source
           media="(prefers-reduced-motion: reduce)"
           srcset="/hero-still.png"
+        />
+        <source
+          media="(prefers-color-scheme: dark)"
+          srcset="/hero-loop-dark.webp"
+          data-loop
+          data-still="/hero-still-dark.png"
         />
         <img
           src="/hero-loop.webp"
