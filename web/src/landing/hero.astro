@@ -30,6 +30,7 @@ import { REPO_URL } from './links'
           height="587"
           alt="The board canvas as an agent draws a landing page and two phone screens"
           data-loop
+          data-still="/hero-still.png"
         />
       </picture>
       <button type="button" class="pause" hidden aria-pressed="false">
@@ -102,17 +103,7 @@ import { REPO_URL } from './links'
 </style>
 
 <script>
-  // An animated WebP has no pause of its own, so pausing swaps in the still
-  // the reduced-motion source already serves.
-  const button = document.querySelector<HTMLButtonElement>('#hero .pause')
-  const loop = document.querySelector<HTMLImageElement>('#hero [data-loop]')
-  if (button && loop) {
-    button.hidden = false
-    button.addEventListener('click', () => {
-      const paused = button.getAttribute('aria-pressed') === 'true'
-      loop.src = paused ? '/hero-loop.webp' : '/hero-still.png'
-      button.setAttribute('aria-pressed', String(!paused))
-      button.textContent = paused ? 'Pause' : 'Play'
-    })
-  }
+  import { wireHeroPause } from './hero-pause'
+
+  wireHeroPause()
 </script>
