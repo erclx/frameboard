@@ -151,11 +151,11 @@ These catch a running `preview` out.
 - `canon/config/app-drive.toml` carries the launch, data, and personas a drive reads, so a drive stops asking for them, and the skills read it and never write it
 - The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
 - A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
+- Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
 
 One catches a drive that needs a claimed frame.
 
 - A claim lives in the ignored `.run/` and lapses after five minutes, so a drive renews it with `bun dist/cli.js editing <frame-ref> --root <copyRoot>/test/fixtures/boards/basic --session drive-review`
-- Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
 
 One catches a running `dev` out.
 
