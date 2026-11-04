@@ -1192,6 +1192,38 @@ describe('attachGestures', () => {
         ]).toEqual(['400px', '200px', '300px', '', ''])
         canvas.pointer.up(700, 300)
       })
+
+      it.each([
+        ['a free frame', LEFT, 300, 300],
+        ['a locked frame', LOCKED, 300, 500],
+      ] as const)(
+        "leaves Esc to the key registry on %s's corner pressed but not dragged",
+        async (_name, frame, x, y) => {
+          const canvas = setup()
+          detach = canvas.detach
+          act(() => select(selectionStore, PAGE, [frame.ref]))
+          const ran: string[] = []
+          const unregister = registerActions([
+            {
+              id: 'test.escape',
+              label: 'Escape',
+              group: 'selection',
+              palette: false,
+              keys: ['Escape'],
+              run: () => ran.push('escape'),
+            },
+          ])
+          const unbind = bindKeys(window)
+
+          canvas.pointer.down(x, y)
+          await userEvent.keyboard('{Escape}')
+          canvas.pointer.up(x, y)
+          unbind()
+          unregister()
+
+          expect([ran, canvas.writes]).toEqual([['escape'], []])
+        },
+      )
     })
 
     describe('a frame with a pin', () => {
@@ -2013,6 +2045,26 @@ describe('attachGestures', () => {
         [],
       ])
       expect(previewOf(LEFT.ref)).toBeUndefined()
+    })
+
+    it('keeps the overlay at the previewed width on Esc at a corner pressed but not dragged', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      act(() => {
+        setPreview([LEFT.ref], 500)
+        select(selectionStore, PAGE, [LEFT.ref])
+      })
+      const before = canvas.part('[data-selection]').style.width
+
+      canvas.pointer.down(600, 300)
+      pressEscape()
+      canvas.pointer.up(600, 300)
+
+      expect([
+        before,
+        canvas.part('[data-selection]').style.width,
+        previewOf(LEFT.ref),
+      ]).toEqual(['500px', '500px', { width: 500 }])
     })
 
     it('keeps the preview through a click', () => {

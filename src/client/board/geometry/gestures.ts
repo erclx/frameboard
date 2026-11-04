@@ -857,6 +857,9 @@ export function attachGestures(
   // may stay down long after, so everything goes back now rather than on release.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
+    // A corner press is already a `resize`, ahead of the click distance and the
+    // lock check, and with no drag there is nothing to put back.
+    if (!moved) return
     if (
       gesture.kind !== 'placed' &&
       gesture.kind !== 'element-resize' &&
