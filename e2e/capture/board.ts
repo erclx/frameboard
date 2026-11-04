@@ -1238,6 +1238,135 @@ function elementInFrame(
 }
 
 /**
+ * Selects the first element matching `selectors` in the frame `ref` as
+ * `elementInFrame` does, then Shift-clicks each of the rest once the one before
+ * draws its outline, and marks the page once all of them draw.
+ */
+function elementsInFrame(
+  ref: string,
+  selectors: readonly string[],
+): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, targets, frames }) => {
+        let left = frames
+        let picked = 0
+        const pick = () => {
+          const shown = document.querySelector(`[data-frame="${owner}"]`)
+          const iframe = shown?.querySelector('iframe')
+          const hit = document.querySelector('[data-hit-layer]')
+          const layer = document.querySelector<HTMLElement>('[data-layer]')
+          const decoded = [...document.querySelectorAll('iframe')].every(
+            (each) =>
+              [
+                ...(each.contentDocument?.querySelectorAll('video') ?? []),
+              ].every((video) => video.readyState >= 2),
+          )
+          const drawn = document.querySelectorAll(
+            '[data-element-selection]',
+          ).length
+          if (drawn === targets.length) {
+            document.documentElement.setAttribute('data-elements-picked', '')
+            return
+          }
+          const target = targets[picked]
+          const element =
+            target && drawn === picked && iframe?.dataset.renderedAt
+              ? iframe.contentDocument?.querySelector(target)
+              : null
+          if (shown && element && hit && layer && decoded) {
+            const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+            const frame = shown.getBoundingClientRect()
+            const inner = element.getBoundingClientRect()
+            const at = {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              shiftKey: picked > 0,
+              clientX: frame.left + (inner.left + inner.width / 2) * k,
+              clientY: frame.top + (inner.top + inner.height / 2) * k,
+            }
+            hit.dispatchEvent(new MouseEvent('mousedown', at))
+            window.dispatchEvent(new MouseEvent('mouseup', at))
+            if (picked === 0) hit.dispatchEvent(new MouseEvent('dblclick', at))
+            picked += 1
+          }
+          if (--left > 0) requestAnimationFrame(pick)
+          else console.error(`Never picked ${targets.join(', ')} on ${owner}`)
+        }
+        document.addEventListener('DOMContentLoaded', pick)
+      },
+      { owner: ref, targets: selectors, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
+ * Holds a marquee mid-drag inside the frame `ref`, once it is selected, from
+ * a point on its bare body up over what it holds, which outlines what it touches.
+ */
+function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, frames }) => {
+        let left = frames
+        const run = () => {
+          const shown = document.querySelector(`[data-frame="${owner}"]`)
+          const hit = document.querySelector('[data-hit-layer]')
+          const layer = document.querySelector<HTMLElement>('[data-layer]')
+          const iframe = shown?.querySelector('iframe')
+          // The frame's tree answers a beat after its selection, and the press reads it.
+          if (
+            !shown ||
+            !hit ||
+            !layer ||
+            !iframe?.dataset.renderedAt ||
+            !document.querySelector('[data-overlay]')
+          ) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error(`No selected ${owner} to marquee inside`)
+            return
+          }
+          const box = shown.getBoundingClientRect()
+          const send = (
+            target: EventTarget,
+            type: string,
+            clientX: number,
+            clientY: number,
+          ) =>
+            target.dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX,
+                clientY,
+              }),
+            )
+          const startX = box.left + box.width * 0.7
+          const startY = box.bottom - 12
+          setTimeout(() => {
+            send(hit, 'mousedown', startX, startY)
+            send(window, 'mousemove', startX - 10, startY - 20)
+            send(
+              window,
+              'mousemove',
+              box.left + box.width * 0.2,
+              box.top + box.height * 0.3,
+            )
+            document.documentElement.setAttribute('data-marquee-held', '')
+          }, 600)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Serves the hero with its headline placed Free at 100, 300, added to the
  * bytes on the way to the tab. The headline stays the element the file's
  * tree names at that index, so a pick selects it, which an element the
@@ -2780,6 +2909,55 @@ export const BOARD_CASES: CaptureCase[] = [
           ),
         ),
       })),
+      ...(
+        [
+          // Text, a shape, and an image: Mixed sizes, Typography 1 of 3, Fill 2 of 3.
+          [
+            'multi-elements',
+            [
+              '[data-name="Free text"]',
+              '[data-name="Free shape"]',
+              '[data-name="Free image"]',
+            ],
+          ],
+          // An image and a video sharing one size, with no type or fill to count.
+          [
+            'multi-elements-shared',
+            ['[data-name="Free image"]', '[data-name="Free video"]'],
+          ],
+        ] as const
+      ).map(([section, targets]) => ({
+        section,
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            elementsInFrame('marketing/states/free', targets),
+            readyWhen('[data-elements-picked]'),
+          ),
+        ),
+      })),
+      {
+        // A marquee held mid-drag inside the selected frame, what it touches outlined.
+        section: 'multi-elements-marquee',
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            onCanvas({ select: ['marketing/states/free'] }),
+            innerMarqueeHeld('marketing/states/free'),
+            readyWhen('[data-marquee-held]'),
+          ),
+        ),
+      },
       {
         // A Free box running 60 px past the hero's right edge, ghosted there while the hero is selected.
         section: 'free-drag-ghost',
