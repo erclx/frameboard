@@ -12,7 +12,10 @@ What you can do by hand on the board, from picking an element to undoing an edit
 On the board, Cmd-click or double-click selects an element inside a frame.
 
 - Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements
-- `selection` prints what you picked, with the element's index and hash ready for `edit`
+- `selection` prints what you picked, with the element's index and hash ready for `edit`, naming the last one picked when several are selected
+- With an element selected, Shift-click on the canvas or in the layers panel adds another from that frame or takes one out, and Cmd+A selects its siblings
+- A drag from the empty body of a selected frame selects the elements it touches, and a drag from an element in it moves the frame
+- With several selected, the inspector shows `Mixed` where their values differ and `1 of 3` on a section only some have, and an edit or Delete applies to them all as one undo step
 
 ## Notes
 
