@@ -77,6 +77,7 @@ describe('docs', () => {
       'editing',
       'capture',
       'inspect',
+      'references sync',
       'docs',
     ])
   })
