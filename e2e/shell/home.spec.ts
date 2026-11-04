@@ -256,6 +256,23 @@ test.describe('projects by hand from the home view', () => {
     expect(overlaps(hint, edited)).toBe(false)
   })
 
+  test('keeps the drop hint for a long project name inside its card', async ({
+    page,
+  }) => {
+    const long = 'a-project-name-long-enough-to-run-past-the-card-edge'
+    addProject('brand')
+    addProject(long)
+    await openAsWriter(page)
+    const target = card(page, long)
+
+    await holdOver(page, card(page, 'brand'), target)
+
+    const hint = await boxOf(dropHint(page))
+    const box = await boxOf(target)
+    expect(hint.x).toBeGreaterThanOrEqual(box.x)
+    expect(hint.x + hint.width).toBeLessThanOrEqual(box.x + box.width)
+  })
+
   test('keeps every list name clear of the drop hint, in and on an open folder', async ({
     page,
   }) => {

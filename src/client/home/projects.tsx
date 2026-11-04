@@ -272,7 +272,7 @@ function NoMatch({ filter }: { filter: string }) {
  * so the ring cues the target there and the hint stays for assistive tech.
  */
 const DROP_HINT = {
-  well: 'inset-x-3 top-[82px] mx-auto w-fit -translate-y-1/2',
+  well: 'inset-x-3 top-[82px] mx-auto w-fit max-w-[calc(100%-1.5rem)] -translate-y-1/2',
   row: 'top-3 right-4 max-w-80 max-sm:sr-only',
 } as const
 
