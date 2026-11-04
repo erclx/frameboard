@@ -30,7 +30,7 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 - Alt+Shift+ArrowUp and ArrowDown move the selected element among its siblings, because Alt+ArrowUp alone is `nav.home` and the registry gives a shared key to whichever action registered first
 - A move key reads the tree inside the frame's turn rather than at the press, so a press queued behind a move in flight goes from the index and hash that move answered
 
-A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside a shape's corner drag. Esc writes nothing.
+A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside an element's corner drag. Esc writes nothing.
 
 The released outline stays at the drop through `held.ts` until the reloaded frame measures the element, since `ResizeObserver` never fires on a move, and a refused write lets it go. An element past its frame's edge draws a dashed ghost there while its frame is selected, read by `overflow.ts`, and a press on the ghost selects and drags it.
 
@@ -118,5 +118,5 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - Hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - Elements cannot be hidden, since it would write `display` into the frame, which no hand edit writes yet
-- A drag on a selected element or its outline carries it, and one on a shape's corner mark resizes it. Its frame moves by the label strip or after Esc.
+- A drag on a selected element or its outline carries it, and one on a corner mark resizes it, which only text, a shape, an image, or a video draws. Its frame moves by the label strip or after Esc.
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one
