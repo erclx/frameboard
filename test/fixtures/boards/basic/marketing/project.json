@@ -1,4 +1,4 @@
 {
   "version": 1,
-  "pages": ["launch"]
+  "pages": ["launch", "states"]
 }

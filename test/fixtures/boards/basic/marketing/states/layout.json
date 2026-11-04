@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "frames": {
+    "free": { "x": 0, "y": 0, "width": 390, "height": 844, "order": 0, "hidden": false, "locked": false },
+    "colors": { "x": 470, "y": 0, "width": 390, "height": 844, "order": 1, "hidden": false, "locked": false }
+  }
+}
