@@ -507,7 +507,7 @@ export function Canvas({
       frames: () => framesRef.current,
       sections: () => sectionsRef.current,
       pageFrames: () => pageFramesRef.current,
-    })
+    }).detach
   }, [page.ref, playing])
 
   useEffect(() => {

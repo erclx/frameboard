@@ -43,6 +43,7 @@ import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
 import {
   badgeAt,
   cornerAt,
+  cornerCursor,
   drawnAt,
   frameAt,
   framesIn,
@@ -201,13 +202,18 @@ type Mark =
  * resizes it, and a drag on empty canvas draws a marquee. A move released
  * with Alt held copies the frames at the drop instead. A drag writes the
  * frames and the overlay straight from its handler and sends one write on
- * release. Returns the function that unbinds them.
+ * release. Returns the function that unbinds them, and `cursorAt`, which
+ * answers the resize cursor a pointer event's position takes, null where a
+ * press there would not resize.
  */
 export function attachGestures(
   hit: HTMLElement,
   target: GestureTarget,
   stores: GestureStores = STORES,
-): () => void {
+): {
+  detach: () => void
+  cursorAt: (event: MouseEvent) => ReturnType<typeof cornerCursor> | null
+} {
   const { selection, mode } = stores
   let gesture: Gesture = { kind: 'none' }
   let from: Point = { x: 0, y: 0 }
@@ -362,6 +368,29 @@ export function attachGestures(
     const shown = boundsOf(selected(drawn).map((frame) => frame.box))
     const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
     return corner ? { kind: 'frame', corner } : null
+  }
+
+  const moveToolOn = () => {
+    const { mode: current, tool, spacePan } = mode.getState()
+    return current === 'edit' && tool === 'move' && !spacePan
+  }
+
+  const cursorAt = (event: MouseEvent) => {
+    // A drag outruns the marks' reach, so it holds the corner it took.
+    if (last && moved) {
+      return 'corner' in gesture ? cornerCursor(gesture.corner) : null
+    }
+    if (!moveToolOn() || !stores.canWrite()) return null
+    const mark = markAt(event, toCanvas(event), withDrawn(target.frames()))
+    if (!mark) return null
+    // `begin` turns a press on a locked frame's handle into no drag.
+    if (
+      mark.kind === 'frame' &&
+      selected(target.frames()).some((f) => f.locked)
+    ) {
+      return null
+    }
+    return chromeAt(event) ? null : cornerCursor(mark.corner)
   }
 
   const start = (event: MouseEvent) => {
@@ -942,13 +971,8 @@ export function attachGestures(
     .container(() => target.viewport)
     // The primary button alone, and a Ctrl-press too, since Ctrl turns
     // snapping off rather than meaning a right-click here.
-    .filter((event: MouseEvent) => {
-      const { mode: current, tool, spacePan } = mode.getState()
-      // Held Space hands the drag to the viewport's pan.
-      return (
-        event.button === 0 && current === 'edit' && tool === 'move' && !spacePan
-      )
-    })
+    // Held Space hands the drag to the viewport's pan.
+    .filter((event: MouseEvent) => event.button === 0 && moveToolOn())
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {
       start(event.sourceEvent)
@@ -990,12 +1014,15 @@ export function attachGestures(
   const selectionOfHit = d3Select(hit)
   selectionOfHit.call(behavior)
   hit.addEventListener('contextmenu', noMenu)
-  return () => {
-    selectionOfHit.on('.drag', null)
-    hit.removeEventListener('contextmenu', noMenu)
-    removeEventListener('keydown', onEscape, true)
-    removeEventListener('keydown', onKey)
-    removeEventListener('keyup', onKey)
+  return {
+    detach: () => {
+      selectionOfHit.on('.drag', null)
+      hit.removeEventListener('contextmenu', noMenu)
+      removeEventListener('keydown', onEscape, true)
+      removeEventListener('keydown', onKey)
+      removeEventListener('keyup', onKey)
+    },
+    cursorAt,
   }
 }
 
