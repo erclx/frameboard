@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.75.0",
-      "syncedAt": "2026-10-31T14:52:53.407Z",
+      "version": "5.78.0",
+      "syncedAt": "2026-11-04T13:35:22.996Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -36,8 +36,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.69.0",
-      "syncedAt": "2026-10-27T02:01:21.223Z",
+      "version": "5.78.0",
+      "syncedAt": "2026-11-04T13:35:23.250Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:a4dd2f6e78751e22d2d9ecd8bc4a66f42e7e1022c04d4038a4f6689c791ed64f",
@@ -50,6 +50,7 @@
         ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
         ".oxfmtrc.json": "sha256:3a1ed5ccecff4b639cda0dc20231f9e92a1511c463b0b5800aa0dea45b9c4dfe",
         "scripts/delete-previews.sh": "sha256:bffa40f5391deff970c5c813c7e1ed7c9b3db15925cc6400acfc187b4e50b283",
+        "scripts/install-playwright-deps.sh": "sha256:35631184c220c42f510a7c17d6e2a507a4c39468fab8aaf608b9b7a40e0bb86c",
         "scripts/lib/preview-server.sh": "sha256:5e1d0ea671970ba5a4c6a83c0c656f86e4e9e5caa45c6636487793cc6f17c20b",
         "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
@@ -70,7 +71,7 @@
         },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
-          "base": "sha256:0b6e3c9d3f347cf9c732886abbf6d08fbd78a0572568c8d30eb2703dbcc8ce35"
+          "base": "sha256:5707d43282ecb8754b0ca4f389a9df2fc4e1cb4b0310238a37641d4139cb470b"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
