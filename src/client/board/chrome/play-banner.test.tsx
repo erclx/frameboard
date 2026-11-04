@@ -1,9 +1,10 @@
 import '../../styles.css'
 
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
+import { contrastOnPage } from '@/test/contrast'
 
 import { PlayBanner } from './play-banner'
 
@@ -19,6 +20,23 @@ function Live({ frameRef, body }: { frameRef: string; body: string }) {
 }
 
 describe('PlayBanner', () => {
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it.each(['light', 'dark'])(
+    'reads its text at 4.5:1 or better in %s',
+    (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+
+      render(<PlayBanner frames={[frameOf('a')]} />)
+
+      expect(contrastOnPage(screen.getByRole('status'))).toBeGreaterThanOrEqual(
+        4.5,
+      )
+    },
+  )
+
   it('says nothing takes a click once every frame loads static', async () => {
     const a = frameOf('a')
     render(

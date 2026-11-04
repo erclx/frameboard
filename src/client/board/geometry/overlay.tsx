@@ -15,7 +15,7 @@ const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
 export const OVERLAY_Z = 1_000_000
 
 export const CHIP =
-  'absolute top-full left-1/2 origin-top-left rounded-[4px] bg-primary px-1.5 py-0.5 text-[10px] leading-[14px] whitespace-nowrap text-primary-foreground tabular-nums [transform:scale(calc(1/var(--zoom,1)))_translate(-50%,6px)]'
+  'absolute top-full left-1/2 origin-top-left rounded-[4px] bg-primary-fill px-1.5 py-0.5 text-[10px] leading-[14px] whitespace-nowrap text-primary-foreground tabular-nums [transform:scale(calc(1/var(--zoom,1)))_translate(-50%,6px)]'
 
 interface OverlayProps {
   /** The page's shown frames, which the selection is drawn from. */
