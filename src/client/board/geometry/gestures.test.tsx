@@ -1736,8 +1736,8 @@ describe('attachGestures', () => {
         canvas.pointer.click(130, 210, { shiftKey: true })
         canvas.pointer.click(450, 150)
         answer(SECOND)
-        await Promise.resolve()
-        await Promise.resolve()
+        // One macrotask drains every promise the pick's answer settles through.
+        await new Promise((drained) => setTimeout(drained))
 
         expect(selectedRefs()).toEqual([RIGHT.ref])
         expect(held()).toBeUndefined()
