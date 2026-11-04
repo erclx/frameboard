@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.26.0](https://github.com/erclx/frameboard/compare/v0.25.0...v0.26.0) (2026-11-04)
+
+
+### Features
+
+* **evidence:** adopt canon's gate, add drive states and capture cases ([#224](https://github.com/erclx/frameboard/issues/224)) ([843643c](https://github.com/erclx/frameboard/commit/843643c8877e33364792d9de1a1526607be54381))
+* **home:** file projects into folders, filter them, and archive them ([#222](https://github.com/erclx/frameboard/issues/222)) ([dab7b95](https://github.com/erclx/frameboard/commit/dab7b95764640ad5b84790b4dcd21530f095b234))
+* **overlay:** resize text, images, and video from their corners ([#232](https://github.com/erclx/frameboard/issues/232)) ([93b6e12](https://github.com/erclx/frameboard/commit/93b6e122c11b3e0e03b3da7e83ca65b279def432))
+* **references:** add references sync verb to fill design folders ([#226](https://github.com/erclx/frameboard/issues/226)) ([5db912b](https://github.com/erclx/frameboard/commit/5db912bd0d77b89b3abd389e61f817b0d66a4e80))
+
+
+### Bug Fixes
+
+* **home:** keep the folder drop hint clear of the target's name ([#229](https://github.com/erclx/frameboard/issues/229)) ([32a4b37](https://github.com/erclx/frameboard/commit/32a4b371834ec8c00436ba2cb8637b6491598a79))
+* **inspector:** give selection colors a key of its own beside text ([#228](https://github.com/erclx/frameboard/issues/228)) ([a6b03b1](https://github.com/erclx/frameboard/commit/a6b03b1876cef78c0eb1947d19687ce03a5e898d))
+* **toast:** keep the toast stack clear of the bottom toolbar ([#231](https://github.com/erclx/frameboard/issues/231)) ([a34fc5e](https://github.com/erclx/frameboard/commit/a34fc5e1a4a40f6866609274c99df9187377aa5a))
+* **tokens:** keep text steps beside a color through cn ([#230](https://github.com/erclx/frameboard/issues/230)) ([7c21a77](https://github.com/erclx/frameboard/commit/7c21a77f8708b5ac8e72d4aa09f0e63392b7c77a))
+
 ## [0.25.0](https://github.com/erclx/frameboard/compare/v0.24.0...v0.25.0) (2026-11-03)
 
 
