@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
-import { cornerAt, frameAt, framesIn, ghostAt, onOutline } from './hit'
+import {
+  cornerAt,
+  cornerCursor,
+  frameAt,
+  framesIn,
+  ghostAt,
+  onOutline,
+} from './hit'
 
 const BACK = frameOf('back', {
   box: { x: 0, y: 0, width: 400, height: 300 },
@@ -62,6 +69,17 @@ describe('cornerAt', () => {
 
   it('keeps the reach its screen size when zoomed out', () => {
     expect(cornerAt(BOUNDS, { x: 120, y: 80 }, 0.25)).toBe('nw')
+  })
+})
+
+describe('cornerCursor', () => {
+  it.each([
+    ['nw', 'nwse-resize'],
+    ['se', 'nwse-resize'],
+    ['ne', 'nesw-resize'],
+    ['sw', 'nesw-resize'],
+  ] as const)('points the %s corner along its diagonal', (corner, cursor) => {
+    expect(cornerCursor(corner)).toBe(cursor)
   })
 })
 
