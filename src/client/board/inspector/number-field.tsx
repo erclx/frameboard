@@ -305,7 +305,6 @@ export function NumberField({
         <Primitive.ScrubArea
           aria-hidden
           data-scrub
-          // `cn` reads the `text-caption` step as a color and drops it, so the size goes by its length.
           className={cn(
             'mb-[3px] ml-0.5 block w-max cursor-ew-resize text-(length:--text-caption) font-normal text-muted-foreground select-none',
             !disabled && CAPTION_LIT,

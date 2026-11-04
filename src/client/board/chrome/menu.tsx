@@ -57,8 +57,8 @@ export function ActionMenuItem({
 
 /**
  * A menu row's height and padding, shared by the rows that are not actions.
- * Kit parts take Tailwind's `text-xs` for the board's 12px, since `cn` reads
- * `text-body` as a color and keeps the kit's `text-sm` beside it.
+ * Kit parts take Tailwind's `text-xs` for the board's 12px, since it carries a
+ * 1rem line height the `text-body` step lacks.
  */
 export const MENU_ROW = 'h-7 rounded-md px-2 py-0 text-xs'
 
