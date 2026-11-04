@@ -850,17 +850,18 @@ export function attachGestures(
       })
   }
 
-  // Esc puts a frame move, a placed element's drag, or a corner resize back,
-  // writing nothing. It listens in the capture phase and stops the press there,
-  // since the key registry's window listener registered first and would also
-  // run Esc's `selection.clear` or `element.up` on the same press. The button
+  // Esc puts a frame move or resize, a placed element's drag, or a corner resize
+  // back, writing nothing. It listens in the capture phase and stops the press
+  // there, since the key registry's window listener registered first and would
+  // also run Esc's `selection.clear` or `element.up` on the same press. The button
   // may stay down long after, so everything goes back now rather than on release.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
     if (
       gesture.kind !== 'placed' &&
       gesture.kind !== 'element-resize' &&
-      gesture.kind !== 'move'
+      gesture.kind !== 'move' &&
+      gesture.kind !== 'resize'
     ) {
       return
     }
@@ -875,7 +876,11 @@ export function attachGestures(
     } else {
       putFramesBack(gesture.boxes)
       const root = overlay()
-      if (root) drawRest(root)
+      if (root) {
+        // No write lands, so React has no changed prop to redraw a resize from.
+        if (gesture.kind === 'resize') drawResize(root, gesture.boxes)
+        drawRest(root)
+      }
       shiftElementOutline(0, 0)
       shiftPins([], 0, 0)
     }

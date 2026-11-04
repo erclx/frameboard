@@ -1132,6 +1132,68 @@ describe('attachGestures', () => {
       canvas.pointer.up(60, 80)
     })
 
+    describe('when Esc cancels it', () => {
+      it('puts the frame back and writes nothing on release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(100, 100)
+        canvas.pointer.move(60, 80)
+        pressEscape()
+        canvas.pointer.up(60, 80)
+
+        const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+        expect([
+          left.style.left,
+          left.style.top,
+          left.style.width,
+          left.style.height,
+          canvas.writes,
+        ]).toEqual(['100px', '100px', '200px', '200px', []])
+      })
+
+      // No write lands, so React has no new prop to redraw the overlay from.
+      it('leaves the drawn selection and its chip at the start size after release', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.down(100, 100)
+        canvas.pointer.move(60, 80)
+        pressEscape()
+        canvas.pointer.up(60, 80)
+
+        const drawn = canvas.part('[data-selection]')
+        expect([
+          drawn.style.left,
+          drawn.style.top,
+          drawn.style.width,
+          drawn.style.height,
+        ]).toEqual(['100px', '100px', '200px', '200px'])
+        expect(canvas.part('[data-chip]')).toHaveTextContent('200 × 200')
+      })
+
+      it('puts back each frame, outline, and pin of several at the press', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+        canvas.pointer.down(600, 300)
+        canvas.pointer.move(700, 300)
+        pressEscape()
+
+        expect([
+          canvas.part(`[data-frame="${RIGHT.ref}"]`).style.left,
+          canvas.part(`[data-frame="${RIGHT.ref}"]`).style.width,
+          canvas.part(`[data-outline="${RIGHT.ref}"]`).style.left,
+          canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
+          canvas.part(`[data-note-frame="${RIGHT.ref}"]`).style.translate,
+        ]).toEqual(['400px', '200px', '300px', '', ''])
+        canvas.pointer.up(700, 300)
+      })
+    })
+
     describe('a frame with a pin', () => {
       const pin = (canvas: ReturnType<typeof setup>, ref: string) =>
         canvas.part(`[data-note-frame="${CSS.escape(ref)}"]`)
@@ -1930,6 +1992,25 @@ describe('attachGestures', () => {
           boxes: { [LEFT.ref]: { x: 130, y: 125, width: 200, height: 200 } },
           expected: { [LEFT.ref]: LEFT.box },
         },
+      ])
+      expect(previewOf(LEFT.ref)).toBeUndefined()
+    })
+
+    it('puts a move Esc cancels back at the stored box, with the preview ended', () => {
+      const canvas = setup([LEFT])
+      detach = canvas.detach
+      setPreview([LEFT.ref], 500)
+
+      canvas.pointer.down(450, 150)
+      canvas.pointer.move(480, 175)
+      pressEscape()
+      canvas.pointer.up(480, 175)
+
+      const left = canvas.part(`[data-frame="${LEFT.ref}"]`)
+      expect([left.style.left, left.style.width, canvas.writes]).toEqual([
+        '100px',
+        '200px',
+        [],
       ])
       expect(previewOf(LEFT.ref)).toBeUndefined()
     })
