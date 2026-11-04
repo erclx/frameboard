@@ -31,4 +31,14 @@ export const CASES: CaptureCase[] = [
     sections: HOME_SECTIONS,
     setup: (page) => page.emulateMedia({ colorScheme: 'dark' }),
   },
+  {
+    section: 'dark-hero',
+    theme: 'dark',
+    route: '/',
+    evidence: true,
+    excludeViewports: ['320', '768', '1536'],
+    // The film poster loads lazily, and the settle holds until the full run of sections has scrolled past it.
+    sections: HOME_SECTIONS,
+    setup: (page) => page.emulateMedia({ colorScheme: 'dark' }),
+  },
 ]
