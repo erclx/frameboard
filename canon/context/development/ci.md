@@ -35,6 +35,10 @@ Ownership and the workflows the table leaves out sit below.
 - `phase-label-gate.yml` runs `canon labels scan`, failing a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
 - `canon/config/pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
 
+The draft lift reads one config of its own.
+
+- `canon/config/painted.json` counts `src/client/**/*.ts` as painted, so a client logic change with no image, reel, or review waiver refuses `canon pr lift`
+
 Releases run through three further bullets.
 
 - `release-please.yml` owns the release pull request, the npm publish, and the npm check in `scripts/check-npm-publish.sh`, reading `release-please-config.json` and `.release-please-manifest.json`
