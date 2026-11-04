@@ -331,10 +331,8 @@ function DropItem({ entry, calls, hint, className, children }: DropItemProps) {
       {over ? (
         <span
           role="status"
-          className={cn(
-            'pointer-events-none absolute truncate rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md',
-            DROP_HINT[hint],
-          )}
+          // Joined by hand, since `cn` reads `text-label` as a color and `text-background` drops it.
+          className={`pointer-events-none absolute truncate rounded-md bg-foreground px-2 py-1 text-label text-background shadow-md ${DROP_HINT[hint]}`}
         >
           {into === null
             ? `Drop on ${target.name} to make a folder`
