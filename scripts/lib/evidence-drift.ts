@@ -7,8 +7,8 @@ import { PNG } from 'pngjs'
  * What Chromium's raster leaves different between two captures of one state.
  * Antialiased rounded corners land a little apart from run to run, and they sit
  * on every panel, so no mask can hold them. Measured at up to 130 pixels in a
- * frame and a channel delta of 44, where a changed glyph moves a channel by far
- * more, so a real change clears at least one of these.
+ * frame and a channel delta of 44. A real change inside both limits, such as a
+ * hairline token change on a small control, stays uncaptured.
  */
 export const RASTER_TOLERANCE = { pixels: 200, channelDelta: 64 }
 

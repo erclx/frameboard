@@ -61,6 +61,10 @@ The capture scripts each carry a condition the table leaves out.
 - `screenshot` leaves a committed image alone when at most 200 pixels differ and no channel moves past 64, so a smaller real change stays uncaptured
 - Antialiased rounded corners land apart between runs on every panel, and no mask can hold them, which is what that tolerance absorbs
 - `FRAMEBOARD_EVIDENCE_ROOT` sends `screenshot` evidence to that folder as captured, with no tolerance, and the committed set stays unread
+- A painted change inside those limits writes its image with `FRAMEBOARD_EVIDENCE_ROOT=e2e/evidence SCREENSHOT_FILTER=<case> bun run screenshot`
+
+The other two scripts carry one condition each.
+
 - `screenshot:compare` builds first and serves its own boards
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
 
