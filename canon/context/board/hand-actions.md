@@ -60,7 +60,7 @@ The Frame tool, New frame here, and the guide send the picked size's width and h
 
 ### `src/client/board/geometry/`
 
-Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom.
+Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom. The corner marks take no pointer, so `gestures.ts` reads their resize cursor off the pointer's position through the read a press takes, and a mark the press would not resize shows none.
 
 - `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
 - `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
