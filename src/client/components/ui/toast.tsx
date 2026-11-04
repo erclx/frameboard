@@ -47,7 +47,9 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
         '[--gap:0.25rem] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))]',
         'h-(--toast-height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
-        'data-limited:opacity-0 data-starting-style:[transform:translateY(150%)]',
+        // Lifted above the toolbar, the 150% exit would end resting over the
+        // bar, so a closing toast fades as it slides.
+        'data-limited:opacity-0 data-ending-style:opacity-0 data-starting-style:[transform:translateY(150%)]',
         '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)]',
         'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
         'data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))]',
