@@ -14,10 +14,17 @@ export function parseFrameMap(json: string): Map<string, string> {
     typeof parsed === 'object' && parsed !== null && 'frames' in parsed
       ? parsed.frames
       : undefined
-  if (typeof frames !== 'object' || frames === null) {
+  if (typeof frames !== 'object' || frames === null || Array.isArray(frames)) {
     throw new FrameboardError(
       'frame-map-invalid',
       'frames.json needs a frames object.',
+    )
+  }
+  // A sync prunes what it would not write, so an empty map would remove every reference.
+  if (Object.keys(frames).length === 0) {
+    throw new FrameboardError(
+      'frame-map-invalid',
+      'frames.json maps no frames, so a sync would remove every reference.',
     )
   }
   const map = new Map<string, string>()

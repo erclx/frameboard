@@ -55,6 +55,14 @@ describe('parseFrameMap', () => {
     expect(refusal('{"surfaces": []}').code).toBe('frame-map-invalid')
   })
 
+  it('should refuse frames given as a list', () => {
+    expect(refusal('{"frames": []}').code).toBe('frame-map-invalid')
+  })
+
+  it('should refuse a map of no frames, which a sync would read as removing every reference', () => {
+    expect(refusal('{"frames": {}}').code).toBe('frame-map-invalid')
+  })
+
   it('should refuse a file that is not JSON', () => {
     expect(refusal('{ frames').code).toBe('frame-map-invalid')
   })
