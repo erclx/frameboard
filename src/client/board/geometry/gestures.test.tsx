@@ -10,7 +10,7 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { heldOutline, holdOutline } from '../element/held'
-import type { PlacedOffsets, ShapeSize } from '../element/resize'
+import type { ElementSize, PlacedOffsets } from '../element/resize'
 import { createModeStore } from '../mode'
 import { carriedStore } from '../place/tool'
 import { endPreview, previewOf, setPreview } from '../preview/store'
@@ -114,8 +114,8 @@ function setup(
   const resizes: {
     page: string
     key: ElementKey
-    previews: ShapeSize[]
-    commits: ShapeSize[]
+    previews: ElementSize[]
+    commits: ElementSize[]
     cancelled: boolean
   }[] = []
   const placedMoves: {
@@ -303,13 +303,13 @@ function setup(
           },
         }
       },
-      resizeShape: (page, key) => {
+      resizeElement: (page, key) => {
         if (shape !== 'free') return null
         const resize = {
           page,
           key,
-          previews: [] as ShapeSize[],
-          commits: [] as ShapeSize[],
+          previews: [] as ElementSize[],
+          commits: [] as ElementSize[],
           cancelled: false,
         }
         resizes.push(resize)

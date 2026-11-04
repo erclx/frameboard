@@ -1,33 +1,33 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { isShape, isShownShape, placedOffsets, shapeSize } from './resize'
+import { cornerSize, isShape, isShownShape, placedOffsets } from './resize'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
 
-describe('shapeSize', () => {
+describe('cornerSize', () => {
   it('grows from the south-east corner by the drag', () => {
-    expect(shapeSize(BOX, 'se', 40, 20, false)).toEqual({
+    expect(cornerSize(BOX, 'se', 40, 20, false)).toEqual({
       width: 240,
       height: 120,
     })
   })
 
   it('grows from the north-west corner as the drag moves away from it', () => {
-    expect(shapeSize(BOX, 'nw', -40, -20, false)).toEqual({
+    expect(cornerSize(BOX, 'nw', -40, -20, false)).toEqual({
       width: 240,
       height: 120,
     })
   })
 
   it('clamps at 1 px past the opposite corner rather than flipping', () => {
-    expect(shapeSize(BOX, 'se', -500, -500, false)).toEqual({
+    expect(cornerSize(BOX, 'se', -500, -500, false)).toEqual({
       width: 1,
       height: 1,
     })
   })
 
   it('keeps the starting ratio by the side that moved further', () => {
-    expect(shapeSize(BOX, 'se', 100, 10, true)).toEqual({
+    expect(cornerSize(BOX, 'se', 100, 10, true)).toEqual({
       width: 300,
       height: 150,
     })
@@ -35,12 +35,12 @@ describe('shapeSize', () => {
 
   it('drops the ratio for a shape drawn with a side at 0 px', () => {
     expect(
-      shapeSize({ x: 0, y: 0, width: 200, height: 0 }, 'se', 20, 30, true),
+      cornerSize({ x: 0, y: 0, width: 200, height: 0 }, 'se', 20, 30, true),
     ).toEqual({ width: 220, height: 30 })
   })
 
   it('keeps the ratio at no less than 1 px a side', () => {
-    expect(shapeSize(BOX, 'se', -500, -500, true)).toEqual({
+    expect(cornerSize(BOX, 'se', -500, -500, true)).toEqual({
       width: 2,
       height: 1,
     })

@@ -9,7 +9,7 @@ import { writeElement } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 
 /** A shape's size in its frame's CSS pixels. */
-export interface ShapeSize {
+export interface ElementSize {
   width: number
   height: number
 }
@@ -32,13 +32,13 @@ export function isShape(element: Element | null): boolean {
  * makes, at least 1 px a side and never flipped. `keepRatio`, Shift held,
  * scales both sides by whichever moved further, so an Ellipse stays a circle.
  */
-export function shapeSize(
+export function cornerSize(
   start: Box,
   corner: Corner,
   dx: number,
   dy: number,
   keepRatio: boolean,
-): ShapeSize {
+): ElementSize {
   const { width, height } = resizeBox(start, corner, dx, dy)
   // A side drawn at 0 px has no ratio to keep.
   if (!keepRatio || start.width <= 0 || start.height <= 0) {
@@ -52,10 +52,10 @@ export function shapeSize(
 }
 
 /** A corner drag of one shape, previewed on its live node and written once on release. */
-export interface ShapeResize {
-  preview: (size: ShapeSize) => void
+export interface ElementResize {
+  preview: (size: ElementSize) => void
   /** Writes the size as one edit, putting the preview back when it is refused. */
-  commit: (size: ShapeSize) => Promise<boolean>
+  commit: (size: ElementSize) => Promise<boolean>
   /** Puts the preview back with nothing written. */
   cancel: () => void
 }
@@ -83,10 +83,10 @@ export function isShownShape(container: ParentNode, key: ElementKey): boolean {
  * another session holds, refused with the claim's toast before anything
  * previews, since the write would be refused once the drag ends.
  */
-export function startShapeResize(
+export function startElementResize(
   page: string,
   key: ElementKey,
-): ShapeResize | null {
+): ElementResize | null {
   const holder = liveStore.getState().claims[key.frame]
   if (holder) {
     toast.add({
@@ -96,7 +96,7 @@ export function startShapeResize(
     })
     return null
   }
-  const show = (size: ShapeSize | null) => {
+  const show = (size: ElementSize | null) => {
     previewStyle(key, 'width', size ? `${size.width}px` : null)
     previewStyle(key, 'height', size ? `${size.height}px` : null)
   }

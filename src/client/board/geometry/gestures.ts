@@ -9,15 +9,15 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { splitAt } from '../changes/compare'
 import { heldOutline, holdOutline } from '../element/held'
 import {
+  cornerSize,
+  type ElementResize,
+  type ElementSize,
   isShownShape,
   type PlacedMove,
   type PlacedOffsets,
   placedOffsets,
-  type ShapeResize,
-  type ShapeSize,
-  shapeSize,
+  startElementResize,
   startPlacedMove,
-  startShapeResize,
 } from '../element/resize'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
@@ -90,7 +90,7 @@ export interface GestureStores {
   /** Whether the selected element is a shape, whose corners resize it. */
   isShape: typeof isShownShape
   /** Starts a corner drag of the selected shape, null when its frame is held. */
-  resizeShape: typeof startShapeResize
+  resizeElement: typeof startElementResize
   /** The offsets the selected element holds when it is placed, else null. */
   placedOffsets: typeof placedOffsets
   /** Starts a drag of the selected placed element, null when its frame is held. */
@@ -107,7 +107,7 @@ const STORES: GestureStores = {
   splitAt,
   moveElement,
   isShape: isShownShape,
-  resizeShape: startShapeResize,
+  resizeElement: startElementResize,
   placedOffsets,
   movePlaced: startPlacedMove,
 }
@@ -146,14 +146,14 @@ type Gesture =
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
   /** A press on a corner of the selected shape, which a drag turns into a resize of it. */
-  | { kind: 'shape'; key: ElementKey; corner: Corner; box: Box }
+  | { kind: 'corner'; key: ElementKey; corner: Corner; box: Box }
   /** A corner drag of the selected shape, written as its width and height on release. */
   | {
-      kind: 'shape-resize'
+      kind: 'element-resize'
       corner: Corner
       box: Box
-      resize: ShapeResize
-      size: ShapeSize | null
+      resize: ElementResize
+      size: ElementSize | null
     }
   /** A press on a section's name, which selects it and a drag turns into a move of it. */
   | { kind: 'section'; section: SectionRecord }
@@ -323,7 +323,7 @@ export function attachGestures(
     const outline = element ? selectedElementBox(target.layer) : null
     const mark = outline ? cornerAt(outline, point, zoom()) : null
     if (element && outline && mark && stores.isShape(target.layer, element)) {
-      gesture = { kind: 'shape', key: element, corner: mark, box: outline }
+      gesture = { kind: 'corner', key: element, corner: mark, box: outline }
       return
     }
     if (element && outline) {
@@ -413,12 +413,12 @@ export function attachGestures(
 
   /** Turns a press into the drag it starts once it passes the click distance. */
   const begin = () => {
-    if (gesture.kind === 'shape') {
+    if (gesture.kind === 'corner') {
       const resize = stores.canWrite()
-        ? stores.resizeShape(target.page, gesture.key)
+        ? stores.resizeElement(target.page, gesture.key)
         : null
       gesture = resize
-        ? { ...gesture, kind: 'shape-resize', resize, size: null }
+        ? { ...gesture, kind: 'element-resize', resize, size: null }
         : { kind: 'none' }
       return
     }
@@ -608,8 +608,8 @@ export function attachGestures(
         shiftElementPins(gesture.key, ox, oy)
         return
       }
-      case 'shape-resize': {
-        gesture.size = shapeSize(
+      case 'element-resize': {
+        gesture.size = cornerSize(
           gesture.box,
           gesture.corner,
           dx,
@@ -706,10 +706,10 @@ export function attachGestures(
         rectFrom(from, point),
       ).map((frame) => frame.ref)
       select(selection, target.page, [...gesture.base, ...touched])
-    } else if (gesture.kind === 'shape-resize') {
+    } else if (gesture.kind === 'element-resize') {
       const { box, corner, resize, size } = gesture
       // The size a drag of nothing draws, which rounds a fractional box as the drag does.
-      const start = shapeSize(box, corner, 0, 0, false)
+      const start = cornerSize(box, corner, 0, 0, false)
       if (
         size &&
         (size.width !== start.width || size.height !== start.height)
