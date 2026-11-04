@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run every check but macOS, and all must pass. A push to `main` runs the release workflow, Verify, and the macOS smoke, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` skip the macOS job, and the checks the ruleset lists must pass. A push to `main` runs the release workflow, Verify, and the macOS smoke, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
 
 ## Layout
 
