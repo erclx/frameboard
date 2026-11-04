@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'

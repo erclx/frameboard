@@ -1,6 +1,6 @@
-import { cn } from 'cn'
 import { useState } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 

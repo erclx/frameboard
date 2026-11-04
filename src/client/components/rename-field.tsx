@@ -1,5 +1,6 @@
-import { cn } from 'cn'
 import { useEffect, useRef, useState } from 'react'
+
+import { cn } from '@/client/lib/cn'
 
 interface RenameFieldProps {
   /** The name the field opens with, selected whole. */

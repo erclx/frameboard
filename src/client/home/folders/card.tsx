@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import type { KeyboardEvent } from 'react'
 import { useStore } from 'zustand'
 
 import { Dialog, DialogTrigger } from '@/client/components/ui/dialog'
+import { cn } from '@/client/lib/cn'
 import {
   focusFolder,
   projectStore,

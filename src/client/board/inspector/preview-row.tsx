@@ -1,7 +1,7 @@
-import { cn } from 'cn'
 import { MoveHorizontal, X } from 'lucide-react'
 import { useRef } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import { FRAME_SIZES, presetAt, previewWidth } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 

@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { Pin } from 'lucide-react'
 import type { ComponentProps, KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'wouter'
@@ -6,6 +5,7 @@ import { Link } from 'wouter'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import { UnseenCount } from '@/client/components/unseen-count'
+import { cn } from '@/client/lib/cn'
 import type { Structure } from '@/client/live/structure'
 import {
   focusProject,

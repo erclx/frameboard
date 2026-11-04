@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import type { ComponentProps, ReactNode } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
@@ -8,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 
 /** The kit's menu at the chrome's size, as `canon/design/menus/avatar` draws it. */
 export function ChromeMenuContent({
@@ -57,8 +57,8 @@ export function ActionMenuItem({
 
 /**
  * A menu row's height and padding, shared by the rows that are not actions.
- * Kit parts take Tailwind's `text-xs` for the board's 12px, since `cn` reads
- * `text-body` as a color and keeps the kit's `text-sm` beside it.
+ * Kit parts take Tailwind's `text-xs` for the board's 12px, since it carries a
+ * 1rem line height the `text-body` step lacks.
  */
 export const MENU_ROW = 'h-7 rounded-md px-2 py-0 text-xs'
 

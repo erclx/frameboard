@@ -1,6 +1,7 @@
 import { Input as InputPrimitive } from '@base-ui/react/input'
-import { cn } from 'cn'
 import * as React from 'react'
+
+import { cn } from '@/client/lib/cn'
 
 /**
  * The inspector's field: 26px on the raised fill with the field radius and

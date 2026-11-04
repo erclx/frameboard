@@ -1,5 +1,4 @@
 import { Command as CommandPrimitive } from 'cmdk'
-import { cn } from 'cn'
 import { SearchIcon } from 'lucide-react'
 import * as React from 'react'
 
@@ -11,6 +10,7 @@ import {
   DialogTitle,
 } from '@/client/components/ui/dialog'
 import { InputGroup, InputGroupAddon } from '@/client/components/ui/input-group'
+import { cn } from '@/client/lib/cn'
 
 function Command({
   className,

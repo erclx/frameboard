@@ -1,9 +1,9 @@
-import { cn } from 'cn'
 import { Link2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
 import { toast } from '@/client/components/ui/toast'
+import { cn } from '@/client/lib/cn'
 import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'

@@ -1,5 +1,4 @@
 import { Toast as ToastPrimitive } from '@base-ui/react/toast'
-import { cn } from 'cn'
 import {
   CircleAlertIcon,
   CircleCheckIcon,
@@ -10,6 +9,7 @@ import {
 import type * as React from 'react'
 
 import { Button } from '@/client/components/ui/button'
+import { cn } from '@/client/lib/cn'
 
 const toast = ToastPrimitive.createToastManager()
 

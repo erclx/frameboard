@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -10,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { cn } from '@/client/lib/cn'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import {
@@ -206,7 +206,7 @@ export const Frame = memo(function Frame({
     >
       <div
         className={cn(
-          'absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label [transform:scale(calc(1/var(--zoom,1)))]',
+          'absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label font-normal [transform:scale(calc(1/var(--zoom,1)))]',
           // Hidden while the canvas marks the frame crowded, its room above
           // shorter than the label at this zoom, unless the pointer is over
           // it, it is selected, or its findings are open.

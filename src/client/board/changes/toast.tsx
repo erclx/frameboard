@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { type MouseEvent, useEffect, useRef } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
@@ -12,6 +11,7 @@ import {
   type ToastObject,
   ToastTitle,
 } from '@/client/components/ui/toast'
+import { cn } from '@/client/lib/cn'
 import {
   type UnseenState,
   type UnseenStore,

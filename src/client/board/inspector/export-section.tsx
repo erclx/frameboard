@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from 'zustand'
@@ -10,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'

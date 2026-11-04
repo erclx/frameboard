@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { RotateCcw } from 'lucide-react'
 import { type RefObject, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
+import { cn } from '@/client/lib/cn'
 import type { TokenRow } from '@/shared/records/tokens'
 
 import {

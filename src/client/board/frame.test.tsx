@@ -234,6 +234,17 @@ describe('Frame', () => {
     expect(getByTitle('checkout')).toHaveTextContent('checkout')
   })
 
+  it('draws the name at the label size in a regular weight', () => {
+    const { getByTitle } = render(
+      <Frame frame={frame('checkout')} live={false} version={0} />,
+    )
+
+    const style = getComputedStyle(getByTitle('checkout'))
+
+    expect(style.fontSize).toBe('11px')
+    expect(style.fontWeight).toBe('400')
+  })
+
   it('marks the label with the count of its findings and lists each one', () => {
     const { getByRole } = render(
       <Frame

@@ -1,7 +1,7 @@
-import { cn } from 'cn'
 import { GitCompareArrows } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useMemo, useRef } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 

@@ -1,4 +1,4 @@
-import { cn } from 'cn'
+import { cn } from '@/client/lib/cn'
 
 /**
  * How many frames under a page or project an agent changed since the
@@ -18,7 +18,6 @@ export function UnseenCount({
       role="img"
       aria-label={`${count} unseen ${count === 1 ? 'change' : 'changes'}`}
       data-unseen-count
-      // `cn` reads `text-label` as a color and drops it beside `text-claim`, so the step is spelled out.
       className={cn('shrink-0 text-[11px] font-semibold text-claim', className)}
     >
       {count}

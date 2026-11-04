@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { ChevronDown, FoldVertical } from 'lucide-react'
 import { Fragment, useRef } from 'react'
 
@@ -12,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import type { FrameSizeName } from '@/shared/frame-sizes'

@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   useEffect,
   useLayoutEffect,
@@ -7,6 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'

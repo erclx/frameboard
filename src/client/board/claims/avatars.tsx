@@ -1,6 +1,6 @@
-import { cn } from 'cn'
 import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
 import type { Claim } from '@/shared/records/claims'
 import type { Listener } from '@/shared/records/notes'
 

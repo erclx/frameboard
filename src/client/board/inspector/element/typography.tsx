@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   AlignCenter,
   AlignJustify,
@@ -16,6 +15,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import type { TokenRow } from '@/shared/records/tokens'
 

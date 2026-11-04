@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
@@ -8,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 
 import { canvasView } from '../view'
 import { ActionMenuItem, ChromeMenuContent } from './menu'

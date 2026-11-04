@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   ChevronDown,
   Frame,
@@ -37,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 
 import { AssetPicker } from '../place/asset-picker'
 import {

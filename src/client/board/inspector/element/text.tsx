@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { type KeyboardEvent, useRef, useState } from 'react'
 
 import { Kbd } from '@/client/components/ui/kbd'
 import { Textarea } from '@/client/components/ui/textarea'
+import { cn } from '@/client/lib/cn'
 
 import type { ElementKey } from '../../selection'
 import { isStrayHistory } from './stray-history'
@@ -100,7 +100,6 @@ export function TextSection({
       />
       {/* The line is kept while hidden, so focusing the field moves no section below. */}
       <p
-        // `cn` reads the `text-caption` step as a color and drops it, so the size goes by its length.
         className={cn(
           'mt-2.5 flex items-center gap-1 text-(length:--text-caption) font-normal text-muted-foreground',
           !focused && 'invisible',

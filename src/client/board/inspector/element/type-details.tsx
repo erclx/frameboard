@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   CaseLower,
   CaseSensitive,
@@ -24,6 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { cn } from '@/client/lib/cn'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'

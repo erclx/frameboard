@@ -2468,6 +2468,20 @@ export const BOARD_CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'palette-no-match',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            openOverlayOnLoad('commands', 'zzzz'),
+            readyWhen('[data-slot="command-empty"]'),
+          ),
+        ),
+      },
+      {
         section: 'palette-add',
         theme,
         route: '/p/webapp/home',
@@ -3032,6 +3046,35 @@ export const BOARD_CASES: CaptureCase[] = [
               },
             ]),
             readyWhen('button[aria-label="Compare about with before"]'),
+          ),
+        ),
+      },
+      {
+        section: 'compare-flip',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The seeded `before` hash names no stored version, so its page is served here.
+        setup: themed(
+          both(
+            seededChanges([
+              {
+                ...agentChange('webapp/home/about', 1),
+                before: '1'.repeat(64),
+              },
+            ]),
+            async (page) => {
+              await page.route(/[?&]at=/, (route) =>
+                route.fulfill({
+                  contentType: 'text/html',
+                  body: '<!doctype html><title>about</title><h1>about, before</h1>',
+                }),
+              )
+            },
+            pressOnLoad('Compare about with before'),
+            readyWhen('[data-compare-before]'),
           ),
         ),
       },

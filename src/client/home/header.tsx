@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { LayoutGrid, List, Moon, Plus, Sun } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
+import { cn } from '@/client/lib/cn'
 
 const IDS = [
   'home.layoutGrid',

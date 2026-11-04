@@ -1,7 +1,7 @@
-import { cn } from 'cn'
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
 
 import { initials, useAuthor } from '@/client/board/chrome/author'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { writeBoard } from '@/client/live/write'
 import type { BoardNote } from '@/shared/records/notes'

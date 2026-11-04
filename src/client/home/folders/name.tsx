@@ -1,7 +1,6 @@
-import { cn } from 'cn'
-
 import { RenameField } from '@/client/components/rename-field'
 import { UnseenCount } from '@/client/components/unseen-count'
+import { cn } from '@/client/lib/cn'
 import type { Structure } from '@/client/live/structure'
 import {
   renameFolder,

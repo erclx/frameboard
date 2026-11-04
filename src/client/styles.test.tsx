@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { Button } from './components/ui/button'
+import { cn } from './lib/cn'
 
 describe('Button', () => {
   afterEach(() => {
@@ -50,5 +51,14 @@ describe('styles.css', () => {
     expect(getComputedStyle(screen.getByText('claimed')).color).toBe(
       'rgb(232, 180, 255)',
     )
+  })
+
+  it('should render a size step at its size beside a color through cn', () => {
+    render(<p className={cn('text-label', 'text-claim')}>sized</p>)
+
+    const style = getComputedStyle(screen.getByText('sized'))
+
+    expect(style.fontSize).toBe('11px')
+    expect(style.color).toBe('rgb(127, 45, 181)')
   })
 })
