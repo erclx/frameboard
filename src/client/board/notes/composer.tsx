@@ -225,7 +225,7 @@ export function NoteButton({
       className={cn(
         'flex h-[26px] shrink-0 items-center rounded-lg px-3 font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
         variant === 'primary'
-          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+          ? 'bg-primary-fill text-primary-foreground hover:bg-primary-fill-hover'
           : 'bg-muted text-foreground hover:bg-accent',
         className,
       )}

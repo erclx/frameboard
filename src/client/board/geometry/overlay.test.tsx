@@ -4,6 +4,7 @@ import { act, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
+import { contrastOnPage } from '@/test/contrast'
 
 import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectElement, selectionStore } from '../selection'
@@ -21,6 +22,7 @@ const RIGHT = frameOf('right', {
 describe('SelectionOverlay', () => {
   afterEach(() => {
     act(() => clear(selectionStore))
+    document.documentElement.classList.remove('dark')
   })
 
   it('draws no selection while nothing is selected', () => {
@@ -46,6 +48,20 @@ describe('SelectionOverlay', () => {
       '640 × 188',
     )
   })
+
+  it.each(['light', 'dark'])(
+    'reads the size badge at 4.5:1 or better in %s',
+    (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+      const chip = container.querySelector('[data-chip]')
+      if (!chip) throw new Error('no size badge')
+      expect(contrastOnPage(chip)).toBeGreaterThanOrEqual(4.5)
+    },
+  )
 
   it('draws the parent of a selected element dashed, with no handles or size', () => {
     act(() =>

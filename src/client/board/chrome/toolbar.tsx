@@ -257,7 +257,7 @@ function ToolButton({ slot, action, pressed }: ButtonProps) {
         className={cn(
           'grid size-8 shrink-0 place-items-center rounded-[7px] text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
           on &&
-            'bg-primary text-primary-foreground hover:bg-primary aria-disabled:hover:bg-primary',
+            'bg-primary-fill text-primary-foreground hover:bg-primary-fill-hover aria-disabled:hover:bg-primary-fill',
         )}
       >
         <Icon aria-hidden className={cn('size-4', DarkIcon && 'dark:hidden')} />
@@ -325,7 +325,7 @@ function ShapeTool({
                   disabled={!registered || !isEnabled(registered)}
                   className={cn(
                     MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
+                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
                   )}
                 >
                   <Icon aria-hidden className="size-[13px]" />
@@ -409,7 +409,7 @@ function BoxTool({
                   disabled={!registered || !isEnabled(registered)}
                   className={cn(
                     MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
+                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
                   )}
                 >
                   <Icon aria-hidden className="size-[13px]" />
@@ -482,7 +482,7 @@ function PointerTool({
                   disabled={!registered || !isEnabled(registered)}
                   className={cn(
                     MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
+                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
                   )}
                 >
                   <Icon aria-hidden className="size-[13px]" />
@@ -579,7 +579,7 @@ function ModeButton({
         className={cn(
           'flex h-[26px] items-center gap-[5px] rounded-md px-[9px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
           on && slot.id === 'mode.play'
-            ? 'bg-primary text-primary-foreground hover:text-primary-foreground'
+            ? 'bg-primary-fill text-primary-foreground hover:text-primary-foreground'
             : on && 'bg-card text-foreground ring-1 ring-border',
         )}
       >

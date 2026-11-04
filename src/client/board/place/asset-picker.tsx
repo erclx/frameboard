@@ -126,7 +126,7 @@ function PickerList({
             type="button"
             disabled={busy}
             onClick={() => chooser.current?.click()}
-            className="h-7 rounded-md bg-primary px-2.5 font-medium text-primary-foreground outline-none hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+            className="h-7 rounded-md bg-primary-fill px-2.5 font-medium text-primary-foreground outline-none hover:bg-primary-fill-hover focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           >
             {busy ? 'Adding files…' : 'Add files'}
           </button>

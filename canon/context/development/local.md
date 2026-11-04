@@ -120,7 +120,7 @@ Owns the public landing page, a second project with its own `package.json`, `bun
 Test support that lives inside the source tree.
 
 - `src/test/` owns the setup file the Vitest `browser` project loads, the board records client tests build from, and the contrast measure component tests read rendered colors with
-- `src/test/motion.js` emulates reduced motion through CDP in plain JavaScript, since a `.ts` import of `vitest/browser` narrows `toHaveTextContent` and fails typecheck
+- `src/test/motion.js` emulates reduced motion and `hover-contrast.js` reads contrast under the real pointer, in plain JavaScript since a `.ts` import of `vitest/browser` fails typecheck
 
 ## Gotchas
 
