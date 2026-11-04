@@ -1,3 +1,7 @@
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
 import type { format, FormatConfig } from 'oxfmt'
 
 import { boardPath, type FrameSource } from '@/server/checks/frame-source'
@@ -27,8 +31,9 @@ const OPTIONS: FormatConfig = {
 export async function toReference(
   source: FrameSource,
   reference: string,
+  folder: string,
 ): Promise<string> {
-  const format = await importFormat()
+  const format = await importFormat(folder)
   const result = await format(
     `${reference}.html`,
     withProjectAssets(source),
@@ -72,21 +77,31 @@ function withProjectAssets(source: FrameSource): string {
 }
 
 // A dynamic import, since oxfmt is an optional peer the other verbs never load.
-async function importFormat(): Promise<typeof format> {
+// A global or `npx` copy sits outside the project, so the walk up from the
+// bundle never reaches a project's own install, and the folder's walk does.
+async function importFormat(folder: string): Promise<typeof format> {
   try {
     const { format } = await import('oxfmt')
     return format
-  } catch (error) {
-    const version = manifest.peerDependencies.oxfmt
-    const install = {
-      npm: `npm install --save-dev oxfmt@${version}`,
-      bun: `bun add --dev oxfmt@${version}`,
+  } catch {
+    try {
+      const path = createRequire(join(folder, 'frames.json')).resolve('oxfmt')
+      const { format } = (await import(
+        /* @vite-ignore */ pathToFileURL(path).href
+      )) as typeof import('oxfmt')
+      return format
+    } catch (error) {
+      const version = manifest.peerDependencies.oxfmt
+      const install = {
+        npm: `npm install --save-dev oxfmt@${version}`,
+        bun: `bun add --dev oxfmt@${version}`,
+      }
+      throw new FrameboardError(
+        'formatter-not-found',
+        `references sync needs oxfmt to format each reference, and it found none. Install it in the project holding ${folder} with ${install.npm}, or ${install.bun}.`,
+        { install },
+        { cause: error },
+      )
     }
-    throw new FrameboardError(
-      'formatter-not-found',
-      `references sync needs oxfmt to format each reference, and it did not load from where Frameboard is installed. Install it beside Frameboard with ${install.npm}, or ${install.bun}.`,
-      { install },
-      { cause: error },
-    )
   }
 }

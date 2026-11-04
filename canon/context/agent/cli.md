@@ -57,8 +57,8 @@ Owns `references sync <folder>`, which fills any folder holding a `frames.json` 
 - A sync owns every file below the folder's first level and prunes what it would not write, while a top-level file stays the consumer's and never reads as stray
 - Each project's loaded assets land in `assets/<project>/`, and a frame's links move there at the spans `frameLoads` locates, so a `<code>` sample naming `../assets/` keeps its bytes
 - `--check` writes nothing, exits 14 with `references-stale` on a changed, missing, or stray file, and only warns on a PNG, which varies with the browser build
-- Every frame formats ahead of the browser and the whole output builds before the first write, so a refusal leaves the folder as it was
-- oxfmt is an optional peer loaded on demand, so a global or `npx` run refuses `formatter-not-found` naming the install command, and its version is pinned because a bump changes every reference's bytes
+- The whole output builds before the first write, so a refusal leaves the folder as it was, whether an empty map, a frame the formatter cannot parse, or a frame loading a page-folder file
+- oxfmt is an optional peer resolved beside the bundle, then from the folder, so an `npx` run finds a project's install, and its version is pinned because a bump changes every reference's bytes
 
 ### `src/cli/inbox/`
 

@@ -97,7 +97,10 @@ async function buildOutput({
     [...map].map(async ([reference, ref]) => {
       const { project, page, name } = frameOf(frames, ref)
       const source = readFrame({ root, project, page, name })
-      output.set(`${reference}.html`, await toReference(source, reference))
+      output.set(
+        `${reference}.html`,
+        await toReference(source, reference, folder),
+      )
       for (const asset of frameAssets(source)) {
         output.set(
           join('assets', project, asset),
