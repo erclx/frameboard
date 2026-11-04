@@ -53,7 +53,7 @@ These capture and measure what the board renders.
 | `bun run screenshot`         | Builds, serves, and captures every case in `e2e/capture/` into `screenshots/` and `e2e/evidence/`      |
 | `bun run screenshot:compare` | Captures each shell surface at 1440 by 900, light and dark, into `screenshots/compare/`                |
 | `bun run smoke:prod`         | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                   |
-| `bun run design:sync`        | Builds, then captures each board frame `canon/design/frames.json` maps into its group folder           |
+| `bun run design:sync`        | Builds, then runs `references sync canon/design` over the main root's `.canon/board`                   |
 
 The capture scripts each carry a condition the table leaves out.
 
@@ -62,10 +62,9 @@ The capture scripts each carry a condition the table leaves out.
 
 `design:sync` carries more conditions than the other capture scripts.
 
-- `design:sync --check` writes nothing, fails on a changed frame or kit file and on a missing or stray file, and warns on a PNG whose bytes differ
-- It reads the design board at the main root's `.canon/board` through the built CLI's `capture`, from any worktree
-- It formats each reference through oxfmt's `format()` under `.oxfmtrc.json`, and `--check` compares those formatted bytes, so the board files stay as the agent wrote them
-- It refuses a frame the formatter cannot parse, naming its reference, and writes nothing
+- `design:sync --check` passes the flag to the verb, which writes nothing and exits 14 on a changed, missing, or stray file
+- It reads the design board at the main root's `.canon/board` from any worktree, through the path the script derives from `git rev-parse`
+- The verb's formatter options live in `src/server/references/format.ts`, and `.oxfmtrc.json` no longer reaches a reference
 - An oxfmt bump changes every reference's bytes, so the commit bumping it runs `design:sync` too
 
 ### `scripts/`
@@ -75,7 +74,7 @@ Owns the shell scripts and the verify runner the commands above call, and every 
 - `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
-- `design-sync.ts` writes `canon/design/` and nothing in `src/` imports it, so it is a dev script outside the gate, and `.prettierignore` and `.oxlintrc.json` keep the folder out of format and lint
+- `.prettierignore` and `.oxlintrc.json` keep `canon/design/` out of format and lint, since only `references sync` writes the folder
 
 Two scripts back the serving commands.
 

@@ -60,6 +60,8 @@ Frameboard runs on macOS and Linux, with Node 22 or later or with Bun. Windows s
 
 `capture`, `frame fit`, `inspect`, and the home view's project thumbnails render in Playwright's headless shell. Without it, the commands print the command that installs it and download nothing, and each home card shows its frames as plain boxes.
 
+`references sync` also needs `oxfmt` installed beside Frameboard, an optional peer. Without it, the verb prints the install command and writes nothing.
+
 ## Links
 
 - [How it works](docs/how-it-works.md) for the board folder, tokens, and themes
