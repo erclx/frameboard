@@ -10,7 +10,7 @@ import {
 import { skeleton } from '../board/frames'
 import { checkPage } from '../checks/run'
 import { claim, release } from '../claims/store'
-import { contentHash } from '../edit/address'
+import { contentHash, parseFrame } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
 import { History } from '../history/stack'
 import { resolveAnchors } from '../notes/anchor'
@@ -299,6 +299,108 @@ describe('editRoutes', () => {
 
       expect(response.status).toBe(409)
       expect(read()).toBe(agent)
+    })
+  })
+
+  describe('a batch of edits', () => {
+    const fades = () => ({
+      ref: HERO,
+      hash: hash(),
+      edits: [
+        {
+          index: HEADLINE,
+          change: { kind: 'style', property: 'opacity', value: '0.5' },
+        },
+        {
+          index: CAPTION,
+          change: { kind: 'style', property: 'opacity', value: '0.25' },
+        },
+      ],
+    })
+
+    it('writes every element and answers each index in the order sent', async () => {
+      const from = hash()
+
+      const response = await post(fades())
+
+      expect(read()).toContain('<h1 data-name="Headline" style="opacity: 0.5">')
+      expect(read()).toContain('<p data-name="Caption" style="opacity: 0.25">')
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: {
+          ref: HERO,
+          index: CAPTION,
+          indexes: [HEADLINE, CAPTION],
+          hash: hash(),
+          from,
+        },
+      })
+    })
+
+    it('lands as one step that one undo puts back byte for byte', async () => {
+      const original = read()
+
+      await post(fades())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(read()).toBe(original)
+    })
+
+    it('refuses whole on one bad index, writing and recording nothing', async () => {
+      const original = read()
+      const body = fades()
+
+      const response = await post({
+        ...body,
+        edits: [...body.edits, { index: 999, change: body.edits[0]?.change }],
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-address' },
+      })
+      expect(read()).toBe(original)
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses one element named twice', async () => {
+      const original = read()
+      const body = fades()
+      const [first] = body.edits
+
+      const response = await post({ ...body, edits: [first, first] })
+
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-edit' },
+      })
+      expect(read()).toBe(original)
+    })
+
+    it('finds each again past an agent write elsewhere in the frame', async () => {
+      const body = fades()
+      agentWrites(
+        read().replace(
+          '<h1 data-name="Headline"',
+          '<hr />\n    <h1 data-name="Headline"',
+        ),
+      )
+
+      const response = await post(body)
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { indexes: [HEADLINE + 1, CAPTION + 1] },
+      })
+      expect(read()).toContain('<hr />')
+    })
+
+    it('refuses a body with an empty list', async () => {
+      const response = await post({ ref: HERO, hash: hash(), edits: [] })
+
+      expect(response.status).toBe(400)
     })
   })
 
@@ -921,6 +1023,80 @@ describe('editRoutes', () => {
       spot: { left: 12, top: 8 },
     })
 
+    describe('several at once', () => {
+      it('places every element as one step one undo puts back', async () => {
+        const original = read()
+
+        const response = await place({
+          ref: HERO,
+          hash: hash(),
+          places: [
+            { index: HEADLINE, spot: { left: 1, top: 2 } },
+            { index: CAPTION, spot: { left: 3, top: 4 } },
+          ],
+        })
+
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          data: {
+            index: CAPTION,
+            placed: [{ index: HEADLINE }, { index: CAPTION }],
+          },
+        })
+        expect(read()).toContain('left: 1px')
+        expect(read()).toContain('left: 3px')
+        expect(read().match(/position: absolute/g)).toHaveLength(2)
+        expect(history.counts().undo).toBe(1)
+        await history.undo()
+        expect(read()).toBe(original)
+      })
+
+      it('writes a static parent the siblings share once', async () => {
+        writeFileSync(
+          path(),
+          read().replace(
+            '</body>',
+            '<div data-name="Box"><span>a</span><span>b</span></div>\n  </body>',
+          ),
+        )
+        const original = read()
+        const spans = parseFrame(original).elements.flatMap((element, index) =>
+          element.tagName === 'span' ? [index] : [],
+        )
+
+        await place({
+          ref: HERO,
+          hash: hash(),
+          places: spans.map((index) => ({
+            index,
+            spot: { left: 1, top: 2 },
+          })),
+        })
+
+        expect(read().match(/position: relative/g)).toHaveLength(1)
+        expect(read().match(/position: absolute/g)).toHaveLength(2)
+        await history.undo()
+        expect(read()).toBe(original)
+      })
+
+      it('refuses whole on one bad index, writing nothing', async () => {
+        const original = read()
+
+        const response = await place({
+          ref: HERO,
+          hash: hash(),
+          places: [
+            { index: HEADLINE, spot: { left: 1, top: 2 } },
+            { index: 999, spot: { left: 3, top: 4 } },
+          ],
+        })
+
+        expect(response.status).toBe(409)
+        expect(read()).toBe(original)
+        expect(history.counts().undo).toBe(0)
+      })
+    })
+
     it('writes the static parent and the element, answering the hash written', async () => {
       const original = read()
 
@@ -1069,6 +1245,79 @@ describe('editRoutes', () => {
         data: { ref: HERO, hash: hash() },
       })
       expect(read()).not.toContain('data-name="Caption"')
+    })
+
+    describe('several at once', () => {
+      /** A deleted element goes back without the whitespace around it, as one alone does. */
+      const unspaced = (html: string) => html.replace(/\s+/g, '')
+      /** Look-alike siblings, whose bytes no anchor tells apart. */
+      const LIST =
+        '<ul data-name="List"><li class="row">one</li><li class="row">two</li><li class="row">three</li></ul>'
+
+      it('takes out every element as one step one undo puts back', async () => {
+        const original = read()
+
+        const response = await remove({
+          ref: HERO,
+          indexes: [HEADLINE, CAPTION],
+          hash: hash(),
+        })
+
+        expect(response.status).toBe(200)
+        expect(read()).not.toContain('Headline')
+        expect(read()).not.toContain('Caption')
+        expect(history.counts().undo).toBe(1)
+        await history.undo()
+        expect(unspaced(read())).toBe(unspaced(original))
+        await history.redo()
+        expect(read()).not.toContain('Headline')
+      })
+
+      it('puts back look-alike siblings in their order', async () => {
+        writeFileSync(path(), read().replace('</body>', `${LIST}\n  </body>`))
+        const original = read()
+        const rows = parseFrame(original).elements.flatMap((element, index) =>
+          element.tagName === 'li' ? [index] : [],
+        )
+
+        await remove({
+          ref: HERO,
+          indexes: [rows[0], rows[1]],
+          hash: hash(),
+        })
+        await history.undo()
+
+        expect(unspaced(read())).toBe(unspaced(original))
+      })
+
+      it('takes one held inside another named with that one', async () => {
+        const original = read()
+
+        await remove({
+          ref: HERO,
+          indexes: [CAPTION, CAPTION + 1],
+          hash: hash(),
+        })
+
+        expect(read()).not.toContain('Caption')
+        expect(read()).not.toContain('Command')
+        await history.undo()
+        expect(unspaced(read())).toBe(unspaced(original))
+      })
+
+      it('refuses whole on one bad index, writing nothing', async () => {
+        const original = read()
+
+        const response = await remove({
+          ref: HERO,
+          indexes: [HEADLINE, 999],
+          hash: hash(),
+        })
+
+        expect(response.status).toBe(409)
+        expect(read()).toBe(original)
+        expect(history.counts().undo).toBe(0)
+      })
     })
 
     it('records one step, which undo brings the element back by', async () => {

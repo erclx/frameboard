@@ -115,6 +115,18 @@ export type Change =
       present: Side
     }
   /**
+   * The elements one hand delete took out of a frame file, in the order taken
+   * out. Each span's gap holds only with the ones after it still out, so they
+   * are read and written as one chain rather than as separate changes, which
+   * a step checks against one state of the file.
+   */
+  | {
+      kind: 'deleted'
+      path: string
+      ref: string
+      spans: readonly InsertedSpan[]
+    }
+  /**
    * The one element a hand move took from one gap of a frame file to
    * another. Each side holds it in its own gap, so an undo takes it out of
    * the new one by its bytes and puts it back by its old gap's anchors.
@@ -211,6 +223,15 @@ async function reads(change: Change, side: Side): Promise<boolean> {
           change.span,
           side === change.present ? 'after' : 'before',
         )
+      )
+    case 'deleted':
+      return (
+        (await exists(change.path)) &&
+        chainDeleted(
+          await readFile(change.path, 'utf8'),
+          change,
+          OTHER[side],
+        ) !== undefined
       )
     case 'token':
       return (await exists(change.path)) && holdsToken(change, side)
@@ -324,6 +345,18 @@ export async function restore(
           }
         )
       })
+    case 'deleted':
+      return rewriteFrame(change, (source) => {
+        const written = chainDeleted(source, change, side)
+        return (
+          written && {
+            html: written.html,
+            keep: () => {
+              change.spans = written.spans
+            },
+          }
+        )
+      })
     case 'relocated':
       return rewriteFrame(change, (source) => {
         const written = relocateMoved(source, change.span, side)
@@ -339,6 +372,30 @@ export async function restore(
     case 'token':
       return rewriteToken(change, side)
   }
+}
+
+/**
+ * The frame with a delete's elements back, `before` restoring them in the
+ * reverse of the order taken out, or out again, `after` taking them in that
+ * order, undefined when any one's bytes or gap no longer read. Answers the
+ * spans as the frame then stands, in the order taken out.
+ */
+function chainDeleted(
+  source: string,
+  { spans }: Extract<Change, { kind: 'deleted' }>,
+  side: Side,
+): { html: string; spans: readonly InsertedSpan[] } | undefined {
+  const restoring = side === 'before'
+  const write = restoring ? restoreInserted : removeInserted
+  let html = source
+  const kept: InsertedSpan[] = []
+  for (const span of restoring ? spans.toReversed() : spans) {
+    const written = write(html, span)
+    if (!written) return undefined
+    html = written.html
+    kept.push(written.span)
+  }
+  return { html, spans: restoring ? kept.toReversed() : kept }
 }
 
 /** Whether the sheet sets the token exactly as `side` holds it, false for a sheet that no longer parses. */
@@ -382,7 +439,10 @@ async function rewriteToken(
  * the element was found, through `keep`, so the next side lands on it.
  */
 async function rewriteFrame(
-  change: Extract<Change, { kind: 'element' | 'inserted' | 'relocated' }>,
+  change: Extract<
+    Change,
+    { kind: 'element' | 'inserted' | 'deleted' | 'relocated' }
+  >,
   rewrite: (source: string) => { html: string; keep: () => void } | undefined,
 ): Promise<string> {
   // A leading dot keeps the temporary file from reading as a frame.
@@ -477,6 +537,15 @@ export class StepJournal implements Journal {
   /** The element a hand delete took out of a frame file, which this journal does not write. */
   deletedElement(path: string, ref: string, span: InsertedSpan): void {
     this.changes.push({ kind: 'inserted', path, ref, span, present: 'before' })
+  }
+
+  /** The elements one hand delete took out of a frame file, in the order taken out, which this journal does not write. */
+  deletedElements(
+    path: string,
+    ref: string,
+    spans: readonly InsertedSpan[],
+  ): void {
+    this.changes.push({ kind: 'deleted', path, ref, spans })
   }
 
   /** The element a hand move took to another gap of a frame file, which this journal does not write. */

@@ -10,6 +10,8 @@ export const editResultSchema = z.object({
   hash,
   /** The hash the edit was written over, which differs from the one sent once the edit was found again. */
   from: hash.optional(),
+  /** Each element's index in the file as written, in the order a batch sent them, with `index` the last. */
+  indexes: z.array(z.int().min(0)).optional(),
 })
 
 export type EditResult = z.infer<typeof editResultSchema>
@@ -49,6 +51,12 @@ export const placeResultSchema = z.object({
   index: z.int().min(0),
   hash,
   sized: z.array(placedSizeSchema),
+  /** Each element a batch placed and the sizes written on it, in the order sent, with `index` and `sized` the last's. */
+  placed: z
+    .array(
+      z.object({ index: z.int().min(0), sized: z.array(placedSizeSchema) }),
+    )
+    .optional(),
 })
 
 export type PlaceResult = z.infer<typeof placeResultSchema>
