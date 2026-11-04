@@ -72,7 +72,12 @@ function setup(
     control,
     divider,
     shape,
-    resizeRead = { kind: 'box', natural: null, hugsHeight: false },
+    resizeRead = {
+      kind: 'box',
+      natural: null,
+      hugsHeight: false,
+      inset: { width: 0, height: 0 },
+    },
     placed,
     ghost,
     live,
@@ -312,7 +317,7 @@ function setup(
           },
         }
       },
-      resizeElement: (page, key, kind) => {
+      resizeElement: (page, key, { kind }) => {
         if (shape !== 'free') return null
         const resize = {
           page,
@@ -1520,7 +1525,12 @@ describe('attachGestures', () => {
         const canvas = setup(undefined, {
           elementBox: ELEMENT_BOX,
           shape: 'free',
-          resizeRead: { kind: 'text', natural: null, hugsHeight: true },
+          resizeRead: {
+            kind: 'text',
+            natural: null,
+            hugsHeight: true,
+            inset: { width: 0, height: 0 },
+          },
         })
         detach = canvas.detach
         act(() => selectElement(selectionStore, PAGE, ELEMENT))
@@ -1560,6 +1570,7 @@ describe('attachGestures', () => {
             kind: 'media',
             natural: { width: 1, height: 1 },
             hugsHeight: false,
+            inset: { width: 0, height: 0 },
           },
         })
         detach = canvas.detach

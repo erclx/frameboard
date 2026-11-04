@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
 import {
   cornerSize,
   dragSize,
@@ -63,7 +64,12 @@ describe('cornerSize', () => {
 
 describe('dragSize', () => {
   it('moves only the width of text, whatever the vertical drag and Shift', () => {
-    const text = { kind: 'text', natural: null, hugsHeight: true } as const
+    const text = {
+      kind: 'text',
+      natural: null,
+      hugsHeight: true,
+      inset: { width: 0, height: 0 },
+    } as const
 
     expect(dragSize(text, BOX, 'se', 40, 90, true)).toEqual({
       width: 240,
@@ -72,7 +78,12 @@ describe('dragSize', () => {
   })
 
   it('keeps a box to the ratio it starts from under Shift', () => {
-    const box = { kind: 'box', natural: null, hugsHeight: false } as const
+    const box = {
+      kind: 'box',
+      natural: null,
+      hugsHeight: false,
+      inset: { width: 0, height: 0 },
+    } as const
 
     expect(dragSize(box, BOX, 'se', 100, 10, true)).toEqual({
       width: 300,
@@ -85,6 +96,7 @@ describe('dragSize', () => {
       kind: 'media',
       natural: { width: 1, height: 1 },
       hugsHeight: false,
+      inset: { width: 0, height: 0 },
     } as const
 
     expect(dragSize(media, BOX, 'se', 100, 10, true)).toEqual({
@@ -94,7 +106,12 @@ describe('dragSize', () => {
   })
 
   it('keeps media with no natural size yet to the ratio of its box', () => {
-    const media = { kind: 'media', natural: null, hugsHeight: false } as const
+    const media = {
+      kind: 'media',
+      natural: null,
+      hugsHeight: false,
+      inset: { width: 0, height: 0 },
+    } as const
 
     expect(dragSize(media, BOX, 'se', 100, 10, true)).toEqual({
       width: 300,
@@ -107,6 +124,7 @@ describe('dragSize', () => {
       kind: 'media',
       natural: { width: 1, height: 1 },
       hugsHeight: false,
+      inset: { width: 0, height: 0 },
     } as const
 
     expect(dragSize(media, BOX, 'se', 40, 20, false)).toEqual({
@@ -146,18 +164,36 @@ describe('resizeKindOf', () => {
 
 describe('resizeDeclarations', () => {
   const SIZE = { width: 240, height: 90 }
+  const NO_INSET = { width: 0, height: 0 }
 
   it('writes the width alone for text, so its height keeps hugging', () => {
-    expect(resizeDeclarations('text', SIZE)).toEqual([
-      { property: 'width', value: '240px' },
-    ])
+    expect(resizeDeclarations({ kind: 'text', inset: NO_INSET }, SIZE)).toEqual(
+      [{ property: 'width', value: '240px' }],
+    )
   })
 
   it.each(['box', 'media'] as const)('writes both sides of %s', (kind) => {
-    expect(resizeDeclarations(kind, SIZE)).toEqual([
+    expect(resizeDeclarations({ kind, inset: NO_INSET }, SIZE)).toEqual([
       { property: 'width', value: '240px' },
       { property: 'height', value: '90px' },
     ])
+  })
+
+  it('takes a content box padding and border off what it writes', () => {
+    const inset = { width: 52, height: 28 }
+
+    expect(resizeDeclarations({ kind: 'box', inset }, SIZE)).toEqual([
+      { property: 'width', value: '188px' },
+      { property: 'height', value: '62px' },
+    ])
+  })
+
+  it('writes no less than 0 px when the drag is narrower than the padding', () => {
+    const inset = { width: 52, height: 28 }
+
+    expect(
+      resizeDeclarations({ kind: 'text', inset }, { width: 10, height: 10 }),
+    ).toEqual([{ property: 'width', value: '0px' }])
   })
 })
 
@@ -232,6 +268,7 @@ describe('a live element', () => {
       expect(shownResize(shown, KEY)).toMatchObject({
         kind: 'text',
         hugsHeight: true,
+        inset: { width: 0, height: 0 },
       })
     })
 
@@ -241,6 +278,7 @@ describe('a live element', () => {
       expect(shownResize(shown, KEY)).toMatchObject({
         kind: 'text',
         hugsHeight: false,
+        inset: { width: 0, height: 0 },
       })
     })
 
@@ -253,6 +291,35 @@ describe('a live element', () => {
           height: 1,
         }),
       )
+    })
+
+    it('reads a decoded video at the size it decodes to', async () => {
+      const shown = await mount(
+        `<video muted preload="auto" src="${new URL(CLIP, location.href).href}"></video>`,
+      )
+
+      await vi.waitFor(() =>
+        expect(shownResize(shown, KEY)?.natural).toEqual({
+          width: 160,
+          height: 90,
+        }),
+      )
+    })
+
+    it('reads the padding and border a content box width leaves out', async () => {
+      const shown = await mount(
+        '<p style="padding: 12px 24px; border: 2px solid">Tag</p>',
+      )
+
+      expect(shownResize(shown, KEY)?.inset).toEqual({ width: 52, height: 28 })
+    })
+
+    it('reads no inset on a border box, whose width holds its padding', async () => {
+      const shown = await mount(
+        '<p style="box-sizing: border-box; padding: 12px 24px">Tag</p>',
+      )
+
+      expect(shownResize(shown, KEY)?.inset).toEqual({ width: 0, height: 0 })
     })
 
     it('reads an image that has not decoded as having no natural size', async () => {
@@ -282,7 +349,10 @@ describe('a live element', () => {
 
     it('previews only the width of text, whose height keeps hugging', async () => {
       const shown = await mount('<p>Words</p>')
-      const resize = startElementResize('studio/home', KEY, 'text')
+      const resize = startElementResize('studio/home', KEY, {
+        kind: 'text',
+        inset: { width: 0, height: 0 },
+      })
 
       resize?.preview({ width: 240, height: 90 })
 
@@ -292,7 +362,10 @@ describe('a live element', () => {
 
     it('puts the width a preview replaced back on a cancel', async () => {
       const shown = await mount('<p style="width: fit-content">Words</p>')
-      const resize = startElementResize('studio/home', KEY, 'text')
+      const resize = startElementResize('studio/home', KEY, {
+        kind: 'text',
+        inset: { width: 0, height: 0 },
+      })
 
       resize?.preview({ width: 240, height: 90 })
       resize?.cancel()

@@ -44,6 +44,12 @@ export interface ResizeRead {
   natural: ElementSize | null
   /** Whether a `text` element states no height, so its height follows its words. */
   hugsHeight: boolean
+  /**
+   * What the drawn box holds beyond a written size, being the padding and
+   * border of a `content-box` element. The drag sizes the outline, a border
+   * box, so a write takes this off rather than jump by it.
+   */
+  inset: ElementSize
 }
 
 /**
@@ -60,6 +66,27 @@ export function readResize(element: Element): ResizeRead | null {
     kind,
     natural: naturalSize(element),
     hugsHeight: kind === 'text' && !statesHeight(element),
+    inset: contentBoxInset(style),
+  }
+}
+
+function contentBoxInset(style: CSSStyleDeclaration): ElementSize {
+  if (style.boxSizing !== 'content-box') return { width: 0, height: 0 }
+  const sum = (...lengths: string[]) =>
+    lengths.reduce((total, length) => total + (parseFloat(length) || 0), 0)
+  return {
+    width: sum(
+      style.paddingLeft,
+      style.paddingRight,
+      style.borderLeftWidth,
+      style.borderRightWidth,
+    ),
+    height: sum(
+      style.paddingTop,
+      style.paddingBottom,
+      style.borderTopWidth,
+      style.borderBottomWidth,
+    ),
   }
 }
 
@@ -147,15 +174,17 @@ export function dragSize(
     : cornerSize(start, corner, dx, dy, keepRatio, read.natural ?? start)
 }
 
-/** The declarations a corner drag writes on an element of `kind`. */
+/** The declarations a corner drag to a drawn size writes on an element. */
 export function resizeDeclarations(
-  kind: ResizeKind,
+  { kind, inset }: Pick<ResizeRead, 'kind' | 'inset'>,
   { width, height }: ElementSize,
 ): { property: string; value: string }[] {
-  const wide = { property: 'width', value: `${width}px` }
+  const px = (drawn: number, held: number) =>
+    `${Math.max(0, Math.round(drawn - held))}px`
+  const wide = { property: 'width', value: px(width, inset.width) }
   return kind === 'text'
     ? [wide]
-    : [wide, { property: 'height', value: `${height}px` }]
+    : [wide, { property: 'height', value: px(height, inset.height) }]
 }
 
 /** A corner drag of one element, previewed on its live node and written once on release. */
@@ -175,7 +204,7 @@ export interface ElementResize {
 export function startElementResize(
   page: string,
   key: ElementKey,
-  kind: ResizeKind,
+  read: Pick<ResizeRead, 'kind' | 'inset'>,
 ): ElementResize | null {
   const holder = liveStore.getState().claims[key.frame]
   if (holder) {
@@ -192,14 +221,14 @@ export function startElementResize(
   }
   return {
     preview: (size) => {
-      for (const { property, value } of resizeDeclarations(kind, size)) {
+      for (const { property, value } of resizeDeclarations(read, size)) {
         previewStyle(key, property, value)
       }
     },
     commit: async (size) => {
       const written = await writeElement(page, key, {
         kind: 'styles',
-        declarations: resizeDeclarations(kind, size),
+        declarations: resizeDeclarations(read, size),
       })
       // A landed write reloads the frame with the size, so only a refusal puts it back.
       if (!written) putBack()

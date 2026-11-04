@@ -432,7 +432,7 @@ export function attachGestures(
   const begin = () => {
     if (gesture.kind === 'corner') {
       const resize = stores.canWrite()
-        ? stores.resizeElement(target.page, gesture.key, gesture.read.kind)
+        ? stores.resizeElement(target.page, gesture.key, gesture.read)
         : null
       gesture = resize
         ? { ...gesture, kind: 'element-resize', resize, size: null }

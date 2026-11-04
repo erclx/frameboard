@@ -85,7 +85,8 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 A corner drag writes one `styles` edit, and Esc writes nothing.
 
 - Text takes width alone, so its height keeps hugging, and a shape, an image, or a video takes width and height
-- Shift holds a shape's drawn ratio and media's decoded one. A container or a divider takes no corner drag and draws no marks.
+- A write takes a `content-box` element's padding and border off the drawn size, so the outline lands where the drag ends
+- Shift holds a shape's drawn ratio and media's decoded one. Inline text, a container, or a divider takes no corner drag and draws no marks.
 - The chip reads `Hug` for text with no height on its own `style`, so a height a rule states also reads as `Hug`
 
 A place reads the parent's position from the static cascade.

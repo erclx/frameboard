@@ -160,7 +160,12 @@ describe('ElementOverlay', () => {
         holdOutline({
           key,
           box: { x: 300, y: 200, width: 248, height: 30 },
-          read: { kind: 'text', natural: null, hugsHeight: true },
+          read: {
+            kind: 'text',
+            natural: null,
+            hugsHeight: true,
+            inset: { width: 0, height: 0 },
+          },
         }),
       )
       act(() =>
