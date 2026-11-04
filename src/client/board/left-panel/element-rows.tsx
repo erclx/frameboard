@@ -11,7 +11,12 @@ import { useElementTree } from '../element/tree'
 import { writeElement } from '../inspector/element/write'
 import { ElementRowMenu } from '../menus/layers'
 import { moveElementTo } from '../place/write'
-import { type ElementKey, selectElement, selectionStore } from '../selection'
+import {
+  type ElementKey,
+  selectElement,
+  selectionStore,
+  toggleElement,
+} from '../selection'
 import { DropLine } from './drop-line'
 import { elementGlyph } from './layer-glyphs'
 import { useReorderMonitor, useReorderRow } from './reorder'
@@ -29,8 +34,8 @@ interface ElementRowsProps {
   frame: FrameRecord
   /** The page the frame sits on, which a row click selects on. */
   page: string
-  /** The selected element's index in this frame, null when none is. */
-  selected: number | null
+  /** The selected elements' indices in this frame, empty when none is. */
+  selected: readonly number[]
   /** True while the frame itself is selected, which tints its rows below its own. */
   frameSelected: boolean
   /** Whether the row of the element at this index shows its children. */
@@ -42,7 +47,7 @@ interface ElementRowsProps {
  * One frame's element rows, read from the server's tree so a culled frame
  * lists them too, each indented by depth, with the glyph `elementGlyph`
  * picks by text, media, and layout, a chevron on one with children, and a
- * click selecting the element. The selected row is tinted deeper than the rest of its
+ * click selecting the element and Shift-click adding it or taking it out. A selected row is tinted deeper than the rest of its
  * frame's band, as `layers/edit` and `inspector/text` draw them. A
  * double-click or F2 renames the element in place, writing `data-name`. A
  * row drags to another place among its siblings, never into another parent,
@@ -110,15 +115,15 @@ export function ElementRows({
           holds={parents.has(element.index)}
           toggle={() => toggle(element.index)}
           tint={
-            element.index === selected
+            selected.includes(element.index)
               ? 'bg-primary/26'
               : frameSelected
                 ? 'bg-primary/13'
-                : selected !== null
+                : selected.length > 0
                   ? 'bg-primary/7'
                   : 'hover:bg-accent'
           }
-          isSelected={element.index === selected}
+          isSelected={selected.includes(element.index)}
           canWrite={canWrite}
           renaming={renaming === element.index}
           setRenaming={(on) => setRenaming(on ? element.index : null)}
@@ -223,7 +228,11 @@ function ElementRow({
             <button
               type="button"
               aria-current={isSelected ? 'true' : undefined}
-              onClick={() => selectElement(selectionStore, page, key)}
+              onClick={(event) =>
+                event.shiftKey
+                  ? toggleElement(selectionStore, page, key)
+                  : selectElement(selectionStore, page, key)
+              }
               onDoubleClick={() => {
                 if (canWrite) setRenaming(true)
               }}

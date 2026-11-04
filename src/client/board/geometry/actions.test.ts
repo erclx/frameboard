@@ -2,10 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Action } from '@/client/actions/registry'
 import { createLiveStore } from '@/client/live/store'
+import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
 import { createModeStore } from '../mode'
-import { createSelectionStore, select, selectSection } from '../selection'
+import {
+  createSelectionStore,
+  select,
+  selectElement,
+  selectSection,
+} from '../selection'
 import { geometryActions, NUDGE_REST_MS } from './actions'
 import type { Box } from './box'
 
@@ -34,9 +40,11 @@ function setup(frames = [A, B, C, LOCKED]) {
   /** The frames a fit was asked for, in order. */
   const fits: string[] = []
   const view = { page: PAGE }
+  const tree: { held: ElementTree | null } = { held: null }
   const actions = geometryActions({
     page: () => view.page,
     frames: () => frames,
+    treeOf: () => tree.held,
     selection,
     mode,
     live,
@@ -61,7 +69,18 @@ function setup(frames = [A, B, C, LOCKED]) {
     if (!found) throw new Error(`no action ${id}`)
     return found
   }
-  return { selection, mode, live, writes, pages, fits, view, action, actions }
+  return {
+    tree,
+    selection,
+    mode,
+    live,
+    writes,
+    pages,
+    fits,
+    view,
+    action,
+    actions,
+  }
 }
 
 describe('geometryActions', () => {
@@ -157,6 +176,51 @@ describe('geometryActions', () => {
     expect(selection.getState()).toMatchObject({
       page: PAGE,
       frames: [A.ref, B.ref, C.ref, LOCKED.ref],
+    })
+  })
+
+  describe('Select all with an element selected', () => {
+    const HASH = 'a'.repeat(64)
+    const row = (index: number, parent: number | null): TreeElement => ({
+      index,
+      parent,
+      tag: 'div',
+      name: 'div',
+      textOnly: false,
+      layout: 'block',
+      round: false,
+      placed: false,
+    })
+    const TREE: ElementTree = {
+      ref: A.ref,
+      hash: HASH,
+      elements: [row(3, null), row(4, 3), row(5, 3), row(6, 3), row(7, null)],
+    }
+
+    it('selects its siblings, leaving it the last picked', () => {
+      const { selection, tree, action } = setup()
+      tree.held = TREE
+      const picked = { frame: A.ref, index: 5, hash: HASH }
+      selectElement(selection, PAGE, picked)
+
+      action('selection.all').run()
+
+      expect(selection.getState().element).toEqual(picked)
+      expect(selection.getState().elements?.map(({ index }) => index)).toEqual([
+        4, 6, 5,
+      ])
+      expect(selection.getState().frames).toEqual([A.ref])
+    })
+
+    it('leaves the selection alone while the tree reads other bytes', () => {
+      const { selection, tree, action } = setup()
+      tree.held = { ...TREE, hash: 'b'.repeat(64) }
+      const picked = { frame: A.ref, index: 5, hash: HASH }
+      selectElement(selection, PAGE, picked)
+
+      action('selection.all').run()
+
+      expect(selection.getState().elements).toEqual([picked])
     })
   })
 

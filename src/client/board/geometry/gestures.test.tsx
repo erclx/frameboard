@@ -3,7 +3,7 @@ import '../../styles.css'
 import { act, render } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { Profiler } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
@@ -25,6 +25,7 @@ import {
   type ElementKey,
   select,
   selectElement,
+  selectElements,
   selectionStore,
   selectSection,
 } from '../selection'
@@ -80,6 +81,10 @@ function setup(
     },
     placed,
     ghost,
+    pick = () => null,
+    bare = () => false,
+    inner = [],
+    outlines = [],
     live,
     sections = [],
     lands = true,
@@ -108,6 +113,14 @@ function setup(
     placed?: PlacedOffsets
     /** An element's ghost drawn past its frame's edge, at a canvas box. */
     ghost?: { key: ElementKey; box: Box }
+    /** What a Shift-click picks at each point, null by default. */
+    pick?: (at: Point) => ElementKey | null
+    /** Whether a point inside a selected frame is its bare body, false by default. */
+    bare?: (at: Point) => boolean
+    /** The elements a marquee inside a frame touches, none by default. */
+    inner?: { key: ElementKey; box: Box }[]
+    /** Outlines drawn for several selected elements, last picked last. */
+    outlines?: { index: number; box: Box }[]
     /**
      * A body LEFT renders live in an iframe filling its box, whose pin is
      * anchored to the element at file index 3, the first in the body.
@@ -182,6 +195,20 @@ function setup(
               }}
             />
           ) : null}
+          {outlines.map(({ index, box }) => (
+            <div
+              key={index}
+              data-element-selection
+              data-element-index={index}
+              className="pointer-events-none absolute"
+              style={{
+                left: box.x,
+                top: box.y,
+                width: box.width,
+                height: box.height,
+              }}
+            />
+          ))}
           {ghost ? (
             <div
               data-element-ghost
@@ -295,6 +322,9 @@ function setup(
         moves.push({ page, at, key })
         return null
       },
+      pickElement: async (_layer, _frames, at) => pick(at),
+      onBareFrame: (_layer, _frames, at) => bare(at),
+      elementsIn: () => inner,
       resizeOf: () => (shape === undefined ? null : resizeRead),
       placedOffsets: () => placed ?? null,
       movePlaced: (page, key) => {
@@ -1591,12 +1621,149 @@ describe('attachGestures', () => {
       expect(carriedStore.getState().carried).toBeNull()
     })
 
-    it('takes the frame out of the selection on a Shift-click inside the element', () => {
+    describe('several elements', () => {
+      const FIRST = { frame: LEFT.ref, index: 3, hash: 'a'.repeat(64) }
+      const SECOND = { frame: LEFT.ref, index: 4, hash: 'a'.repeat(64) }
+      const OUTLINES = [
+        { index: 3, box: { x: 110, y: 110, width: 50, height: 30 } },
+        { index: 4, box: { x: 110, y: 200, width: 50, height: 30 } },
+      ]
+      const held = () => selectionStore.getState().elements
+
+      it('adds the element a Shift-click lands on', async () => {
+        selectElement(selectionStore, PAGE, FIRST)
+        const canvas = setup(undefined, { pick: () => SECOND })
+
+        canvas.pointer.click(130, 210, { shiftKey: true })
+
+        await vi.waitFor(() => expect(held()).toEqual([FIRST, SECOND]))
+      })
+
+      it('takes a held element out on a Shift-click, keeping the frame selected', async () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          pick: () => SECOND,
+          outlines: OUTLINES,
+        })
+
+        canvas.pointer.click(130, 210, { shiftKey: true })
+
+        await vi.waitFor(() => expect(held()).toEqual([FIRST]))
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('starts over in another frame on a Shift-click there', async () => {
+        const elsewhere = { frame: RIGHT.ref, index: 3, hash: 'b'.repeat(64) }
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, { pick: () => elsewhere })
+
+        canvas.pointer.click(450, 150, { shiftKey: true })
+
+        await vi.waitFor(() => expect(held()).toEqual([elsewhere]))
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+      })
+
+      it('leaves the selection alone on a Shift-click holding no element', async () => {
+        selectElement(selectionStore, PAGE, FIRST)
+        const canvas = setup()
+
+        canvas.pointer.click(250, 280, { shiftKey: true })
+        await Promise.resolve()
+
+        expect(held()).toEqual([FIRST])
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('selects every element a marquee from the bare body touches', () => {
+        select(selectionStore, PAGE, [LEFT.ref])
+        const canvas = setup(undefined, {
+          bare: () => true,
+          inner: [
+            { key: FIRST, box: OUTLINES[0]?.box as Box },
+            { key: SECOND, box: OUTLINES[1]?.box as Box },
+          ],
+        })
+
+        canvas.pointer.drag([130, 130], [280, 280])
+
+        expect(held()).toEqual([FIRST, SECOND])
+        expect(canvas.writes).toEqual([])
+      })
+
+      it('adds to the held elements on a Shift-marquee', () => {
+        const third = { frame: LEFT.ref, index: 5, hash: 'a'.repeat(64) }
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          bare: () => true,
+          outlines: OUTLINES,
+          inner: [{ key: third, box: OUTLINES[0]?.box as Box }],
+        })
+
+        canvas.pointer.drag([250, 105], [280, 280], { shiftKey: true })
+
+        expect(held()).toEqual([FIRST, SECOND, third])
+      })
+
+      it('selects the frame alone on a marquee touching nothing', () => {
+        selectElement(selectionStore, PAGE, FIRST)
+        const canvas = setup(undefined, { bare: () => true })
+
+        canvas.pointer.drag([250, 105], [280, 130])
+
+        expect(selectionStore.getState().element).toBeNull()
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('moves the selected frame on a drag from an element it holds', () => {
+        select(selectionStore, PAGE, [LEFT.ref])
+        const canvas = setup(undefined, { bare: () => false })
+
+        canvas.pointer.drag([150, 150], [170, 170])
+
+        expect(canvas.writes).toHaveLength(1)
+      })
+
+      it('moves an unselected frame on a drag from its bare body', () => {
+        const canvas = setup(undefined, { bare: () => true })
+
+        canvas.pointer.drag([150, 150], [170, 170])
+
+        expect(canvas.writes).toHaveLength(1)
+      })
+
+      it('carries the pressed member alone, selecting it', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, { outlines: OUTLINES })
+
+        canvas.pointer.drag([130, 120], [130, 260])
+
+        expect(canvas.moves.map(({ key }) => key)).toEqual([FIRST])
+        expect(held()).toEqual([FIRST])
+      })
+
+      it('takes no corner press on several, where no marks draw', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, { outlines: OUTLINES, shape: 'free' })
+
+        canvas.pointer.drag([110, 110], [90, 90])
+
+        expect(canvas.resizes).toEqual([])
+      })
+
+      it('shows no resize cursor over a member’s corner, where the press takes none', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, { outlines: OUTLINES, shape: 'free' })
+
+        expect(canvas.cursorOver(110, 110)).toBeNull()
+      })
+    })
+
+    it('adds to the elements on a Shift-click inside the element, keeping the frame', () => {
       const canvas = setupWithElement()
 
       canvas.pointer.click(200, 175, { shiftKey: true })
 
-      expect(selectedRefs()).toEqual([])
+      expect(selectedRefs()).toEqual([LEFT.ref])
     })
 
     it('moves no element while the tab may not write', () => {

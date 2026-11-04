@@ -858,6 +858,32 @@ describe('LeftPanel', () => {
       })
     })
 
+    it('adds an element on Shift-click and tints each row selected', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const user = userEvent.setup()
+      await user.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'footer' }))
+      await user.keyboard('{Shift>}')
+      await user.click(screen.getByRole('button', { name: 'Card' }))
+      await user.keyboard('{/Shift}')
+
+      expect(
+        selectionStore.getState().elements?.map(({ index }) => index),
+      ).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'footer' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: 'Card' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+
     it('opens the frame and the rows above an element selected elsewhere', () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))

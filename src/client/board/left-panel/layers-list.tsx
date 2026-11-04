@@ -95,6 +95,8 @@ export function LayersList({
   const selectedSection = useSelection((state) => state.section)
   const selectedFrames = useSelection((state) => state.frames)
   const element = useSelection((state) => state.element ?? null)
+  const members = useSelection((state) => state.elements)
+  const held = (members ?? (element ? [element] : [])).map(({ index }) => index)
   const canWrite = useLive((state) => state.canWrite)
   useRevealSelected(setExpanded)
   const groups = groupsOf(frames, sections)
@@ -177,7 +179,7 @@ export function LayersList({
           <ElementRows
             frame={frame}
             page={pageOf(frame)}
-            selected={holdsElement ? (element?.index ?? null) : null}
+            selected={holdsElement ? held : []}
             frameSelected={frameSelected}
             isOpen={(index) => isOpen(rowKey(frame.ref, index))}
             toggle={(index) => toggle(rowKey(frame.ref, index))}

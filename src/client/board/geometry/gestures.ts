@@ -8,6 +8,7 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
 import { heldOutline, holdOutline } from '../element/held'
+import { elementsIn, onBareFrame, pickElementRead } from '../element/pick'
 import {
   cornerSize,
   dragSize,
@@ -21,6 +22,7 @@ import {
   startElementResize,
   startPlacedMove,
 } from '../element/resize'
+import { readTree, treeOf } from '../element/tree'
 import { openFindings } from '../findings-open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
@@ -32,11 +34,14 @@ import {
   clear,
   type ElementKey,
   select,
+  selectedElements,
   selectElement,
+  selectElements,
   type SelectionStore,
   selectionStore,
   selectSection,
   toggle,
+  toggleElement,
 } from '../selection'
 import { boundsOf, type Box, type Point, sameBox } from './box'
 import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
@@ -50,6 +55,7 @@ import {
   ghostAt,
   onOutline,
   selectedElementBox,
+  selectedElementBoxes,
 } from './hit'
 import { type Corner, resizeBox, scaleBoxes } from './resize'
 import { SNAP_DISTANCE, snapMove, snapResize } from './snap'
@@ -98,6 +104,24 @@ export interface GestureStores {
   placedOffsets: typeof placedOffsets
   /** Starts a drag of the selected placed element, null when its frame is held. */
   movePlaced: typeof startPlacedMove
+  /** The element a Shift-click lands on, read once its frame's tree is held, else null. */
+  pickElement: (
+    layer: HTMLElement,
+    frames: readonly FrameRecord[],
+    at: Point,
+  ) => Promise<ElementKey | null>
+  /** Whether a press inside a selected frame lands on its bare body, which a drag marquees. */
+  onBareFrame: (
+    layer: HTMLElement,
+    frames: readonly FrameRecord[],
+    at: Point,
+  ) => boolean
+  /** The elements a marquee inside a frame touches, with their boxes on the canvas. */
+  elementsIn: (
+    layer: HTMLElement,
+    frame: FrameRecord,
+    rect: Box,
+  ) => { key: ElementKey; box: Box }[]
 }
 
 const STORES: GestureStores = {
@@ -113,10 +137,26 @@ const STORES: GestureStores = {
   resizeElement: startElementResize,
   placedOffsets,
   movePlaced: startPlacedMove,
+  pickElement: (layer, frames, at) =>
+    pickElementRead(layer, frames, at, readTree),
+  onBareFrame: (layer, frames, at) => {
+    const ref = frames.find(({ box }) => inBox(box, at))?.ref
+    return onBareFrame(layer, frames, at, ref ? treeOf(ref) : null)
+  },
+  elementsIn: (layer, frame, rect) =>
+    elementsIn(layer, frame, rect, treeOf(frame.ref)),
 }
 
 type Gesture =
-  | { kind: 'press'; frame: FrameRecord; shift: boolean }
+  | {
+      kind: 'press'
+      frame: FrameRecord
+      shift: boolean
+      /** Whether a drag from here marquees the frame's elements, since it landed on the selected frame's bare body. */
+      inner: boolean
+    }
+  /** A marquee inside one selected frame, selecting the elements it touches. */
+  | { kind: 'inner-marquee'; frame: FrameRecord; base: readonly ElementKey[] }
   /** A press on a frame's findings badge, which opens its list on release and selects nothing. */
   | { kind: 'badge'; ref: string }
   /** A press on a button in a frame's label, clicked on release, selecting nothing. */
@@ -229,10 +269,9 @@ export function attachGestures(
   // The element outline is drawn beside the frame overlay rather than in it,
   // so a frame drag shifts it here, as `drawMove` shifts the frame's.
   const shiftElementOutline = (dx: number, dy: number) => {
-    const outline = target.layer.querySelector<HTMLElement>(
+    for (const outline of target.layer.querySelectorAll<HTMLElement>(
       '[data-element-selection]',
-    )
-    if (outline) {
+    )) {
       outline.style.transform =
         dx === 0 && dy === 0 ? '' : `translate(${dx}px, ${dy}px)`
     }
@@ -337,8 +376,13 @@ export function attachGestures(
     point: Point,
     drawn: readonly FrameRecord[],
   ): Mark | null => {
-    const element = selection.getState().element
-    const outline = element ? selectedElementBox(target.layer) : null
+    const state = selection.getState()
+    const element = state.element
+    // Several draw no marks, so neither a press nor a hover finds one.
+    const outline =
+      element && selectedElements(state).length <= 1
+        ? selectedElementBox(target.layer)
+        : null
     if (element && outline) {
       const corner = cornerAt(outline, point, zoom())
       const read = corner ? stores.resizeOf(target.layer, element) : null
@@ -420,8 +464,34 @@ export function attachGestures(
       gesture = { ...mark, kind: 'corner' }
       return
     }
-    const element = selection.getState().element
-    const outline = element ? selectedElementBox(target.layer) : null
+    const state = selection.getState()
+    const element = state.element
+    const members = selectedElements(state)
+    const several = members.length > 1
+    // Several draw bare outlines, so a press on one reads as a press on that
+    // element, its corners included, and a drag carries that one alone.
+    const member = several
+      ? selectedElementBoxes(target.layer)
+          .reverse()
+          .find(({ box }) => inBox(box, point) || onOutline(box, point, zoom()))
+      : undefined
+    const memberKey = member
+      ? members.find(({ index }) => index === member.index)
+      : undefined
+    if (member && memberKey) {
+      gesture = {
+        kind: 'element',
+        key: memberKey,
+        frame: onOutline(member.box, point, zoom())
+          ? null
+          : frameAt(drawn, point, zoom()),
+        shift: event.shiftKey,
+        placed: stores.placedOffsets(target.layer, memberKey),
+      }
+      return
+    }
+    const outline =
+      element && !several ? selectedElementBox(target.layer) : null
     if (element && outline) {
       const edge = onOutline(outline, point, zoom())
       if (edge || inBox(outline, point)) {
@@ -486,7 +556,12 @@ export function attachGestures(
       if (!leaving && !event.shiftKey && unselected) {
         select(selection, target.page, [frame.ref])
       }
-      gesture = { kind: 'press', frame, shift: event.shiftKey }
+      gesture = {
+        kind: 'press',
+        frame,
+        shift: event.shiftKey,
+        inner: chosen.length === 1 && !unselected && !leaving,
+      }
       return
     }
     gesture = {
@@ -506,6 +581,13 @@ export function attachGestures(
         ? { ...gesture, kind: 'element-resize', resize, size: null }
         : { kind: 'none' }
       return
+    }
+    // A drag of one of several takes that element alone from here.
+    if (
+      gesture.kind === 'element' &&
+      selectedElements(selection.getState()).length > 1
+    ) {
+      selectElement(selection, target.page, gesture.key)
     }
     if (gesture.kind === 'element' && gesture.placed) {
       const move = stores.canWrite()
@@ -552,6 +634,18 @@ export function attachGestures(
       return
     }
     if (gesture.kind !== 'press' && gesture.kind !== 'resize') return
+    if (
+      gesture.kind === 'press' &&
+      gesture.inner &&
+      stores.onBareFrame(target.layer, withDrawn(target.frames()), from)
+    ) {
+      gesture = {
+        kind: 'inner-marquee',
+        frame: gesture.frame,
+        base: gesture.shift ? selectedElements(selection.getState()) : [],
+      }
+      return
+    }
     if (gesture.kind === 'press') {
       const { frame, shift } = gesture
       const unselected = !selection.getState().frames.includes(frame.ref)
@@ -705,6 +799,17 @@ export function attachGestures(
         gesture.resize.preview(gesture.size)
         return
       }
+      case 'inner-marquee': {
+        const rect = rectFrom(from, point)
+        drawMarquee(
+          root,
+          rect,
+          stores
+            .elementsIn(target.layer, gesture.frame, rect)
+            .map(({ box }) => box),
+        )
+        return
+      }
       case 'marquee': {
         const rect = rectFrom(from, point)
         const touched = framesIn(withDrawn(target.frames()), rect)
@@ -764,6 +869,19 @@ export function attachGestures(
     )
   }
 
+  /**
+   * Adds the element under a Shift-click to the selected ones or takes it
+   * out, a turn holding nothing there leaving the selection as it stands. An
+   * element in another frame starts a new selection there.
+   */
+  const pickToggle = (event: MouseEvent) => {
+    void stores
+      .pickElement(target.layer, withDrawn(target.frames()), toCanvas(event))
+      .then((key) => {
+        if (key) toggleElement(selection, target.page, key)
+      })
+  }
+
   const finish = (event: MouseEvent) => {
     const root = overlay()
     if (!moved) {
@@ -776,6 +894,12 @@ export function attachGestures(
         stores.openFindings(gesture.ref)
       } else if (gesture.kind === 'control') {
         gesture.element.click()
+      } else if (
+        (gesture.kind === 'press' || gesture.kind === 'element') &&
+        gesture.shift &&
+        selection.getState().element
+      ) {
+        pickToggle(event)
       } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
@@ -794,7 +918,14 @@ export function attachGestures(
     shiftElementOutline(0, 0)
     shiftPins([], 0, 0)
     const point = toCanvas(event)
-    if (gesture.kind === 'marquee') {
+    if (gesture.kind === 'inner-marquee') {
+      const touched = stores
+        .elementsIn(target.layer, gesture.frame, rectFrom(from, point))
+        .map(({ key }) => key)
+      const keys = [...gesture.base, ...touched]
+      if (keys.length > 0) selectElements(selection, target.page, keys)
+      else select(selection, target.page, [gesture.frame.ref])
+    } else if (gesture.kind === 'marquee') {
       const touched = framesIn(
         withDrawn(target.frames()),
         rectFrom(from, point),

@@ -9,11 +9,13 @@ import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { treeOf } from '../element/tree'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import {
   clear,
   select,
+  selectElements,
   type SelectionStore,
   selectionStore,
 } from '../selection'
@@ -109,11 +111,14 @@ export interface GeometryContext {
   write: typeof writeBoxes
   /** Fits a frame's height to its content on the server's browser. */
   fit: Structure['fitFrame']
+  /** A frame's tree as the server last answered it, which Select all reads an element's siblings from. */
+  treeOf?: typeof treeOf
 }
 
 /**
  * The selection's keys and the arrange actions while a canvas is mounted:
- * Esc to clear, Cmd+A to select the page, arrows to nudge, Cmd with an
+ * Esc to clear, Cmd+A to select the page, or an element's siblings with one
+ * selected, arrows to nudge, Cmd with an
  * arrow to resize, Fit height, and the aligns and distributes. Each `enabled` reads the
  * mode and the selection, so Esc means one thing at a time and an arrow
  * with nothing selected falls through to arrow pan.
@@ -208,12 +213,28 @@ export function geometryActions(context: GeometryContext): Action[] {
       command: { label: 'Select all' },
       keys: ['$mod+KeyA'],
       enabled: () => editing() && context.frames().length > 0,
-      run: () =>
-        select(
-          selection,
-          context.page(),
-          context.frames().map((frame) => frame.ref),
-        ),
+      run: () => {
+        const { element } = selection.getState()
+        if (!element) {
+          select(
+            selection,
+            context.page(),
+            context.frames().map((frame) => frame.ref),
+          )
+          return
+        }
+        // A tree read from other bytes names no sibling, so the press waits it out.
+        const tree = (context.treeOf ?? treeOf)(element.frame)
+        if (tree?.hash !== element.hash) return
+        const parent = tree.elements.find(
+          ({ index }) => index === element.index,
+        )?.parent
+        const siblings = tree.elements
+          .filter((row) => row.parent === parent && row.index !== element.index)
+          .map(({ index }) => ({ ...element, index }))
+        // The element it was pressed on stays the last picked.
+        selectElements(selection, context.page(), [...siblings, element])
+      },
     },
     ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
       {
