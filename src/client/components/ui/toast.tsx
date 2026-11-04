@@ -21,12 +21,13 @@ function ToastPortal({ ...props }: ToastPrimitive.Portal.Props) {
   return <ToastPrimitive.Portal data-slot="toast-portal" {...props} />
 }
 
+/** The board's toolbar publishes `--toast-lift` while it shows, so no toast lands on it. */
 function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   return (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
       className={cn(
-        'pointer-events-none fixed right-4 bottom-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] outline-none',
+        'pointer-events-none fixed right-4 bottom-[var(--toast-lift,1rem)] z-50 w-[340px] max-w-[calc(100vw-2rem)] outline-none',
         className,
       )}
       {...props}
@@ -46,7 +47,9 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
         '[--gap:0.25rem] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))]',
         'h-(--toast-height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
-        'data-limited:opacity-0 data-starting-style:[transform:translateY(150%)]',
+        // Lifted above the toolbar, the 150% exit would end resting over the
+        // bar, so a closing toast fades as it slides.
+        'data-limited:opacity-0 data-ending-style:opacity-0 data-starting-style:[transform:translateY(150%)]',
         '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)]',
         'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
         'data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))]',
@@ -207,9 +210,10 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
 }
 
 /**
- * The one toast stack, in the corner of the window. A toast whose `type`
- * `bodies` names draws that body, so a surface with its own controls joins
- * the same stack rather than a second viewport that cannot see its heights.
+ * The one toast stack, in the corner of the window and above the toolbar on
+ * the board. A toast whose `type` `bodies` names draws that body, so a surface
+ * with its own controls joins the same stack rather than a second viewport
+ * that cannot see its heights.
  */
 function Toaster({
   children,

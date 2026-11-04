@@ -122,6 +122,8 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
+The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner.
+
 ### `src/client/`
 
 Owns the app shell and the controls around the canvas.
