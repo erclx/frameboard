@@ -1,5 +1,4 @@
-import { cn } from 'cn'
-
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
 import type { StyleValue } from '@/shared/records/elements'
