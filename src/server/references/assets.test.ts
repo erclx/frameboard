@@ -47,13 +47,29 @@ describe('frameAssets', () => {
   it('should yield nothing for a link outside the project assets', () => {
     expect(
       assetsOf(
-        '<img src="beside.png"><img src="../other/x.png"><img src="https://example.com/y.png">',
-        {
-          'studio/home/beside.png': 'png',
-          'studio/other/x.png': 'png',
-        },
+        '<img src="../other/x.png"><img src="https://example.com/y.png">',
+        { 'studio/other/x.png': 'png' },
       ),
     ).toEqual([])
+  })
+
+  it('should refuse a load from the page folder, naming the frame and the load', () => {
+    expect(() =>
+      assetsOf('<img src="beside.png">', { 'studio/home/beside.png': 'png' }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'page-file-load',
+        details: { frame: 'studio/home/hero', load: 'beside.png' },
+      }),
+    )
+  })
+
+  it('should refuse a sheet linked from the page folder', () => {
+    expect(() =>
+      assetsOf('<link rel="stylesheet" href="own.css">', {
+        'studio/home/own.css': '',
+      }),
+    ).toThrow(expect.objectContaining({ code: 'page-file-load' }))
   })
 
   it('should yield nothing for a code sample naming an asset', () => {

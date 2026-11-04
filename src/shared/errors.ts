@@ -76,6 +76,8 @@ export const EXIT_CODES = {
   'formatter-not-found': 9,
   // `references sync --check` finding a folder that differs, with the drift in the error's details.
   'references-stale': 14,
+  // A mapped frame loading a file from its page folder, which a reference folder cannot hold.
+  'page-file-load': 10,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
