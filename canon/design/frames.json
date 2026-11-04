@@ -40,6 +40,7 @@
     "inspector/text": "design/10-inspector/inspector-text",
     "inspector/frame": "design/10-inspector/frame-selected",
     "inspector/multi": "design/10-inspector/multi-select",
+    "inspector/multi-elements": "design/10-inspector/multi-elements",
     "inspector/preview": "design/10-inspector/frame-preview",
     "inspector/preview-active": "design/10-inspector/frame-preview-active",
     "inspector/position": "design/10-inspector/inspector-position",
