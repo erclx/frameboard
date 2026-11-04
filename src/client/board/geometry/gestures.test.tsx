@@ -262,7 +262,7 @@ function setup(
   }
   const viewport = part('[data-viewport]')
   const origin = viewport.getBoundingClientRect()
-  const detach = attachGestures(
+  const { detach, cursorAt } = attachGestures(
     part('[data-hit-layer]'),
     {
       viewport,
@@ -355,6 +355,8 @@ function setup(
     part,
     pointer,
     detach,
+    cursorOver: (x: number, y: number, over?: HTMLElement) =>
+      cursorAt(pointer.at(x, y, over)),
   }
 }
 
@@ -390,6 +392,13 @@ class Pointer {
     this.down(...from, init)
     this.move(...to, init)
     this.up(...to, init)
+  }
+
+  /** A move at this point, dispatched on `over`, the hit layer unless another element is on top. */
+  at(x: number, y: number, over: HTMLElement = this.hit) {
+    const event = this.event('pointermove', x, y, {})
+    over.dispatchEvent(event)
+    return event
   }
 
   private event(type: string, x: number, y: number, init: MouseEventInit) {
@@ -441,6 +450,191 @@ describe('attachGestures', () => {
       pointer.drag([148, 88], [248, 188])
 
       expect([clicks, writes]).toEqual([[], []])
+    })
+  })
+
+  describe('the cursor over a corner mark', () => {
+    const SECTION: SectionRecord = {
+      name: 'flow',
+      box: { x: 60, y: 60, width: 300, height: 300 },
+      order: 0,
+      frames: ['left'],
+    }
+    const ELEMENT: ElementKey = { frame: LEFT.ref, index: 3, hash: 'abc' }
+    const ELEMENT_BOX = { x: 150, y: 150, width: 100, height: 40 }
+
+    it.each([
+      ['se', 300, 300, 'nwse-resize'],
+      ['nw', 100, 100, 'nwse-resize'],
+      ['ne', 300, 100, 'nesw-resize'],
+      ['sw', 100, 300, 'nesw-resize'],
+    ] as const)(
+      'takes the %s handle of a selected frame',
+      (_, x, y, cursor) => {
+        const canvas = setup()
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        expect(canvas.cursorOver(x, y)).toBe(cursor)
+      },
+    )
+
+    it('answers nothing off the marks', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(canvas.cursorOver(200, 200)).toBeNull()
+    })
+
+    it('answers nothing over an unselected frame', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(canvas.cursorOver(600, 300)).toBeNull()
+    })
+
+    it('takes the mark of an element that resizes', () => {
+      const canvas = setup(undefined, {
+        elementBox: ELEMENT_BOX,
+        shape: 'free',
+      })
+      detach = canvas.detach
+      act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+      expect(canvas.cursorOver(250, 190)).toBe('nwse-resize')
+    })
+
+    it('answers nothing over the corner of an element that takes no resize, as a rotated one does', () => {
+      const canvas = setup(undefined, { elementBox: ELEMENT_BOX })
+      detach = canvas.detach
+      act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+      expect(canvas.cursorOver(250, 190)).toBeNull()
+    })
+
+    it("leaves the frame's handle out while an element inside is selected", () => {
+      const canvas = setup(undefined, {
+        elementBox: ELEMENT_BOX,
+        shape: 'free',
+      })
+      detach = canvas.detach
+      act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+      expect(canvas.cursorOver(300, 300)).toBeNull()
+    })
+
+    it('takes the corner of a selected section', () => {
+      const canvas = setup(undefined, { sections: [SECTION] })
+      detach = canvas.detach
+      act(() => selectSection(selectionStore, PAGE, 'flow'))
+
+      expect(canvas.cursorOver(360, 60)).toBe('nesw-resize')
+    })
+
+    it('answers nothing over a section corner while it is unselected', () => {
+      const canvas = setup(undefined, { sections: [SECTION] })
+      detach = canvas.detach
+
+      expect(canvas.cursorOver(360, 60)).toBeNull()
+    })
+
+    it('answers nothing over the handle of a locked frame, which never resizes', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LOCKED.ref]))
+
+      expect(canvas.cursorOver(300, 500)).toBeNull()
+    })
+
+    it('answers nothing in a tab that cannot write', () => {
+      const canvas = setup(undefined, { canWrite: false })
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(canvas.cursorOver(300, 300)).toBeNull()
+    })
+
+    it('leaves an armed tool its own cursor', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+      canvas.mode.setState({ tool: 'frame' })
+
+      expect(canvas.cursorOver(300, 300)).toBeNull()
+    })
+
+    it('leaves held Space its own cursor', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+      canvas.mode.setState({ spacePan: true })
+
+      expect(canvas.cursorOver(300, 300)).toBeNull()
+    })
+
+    it('leaves a label control over the corner to its click', () => {
+      const canvas = setup(undefined, {
+        control: {
+          box: { x: 290, y: 90, width: 20, height: 20 },
+          onClick: () => {},
+        },
+      })
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(canvas.cursorOver(300, 100)).toBeNull()
+    })
+
+    it('leaves a card drawn over the corner its own cursor, since a press there reaches no mark', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      expect(
+        canvas.cursorOver(300, 300, canvas.part('[data-notes-layer]')),
+      ).toBeNull()
+    })
+
+    it('holds through a resize drag that outruns the mark, until release', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      canvas.pointer.down(300, 300)
+      canvas.pointer.move(380, 360)
+      const during = canvas.cursorOver(380, 360)
+      canvas.pointer.up(380, 360)
+
+      expect(during).toBe('nwse-resize')
+      expect(canvas.cursorOver(700, 500)).toBeNull()
+    })
+
+    it('holds through a drag of a section corner', () => {
+      const canvas = setup(undefined, { sections: [SECTION] })
+      detach = canvas.detach
+      act(() => selectSection(selectionStore, PAGE, 'flow'))
+
+      canvas.pointer.down(360, 360)
+      canvas.pointer.move(420, 400)
+      const during = canvas.cursorOver(420, 400)
+      canvas.pointer.up(420, 400)
+
+      expect(during).toBe('nwse-resize')
+    })
+
+    it("stays off while a marquee crosses a selected frame's handle", () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      canvas.pointer.down(50, 50)
+      canvas.pointer.move(100, 100)
+      const during = canvas.cursorOver(100, 100)
+      canvas.pointer.up(100, 100)
+
+      expect(during).toBeNull()
     })
   })
 
@@ -634,7 +828,10 @@ describe('attachGestures', () => {
 
     it("takes a press on its name over a frame's label strip", () => {
       // RIGHT's label strip reaches above its top edge, over this name.
-      const above = { ...FLOW, box: { x: 390, y: 80, width: 300, height: 300 } }
+      const above = {
+        ...FLOW,
+        box: { x: 390, y: 80, width: 300, height: 300 },
+      }
       const canvas = setup(undefined, { sections: [above] })
       detach = canvas.detach
 
@@ -647,7 +844,10 @@ describe('attachGestures', () => {
     })
 
     it('leaves a press on a frame over its name to the frame', () => {
-      const under = { ...FLOW, box: { x: 390, y: 90, width: 300, height: 300 } }
+      const under = {
+        ...FLOW,
+        box: { x: 390, y: 90, width: 300, height: 300 },
+      }
       const canvas = setup(undefined, { sections: [under] })
       detach = canvas.detach
 

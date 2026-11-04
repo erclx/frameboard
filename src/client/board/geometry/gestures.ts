@@ -43,6 +43,7 @@ import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
 import {
   badgeAt,
   cornerAt,
+  cornerCursor,
   drawnAt,
   frameAt,
   framesIn,
@@ -182,6 +183,18 @@ type Gesture =
   /** A drag that may not change anything, such as one on a locked frame. */
   | { kind: 'none' }
 
+/** A corner mark that takes a press, and what the press needs from it. */
+type Mark =
+  | {
+      kind: 'element'
+      key: ElementKey
+      corner: Corner
+      box: Box
+      read: ResizeRead
+    }
+  | { kind: 'section'; section: SectionRecord; corner: Corner }
+  | { kind: 'frame'; corner: Corner }
+
 /**
  * Binds the Move tool's pointer gestures to the hit layer over the frames,
  * on `d3-drag` beside the viewport's `d3-zoom`. A click selects, Shift-click
@@ -189,13 +202,18 @@ type Gesture =
  * resizes it, and a drag on empty canvas draws a marquee. A move released
  * with Alt held copies the frames at the drop instead. A drag writes the
  * frames and the overlay straight from its handler and sends one write on
- * release. Returns the function that unbinds them.
+ * release. Returns the function that unbinds them, and `cursorAt`, which
+ * answers the resize cursor a pointer event's position takes, null where a
+ * press there would not resize.
  */
 export function attachGestures(
   hit: HTMLElement,
   target: GestureTarget,
   stores: GestureStores = STORES,
-): () => void {
+): {
+  detach: () => void
+  cursorAt: (event: MouseEvent) => ReturnType<typeof cornerCursor> | null
+} {
   const { selection, mode } = stores
   let gesture: Gesture = { kind: 'none' }
   let from: Point = { x: 0, y: 0 }
@@ -295,6 +313,89 @@ export function attachGestures(
     })
   }
 
+  /** The press a label control, a split divider, or a findings badge takes, ahead of any mark. */
+  const chromeAt = (event: MouseEvent): Gesture | null => {
+    const control = drawnAt(target.layer, '[data-label-control]', event)
+    if (control) return { kind: 'control', element: control }
+    if (drawnAt(target.layer, '[data-compare-divider]', event)) {
+      return { kind: 'divider' }
+    }
+    const badge = badgeAt(target.layer, event)
+    return badge ? { kind: 'badge', ref: badge } : null
+  }
+
+  /**
+   * The corner mark a press at this point takes, null when it takes none.
+   * Only an element that takes a resize answers from its marks. Any other
+   * press on the selected element, a container's or a divider's corners
+   * included, carries it on a drag, since they are sized by what they hold or
+   * by their line. The frame's handles are hidden while an element is
+   * selected, so they answer nothing then.
+   */
+  const markAt = (
+    event: MouseEvent,
+    point: Point,
+    drawn: readonly FrameRecord[],
+  ): Mark | null => {
+    const element = selection.getState().element
+    const outline = element ? selectedElementBox(target.layer) : null
+    if (element && outline) {
+      const corner = cornerAt(outline, point, zoom())
+      const read = corner ? stores.resizeOf(target.layer, element) : null
+      if (corner && read) {
+        return { kind: 'element', key: element, corner, box: outline, read }
+      }
+      if (onOutline(outline, point, zoom()) || inBox(outline, point)) {
+        return null
+      }
+    }
+    // The selected section's corners sit over its frames, as a frame's handles do.
+    const held = sectionNamed(
+      selection.getState().page === target.page
+        ? selection.getState().section
+        : undefined,
+    )
+    const sectionCorner = held
+      ? drawnAt(target.layer, '[data-section-corner]', event)
+      : null
+    if (held && sectionCorner) {
+      return {
+        kind: 'section',
+        section: held,
+        corner: sectionCorner.dataset.sectionCorner as Corner,
+      }
+    }
+    const shown = boundsOf(selected(drawn).map((frame) => frame.box))
+    const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
+    return corner ? { kind: 'frame', corner } : null
+  }
+
+  const moveToolOn = () => {
+    const { mode: current, tool, spacePan } = mode.getState()
+    return current === 'edit' && tool === 'move' && !spacePan
+  }
+
+  const cursorAt = (event: MouseEvent) => {
+    // A drag outruns the marks' reach, so it holds the corner it took.
+    if (last && moved) {
+      return 'corner' in gesture ? cornerCursor(gesture.corner) : null
+    }
+    if (!moveToolOn() || !stores.canWrite()) return null
+    // A card over the mark takes the press itself, so its move bubbles here
+    // with nothing to resize.
+    if (event.target !== hit) return null
+    const mark = markAt(event, toCanvas(event), withDrawn(target.frames()))
+    if (!mark) return null
+    // `begin` turns a press on a locked frame's handle into no drag.
+    if (
+      mark.kind === 'frame' &&
+      selected(target.frames()).some((f) => f.locked)
+    ) {
+      return null
+    }
+    return chromeAt(event) ? null : cornerCursor(mark.corner)
+  }
+
   const start = (event: MouseEvent) => {
     // A press hits the frames where they draw, previewed widths included,
     // and a drag writes from their boxes, which a preview never reaches.
@@ -308,41 +409,19 @@ export function attachGestures(
     leaving = field !== null
     // Blurring here applies the field's edit before any drag writes.
     field?.blur()
-    const control = drawnAt(target.layer, '[data-label-control]', event)
-    if (control) {
-      gesture = { kind: 'control', element: control }
+    const chrome = chromeAt(event)
+    if (chrome) {
+      gesture = chrome
+      if (chrome.kind === 'divider') stores.splitAt(event.clientX)
       return
     }
-    if (drawnAt(target.layer, '[data-compare-divider]', event)) {
-      gesture = { kind: 'divider' }
-      stores.splitAt(event.clientX)
+    const mark = markAt(event, point, drawn)
+    if (mark?.kind === 'element') {
+      gesture = { ...mark, kind: 'corner' }
       return
     }
-    const badge = badgeAt(target.layer, event)
-    if (badge) {
-      gesture = { kind: 'badge', ref: badge }
-      return
-    }
-    // A press on a corner mark resizes an element that takes one. Any other
-    // press on the selected element, a container's or a divider's corners
-    // included, carries it on a drag, since they are sized by what they hold
-    // or by their line. The frame's handles are hidden while an element is
-    // selected, so they take no press.
     const element = selection.getState().element
     const outline = element ? selectedElementBox(target.layer) : null
-    const mark = outline ? cornerAt(outline, point, zoom()) : null
-    const read =
-      element && outline && mark ? stores.resizeOf(target.layer, element) : null
-    if (element && outline && mark && read) {
-      gesture = {
-        kind: 'corner',
-        key: element,
-        corner: mark,
-        box: outline,
-        read,
-      }
-      return
-    }
     if (element && outline) {
       const edge = onOutline(outline, point, zoom())
       if (edge || inBox(outline, point)) {
@@ -357,30 +436,19 @@ export function attachGestures(
         return
       }
     }
-    // The selected section's corners sit over its frames, as a frame's handles do.
-    const held = sectionNamed(
-      selection.getState().page === target.page
-        ? selection.getState().section
-        : undefined,
-    )
-    const sectionCorner = held
-      ? drawnAt(target.layer, '[data-section-corner]', event)
-      : null
-    if (held && sectionCorner) {
-      gesture = {
-        kind: 'section-resize',
-        section: held,
-        corner: sectionCorner.dataset.sectionCorner as Corner,
-        moved: false,
-      }
+    if (mark?.kind === 'section') {
+      gesture = { ...mark, kind: 'section-resize', moved: false }
       return
     }
-    const shown = boundsOf(selected(drawn).map((frame) => frame.box))
-    const corner = shown && !element ? cornerAt(shown, point, zoom()) : null
     const chosen = selected(withPending(target.frames()))
     const bounds = boundsOf(chosen.map((frame) => frame.box))
-    if (bounds && corner) {
-      gesture = { kind: 'resize', corner, boxes: boxesOf(chosen), bounds }
+    if (bounds && mark?.kind === 'frame') {
+      gesture = {
+        kind: 'resize',
+        corner: mark.corner,
+        boxes: boxesOf(chosen),
+        bounds,
+      }
       return
     }
     // A ghost shows an element past its frame's edge, which a press selects
@@ -906,13 +974,8 @@ export function attachGestures(
     .container(() => target.viewport)
     // The primary button alone, and a Ctrl-press too, since Ctrl turns
     // snapping off rather than meaning a right-click here.
-    .filter((event: MouseEvent) => {
-      const { mode: current, tool, spacePan } = mode.getState()
-      // Held Space hands the drag to the viewport's pan.
-      return (
-        event.button === 0 && current === 'edit' && tool === 'move' && !spacePan
-      )
-    })
+    // Held Space hands the drag to the viewport's pan.
+    .filter((event: MouseEvent) => event.button === 0 && moveToolOn())
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {
       start(event.sourceEvent)
@@ -954,12 +1017,15 @@ export function attachGestures(
   const selectionOfHit = d3Select(hit)
   selectionOfHit.call(behavior)
   hit.addEventListener('contextmenu', noMenu)
-  return () => {
-    selectionOfHit.on('.drag', null)
-    hit.removeEventListener('contextmenu', noMenu)
-    removeEventListener('keydown', onEscape, true)
-    removeEventListener('keydown', onKey)
-    removeEventListener('keyup', onKey)
+  return {
+    detach: () => {
+      selectionOfHit.on('.drag', null)
+      hit.removeEventListener('contextmenu', noMenu)
+      removeEventListener('keydown', onEscape, true)
+      removeEventListener('keydown', onKey)
+      removeEventListener('keyup', onKey)
+    },
+    cursorAt,
   }
 }
 

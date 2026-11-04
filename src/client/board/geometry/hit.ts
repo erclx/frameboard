@@ -29,6 +29,11 @@ export function cornerAt(
   return null
 }
 
+/** The CSS cursor a corner's drag takes, along that corner's diagonal. */
+export function cornerCursor(corner: Corner): 'nwse-resize' | 'nesw-resize' {
+  return corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize'
+}
+
 /**
  * Whether a canvas point sits within reach of a box's edges, which is where
  * the selected element's outline and corner marks draw.

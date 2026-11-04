@@ -15,7 +15,7 @@ import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { endPreview, setPreview } from './preview/store'
-import { clear, selectionStore, selectSection } from './selection'
+import { clear, select, selectionStore, selectSection } from './selection'
 import {
   createClipboardStore,
   renamingFrame,
@@ -156,7 +156,7 @@ describe('Canvas', () => {
   afterEach(() => {
     if (vi.isFakeTimers()) vi.runOnlyPendingTimers()
     vi.useRealTimers()
-    modeStore.setState({ mode: 'edit', tool: 'move' })
+    modeStore.setState({ mode: 'edit', tool: 'move', spacePan: false })
     setCharacterKeys(true)
     liveStore.setState({ canWrite: false })
     clear(selectionStore)
@@ -624,6 +624,72 @@ describe('Canvas', () => {
           container.querySelector('[data-frame="studio/home/near"] iframe'),
         ).not.toBeNull()
       })
+  })
+
+  describe('the cursor over a corner mark', () => {
+    const selectedFrame = () => {
+      liveStore.setState({ canWrite: true })
+      select(selectionStore, 'studio/home', ['studio/home/hero'])
+      const { container } = renderCanvas(
+        page('studio/home', [
+          frame('hero', { x: 0, y: 0, width: 200, height: 200 }),
+        ]),
+      )
+      const part = (selector: string) => {
+        const found = container.querySelector<HTMLElement>(selector)
+        if (!found) throw new Error(`no ${selector}`)
+        return found
+      }
+      const viewport = part('[data-canvas]')
+      const { left, top, width, height } =
+        part('[data-handle="se"]').getBoundingClientRect()
+      part('[data-hit-layer]').dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: left + width / 2,
+          clientY: top + height / 2,
+        }),
+      )
+      return viewport
+    }
+
+    it('shows on the canvas while the pointer is over the mark', () => {
+      const viewport = selectedFrame()
+
+      expect(getComputedStyle(viewport).cursor).toBe('nwse-resize')
+    })
+
+    it('clears when the pointer leaves the canvas', () => {
+      const viewport = selectedFrame()
+
+      viewport.dispatchEvent(new PointerEvent('pointerleave'))
+
+      expect(viewport.style.cursor).toBe('')
+    })
+
+    it('hands back to a tool armed with the pointer still over the mark', () => {
+      const viewport = selectedFrame()
+
+      act(() => modeStore.setState({ tool: 'frame' }))
+
+      expect(getComputedStyle(viewport).cursor).toBe('crosshair')
+    })
+
+    it('hands back to held Space with the pointer still over the mark', () => {
+      const viewport = selectedFrame()
+
+      act(() => modeStore.setState({ spacePan: true }))
+
+      expect(getComputedStyle(viewport).cursor).toBe('grab')
+    })
+
+    it('clears as Play lifts the hit layer', () => {
+      const viewport = selectedFrame()
+
+      act(() => modeStore.setState({ mode: 'play' }))
+
+      expect(viewport.style.cursor).toBe('')
+    })
   })
 
   describe('a section', () => {
