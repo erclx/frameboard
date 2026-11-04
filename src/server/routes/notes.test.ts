@@ -1,8 +1,17 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { writeAuthorName } from '@/server/author'
 import { createDispatcher } from '@/server/notes/dispatch'
 import { queuedFor } from '@/server/notes/store'
 import type { Note } from '@/shared/records/notes'
@@ -511,6 +520,73 @@ describe('notesRoutes', () => {
       )
 
       expect(response.status).toBe(200)
+    })
+  })
+
+  describe('signing', () => {
+    let config: string
+
+    /**
+     * Points the saved name into a temporary folder and shuts out the
+     * machine's git config, so no test reads or writes the developer's own
+     * name.
+     */
+    beforeEach(() => {
+      config = mkdtempSync(join(tmpdir(), 'frameboard-config-'))
+      vi.stubEnv('XDG_CONFIG_HOME', config)
+      vi.stubEnv('GIT_CONFIG_GLOBAL', join(config, 'no-global'))
+      vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1')
+      vi.stubEnv('GIT_DIR', undefined)
+    })
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      rmSync(config, { recursive: true, force: true })
+    })
+
+    function authorOnDisk(id: string): string | null | undefined {
+      return onDisk().find((note) => note.id === id)?.author
+    }
+
+    it('signs a pinned note with the saved name', async () => {
+      await writeAuthorName('Grace Hopper')
+
+      const note = await pinned()
+
+      expect(note.author).toBe('Grace Hopper')
+      expect(authorOnDisk(note.id)).toBe('Grace Hopper')
+    })
+
+    it('signs a reply with the saved name', async () => {
+      const root = await pinned()
+      await writeAuthorName('Grace Hopper')
+
+      const response = await post(`/api/notes/${root.id}/replies`, {
+        text: 'Looks right',
+      })
+      const { note: reply } = (await response.json()).data
+
+      expect(reply.author).toBe('Grace Hopper')
+      expect(authorOnDisk(reply.id)).toBe('Grace Hopper')
+    })
+
+    it('signs with the saved name over a git name', async () => {
+      const gitConfig = join(config, 'gitconfig')
+      writeFileSync(gitConfig, '[user]\n\tname = Ada Lovelace\n')
+      vi.stubEnv('GIT_CONFIG_GLOBAL', gitConfig)
+      await writeAuthorName('Grace Hopper')
+
+      const note = await pinned()
+
+      expect(note.author).toBe('Grace Hopper')
+      expect(authorOnDisk(note.id)).toBe('Grace Hopper')
+    })
+
+    it('leaves the author null with no saved name and no git name', async () => {
+      const note = await pinned()
+
+      expect(note.author).toBeNull()
+      expect(authorOnDisk(note.id)).toBeNull()
     })
   })
 })
