@@ -46,4 +46,6 @@ The public page in `web/` follows, a separate project from the board.
 
 A frame is drawn on the design board at `.canon/board` in the main worktree. Only `bun run design:sync` writes it here, capturing each frame `frames.json` maps.
 
-`bun run design:sync --check` fails on a changed frame or kit file and on a missing or stray file. It only warns on a PNG whose bytes differ, since the HTML is the source and a PNG varies with the browser build.
+`bun run design:sync --check` fails on a changed frame or asset file and on a missing or stray file. It only warns on a PNG whose bytes differ, since the HTML is the source and a PNG varies with the browser build.
+
+The assets a frame loads sit under `assets/<project>/`, one subtree per board project.
