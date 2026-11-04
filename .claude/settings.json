@@ -4,7 +4,11 @@
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
   },
   "permissions": {
-    "deny": ["Agent", "Task", "Bash(canon pr merge:*)", "Bash(gh pr merge:*)"]
+    "deny": ["Agent", "Task", "Bash(canon pr merge:*)", "Bash(gh pr merge:*)"],
+    "allow": [
+      "Bash(git push --force-with-lease)",
+      "Bash(git push --force-with-lease origin HEAD)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
