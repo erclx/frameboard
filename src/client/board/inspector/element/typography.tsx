@@ -262,7 +262,7 @@ interface TypePickerProps {
 }
 
 /** A menu of named values with the current one checked, for the family and the weight. */
-function TypePicker({
+export function TypePicker({
   label,
   shown,
   current,

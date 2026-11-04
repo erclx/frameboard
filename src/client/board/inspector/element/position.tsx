@@ -3,12 +3,12 @@ import { cn } from '@/client/lib/cn'
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import type { FreeSpot } from '../../place/write'
 import { NumberField } from '../number-field'
-import type { Placement } from './styles'
+import { freeSpot, type Placement } from './styles'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-const FREE_TIP = 'Free positions it inside its parent'
+export const FREE_TIP = 'Free positions it inside its parent'
 
 interface PositionSectionProps {
   placement: Placement
@@ -39,20 +39,10 @@ export function PositionSection({
   place,
   hugs = false,
 }: PositionSectionProps) {
-  const { free, left, top, width, height, wordsLeft } = placement
-  const placedLeft = hugs && wordsLeft !== null ? wordsLeft : left
+  const { free, left, top } = placement
   const choose = (next: boolean) => {
     if (next === free) return
-    void place(
-      next
-        ? {
-            left: placedLeft,
-            top,
-            ...(width === null ? {} : { width }),
-            ...(height === null ? {} : { height }),
-          }
-        : null,
-    )
+    void place(next ? freeSpot(placement, hugs) : null)
   }
   const options = [
     { label: 'In flow', on: !free, value: false },

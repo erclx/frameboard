@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
-import type { FrameStyles } from '@/shared/records/elements'
+import type { FrameStyles, StyleValue } from '@/shared/records/elements'
 
 import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
+import type { FreeSpot } from '../../place/write'
 import type { ElementKey } from '../../selection'
 
 /** What the inspector reads off the live element, as the browser computed it. */
@@ -72,6 +73,22 @@ export interface Placement {
   inline: { width: string; height: string }
   /** The `left` a box shrunk to its words would take, for text alone in the flow, else null. */
   wordsLeft: number | null
+}
+
+/**
+ * The spot Free places an element at, where it renders at the size it renders
+ * at, its left taken from its words when `hugs` says no length sizes its width.
+ */
+export function freeSpot(
+  { left, top, width, height, wordsLeft }: Placement,
+  hugs: boolean,
+): FreeSpot {
+  return {
+    left: hugs && wordsLeft !== null ? wordsLeft : left,
+    top,
+    ...(width === null ? {} : { width }),
+    ...(height === null ? {} : { height }),
+  }
 }
 
 /** How a container lays out what it holds, as the Layout section names it. */
@@ -166,6 +183,110 @@ export function useLiveElement(key: ElementKey | null): LiveElement | null {
   }, [frame, index, hash, at])
 
   return held?.at === at ? held.live : null
+}
+
+/** One of several selected elements: its key, its live reading, and its static styles once they answer. */
+export interface ElementMember {
+  key: ElementKey
+  live: LiveElement
+  styles: FrameStyles | null
+}
+
+/**
+ * Each of several selected elements as its frame's live iframe renders it, and
+ * its static styles, read again on every load of that frame. The last reading
+ * of the same elements is kept while the frame shows older bytes than their
+ * hash, as `useLiveElement` keeps one's. Null until the frame shows them all.
+ */
+export function useElementMembers(
+  keys: readonly ElementKey[],
+): ElementMember[] | null {
+  const [first] = keys
+  const frame = first?.frame
+  const hash = first?.hash
+  const at = `${frame}:${keys.map(({ index }) => index).join(',')}`
+  const [held, setHeld] = useState<{
+    at: string
+    members: { key: ElementKey; live: LiveElement }[]
+  } | null>(null)
+  const [styled, setStyled] = useState<{
+    at: string
+    styles: (FrameStyles | null)[]
+  } | null>(null)
+
+  useEffect(() => {
+    if (frame === undefined) return
+    const indexes = at
+      .slice(at.lastIndexOf(':') + 1)
+      .split(',')
+      .map(Number)
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `[data-frame="${CSS.escape(frame)}"] iframe`,
+    )
+    if (!iframe) return
+    const read = () => {
+      const doc = iframe.contentDocument
+      const view = doc?.defaultView
+      if (!doc || !view || hash === undefined || renderedHash(doc) !== hash) {
+        return
+      }
+      const members = indexes.flatMap((index) => {
+        const target = elementAt(doc, index)
+        return target
+          ? [{ key: { frame, index, hash }, live: readLive(target, view) }]
+          : []
+      })
+      if (members.length === indexes.length) setHeld({ at, members })
+    }
+    read()
+    iframe.addEventListener('load', read)
+    return () => iframe.removeEventListener('load', read)
+  }, [frame, hash, at])
+
+  useEffect(() => {
+    if (frame === undefined) return
+    const indexes = at
+      .slice(at.lastIndexOf(':') + 1)
+      .split(',')
+      .map(Number)
+    let current = true
+    void Promise.all(
+      indexes.map((index) => fetchStyles(frame, index).catch(() => null)),
+    ).then((styles) => {
+      if (current) setStyled({ at, styles })
+    })
+    return () => {
+      current = false
+    }
+  }, [frame, hash, at])
+
+  if (held?.at !== at) return null
+  return held.members.map((member, order) => ({
+    ...member,
+    // The key the selection holds, which a write's rehash leads the reading.
+    key: keys[order] ?? member.key,
+    styles: styled?.at === at ? (styled.styles[order] ?? null) : null,
+  }))
+}
+
+/** The one value they all hold, or null where they differ, which a field reads as `Mixed`. */
+export function sharedValue<T>(values: readonly T[]): T | null {
+  const [first] = values
+  return first !== undefined && values.every((value) => value === first)
+    ? first
+    : null
+}
+
+/** Colors from several reads as one list, each once, by its token or value and its percent. */
+export function mergeColors(
+  lists: readonly (readonly StyleValue[])[],
+): StyleValue[] {
+  const merged = new Map<string, StyleValue>()
+  for (const color of lists.flat()) {
+    const key = `${color.token ?? color.value.toLowerCase()}:${color.percent}`
+    if (!merged.has(key)) merged.set(key, color)
+  }
+  return [...merged.values()]
 }
 
 /**

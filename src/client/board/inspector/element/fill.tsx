@@ -8,15 +8,22 @@ import type { Theme } from '@/shared/theme'
 import { ColorRow } from './color-row'
 import type { PreviewStyle, WriteElement } from './write'
 
-interface ColorSectionProps {
+export interface ColorSectionProps {
   title: string
+  /** Set beside the title, as the count of members holding it. */
+  note?: ReactNode
   /** Labels the `+`, which is disabled while it has nothing to add. */
   add: { label: string; disabled: boolean; onAdd: () => void }
   children: ReactNode
 }
 
 /** A section headed by its title and a `+`, as Fill and Stroke draw it. */
-export function ColorSection({ title, add, children }: ColorSectionProps) {
+export function ColorSection({
+  title,
+  note,
+  add,
+  children,
+}: ColorSectionProps) {
   const id = `inspector-${title.toLowerCase()}`
   return (
     <section
@@ -26,6 +33,7 @@ export function ColorSection({ title, add, children }: ColorSectionProps) {
       <div className="flex items-center justify-between">
         <h2 id={id} className="text-xs font-semibold">
           {title}
+          {note}
         </h2>
         <button
           type="button"

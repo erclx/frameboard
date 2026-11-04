@@ -2947,6 +2947,215 @@ describe('writeElement', () => {
   })
 })
 
+describe('InspectorPanel with several elements selected', () => {
+  const HASH = 'c'.repeat(64)
+  const HERO = frameOf('hero', {
+    box: { x: 0, y: 0, width: 400, height: 300 },
+  })
+  let layer: HTMLDivElement | undefined
+  const sent: unknown[] = []
+
+  // Past the skipped injected style: html 0, head 1, body 2, then h1 3, div 4, div 5.
+  const BODY =
+    '<h1 style="opacity:0.5;border-radius:4px">Title</h1><div style="opacity:0.5;border-radius:8px;width:20px;height:20px"></div><div style="opacity:0.5;width:30px;height:20px"></div>'
+
+  async function mountAndSelect(indexes: readonly number[]) {
+    layer = document.createElement('div')
+    const frame = document.createElement('div')
+    frame.dataset.frame = HERO.ref
+    const iframe = document.createElement('iframe')
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    )
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body>${BODY}</body></html>`
+    frame.append(iframe)
+    layer.append(frame)
+    document.body.append(layer)
+    await loaded
+    act(() =>
+      selectElements(
+        selectionStore,
+        'studio/home',
+        indexes.map((index) => ({ frame: HERO.ref, index, hash: HASH })),
+      ),
+    )
+    render(
+      <TooltipProvider>
+        <InspectorPanel />
+      </TooltipProvider>,
+    )
+    await screen.findByRole('region', { name: 'Position' })
+  }
+
+  const headings = () =>
+    screen.getAllByRole('heading').map((heading) => heading.textContent)
+
+  beforeEach(() => {
+    sent.length = 0
+    receiveBoard(liveStore, boardOf(pageOf([HERO])))
+    liveStore.setState({ canWrite: true })
+    vi.stubGlobal(
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes('/styles')) {
+          return Response.json({
+            ok: true,
+            data: {
+              ref: HERO.ref,
+              hash: HASH,
+              colors: url.includes('index=3')
+                ? [{ value: '#111111', token: null, percent: 100 }]
+                : [{ value: '#222222', token: null, percent: 100 }],
+              element: url.includes('index=3')
+                ? {
+                    color: { value: '#111111', token: null, percent: 100 },
+                    backgroundColor: null,
+                    borderColor: null,
+                    boxShadow: null,
+                  }
+                : url.includes('index=4')
+                  ? {
+                      color: null,
+                      backgroundColor: {
+                        value: '#222222',
+                        token: null,
+                        percent: 100,
+                      },
+                      borderColor: null,
+                      boxShadow: null,
+                    }
+                  : null,
+            },
+          })
+        }
+        if (url.includes('/api/frames/edit')) {
+          sent.push(JSON.parse(String(init?.body)))
+          return Response.json({
+            ok: true,
+            data: {
+              ref: HERO.ref,
+              index: 5,
+              indexes: [],
+              hash: 'd'.repeat(64),
+              from: HASH,
+            },
+          })
+        }
+        return Response.json({ ok: false })
+      },
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    act(() => clear(selectionStore))
+    layer?.remove()
+    layer = undefined
+  })
+
+  it('heads the panel with the count and the frame, over every section any member has', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    expect(headings().slice(0, 5)).toEqual([
+      '3 elements',
+      'Position',
+      'Layout',
+      'Appearance',
+      'Typography · 1 of 3',
+    ])
+    expect(screen.getByText('in hero')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Frame' })).toBeNull()
+  })
+
+  it('shows a shared value, and Mixed where they differ', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    expect(screen.getByRole('textbox', { name: 'Opacity' })).toHaveValue('50%')
+    const radius = screen.getByRole('textbox', { name: 'Corner radius' })
+    expect(radius).toHaveValue('')
+    expect(radius).toHaveAttribute('placeholder', 'Mixed')
+  })
+
+  it('leaves Typography out when no member holds text', async () => {
+    await mountAndSelect([4, 5])
+
+    expect(headings()).not.toContain('Typography')
+  })
+
+  it('counts the members holding a fill, once their styles answer', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    await waitFor(() => expect(headings()).toContain('Fill · 2 of 3'))
+    expect(
+      screen.getByRole('button', { name: 'Fill token' }),
+    ).toHaveTextContent('Mixed')
+  })
+
+  it('merges the members’ colors in Selection colors', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    expect(await screen.findByText('111111')).toBeInTheDocument()
+    expect(screen.getByText('222222')).toBeInTheDocument()
+  })
+
+  it('sends a typed value to every member as one edit', async () => {
+    await mountAndSelect([3, 4])
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('textbox', { name: 'Opacity' }))
+    await user.keyboard('25{Enter}')
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toEqual({
+      ref: HERO.ref,
+      hash: HASH,
+      edits: [3, 4].map((index) => ({
+        index,
+        change: { kind: 'style', property: 'opacity', value: '0.25' },
+      })),
+    })
+  })
+
+  it('moves each member by a step from its own on a Mixed field', async () => {
+    await mountAndSelect([3, 4])
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('textbox', { name: 'Corner radius' }))
+    await user.keyboard('{ArrowUp}')
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      edits: [
+        { index: 3, change: { property: 'border-radius', value: '5px' } },
+        { index: 4, change: { property: 'border-radius', value: '9px' } },
+      ],
+    })
+  })
+
+  it('writes Typography on the members holding text alone', async () => {
+    await mountAndSelect([3, 4, 5])
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('textbox', { name: 'Font size' }))
+    await user.keyboard('18{Enter}')
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      edits: [{ index: 3, change: { property: 'font-size', value: '18px' } }],
+    })
+  })
+
+  it('disables the fields while the tab may not write', async () => {
+    liveStore.setState({ canWrite: false })
+
+    await mountAndSelect([3, 4])
+
+    expect(screen.getByRole('textbox', { name: 'Opacity' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Free' })).toBeDisabled()
+  })
+})
+
 describe('InspectorPanel with an element selected', () => {
   const HASH = 'c'.repeat(64)
   const HERO = frameOf('hero', {

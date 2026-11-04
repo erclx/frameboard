@@ -24,10 +24,12 @@ import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
 import { PositionSection } from './element/position'
+import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
 import { StrokeSection } from './element/stroke'
 import {
   fetchStyles,
+  mergeColors,
   previewStyle,
   useFrameStyles,
   useLiveBody,
@@ -48,7 +50,8 @@ import { SelectionColors } from './selection-colors'
  * selected frame with its Fill and Export, or the `N frames` section and
  * Arrange for several, each ending on the colors they use, and a hint while
  * nothing is selected. An element selected inside the frame adds its
- * sections under Frame, whose name row it hides. A tab that reads opens the
+ * sections under Frame, whose name row it hides, and several selected inside
+ * the frame take the panel with their shared sections. A tab that reads opens the
  * panel on one View only line, since every field under it reads greyed.
  */
 export function InspectorPanel() {
@@ -64,6 +67,7 @@ export function InspectorPanel() {
   const page = useSelection((state) => state.page)
   const refs = useSelection((state) => state.frames)
   const element = useSelection((state) => state.element ?? null)
+  const elements = useSelection((state) => state.elements)
   const shown = useLive((state) =>
     state.board?.projects
       .flatMap((project) => project.pages)
@@ -73,6 +77,7 @@ export function InspectorPanel() {
     shown?.frames.filter((frame) => refs.includes(frame.ref)) ?? [],
   )
   const inFrame = element && frames.length === 1 ? element : null
+  const several = inFrame && (elements?.length ?? 0) > 1 ? elements : undefined
   return (
     <aside
       aria-label="Inspector"
@@ -93,6 +98,8 @@ export function InspectorPanel() {
       ) : null}
       {framing ? (
         <PresetSection />
+      ) : page && several && frames[0] ? (
+        <SeveralElements page={page} frame={frames[0]} elements={several} />
       ) : page && frames.length > 0 ? (
         <>
           <FrameSection page={page} frames={frames} named={!inFrame} />
@@ -342,12 +349,10 @@ function FramesColors({
       refs.split('\n').map((ref) => fetchStyles(ref).catch(() => null)),
     ).then((answers) => {
       if (!current) return
-      const merged = new Map<string, StyleValue>()
-      for (const color of answers.flatMap((answer) => answer?.colors ?? [])) {
-        const key = `${color.token ?? color.value.toLowerCase()}:${color.percent}`
-        if (!merged.has(key)) merged.set(key, color)
-      }
-      setHeld({ refs, colors: [...merged.values()] })
+      setHeld({
+        refs,
+        colors: mergeColors(answers.map((answer) => answer?.colors ?? [])),
+      })
     })
     return () => {
       current = false
