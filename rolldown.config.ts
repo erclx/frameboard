@@ -8,7 +8,8 @@ const resolve = {
 
 // Left to the installed package, since it ships browser protocol files a bundle
 // cannot carry, and loaded through a dynamic import only by verbs that render.
-const external = ['playwright-core']
+// oxfmt is an optional peer of 17 MB that only `references sync` loads.
+const external = ['playwright-core', 'oxfmt']
 
 // One config per entry, so a later entry never shares a chunk with the CLI.
 export default defineConfig([
