@@ -10,12 +10,14 @@ import { splitAt } from '../changes/compare'
 import { heldOutline, holdOutline } from '../element/held'
 import {
   cornerSize,
+  dragSize,
   type ElementResize,
   type ElementSize,
-  isShownShape,
   type PlacedMove,
   type PlacedOffsets,
   placedOffsets,
+  type ResizeRead,
+  shownResize,
   startElementResize,
   startPlacedMove,
 } from '../element/resize'
@@ -87,9 +89,9 @@ export interface GestureStores {
   splitAt: (clientX: number) => void
   /** Moves the selected element into the gap under a canvas point, a drag of it released there. */
   moveElement: typeof moveElement
-  /** Whether the selected element is a shape, whose corners resize it. */
-  isShape: typeof isShownShape
-  /** Starts a corner drag of the selected shape, null when its frame is held. */
+  /** How the selected element takes a corner resize, null when it takes none. */
+  resizeOf: typeof shownResize
+  /** Starts a corner drag of the selected element, null when its frame is held. */
   resizeElement: typeof startElementResize
   /** The offsets the selected element holds when it is placed, else null. */
   placedOffsets: typeof placedOffsets
@@ -106,7 +108,7 @@ const STORES: GestureStores = {
   openFindings,
   splitAt,
   moveElement,
-  isShape: isShownShape,
+  resizeOf: shownResize,
   resizeElement: startElementResize,
   placedOffsets,
   movePlaced: startPlacedMove,
@@ -145,13 +147,20 @@ type Gesture =
     }
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
-  /** A press on a corner of the selected shape, which a drag turns into a resize of it. */
-  | { kind: 'corner'; key: ElementKey; corner: Corner; box: Box }
-  /** A corner drag of the selected shape, written as its width and height on release. */
+  /** A press on a corner of an element that takes a resize, which a drag turns into one. */
+  | {
+      kind: 'corner'
+      key: ElementKey
+      corner: Corner
+      box: Box
+      read: ResizeRead
+    }
+  /** A corner drag of the selected element, written as its size on release. */
   | {
       kind: 'element-resize'
       corner: Corner
       box: Box
+      read: ResizeRead
       resize: ElementResize
       size: ElementSize | null
     }
@@ -314,16 +323,24 @@ export function attachGestures(
       gesture = { kind: 'badge', ref: badge }
       return
     }
-    // A press on a shape's corner mark resizes it. Any other press on the
-    // selected element, its outline and other corner marks included,
-    // carries it on a drag, since text and a divider are sized by what they
-    // hold. The frame's handles are hidden while an element is selected, so
-    // they take no press.
+    // A press on a corner mark resizes an element that takes one. Any other
+    // press on the selected element, a container's or a divider's corners
+    // included, carries it on a drag, since they are sized by what they hold
+    // or by their line. The frame's handles are hidden while an element is
+    // selected, so they take no press.
     const element = selection.getState().element
     const outline = element ? selectedElementBox(target.layer) : null
     const mark = outline ? cornerAt(outline, point, zoom()) : null
-    if (element && outline && mark && stores.isShape(target.layer, element)) {
-      gesture = { kind: 'corner', key: element, corner: mark, box: outline }
+    const read =
+      element && outline && mark ? stores.resizeOf(target.layer, element) : null
+    if (element && outline && mark && read) {
+      gesture = {
+        kind: 'corner',
+        key: element,
+        corner: mark,
+        box: outline,
+        read,
+      }
       return
     }
     if (element && outline) {
@@ -415,7 +432,7 @@ export function attachGestures(
   const begin = () => {
     if (gesture.kind === 'corner') {
       const resize = stores.canWrite()
-        ? stores.resizeElement(target.page, gesture.key)
+        ? stores.resizeElement(target.page, gesture.key, gesture.read.kind)
         : null
       gesture = resize
         ? { ...gesture, kind: 'element-resize', resize, size: null }
@@ -609,7 +626,8 @@ export function attachGestures(
         return
       }
       case 'element-resize': {
-        gesture.size = cornerSize(
+        gesture.size = dragSize(
+          gesture.read,
           gesture.box,
           gesture.corner,
           dx,
@@ -823,17 +841,22 @@ export function attachGestures(
       })
   }
 
-  // Esc puts a placed element's drag back where it started, writing nothing.
+  // Esc puts a placed element's drag or a corner resize back, writing nothing.
   // It listens in the capture phase and stops the press there, since the key
   // registry's window listener registered first and would also run Esc's
   // `element.up` on the same press.
   const onEscape = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || gesture.kind !== 'placed') return
+    if (event.key !== 'Escape') return
+    if (gesture.kind !== 'placed' && gesture.kind !== 'element-resize') return
     event.preventDefault()
     event.stopImmediatePropagation()
-    gesture.move.cancel()
-    shiftElementOutline(0, 0)
-    shiftElementPins(gesture.key, 0, 0)
+    if (gesture.kind === 'placed') {
+      gesture.move.cancel()
+      shiftElementOutline(0, 0)
+      shiftElementPins(gesture.key, 0, 0)
+    } else {
+      gesture.resize.cancel()
+    }
     gesture = { kind: 'none' }
   }
 
