@@ -43,6 +43,11 @@ A card or row takes the menu and the keys the same way.
 - Move to folder in the card menu lists every other folder and New folder, which files under the next free `Folder` and opens its name, as a drag of one card onto another does through `drop.ts`
 - A rename writes the new name to every member and refuses one another folder holds in any case, since writing it would merge the two
 
+While a project is over a card or row, the target says what the drop does, clear of its name.
+
+- The hint sits in a card's well and over a row's date columns, anchored to an open folder's header band
+- Below `sm` a row hides it from sight, so the ring cues the target and the status text stays for assistive tech
+
 A typed name in `filter-field.tsx` shows its matches flat, archived ones included, along with every member of a folder whose name matches. Cmd+F focuses it through `home.filter`.
 
 `archived.tsx` holds archived projects in a collapsed section after the rest, and the card menu reads Restore on them in place of Archive.
