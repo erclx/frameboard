@@ -2,7 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
@@ -14,6 +14,8 @@ import {
 import { Toaster } from '@/client/components/ui/toast'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore } from '@/client/live/store'
+import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { modeStore } from '../mode'
 import {
@@ -80,6 +82,65 @@ describe('the toast stack beside the toolbar', () => {
     rerender(<Screen toolbar={false} />)
 
     expect(stackBottom()).toBe('16px')
+  })
+})
+
+describe.each(['light', 'dark'])('the blue fills in the %s theme', (theme) => {
+  const pressedTool = (id: string, label: string, group: 'tool' | 'mode') =>
+    register({
+      id,
+      label,
+      group,
+      palette: false,
+      run: () => {},
+      checked: () => true,
+    })
+
+  beforeEach(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  })
+
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  it('reads the active tool at 4.5:1 or better at rest and hovered', async () => {
+    pressedTool('tool.note', 'Note', 'tool')
+    renderToolbar()
+    const tool = screen.getByRole('button', { name: 'Note' })
+
+    expect(tool).toHaveAttribute('aria-pressed', 'true')
+    expect(contrastOnPage(tool)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrastHovered(tool)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('reads the Play pill at 4.5:1 or better at rest and hovered', async () => {
+    pressedTool('mode.play', 'Play', 'mode')
+    renderToolbar()
+    const pill = screen.getByRole('button', { name: 'Play' })
+
+    expect(pill).toHaveAttribute('aria-pressed', 'true')
+    expect(contrastOnPage(pill)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrastHovered(pill)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('reads the checked pointer menu row at 4.5:1 or better, focused too', async () => {
+    pressedTool('tool.move', 'Move', 'tool')
+    renderToolbar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pointer tools' }))
+    const row = await screen.findByRole('menuitemradio', {
+      name: /Move/,
+      checked: true,
+    })
+    row.blur()
+
+    expect(contrastOnPage(row)).toBeGreaterThanOrEqual(4.5)
+
+    row.focus()
+
+    expect(row).toHaveFocus()
+    expect(contrastOnPage(row)).toBeGreaterThanOrEqual(4.5)
   })
 })
 
