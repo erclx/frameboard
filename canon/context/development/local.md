@@ -104,6 +104,7 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 
 - `.prettierignore` keeps oxfmt out of `test/fixtures/`, since a fixture's bytes are what its test asserts and the `broken` board holds JSON that does not parse
 - The `capture` board names only generic families and a Geist face in its `assets/`, so it renders alike on Linux CI and macOS
+- `basic`'s `marketing/states` page holds what a drive needs, with a Free text and shape in `free`, and six tokens and one raw hex in `colors`, whose `theme` finding is intended
 
 ### `web/`
 
@@ -151,6 +152,10 @@ These catch a running `preview` out.
 - The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
 - A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
+
+One catches a drive that needs a claimed frame.
+
+- A claim lives in the ignored `.run/` and lapses after five minutes, so a drive renews it with `bun dist/cli.js editing <frame-ref> --root <copyRoot>/test/fixtures/boards/basic --session drive-review`
 
 One catches a running `dev` out.
 

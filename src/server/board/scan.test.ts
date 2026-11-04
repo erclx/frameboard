@@ -38,7 +38,7 @@ describe('scanBoard', () => {
           project.pages.map((page) => page.name),
         ]),
       ).toEqual([
-        ['marketing', ['launch']],
+        ['marketing', ['launch', 'states']],
         ['webapp', ['settings', 'home']],
       ])
     })

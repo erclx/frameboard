@@ -275,7 +275,10 @@ describe('projects', () => {
         fileProjects(board.root, ['marketing', 'webapp'], { group: 'Client' }),
       ).rejects.toMatchObject({ code: 'project-file-invalid' })
       expect(readFileSync(projectFile('webapp'), 'utf8')).toBe('{ not json')
-      expect(read('marketing')).toEqual({ version: 1, pages: ['launch'] })
+      expect(read('marketing')).toEqual({
+        version: 1,
+        pages: ['launch', 'states'],
+      })
     })
 
     it('fails not-found on a project the board lacks', async () => {

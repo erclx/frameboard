@@ -1540,6 +1540,47 @@ async function sectionOnHome(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Focuses the first control matching `selector` once it draws, then sends
+ * `key` to it, so a shot shows where a keyboard user's focus rests. A focus
+ * from script draws its ring only while no real pointer has moved the page.
+ */
+function focusOnLoad(
+  selector: string,
+  key?: string,
+): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ selector, key, frames }) => {
+        let left = frames
+        const act = () => {
+          const target = document.querySelector<HTMLElement>(selector)
+          if (!target) {
+            if (--left > 0) requestAnimationFrame(act)
+            return
+          }
+          // A popup moves focus to itself after it mounts, so wait that out.
+          const afterFrames = (run: () => void) =>
+            requestAnimationFrame(() => requestAnimationFrame(run))
+          afterFrames(() => {
+            target.focus()
+            // Sent in the focus's own task, the key strands the tooltip it opened.
+            if (key) {
+              afterFrames(() =>
+                target.dispatchEvent(
+                  new KeyboardEvent('keydown', { key, bubbles: true }),
+                ),
+              )
+            }
+          })
+        }
+        document.addEventListener('DOMContentLoaded', act)
+      },
+      { selector, key, frames: ROW_FRAMES },
+    )
+  }
+}
+
 /** The toast once it has slid in. */
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
 
@@ -2501,6 +2542,50 @@ export const BOARD_CASES: CaptureCase[] = [
         setup: themed(headlineOnHero),
       },
       {
+        // An arrow key moved the Decoration row's focus ring off its lit button.
+        section: 'segmented-focus',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            headlineOnHero,
+            actWhen(
+              'button[aria-label="Type details"]:not([disabled])',
+              'Type details',
+              'click',
+            ),
+            focusOnLoad(
+              '[aria-labelledby="type-details-decoration"] button',
+              'ArrowRight',
+            ),
+            readyWhen(
+              '[aria-labelledby="type-details-decoration"] button:nth-child(2):focus-visible',
+              // The first button's tooltip, still closing, would overlap the second's.
+              '[data-slot="tooltip-content"][data-closed]',
+            ),
+          ),
+        ),
+      },
+      {
+        // Focus on the Play half opens its tooltip, naming the P key.
+        section: 'mode-tooltip',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            focusOnLoad('button[aria-pressed]:has(.lucide-play)'),
+            readyWhen('[data-slot="tooltip-content"]'),
+          ),
+        ),
+      },
+      {
         // A Free headline dragged and released, its outline and size chip held at the drop.
         section: 'free-drag-held',
         theme,
@@ -2824,6 +2909,24 @@ export const BOARD_CASES: CaptureCase[] = [
             ]),
             markAllSeenOnLoad,
             readyWhen(`${TOAST_SHOWN}:has(button:only-of-type)`),
+          ),
+        ),
+      },
+      {
+        // An agent showed several frames with no edit, so the toast says showed.
+        section: 'shown-many',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            seededChanges([
+              { ...agentChange('webapp/home/about', 1), shown: true },
+              { ...agentChange('webapp/settings/profile', 2), shown: true },
+            ]),
+            readyWhen(TOAST_SHOWN),
           ),
         ),
       },
