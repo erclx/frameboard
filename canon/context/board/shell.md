@@ -117,6 +117,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
 - The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, the Place toggle, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- It publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner
 - The Move button shows Hand while Hand is on, and the Frame button Frame or Section, whichever was chosen last, and each caret opens both, keys V and H, and F and Shift+S
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
