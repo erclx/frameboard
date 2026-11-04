@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
 test('home page loads', async ({ page }) => {
@@ -11,6 +12,76 @@ test('reduced motion reaches the page', async ({ page }) => {
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
   expect(isReduced).toBe(true)
+})
+
+test.describe('hero picture', () => {
+  const heroPicture = (page: Page) =>
+    expect.poll(() =>
+      page
+        .locator('#hero img')
+        // Chromium reports an empty currentSrc while a swapped picture loads, so this polls past it.
+        .evaluate((img: HTMLImageElement) =>
+          img.currentSrc.replace(location.origin, ''),
+        ),
+    )
+
+  test('a dark reader with motion gets the dark loop', async ({ page }) => {
+    await page.emulateMedia({
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+    })
+
+    await page.goto('/')
+
+    await heroPicture(page).toBe('/hero-loop-dark.webp')
+  })
+
+  test('a light reader with motion gets the light loop', async ({ page }) => {
+    await page.emulateMedia({
+      colorScheme: 'light',
+      reducedMotion: 'no-preference',
+    })
+
+    await page.goto('/')
+
+    await heroPicture(page).toBe('/hero-loop.webp')
+  })
+
+  test('a dark reduced-motion reader gets the dark still', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
+
+    await page.goto('/')
+
+    await heroPicture(page).toBe('/hero-still-dark.png')
+  })
+
+  test('a light reduced-motion reader gets the light still', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+
+    await page.goto('/')
+
+    await heroPicture(page).toBe('/hero-still.png')
+  })
+
+  // jsdom selects no source, so only a browser shows a matching source beating the pause.
+  test('pause holds a dark reader on the dark still and play brings the loop back', async ({
+    page,
+  }) => {
+    await page.emulateMedia({
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+    })
+    await page.goto('/')
+    await heroPicture(page).toBe('/hero-loop-dark.webp')
+
+    await page.getByRole('button', { name: 'Pause' }).click()
+    await heroPicture(page).toBe('/hero-still-dark.png')
+
+    await page.getByRole('button', { name: 'Play' }).click()
+    await heroPicture(page).toBe('/hero-loop-dark.webp')
+  })
 })
 
 test.describe('social card meta', () => {
