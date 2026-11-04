@@ -50,6 +50,16 @@ Owns the frame verbs, and `project.ts` and `page.ts` reshape projects and pages 
 - `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
 
+### `src/cli/commands/references.ts`
+
+Owns `references sync <folder>`, which fills any folder holding a `frames.json` from the board, with the logic in `src/server/references/`. The verb names no consumer's paths, so a caller passes the folder and `--root`. It copies only what `frameLoads` finds inside `assets/`, so a file a script fetches at runtime stays out.
+
+- A sync owns every file below the folder's first level and prunes what it would not write, while a top-level file stays the consumer's and never reads as stray
+- Each project's loaded assets land in `assets/<project>/`, and a frame's links move there at the spans `frameLoads` locates, so a `<code>` sample naming `../assets/` keeps its bytes
+- `--check` writes nothing, exits 14 with `references-stale` on a changed, missing, or stray file, and only warns on a PNG, which varies with the browser build
+- The whole output builds before the first write, so a refusal leaves the folder as it was, whether an empty map, a frame the formatter cannot parse, or a frame loading a page-folder file
+- oxfmt is an optional peer resolved beside the bundle, then from the folder, so an `npx` run finds a project's install, and its version is pinned because a bump changes every reference's bytes
+
 ### `src/cli/inbox/`
 
 Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a long-lived loop rather than a verb. The program reads flags positionally, so `notes` keeps its flags apart from `reply` and `done`.

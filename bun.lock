@@ -75,6 +75,12 @@
         "zod": "^4.6.7",
         "zustand": "^5.0.15",
       },
+      "peerDependencies": {
+        "oxfmt": "0.75.0",
+      },
+      "optionalPeers": [
+        "oxfmt",
+      ],
     },
   },
   "packages": {

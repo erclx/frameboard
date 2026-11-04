@@ -47,7 +47,7 @@
     "measure:canvas": "bun run build && playwright test -c e2e/perf/playwright.config.ts",
     "smoke:prod": "bun e2e/screenshot.ts --check-console-clean --require-base-url",
     "prepare": "husky",
-    "design:sync": "bun scripts/design-sync.ts",
+    "design:sync": "bun run build && node dist/cli.js references sync canon/design --root \"$(git rev-parse --path-format=absolute --git-common-dir)/../.canon/board\"",
     "check": "bun scripts/verify.ts",
     "check:format": "oxfmt --check .",
     "format": "oxfmt .",
@@ -127,5 +127,13 @@
   },
   "dependencies": {
     "playwright-core": "1.64.1"
+  },
+  "peerDependencies": {
+    "oxfmt": "0.75.0"
+  },
+  "peerDependenciesMeta": {
+    "oxfmt": {
+      "optional": true
+    }
   }
 }

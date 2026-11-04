@@ -68,6 +68,16 @@ export const EXIT_CODES = {
   'reanchors-descendant': 7,
   // A copy of several frames to the OS clipboard where the server holds no backend for it.
   'clipboard-unsupported': 3,
+  // A `frames.json` that does not read as a map of references to board frames.
+  'frame-map-invalid': 5,
+  // A mapped frame the formatter cannot parse, so a sync lands nothing.
+  'format-refused': 10,
+  // oxfmt did not load, with the install command in the message.
+  'formatter-not-found': 9,
+  // `references sync --check` finding a folder that differs, with the drift in the error's details.
+  'references-stale': 14,
+  // A mapped frame loading a file from its page folder, which a reference folder cannot hold.
+  'page-file-load': 10,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
