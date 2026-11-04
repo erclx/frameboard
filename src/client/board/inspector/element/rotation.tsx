@@ -1,10 +1,11 @@
-import { cn } from 'cn'
 import {
   type LucideIcon,
   RotateCw,
   TrianglesCenterlineDashedHorizontal,
   TrianglesCenterlineDashedVertical,
 } from 'lucide-react'
+
+import { cn } from '@/client/lib/cn'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { NumberField } from '../number-field'

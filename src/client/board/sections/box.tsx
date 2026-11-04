@@ -1,6 +1,5 @@
-import { cn } from 'cn'
-
 import { useSelection } from '@/client/board/selection'
+import { cn } from '@/client/lib/cn'
 import type { SectionRecord } from '@/shared/records/list'
 
 import { SECTION_CORNERS, type SectionCorner } from './corners'

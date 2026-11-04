@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   AlignHorizontalDistributeCenter,
   AlignHorizontalSpaceBetween,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import type { ElementFlow } from '@/shared/records/elements'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'

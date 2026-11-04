@@ -1,7 +1,7 @@
-import { cn } from 'cn'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'

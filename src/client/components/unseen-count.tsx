@@ -1,4 +1,4 @@
-import { cn } from 'cn'
+import { cn } from '@/client/lib/cn'
 
 /**
  * How many frames under a page or project an agent changed since the

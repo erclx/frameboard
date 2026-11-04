@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { useRoute } from 'wouter'
 
 import {
@@ -13,6 +12,7 @@ import {
   DialogTitle,
 } from '@/client/components/ui/dialog'
 import { Kbd, KbdGroup } from '@/client/components/ui/kbd'
+import { cn } from '@/client/lib/cn'
 
 import { openOverlay, useOverlay } from './overlay'
 

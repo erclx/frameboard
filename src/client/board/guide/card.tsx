@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { ChevronDown } from 'lucide-react'
 import {
   type CSSProperties,
@@ -17,6 +16,7 @@ import { useTokenTable } from '@/client/board/tokens'
 import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'

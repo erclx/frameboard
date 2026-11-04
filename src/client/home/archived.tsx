@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { Archive, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
 import { projectStore } from '@/client/projects/actions'

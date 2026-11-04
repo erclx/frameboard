@@ -1,5 +1,6 @@
 import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types'
-import { cn } from 'cn'
+
+import { cn } from '@/client/lib/cn'
 
 /** The drop line of `canon/design/layers/edit`, drawn on the edge a drag would land on. */
 export function DropLine({ edge }: { edge: Edge | null }) {

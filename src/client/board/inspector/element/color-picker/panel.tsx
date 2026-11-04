@@ -1,5 +1,4 @@
 import { Slider } from '@base-ui/react/slider'
-import { cn } from 'cn'
 import { ChevronDown, Pipette } from 'lucide-react'
 import { useState } from 'react'
 
@@ -15,6 +14,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/client/components/ui/tabs'
+import { cn } from '@/client/lib/cn'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 

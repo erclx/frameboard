@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import type { ComponentProps, ReactNode } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
@@ -8,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 
 /** The kit's menu at the chrome's size, as `canon/design/menus/avatar` draws it. */
 export function ChromeMenuContent({

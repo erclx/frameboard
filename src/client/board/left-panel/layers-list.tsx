@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import {
   ChevronDown,
   ChevronRight,
@@ -19,6 +18,7 @@ import {
 } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import {
   type FrameFlag,

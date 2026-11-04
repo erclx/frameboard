@@ -1,5 +1,4 @@
 import { NumberField as Primitive } from '@base-ui/react/number-field'
-import { cn } from 'cn'
 import { MoveHorizontal } from 'lucide-react'
 import {
   type KeyboardEvent,
@@ -10,6 +9,8 @@ import {
   useRef,
   useState,
 } from 'react'
+
+import { cn } from '@/client/lib/cn'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { isStrayHistory } from './element/stray-history'

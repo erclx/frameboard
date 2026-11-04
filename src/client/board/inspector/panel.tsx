@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { useEffect, useState } from 'react'
 
 import { useViewOnly } from '@/client/access/view-only'
 import { toast } from '@/client/components/ui/toast'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
 import type { StyleValue } from '@/shared/records/elements'

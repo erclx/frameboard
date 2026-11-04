@@ -1,7 +1,7 @@
-import { cn } from 'cn'
 import { ChevronRight, Folder } from 'lucide-react'
 import type { KeyboardEvent, ReactNode } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import type { Structure } from '@/client/live/structure'
 import { focusFolder, useRenamingFolder } from '@/client/projects/actions'
 

@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { CircleAlert, Link2, Minus } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
+import { cn } from '@/client/lib/cn'
 import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'

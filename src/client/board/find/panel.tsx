@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { Frame, type LucideIcon, Search, Type, X } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import type { TreeElement } from '@/shared/records/elements'
 import type { FindHit } from '@/shared/records/find'

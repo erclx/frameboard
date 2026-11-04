@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import {
@@ -12,6 +11,7 @@ import {
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
+import { cn } from '@/client/lib/cn'
 import { TAB_ID } from '@/client/live/socket'
 import { identityOf, liveStore, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'

@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -10,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { cn } from '@/client/lib/cn'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import {

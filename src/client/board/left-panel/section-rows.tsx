@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { ChevronDown, ChevronRight, PanelTop } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
+import { cn } from '@/client/lib/cn'
 import type { Structure } from '@/client/live/structure'
 import type { SectionRecord } from '@/shared/records/list'
 

@@ -1,4 +1,3 @@
-import { cn } from 'cn'
 import { ChevronDown } from 'lucide-react'
 
 import {
@@ -7,6 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import { cn } from '@/client/lib/cn'
 import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'

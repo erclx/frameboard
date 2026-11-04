@@ -1,5 +1,3 @@
-import { cn } from 'cn'
-
 import {
   Toast,
   ToastClose,
@@ -8,6 +6,7 @@ import {
   type ToastObject,
   ToastTitle,
 } from '@/client/components/ui/toast'
+import { cn } from '@/client/lib/cn'
 
 import { acceptOffer, type OfferCopy } from './show'
 import { TOAST_BUTTON } from './toast'

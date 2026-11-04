@@ -1,4 +1,4 @@
-import { cn } from 'cn'
+import { cn } from '@/client/lib/cn'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import type { FreeSpot } from '../../place/write'
