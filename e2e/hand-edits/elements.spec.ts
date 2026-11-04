@@ -15,6 +15,48 @@ const CLI = resolve('dist/cli.js')
 const HERO = 'webapp/home/hero'
 const run = promisify(execFile)
 
+interface Box {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * The hero element's box once two reads a frame apart agree. A write reloads
+ * the frame's iframe, and a read taken mid-reload is null or the box of the
+ * document about to be replaced.
+ */
+async function settledBox(page: Page, selector: string): Promise<Box> {
+  const target = page
+    .frameLocator(`[data-frame="${HERO}"] iframe`)
+    .locator(selector)
+  let settled: Box | null = null
+  await expect
+    .poll(
+      async () => {
+        const first = await target.boundingBox()
+        await page.evaluate(
+          () => new Promise((done) => requestAnimationFrame(done)),
+        )
+        const second = await target.boundingBox()
+        const agree =
+          first !== null &&
+          second !== null &&
+          first.x === second.x &&
+          first.y === second.y &&
+          first.width === second.width &&
+          first.height === second.height
+        settled = agree ? second : null
+        return agree
+      },
+      { message: `${selector} has no settled box on screen`, timeout: 10_000 },
+    )
+    .toBe(true)
+  if (!settled) throw new Error(`${selector} has no box on screen`)
+  return settled
+}
+
 interface Selection {
   frames: string[]
   element: { ref: string; index: number; hash: string; name: string } | null
@@ -48,11 +90,7 @@ test.describe('selecting an element inside a frame', () => {
 
   /** Cmd-clicks the hero's element matching `selector`, at its center on screen. */
   async function cmdClick(page: Page, selector: string): Promise<void> {
-    const box = await page
-      .frameLocator(`[data-frame="${HERO}"] iframe`)
-      .locator(selector)
-      .boundingBox()
-    if (!box) throw new Error(`${selector} has no box on screen`)
+    const box = await settledBox(page, selector)
     await page.keyboard.down('Meta')
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     await page.keyboard.up('Meta')
@@ -246,11 +284,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toContain('color: var(--accent)')
     await expect(pin).toHaveAttribute('data-note-element', '5')
 
-    const headline = await page
-      .frameLocator(`[data-frame="${HERO}"] iframe`)
-      .locator('h1')
-      .boundingBox()
-    if (!headline) throw new Error('The hero draws no headline')
+    const headline = await settledBox(page, 'h1')
     await page
       .getByRole('toolbar', { name: 'Tools' })
       .getByRole('button', { name: 'Rectangle' })
