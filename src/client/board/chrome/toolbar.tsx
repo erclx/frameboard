@@ -1,18 +1,4 @@
-import {
-  ChevronDown,
-  Image as ImageIcon,
-  type LucideIcon,
-  Maximize,
-  MessageSquare,
-  Moon,
-  MousePointer2,
-  Pencil,
-  Play,
-  Redo2,
-  Sun,
-  Type,
-  Undo2,
-} from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import {
   Fragment,
   type KeyboardEvent,
@@ -33,107 +19,49 @@ import {
 import { cn } from '@/client/lib/cn'
 
 import { AssetPicker } from '../place/asset-picker'
-import {
-  IMAGE_TOOL,
-  placementStore,
-  type Placing,
-  shapeRow,
-  SHAPES,
-  useShape,
-} from '../place/tool'
+import { placementStore, shapeRow, SHAPES, useShape } from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
-import { ActionMenuItem, ChromeMenuContent } from './menu'
-import { ToolRow } from './more-menu'
+import { ChromeMenuContent } from './menu'
+import { ImageRow, MoreMenu, PlaceRows, ToolRow } from './more-menu'
+import { useToolbarStage } from './toolbar-stage'
 import {
   BOX_TOOLS,
-  FRAME_SLOT,
+  EDIT_AND_VIEW,
   HAND_TOOL,
-  MOVE_SLOT,
+  IMAGE_ROW,
+  MODE_TOGGLE,
+  MODES,
+  NOTE_TOOL,
+  PLACINGS,
   POINTER_TOOLS,
-  SECTION_TOOL,
+  type Slot,
+  TEXT_TOOL,
 } from './toolbar-tools'
 
-/**
- * A toolbar place and what it shows before its action registers. A row
- * registering the action supplies its own label and keys, which win.
- */
-interface Slot {
-  id: string
-  label: string
-  keys?: readonly string[]
-  icon: LucideIcon
-  /** Drawn in dark in place of `icon`, as the theme toggle shows the moon. */
-  darkIcon?: LucideIcon
-}
-
-const SHAPE_SLOT = 'tool.shape'
-/** Stands for the Place toggle, which holds no action, after the tools. */
-const PLACE_SLOT = 'place'
-
-/** The Place toggle's choices, each named in its tooltip by where a new element lands. */
-const PLACINGS: readonly { value: Placing; label: string; tip: string }[] = [
-  {
-    value: 'auto',
-    label: 'Auto',
-    tip: 'Place where drawn, or in the flow of a flex or grid',
-  },
-  { value: 'flow', label: 'Flow', tip: 'Place in the flow' },
-  { value: 'free', label: 'Free', tip: 'Place where drawn' },
-]
-
-/** The groups in the order `canon/design/toolbar/floating` draws them, divided by a rule. */
-const GROUPS: readonly (readonly Slot[])[] = [
-  [
-    // Stands in for the Move slot, which `PointerTool` draws from Move or Hand, whichever is on.
-    { id: MOVE_SLOT, label: 'Move', keys: ['v'], icon: MousePointer2 },
-    // Stands in for the Frame slot, which `BoxTool` draws from Frame or Section, the last chosen.
-    { id: FRAME_SLOT, label: 'Frame', keys: ['f'], icon: BOX_TOOLS[0].icon },
-    { id: 'tool.text', label: 'Text', keys: ['t'], icon: Type },
-    // Stands in for the Shape slot, which `ShapeTool` draws from the last shape chosen.
-    { id: SHAPE_SLOT, label: 'Shape', icon: SHAPES[0].icon },
-    { id: 'tool.note', label: 'Note', keys: ['n'], icon: MessageSquare },
-  ],
-  [{ id: PLACE_SLOT, label: 'Place', icon: MousePointer2 }],
-  [
-    { id: 'edit.undo', label: 'Undo', icon: Undo2 },
-    { id: 'edit.redo', label: 'Redo', icon: Redo2 },
-  ],
-  [
-    {
-      id: 'view.zoomToFit',
-      label: 'Zoom to fit',
-      keys: ['Shift+Digit1'],
-      icon: Maximize,
-    },
-    { id: 'theme.toggle', label: 'Theme', icon: Sun, darkIcon: Moon },
-  ],
-]
-
-const MODES: readonly Slot[] = [
-  { id: 'mode.edit', label: 'Edit', icon: Pencil },
-  { id: 'mode.play', label: 'Play', icon: Play },
-]
-
-/** The one key flipping between the two modes, which both halves of the segment name. */
-const MODE_TOGGLE = 'mode.toggle'
-
-const SLOTS = [...GROUPS.flat(), ...MODES]
 const IDS = [
   MODE_TOGGLE,
-  HAND_TOOL,
-  ...SLOTS.map((slot) => slot.id).filter(
-    (id) => id !== SHAPE_SLOT && id !== PLACE_SLOT,
+  ...[...POINTER_TOOLS, ...BOX_TOOLS, TEXT_TOOL, NOTE_TOOL, IMAGE_ROW].map(
+    (row) => row.id,
   ),
+  ...[...EDIT_AND_VIEW.flat(), ...MODES].map((slot) => slot.id),
   ...SHAPES.map((row) => row.id),
-  IMAGE_TOOL,
-  SECTION_TOOL,
+]
+
+/** Every tool in the order the bar and More list them, for finding the one on. */
+const EVERY_TOOL = [
+  ...POINTER_TOOLS,
+  ...BOX_TOOLS,
+  TEXT_TOOL,
+  ...SHAPES,
+  IMAGE_ROW,
+  NOTE_TOOL,
 ]
 
 /**
  * Publishes the bar's top edge, plus a 0.5rem gap, on the document root for
  * the toast viewport, which is portaled outside this tree. Measured rather
- * than fixed, since a horizontal scrollbar under the bar's `max-w` adds height.
+ * than fixed, so it follows the bar's height at every stage.
  */
 function usePublishToastLift(bar: RefObject<HTMLElement | null>): void {
   useLayoutEffect(() => {
@@ -157,61 +85,121 @@ function usePublishToastLift(bar: RefObject<HTMLElement | null>): void {
 }
 
 /**
- * The floating pill centered at the foot of the canvas column. Every button
- * runs its action from the registry, and one whose action no row has
- * registered yet shows disabled with its name and key on hover. Given the
- * project, it opens the Image tool's picker above itself.
+ * The floating pill centered at the foot of the canvas column, drawing what its
+ * column has room for, with More holding the rest. Every button runs its action
+ * from the registry, and one whose action no row has registered yet shows
+ * disabled with its name and key on hover. Given the project, it opens the
+ * Image tool's picker above itself.
  */
 export function Toolbar({ project }: { project?: string }) {
   const registered = useActions(IDS)
   const actions = new Map(IDS.map((id, index) => [id, registered[index]]))
   const bar = useRef<HTMLDivElement>(null)
   usePublishToastLift(bar)
+  const stage = useToolbarStage(bar)
+  const carets = stage === 'full' || stage === 'folded'
   return (
     <div
       ref={bar}
       role="toolbar"
       aria-label="Tools"
-      className="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-card p-[5px] shadow-[0_6px_24px_rgba(0,0,0,.18),0_1px_3px_rgba(0,0,0,.12)]"
+      className="absolute bottom-4 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-hidden rounded-xl border border-border bg-card p-[5px] shadow-[0_6px_24px_rgba(0,0,0,.18),0_1px_3px_rgba(0,0,0,.12)]"
     >
-      {GROUPS.map((group, index) => (
-        <Fragment key={group[0]?.id}>
-          {index > 0 ? <Rule /> : null}
-          {group.map((slot) =>
-            slot.id === SHAPE_SLOT ? (
-              <ShapeTool key={slot.id} actions={actions} />
-            ) : slot.id === MOVE_SLOT ? (
-              <PointerTool key={slot.id} actions={actions} />
-            ) : slot.id === PLACE_SLOT ? (
-              <PlaceToggle key={slot.id} />
-            ) : slot.id === FRAME_SLOT ? (
-              <BoxTool key={slot.id} actions={actions} />
-            ) : (
+      {stage === 'more' ? null : (
+        <>
+          {stage === 'active' ? (
+            <ActiveTool actions={actions} />
+          ) : (
+            <>
+              <PointerTool actions={actions} carets={carets} />
+              <BoxTool actions={actions} carets={carets} />
               <ToolButton
+                slot={toolSlot(TEXT_TOOL)}
+                action={actions.get(TEXT_TOOL.id)}
+              />
+              <ShapeTool actions={actions} carets={carets} />
+              <ToolButton
+                slot={toolSlot(NOTE_TOOL)}
+                action={actions.get(NOTE_TOOL.id)}
+              />
+            </>
+          )}
+          <Rule />
+        </>
+      )}
+      {stage === 'full' ? (
+        <>
+          <PlaceToggle />
+          {EDIT_AND_VIEW.map((group) => (
+            <Fragment key={group[0]?.id}>
+              <Rule />
+              {group.map((slot) => (
+                <ToolButton
+                  key={slot.id}
+                  slot={slot}
+                  action={actions.get(slot.id)}
+                />
+              ))}
+            </Fragment>
+          ))}
+        </>
+      ) : (
+        <>
+          {stage === 'folded' ? (
+            <>
+              <PlaceMenu />
+              <Rule />
+            </>
+          ) : null}
+          <MoreMenu key={stage} stage={stage} actions={actions} />
+        </>
+      )}
+      {stage === 'more' ? null : (
+        <>
+          <Rule />
+          <div className="flex shrink-0 rounded-lg bg-muted p-0.5">
+            {MODES.map((slot) => (
+              <ModeButton
                 key={slot.id}
                 slot={slot}
                 action={actions.get(slot.id)}
+                toggleKeys={actions.get(MODE_TOGGLE)?.keys}
+                iconOnly={!carets}
               />
-            ),
-          )}
-        </Fragment>
-      ))}
-      <Rule />
-      <div className="flex shrink-0 rounded-lg bg-muted p-0.5">
-        {MODES.map((slot) => (
-          <ModeButton
-            key={slot.id}
-            slot={slot}
-            action={actions.get(slot.id)}
-            toggleKeys={actions.get(MODE_TOGGLE)?.keys}
-          />
-        ))}
-      </div>
+            ))}
+          </div>
+        </>
+      )}
       {project === undefined ? null : (
         <AssetPicker project={project} anchor={bar} />
       )}
     </div>
   )
+}
+
+function toolSlot(row: {
+  id: string
+  label: string
+  key: string
+  icon: Slot['icon']
+}): Slot {
+  return { id: row.id, label: row.label, keys: [row.key], icon: row.icon }
+}
+
+/** The one tool the narrowest bar keeps, whichever is on, or Move with none on. */
+function ActiveTool({ actions }: { actions: ToolActions }) {
+  const on =
+    EVERY_TOOL.find((row) => actions.get(row.id)?.checked?.()) ??
+    POINTER_TOOLS[0]
+  return <ToolButton slot={toolSlot(on)} action={actions.get(on.id)} />
+}
+
+type ToolActions = ReadonlyMap<string, Action | undefined>
+
+interface ToolProps {
+  actions: ToolActions
+  /** Draws the slot's caret menu, which the narrower stages leave to More. */
+  carets: boolean
 }
 
 interface ButtonProps {
@@ -255,11 +243,7 @@ function ToolButton({ slot, action, pressed }: ButtonProps) {
  * shape is on, and a caret opening the menu of shapes, the one chosen
  * marked, each naming its key, and below them the Image or video row.
  */
-function ShapeTool({
-  actions,
-}: {
-  actions: ReadonlyMap<string, Action | undefined>
-}) {
+function ShapeTool({ actions, carets }: ToolProps) {
   const shown = useShape()
   const action = actions.get(shown.id)
   const slot = {
@@ -272,49 +256,41 @@ function ShapeTool({
   return (
     <>
       <ToolButton slot={slot} action={action} pressed={on} />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label="Shapes"
-          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
-        >
-          <ChevronDown aria-hidden className="size-[9px]" />
-        </DropdownMenuTrigger>
-        <ChromeMenuContent
-          side="top"
-          align="start"
-          sideOffset={8}
-          className="w-[220px]"
-        >
-          <DropdownMenuRadioGroup
-            value={shown.kind}
-            onValueChange={(kind) => {
-              const row = actions.get(shapeRow(kind).id)
-              if (row && isEnabled(row)) row.run()
-            }}
+      {carets ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Shapes"
+            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
           >
-            {SHAPES.map((row) => (
-              <ToolRow
-                key={row.id}
-                value={row.kind}
-                row={row}
-                action={actions.get(row.id)}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
-          <DropdownMenuSeparator />
-          {/* Opens the picker rather than choosing a shape, so the slot keeps the last shape. */}
-          <ActionMenuItem
-            action={actions.get(IMAGE_TOOL)}
-            label="Image or video"
-            keys={['$mod+Shift+KeyK']}
+            <ChevronDown aria-hidden className="size-[9px]" />
+          </DropdownMenuTrigger>
+          <ChromeMenuContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            className="w-[220px]"
           >
-            <span className="flex items-center gap-2 whitespace-nowrap">
-              <ImageIcon aria-hidden className="size-[13px]" />
-              Image or video…
-            </span>
-          </ActionMenuItem>
-        </ChromeMenuContent>
-      </DropdownMenu>
+            <DropdownMenuRadioGroup
+              value={shown.kind}
+              onValueChange={(kind) => {
+                const row = actions.get(shapeRow(kind).id)
+                if (row && isEnabled(row)) row.run()
+              }}
+            >
+              {SHAPES.map((row) => (
+                <ToolRow
+                  key={row.id}
+                  value={row.kind}
+                  row={row}
+                  action={actions.get(row.id)}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <ImageRow action={actions.get(IMAGE_ROW.id)} />
+          </ChromeMenuContent>
+        </DropdownMenu>
+      ) : null}
     </>
   )
 }
@@ -324,11 +300,7 @@ function ShapeTool({
  * last, pressed while either is on, and a caret opening the menu of both,
  * the one chosen marked, each naming its key.
  */
-function BoxTool({
-  actions,
-}: {
-  actions: ReadonlyMap<string, Action | undefined>
-}) {
+function BoxTool({ actions, carets }: ToolProps) {
   const chosen = useBoxTool()
   const shown = BOX_TOOLS.find((row) => row.tool === chosen) ?? BOX_TOOLS[0]
   const slot = {
@@ -341,38 +313,42 @@ function BoxTool({
   return (
     <>
       <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label="Frame tools"
-          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
-        >
-          <ChevronDown aria-hidden className="size-[9px]" />
-        </DropdownMenuTrigger>
-        <ChromeMenuContent
-          side="top"
-          align="start"
-          sideOffset={8}
-          className="w-[196px]"
-        >
-          <DropdownMenuRadioGroup
-            value={chosen}
-            onValueChange={(tool) => {
-              const row = BOX_TOOLS.find((candidate) => candidate.tool === tool)
-              const action = row && actions.get(row.id)
-              if (action && isEnabled(action)) action.run()
-            }}
+      {carets ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Frame tools"
+            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
           >
-            {BOX_TOOLS.map((row) => (
-              <ToolRow
-                key={row.id}
-                value={row.tool}
-                row={row}
-                action={actions.get(row.id)}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
-        </ChromeMenuContent>
-      </DropdownMenu>
+            <ChevronDown aria-hidden className="size-[9px]" />
+          </DropdownMenuTrigger>
+          <ChromeMenuContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            className="w-[196px]"
+          >
+            <DropdownMenuRadioGroup
+              value={chosen}
+              onValueChange={(tool) => {
+                const row = BOX_TOOLS.find(
+                  (candidate) => candidate.tool === tool,
+                )
+                const action = row && actions.get(row.id)
+                if (action && isEnabled(action)) action.run()
+              }}
+            >
+              {BOX_TOOLS.map((row) => (
+                <ToolRow
+                  key={row.id}
+                  value={row.tool}
+                  row={row}
+                  action={actions.get(row.id)}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+          </ChromeMenuContent>
+        </DropdownMenu>
+      ) : null}
     </>
   )
 }
@@ -382,11 +358,7 @@ function BoxTool({
  * while either is, and a caret opening the menu of both, the one on marked,
  * each naming its key, so V and H stay the way in.
  */
-function PointerTool({
-  actions,
-}: {
-  actions: ReadonlyMap<string, Action | undefined>
-}) {
+function PointerTool({ actions, carets }: ToolProps) {
   const handOn = actions.get(HAND_TOOL)?.checked?.() ?? false
   const shown = POINTER_TOOLS[handOn ? 1 : 0]
   const slot = {
@@ -401,37 +373,39 @@ function PointerTool({
   return (
     <>
       <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label="Pointer tools"
-          className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
-        >
-          <ChevronDown aria-hidden className="size-[9px]" />
-        </DropdownMenuTrigger>
-        <ChromeMenuContent
-          side="top"
-          align="start"
-          sideOffset={8}
-          className="w-[196px]"
-        >
-          <DropdownMenuRadioGroup
-            value={on ? shown.id : ''}
-            onValueChange={(id) => {
-              const action = actions.get(id)
-              if (action && isEnabled(action)) action.run()
-            }}
+      {carets ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Pointer tools"
+            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
           >
-            {POINTER_TOOLS.map((row) => (
-              <ToolRow
-                key={row.id}
-                value={row.id}
-                row={row}
-                action={actions.get(row.id)}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
-        </ChromeMenuContent>
-      </DropdownMenu>
+            <ChevronDown aria-hidden className="size-[9px]" />
+          </DropdownMenuTrigger>
+          <ChromeMenuContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            className="w-[196px]"
+          >
+            <DropdownMenuRadioGroup
+              value={on ? shown.id : ''}
+              onValueChange={(id) => {
+                const action = actions.get(id)
+                if (action && isEnabled(action)) action.run()
+              }}
+            >
+              {POINTER_TOOLS.map((row) => (
+                <ToolRow
+                  key={row.id}
+                  value={row.id}
+                  row={row}
+                  action={actions.get(row.id)}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+          </ChromeMenuContent>
+        </DropdownMenu>
+      ) : null}
     </>
   )
 }
@@ -499,18 +473,56 @@ function PlaceToggle() {
   )
 }
 
+/**
+ * The Place choice folded to a button naming it, for the stage with no room
+ * for the toggle.
+ */
+function PlaceMenu() {
+  const placing = useStore(placementStore, (state) => state.placing)
+  const label = PLACINGS.find(({ value }) => value === placing)?.label
+  return (
+    <DropdownMenu>
+      <ActionTooltip label="Place new elements">
+        <DropdownMenuTrigger
+          aria-label={`Place new elements, ${label}`}
+          className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-muted pr-2 pl-[9px] font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent"
+        >
+          {label}
+          <ChevronDown
+            aria-hidden
+            className="size-[9px] text-muted-foreground"
+          />
+        </DropdownMenuTrigger>
+      </ActionTooltip>
+      <ChromeMenuContent
+        side="top"
+        align="start"
+        sideOffset={8}
+        className="w-[196px]"
+      >
+        <PlaceRows />
+      </ChromeMenuContent>
+    </DropdownMenu>
+  )
+}
+
 /** One half of the Edit and Play segment, where Play shows on in the selection blue. */
 function ModeButton({
   slot,
   action,
   toggleKeys,
-}: ButtonProps & { toggleKeys: readonly string[] | undefined }) {
+  iconOnly,
+}: ButtonProps & {
+  toggleKeys: readonly string[] | undefined
+  iconOnly: boolean
+}) {
   const { label, keys, on, enabled, run } = read(slot, action)
   const Icon = slot.icon
   return (
     <ActionTooltip label={label} keys={keys ?? toggleKeys}>
       <button
         type="button"
+        aria-label={iconOnly ? label : undefined}
         aria-pressed={on}
         aria-disabled={enabled ? undefined : true}
         onClick={run}
@@ -522,7 +534,7 @@ function ModeButton({
         )}
       >
         <Icon aria-hidden className="size-3.5" />
-        {label}
+        {iconOnly ? null : label}
       </button>
     </ActionTooltip>
   )

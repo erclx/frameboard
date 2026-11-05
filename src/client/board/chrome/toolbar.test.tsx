@@ -8,6 +8,7 @@ import { setCharacterKeys } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import {
   type Action,
+  bindKeys,
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
@@ -26,6 +27,7 @@ import {
 } from '../place/tool'
 import { boxToolStore } from '../sections/actions'
 import { Toolbar } from './toolbar'
+import { stageForRoom } from './toolbar-stage'
 
 const cleanups: (() => void)[] = []
 
@@ -122,6 +124,21 @@ describe.each(['light', 'dark'])('the blue fills in the %s theme', (theme) => {
     expect(pill).toHaveAttribute('aria-pressed', 'true')
     expect(contrastOnPage(pill)).toBeGreaterThanOrEqual(4.5)
     expect(await contrastHovered(pill)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('reads the icon-only Play pill at 4.5:1 or better', () => {
+    pressedTool('mode.play', 'Play', 'mode')
+    render(
+      <TooltipProvider>
+        <div style={{ position: 'relative', width: 334 }}>
+          <Toolbar />
+        </div>
+      </TooltipProvider>,
+    )
+    const pill = screen.getByRole('button', { name: 'Play' })
+
+    expect(pill).toHaveAttribute('aria-pressed', 'true')
+    expect(contrastOnPage(pill)).toBeGreaterThanOrEqual(4.5)
   })
 
   it('reads the checked pointer menu row at 4.5:1 or better, focused too', async () => {
@@ -577,5 +594,443 @@ describe('Toolbar', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).not.toHaveAttribute(
       'aria-disabled',
     )
+  })
+})
+
+describe('the stage a room picks', () => {
+  it.each([
+    [707, 'full'],
+    [706, 'folded'],
+    [513, 'folded'],
+    [512, 'tools'],
+    [310, 'tools'],
+    [309, 'active'],
+    [174, 'active'],
+    [173, 'more'],
+    [44, 'more'],
+  ] as const)('at %i reads %s', (room, stage) => {
+    expect(stageForRoom(room)).toBe(stage)
+  })
+})
+
+describe('the toolbar in a narrow column', () => {
+  /**
+   * The column is the bar's parent, whose width less the bar's 24px margin is
+   * the room. It takes the 12px the board screen sets, which the widths assume.
+   */
+  function renderInRoom(room: number) {
+    const { container } = render(
+      <TooltipProvider>
+        <div
+          className="text-body"
+          style={{ position: 'relative', width: room + 24, height: 200 }}
+        >
+          <Toolbar />
+        </div>
+      </TooltipProvider>,
+    )
+    const column = container.firstElementChild
+    if (!(column instanceof HTMLElement)) throw new Error('No column rendered')
+    return column
+  }
+
+  const bar = () => screen.getByRole('toolbar', { name: 'Tools' })
+
+  const barNames = () =>
+    within(bar())
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent)
+
+  const openMore = async () => {
+    await userEvent.click(screen.getByRole('button', { name: 'More tools' }))
+    return screen.findByRole('menu')
+  }
+
+  /** Each row's name, without the key chip beside it. */
+  const rowNames = (menu: HTMLElement) =>
+    [...menu.querySelectorAll('[role^="menuitem"]')].map((row) =>
+      row.textContent.slice(
+        0,
+        row.textContent.length -
+          (row.querySelector('kbd')?.textContent.length ?? 0),
+      ),
+    )
+
+  const action = (id: string, extra: Partial<Action> = {}): Action =>
+    ({
+      id,
+      label: id,
+      group: 'tool',
+      palette: false,
+      run: () => {},
+      ...extra,
+    }) as Action
+
+  afterEach(() => {
+    placementStore.setState({ placing: 'auto' })
+    pickerStore.setState({ open: false })
+    modeStore.setState({ tool: 'move', mode: 'edit' })
+    liveStore.setState({ canWrite: false })
+  })
+
+  it.each([
+    [
+      707,
+      [
+        'Move',
+        'Pointer tools',
+        'Frame',
+        'Frame tools',
+        'Text',
+        'Rectangle',
+        'Shapes',
+        'Note',
+        'Auto',
+        'Flow',
+        'Free',
+        'Undo',
+        'Redo',
+        'Zoom to fit',
+        'Theme',
+        'Edit',
+        'Play',
+      ],
+    ],
+    [
+      513,
+      [
+        'Move',
+        'Pointer tools',
+        'Frame',
+        'Frame tools',
+        'Text',
+        'Rectangle',
+        'Shapes',
+        'Note',
+        'Place new elements, Auto',
+        'More tools',
+        'Edit',
+        'Play',
+      ],
+    ],
+    [
+      310,
+      [
+        'Move',
+        'Frame',
+        'Text',
+        'Rectangle',
+        'Note',
+        'More tools',
+        'Edit',
+        'Play',
+      ],
+    ],
+    [174, ['Move', 'More tools', 'Edit', 'Play']],
+    [173, ['More tools']],
+  ])('shows the controls room %i holds', (room, names) => {
+    renderInRoom(room)
+
+    expect(barNames()).toEqual(names)
+  })
+
+  const FOUR = ['Undo', 'Redo', 'Zoom to fit', 'Theme']
+  const PLACE = ['Auto', 'Flow', 'Free']
+  const SHAPE_ROWS = ['Rectangle', 'Ellipse', 'Divider', 'Image or video…']
+
+  it.each([
+    [513, FOUR],
+    [310, ['Hand', 'Section', ...SHAPE_ROWS, ...PLACE, ...FOUR]],
+    [
+      174,
+      [
+        'Move',
+        'Hand',
+        'Frame',
+        'Section',
+        'Text',
+        ...SHAPE_ROWS,
+        'Note',
+        ...PLACE,
+        ...FOUR,
+      ],
+    ],
+    [
+      173,
+      [
+        'Edit',
+        'Play',
+        'Move',
+        'Hand',
+        'Frame',
+        'Section',
+        'Text',
+        ...SHAPE_ROWS,
+        'Note',
+        ...PLACE,
+        ...FOUR,
+      ],
+    ],
+  ])('lists in More what room %i folds away', async (room, names) => {
+    renderInRoom(room)
+
+    expect(rowNames(await openMore())).toEqual(names)
+  })
+
+  it('draws no More while every control fits', () => {
+    renderInRoom(707)
+
+    expect(screen.queryByRole('button', { name: 'More tools' })).toBeNull()
+  })
+
+  it.each([707, 513, 310, 174, 44])(
+    'clips nothing at the narrowest room %i',
+    (room) => {
+      renderInRoom(room)
+
+      expect(bar().scrollWidth).toBeLessThanOrEqual(bar().clientWidth)
+      expect(bar().offsetWidth).toBeLessThanOrEqual(room)
+    },
+  )
+
+  it('changes stage when the column narrows, closing an open More', async () => {
+    const column = renderInRoom(513)
+    await openMore()
+
+    column.style.width = `${310 + 24}px`
+
+    await vi.waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(screen.queryByRole('button', { name: 'Pointer tools' })).toBeNull()
+  })
+
+  it('runs a tool by its key with its button folded away', async () => {
+    let runs = 0
+    register(
+      action('tool.text', {
+        label: 'Text',
+        keys: ['t'],
+        run: () => (runs += 1),
+      }),
+    )
+    cleanups.push(bindKeys(window))
+    renderInRoom(44)
+
+    await userEvent.keyboard('t')
+
+    expect(runs).toBe(1)
+  })
+
+  it('runs the action the bar button runs from its More row', async () => {
+    let runs = 0
+    register(action('edit.undo', { label: 'Undo', run: () => (runs += 1) }))
+    renderInRoom(513)
+
+    await openMore()
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Undo' }))
+
+    expect(runs).toBe(1)
+  })
+
+  it('opens the picker from the Image or video row in More', async () => {
+    function PlaceTools() {
+      usePlaceTools()
+      return null
+    }
+    liveStore.setState({ canWrite: true })
+    render(<PlaceTools />)
+    renderInRoom(310)
+
+    await openMore()
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: /Image or video/ }),
+    )
+
+    expect(pickerStore.getState().open).toBe(true)
+  })
+
+  it('offers Move in More while Hand fills the Move slot', async () => {
+    register(
+      action('tool.move', { label: 'Move', checked: () => false }),
+      action('tool.hand', { label: 'Hand', checked: () => true }),
+    )
+    renderInRoom(310)
+
+    expect(screen.getByRole('button', { name: 'Hand' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    const rows = rowNames(await openMore())
+    expect(rows).toContain('Move')
+    expect(rows).not.toContain('Hand')
+  })
+
+  it('offers Frame in More while Section fills the Frame slot', async () => {
+    boxToolStore.setState({ tool: 'section' })
+    cleanups.push(() => boxToolStore.setState({ tool: 'frame' }))
+    renderInRoom(310)
+
+    const rows = rowNames(await openMore())
+
+    expect(rows).toContain('Frame')
+    expect(rows).not.toContain('Section')
+  })
+
+  it('shows whichever tool is on at the single tool stage', () => {
+    register(action('tool.note', { label: 'Note', checked: () => true }))
+    renderInRoom(174)
+
+    expect(screen.getByRole('button', { name: 'Note' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('marks the tool on in More', async () => {
+    register(action('tool.note', { label: 'Note', checked: () => true }))
+    renderInRoom(174)
+
+    await openMore()
+
+    expect(screen.getByRole('menuitemradio', { name: /Note/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  })
+
+  it('carries a Place choice made in More to the wider folded button', async () => {
+    const column = renderInRoom(310)
+
+    await openMore()
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Free' }))
+    column.style.width = `${513 + 24}px`
+
+    expect(
+      await screen.findByRole('button', { name: 'Place new elements, Free' }),
+    ).toBeVisible()
+    expect(placementStore.getState().placing).toBe('free')
+  })
+
+  it('marks the Place choice on in More', async () => {
+    placementStore.setState({ placing: 'free' })
+    renderInRoom(310)
+
+    await openMore()
+
+    expect(screen.getByRole('menuitemradio', { name: 'Free' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  })
+
+  it('sets Place from the folded button', async () => {
+    renderInRoom(513)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Place new elements, Auto' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Flow' }),
+    )
+
+    expect(placementStore.getState().placing).toBe('flow')
+  })
+
+  it('disables a row whose action cannot run, and leaves Place usable', async () => {
+    register(action('edit.undo', { label: 'Undo', enabled: () => false }))
+    renderInRoom(310)
+
+    await openMore()
+
+    expect(screen.getByRole('menuitem', { name: 'Undo' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Free' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('reaches Edit and Play in More at the narrowest stage', async () => {
+    let mode = 'edit'
+    register(
+      action('mode.edit', {
+        label: 'Edit',
+        group: 'mode',
+        checked: () => mode === 'edit',
+      }),
+      action('mode.play', {
+        label: 'Play',
+        group: 'mode',
+        run: () => (mode = 'play'),
+        checked: () => mode === 'play',
+      }),
+    )
+    renderInRoom(44)
+
+    await openMore()
+    expect(screen.getByRole('menuitemradio', { name: 'Edit' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Play' }))
+
+    expect(mode).toBe('play')
+  })
+
+  it('names the Edit and Play key on the row it would switch to', async () => {
+    register(
+      action('mode.edit', {
+        label: 'Edit',
+        group: 'mode',
+        checked: () => true,
+      }),
+      action('mode.play', {
+        label: 'Play',
+        group: 'mode',
+        checked: () => false,
+      }),
+      action('mode.toggle', { label: 'Edit or Play', keys: ['p'] }),
+    )
+    renderInRoom(44)
+
+    await openMore()
+
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Edit' }).querySelector('kbd'),
+    ).toBeNull()
+    expect(
+      screen.getByRole('menuitemradio', { name: /Play/ }),
+    ).toHaveTextContent('PlayP')
+  })
+
+  it("drops More's single-key chips while those shortcuts are off", async () => {
+    setCharacterKeys(false)
+    cleanups.push(() => setCharacterKeys(true))
+    register(action('tool.hand', { label: 'Hand', keys: ['h'] }))
+    renderInRoom(310)
+
+    await openMore()
+
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Hand' }).querySelector('kbd'),
+    ).toBeNull()
+  })
+
+  it('names the icon-only Edit and Play and marks the mode on', () => {
+    register(
+      action('mode.play', {
+        label: 'Play',
+        group: 'mode',
+        checked: () => true,
+      }),
+    )
+    renderInRoom(310)
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Play' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Play' })).toHaveTextContent('')
   })
 })
