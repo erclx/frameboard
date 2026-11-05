@@ -323,6 +323,8 @@ interface CanvasGesture {
   hold?: { from: [number, number]; to: [number, number] }
   /** Releases the `hold` press at `to`, so the move is sent. */
   drop?: boolean
+  /** Presses Esc with the `hold` button still down, so the drag cancels. */
+  cancel?: boolean
 }
 
 /** How many frames a gesture waits for the canvas to draw, about ten seconds. */
@@ -389,6 +391,11 @@ function onCanvas(gesture: CanvasGesture): (page: Page) => Promise<void> {
           })
           send('mousemove', to)
           if (gesture.drop) send('mouseup', to)
+          if (gesture.cancel) {
+            window.dispatchEvent(
+              new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+            )
+          }
         }
         const writable = () => {
           const field = document.querySelector<HTMLInputElement>(
@@ -2810,6 +2817,43 @@ const CASES: CaptureCase[] = [
         // From above the hero's left edge to inside the about frame.
         setup: themed(
           onCanvas({ hold: { from: [-60, -80], to: [1700, 400] } }),
+        ),
+      },
+      {
+        // The same drag as the marquee above, cancelled with the button down.
+        section: 'marquee-cancelled',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          onCanvas({
+            hold: { from: [-60, -80], to: [1700, 400] },
+            cancel: true,
+          }),
+        ),
+      },
+      {
+        // A section dragged by its name, then put back with the button down.
+        section: 'section-move-cancelled',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            sectionOnHome,
+            onCanvas({
+              select: ['webapp/home/hero'],
+              awaitWrite: true,
+              hold: { from: [-30, -190], to: [90, -110] },
+              cancel: true,
+            }),
+            readyWhen('[data-section="onboarding"]'),
+          ),
         ),
       },
       {
