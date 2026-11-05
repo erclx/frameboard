@@ -897,6 +897,60 @@ describe('attachGestures', () => {
         undefined,
       ])
     })
+
+    describe('when Esc cancels it', () => {
+      it('puts a move back with its frames and writes nothing on release', () => {
+        const canvas = setup(undefined, { sections: [FLOW] })
+        detach = canvas.detach
+
+        canvas.pointer.down(...NAME)
+        canvas.pointer.move(95, 88)
+        pressEscape()
+        canvas.pointer.up(95, 88)
+
+        const style = (selector: string) => canvas.part(selector).style
+        expect([
+          style('[data-section="flow"]').left,
+          style('[data-section="flow"]').top,
+          style(`[data-frame="${LEFT.ref}"]`).left,
+          style(`[data-frame="${LEFT.ref}"]`).top,
+          canvas.writes,
+        ]).toEqual(['60px', '60px', '100px', '100px', []])
+      })
+
+      it('puts the pins and guides of a move back, with the button still down', () => {
+        const canvas = setup(undefined, { sections: [FLOW] })
+        detach = canvas.detach
+
+        canvas.pointer.down(...NAME)
+        canvas.pointer.move(95, 88)
+        pressEscape()
+
+        expect([
+          canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
+          canvas.part('[data-guides]').childElementCount,
+        ]).toEqual(['', 0])
+        canvas.pointer.up(95, 88)
+      })
+
+      it('puts a corner resize back and writes nothing on release', () => {
+        const canvas = setup(undefined, { sections: [FLOW] })
+        detach = canvas.detach
+        act(() => selectSection(selectionStore, PAGE, 'flow'))
+
+        canvas.pointer.down(360, 360)
+        canvas.pointer.move(380, 375)
+        pressEscape()
+        canvas.pointer.up(380, 375)
+
+        const section = canvas.part('[data-section="flow"]').style
+        expect([section.width, section.height, canvas.writes]).toEqual([
+          '300px',
+          '300px',
+          [],
+        ])
+      })
+    })
   })
 
   describe('Alt-drag', () => {
@@ -1026,6 +1080,35 @@ describe('attachGestures', () => {
 
       expect(shown).toBe(true)
       expect(drawing.hidden).toBe(true)
+    })
+
+    describe('when Esc cancels the marquee', () => {
+      it('hides the rect and keeps the selection', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        select(selectionStore, PAGE, [RIGHT.ref])
+
+        canvas.pointer.down(50, 50)
+        canvas.pointer.move(180, 150)
+        pressEscape()
+        const hidden = canvas.part('[data-marquee]').hidden
+        canvas.pointer.up(180, 150)
+
+        expect([hidden, selectedRefs()]).toEqual([true, [RIGHT.ref]])
+      })
+
+      it('keeps the prior selection of a Shift-marquee', () => {
+        const canvas = setup()
+        detach = canvas.detach
+        select(selectionStore, PAGE, [RIGHT.ref])
+
+        canvas.pointer.down(50, 50, { shiftKey: true })
+        canvas.pointer.move(180, 150, { shiftKey: true })
+        pressEscape()
+        canvas.pointer.up(180, 150, { shiftKey: true })
+
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+      })
     })
 
     it('selects nothing while the Note tool is picked', () => {
@@ -1621,6 +1704,19 @@ describe('attachGestures', () => {
       expect(carriedStore.getState().carried).toBeNull()
     })
 
+    it('clears the carried mark and moves nothing when Esc cancels the carry', () => {
+      const canvas = setupWithElement()
+
+      canvas.pointer.down(200, 175)
+      canvas.pointer.move(200, 260)
+      pressEscape()
+      const carried = carriedStore.getState().carried
+      canvas.pointer.move(200, 300)
+      canvas.pointer.up(200, 300)
+
+      expect([carried, canvas.moves, canvas.writes]).toEqual([null, [], []])
+    })
+
     describe('several elements', () => {
       const FIRST = { frame: LEFT.ref, index: 3, hash: 'a'.repeat(64) }
       const SECOND = { frame: LEFT.ref, index: 4, hash: 'a'.repeat(64) }
@@ -1688,6 +1784,22 @@ describe('attachGestures', () => {
 
         expect(held()).toEqual([FIRST, SECOND])
         expect(canvas.writes).toEqual([])
+      })
+
+      it('hides the rect and keeps the element selection when Esc cancels a marquee', () => {
+        selectElement(selectionStore, PAGE, FIRST)
+        const canvas = setup(undefined, {
+          bare: () => true,
+          inner: [{ key: SECOND, box: OUTLINES[1]?.box as Box }],
+        })
+
+        canvas.pointer.down(250, 105)
+        canvas.pointer.move(280, 280)
+        pressEscape()
+        const hidden = canvas.part('[data-marquee]').hidden
+        canvas.pointer.up(280, 280)
+
+        expect([hidden, held()]).toEqual([true, [FIRST]])
       })
 
       it('adds to the held elements on a Shift-marquee', () => {

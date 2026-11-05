@@ -1056,35 +1056,38 @@ export function attachGestures(
       })
   }
 
-  // Esc puts a frame move or resize, a placed element's drag, or a corner resize
-  // back, writing nothing. It listens in the capture phase and stops the press
-  // there, since the key registry's window listener registered first and would
-  // also run Esc's `selection.clear` or `element.up` on the same press. The button
-  // may stay down long after, so everything goes back now rather than on release.
+  // Esc puts any pointer drag back, writing nothing. It listens in the capture
+  // phase and stops the press there, since the key registry's window listener
+  // registered first and would also run Esc's `selection.clear` or `element.up`
+  // on the same press. The button may stay down long after, so everything goes
+  // back now rather than on release.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
     // A corner press is already a `resize`, ahead of the click distance and the
     // lock check, and with no drag there is nothing to put back.
     if (!moved) return
-    if (
-      gesture.kind !== 'placed' &&
-      gesture.kind !== 'element-resize' &&
-      gesture.kind !== 'move' &&
-      gesture.kind !== 'resize'
-    ) {
-      return
-    }
-    event.preventDefault()
-    event.stopImmediatePropagation()
+    const root = overlay()
     if (gesture.kind === 'placed') {
       gesture.move.cancel()
       shiftElementOutline(0, 0)
       shiftElementPins(gesture.key, 0, 0)
     } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()
-    } else {
+    } else if (gesture.kind === 'section-resize') {
+      placeSection(gesture.section.name, gesture.section.box)
+    } else if (gesture.kind === 'carry') {
+      carriedStore.setState({ carried: null })
+    } else if (gesture.kind === 'marquee' || gesture.kind === 'inner-marquee') {
+      if (root) drawRest(root)
+    } else if (
+      gesture.kind === 'move' ||
+      gesture.kind === 'resize' ||
+      gesture.kind === 'section-move'
+    ) {
+      if (gesture.kind === 'section-move') {
+        placeSection(gesture.section.name, gesture.section.box)
+      }
       putFramesBack(gesture.boxes)
-      const root = overlay()
       if (root) {
         // No write lands, so React has no changed prop to redraw a resize from.
         if (gesture.kind === 'resize') drawResize(root, gesture.boxes)
@@ -1092,7 +1095,11 @@ export function attachGestures(
       }
       shiftElementOutline(0, 0)
       shiftPins([], 0, 0)
+    } else {
+      return
     }
+    event.preventDefault()
+    event.stopImmediatePropagation()
     gesture = { kind: 'none' }
   }
 
