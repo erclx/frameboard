@@ -95,8 +95,8 @@ export type ElementStyles = z.infer<typeof elementStylesSchema>
 /**
  * One color a frame or a subtree uses. `uses` holds the edit-address index of
  * each element whose color, background, or border is this one, inherited or
- * not, ascending and valid for the read's `hash`. The `body` is never named,
- * since the board selects it as the frame.
+ * not, ascending and valid for the read's `hash`. It never names `body`, which
+ * the board selects as the frame, or an element that draws no box, such as `br`.
  */
 export const usedColorSchema = styleValueSchema.extend({
   uses: z.array(z.int().min(0)).optional(),

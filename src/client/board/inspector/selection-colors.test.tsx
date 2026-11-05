@@ -357,7 +357,7 @@ describe('SelectionColors', () => {
       expect(screen.queryByRole('button', { name: /^Select / })).toBeNull()
     })
 
-    it('offers none where the colors span frames', () => {
+    it('offers none when its caller names nowhere to select', () => {
       renderColors([{ ...raw('#4f46e5'), uses: [3] }])
 
       expect(screen.queryByRole('button', { name: /^Select / })).toBeNull()

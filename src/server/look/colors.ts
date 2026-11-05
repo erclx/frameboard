@@ -31,6 +31,26 @@ const COLOR_PROPERTIES = ['color', 'background-color', 'border-color'] as const
 /** Values that paint no color of their own, so Selection colors leaves them out. */
 const NO_COLOR = new Set(['transparent', 'currentcolor', 'none'])
 
+/**
+ * Elements a color's `uses` never names: `body`, which the board selects as the
+ * frame, and those that draw no box of their own, whatever color they inherit.
+ */
+const NEVER_USES = new Set([
+  'html',
+  'head',
+  'body',
+  'title',
+  'meta',
+  'link',
+  'base',
+  'style',
+  'script',
+  'noscript',
+  'template',
+  'br',
+  'wbr',
+])
+
 /** Words of a `border` or `background` shorthand that are never its color. */
 const NOT_COLOR = new Set([
   'none',
@@ -142,7 +162,7 @@ export function frameStyles(
       const key = colorKey(value)
       const color = colors.get(key) ?? { ...value, uses: [] }
       colors.set(key, color)
-      if (candidate.name !== 'body' && color.uses.at(-1) !== at) {
+      if (!NEVER_USES.has(candidate.name) && color.uses.at(-1) !== at) {
         color.uses.push(at)
       }
     }

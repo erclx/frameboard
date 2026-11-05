@@ -342,6 +342,22 @@ describe('frameStyles', () => {
       ])
     })
 
+    it('leaves out elements that never paint, inside a parent setting the color', () => {
+      expect(
+        usesOf(
+          `<div id="a" style="color: #4f46e5">
+            <style id="s">p { margin: 0 }</style>
+            <p id="b">b</p>
+            <br id="r" />
+            <wbr id="w" />
+            <script id="j">1</script>
+            <template id="t"><i>x</i></template>
+            <noscript id="n">x</noscript>
+          </div>`,
+        ),
+      ).toEqual({ '#4f46e5': ['a', 'b'] })
+    })
+
     it('names only the selected element’s subtree', () => {
       expect(
         usesOf(
