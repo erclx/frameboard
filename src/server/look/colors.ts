@@ -7,6 +7,7 @@ import type {
   ElementStyles,
   FrameStyles,
   StyleValue,
+  UsedColor,
 } from '@/shared/records/elements'
 
 import { FLOW_PROPERTIES, flowOf } from './flow'
@@ -29,6 +30,32 @@ const COLOR_PROPERTIES = ['color', 'background-color', 'border-color'] as const
 
 /** Values that paint no color of their own, so Selection colors leaves them out. */
 const NO_COLOR = new Set(['transparent', 'currentcolor', 'none'])
+
+/**
+ * Elements a color's `uses` never names: `body`, which the board selects as the
+ * frame, and those that draw no box of their own, whatever color they inherit.
+ */
+const NEVER_USES = new Set([
+  'html',
+  'head',
+  'body',
+  'title',
+  'meta',
+  'link',
+  'base',
+  'style',
+  'script',
+  'noscript',
+  'template',
+  'br',
+  'wbr',
+  'source',
+  'track',
+  'area',
+  'datalist',
+  'optgroup',
+  'option',
+])
 
 /** Words of a `border` or `background` shorthand that are never its color. */
 const NOT_COLOR = new Set([
@@ -132,18 +159,20 @@ export function frameStyles(
 
   const root =
     target ?? source.elements.find((candidate) => candidate.name === 'body')
-  const subtree = root
-    ? source.elements.filter((candidate) => within(candidate, root))
-    : source.elements
-  const colors = new Map<string, StyleValue>()
-  for (const candidate of subtree) {
+  const colors = new Map<string, UsedColor & { uses: number[] }>()
+  source.elements.forEach((candidate, at) => {
+    if (root && !within(candidate, root)) return
     for (const property of COLOR_PROPERTIES) {
       const value = read(candidate, property)
       if (!value || NO_COLOR.has(value.value.trim().toLowerCase())) continue
       const key = colorKey(value)
-      if (!colors.has(key)) colors.set(key, value)
+      const color = colors.get(key) ?? { ...value, uses: [] }
+      colors.set(key, color)
+      if (!NEVER_USES.has(candidate.name) && color.uses.at(-1) !== at) {
+        color.uses.push(at)
+      }
     }
-  }
+  })
   return { element, colors: [...colors.values()] }
 }
 

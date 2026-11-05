@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import type { FrameStyles, StyleValue } from '@/shared/records/elements'
+import type { FrameStyles, UsedColor } from '@/shared/records/elements'
 
 import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
 import type { FreeSpot } from '../../place/write'
@@ -277,14 +277,29 @@ export function sharedValue<T>(values: readonly T[]): T | null {
     : null
 }
 
-/** Colors from several reads as one list, each once, by its token or value and its percent. */
+/**
+ * Colors from several reads as one list, each once, by its token or value and
+ * its percent, its `uses` joined ascending. Those index one frame's bytes, so
+ * a merge across frames leaves them for no caller to read.
+ */
 export function mergeColors(
-  lists: readonly (readonly StyleValue[])[],
-): StyleValue[] {
-  const merged = new Map<string, StyleValue>()
+  lists: readonly (readonly UsedColor[])[],
+): UsedColor[] {
+  const merged = new Map<string, UsedColor>()
   for (const color of lists.flat()) {
     const key = `${color.token ?? color.value.toLowerCase()}:${color.percent}`
-    if (!merged.has(key)) merged.set(key, color)
+    const held = merged.get(key)
+    merged.set(
+      key,
+      held
+        ? {
+            ...held,
+            uses: [
+              ...new Set([...(held.uses ?? []), ...(color.uses ?? [])]),
+            ].toSorted((one, other) => one - other),
+          }
+        : color,
+    )
   }
   return [...merged.values()]
 }

@@ -584,4 +584,50 @@ describe('selectElements', () => {
 
     expect(store.getState().elements).toEqual(expected)
   })
+
+  it('holds the color it selected through', () => {
+    const store = createSelectionStore()
+
+    selectElements(store, PAGE, [one, two], '4f46e5')
+
+    expect(store.getState().using).toBe('4f46e5')
+  })
+
+  it.each([
+    ['select', (store: SelectionStore) => select(store, PAGE, [ABOUT])],
+    ['toggle', (store: SelectionStore) => toggle(store, PAGE, ABOUT)],
+    ['clear', (store: SelectionStore) => clear(store)],
+    [
+      'selectElement',
+      (store: SelectionStore) => selectElement(store, PAGE, two),
+    ],
+    [
+      'selectSection',
+      (store: SelectionStore) => selectSection(store, PAGE, 'Intro'),
+    ],
+    [
+      'selecting elements with no color',
+      (store: SelectionStore) => selectElements(store, PAGE, [one, two]),
+    ],
+    [
+      'toggling an element',
+      (store: SelectionStore) => toggleElement(store, PAGE, one),
+    ],
+  ])('forgets that color under %s', (_name, act) => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two], '4f46e5')
+
+    act(store)
+
+    expect(store.getState().using).toBeUndefined()
+  })
+
+  it('keeps that color through a rename', () => {
+    const store = createSelectionStore()
+    selectElements(store, PAGE, [one, two], '4f46e5')
+
+    renameSelection(store, 'studio', 'atelier')
+
+    expect(store.getState().using).toBe('4f46e5')
+  })
 })

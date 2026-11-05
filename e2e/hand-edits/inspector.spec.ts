@@ -467,6 +467,47 @@ test.describe('the colors a selected frame uses', () => {
     const copied = await page.evaluate(() => navigator.clipboard.readText())
     expect(copied).toBe(label.replace(/^Copy /, ''))
   })
+
+  test('Select on a raw color outlines each element using it and the header names them', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    writeFileSync(
+      path,
+      readFileSync(path, 'utf8')
+        .replace(
+          '<h1 data-name="Headline">',
+          '<h1 data-name="Headline" style="color: #4f46e5">',
+        )
+        .replace(
+          '<p data-name="Caption">',
+          '<p data-name="Caption" style="border: 1px solid #4f46e5">',
+        ),
+    )
+    const headline = page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toHaveCSS('color', 'rgb(79, 70, 229)')
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Export hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+
+    const row = page
+      .getByRole('region', { name: /^Selection colors/ })
+      .getByRole('listitem')
+      .filter({ hasText: '4f46e5' })
+    await row.hover()
+    await row.getByRole('button', { name: /^Select 2 elements/ }).click()
+
+    await expect(page.locator('[data-element-selection]')).toHaveCount(2)
+    await expect(
+      page.getByRole('heading', { name: '2 elements' }),
+    ).toBeVisible()
+    await expect(page.getByText('using 4f46e5')).toBeVisible()
+  })
 })
 
 test.describe('setting the flow of one row a shared rule styles', () => {

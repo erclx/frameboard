@@ -8,7 +8,7 @@ import type { Theme } from '@/shared/theme'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { placeFreeAll } from '../../place/write'
-import type { ElementKey } from '../../selection'
+import { type ElementKey, useSelection } from '../../selection'
 import { useTokenTable } from '../../tokens'
 import { type NumberChange, NumberField } from '../number-field'
 import { SelectionColors } from '../selection-colors'
@@ -128,12 +128,14 @@ export function SeveralElements({
   const canWrite = useLive((state) => state.canWrite)
   const theme = useFrameTheme(frame.ref)
   const members = useElementMembers(elements)
+  const using = useSelection((state) => state.using)
   const table = useTokenTable(frame.ref.split('/')[0] ?? '')
   const tokens = table?.tokens ?? []
   const colors = tokens.filter(
     (row) => row.group === 'color' && !row.name.startsWith('--shadow'),
   )
   const disabled = !canWrite
+  const hash = sharedValue(members?.map(({ styles }) => styles?.hash) ?? [])
   const fan: Fan = (holders, change) =>
     writeElements(
       page,
@@ -146,12 +148,17 @@ export function SeveralElements({
     <>
       <section
         aria-labelledby="inspector-elements"
-        className={cn(SECTION, 'flex items-center justify-between gap-2')}
+        className={cn(SECTION, 'flex items-center gap-1.5')}
       >
-        <h2 id="inspector-elements" className="text-xs font-semibold">
+        <h2 id="inspector-elements" className="shrink-0 text-xs font-semibold">
           {elements.length} elements
         </h2>
-        <span className="min-w-0 truncate text-muted-foreground">
+        {using ? (
+          <span className="min-w-0 truncate text-muted-foreground">
+            · using {using}
+          </span>
+        ) : null}
+        <span className="ml-auto min-w-0 truncate pl-1 text-muted-foreground">
           in {frame.name}
         </span>
       </section>
@@ -209,6 +216,7 @@ export function SeveralElements({
             )}
             tokens={colors}
             theme={theme}
+            selectIn={hash ? { page, frame: frame.ref, hash } : undefined}
           />
         </>
       ) : (

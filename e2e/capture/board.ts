@@ -3516,6 +3516,46 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'select-color',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The raw indigo row with the keyboard on it, which shows its Select.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            focusOnLoad('button[aria-label="Copy #4f46e5"]'),
+            readyWhen('button[aria-label="Copy #4f46e5"]:focus-visible'),
+          ),
+        ),
+      },
+      {
+        section: 'select-color-done',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The elements Select reached, each outlined, under the count and the color.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            pressOnLoad('^Select 2 elements using 4f46e5$'),
+            readyWhen(
+              'body:has(#inspector-elements):has([data-element-selection] ~ [data-element-selection]):has(#inspector-selection-colors ~ ul li)',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'export-section',
         theme,
         route: '/p/webapp/home',
@@ -3807,6 +3847,8 @@ const WRITING_SECTIONS = [
   'text-hugs',
   'replace-colors',
   'replace-colors-done',
+  'select-color',
+  'select-color-done',
 ]
 
 export const BOARD_CASES: CaptureCase[] = [

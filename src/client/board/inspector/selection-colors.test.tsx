@@ -5,9 +5,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
-import type { StyleValue } from '@/shared/records/elements'
+import type { StyleValue, UsedColor } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
+import { pointerOff, pointerOver } from '@/test/real-pointer'
 
+import { clear, selectionStore } from '../selection'
 import { SelectionColors } from './selection-colors'
 
 function raw(value: string): StyleValue {
@@ -18,7 +20,7 @@ function token(name: string): StyleValue {
   return { value: `var(${name})`, token: name, percent: 100 }
 }
 
-function renderColors(colors: StyleValue[]) {
+function renderColors(colors: UsedColor[]) {
   return render(
     <>
       <SelectionColors colors={colors} tokens={[]} theme="light" />
@@ -47,7 +49,7 @@ const TOKENS = [
 
 /** Selection colors that can replace, handing each pick to `onReplace`. */
 function renderReplacing(
-  colors: StyleValue[],
+  colors: UsedColor[],
   onReplace: (color: StyleValue, token: string) => void = () => {},
   tokens: TokenRow[] = TOKENS,
 ) {
@@ -216,6 +218,152 @@ describe('SelectionColors', () => {
     })
   })
 
+  describe('select', () => {
+    const PAGE = 'studio/home'
+    const FRAME = 'studio/home/hero'
+    const HASH = 'a'.repeat(64)
+
+    function renderSelecting(colors: UsedColor[]) {
+      return render(
+        <SelectionColors
+          colors={colors}
+          tokens={[]}
+          theme="light"
+          selectIn={{ page: PAGE, frame: FRAME, hash: HASH }}
+        />,
+      )
+    }
+
+    afterEach(() => {
+      clear(selectionStore)
+    })
+
+    it('stays hidden until the pointer is over the row', async () => {
+      renderSelecting([{ ...raw('#4f46e5'), uses: [3, 5] }])
+      const button = screen.getByRole('button', {
+        name: 'Select 2 elements using 4f46e5',
+      })
+      expect(button).not.toBeVisible()
+
+      const row = screen.getByRole('listitem')
+      await pointerOver(row)
+      expect(button).toBeVisible()
+
+      await pointerOff(row)
+      expect(button).not.toBeVisible()
+    })
+
+    it('shows once the keyboard reaches the row, after its copy', async () => {
+      renderSelecting([{ ...token('--primary'), uses: [3] }])
+      const button = screen.getByRole('button', {
+        name: 'Select 1 element using primary',
+      })
+
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: 'Copy var(--primary)' }),
+      ).toHaveFocus()
+      expect(button).toBeVisible()
+
+      await userEvent.tab()
+      expect(button).toHaveFocus()
+      expect(button).toBeVisible()
+    })
+
+    it('selects each element using the color, at the bytes it read', async () => {
+      renderSelecting([{ ...raw('#4f46e5'), uses: [3, 5, 8] }])
+
+      await userEvent.click(screen.getByRole('button', { name: /^Select / }))
+
+      const { page, frames, elements, using } = selectionStore.getState()
+      expect({ page, frames, using }).toEqual({
+        page: PAGE,
+        frames: [FRAME],
+        using: '4f46e5',
+      })
+      expect(elements).toEqual([
+        { frame: FRAME, index: 3, hash: HASH },
+        { frame: FRAME, index: 5, hash: HASH },
+        { frame: FRAME, index: 8, hash: HASH },
+      ])
+    })
+
+    it('leaves a single selection for one element using it', async () => {
+      renderSelecting([{ ...raw('#4f46e5'), uses: [3] }])
+
+      await userEvent.click(screen.getByRole('button', { name: /^Select / }))
+
+      expect(selectionStore.getState()).toMatchObject({
+        element: { frame: FRAME, index: 3, hash: HASH },
+        elements: [{ frame: FRAME, index: 3, hash: HASH }],
+      })
+    })
+
+    it('selects on Enter without copying', async () => {
+      const written = stubClipboard()
+      renderSelecting([{ ...raw('#4f46e5'), uses: [3, 5] }])
+      screen.getByRole('button', { name: /^Select / }).focus()
+
+      await userEvent.keyboard('{Enter}')
+
+      expect(selectionStore.getState().elements).toHaveLength(2)
+      expect(written).toEqual([])
+    })
+
+    it('selects only the row’s own elements for a token and its raw value', async () => {
+      renderSelecting([
+        { ...token('--primary'), uses: [3] },
+        { ...raw('#4f46e5'), uses: [5, 7] },
+      ])
+
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'Select 1 element using primary',
+        }),
+      )
+
+      expect(
+        selectionStore.getState().elements?.map(({ index }) => index),
+      ).toEqual([3])
+    })
+
+    it('names a color kept at a percent with it', async () => {
+      renderSelecting([{ ...raw('#4f46e5'), percent: 50, uses: [3, 5] }])
+
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'Select 2 elements using 4f46e5 50%',
+        }),
+      )
+
+      expect(selectionStore.getState().using).toBe('4f46e5 50%')
+    })
+
+    it('copies from the row with Select beside it', async () => {
+      const written = stubClipboard()
+      renderSelecting([{ ...token('--primary'), uses: [3] }])
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Copy var(--primary)' }),
+      )
+
+      expect(written).toEqual(['var(--primary)'])
+      expect(selectionStore.getState().elements).toBeUndefined()
+    })
+
+    it('offers none for a color no selectable element uses', () => {
+      renderSelecting([{ ...raw('#ffffff'), uses: [] }])
+
+      expect(screen.queryByRole('button', { name: /^Select / })).toBeNull()
+    })
+
+    it('offers none when its caller names nowhere to select', () => {
+      renderColors([{ ...raw('#4f46e5'), uses: [3] }])
+
+      expect(screen.queryByRole('button', { name: /^Select / })).toBeNull()
+    })
+  })
+
   describe('replace', () => {
     it('opens the color tokens from a raw row’s swatch, nearest value first', async () => {
       renderReplacing([raw('#4f46e5')])
@@ -293,6 +441,33 @@ describe('SelectionColors', () => {
       )
 
       expect(written).toEqual(['#4f46e5'])
+    })
+
+    it('tabs from the swatch to the copy to Select', async () => {
+      render(
+        <SelectionColors
+          colors={[{ ...raw('#4f46e5'), uses: [3] }]}
+          tokens={TOKENS}
+          theme="light"
+          onReplace={() => {}}
+          selectIn={{
+            page: 'studio/home',
+            frame: 'studio/home/hero',
+            hash: 'a'.repeat(64),
+          }}
+        />,
+      )
+
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: 'Replace 4f46e5 with a token' }),
+      ).toHaveFocus()
+      await userEvent.tab()
+      expect(screen.getByRole('button', { name: 'Copy #4f46e5' })).toHaveFocus()
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: /^Select 1 element/ }),
+      ).toHaveFocus()
     })
 
     it('says the project names no color tokens when it has none', async () => {

@@ -36,6 +36,12 @@ export interface SelectionState {
    */
   elements?: readonly ElementKey[]
   /**
+   * The color these elements were selected through, as Selection colors names
+   * it. Every setter but a rename drops it, a hand edit's rekeying included,
+   * since the elements may no longer hold it.
+   */
+  using?: string
+  /**
    * A section on `page`, by name, selected alone with no frame. Every other
    * setter leaves it absent, so a frame selection never carries one.
    */
@@ -59,6 +65,7 @@ export function select(
     frames: [...new Set(frames)],
     element: null,
     elements: undefined,
+    using: undefined,
     section: undefined,
   })
 }
@@ -74,6 +81,7 @@ export function selectSection(
     frames: [],
     element: null,
     elements: undefined,
+    using: undefined,
     section,
   })
 }
@@ -89,6 +97,7 @@ export function selectElement(
     frames: [element.frame],
     element,
     elements: [element],
+    using: undefined,
     section: undefined,
   })
 }
@@ -102,6 +111,7 @@ export function selectElements(
   store: SelectionStore,
   page: string,
   keys: readonly ElementKey[],
+  using?: string,
 ): void {
   const element = keys.at(-1)
   if (!element) return
@@ -118,6 +128,7 @@ export function selectElements(
     elements: held.some((key) => key === element)
       ? held
       : [...held.filter((key) => key.index !== element.index), element],
+    using,
     section: undefined,
   })
 }
@@ -172,6 +183,7 @@ export function toggle(store: SelectionStore, page: string, ref: string): void {
     frames: next,
     element: null,
     elements: undefined,
+    using: undefined,
     section: undefined,
   })
 }
@@ -184,6 +196,7 @@ export function clear(store: SelectionStore): void {
     frames: [],
     element: null,
     elements: undefined,
+    using: undefined,
     section: undefined,
   })
 }
@@ -233,7 +246,14 @@ export function pruneSelection(store: SelectionStore, board: ListResult): void {
   const kept = frames.filter((frame) => shown.has(frame))
   if (kept.length === frames.length) return
   if (kept.length === 0) clear(store)
-  else store.setState({ frames: kept, element: null, elements: undefined })
+  else {
+    store.setState({
+      frames: kept,
+      element: null,
+      elements: undefined,
+      using: undefined,
+    })
+  }
 }
 
 /**

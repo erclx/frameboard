@@ -55,7 +55,7 @@ A Free element dragged past its frame's edge shows there as a dashed ghost, whic
 - The toolbar's Place toggle decides where a new element lands, and Auto puts it Free where you drew it unless its parent lays out as flex or grid
 - Flow and Free force one or the other, and a divider always joins the flow
 
-Selection colors lists every color the selection uses, and a raw color's swatch swaps it for a token on each element setting it inline, as one undo step.
+Selection colors lists every color the selection uses, and a raw color's swatch swaps it for a token on each element setting it inline, as one undo step. Select on a hovered or focused row selects the elements within the selection using that color.
 
 Images and videos come from the project's `assets/` folder and land the same way.
 

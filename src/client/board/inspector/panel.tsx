@@ -5,7 +5,7 @@ import { toast } from '@/client/components/ui/toast'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
-import type { StyleValue } from '@/shared/records/elements'
+import type { UsedColor } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
 
@@ -278,6 +278,9 @@ function ElementSections({ page, element }: ElementSectionsProps) {
             ? undefined
             : (color, token) => void replaceColor(page, element, color, token)
         }
+        selectIn={
+          styles ? { page, frame: element.frame, hash: styles.hash } : undefined
+        }
       />
     </>
   )
@@ -340,7 +343,8 @@ function FramesColors({
   )
   const [held, setHeld] = useState<{
     refs: string
-    colors: StyleValue[]
+    colors: UsedColor[]
+    hash: string | undefined
   } | null>(null)
 
   useEffect(() => {
@@ -352,6 +356,7 @@ function FramesColors({
       setHeld({
         refs,
         colors: mergeColors(answers.map((answer) => answer?.colors ?? [])),
+        hash: answers[0]?.hash,
       })
     })
     return () => {
@@ -359,6 +364,7 @@ function FramesColors({
     }
   }, [refs, version])
 
+  const readHash = held?.refs === refs ? held.hash : undefined
   return (
     <SelectionColors
       key={refs}
@@ -380,6 +386,11 @@ function FramesColors({
               }
               void replaceColor(page, { frame: first.ref, hash }, color, token)
             }
+          : undefined
+      }
+      selectIn={
+        frames.length === 1 && first && readHash
+          ? { page, frame: first.ref, hash: readHash }
           : undefined
       }
     />

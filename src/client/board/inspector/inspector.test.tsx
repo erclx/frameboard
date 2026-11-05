@@ -298,6 +298,50 @@ describe('InspectorPanel', () => {
       ])
     })
 
+    describe('with each color naming the elements using it', () => {
+      const answered = { ...ANSWERS }
+      const USED = {
+        value: '#abcdef',
+        token: null,
+        percent: 100,
+        uses: [3, 5],
+      }
+
+      beforeEach(() => {
+        ANSWERS[SWATCHES.ref] = [USED]
+        ANSWERS[SUNSET.ref] = [USED]
+      })
+
+      afterEach(() => {
+        Object.assign(ANSWERS, answered)
+      })
+
+      it('selects them in the one selected frame, at the bytes the read answered', async () => {
+        act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+        renderPanel()
+
+        await userEvent.click(
+          await screen.findByRole('button', {
+            name: 'Select 2 elements using abcdef',
+          }),
+        )
+
+        expect(selectionStore.getState().elements).toEqual([
+          { frame: SWATCHES.ref, index: 3, hash: BASE.hash },
+          { frame: SWATCHES.ref, index: 5, hash: BASE.hash },
+        ])
+      })
+
+      it('offers no Select across several frames, whose indices name different files', async () => {
+        act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+        renderPanel()
+
+        await screen.findByRole('button', { name: 'Copy #abcdef' })
+
+        expect(screen.queryByRole('button', { name: /^Select / })).toBeNull()
+      })
+    })
+
     describe('with six colors on each frame', () => {
       const answered = { ...ANSWERS }
       const six = (start: number) =>
@@ -636,6 +680,55 @@ describe('InspectorPanel', () => {
       vi.restoreAllMocks()
       layer?.remove()
       layer = undefined
+    })
+
+    it('selects within the element, at the bytes the read answered', async () => {
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL) =>
+        String(input).includes('/styles')
+          ? Response.json({
+              ok: true,
+              data: {
+                ref: SWATCHES.ref,
+                hash: HASH,
+                element: null,
+                colors: [
+                  { value: '#abcdef', token: null, percent: 100, uses: [3, 4] },
+                ],
+              },
+            })
+          : Response.json({ ok: false }),
+      )
+      layer = document.createElement('div')
+      const frame = document.createElement('div')
+      frame.dataset.frame = SWATCHES.ref
+      const iframe = document.createElement('iframe')
+      const loaded = new Promise((resolve) =>
+        iframe.addEventListener('load', resolve, { once: true }),
+      )
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches<b>x</b></h1></body></html>`
+      frame.append(iframe)
+      layer.append(frame)
+      document.body.append(layer)
+      await loaded
+      act(() =>
+        selectElement(selectionStore, PAGE, {
+          frame: SWATCHES.ref,
+          index: 3,
+          hash: HASH,
+        }),
+      )
+      renderPanel()
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'Select 2 elements using abcdef',
+        }),
+      )
+
+      expect(selectionStore.getState().elements).toEqual([
+        { frame: SWATCHES.ref, index: 3, hash: HASH },
+        { frame: SWATCHES.ref, index: 4, hash: HASH },
+      ])
     })
 
     it('raises no duplicate key among its sections', async () => {
