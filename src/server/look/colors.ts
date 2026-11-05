@@ -7,6 +7,7 @@ import type {
   ElementStyles,
   FrameStyles,
   StyleValue,
+  UsedColor,
 } from '@/shared/records/elements'
 
 import { FLOW_PROPERTIES, flowOf } from './flow'
@@ -132,18 +133,20 @@ export function frameStyles(
 
   const root =
     target ?? source.elements.find((candidate) => candidate.name === 'body')
-  const subtree = root
-    ? source.elements.filter((candidate) => within(candidate, root))
-    : source.elements
-  const colors = new Map<string, StyleValue>()
-  for (const candidate of subtree) {
+  const colors = new Map<string, UsedColor & { uses: number[] }>()
+  source.elements.forEach((candidate, at) => {
+    if (root && !within(candidate, root)) return
     for (const property of COLOR_PROPERTIES) {
       const value = read(candidate, property)
       if (!value || NO_COLOR.has(value.value.trim().toLowerCase())) continue
       const key = colorKey(value)
-      if (!colors.has(key)) colors.set(key, value)
+      const color = colors.get(key) ?? { ...value, uses: [] }
+      colors.set(key, color)
+      if (candidate.name !== 'body' && color.uses.at(-1) !== at) {
+        color.uses.push(at)
+      }
     }
-  }
+  })
   return { element, colors: [...colors.values()] }
 }
 

@@ -208,7 +208,7 @@ describe('frameStyles', () => {
     )
 
     expect(element).toBeNull()
-    expect(colors).toEqual([
+    expect(colors).toMatchObject([
       { value: 'var(--text)', token: '--text', percent: 100 },
       { value: '#ffffff', token: null, percent: 100 },
       { value: 'var(--primary)', token: '--primary', percent: 100 },
@@ -222,7 +222,9 @@ describe('frameStyles', () => {
       <p style="color: var(--ink)">b</p>`,
     )
 
-    expect(colors).toEqual([{ value: '#1a1a1a', token: null, percent: 100 }])
+    expect(colors).toMatchObject([
+      { value: '#1a1a1a', token: null, percent: 100 },
+    ])
   })
 
   it('lists only the selected element’s subtree', () => {
@@ -245,7 +247,110 @@ describe('frameStyles', () => {
       <p style="color: rgb(79, 70, 229)">c</p>`,
     )
 
-    expect(colors).toEqual([{ value: '#4F46E5', token: null, percent: 100 }])
+    expect(colors).toEqual([
+      {
+        value: '#4F46E5',
+        token: null,
+        percent: 100,
+        uses: [expect.any(Number), expect.any(Number), expect.any(Number)],
+      },
+    ])
+  })
+
+  describe('uses', () => {
+    /** Each color's `uses` as the `id`s of the elements at those indices, by its token or value. */
+    function usesOf(body: string, id?: string) {
+      const { colors } = stylesOf(body, id)
+      const source = readFrame({
+        root: board?.root ?? '',
+        project: 'site',
+        page: 'home',
+        name: 'hero',
+      })
+      return Object.fromEntries(
+        colors.map((color) => [
+          color.token ?? color.value,
+          color.uses?.map((at) => source.elements[at]?.attribs.id),
+        ]),
+      )
+    }
+
+    it('names each element setting a color, in document order', () => {
+      expect(
+        usesOf(
+          `<i id="a" style="color: #4f46e5">a</i>
+          <b id="b" style="color: #000000">b</b>
+          <i id="c" style="color: #4F46E5">c</i>
+          <u id="d" style="color: rgb(79, 70, 229)">d</u>`,
+        ),
+      ).toEqual({ '#4f46e5': ['a', 'c', 'd'], '#000000': ['b'] })
+    })
+
+    it('keeps a token and the raw value it holds apart', () => {
+      expect(
+        usesOf(
+          `<i id="a" style="color: var(--primary)">a</i>
+          <b id="b" style="color: #4f46e5">b</b>`,
+        ),
+      ).toEqual({ '--primary': ['a'], '#4f46e5': ['b'] })
+    })
+
+    it('names an element once for two properties holding one color', () => {
+      expect(
+        usesOf(`<i id="a" style="color: #4f46e5; border-color: #4f46e5">a</i>`),
+      ).toEqual({ '#4f46e5': ['a'] })
+    })
+
+    it('names the elements a shared rule paints', () => {
+      expect(
+        usesOf(
+          `<style>.card { background-color: #4f46e5 }</style>
+          <div id="a" class="card">a</div>
+          <div id="b" class="card">b</div>`,
+        ),
+      ).toEqual({ '#4f46e5': ['a', 'b'] })
+    })
+
+    it('names an element that inherits the color', () => {
+      expect(
+        usesOf(`<div id="a" style="color: #4f46e5"><p id="b">b</p></div>`),
+      ).toEqual({ '#4f46e5': ['a', 'b'] })
+    })
+
+    it('leaves out the body, which the board selects as the frame', () => {
+      board = writeBoard({
+        'tokens.css': TOKENS,
+        'site/home/hero.html': `<!doctype html><html><head></head><body id="body" style="background-color: #ffffff; color: #111827"><p id="a">a</p></body></html>`,
+      })
+      const source = readFrame({
+        root: board.root,
+        project: 'site',
+        page: 'home',
+        name: 'hero',
+      })
+
+      const { colors } = frameStyles(source, tokenSheets(board.root, 'site'))
+
+      expect(
+        colors.map(({ value, uses }) => [
+          value,
+          uses?.map((at) => source.elements[at]?.attribs.id),
+        ]),
+      ).toEqual([
+        ['#111827', ['a']],
+        ['#ffffff', []],
+      ])
+    })
+
+    it('names only the selected element’s subtree', () => {
+      expect(
+        usesOf(
+          `<p id="a" style="color: #4f46e5">a</p>
+          <div id="t"><b id="b" style="color: #4f46e5">b</b></div>`,
+          't',
+        ),
+      ).toEqual({ '#4f46e5': ['b'] })
+    })
   })
 })
 

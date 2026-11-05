@@ -93,6 +93,18 @@ export const elementStylesSchema = z.object({
 export type ElementStyles = z.infer<typeof elementStylesSchema>
 
 /**
+ * One color a frame or a subtree uses. `uses` holds the edit-address index of
+ * each element whose color, background, or border is this one, inherited or
+ * not, ascending and valid for the read's `hash`. The `body` is never named,
+ * since the board selects it as the frame.
+ */
+export const usedColorSchema = styleValueSchema.extend({
+  uses: z.array(z.int().min(0)).optional(),
+})
+
+export type UsedColor = z.infer<typeof usedColorSchema>
+
+/**
  * What `GET /api/frames/styles` answers, read from the frame's static
  * cascade so a token is named exactly: the element's styles when an index
  * was given, and the colors its subtree uses, or the frame's, deduplicated.
@@ -101,7 +113,7 @@ export const frameStylesSchema = z.object({
   ref: z.string(),
   hash: z.string().regex(/^[0-9a-f]{64}$/),
   element: elementStylesSchema.nullable(),
-  colors: z.array(styleValueSchema),
+  colors: z.array(usedColorSchema),
 })
 
 export type FrameStyles = z.infer<typeof frameStylesSchema>
