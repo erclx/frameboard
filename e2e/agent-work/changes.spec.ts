@@ -152,7 +152,21 @@ test.describe('what an agent changed', () => {
     ).toBeVisible()
   })
 
-  for (const width of [1280, 1100]) {
+  // The 1100 column folds Theme into More, whose button sits in the same bar.
+  for (const { width, pressTheme } of [
+    {
+      width: 1280,
+      pressTheme: (toolbar: Locator) =>
+        toolbar.getByRole('button', { name: 'Theme', exact: true }).click(),
+    },
+    {
+      width: 1100,
+      pressTheme: async (toolbar: Locator, page: Page) => {
+        await toolbar.getByRole('button', { name: 'More tools' }).click()
+        await page.getByRole('menuitem', { name: 'Theme' }).click()
+      },
+    },
+  ]) {
     test(`keeps the many form clear of the toolbar at ${width} wide`, async ({
       page,
     }) => {
@@ -181,7 +195,7 @@ test.describe('what an agent changed', () => {
         })
         .toBe(true)
       // A click lands only where the button is the topmost thing at its center.
-      await toolbar.getByRole('button', { name: 'Theme', exact: true }).click()
+      await pressTheme(toolbar, page)
       await expect(page.locator('html')).toHaveClass(/\bdark\b/)
     })
   }
