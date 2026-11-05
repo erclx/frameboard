@@ -50,12 +50,20 @@ These capture and measure what the board renders.
 | Command                      | Purpose                                                                                                |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run measure:canvas`     | Pans and pinches over fifty live frames in headed Chrome and prints p50, p95, and the share past 33 ms |
-| `bun run screenshot`         | Builds, serves, and captures every case in `e2e/capture/` into `screenshots/` and `e2e/evidence/`      |
+| `bun run screenshot`         | Builds, serves a board copy, and captures every case into `screenshots/` and `e2e/evidence/`           |
+| `bun run screenshot:drift`   | Captures twice into `screenshots/drift/` and sorts evidence into noise, stale, and equal               |
 | `bun run screenshot:compare` | Captures each shell surface at 1440 by 900, light and dark, into `screenshots/compare/`                |
 | `bun run smoke:prod`         | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                   |
 | `bun run design:sync`        | Builds, then runs `references sync canon/design` over the main root's `.canon/board`                   |
 
 The capture scripts each carry a condition the table leaves out.
+
+- `screenshot` leaves a committed image alone when at most 200 pixels differ and no channel moves past 64, so a smaller real change stays uncaptured
+- Antialiased rounded corners land apart between runs on every panel, and no mask can hold them, which is what that tolerance absorbs
+- `FRAMEBOARD_EVIDENCE_ROOT` sends `screenshot` evidence to that folder as captured, with no tolerance, and the committed set stays unread
+- A painted change inside those limits writes its image with `FRAMEBOARD_EVIDENCE_ROOT=e2e/evidence SCREENSHOT_FILTER=<case> bun run screenshot`
+
+The other two scripts carry one condition each.
 
 - `screenshot:compare` builds first and serves its own boards
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
@@ -75,6 +83,11 @@ Owns the shell scripts and the verify runner the commands above call, and every 
 - Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
 - `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
 - `.prettierignore` and `.oxlintrc.json` keep `canon/design/` out of format and lint, since only `references sync` writes the folder
+
+One script wraps the capture.
+
+- `evidence-capture.sh` backs `screenshot` and wraps the synced `screenshot.sh`, serving a throwaway copy of `basic` with pinned file times
+- A capture run in the fixture itself rewrites the tracked `notes.json` and leaves a change log the next run paints as unseen
 
 Two scripts back the serving commands.
 
@@ -96,6 +109,8 @@ Owns the Playwright specs, grouped by role into `cli/`, `agent-work/`, `hand-edi
 - A spec that writes board files serves its own copy of a fixture through `e2e/support/board-server.ts`, since writing into the committed fixture would leak between specs
 - `playwright-core`, the one runtime dependency, is pinned to the version `@playwright/test` resolves, so bump both together
 - A capture case picks its theme by saving `frameboard.theme` from an init script, since the board reads the choice before its first paint and a class added by hand is overwritten
+- A capture case that writes the served board joins `WRITING_SECTIONS` in `e2e/capture/board.ts`, which runs it after the rest
+- Those cases run last because a fresh browser paints the server's whole change log as unseen in every later case
 
 ### `test/`
 
@@ -141,7 +156,7 @@ These catch the toolchain out.
 - `test:run`, `test:e2e`, and `test:e2e:changed` take it, at `~/Library/Caches/frameboard/test.lock` on macOS and under `${XDG_CACHE_HOME:-~/.cache}/frameboard/` on Linux
 - A lock whose holder exited is taken over on the next poll, so delete the file by hand only when the waiting line names a live pid that runs no test
 - `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` or `pre-push` waiting on the lock looks hung until its run ends
-- `canon tooling diff web .` marks `test:run` with `!`, since the stack ships it plain, and the locked form is the one to keep
+- `canon tooling diff web .` marks `test:run` and `screenshot` with `!`, since the stack ships each plain, and the locked form and the board copy are the ones to keep
 
 ### Preview servers
 

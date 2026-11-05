@@ -2265,7 +2265,7 @@ const STATE_ONLY = ['320', '768', '1536']
  * board case waits on the server's browser sweep first, so the mark's count
  * is settled.
  */
-export const BOARD_CASES: CaptureCase[] = [
+const CASES: CaptureCase[] = [
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => [
     {
       section: 'home',
@@ -3749,4 +3749,25 @@ export const BOARD_CASES: CaptureCase[] = [
       },
     ]
   }),
+]
+
+/**
+ * The cases that write the served board, in the order they run. A fresh
+ * browser reads the server's whole change log as unseen, so a raw write raises
+ * a toast and a glow in whichever later case its watch batch lands in, and a
+ * board edit leaves Undo and Redo lit there. A case that writes joins this
+ * list, so every other case reads a pristine server, alone or in a full sweep.
+ */
+const WRITING_SECTIONS = [
+  'rectangle-drawn-free',
+  'text-hugs',
+  'replace-colors',
+  'replace-colors-done',
+]
+
+export const BOARD_CASES: CaptureCase[] = [
+  ...CASES.filter(({ section }) => !WRITING_SECTIONS.includes(section)),
+  ...WRITING_SECTIONS.flatMap((writing) =>
+    CASES.filter(({ section }) => section === writing),
+  ),
 ]
