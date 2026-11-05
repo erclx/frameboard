@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.27.0](https://github.com/erclx/frameboard/compare/v0.26.0...v0.27.0) (2026-11-05)
+
+
+### Features
+
+* **canvas:** cancel a frame move or resize on Escape ([#234](https://github.com/erclx/frameboard/issues/234)) ([aed413f](https://github.com/erclx/frameboard/commit/aed413f9e43a9733c7babc47d36063f4bc967153))
+* **canvas:** show a resize cursor over corner marks ([#236](https://github.com/erclx/frameboard/issues/236)) ([ca445c5](https://github.com/erclx/frameboard/commit/ca445c5592b29c12b15c3f357d8dd256eed5ab78))
+* **selection:** select and edit several elements in one frame ([#238](https://github.com/erclx/frameboard/issues/238)) ([456f392](https://github.com/erclx/frameboard/commit/456f3926715fbe59a647cd32da0475144676d64a))
+
+
+### Bug Fixes
+
+* **board:** hold 4.5:1 on white-on-blue controls with the fill token ([#237](https://github.com/erclx/frameboard/issues/237)) ([dc75b7e](https://github.com/erclx/frameboard/commit/dc75b7ea807bb13369c286306b25a0ab9181256d))
+* **capture:** make a full evidence run reproduce the committed images ([#240](https://github.com/erclx/frameboard/issues/240)) ([77ac783](https://github.com/erclx/frameboard/commit/77ac78358cac574e35b32a39d939f5af7e2974f3))
+
 ## [0.26.0](https://github.com/erclx/frameboard/compare/v0.25.0...v0.26.0) (2026-11-04)
 
 
