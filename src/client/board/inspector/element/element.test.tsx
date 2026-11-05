@@ -2959,7 +2959,7 @@ describe('InspectorPanel with several elements selected', () => {
   const BODY =
     '<h1 style="opacity:0.5;border-radius:4px">Title</h1><div style="opacity:0.5;border-radius:8px;width:20px;height:20px"></div><div style="opacity:0.5;width:30px;height:20px"></div>'
 
-  async function mountAndSelect(indexes: readonly number[]) {
+  async function mountAndSelect(indexes: readonly number[], using?: string) {
     layer = document.createElement('div')
     const frame = document.createElement('div')
     frame.dataset.frame = HERO.ref
@@ -2977,6 +2977,7 @@ describe('InspectorPanel with several elements selected', () => {
         selectionStore,
         'studio/home',
         indexes.map((index) => ({ frame: HERO.ref, index, hash: HASH })),
+        using,
       ),
     )
     render(
@@ -3005,8 +3006,15 @@ describe('InspectorPanel with several elements selected', () => {
               ref: HERO.ref,
               hash: HASH,
               colors: url.includes('index=3')
-                ? [{ value: '#111111', token: null, percent: 100 }]
-                : [{ value: '#222222', token: null, percent: 100 }],
+                ? [{ value: '#111111', token: null, percent: 100, uses: [3] }]
+                : [
+                    {
+                      value: '#222222',
+                      token: null,
+                      percent: 100,
+                      uses: [url.includes('index=4') ? 4 : 5],
+                    },
+                  ],
               element: url.includes('index=3')
                 ? {
                     color: { value: '#111111', token: null, percent: 100 },
@@ -3066,6 +3074,31 @@ describe('InspectorPanel with several elements selected', () => {
     ])
     expect(screen.getByText('in hero')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Frame' })).toBeNull()
+    expect(screen.queryByText(/using/)).toBeNull()
+  })
+
+  it('names the color the elements were selected through', async () => {
+    await mountAndSelect([4, 5], '222222')
+
+    expect(screen.getByRole('heading', { name: '2 elements' })).toBeVisible()
+    expect(screen.getByText('· using 222222')).toBeVisible()
+    expect(screen.getByText('in hero')).toBeVisible()
+  })
+
+  it('narrows to the elements a merged color names, across every member', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Select 2 elements using 222222',
+      }),
+    )
+
+    expect(selectionStore.getState().elements).toEqual([
+      { frame: HERO.ref, index: 4, hash: HASH },
+      { frame: HERO.ref, index: 5, hash: HASH },
+    ])
+    expect(await screen.findByText('· using 222222')).toBeVisible()
   })
 
   it('shows a shared value, and Mixed where they differ', async () => {

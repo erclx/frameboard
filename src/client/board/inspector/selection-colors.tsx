@@ -1,13 +1,14 @@
 import { Link2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
 import { toast } from '@/client/components/ui/toast'
 import { cn } from '@/client/lib/cn'
-import type { StyleValue } from '@/shared/records/elements'
+import type { UsedColor } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
+import { selectElements, selectionStore } from '../selection'
 import {
   parseComputed,
   parseHex,
@@ -26,16 +27,28 @@ import {
 /** The rows the list shows before `Show all`, so the section never pushes the panel's foot out of reach. */
 const CAP = 5
 
+/** The frame and bytes a color read's `uses` index into, on the page showing them. */
+interface SelectIn {
+  page: string
+  frame: string
+  hash: string
+}
+
 interface SelectionColorsProps {
   /** The colors the selection uses, deduplicated, each with its token or none. */
-  colors: readonly StyleValue[]
+  colors: readonly UsedColor[]
   tokens: readonly TokenRow[]
   theme: Theme
   /**
    * Replaces a raw color with a token across the selection, absent where
    * the selection cannot take one, so a raw row's swatch opens nothing.
    */
-  onReplace?: (color: StyleValue, token: string) => void
+  onReplace?: (color: UsedColor, token: string) => void
+  /**
+   * Where a row's Select lands, absent where the colors span frames or bytes,
+   * since one selection holds one frame's elements at one hash.
+   */
+  selectIn?: SelectIn
 }
 
 /**
@@ -45,14 +58,16 @@ interface SelectionColorsProps {
  * link on a token or the raw flag on a value no token names, and pressing it
  * copies the hex or the token's `var()`. A raw row's swatch is its own button
  * opening the project's color tokens, nearest value first, and a pick
- * replaces the value with that token. A caller keys it by the selection, so
- * a new selection caps the list again.
+ * replaces the value with that token. A Select over the row's end on hover
+ * and keyboard focus selects the elements using the color. A caller keys it
+ * by the selection, so a new selection caps the list again.
  */
 export function SelectionColors({
   colors,
   tokens,
   theme,
   onReplace,
+  selectIn,
 }: SelectionColorsProps) {
   const [open, setOpen] = useState(false)
   if (colors.length === 0) return null
@@ -73,23 +88,30 @@ export function SelectionColors({
         Selection colors · {colors.length}
       </h2>
       <ul className="flex flex-col gap-1.5">
-        {shown.map((color) => (
-          <li key={`${color.token ?? color.value}:${color.percent}`}>
-            {color.token || !onReplace ? (
-              <ColorButton
-                color={color}
-                swatch={swatchOf(color, tokens, theme)}
-              />
-            ) : (
-              <RawColorRow
-                color={color}
-                tokens={tokens}
-                theme={theme}
-                onReplace={(token) => onReplace(color, token)}
-              />
-            )}
-          </li>
-        ))}
+        {shown.map((color) => {
+          const select = selectIn ? (
+            <SelectButton color={color} selectIn={selectIn} />
+          ) : null
+          return (
+            <li key={`${color.token ?? color.value}:${color.percent}`}>
+              {color.token || !onReplace ? (
+                <ColorButton
+                  color={color}
+                  swatch={swatchOf(color, tokens, theme)}
+                  select={select}
+                />
+              ) : (
+                <RawColorRow
+                  color={color}
+                  tokens={tokens}
+                  theme={theme}
+                  onReplace={(token) => onReplace(color, token)}
+                  select={select}
+                />
+              )}
+            </li>
+          )
+        })}
       </ul>
       {shown.length < ordered.length ? (
         <button
@@ -105,7 +127,7 @@ export function SelectionColors({
 }
 
 /** What a row copies: a raw value as written, a token as the `var()` a stylesheet names it by. */
-function copyText(color: StyleValue): string {
+function copyText(color: UsedColor): string {
   return color.token ? `var(${color.token})` : color.value
 }
 
@@ -127,45 +149,90 @@ function copy(text: string): void {
   )
 }
 
-function ColorButton({
+/** A color as the row shows it, with the percent only where it keeps less than all of it. */
+function colorName(color: UsedColor): string {
+  const name = color.token
+    ? chipName(color.token)
+    : color.value.replace(/^#/, '')
+  return color.percent === 100 ? name : `${name} ${color.percent}%`
+}
+
+/**
+ * Selects the elements using a row's color, covering the row's percent and
+ * mark while it shows. Nothing draws for a color no selectable element uses,
+ * as a `body`'s own fill.
+ */
+function SelectButton({
   color,
-  swatch,
+  selectIn,
 }: {
-  color: StyleValue
-  swatch: string | null
+  color: UsedColor
+  selectIn: SelectIn
 }) {
-  const text = copyText(color)
+  const uses = color.uses ?? []
+  if (uses.length === 0) return null
+  const { page, frame, hash } = selectIn
+  const name = colorName(color)
   return (
     <button
       type="button"
-      aria-label={`Copy ${text}`}
-      onClick={() => copy(text)}
-      className={cn(
-        COLOR_ROW,
-        'w-full text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50',
-      )}
+      aria-label={`Select ${uses.length} ${uses.length === 1 ? 'element' : 'elements'} using ${name}`}
+      onClick={() =>
+        selectElements(
+          selectionStore,
+          page,
+          uses.map((index) => ({ frame, index, hash })),
+          name,
+        )
+      }
+      className="absolute inset-y-px right-px w-[60px] rounded-[5px] bg-inherit opacity-0 outline-none group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 hover:bg-sidebar focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar"
     >
-      <Swatch color={swatch} />
-      {color.token ? (
-        <span className={TOKEN_CHIP}>{chipName(color.token)}</span>
-      ) : (
-        <span className="min-w-0 flex-1 truncate tabular-nums">
-          {color.value.replace(/^#/, '')}
-        </span>
-      )}
-      <span className="ml-auto text-muted-foreground tabular-nums">
-        {color.percent}%
-      </span>
-      {color.token ? (
-        <Link2
-          role="img"
-          aria-label="Token"
-          className="size-[13px] shrink-0 text-muted-foreground"
-        />
-      ) : (
-        <RawFlag />
-      )}
+      Select
     </button>
+  )
+}
+
+function ColorButton({
+  color,
+  swatch,
+  select,
+}: {
+  color: UsedColor
+  swatch: string | null
+  select: ReactNode
+}) {
+  const text = copyText(color)
+  return (
+    <div className={cn(COLOR_ROW, 'group relative px-0 hover:bg-accent')}>
+      <button
+        type="button"
+        aria-label={`Copy ${text}`}
+        onClick={() => copy(text)}
+        className="flex size-full min-w-0 items-center gap-2 rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <Swatch color={swatch} />
+        {color.token ? (
+          <span className={TOKEN_CHIP}>{chipName(color.token)}</span>
+        ) : (
+          <span className="min-w-0 flex-1 truncate tabular-nums">
+            {color.value.replace(/^#/, '')}
+          </span>
+        )}
+        <span className="ml-auto text-muted-foreground tabular-nums">
+          {color.percent}%
+        </span>
+        {color.token ? (
+          <Link2
+            role="img"
+            aria-label="Token"
+            className="size-[13px] shrink-0 text-muted-foreground"
+          />
+        ) : (
+          <RawFlag />
+        )}
+      </button>
+      {select}
+    </div>
   )
 }
 
@@ -178,11 +245,13 @@ function RawColorRow({
   tokens,
   theme,
   onReplace,
+  select,
 }: {
-  color: StyleValue
+  color: UsedColor
   tokens: readonly TokenRow[]
   theme: Theme
   onReplace: (token: string) => void
+  select: ReactNode
 }) {
   const row = useRef<HTMLDivElement>(null)
   const swatch = useRef<HTMLButtonElement>(null)
@@ -193,7 +262,7 @@ function RawColorRow({
   const picked = useRef<string | null>(null)
   const shown = color.value.replace(/^#/, '')
   return (
-    <div ref={row} className={cn(COLOR_ROW, 'hover:bg-accent')}>
+    <div ref={row} className={cn(COLOR_ROW, 'group relative hover:bg-accent')}>
       <button
         ref={swatch}
         type="button"
@@ -217,6 +286,7 @@ function RawColorRow({
         </span>
         <RawFlag />
       </button>
+      {select}
       <Popover
         open={open}
         onOpenChange={setOpen}
