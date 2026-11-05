@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.28.0](https://github.com/erclx/frameboard/compare/v0.27.0...v0.28.0) (2026-11-05)
+
+
+### Features
+
+* **canvas:** cancel section, carry, and marquee drags on Escape ([#242](https://github.com/erclx/frameboard/issues/242)) ([2fefab6](https://github.com/erclx/frameboard/commit/2fefab6cb516ca544e1226f5dc2274d8dde10a6a))
+* **inspector:** select the elements using a selection color ([#243](https://github.com/erclx/frameboard/issues/243)) ([4e1883d](https://github.com/erclx/frameboard/commit/4e1883db089ce860e1a571d7b2efa39530693c88))
+* **toolbar:** fold the bar in stages to fit its column ([#246](https://github.com/erclx/frameboard/issues/246)) ([7fa3669](https://github.com/erclx/frameboard/commit/7fa366911f1868c1b113cb312c6ce855293f24e8))
+
+
+### Bug Fixes
+
+* **design:** draw the fill token on the remaining blue references ([#241](https://github.com/erclx/frameboard/issues/241)) ([db3f484](https://github.com/erclx/frameboard/commit/db3f48406dbed4a34ee40a9a410051b7b3d875d7))
+
 ## [0.27.0](https://github.com/erclx/frameboard/compare/v0.26.0...v0.27.0) (2026-11-05)
 
 
