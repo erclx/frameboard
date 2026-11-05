@@ -13,6 +13,7 @@
         --card: #ffffff;
         --popover: #ffffff;
         --primary: #2f7bf0;
+        --primary-fill: #1f6fe5;
         --primary-foreground: #ffffff;
         --secondary: #f2f2f2;
         --muted: #f2f2f2;
@@ -39,6 +40,7 @@
         --card: #2a2a2a;
         --popover: #2a2a2a;
         --primary: #4e92f6;
+        --primary-fill: #2068dc;
         --primary-foreground: #ffffff;
         --secondary: #363636;
         --muted: #363636;
@@ -190,7 +192,7 @@
         color: var(--foreground);
       }
       .btn.p {
-        background: var(--primary);
+        background: var(--primary-fill);
         color: var(--primary-foreground);
       }
       .btn.d {
@@ -257,7 +259,7 @@
         color: var(--foreground);
       }
       .tb.on {
-        background: var(--primary);
+        background: var(--primary-fill);
         color: var(--primary-foreground);
       }
       .sep {
@@ -400,7 +402,7 @@
         left: 50%;
         bottom: -24px;
         transform: translateX(-50%);
-        background: var(--primary);
+        background: var(--primary-fill);
         color: var(--primary-foreground);
         font-size: 10px;
         padding: 2px 6px;
@@ -470,7 +472,7 @@
     <h1 data-theme-only="dark">Chrome tokens, dark</h1>
     <h1 data-theme-only="light">Chrome tokens, light</h1>
     <p class="sub">
-      shadcn names plus Frameboard's own five. Values from the picked hybrid
+      shadcn names plus Frameboard's own six. Values from the picked hybrid
       look.
     </p>
     <h2>Surfaces</h2>
@@ -543,9 +545,15 @@
     <div class="sws">
       <div class="sw">
         <div class="chipc" style="background: var(--primary)"></div>
-        <b>selection, active tool</b><code>--primary</code
+        <b>selection, focus</b><code>--primary</code
         ><span data-theme-only="dark">#4e92f6</span
         ><span data-theme-only="light">#2f7bf0</span>
+      </div>
+      <div class="sw">
+        <div class="chipc" style="background: var(--primary-fill)"></div>
+        <b>active tool, white-on-blue fill</b><code>--primary-fill</code
+        ><span data-theme-only="dark">#2068dc</span
+        ><span data-theme-only="light">#1f6fe5</span>
       </div>
       <div class="sw">
         <div class="chipc" style="background: var(--claim)"></div>
