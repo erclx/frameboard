@@ -1,14 +1,11 @@
 import {
   ChevronDown,
-  Frame,
-  Hand,
   Image as ImageIcon,
   type LucideIcon,
   Maximize,
   MessageSquare,
   Moon,
   MousePointer2,
-  PanelTop,
   Pencil,
   Play,
   Redo2,
@@ -26,13 +23,10 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
-import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
-import { keyLabel } from '@/client/actions/keys'
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import {
   DropdownMenu,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
@@ -49,7 +43,16 @@ import {
 } from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
-import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
+import { ActionMenuItem, ChromeMenuContent } from './menu'
+import { ToolRow } from './more-menu'
+import {
+  BOX_TOOLS,
+  FRAME_SLOT,
+  HAND_TOOL,
+  MOVE_SLOT,
+  POINTER_TOOLS,
+  SECTION_TOOL,
+} from './toolbar-tools'
 
 /**
  * A toolbar place and what it shows before its action registers. A row
@@ -65,18 +68,8 @@ interface Slot {
 }
 
 const SHAPE_SLOT = 'tool.shape'
-const FRAME_SLOT = 'tool.frame'
-const SECTION_TOOL = 'tool.section'
-const MOVE_SLOT = 'tool.move'
-const HAND_TOOL = 'tool.hand'
 /** Stands for the Place toggle, which holds no action, after the tools. */
 const PLACE_SLOT = 'place'
-
-/** The tools the Move slot's caret lists, Move and Hand both pointing rather than drawing. */
-const POINTER_TOOLS = [
-  { id: MOVE_SLOT, label: 'Move', key: 'v', icon: MousePointer2 },
-  { id: HAND_TOOL, label: 'Hand', key: 'h', icon: Hand },
-] as const
 
 /** The Place toggle's choices, each named in its tooltip by where a new element lands. */
 const PLACINGS: readonly { value: Placing; label: string; tip: string }[] = [
@@ -89,25 +82,13 @@ const PLACINGS: readonly { value: Placing; label: string; tip: string }[] = [
   { value: 'free', label: 'Free', tip: 'Place where drawn' },
 ]
 
-/** The tools the Frame slot's caret lists, Frame and Section both drawing a box on the page. */
-const BOX_TOOLS = [
-  { tool: 'frame', id: FRAME_SLOT, label: 'Frame', key: 'f', icon: Frame },
-  {
-    tool: 'section',
-    id: SECTION_TOOL,
-    label: 'Section',
-    key: 'Shift+KeyS',
-    icon: PanelTop,
-  },
-] as const
-
 /** The groups in the order `canon/design/toolbar/floating` draws them, divided by a rule. */
 const GROUPS: readonly (readonly Slot[])[] = [
   [
     // Stands in for the Move slot, which `PointerTool` draws from Move or Hand, whichever is on.
     { id: MOVE_SLOT, label: 'Move', keys: ['v'], icon: MousePointer2 },
     // Stands in for the Frame slot, which `BoxTool` draws from Frame or Section, the last chosen.
-    { id: FRAME_SLOT, label: 'Frame', keys: ['f'], icon: Frame },
+    { id: FRAME_SLOT, label: 'Frame', keys: ['f'], icon: BOX_TOOLS[0].icon },
     { id: 'tool.text', label: 'Text', keys: ['t'], icon: Type },
     // Stands in for the Shape slot, which `ShapeTool` draws from the last shape chosen.
     { id: SHAPE_SLOT, label: 'Shape', icon: SHAPES[0].icon },
@@ -280,7 +261,6 @@ function ShapeTool({
   actions: ReadonlyMap<string, Action | undefined>
 }) {
   const shown = useShape()
-  const keysOn = useCharacterKeysOn()
   const action = actions.get(shown.id)
   const slot = {
     id: shown.id,
@@ -312,28 +292,14 @@ function ShapeTool({
               if (row && isEnabled(row)) row.run()
             }}
           >
-            {SHAPES.map((row) => {
-              const registered = actions.get(row.id)
-              const key = liveKey(registered?.keys ?? [row.key], keysOn)
-              const Icon = row.icon
-              return (
-                <DropdownMenuRadioItem
-                  key={row.id}
-                  value={row.kind}
-                  // A radio row stays open by default, which spends the next canvas click on closing it.
-                  closeOnClick
-                  disabled={!registered || !isEnabled(registered)}
-                  className={cn(
-                    MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
-                  )}
-                >
-                  <Icon aria-hidden className="size-[13px]" />
-                  {row.label}
-                  {key ? <MenuKey>{keyLabel(key)}</MenuKey> : null}
-                </DropdownMenuRadioItem>
-              )
-            })}
+            {SHAPES.map((row) => (
+              <ToolRow
+                key={row.id}
+                value={row.kind}
+                row={row}
+                action={actions.get(row.id)}
+              />
+            ))}
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
           {/* Opens the picker rather than choosing a shape, so the slot keeps the last shape. */}
@@ -364,7 +330,6 @@ function BoxTool({
   actions: ReadonlyMap<string, Action | undefined>
 }) {
   const chosen = useBoxTool()
-  const keysOn = useCharacterKeysOn()
   const shown = BOX_TOOLS.find((row) => row.tool === chosen) ?? BOX_TOOLS[0]
   const slot = {
     id: shown.id,
@@ -397,27 +362,14 @@ function BoxTool({
               if (action && isEnabled(action)) action.run()
             }}
           >
-            {BOX_TOOLS.map((row) => {
-              const registered = actions.get(row.id)
-              const key = liveKey(registered?.keys ?? [row.key], keysOn)
-              const Icon = row.icon
-              return (
-                <DropdownMenuRadioItem
-                  key={row.id}
-                  value={row.tool}
-                  closeOnClick
-                  disabled={!registered || !isEnabled(registered)}
-                  className={cn(
-                    MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
-                  )}
-                >
-                  <Icon aria-hidden className="size-[13px]" />
-                  {row.label}
-                  {key ? <MenuKey>{keyLabel(key)}</MenuKey> : null}
-                </DropdownMenuRadioItem>
-              )
-            })}
+            {BOX_TOOLS.map((row) => (
+              <ToolRow
+                key={row.id}
+                value={row.tool}
+                row={row}
+                action={actions.get(row.id)}
+              />
+            ))}
           </DropdownMenuRadioGroup>
         </ChromeMenuContent>
       </DropdownMenu>
@@ -435,7 +387,6 @@ function PointerTool({
 }: {
   actions: ReadonlyMap<string, Action | undefined>
 }) {
-  const keysOn = useCharacterKeysOn()
   const handOn = actions.get(HAND_TOOL)?.checked?.() ?? false
   const shown = POINTER_TOOLS[handOn ? 1 : 0]
   const slot = {
@@ -470,27 +421,14 @@ function PointerTool({
               if (action && isEnabled(action)) action.run()
             }}
           >
-            {POINTER_TOOLS.map((row) => {
-              const registered = actions.get(row.id)
-              const key = liveKey(registered?.keys ?? [row.key], keysOn)
-              const Icon = row.icon
-              return (
-                <DropdownMenuRadioItem
-                  key={row.id}
-                  value={row.id}
-                  closeOnClick
-                  disabled={!registered || !isEnabled(registered)}
-                  className={cn(
-                    MENU_ROW,
-                    'gap-2 pr-2 data-checked:bg-primary-fill data-checked:text-primary-foreground [&_[data-slot=dropdown-menu-radio-item-indicator]]:hidden',
-                  )}
-                >
-                  <Icon aria-hidden className="size-[13px]" />
-                  {row.label}
-                  {key ? <MenuKey>{keyLabel(key)}</MenuKey> : null}
-                </DropdownMenuRadioItem>
-              )
-            })}
+            {POINTER_TOOLS.map((row) => (
+              <ToolRow
+                key={row.id}
+                value={row.id}
+                row={row}
+                action={actions.get(row.id)}
+              />
+            ))}
           </DropdownMenuRadioGroup>
         </ChromeMenuContent>
       </DropdownMenu>
