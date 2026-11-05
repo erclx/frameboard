@@ -1,0 +1,1309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Toolbar, narrow</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --hover: #f5f5f5;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --accentfill: #1f6fe5;
+        --accentfg: #fff;
+        --destructive: #d4322c;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --hover: #323232;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --accentfill: #2068dc;
+        --accentfg: #fff;
+        --destructive: #ff6b63;
+      }
+      [data-theme='dark'] [data-theme-only='light'],
+      :root:not([data-theme='dark']) [data-theme-only='dark'] {
+        display: none !important;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        min-height: 100%;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--panel);
+        padding: 16px;
+        -webkit-font-smoothing: antialiased;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: default;
+      }
+      .ic {
+        flex: none;
+        display: block;
+      }
+      header {
+        height: 58px;
+      }
+      h1 {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 18px;
+      }
+      header p {
+        margin-top: 2px;
+        color: var(--muted);
+        line-height: 17px;
+        max-width: 600px;
+      }
+      .strip {
+        margin-top: 12px;
+      }
+      .pair {
+        display: flex;
+        gap: 16px;
+      }
+      .cap {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        height: 20px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .meas {
+        font-variant-numeric: tabular-nums;
+      }
+      .meas.over {
+        color: var(--destructive);
+        font-weight: 600;
+      }
+      .col {
+        position: relative;
+        background: var(--canvas);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .pill {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 5px;
+        width: max-content;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow:
+          0 6px 24px rgba(0, 0, 0, 0.18),
+          0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+      .pill.scroll {
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .pill.wrap {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .r {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .r > .seg:last-child:not(:first-child) {
+        margin-left: auto;
+      }
+      .r > .seg:only-child {
+        flex: 1;
+      }
+      .r > .seg:only-child button {
+        flex: 1;
+        justify-content: center;
+      }
+      .r > .sep:first-child {
+        display: none;
+      }
+      .pill > *,
+      .r > * {
+        flex: none;
+      }
+      .tb {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        color: var(--text);
+      }
+      .tb.on {
+        background: var(--accentfill);
+        color: var(--accentfg);
+      }
+      .tb[aria-expanded='true'] {
+        background: var(--hover);
+      }
+      .caret {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 32px;
+        margin-left: -2px;
+        color: var(--muted);
+      }
+      .sep {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        margin: 0 5px;
+      }
+      .seg {
+        display: flex;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 8px;
+      }
+      .seg button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .seg .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .segbtn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 8px 0 9px;
+        border-radius: 8px;
+        background: var(--raised);
+        font-weight: 500;
+        color: var(--text);
+      }
+      .segbtn .ic {
+        color: var(--muted);
+      }
+      .menu {
+        position: absolute;
+        width: 220px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        z-index: 6;
+      }
+      .mi {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+      }
+      .mi.chosen {
+        background: var(--accentfill);
+        color: var(--accentfg);
+      }
+      .mi .kb {
+        margin-left: auto;
+        display: flex;
+        gap: 3px;
+      }
+      .mi .kb span {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 5px;
+        background: var(--raised);
+        color: var(--muted);
+        font-size: 11px;
+        display: grid;
+        place-items: center;
+      }
+      .msep {
+        height: 1px;
+        background: var(--border);
+        margin: 4px 0;
+      }
+      .mlabel {
+        padding: 4px 6px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .mi .ic {
+        color: var(--muted);
+      }
+      .mi.chosen .ic {
+        color: var(--accentfg);
+      }
+      .mi.chosen .kb span {
+        background: var(--panel);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Toolbar, every width</h1>
+      <p>
+        The bar folds by its column's width. Place folds first, More takes the
+        rest, and More alone holds every control in the narrowest column.
+      </p>
+    </header>
+    <div class="pair">
+      <section class="strip" style="width: 542px">
+        <div class="cap">
+          <span>1024 window, panels at 240</span
+          ><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 542px; height: 250px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button class="tb on" aria-label="Move">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 3l14 8-6 2-3 6z" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Frame">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Text">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+              </svg></button
+            ><button class="tb" aria-label="Rectangle">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="5" width="16" height="14" rx="1.5" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Note">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 5h16v11H9l-5 4z" />
+              </svg></button
+            ><span class="sep"></span
+            ><button class="segbtn" aria-label="Place new elements, Auto">
+              Auto<svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg></button
+            ><span class="sep"></span
+            ><button
+              class="tb more"
+              aria-label="More tools"
+              aria-expanded="true"
+            >
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg></button
+            ><span class="sep"></span
+            ><span class="seg"
+              ><button class="on">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 20l4-1 11-11-3-3L5 16z" /></svg
+                >Edit</button
+              ><button>
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 5l12 7-12 7z" /></svg
+                >Play
+              </button></span
+            >
+          </div>
+          <div class="menu" role="menu">
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 14L4 9l5-5" />
+                <path d="M4 9h11a5 5 0 010 10h-3" /></svg
+              >Undo<span class="kb"><span>⌘Z</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M15 14l5-5-5-5" />
+                <path d="M20 9H9a5 5 0 000 10h3" /></svg
+              >Redo<span class="kb"><span>⇧⌘Z</span></span>
+            </div>
+            <div class="msep"></div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg
+              >Zoom to fit<span class="kb"><span>⇧1</span></span>
+            </div>
+            <div class="mi">
+              <span data-theme-only="dark"
+                ><svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"
+                  /></svg></span
+              ><span data-theme-only="light"
+                ><svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"
+                  /></svg></span
+              >Theme
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="strip" style="width: 542px">
+        <div class="cap">
+          <span>Place open</span><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 542px; height: 250px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button class="tb on" aria-label="Move">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 3l14 8-6 2-3 6z" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Frame">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Text">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+              </svg></button
+            ><button class="tb" aria-label="Rectangle">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="5" width="16" height="14" rx="1.5" />
+              </svg></button
+            ><span class="caret"
+              ><svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><button class="tb" aria-label="Note">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 5h16v11H9l-5 4z" />
+              </svg></button
+            ><span class="sep"></span
+            ><button
+              class="segbtn"
+              aria-expanded="true"
+              aria-label="Place new elements, Auto"
+            >
+              Auto<svg
+                class="ic"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg></button
+            ><span class="sep"></span
+            ><button class="tb more" aria-label="More tools">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg></button
+            ><span class="sep"></span
+            ><span class="seg"
+              ><button class="on">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 20l4-1 11-11-3-3L5 16z" /></svg
+                >Edit</button
+              ><button>
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 5l12 7-12 7z" /></svg
+                >Play
+              </button></span
+            >
+          </div>
+          <div class="menu" style="width: 196px">
+            <div class="mlabel">Place new elements</div>
+            <div class="mi chosen">Auto</div>
+            <div class="mi">Flow</div>
+            <div class="mi">Free</div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="pair">
+      <section class="strip" style="width: 375px">
+        <div class="cap">
+          <span>375 window, UI hidden</span><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 375px; height: 180px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button class="tb on" aria-label="Move">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 3l14 8-6 2-3 6z" />
+              </svg></button
+            ><button class="tb" aria-label="Frame">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
+              </svg></button
+            ><button class="tb" aria-label="Text">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+              </svg></button
+            ><button class="tb" aria-label="Rectangle">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="5" width="16" height="14" rx="1.5" />
+              </svg></button
+            ><button class="tb" aria-label="Note">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 5h16v11H9l-5 4z" />
+              </svg></button
+            ><span class="sep"></span
+            ><button class="tb more" aria-label="More tools">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg></button
+            ><span class="sep"></span
+            ><span class="seg"
+              ><button class="on" aria-label="Edit">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 20l4-1 11-11-3-3L5 16z" />
+                </svg></button
+              ><button aria-label="Play">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 5l12 7-12 7z" />
+                </svg></button
+            ></span>
+          </div>
+        </div>
+      </section>
+      <section class="strip" style="width: 222px">
+        <div class="cap">
+          <span>1024, panels at 400</span><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 222px; height: 180px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button class="tb on" aria-label="Move">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 3l14 8-6 2-3 6z" />
+              </svg></button
+            ><span class="sep"></span
+            ><button class="tb more" aria-label="More tools">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg></button
+            ><span class="sep"></span
+            ><span class="seg"
+              ><button class="on" aria-label="Edit">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 20l4-1 11-11-3-3L5 16z" />
+                </svg></button
+              ><button aria-label="Play">
+                <svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 5l12 7-12 7z" />
+                </svg></button
+            ></span>
+          </div>
+        </div>
+      </section>
+      <section class="strip" style="width: 118px">
+        <div class="cap">
+          <span>600 window</span><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 118px; height: 180px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button class="tb more" aria-label="More tools">
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="strip" style="width: 240px">
+        <div class="cap">
+          <span>More in that column</span><span class="meas" data-meas></span>
+        </div>
+        <div class="col" style="width: 240px; height: 700px">
+          <div class="pill" role="toolbar" aria-label="Tools">
+            <button
+              class="tb more"
+              aria-expanded="true"
+              aria-label="More tools"
+            >
+              <svg
+                class="ic"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="12" cy="12" r="1.2" />
+                <circle cx="19" cy="12" r="1.2" />
+              </svg>
+            </button>
+          </div>
+          <div class="menu" style="width: 220px">
+            <div class="mi chosen">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 20l4-1 11-11-3-3L5 16z" /></svg
+              >Edit
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 5l12 7-12 7z" /></svg
+              >Play<span class="kb"><span>P</span></span>
+            </div>
+            <div class="msep"></div>
+            <div class="mi chosen">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 3l14 8-6 2-3 6z" /></svg
+              >Move<span class="kb"><span>V</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M18 11V6a2 2 0 00-4 0M14 10V4a2 2 0 00-4 0v2M10 10.5V6a2 2 0 00-4 0v8"
+                />
+                <path
+                  d="M18 8a2 2 0 014 0v6a8 8 0 01-8 8h-2c-2.8 0-4.5-.9-6-2.4L2.4 16a2 2 0 013-2.6L8 16"
+                /></svg
+              >Hand<span class="kb"><span>H</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M7 3v18M17 3v18M3 7h18M3 17h18" /></svg
+              >Frame<span class="kb"><span>F</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18" /></svg
+              >Section<span class="kb"><span>⇧S</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
+              >Text<span class="kb"><span>T</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="5" width="16" height="14" rx="1.5" /></svg
+              >Rectangle<span class="kb"><span>R</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="8" /></svg
+              >Ellipse<span class="kb"><span>O</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 12h16" /></svg
+              >Divider<span class="kb"><span>L</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="M21 15l-3-3a2 2 0 00-3 0l-9 9" /></svg
+              >Image or video…<span class="kb"><span>⇧⌘K</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 5h16v11H9l-5 4z" /></svg
+              >Note<span class="kb"><span>N</span></span>
+            </div>
+            <div class="msep"></div>
+            <div class="mlabel">Place new elements</div>
+            <div class="mi chosen">Auto</div>
+            <div class="mi">Flow</div>
+            <div class="mi">Free</div>
+            <div class="msep"></div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 14L4 9l5-5" />
+                <path d="M4 9h11a5 5 0 010 10h-3" /></svg
+              >Undo<span class="kb"><span>⌘Z</span></span>
+            </div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M15 14l5-5-5-5" />
+                <path d="M20 9H9a5 5 0 000 10h3" /></svg
+              >Redo<span class="kb"><span>⇧⌘Z</span></span>
+            </div>
+            <div class="msep"></div>
+            <div class="mi">
+              <svg
+                class="ic"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg
+              >Zoom to fit<span class="kb"><span>⇧1</span></span>
+            </div>
+            <div class="mi">
+              <span data-theme-only="dark"
+                ><svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"
+                  /></svg></span
+              ><span data-theme-only="light"
+                ><svg
+                  class="ic"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"
+                  /></svg></span
+              >Theme
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      document.fonts.ready.then(() => {
+        for (const s of document.querySelectorAll('.strip')) {
+          const col = s.querySelector('.col'),
+            p = s.querySelector('.pill'),
+            m = s.querySelector('.menu'),
+            out = s.querySelector('[data-meas]'),
+            room = col.offsetWidth - 24
+          const need = p.scrollWidth + 2
+          out.textContent = `${Math.round(need)} of ${room} px`
+          if (need > room) out.classList.add('over')
+          if (m) {
+            const t = p
+                .querySelector('[aria-expanded=true]')
+                .getBoundingClientRect(),
+              c = col.getBoundingClientRect(),
+              w = m.offsetWidth
+            m.style.left =
+              Math.max(8, Math.min(t.left - c.left, c.width - w - 8)) + 'px'
+            m.style.bottom = p.offsetHeight + 24 + 'px'
+          }
+        }
+      })
+    </script>
+  </body>
+</html>

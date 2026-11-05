@@ -9,6 +9,7 @@
     "foundations/logo": "design/03-logo/picked-arm-5c",
     "toolbar/floating": "design/05-layout/picked-toolbar-floating",
     "toolbar/frame-caret": "design/05-layout/picked-toolbar-frame-caret",
+    "toolbar/narrow": "design/05-layout/picked-toolbar-narrow",
     "shell/hide-ui": "design/05-layout/picked-hide-ui",
     "shell/resize-none": "design/05-layout/picked-resize-none",
     "canvas/play-panels": "design/12-canvas/picked-play-panels",
