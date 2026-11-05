@@ -353,9 +353,12 @@ describe('frameStyles', () => {
             <script id="j">1</script>
             <template id="t"><i>x</i></template>
             <noscript id="n">x</noscript>
+            <video id="v"><source id="c" /><track id="k" /></video>
+            <area id="z" />
+            <datalist id="d"><optgroup id="g"><option id="o">x</option></optgroup></datalist>
           </div>`,
         ),
-      ).toEqual({ '#4f46e5': ['a', 'b'] })
+      ).toEqual({ '#4f46e5': ['a', 'b', 'v'] })
     })
 
     it('names only the selected element’s subtree', () => {

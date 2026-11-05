@@ -49,6 +49,12 @@ const NEVER_USES = new Set([
   'template',
   'br',
   'wbr',
+  'source',
+  'track',
+  'area',
+  'datalist',
+  'optgroup',
+  'option',
 ])
 
 /** Words of a `border` or `background` shorthand that are never its color. */
