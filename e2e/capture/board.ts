@@ -2847,6 +2847,7 @@ const CASES: CaptureCase[] = [
             asWriter,
             sectionOnHome,
             onCanvas({
+              select: ['webapp/home/hero'],
               awaitWrite: true,
               hold: { from: [-30, -190], to: [90, -110] },
               cancel: true,

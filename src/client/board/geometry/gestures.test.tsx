@@ -923,14 +923,16 @@ describe('attachGestures', () => {
         detach = canvas.detach
 
         canvas.pointer.down(...NAME)
-        canvas.pointer.move(95, 88)
+        canvas.pointer.move(107, 68)
+        const guided = canvas.part('[data-guides]').childElementCount
         pressEscape()
 
+        expect(guided).toBeGreaterThan(0)
         expect([
           canvas.part(`[data-note-frame="${LEFT.ref}"]`).style.translate,
           canvas.part('[data-guides]').childElementCount,
         ]).toEqual(['', 0])
-        canvas.pointer.up(95, 88)
+        canvas.pointer.up(107, 68)
       })
 
       it('puts a corner resize back and writes nothing on release', () => {

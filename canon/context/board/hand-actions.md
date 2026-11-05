@@ -85,7 +85,7 @@ A move released with Alt held puts the frames back and sends one duplicate carry
 
 Esc during a frame move or resize, a section move or corner resize, an element carry, or a marquee puts everything back at the press and writes nothing, an Alt copy included, and the next Esc reaches the registry.
 
-A section move restores boxes and not a frame's width preview, since the drag start already ended it. A cancelled resize redraws the overlay from its start boxes, since `drawRest` clears only a move's transform and no write lands for React to redraw from.
+A section move restores boxes and not a frame's width preview, since the drag start already ended it. A drag on one of several selected elements stays narrowed to that element after Esc. A cancelled resize redraws the overlay from its start boxes, since `drawRest` clears only a move's transform and no write lands for React to redraw from.
 
 ### `src/client/board/preview/`
 
