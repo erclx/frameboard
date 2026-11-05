@@ -2560,6 +2560,22 @@ const CASES: CaptureCase[] = [
         setup: themed(pressOnLoad('^Hide UI$')),
       },
       {
+        // At a 1024 window, where the default panels leave the 513 stage, so
+        // the image under the 1280 file name shows the bar folded with More open.
+        section: 'toolbar-narrow',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            (page) => page.setViewportSize({ width: 1024, height: 800 }),
+            pressOnLoad('^More tools$'),
+          ),
+        ),
+      },
+      {
         section: 'play',
         theme,
         route: '/p/webapp/home',

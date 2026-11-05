@@ -45,6 +45,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 - Below 1024px wide the board opens with Hide UI on, so the canvas keeps the screen and still pans and zooms.
 - The width is read once at load, so resizing across 1024px later leaves Hide UI where the developer set it.
+- The toolbar folds by its column's width, so a dragged panel folds it at any window size, and every control stays reachable in the bar or under More down to a 68px column.
 
 ## Shapes
 

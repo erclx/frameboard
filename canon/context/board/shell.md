@@ -122,6 +122,12 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
 
+The toolbar folds in stages to fit its column.
+
+- `toolbar-stage.ts` picks one of five stages from the column's width, never the window's, since a dragged panel narrows the column at any window size
+- Below a 731 px column Place folds to a dropdown and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
+- The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, and the clip test in `toolbar.test.tsx` catches a width that stopped fitting
+
 The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner.
 
 ### `src/client/`
