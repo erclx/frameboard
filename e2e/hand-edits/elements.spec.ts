@@ -227,6 +227,7 @@ test.describe('selecting an element inside a frame', () => {
     await page.keyboard.press('Alt+Shift+ArrowDown')
 
     await expect.poll(order).toEqual(['Caption', 'Headline'])
+    await expect(page.getByRole('button', { name: /^Undo/ })).toBeEnabled()
 
     await page.keyboard.press('ControlOrMeta+z')
 
