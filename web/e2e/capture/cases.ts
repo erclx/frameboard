@@ -9,6 +9,7 @@ export const EVIDENCE_ROOT = 'e2e/evidence'
  * than on one image of the whole page.
  */
 const HOME_SECTIONS: CaptureSection[] = [
+  { name: 'nav', selector: '[data-bar]' },
   { name: 'hero', selector: '#hero' },
   { name: 'walkthrough', selector: '#walkthrough' },
   { name: 'agent', selector: '#agent' },
