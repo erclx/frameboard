@@ -169,6 +169,11 @@ export function wireWalkthrough(track: HTMLElement): void {
     { passive: true },
   )
   window.addEventListener('resize', size)
+  // WebKit can run this before the stills and fonts settle the block's
+  // height, so the block is measured again once the page has loaded.
+  if (document.readyState !== 'complete') {
+    window.addEventListener('load', size, { once: true })
+  }
 
   walk.dataset.ready = ''
   rove(0)
