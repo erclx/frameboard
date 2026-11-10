@@ -15,7 +15,6 @@ const WIDTHS = [
 const SECTION_CONTENT = [
   '#hero [data-film]',
   '#walkthrough [data-track]',
-  '#agent > .wrap',
   '#close > .wrap',
 ]
 
