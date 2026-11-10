@@ -1,49 +1,17 @@
-<div class="cmd" data-copy>
-  <code>npx frameboard serve</code>
-  <button type="button" hidden>
+<div
+  class="inline-flex items-center gap-[18px] rounded-lg bg-accent px-[18px] py-3.5 font-mono text-[16px] text-on-accent"
+  data-copy
+>
+  <code class="font-mono select-all">npx frameboard serve</code>
+  <button
+    class="cursor-pointer border-0 bg-transparent p-0 font-sans text-[13px] text-on-accent underline-offset-3 hover:underline focus-visible:underline focus-visible:outline-on-accent"
+    type="button"
+    hidden
+  >
     Copy
   </button>
-  <span class="visually-hidden" role="status"></span>
+  <span class="sr-only" role="status"></span>
 </div>
-
-<style>
-  .cmd {
-    display: inline-flex;
-    align-items: center;
-    gap: 18px;
-    background: var(--accent);
-    color: var(--on-accent);
-    border-radius: 8px;
-    padding: 14px 18px;
-    font-family: var(--font-mono);
-    font-size: 16px;
-  }
-
-  code {
-    font-family: inherit;
-    user-select: all;
-  }
-
-  button {
-    border: 0;
-    padding: 0;
-    background: none;
-    color: var(--on-accent);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    cursor: pointer;
-  }
-
-  button:hover,
-  button:focus-visible {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  button:focus-visible {
-    outline-color: var(--on-accent);
-  }
-</style>
 
 <script>
   import { wireCopyCommands } from './copy-command'

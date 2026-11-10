@@ -222,38 +222,6 @@
     border-radius: 6px;
   }
 
-  .actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    height: 50px;
-    padding: 0 18px;
-    border-radius: 8px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    font-size: 15px;
-  }
-
-  .btn:hover {
-    text-decoration: none;
-    border-color: var(--muted);
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
   @media (max-width: 640px) {
     .wrap {
       padding: 0 20px;
