@@ -19,14 +19,14 @@
   --font-mono: var(--font-mono);
 }
 
-/* Workbench tokens, taken from canon/design/landing/page.html. They match the
-   board's own chrome, so the page and the product read as one tool. */
+/* The page's own light palette, a white page with neutral panels rather than
+   the board chrome's grey. The accent stays the board's blue. */
 :root {
-  --bg: #ececec;
+  --bg: #ffffff;
   --fg: #1a1a1a;
-  --muted: #666666;
-  --panel: #ffffff;
-  --line: #e4e4e4;
+  --muted: #5f5f5f;
+  --panel: #f7f7f7;
+  --line: #ebebeb;
   --accent: #2a6fdb;
   --on-accent: #ffffff;
   --font-sans: 'Geist Variable', Geist, system-ui, sans-serif;
@@ -189,6 +189,7 @@
   .lead {
     font-size: 20px;
     max-width: 30em;
+    text-wrap: balance;
     margin-bottom: 28px;
   }
 
@@ -209,12 +210,27 @@
     }
   }
 
+  /* In light the card takes the board canvas grey its screenshots are cut
+     from, so the band and the screenshot read as one surface on the white
+     page. The walkthrough stills stay light in dark, so dark keeps the panel. */
   .shot {
-    background: var(--panel);
-    border: 1px solid var(--line);
+    background: #ececec;
+    border: 1px solid #ececec;
     border-radius: 12px;
     padding: 8px;
     box-shadow: 0 1px 2px rgba(26, 26, 26, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .shot {
+      background: var(--panel);
+      border-color: var(--line);
+    }
+  }
+
+  :root[data-theme='dark'] .shot {
+    background: var(--panel);
+    border-color: var(--line);
   }
 
   .shot img,

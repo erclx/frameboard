@@ -3,16 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { wireFilmPlayer } from './film-player'
+import { wireThemeButton } from './nav'
 
 function renderFilm(): HTMLElement {
   document.body.innerHTML = `
     <section id="hero">
       <div class="shot" data-film>
         <picture>
+          <source media="(prefers-color-scheme: dark)" data-dark-media="all" />
           <img src="/hero-loop.webp" alt="The board canvas as an agent draws" />
         </picture>
         <button type="button" class="pause">Pause</button>
         <a href="/film.mp4" aria-label="Play the film" data-play></a>
+        <button type="button" hidden data-close>Close</button>
       </div>
     </section>`
   return document.body
@@ -28,8 +31,24 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+  Reflect.deleteProperty(document, 'fullscreenElement')
   document.body.innerHTML = ''
 })
+
+async function playFilm(): Promise<ReturnType<typeof userEvent.setup>> {
+  const root = renderFilm()
+  const user = userEvent.setup()
+  wireFilmPlayer(root)
+  await user.click(screen.getByRole('link', { name: 'Play the film' }))
+  return user
+}
+
+function playLink(): HTMLElement | null {
+  return screen.queryByRole('link', { name: 'Play the film' })
+}
 
 describe('wireFilmPlayer', () => {
   it('leaves the play control a link to the film before any click', () => {
@@ -124,6 +143,112 @@ describe('wireFilmPlayer', () => {
     await user.click(screen.getByRole('link', { name: 'Play the film' }))
 
     expect(player()).toHaveAttribute('aria-label', 'The Frameboard launch film')
+  })
+
+  it('plays the film in a 16:9 box', async () => {
+    await playFilm()
+
+    expect(player()).toHaveClass('aspect-video')
+  })
+
+  it('shows the Close button while the film plays', async () => {
+    await playFilm()
+
+    expect(screen.getByRole('button', { name: 'Close' })).toBeVisible()
+  })
+
+  it('returns to the hero on Close', async () => {
+    const user = await playFilm()
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(player()).toBeNull()
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    expect(playLink()).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  it('puts focus back on Play after closing', async () => {
+    const user = await playFilm()
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(playLink()).toHaveFocus()
+  })
+
+  it('returns to the hero on Escape', async () => {
+    const user = await playFilm()
+
+    await user.keyboard('{Escape}')
+
+    expect(player()).toBeNull()
+    expect(playLink()).toHaveFocus()
+  })
+
+  it('leaves Escape to the browser while the film is fullscreen', async () => {
+    const user = await playFilm()
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      value: player(),
+    })
+
+    await user.keyboard('{Escape}')
+
+    expect(player()).toBeInTheDocument()
+  })
+
+  it('returns to the hero when the film ends', async () => {
+    await playFilm()
+
+    player()?.dispatchEvent(new Event('ended'))
+
+    expect(player()).toBeNull()
+    expect(playLink()).toHaveFocus()
+  })
+
+  it('ignores Escape once the film has closed', async () => {
+    const user = await playFilm()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    screen.getByRole('button', { name: 'Pause' }).focus()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByRole('button', { name: 'Pause' })).toHaveFocus()
+  })
+
+  it('opens one player when played a second time', async () => {
+    const user = await playFilm()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    expect(document.querySelectorAll('video')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Close' })).toBeVisible()
+  })
+
+  it('brings the hero back in a theme switched while the film played', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }) as MediaQueryList)
+    const root = renderFilm()
+    root.insertAdjacentHTML(
+      'afterbegin',
+      '<button type="button" aria-label="Switch theme" data-theme-button></button>',
+    )
+    const themeButton = root.querySelector<HTMLButtonElement>(
+      '[data-theme-button]',
+    )
+    if (!themeButton) throw new Error('theme button did not render')
+    const user = userEvent.setup()
+    wireThemeButton(themeButton)
+    wireFilmPlayer(root)
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    await user.click(
+      screen.getByRole('button', { name: 'Switch to dark theme' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(document.querySelector('source')).toHaveAttribute('media', 'all')
   })
 
   it('does nothing on a page with no film', () => {

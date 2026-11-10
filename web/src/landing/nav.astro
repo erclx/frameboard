@@ -1,6 +1,4 @@
 ---
-import Book from '../assets/icons/book.svg'
-import GitHub from '../assets/icons/github.svg'
 import Moon from '../assets/icons/moon.svg'
 import Sun from '../assets/icons/sun.svg'
 import { DOCS_URL, REPO_URL } from './links'
@@ -14,11 +12,11 @@ import NavLink from './nav-link.astro'
   <div class="wrap h-full">
     <nav class="flex h-full items-center justify-between" aria-label="Main">
       <a
-        class="flex items-center gap-2 text-base font-semibold min-[361px]:gap-2.5 min-[361px]:text-[17px]"
+        class="flex items-center gap-2 text-base font-semibold hover:no-underline min-[361px]:gap-2.5 min-[361px]:text-[17px]"
         href="/"
       >
         <img
-          class="size-[26px]"
+          class="size-[26px] -translate-y-0.5"
           src="/icon.svg"
           alt=""
           width="26"
@@ -26,13 +24,9 @@ import NavLink from './nav-link.astro'
         />
         Frameboard
       </a>
-      <div class="flex items-center gap-1.5 text-[13px] text-muted min-[361px]:gap-3.5 min-[361px]:text-[14px] sm:gap-7 sm:text-[15px]">
-        <NavLink href={DOCS_URL} label="Docs">
-          <Book aria-hidden="true" />
-        </NavLink>
-        <NavLink href={REPO_URL} label="GitHub">
-          <GitHub aria-hidden="true" />
-        </NavLink>
+      <div class="flex items-center gap-4 text-[13px] text-fg min-[361px]:gap-3.5 min-[361px]:text-[14px] sm:gap-7 sm:text-[15px]">
+        <NavLink href={DOCS_URL} label="Docs" />
+        <NavLink href={REPO_URL} label="GitHub" />
         <button
           class="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-muted hover:bg-fg/8 hover:text-fg focus-visible:outline-offset-2 min-[361px]:size-9"
           type="button"
