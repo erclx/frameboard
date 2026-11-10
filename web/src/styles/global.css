@@ -186,9 +186,21 @@
     margin-bottom: 28px;
   }
 
+  /* Sections sit 96, 128 and 192 px apart, half of each gap on either side. */
   .sec {
-    padding: 104px 0;
-    border-top: 1px solid var(--line);
+    padding: 48px 0;
+  }
+
+  @media (width >= 40rem) {
+    .sec {
+      padding: 64px 0;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .sec {
+      padding: 96px 0;
+    }
   }
 
   .shot {
@@ -234,12 +246,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  @media (max-width: 1023px) {
-    .sec {
-      padding: 72px 0;
-    }
   }
 
   @media (max-width: 640px) {

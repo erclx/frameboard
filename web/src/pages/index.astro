@@ -6,8 +6,8 @@ import '../styles/global.css'
 import Agent from '../landing/agent.astro'
 import Close from '../landing/close.astro'
 import Film from '../landing/film.astro'
+import Footer from '../landing/footer.astro'
 import Hero from '../landing/hero.astro'
-import { CHANGELOG_URL, DOCS_URL, REPO_URL } from '../landing/links'
 import Nav from '../landing/nav.astro'
 import Walkthrough from '../landing/walkthrough.astro'
 
@@ -52,35 +52,6 @@ const socialCard = '/og-image.png'
       <Agent />
       <Close />
     </main>
-    <footer class="wrap">
-      <div class="foot">
-        <span>Frameboard · MIT license</span>
-        <span class="foot-links">
-          <a href={DOCS_URL}>Docs</a>
-          <span aria-hidden="true">·</span>
-          <a href={REPO_URL}>GitHub</a>
-          <span aria-hidden="true">·</span>
-          <a href={CHANGELOG_URL}>Changelog</a>
-        </span>
-      </div>
-    </footer>
+    <Footer />
   </body>
 </html>
-
-<style>
-  .foot {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px 24px;
-    color: var(--muted);
-    font-size: 14px;
-    padding: 32px 0 48px;
-    border-top: 1px solid var(--line);
-  }
-
-  .foot-links {
-    display: flex;
-    gap: 0.3em;
-  }
-</style>
