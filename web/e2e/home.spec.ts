@@ -84,6 +84,82 @@ test.describe('hero picture', () => {
   })
 })
 
+test.describe('address', () => {
+  test('the canonical and Open Graph address name the .com site', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const head = page.locator('head')
+
+    await expect(head.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      'https://frameboard.erclx.com/',
+    )
+    await expect(head.locator('meta[property="og:url"]')).toHaveAttribute(
+      'content',
+      'https://frameboard.erclx.com/',
+    )
+    await expect(head.locator('meta[property="og:site_name"]')).toHaveAttribute(
+      'content',
+      'Frameboard',
+    )
+  })
+})
+
+// Only a browser runs the head script before first paint, so the stored
+// choice beating the system theme is checked here and not in jsdom.
+test.describe('stored theme', () => {
+  test('a stored light choice paints light on a dark system', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.addInitScript(() => localStorage.setItem('theme', 'light'))
+
+    await page.goto('/')
+
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      'rgb(236, 236, 236)',
+    )
+  })
+
+  test('a stored dark choice paints dark on a light system', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
+
+    await page.goto('/')
+
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      'rgb(31, 31, 31)',
+    )
+  })
+
+  test('a stored dark choice on a light system gets the dark hero loop', async ({
+    page,
+  }) => {
+    await page.emulateMedia({
+      colorScheme: 'light',
+      reducedMotion: 'no-preference',
+    })
+    await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
+
+    await page.goto('/')
+
+    await expect
+      .poll(() =>
+        page
+          .locator('#hero img')
+          .evaluate((img: HTMLImageElement) =>
+            img.currentSrc.replace(location.origin, ''),
+          ),
+      )
+      .toBe('/hero-loop-dark.webp')
+  })
+})
+
 test.describe('social card meta', () => {
   test('the dark card a switch would publish answers as a 1200 × 630 PNG', async ({
     request,
