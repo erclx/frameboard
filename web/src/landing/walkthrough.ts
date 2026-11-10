@@ -51,11 +51,20 @@ export function stepAt({
   return Math.floor(clamped * count)
 }
 
+/** The step whose still each root last asked for, so a late decode loses. */
+const wanted = new WeakMap<HTMLElement, number>()
+
 /**
- * Opens step `index` and shows its still. Steps and stills pair up by their
- * `data-step` value.
+ * Opens step `index` at once and shows its still once it has decoded. A
+ * hidden still downloads but Chrome decodes it only on its first paint, so
+ * swapping straight away paints one empty frame. A decode that fails still
+ * shows the still, and a later call wins over an earlier decode. Steps and
+ * stills pair up by their `data-step` value.
  */
-export function setActiveStep(root: HTMLElement, index: number): void {
+export async function setActiveStep(
+  root: HTMLElement,
+  index: number,
+): Promise<void> {
   for (const step of root.querySelectorAll<HTMLElement>('li[data-step]')) {
     const on = Number(step.dataset.step) === index
     if (on) step.setAttribute('aria-current', 'step')
@@ -64,11 +73,16 @@ export function setActiveStep(root: HTMLElement, index: number): void {
     const body = step.querySelector('p')
     if (body) body.hidden = !on
   }
-  for (const still of root.querySelectorAll<HTMLElement>(
-    '[data-stills] [data-step]',
-  )) {
-    still.hidden = Number(still.dataset.step) !== index
+  const stills = [
+    ...root.querySelectorAll<HTMLElement>('[data-stills] [data-step]'),
+  ]
+  const next = stills.find((still) => Number(still.dataset.step) === index)
+  wanted.set(root, index)
+  if (next instanceof HTMLImageElement && typeof next.decode === 'function') {
+    await next.decode().catch(() => undefined)
   }
+  if (wanted.get(root) !== index) return
+  for (const still of stills) still.hidden = still !== next
 }
 
 /**
@@ -88,7 +102,7 @@ export function wireWalkthrough(track: HTMLElement): void {
   const open = (index: number): void => {
     if (index === current) return
     current = index
-    setActiveStep(walk, index)
+    void setActiveStep(walk, index)
   }
 
   const read = (): void => {

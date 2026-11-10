@@ -38,9 +38,9 @@ The home view, the overlays, and the agent's marks follow.
 
 The public page in `web/` follows, a separate project from the board.
 
-| Group     | What the user sees                                                     | Code               | States                 |
-| --------- | ---------------------------------------------------------------------- | ------------------ | ---------------------- |
-| `landing` | The landing page, from the hero through the walkthrough to the install | `web/src/landing/` | The whole page at once |
+| Group     | What the user sees                                                     | Code               | States                                                                    |
+| --------- | ---------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------- |
+| `landing` | The landing page, from the hero through the walkthrough to the install | `web/src/landing/` | The nav, hero, walkthrough, close, and footer, each at 1440, 834, and 390 |
 
 ## Writing the folder
 
