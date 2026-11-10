@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && astro dev",
-    "build": "astro build",
+    "build": "astro build && html-validate dist/index.html",
     "preview": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && astro preview",
     "astro": "astro",
     "check": "bun scripts/verify.ts",
@@ -59,6 +59,7 @@
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "eslint-plugin-vitest": "^0.5.4",
     "globals": "^17.13.0",
+    "html-validate": "^11.21.0",
     "jsdom": "^30.1.3",
     "oxfmt": "0.74.0",
     "oxlint": "1.87.0",
