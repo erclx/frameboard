@@ -151,6 +151,10 @@ These catch the toolchain out.
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
 - `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 6173
 
+One catches the landing page out.
+
+- `web/` has no Preflight, so a rule outside `@layer base` beats every utility, and `[hidden]` hides only through `global.css`
+
 ### Test lock
 
 `scripts/test-locked.ts` holds one lock across every checkout on the machine, so a heavy run waits for another worktree's rather than starving it.

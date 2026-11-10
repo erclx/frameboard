@@ -6,7 +6,7 @@ import path from 'path'
 const portOffset = Number(process.env.WORKTREE_PORT_OFFSET) || 0
 
 // The production address, which ASTRO_SITE overrides for a preview build.
-const site = process.env.ASTRO_SITE || 'https://frameboard.erclx.dev'
+const site = process.env.ASTRO_SITE || 'https://frameboard.erclx.com'
 
 export default defineConfig({
   integrations: [react()],

@@ -1,0 +1,59 @@
+---
+import Book from '../assets/icons/book.svg'
+import GitHub from '../assets/icons/github.svg'
+import Moon from '../assets/icons/moon.svg'
+import Sun from '../assets/icons/sun.svg'
+import { DOCS_URL, REPO_URL } from './links'
+import NavLink from './nav-link.astro'
+---
+
+<header
+  class="fixed inset-x-0 top-0 z-50 h-14 border-b border-transparent bg-bg transition-colors duration-150 motion-reduce:transition-none data-scrolled:border-line sm:h-16"
+  data-bar
+>
+  <div class="wrap h-full">
+    <nav class="flex h-full items-center justify-between" aria-label="Main">
+      <a
+        class="flex items-center gap-2 text-base font-semibold min-[361px]:gap-2.5 min-[361px]:text-[17px]"
+        href="/"
+      >
+        <img
+          class="size-[26px]"
+          src="/icon.svg"
+          alt=""
+          width="26"
+          height="26"
+        />
+        Frameboard
+      </a>
+      <div class="flex items-center gap-1.5 text-[13px] text-muted min-[361px]:gap-3.5 min-[361px]:text-[14px] sm:gap-7 sm:text-[15px]">
+        <NavLink href={DOCS_URL} label="Docs">
+          <Book aria-hidden="true" />
+        </NavLink>
+        <NavLink href={REPO_URL} label="GitHub">
+          <GitHub aria-hidden="true" />
+        </NavLink>
+        <button
+          class="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-muted hover:bg-fg/8 hover:text-fg focus-visible:outline-offset-2 min-[361px]:size-9"
+          type="button"
+          aria-label="Switch theme"
+          data-theme-button
+        >
+          <Sun class="hidden dark:block" aria-hidden="true" />
+          <Moon class="block dark:hidden" aria-hidden="true" />
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  import { wireBarLine, wireThemeButton } from './nav'
+
+  const button = document.querySelector<HTMLButtonElement>(
+    '[data-theme-button]',
+  )
+  const bar = document.querySelector<HTMLElement>('[data-bar]')
+  if (button) wireThemeButton(button)
+  if (bar) wireBarLine(bar)
+</script>
