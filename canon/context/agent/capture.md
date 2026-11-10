@@ -31,8 +31,18 @@ The server side shares one browser and renders only on demand.
 
 ## Gotchas
 
+### Capture
+
+These catch a capture out.
+
 - Capture refuses `font-missing` when a text element's first family is neither a loaded web face nor installed per DevTools `CSS.getPlatformFontsForNode`, so a name the platform aliases reads as missing
 - Capture uses the pinned headless shell alone, since an installed Chrome or Edge rasterizes text differently, and without it refuses `browser-not-found` with the install command, downloading nothing
 - A frame or composite past 16384 device pixels a side at its scale refuses `capture-too-large`, the route's 422, since Chromium's screenshot surface stops there
+- Capture emulates the color scheme alone and never reduced motion, so an animated image shoots at whatever frame it reached, and a frame meant to capture alike every run shows a still
+
+### Inspect
+
+These catch an element address out.
+
 - Inspect prints nothing and refuses `invalid-address` for an index with no layout box, `address-mismatch` when the live tag order leaves the file's, and `stale-address` when the file changed mid-load
 - Element counting lives in five places that cannot share code, being `readTextElements`, inspect's reader, the client pick, and the two browser check readers, so changing `LOOK_MARKER` moves all five

@@ -91,8 +91,18 @@ The skill and the `docs` content format both say a `style` attribute outranks ev
 
 ## Gotchas
 
+### Plugin and serve
+
+These catch the plugin and the server out.
+
 - The inbox monitor starts with `when: "always"`, because with `on-skill-invoke` it never started in the spike
 - Claude Code runs plugin monitors only in interactive sessions and not on Bedrock, Google Cloud, or Foundry, where a sent note waits as a pinned one
-- `frame fit` sets height only, at the layout width, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `100vh`
 - The hook runs the installed check directly, preferring Bun and never a package runner, which costs about ten times the check on every write
 - `--no-open` opens nothing on either `serve` path, which is how tests, `preview`, and capture run, so a test never launches a browser on the developer's screen
+
+### Frames and references
+
+These catch a frame verb or a sync out.
+
+- `frame fit` sets height only, at the layout width, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `100vh`
+- A `frames.json` key is exactly `<group>/<name>`, and `parseFrameMap` refuses a third segment with `frame-map-invalid`, so a group holds its references flat rather than in subfolders
