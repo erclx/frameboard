@@ -52,6 +52,32 @@ describe('wireFilmPlayer', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
+  it('keeps the browser on the page rather than following the link', async () => {
+    const root = renderFilm()
+    const user = userEvent.setup()
+    wireFilmPlayer(root)
+    const clicks: MouseEvent[] = []
+    document.addEventListener('click', (event) => clicks.push(event), {
+      once: true,
+    })
+
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    expect(clicks[0]?.defaultPrevented).toBe(true)
+  })
+
+  it('starts the new player once', async () => {
+    const root = renderFilm()
+    const user = userEvent.setup()
+    wireFilmPlayer(root)
+
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    expect(play).toHaveBeenCalledOnce()
+    expect(play.mock.contexts[0]).toBe(player())
+  })
+
   it('gives the player its own controls', async () => {
     const root = renderFilm()
     const user = userEvent.setup()
