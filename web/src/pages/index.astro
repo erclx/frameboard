@@ -8,6 +8,7 @@ import Close from '../landing/close.astro'
 import Film from '../landing/film.astro'
 import Hero from '../landing/hero.astro'
 import { CHANGELOG_URL, DOCS_URL, REPO_URL } from '../landing/links'
+import Nav from '../landing/nav.astro'
 import Walkthrough from '../landing/walkthrough.astro'
 
 const description =
@@ -40,20 +41,10 @@ const socialCard = '/og-image.png'
     />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="color-scheme" content="light dark" />
+    <script is:inline src="/theme-init.js"></script>
   </head>
   <body>
-    <header class="wrap">
-      <nav class="nav" aria-label="Main">
-        <a class="brand" href="/">
-          <img src="/icon.svg" alt="" width="26" height="26" />
-          Frameboard
-        </a>
-        <div class="links">
-          <a href={DOCS_URL}>Docs</a>
-          <a href={REPO_URL}>GitHub</a>
-        </div>
-      </nav>
-    </header>
+    <Nav />
     <main>
       <Hero />
       <Walkthrough />
@@ -77,33 +68,6 @@ const socialCard = '/og-image.png'
 </html>
 
 <style>
-  .nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 72px;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    font-size: 17px;
-  }
-
-  .brand img {
-    width: 26px;
-    height: 26px;
-  }
-
-  .links {
-    display: flex;
-    gap: 28px;
-    color: var(--muted);
-    font-size: 15px;
-  }
-
   .foot {
     display: flex;
     justify-content: space-between;

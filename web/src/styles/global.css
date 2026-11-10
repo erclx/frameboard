@@ -34,8 +34,11 @@
   color-scheme: light;
 }
 
+/* The dark values twice: once for a system in dark with no stored choice, and
+   once for a stored dark choice, which public/theme-init.js sets as
+   data-theme before first paint. A stored light choice matches neither. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #1f1f1f;
     --fg: #e6e6e6;
     --muted: #949494;
@@ -47,13 +50,53 @@
   }
 }
 
+:root[data-theme='dark'] {
+  --bg: #1f1f1f;
+  --fg: #e6e6e6;
+  --muted: #949494;
+  --panel: #2a2a2a;
+  --line: #353535;
+  --accent: #4e92f6;
+  --on-accent: #1a1a1a;
+  color-scheme: dark;
+}
+
+/* dark: follows the stored choice first and the system theme with none. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   * {
     box-sizing: border-box;
   }
 
+  /* The fixed bar is 56 px tall, 64 px from sm up, so the body starts below
+     it and a focused or linked target scrolls clear of it with room to spare. */
   html {
-    scroll-padding-top: 32px;
+    scroll-padding-top: 80px;
+  }
+
+  body {
+    padding-top: 56px;
+  }
+
+  @media (width >= 40rem) {
+    html {
+      scroll-padding-top: 96px;
+    }
+
+    body {
+      padding-top: 64px;
+    }
   }
 
   body {

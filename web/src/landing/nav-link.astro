@@ -1,0 +1,16 @@
+---
+interface Props {
+  href: string
+  label: string
+}
+
+const { href, label } = Astro.props
+---
+
+<a
+  class="inline-flex size-9 items-center justify-center gap-1 min-[361px]:size-auto min-[361px]:gap-1.5"
+  href={href}
+>
+  <slot />
+  <span class="sr-only min-[361px]:not-sr-only">{label}</span>
+</a>
