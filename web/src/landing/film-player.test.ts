@@ -6,10 +6,13 @@ import { wireFilmPlayer } from './film-player'
 
 function renderFilm(): HTMLElement {
   document.body.innerHTML = `
-    <section id="film">
-      <div class="shot" data-film data-poster="/poster.jpg">
-        <img src="/poster.jpg" alt="The launch film's closing frame" />
-        <a class="play" href="/film.mp4" aria-label="Play the film"></a>
+    <section id="hero">
+      <div class="shot" data-film>
+        <picture>
+          <img src="/hero-loop.webp" alt="The board canvas as an agent draws" />
+        </picture>
+        <button type="button" class="pause">Pause</button>
+        <a href="/film.mp4" aria-label="Play the film" data-play></a>
       </div>
     </section>`
   return document.body
@@ -40,7 +43,7 @@ describe('wireFilmPlayer', () => {
     )
   })
 
-  it('swaps the poster for a player of the film on play', async () => {
+  it('swaps the hero footage for a player of the film on play', async () => {
     const root = renderFilm()
     const user = userEvent.setup()
     wireFilmPlayer(root)
@@ -48,8 +51,20 @@ describe('wireFilmPlayer', () => {
     await user.click(screen.getByRole('link', { name: 'Play the film' }))
 
     expect(player()?.getAttribute('src')).toBe('/film.mp4')
-    expect(player()?.getAttribute('poster')).toBe('/poster.jpg')
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  it('takes the footage pause and the play control away with the footage', async () => {
+    const root = renderFilm()
+    const user = userEvent.setup()
+    wireFilmPlayer(root)
+
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'Pause' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('keeps the browser on the page rather than following the link', async () => {

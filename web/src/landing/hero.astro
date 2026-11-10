@@ -1,4 +1,5 @@
 ---
+import Play from '../assets/icons/play.svg'
 import InstallCommand from './install-command.astro'
 ---
 
@@ -12,7 +13,7 @@ import InstallCommand from './install-command.astro'
     <div class="flex justify-center">
       <InstallCommand />
     </div>
-    <div class="shot group relative mt-9 sm:mt-14">
+    <div class="shot group relative mt-9 sm:mt-14" data-film>
       <picture>
         <source
           media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)"
@@ -48,12 +49,22 @@ import InstallCommand from './install-command.astro'
       >
         Pause
       </button>
+      <a
+        class="absolute top-1/2 left-1/2 flex size-14 -translate-1/2 items-center justify-center rounded-full bg-accent text-on-accent focus-visible:outline-fg sm:size-[72px]"
+        href="/film.mp4"
+        aria-label="Play the film, 78 seconds"
+        data-play
+      >
+        <Play class="ml-1" aria-hidden="true" />
+      </a>
     </div>
   </div>
 </section>
 
 <script>
+  import { wireFilmPlayer } from './film-player'
   import { wireHeroPause } from './hero-pause'
 
   wireHeroPause()
+  wireFilmPlayer()
 </script>
