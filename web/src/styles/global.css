@@ -79,6 +79,12 @@
     box-sizing: border-box;
   }
 
+  /* Without Preflight, a display set on img or any element would show it
+     through its hidden attribute, as Preflight's own rule prevents. */
+  [hidden]:where(:not([hidden='until-found'])) {
+    display: none !important;
+  }
+
   /* The fixed bar is 56 px tall, 64 px from sm up, so the body starts below
      it and a focused or linked target scrolls clear of it with room to spare. */
   html {
