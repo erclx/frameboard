@@ -11,7 +11,6 @@ export const EVIDENCE_ROOT = 'e2e/evidence'
 const HOME_SECTIONS: CaptureSection[] = [
   { name: 'hero', selector: '#hero' },
   { name: 'walkthrough', selector: '#walkthrough' },
-  { name: 'film', selector: '#film' },
   { name: 'agent', selector: '#agent' },
   { name: 'close', selector: '#close' },
 ]
@@ -37,7 +36,6 @@ export const CASES: CaptureCase[] = [
     route: '/',
     evidence: true,
     excludeViewports: ['320', '768', '1536'],
-    // The film poster loads lazily, and the settle holds until the full run of sections has scrolled past it.
     sections: HOME_SECTIONS,
     setup: (page) => page.emulateMedia({ colorScheme: 'dark' }),
   },
