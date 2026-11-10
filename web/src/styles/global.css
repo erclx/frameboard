@@ -1,3 +1,24 @@
+/* Tailwind's theme and utilities without Preflight, so a bare element keeps
+   the rules below rather than a reset. The page's own rules stay unlayered for
+   now, which means they win over any utility until they move into base. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* The utilities read the tokens below through var(), so dark mode switches
+   them along with everything else. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
 /* Workbench tokens, taken from canon/design/landing/page.html. They match the
    board's own chrome, so the page and the product read as one tool. */
 :root {
