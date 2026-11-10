@@ -1,14 +1,24 @@
 ---
-import { CHANGELOG_URL, DOCS_URL, REPO_URL } from './links'
+import { CHANGELOG_URL, DOCS_URL, LICENSE_URL, REPO_URL } from './links'
 ---
 
 <footer class="wrap">
   <div class="flex flex-wrap justify-between gap-x-10 gap-y-3 border-t border-line pt-8 pb-12 text-[14px] text-muted">
-    <span>Frameboard, MIT license</span>
+    <a class="flex items-center gap-2 text-fg hover:no-underline" href="/">
+      <img
+        class="size-5 -translate-y-px"
+        src="/icon.svg"
+        alt=""
+        width="20"
+        height="20"
+      />
+      Frameboard
+    </a>
     <span class="flex flex-wrap gap-6 text-fg">
       <a href={DOCS_URL}>Docs</a>
       <a href={REPO_URL}>GitHub</a>
       <a href={CHANGELOG_URL}>Changelog</a>
+      <a href={LICENSE_URL}>MIT license</a>
     </span>
   </div>
 </footer>
