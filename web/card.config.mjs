@@ -1,4 +1,3 @@
-import react from '@astrojs/react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 import path from 'path'
@@ -18,7 +17,6 @@ export default defineConfig({
   srcDir: './card-src',
   outDir: './card-dist',
   publicDir: './public',
-  integrations: [react()],
   server: {
     port: 4421 + portOffset,
   },
