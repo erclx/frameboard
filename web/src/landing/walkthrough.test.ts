@@ -135,12 +135,77 @@ describe('setActiveStep', () => {
     expect(stepButton('Writes')).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('shows the still paired with the step and hides the rest', () => {
+  it('shows the still paired with the step and hides the rest', async () => {
     const track = renderWalk()
 
-    setActiveStep(track, 1)
+    await setActiveStep(track, 1)
 
     expect(screen.getByRole('img', { name: 'Checks still' })).toBeVisible()
+    expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
+})
+
+describe('setActiveStep with a still still decoding', () => {
+  interface Decode {
+    resolve: () => void
+    reject: () => void
+  }
+
+  function holdDecode(name: string): Decode {
+    const still = screen.getByAltText(name)
+    const held = {} as Decode
+    const decoding = new Promise<void>((resolve, reject) => {
+      held.resolve = resolve
+      held.reject = () => reject(new DOMException('', 'EncodingError'))
+    })
+    Object.defineProperty(still, 'decode', { value: () => decoding })
+    return held
+  }
+
+  it('keeps the open still on screen until the next one decodes', () => {
+    const track = renderWalk()
+    holdDecode('Checks still')
+
+    void setActiveStep(track, 1)
+
+    expect(screen.getByText('Checks body')).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Writes still' })).toBeVisible()
+    expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
+
+  it('swaps to the still once its decode resolves', async () => {
+    const track = renderWalk()
+    const decode = holdDecode('Checks still')
+
+    const swapped = setActiveStep(track, 1)
+    decode.resolve()
+    await swapped
+
+    expect(screen.getByRole('img', { name: 'Checks still' })).toBeVisible()
+    expect(screen.getAllByRole('img')).toHaveLength(1)
+  })
+
+  it('still shows the still when its decode fails', async () => {
+    const track = renderWalk()
+    const decode = holdDecode('Checks still')
+
+    const swapped = setActiveStep(track, 1)
+    decode.reject()
+    await swapped
+
+    expect(screen.getByRole('img', { name: 'Checks still' })).toBeVisible()
+  })
+
+  it('keeps the later step when an earlier decode resolves after it', async () => {
+    const track = renderWalk()
+    const checks = holdDecode('Checks still')
+
+    const first = setActiveStep(track, 1)
+    await setActiveStep(track, 2)
+    checks.resolve()
+    await first
+
+    expect(screen.getByRole('img', { name: 'Tweak still' })).toBeVisible()
     expect(screen.getAllByRole('img')).toHaveLength(1)
   })
 })
