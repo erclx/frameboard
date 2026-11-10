@@ -101,7 +101,7 @@ test.describe('address', () => {
     )
     await expect(head.locator('meta[property="og:site_name"]')).toHaveAttribute(
       'content',
-      'Frameboard',
+      'frameboard.erclx.com',
     )
   })
 })
