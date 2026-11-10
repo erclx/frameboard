@@ -23,7 +23,7 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 | CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                               | the bundle runs on both runtimes from outside the checkout                                                           |
 | Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes                                      |
 | macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`   | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
-| Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                 | the landing page typechecks, lints, formats, passes its unit tests, and builds                                       |
+| Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                 | the landing page typechecks, lints, formats, passes its unit tests, and builds to valid HTML                         |
 
 ### Ownership and releases
 
