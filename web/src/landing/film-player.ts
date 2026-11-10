@@ -5,9 +5,11 @@
  * opens the film. The player starts with sound, since the Play click is the
  * gesture that lets a browser play audio, and its own controls carry the mute.
  *
- * The hero's nodes are kept rather than rebuilt, so the pause wiring on them
- * survives a round trip. Escape is left to the browser while the film is
- * fullscreen, where it leaves fullscreen and the film plays on.
+ * The hero's nodes stay in the document, hidden, rather than being detached or
+ * rebuilt, so the pause wiring on them survives a round trip and a theme switch
+ * made while the film plays still re-points their sources. Escape is left to
+ * the browser while the film is fullscreen, where it leaves fullscreen and the
+ * film plays on.
  */
 export function wireFilmPlayer(root: ParentNode = document): void {
   const shot = root.querySelector<HTMLElement>('[data-film]')
@@ -15,15 +17,16 @@ export function wireFilmPlayer(root: ParentNode = document): void {
   const close = shot?.querySelector<HTMLButtonElement>('[data-close]')
   if (!shot || !play || !close) return
 
-  let hero: Node[] = []
+  let hero: { element: HTMLElement; hidden: HTMLElement['hidden'] }[] = []
   let video: HTMLVideoElement | null = null
 
   const backToHero = (): void => {
     if (!video) return
     document.removeEventListener('keydown', onKeydown)
+    video.remove()
     video = null
     close.hidden = true
-    shot.replaceChildren(...hero, close)
+    for (const { element, hidden } of hero) element.hidden = hidden
     play.focus()
   }
 
@@ -34,7 +37,11 @@ export function wireFilmPlayer(root: ParentNode = document): void {
   close.addEventListener('click', backToHero)
   play.addEventListener('click', (event) => {
     event.preventDefault()
-    hero = [...shot.childNodes].filter((node) => node !== close)
+    hero = [...shot.children]
+      .filter((child): child is HTMLElement => child instanceof HTMLElement)
+      .filter((child) => child !== close)
+      .map((element) => ({ element, hidden: element.hidden }))
+    for (const { element } of hero) element.hidden = true
     video = document.createElement('video')
     video.className = 'aspect-video bg-black'
     video.src = '/film.mp4'
@@ -42,7 +49,7 @@ export function wireFilmPlayer(root: ParentNode = document): void {
     video.playsInline = true
     video.setAttribute('aria-label', 'The Frameboard launch film')
     video.addEventListener('ended', backToHero)
-    shot.replaceChildren(video, close)
+    shot.prepend(video)
     close.hidden = false
     document.addEventListener('keydown', onKeydown)
     video.focus()

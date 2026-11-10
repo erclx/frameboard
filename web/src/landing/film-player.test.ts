@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { wireFilmPlayer } from './film-player'
+import { wireThemeButton } from './nav'
 
 function renderFilm(): HTMLElement {
   document.body.innerHTML = `
     <section id="hero">
       <div class="shot" data-film>
         <picture>
+          <source media="(prefers-color-scheme: dark)" data-dark-media="all" />
           <img src="/hero-loop.webp" alt="The board canvas as an agent draws" />
         </picture>
         <button type="button" class="pause">Pause</button>
@@ -29,6 +31,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
   Reflect.deleteProperty(document, 'fullscreenElement')
   document.body.innerHTML = ''
 })
@@ -220,6 +225,30 @@ describe('wireFilmPlayer', () => {
 
     expect(document.querySelectorAll('video')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Close' })).toBeVisible()
+  })
+
+  it('brings the hero back in a theme switched while the film played', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }) as MediaQueryList)
+    const root = renderFilm()
+    root.insertAdjacentHTML(
+      'afterbegin',
+      '<button type="button" aria-label="Switch theme" data-theme-button></button>',
+    )
+    const themeButton = root.querySelector<HTMLButtonElement>(
+      '[data-theme-button]',
+    )
+    if (!themeButton) throw new Error('theme button did not render')
+    const user = userEvent.setup()
+    wireThemeButton(themeButton)
+    wireFilmPlayer(root)
+    await user.click(screen.getByRole('link', { name: 'Play the film' }))
+
+    await user.click(
+      screen.getByRole('button', { name: 'Switch to dark theme' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(document.querySelector('source')).toHaveAttribute('media', 'all')
   })
 
   it('does nothing on a page with no film', () => {
