@@ -188,23 +188,22 @@ import '@/styles/global.css'
     <script is:inline>
       // `canon capture` has no color-scheme option, so ?theme=dark asks the
       // route for the dark card. It lifts the declarations of global.css's own
-      // prefers-color-scheme: dark rule onto the card rather than keeping a
-      // second copy of the dark tokens here. Finding no such rule hides the
-      // card, so a capture refuses rather than shipping a light card as dark.
+      // stored-dark rule, :root[data-theme='dark'], onto the card rather than
+      // keeping a second copy of the dark tokens here. Finding no such rule
+      // hides the card, so a capture refuses rather than shipping a light card
+      // as dark.
       if (new URLSearchParams(location.search).get('theme') === 'dark') {
         const card = document.querySelector('.card')
         const darkRoots = [...document.styleSheets]
           .flatMap((sheet) => [...sheet.cssRules])
           .filter(
             (rule) =>
-              rule instanceof CSSMediaRule &&
-              /prefers-color-scheme:\s*dark/.test(rule.conditionText),
+              rule instanceof CSSStyleRule &&
+              /^:root\[data-theme=["']dark["']\]$/.test(rule.selectorText),
           )
-          .flatMap((rule) => [...rule.cssRules])
-          .filter((rule) => rule.selectorText === ':root')
         if (darkRoots.length === 0) {
           card.hidden = true
-          throw new Error('No prefers-color-scheme: dark :root rule to lift')
+          throw new Error("No :root[data-theme='dark'] rule to lift")
         }
         card.dataset.theme = 'dark'
         for (const rule of darkRoots) {
