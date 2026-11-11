@@ -25,6 +25,7 @@ import { type FrameHost, startFrameHost } from './host'
 import { openFrame } from './render'
 
 // A transition the page starts a frame after load, as a scroll reveal does.
+// canon-allow-embedded: the page whose transition the settle assertion waits on, kept beside it
 const REVEAL = `
 <style>
   #box { opacity: 0; transition: opacity 300ms linear; }
@@ -39,6 +40,7 @@ const REVEAL = `
 </script>`
 
 // A second transition the first one's end starts.
+// canon-allow-embedded: the page whose chained transition the settle assertion waits on, kept beside it
 const CHAINED = `
 <style>
   #box { opacity: 0; transition: opacity 150ms linear; }

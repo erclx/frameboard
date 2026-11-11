@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.78.0",
-      "syncedAt": "2026-11-04T13:35:22.996Z",
+      "version": "5.84.0",
+      "syncedAt": "2026-11-11T13:46:01.194Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -36,8 +36,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.78.0",
-      "syncedAt": "2026-11-04T13:35:23.250Z",
+      "version": "5.84.0",
+      "syncedAt": "2026-11-11T13:45:44.070Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:a4dd2f6e78751e22d2d9ecd8bc4a66f42e7e1022c04d4038a4f6689c791ed64f",
@@ -55,7 +55,7 @@
         "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
         "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
-        "scripts/verify.ts": "sha256:d8e397f6dff3378551a9f22b4754f2e17dd3ff1beb7e30608ea1932feaf75e39",
+        "scripts/verify.ts": "sha256:027b3082b20c6486e865665d4c3e12fac957d1edecb94a0e92230e404f692fb9",
         "scripts/worktree-port.sh": "sha256:3d0f0a5e01f796bda1b8591103aef0509c1c077d160d15dfff565edc4d3a30cb",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
@@ -100,6 +100,10 @@
         "e2e/screenshot.ts": {
           "disposition": "customized",
           "base": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b"
+        },
+        "src/site.ts": {
+          "disposition": "declined",
+          "reason": "The root is a board app with no landing head, which lives in web/"
         }
       }
     }
