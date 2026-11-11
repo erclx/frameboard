@@ -70,7 +70,9 @@ A finding at error means the frame renders wrong or cannot load, and a warning i
 | `theme`               | The site sets literal colors with no other theme                       | Add the other theme beside them, as the themes section says                 |
 | `network`             | The frame still loads a font, image, or script from the site           | Copy the file into the page folder or the project's `assets/` and link that |
 | `missing-file`        | A lifted path points at a file nobody copied                           | Copy the file in, or drop the reference                                     |
-| Any rule              | The finding's path names a linked sheet rather than the frame          | Treat it as the site's own noise unless the frame renders wrong             |
+| `outside-link`        | A root-absolute URL such as a bundle's `url(/static/...)`              | Copy the file into the page folder or `assets/` and make the URL relative   |
+| Any warning           | The finding's path names a linked sheet rather than the frame          | Treat it as the site's own noise unless the frame renders wrong             |
+| Any error             | The finding's path names a linked sheet rather than the frame          | Fix it in the copied sheet, since the frame is not clean until it passes    |
 
 ## Make every frame work in both themes
 
