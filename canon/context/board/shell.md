@@ -20,6 +20,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 - An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
 - In Play the board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
+  - The kept frames come live six per animation frame, nearest the view center first, and the layer carries `data-staging` until the last one is
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 
