@@ -58,6 +58,25 @@ export async function readClaims(root: string, now: Date): Promise<Claim[]> {
 }
 
 /**
+ * The box a live reservation holds for a frame, else undefined, a claims
+ * file that does not parse reading as holding none.
+ */
+export async function reservedBox(
+  root: string,
+  frame: string,
+  now = new Date(),
+): Promise<ClaimBox | undefined> {
+  try {
+    return (await readClaims(root, now)).find(
+      (each) => each.frame === frame && each.box,
+    )?.box
+  } catch (error) {
+    if (error instanceof FrameboardError) return undefined
+    throw error
+  }
+}
+
+/**
  * Claims a frame for a session, or renews the session's own claim keeping
  * `claimedAt`. A frame another session holds live refuses `frame-claimed`.
  */

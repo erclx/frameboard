@@ -14,6 +14,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { recordingJournal } from '../../../test/support/recording-journal'
+import { reserve } from '../claims/store'
 import {
   addFrame,
   deleteFrame,
@@ -179,6 +180,29 @@ describe('frames', () => {
         box: { x: 1990, y: 0, width: 834, height: 1194 },
         order: 2,
         placed: true,
+      })
+    })
+
+    it('add with no position takes the box a live reservation holds', async () => {
+      const root = open()
+      await reserve(
+        root,
+        { session: 'sess-a', agent: 'claude', tag: 'claude · a' },
+        [
+          {
+            frame: 'webapp/home/pricing',
+            box: { x: 3000, y: 200, width: 400, height: 300, hugHeight: true },
+          },
+        ],
+        new Date(),
+      )
+
+      const added = await addFrame(root, 'webapp/home/pricing', { cwd: root })
+
+      expect(added).toMatchObject({
+        box: { x: 3000, y: 200, width: 400, height: 300 },
+        hugHeight: true,
+        hugWidth: false,
       })
     })
 

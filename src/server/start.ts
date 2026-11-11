@@ -27,6 +27,7 @@ import { checkRendered } from './checks/browser/rendered'
 import { readConfig } from './checks/frame'
 import { boardPath, frameFrom, readFrame } from './checks/frame-source'
 import { checkOutranked } from './checks/outranked'
+import { landReserved } from './claims/land'
 import { type ClaimsPush, createClaimsPush } from './claims/push'
 import { clipboardFiles } from './clipboard/files'
 import { contentHash } from './edit/address'
@@ -466,6 +467,8 @@ async function listen({
   // Every frame is checked once at start, ahead of any hello's findings, and
   // queued for the browser sweep, whose findings follow as they land.
   void inTurn(async () => {
+    // A reserved frame written while no server ran lands in its box first.
+    await landReserved(root, new Date()).catch(() => [])
     let board = await scanBoard(root)
     // Only a frame written while no server ran holds the first board, since
     // every other stored size already holds, and the rest measure after it.
@@ -595,6 +598,9 @@ async function pushBatch(
   let own: string[]
   let placed: string[]
   try {
+    // A reserved frame's file lands in its box ahead of the scan, so the
+    // board first sees it there and a hugging frame measures from it.
+    await landReserved(root, new Date()).catch(() => [])
     board = await scanBoard(root)
     const previous = scanned.board
     scanned.board = board
