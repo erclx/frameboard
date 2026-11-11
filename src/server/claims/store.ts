@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 
 import { CLAIMS_FILE, RUN_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import {
   type Claim,
+  type ClaimBox,
   type ClaimsFile,
   claimsFileSchema,
 } from '@/shared/records/claims'
@@ -32,6 +34,19 @@ export function claimsPath(root: string): string {
   return join(root, RUN_FOLDER, CLAIMS_FILE)
 }
 
+function claimedError(holder: Claim, frame: string): FrameboardError {
+  return new FrameboardError(
+    'frame-claimed',
+    `${holder.tag} is editing ${frame} until ${holder.expiresAt}.`,
+    {
+      frame: holder.frame,
+      session: holder.session,
+      tag: holder.tag,
+      expiresAt: holder.expiresAt,
+    },
+  )
+}
+
 function isLive(claim: Claim, now: Date): boolean {
   return Date.parse(claim.expiresAt) > now.getTime()
 }
@@ -56,29 +71,114 @@ export async function claim(
     const live = file.claims.filter((each) => isLive(each, now))
     const current = live.find((each) => each.frame === fields.frame)
     if (current && current.session !== fields.session) {
-      throw new FrameboardError(
-        'frame-claimed',
-        `${current.tag} is editing ${fields.frame} until ${current.expiresAt}.`,
-        {
-          frame: current.frame,
-          session: current.session,
-          tag: current.tag,
-          expiresAt: current.expiresAt,
-        },
-      )
+      throw claimedError(current, fields.frame)
     }
+    const expiresAt = new Date(now.getTime() + CLAIM_TTL_MS).toISOString()
     const held: Claim = {
       ...fields,
+      ...setOf(current),
       claimedAt: current?.claimedAt ?? now.toISOString(),
-      expiresAt: new Date(now.getTime() + CLAIM_TTL_MS).toISOString(),
+      expiresAt,
+      // A plain claim on a reserved frame is the agent turning to draw it.
+      ...(current?.box ? { drawingAt: now.toISOString() } : {}),
     }
+    const set = current?.set
     return {
       ...file,
-      claims: [...live.filter((each) => each !== current), held],
+      claims: [
+        ...live
+          .filter((each) => each !== current)
+          .map((each) =>
+            set !== undefined &&
+            each.set === set &&
+            each.session === fields.session
+              ? { ...each, expiresAt }
+              : each,
+          ),
+        held,
+      ],
     }
   })
   // The change appends the held claim last.
   return written.claims.at(-1) as Claim
+}
+
+/** The reservation a renewal carries over from the claim it renews. */
+function setOf(
+  current: Claim | undefined,
+): Pick<Claim, 'box' | 'set' | 'drawingAt'> {
+  if (!current) return {}
+  const { box, set, drawingAt } = current
+  return {
+    ...(box ? { box } : {}),
+    ...(set === undefined ? {} : { set }),
+    ...(drawingAt === undefined ? {} : { drawingAt }),
+  }
+}
+
+/** One frame a reservation names, with the box it will land in. */
+export interface Reservation {
+  frame: string
+  box: ClaimBox
+}
+
+/**
+ * Reserves every frame named as one set, each a claim carrying its box and
+ * the set's id, in one write. A frame another session holds live refuses
+ * `frame-claimed` before any is written, and the session's own claim on a
+ * named frame is replaced.
+ */
+export async function reserve(
+  root: string,
+  holder: Omit<ClaimFields, 'frame'>,
+  reservations: Reservation[],
+  now: Date,
+): Promise<Claim[]> {
+  await ensureRunFolder(root)
+  const set = randomUUID()
+  const claimedAt = now.toISOString()
+  const expiresAt = new Date(now.getTime() + CLAIM_TTL_MS).toISOString()
+  const made: Claim[] = reservations.map(({ frame, box }) => ({
+    frame,
+    ...holder,
+    claimedAt,
+    expiresAt,
+    box,
+    set,
+  }))
+  const names = new Set(made.map((each) => each.frame))
+  await updateRecord(claimsPath(root), claimsSpec, (file) => {
+    const live = file.claims.filter((each) => isLive(each, now))
+    const taken = live.find(
+      (each) => names.has(each.frame) && each.session !== holder.session,
+    )
+    if (taken) throw claimedError(taken, taken.frame)
+    return {
+      ...file,
+      claims: [...live.filter((each) => !names.has(each.frame)), ...made],
+    }
+  })
+  return made
+}
+
+/**
+ * Drops the live reservation on a frame whoever holds it, refusing a claim
+ * with no box so an agent's claim on an existing frame is never broken.
+ * Answers the dropped claim, or undefined when the frame holds none.
+ */
+export async function releaseReservation(
+  root: string,
+  frame: string,
+  now: Date,
+): Promise<Claim | undefined> {
+  let dropped: Claim | undefined
+  await ensureRunFolder(root)
+  await updateRecord(claimsPath(root), claimsSpec, (file) => {
+    const live = file.claims.filter((each) => isLive(each, now))
+    dropped = live.find((each) => each.frame === frame && each.box)
+    return { ...file, claims: live.filter((each) => each !== dropped) }
+  })
+  return dropped
 }
 
 /**
