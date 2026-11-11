@@ -69,6 +69,8 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - `viewport` rereads at twice the viewport height through `fit`'s `readContentSize`, two frames after the resize so a `resize` script counts, leaving out what a cropping ancestor hides
 - `min-font-size` and `min-contrast` run once `project.json` sets their `checks` key. `min-contrast` skips text over an image, a gradient, or an effect, and reads a `::before` panel as the host's
 
+The server's checker runs every rule once per box through `acrossWidths` in `rendered-findings.ts`, tagging a finding read at a linked width with `width`, which `formatFinding` prints as `<path>@<width>`. A linked finding the frame's own box already reported is left out.
+
 A `scroll` frame overflows its height on purpose, so the tier reads it apart.
 
 - `clipped` reads its width alone, and `viewport` skips it, since its fixed screen height makes a `100vh` section meant

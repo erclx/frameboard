@@ -45,6 +45,13 @@ An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
 - `PageLayout.set` writes `scroll` only on an entry it turns on or one already holding it, as it does the hug flags
 - The board hides a scroll frame's native scrollbar with a style marked like the look injection
 
+An entry's `widths` lists the extra widths one frame file shows at, each a `{ width, height }` drawn in a row past the frame at its `y`.
+
+- `widthsOf` in `src/shared/frame-widths.ts` reads a value of any other shape, or one repeating a width, as none, so a bad key never refuses the page's layout
+- Each width follows the frame's height mode, hugging at its width while `hugHeight` is on and otherwise holding its height, the preset height of its width when set
+- `PageLayout.set` writes `widths` while it lists one, removes it once a valid list empties, and leaves a value no reader understands as written
+- Every writer placing a frame beside another, `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts`, reads `drawnExtent` rather than the box, so nothing lands under a linked width
+
 ### `src/server/edit/`
 
 Owns the edit writer, which parses a frame with parse5 and writes only inside the edited attribute value or text span, and `insert.ts`, which adds one placed element's tag at a sibling gap and refuses a hash the file left. Neither serializes the tree, which rewrites formatting, nor uses Bun's `HTMLRewriter`, which Node lacks.
