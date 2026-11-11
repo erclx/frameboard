@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+/**
+ * Where a reserved frame will land, and which axes take their size from the
+ * content once it does, as `frame add` would place it.
+ */
+export const claimBoxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+  hugWidth: z.boolean().optional(),
+  hugHeight: z.boolean().optional(),
+})
+
+export type ClaimBox = z.infer<typeof claimBoxSchema>
+
 /** One session's hold on a frame while its agent rewrites it. */
 export const claimSchema = z.looseObject({
   /** The canonical frame ref, `<project>/<page>/<frame>`. */
@@ -14,6 +29,12 @@ export const claimSchema = z.looseObject({
   claimedAt: z.string(),
   /** When it lapses unless the session claims it again. */
   expiresAt: z.string(),
+  /** A reservation's box, held until the frame's file lands in the layout. */
+  box: claimBoxSchema.optional(),
+  /** The id one `editing --new` call stamps on each frame it reserves, which renew together. */
+  set: z.string().optional(),
+  /** When the session last claimed a reserved frame plainly, so the latest in a set reads as drawing. */
+  drawingAt: z.string().optional(),
 })
 
 export type Claim = z.infer<typeof claimSchema>

@@ -13,6 +13,7 @@ import { nextFreeName } from '@/shared/names'
 import type { LayoutFile, SectionEntry } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { reservedBox } from '../claims/store'
 import type { Journal, JournalOptions } from './journal'
 import { readRecord, withLocks, writeRecord } from './json-record'
 import {
@@ -66,8 +67,27 @@ export async function addFrame(
     ...options,
     allowMissing: true,
   })
-  const size = sizeOf(options)
   const page = pageDir(frame)
+  const reserved =
+    options.x === undefined && options.y === undefined
+      ? await reservedBox(root, refOf(frame))
+      : undefined
+  const sized =
+    options.size !== undefined ||
+    options.width !== undefined ||
+    options.height !== undefined
+  // A reserved frame lands in its box, as the server's landing step puts it.
+  const size =
+    reserved && !sized
+      ? { width: reserved.width, height: reserved.height }
+      : sizeOf(options)
+  const hugs =
+    reserved && !sized
+      ? {
+          hugWidth: reserved.hugWidth ?? false,
+          hugHeight: reserved.hugHeight ?? false,
+        }
+      : hugsOf(options)
   await withLayouts(
     [page],
     async (layouts) => {
@@ -98,10 +118,10 @@ export async function addFrame(
         box: {
           ...computed.box,
           ...size,
-          x: options.x ?? computed.box.x,
-          y: options.y ?? computed.box.y,
+          x: options.x ?? reserved?.x ?? computed.box.x,
+          y: options.y ?? reserved?.y ?? computed.box.y,
         },
-        ...hugsOf(options),
+        ...hugs,
       })
       layout.renumber()
     },
@@ -531,7 +551,8 @@ async function updatePlacement(
 }
 
 /** Which axes `frame add` leaves hugging: every one no size option names, the height under a preset. */
-function hugsOf({ size, width, height }: SizeOptions): {
+/** Which axes a frame placed with these options sizes from its content. */
+export function hugsOf({ size, width, height }: SizeOptions): {
   hugWidth: boolean
   hugHeight: boolean
 } {

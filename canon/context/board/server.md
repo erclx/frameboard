@@ -36,11 +36,13 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 
 Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together.
 
-- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`
-- A renewal keeps `claimedAt` and moves only `expiresAt`
+- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`, and a reservation adds the `box` it lands in and its `set`
+- A renewal keeps `claimedAt`, `box`, and `set`, moves `expiresAt` for every live claim in the set, and stamps `drawingAt` on a reserved frame
 - A batch naming the claims file sends `claims` alone, with no rescan or browser check
 - A timer armed at start and on every change rebroadcasts at the soonest expiry
 - A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
+
+`land.ts` runs at start and ahead of each batch's scan. Once a reserved frame's file exists it writes the layout entry at the claim's box and drops the box, so nothing writes `layout.json` for a frame with no file. `POST /api/claims/release` drops a reservation whichever session holds it, behind `requireWriter`, and refuses a claim with no box.
 
 ### `src/server/access/`
 

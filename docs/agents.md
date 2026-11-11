@@ -39,6 +39,14 @@ An agent runs `editing` on a frame before rewriting it.
 - A move or resize then goes only if the agent left the frame as you saw it, and a rename or delete goes once the claim ends
 - An element edit goes if the agent left that element alone, and otherwise comes back, with typed text kept in the Text field to apply again
 
+Before writing new frames, an agent reserves them with `editing --new`, one call for the whole set.
+
+- The board draws each as a hatched box where it will land, in one row past the page's frames, naming the agent and its place in the set
+- The frame the agent turned to last reads drawing and the rest read queued, and each box becomes its frame when the file lands
+- Renewing any frame in the set keeps the whole set, so it lapses together five minutes after the agent's last `editing`
+- Adding or renaming a frame onto a reserved name waits for the reservation to end, since the agent's file would replace yours
+- Right-click a box and choose Release reservation to free the space for a frame of your own
+
 ## Change marks and following
 
 When an agent writes a frame, the board marks it with a dot and counts it on its page and project until you look at it.
