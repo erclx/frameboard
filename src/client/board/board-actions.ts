@@ -46,6 +46,7 @@ import { boxesSizedTo, FRAME_TOOL_GROUPS } from './inspector/presets'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
+import { enteredStore, leaveFrame } from './play/entered'
 import { select, selectionStore } from './selection'
 import { canvasView, reportHandMove } from './view'
 
@@ -181,6 +182,24 @@ function boardActions(): Action[] {
       palette: false,
       keys: ['p'],
       run: () => set({ mode: read().mode === 'play' ? 'edit' : 'play' }),
+    },
+    {
+      // Ahead of Exit Play on the same key, so Esc leaves the entered frame
+      // first. It reads the store at the press, since an entered frame's own
+      // window hands Esc to the board.
+      id: 'play.leaveFrame',
+      label: 'Leave frame',
+      group: 'mode',
+      palette: false,
+      keys: ['Escape'],
+      enabled: () =>
+        read().mode === 'play' && enteredStore.getState().ref !== null,
+      run: () => {
+        if (document.activeElement instanceof HTMLIFrameElement) {
+          document.activeElement.blur()
+        }
+        leaveFrame()
+      },
     },
     {
       id: 'mode.exitPlay',
