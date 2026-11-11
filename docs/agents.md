@@ -13,6 +13,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 - `edit` changes one style, attribute, or text on one element without touching another byte, and `--drop-attr` removes an attribute, such as a boolean `muted`, that `--attr` can only set
 - `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
+- `capture --at 0,500,1000` holds a frame's motion at each moment in ms and writes `<frame>.at-<ms>.<theme>.png` apiece, and `--filmstrip <n>` writes one image of n moments spaced from start to end. Both seek `window.__hf` when the page sets it, then `window.__timelines`, then its CSS animations and transitions, and refuse `motion-missing` for a scene a script steps on a timer.
 - `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code

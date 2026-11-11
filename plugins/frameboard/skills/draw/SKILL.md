@@ -30,6 +30,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 2. Place it with `frameboard frame add <page>/<frame> --json` straight after the write. It places the file as written and touches nothing in it.
    - Pass the size name nearest the screen the developer described, from the `Frame sizes` block of `frameboard docs`, so it lands at its device width at once
    - Pass `slide-16-9` or `slide-4-3` for a slide, `og-card` for a link preview card at 1200 × 630, and `linkedin-post` for a LinkedIn post at 1200 × 627
+   - Pass `video-landscape` or `video-portrait` for a video scene at 1920 × 1080 or 1080 × 1920
    - A frame with no size hugs its content on both axes, and a size fixes its width alone, so leave the size off a component and let the running server measure it
    - Resize an axis only to fix it, since a resize stops that axis hugging
    - Pass `--scroll` for a page meant to scroll at a screen height, such as one with a sticky section, rather than running `frame fit`, which grows it to its full length
@@ -42,6 +43,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
+   - Capture any motion you wrote at a few moments with `--at` or `--filmstrip`, since a plain capture shows only where it comes to rest
 7. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
