@@ -50,9 +50,7 @@ describe('ZoomControl', () => {
 
     act(() => reportZoom(0.35))
 
-    expect(screen.getByRole('button', { name: 'Zoom' })).toHaveTextContent(
-      '35%',
-    )
+    expect(screen.getByRole('button', { name: 'Zoom 35%' })).toBeInTheDocument()
   })
 
   it('runs the zoom action picked from its menu', async () => {
@@ -60,7 +58,7 @@ describe('ZoomControl', () => {
     register(hundred)
     render(<ZoomControl />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Zoom' }))
+    await userEvent.click(screen.getByRole('button', { name: /^Zoom \d+%$/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: '100%' }))
 
     expect(hundred.runs).toBe(1)

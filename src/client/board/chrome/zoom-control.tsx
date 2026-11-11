@@ -52,12 +52,13 @@ export function ZoomControl({ align = 'end', className }: ZoomControlProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Zoom"
         className={cn(
           'flex h-6 items-center gap-1 rounded-md px-1 text-muted-foreground tabular-nums outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground',
           className,
         )}
       >
+        {/* The name comes from the content, so it carries the live level a voice user reads (WCAG 2.5.3). */}
+        <span className="sr-only">Zoom </span>
         <span ref={level} data-zoom-level />
         <ChevronDown aria-hidden className="size-2.5" />
       </DropdownMenuTrigger>
