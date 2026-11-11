@@ -227,9 +227,11 @@ describe('Canvas', () => {
       ).toBe(true)
     })
 
-    it('enters the frame under a click, which then takes the pointer', () => {
+    it('enters the frame under a click, which then takes the pointer', async () => {
       const { container } = renderCanvas(playPage())
       const at = middleOf(container, 'a')
+      // The frame comes live an animation frame after the view settles.
+      await expect.poll(() => container.querySelector('iframe')).not.toBeNull()
 
       act(() => pressShield(container, at))
 
@@ -853,15 +855,71 @@ describe('Canvas', () => {
     })
 
     return expect
-      .poll(() =>
-        container.querySelector('[data-frame="studio/home/far"] iframe'),
-      )
-      .toBeNull()
-      .then(() => {
-        expect(
+      .poll(() => ({
+        near: Boolean(
           container.querySelector('[data-frame="studio/home/near"] iframe'),
-        ).not.toBeNull()
-      })
+        ),
+        far: Boolean(
+          container.querySelector('[data-frame="studio/home/far"] iframe'),
+        ),
+      }))
+      .toEqual({ near: true, far: false })
+  })
+
+  describe('making frames live', () => {
+    // Eight frames in a row, so the fit puts the view center between the
+    // middle two and the outer two fall outside the first batch of six.
+    const row = () =>
+      page(
+        'studio/row',
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((name, at) =>
+          frame(name, { x: at * 300, y: 0, width: 200, height: 200 }),
+        ),
+      )
+
+    const liveNames = (container: HTMLElement) =>
+      [...container.querySelectorAll('[data-frame]')]
+        .filter((element) => element.querySelector('iframe'))
+        .map((element) => element.getAttribute('data-frame')?.split('/').pop())
+
+    it('draws only empty boxes in the commit that settles the view', () => {
+      fakeFrames()
+      const { container } = renderCanvas(row())
+
+      expect(container.querySelectorAll('[data-placeholder]')).toHaveLength(8)
+      expect(liveNames(container)).toEqual([])
+      expect(layerOf(container).hasAttribute('data-staging')).toBe(true)
+    })
+
+    it('makes the frames nearest the view center live first', () => {
+      fakeFrames()
+      const { container } = renderCanvas(row())
+
+      act(() => vi.advanceTimersToNextFrame())
+
+      expect(liveNames(container)).toEqual(['b', 'c', 'd', 'e', 'f', 'g'])
+      expect(layerOf(container).hasAttribute('data-staging')).toBe(true)
+    })
+
+    it('stops staging once every culled frame is live', () => {
+      fakeFrames()
+      const { container } = renderCanvas(row())
+
+      act(() => vi.advanceTimersToNextFrame())
+      act(() => vi.advanceTimersToNextFrame())
+
+      expect(liveNames(container)).toEqual([
+        'a',
+        'b',
+        'c',
+        'd',
+        'e',
+        'f',
+        'g',
+        'h',
+      ])
+      expect(layerOf(container).hasAttribute('data-staging')).toBe(false)
+    })
   })
 
   describe('the cursor over a corner mark', () => {

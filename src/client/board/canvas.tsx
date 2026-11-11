@@ -26,7 +26,13 @@ import { ChangeGlow } from './changes/glow'
 import { reservedOn } from './claims/reservations'
 import { ReservedBoxes } from './claims/reserved'
 import { WaitingCards, WaitingDock } from './claims/waiting-card'
-import { mountedRefs, type Size, type View } from './cull'
+import {
+  byCenter,
+  mountedRefs,
+  type Size,
+  useStagedLive,
+  type View,
+} from './cull'
 import { useElementActions } from './element/actions'
 import { ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
@@ -706,10 +712,25 @@ export function Canvas({
     )
   }
 
-  const live = useMemo(
+  const culled = useMemo(
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
     [frames, settled],
   )
+  // The culled frames come live a batch per animation frame, nearest the
+  // view center first, so a page switch or a long pan answers with empty
+  // boxes at once rather than building every iframe in one commit.
+  const order = useMemo(
+    () =>
+      settled && culled
+        ? byCenter(
+            frames.filter((frame) => culled.has(frame.ref)),
+            settled.view,
+            settled.size,
+          )
+        : null,
+    [frames, settled, culled],
+  )
+  const { live, staging } = useStagedLive(order)
   // The dwell reads what is on screen each time the cull runs.
   useDwell(
     useMemo(() => (settled ? { frames, ...settled } : null), [frames, settled]),
@@ -733,7 +754,7 @@ export function Canvas({
           viewport={viewportRef}
           frames={drawnFrames}
           page={page.ref}
-          live={live}
+          live={culled}
         />
       ) : null}
       <div
@@ -742,6 +763,7 @@ export function Canvas({
           setLayer(element)
         }}
         data-layer
+        data-staging={staging || undefined}
         className={cn(
           'absolute top-0 left-0 origin-top-left',
           // The pointer passes through to the shield under every frame but

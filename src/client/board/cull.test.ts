@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { mountedRefs } from './cull'
+import { byCenter, mountedRefs } from './cull'
 
 const VIEWPORT = { width: 1000, height: 800 }
 
@@ -62,5 +62,41 @@ describe('mountedRefs', () => {
     )
 
     expect([...refs]).toEqual(['panned'])
+  })
+})
+
+describe('byCenter', () => {
+  it('orders frames nearest the view center first', () => {
+    const order = byCenter(
+      [
+        frameAt('far', 1500, 1200),
+        frameAt('middle', 450, 350),
+        frameAt('edge', 0, 0),
+      ],
+      { x: 0, y: 0, k: 1 },
+      VIEWPORT,
+    )
+
+    expect(order).toEqual(['middle', 'edge', 'far'])
+  })
+
+  it('reads the center through the transform', () => {
+    const order = byCenter(
+      [frameAt('origin', 450, 350), frameAt('panned', 2450, 350)],
+      { x: -4000, y: 0, k: 2 },
+      VIEWPORT,
+    )
+
+    expect(order).toEqual(['panned', 'origin'])
+  })
+
+  it('breaks a tie by ref, whatever order the frames arrive in', () => {
+    const order = byCenter(
+      [frameAt('b', 350, 350), frameAt('a', 550, 350)],
+      { x: 0, y: 0, k: 1 },
+      VIEWPORT,
+    )
+
+    expect(order).toEqual(['a', 'b'])
   })
 })
