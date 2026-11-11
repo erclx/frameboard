@@ -91,9 +91,11 @@ export function follow(
       stopFollow()
       return
     }
+    // A reservation holds no frame to center until its file lands.
     const claimed = Object.values(state.claims).filter(
       (claim) =>
         claim.session === session &&
+        claim.box === undefined &&
         previous.claims[claim.frame]?.session !== session,
     )
     if (claimed.length > 0) head(claimed.at(-1)?.frame ?? null)
