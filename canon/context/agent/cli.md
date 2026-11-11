@@ -48,7 +48,7 @@ Owns the frame verbs, and `page.ts` reshapes pages the same way.
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 - `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
-- `--scroll` on `add` or `resize` fixes both axes at the height given or the width's reference height, and `--no-scroll` on `resize` clears the key, keeping the box
+- `--scroll` fixes both axes, `add` taking the given or reference height and `resize` dropping only a hugging height to it, and `--no-scroll` clears the key, keeping the box
 
 ### `src/cli/commands/project.ts`
 

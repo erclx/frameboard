@@ -39,6 +39,8 @@ type FrameOptions = CommonOptions &
 
 const SCROLL_HELP =
   'hold a fixed screen height and scroll past it, fixing both axes, at the reference height of the width when no height is given'
+const RESIZE_SCROLL_HELP =
+  'hold a fixed screen height and scroll past it, fixing both axes, dropping a hugging height to the reference height of the width and keeping a fixed one'
 
 export function registerFrame(
   program: Command,
@@ -130,7 +132,7 @@ export function registerFrame(
   act<FrameOptions>(
     withSize(
       verb('resize', 'Set a frame size, fixing each axis it sets')
-        .option('--scroll', SCROLL_HELP)
+        .option('--scroll', RESIZE_SCROLL_HELP)
         .option('--no-scroll', 'clear scroll, keeping the box as it stands'),
     ),
     context,
