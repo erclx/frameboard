@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { CapturedImage } from '@/server/capture/images'
 import { captureResultSchema } from '@/shared/records/capture'
 
 import { cli } from '../../../test/support/cli'
@@ -44,6 +45,57 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
           scale,
         })),
       ),
+    captureMotionImages: async (
+      _browser: unknown,
+      {
+        frame,
+        themes,
+        out,
+        scale,
+        timing,
+      }: Parameters<typeof real.captureMotionImages>[1],
+    ) => ({
+      images: themes.flatMap((theme): CapturedImage[] =>
+        'at' in timing
+          ? timing.at.map((at) => ({
+              ref: frame.ref,
+              theme,
+              path: real.frameImagePath(
+                out,
+                frame,
+                theme,
+                scale,
+                undefined,
+                undefined,
+                { at },
+              ),
+              width: frame.box.width,
+              height: frame.box.height,
+              scale: scale ?? 1,
+              at,
+            }))
+          : [
+              {
+                ref: frame.ref,
+                theme,
+                path: real.frameImagePath(
+                  out,
+                  frame,
+                  theme,
+                  scale,
+                  undefined,
+                  undefined,
+                  timing,
+                ),
+                width: 1,
+                height: 1,
+                scale: scale ?? 1,
+                moments: [0],
+              },
+            ],
+      ),
+      motion: { source: 'css' as const, duration: 2000 },
+    }),
     captureComposite: async (
       _browser: unknown,
       { page, themes, out, scale }: Parameters<typeof real.captureComposite>[1],
@@ -347,6 +399,101 @@ describe('capture', () => {
       board = writeBoard(HERO)
 
       const run = await capture(['home/hero', '--scroll', '1200'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+  })
+
+  describe('--at and --filmstrip', () => {
+    it('names one image per moment and records the timeline', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture([
+        'home/hero',
+        '--at',
+        '0, 1000,1000',
+        '--theme',
+        'light',
+        '--out',
+        'shots',
+      ])
+      const data = captureResultSchema.parse(run.json().data)
+
+      expect(data.images.map(({ path, at }) => [path, at])).toEqual([
+        [join(board.root, 'shots/studio/home/hero.at-0.light.png'), 0],
+        [join(board.root, 'shots/studio/home/hero.at-1000.light.png'), 1000],
+      ])
+      expect(data.motion).toEqual({ source: 'css', duration: 2000 })
+    })
+
+    it('names a filmstrip with its frame count', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture([
+        'home/hero',
+        '--filmstrip',
+        '4',
+        '--theme',
+        'dark',
+        '--out',
+        'shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).images[0]?.path).toBe(
+        join(board.root, 'shots/studio/home/hero.filmstrip-4.dark.png'),
+      )
+    })
+
+    it('refuses --at and --filmstrip together as usage', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture(['home/hero', '--at', '0', '--filmstrip', '4'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses --at with --page as usage', async () => {
+      board = writeBoard(PAGE)
+
+      const run = await capture(['--page', 'home', '--at', '0'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses --filmstrip with --page as usage', async () => {
+      board = writeBoard(PAGE)
+
+      const run = await capture(['--page', 'home', '--filmstrip', '4'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses --at with --scroll as usage', async () => {
+      board = writeBoard(SCROLL_HERO)
+
+      const run = await capture(['home/hero', '--at', '0', '--scroll', '100'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses a moment that is not whole milliseconds as usage', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture(['home/hero', '--at', '0,1.5s'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses a filmstrip of one frame as usage', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture(['home/hero', '--filmstrip', '1'])
 
       expect(run.exitCode).toBe(2)
       expect(run.json().error?.code).toBe('usage')
