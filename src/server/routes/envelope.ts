@@ -25,6 +25,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'layout-invalid': 422,
   'project-file-invalid': 422,
   'fit-unbounded': 422,
+  'claims-invalid': 422,
   'lock-timeout': 503,
   'browser-not-found': 503,
 }
