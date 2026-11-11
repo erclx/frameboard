@@ -55,6 +55,7 @@ export async function landReserved(root: string, now: Date): Promise<string[]> {
           locked: false,
           hugWidth: hugWidth ?? false,
           hugHeight: hugHeight ?? false,
+          scroll: false,
           placed: true,
         })
         layout.renumber()

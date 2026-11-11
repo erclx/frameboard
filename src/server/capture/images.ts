@@ -17,6 +17,8 @@ export interface CapturedImage {
   width: number
   height: number
   scale: number
+  /** How far down a scrolled shot reached, past which the page had no more. */
+  scrollY?: number
 }
 
 interface Rendered extends CapturedImage {
@@ -37,10 +39,17 @@ const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 
 /**
  * The file name of one image, `<name>.<theme>.png` at 1x so a path an agent
- * saved stays true, and `<name>.<theme>@<n>x.png` at any other scale.
+ * saved stays true, and `<name>.<theme>@<n>x.png` at any other scale. A shot
+ * scrolled down takes `.scroll-<px>` after the name, the offset asked for.
  */
-function imageName(name: string, theme: Theme, scale: number): string {
-  return scale === 1 ? `${name}.${theme}.png` : `${name}.${theme}@${scale}x.png`
+function imageName(
+  name: string,
+  theme: Theme,
+  scale: number,
+  scroll?: number,
+): string {
+  const stem = scroll === undefined ? name : `${name}.scroll-${scroll}`
+  return scale === 1 ? `${stem}.${theme}.png` : `${stem}.${theme}@${scale}x.png`
 }
 
 /** Where one frame's capture in one theme lands under `out`. */
@@ -49,12 +58,13 @@ export function frameImagePath(
   frame: Pick<FrameRecord, 'project' | 'page' | 'name'>,
   theme: Theme,
   scale = 1,
+  scroll?: number,
 ): string {
   return join(
     out,
     frame.project,
     frame.page,
-    imageName(frame.name, theme, scale),
+    imageName(frame.name, theme, scale, scroll),
   )
 }
 
@@ -106,7 +116,8 @@ export function compositeBounds(
 /**
  * Captures each frame in each theme at its layout size times `scale`, one PNG apiece. Every
  * image renders before any is written, so a refusal on one frame leaves no
- * half-written set an agent could read as current.
+ * half-written set an agent could read as current. A `scroll` offset shoots
+ * each frame that far down, clamped to the page's end.
  */
 export async function captureFrameImages(
   browser: Browser,
@@ -116,25 +127,36 @@ export async function captureFrameImages(
     themes,
     out,
     scale = 1,
+    scroll,
   }: {
     baseUrl: string
     frames: FrameRecord[]
     themes: readonly Theme[]
     out: string
     scale?: number
+    scroll?: number
   },
 ): Promise<CapturedImage[]> {
   const rendered: Rendered[] = []
   for (const frame of frames) {
     for (const theme of themes) {
+      const shot = await renderFrame(
+        browser,
+        baseUrl,
+        frame,
+        theme,
+        scale,
+        scroll,
+      )
       rendered.push({
         ref: frame.ref,
         theme,
-        path: frameImagePath(out, frame, theme, scale),
+        path: frameImagePath(out, frame, theme, scale, scroll),
         width: frame.box.width,
         height: frame.box.height,
         scale,
-        bytes: await renderFrame(browser, baseUrl, frame, theme, scale),
+        ...(shot.scrollY === undefined ? {} : { scrollY: shot.scrollY }),
+        bytes: shot.bytes,
       })
     }
   }
@@ -169,7 +191,7 @@ export async function captureComposite(
   for (const theme of themes) {
     const tiles: string[] = []
     for (const frame of frames) {
-      const bytes = await renderFrame(browser, baseUrl, frame, theme, scale)
+      const { bytes } = await renderFrame(browser, baseUrl, frame, theme, scale)
       tiles.push(
         `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${frame.box.x + bounds.dx}px;top:${frame.box.y + bounds.dy}px;width:${frame.box.width}px;height:${frame.box.height}px">`,
       )
@@ -194,7 +216,8 @@ async function renderFrame(
   frame: FrameRecord,
   theme: Theme,
   scale: number,
-): Promise<Buffer> {
+  scroll?: number,
+): Promise<{ bytes: Buffer; scrollY?: number }> {
   const box = { width: frame.box.width, height: frame.box.height }
   assertScreenshotFits(frame.ref, box, scale)
   const opened = await openFrame(browser, {
@@ -205,10 +228,25 @@ async function renderFrame(
     scale,
   })
   try {
-    return await opened.page.screenshot(SCREENSHOT)
+    const scrollY =
+      scroll === undefined
+        ? undefined
+        : await opened.page.evaluate(scrollAndSettle, scroll)
+    return { bytes: await opened.page.screenshot(SCREENSHOT), scrollY }
   } finally {
     await opened.close()
   }
+}
+
+// Runs in the page. The browser clamps the offset to the page's end, and two
+// frames let a scroll listener and sticky layout settle before the shot.
+function scrollAndSettle(top: number): Promise<number> {
+  window.scrollTo({ top, behavior: 'instant' })
+  return new Promise((resolve) => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => resolve(Math.round(window.scrollY))),
+    )
+  })
 }
 
 async function renderComposite(

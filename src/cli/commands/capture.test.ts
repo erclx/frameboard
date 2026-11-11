@@ -31,13 +31,14 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
         themes,
         out,
         scale,
+        scroll,
       }: Parameters<typeof real.captureFrameImages>[1],
     ) =>
       frames.flatMap((frame) =>
         themes.map((theme) => ({
           ref: frame.ref,
           theme,
-          path: real.frameImagePath(out, frame, theme, scale),
+          path: real.frameImagePath(out, frame, theme, scale, scroll),
           width: frame.box.width,
           height: frame.box.height,
           scale,
@@ -71,6 +72,16 @@ const PAGE = {
       hero: { x: 0, y: 0, width: 400, height: 300, order: 0 },
       about: { x: 480, y: 0, width: 400, height: 300, order: 1 },
       secret: { x: 0, y: 400, width: 400, height: 300, order: 2, hidden: true },
+    },
+  }),
+}
+
+const SCROLL_HERO = {
+  'studio/home/hero.html': '<p>Hello</p>',
+  'studio/home/layout.json': JSON.stringify({
+    version: 1,
+    frames: {
+      hero: { x: 0, y: 0, width: 400, height: 300, order: 0, scroll: true },
     },
   }),
 }
@@ -302,6 +313,44 @@ describe('capture', () => {
 
     expect(run.exitCode).toBe(2)
     expect(run.json().error?.code).toBe('usage')
+  })
+
+  describe('--scroll', () => {
+    it('names the scrolled image with its offset', async () => {
+      board = writeBoard(SCROLL_HERO)
+
+      const run = await capture([
+        'home/hero',
+        '--scroll',
+        '1200',
+        '--theme',
+        'light',
+        '--out',
+        'shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).images[0]?.path).toBe(
+        join(board.root, 'shots/studio/home/hero.scroll-1200.light.png'),
+      )
+    })
+
+    it('refuses --page as usage', async () => {
+      board = writeBoard(SCROLL_HERO)
+
+      const run = await capture(['--page', 'home', '--scroll', '1200'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+
+    it('refuses a frame without the scroll key as usage', async () => {
+      board = writeBoard(HERO)
+
+      const run = await capture(['home/hero', '--scroll', '1200'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
   })
 
   it('refuses --composite with no --page as usage', async () => {

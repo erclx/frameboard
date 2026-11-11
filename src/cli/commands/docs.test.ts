@@ -157,6 +157,7 @@ describe('docs', () => {
       'min-font-size',
       'min-contrast',
       'dropped-declaration',
+      'scroll-effect',
     ])
   })
 

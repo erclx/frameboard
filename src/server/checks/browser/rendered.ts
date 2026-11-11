@@ -10,6 +10,7 @@ import { checkContrast, CONTRAST_RULES } from './contrast'
 import { checkDeclarations, DECLARATION_RULES } from './declarations'
 import { checkFontSize, FONT_SIZE_RULES } from './font-size'
 import { checkLayout, LAYOUT_RULES, type RenderedTarget } from './layout'
+import { checkScrollEffect, SCROLL_EFFECT_RULES } from './scroll-effect'
 
 /** Every browser rule, in the order `docs` lists them. */
 export const BROWSER_RULES = [
@@ -17,6 +18,7 @@ export const BROWSER_RULES = [
   ...FONT_SIZE_RULES,
   ...CONTRAST_RULES,
   ...DECLARATION_RULES,
+  ...SCROLL_EFFECT_RULES,
 ]
 
 /** The rules that read one theme's page and land one finding at most. */
@@ -36,7 +38,8 @@ export interface CheckRenderedOptions {
  * dark, and merges the two. A rule tripping in one theme alone names that
  * theme in its message. A missing face is measured in the fallback the board
  * shows rather than refused, since the board shows it too. The declaration
- * rule reads no theme, so it runs on the first theme's page alone.
+ * and scroll-effect rules read no theme, so they run on the first theme's
+ * page alone.
  */
 export async function checkRendered(
   browser: Browser,
@@ -45,7 +48,7 @@ export async function checkRendered(
   const [project = '', page = '', name = ''] = frame.ref.split('/')
   const source = readFrame({ root, project, page, name })
   const byTheme = new Map<Theme, Finding[]>()
-  let declarations: Finding[] = []
+  let unthemed: Finding[] = []
   for (const theme of THEMES) {
     const opened = await openFrame(browser, {
       baseUrl,
@@ -65,13 +68,16 @@ export async function checkRendered(
           : await checkContrast(opened.page, frame, config.minContrast)),
       ])
       if (theme === THEMES[0]) {
-        declarations = await checkDeclarations(opened.page, source)
+        unthemed = [
+          ...(await checkDeclarations(opened.page, source)),
+          ...(await checkScrollEffect(opened.page, frame)),
+        ]
       }
     } finally {
       await opened.close()
     }
   }
-  return [...mergeThemes(byTheme), ...declarations]
+  return [...mergeThemes(byTheme), ...unthemed]
 }
 
 /**

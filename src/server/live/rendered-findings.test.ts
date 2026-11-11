@@ -26,6 +26,7 @@ function boardOf(
       locked: false,
       hugWidth: false,
       hugHeight: false,
+      scroll: false,
       placed: true,
       modifiedAt,
     }),

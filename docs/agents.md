@@ -12,10 +12,12 @@ The commands, checks, claims, and plugin a coding agent works with on the board.
 The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it. `show` marks several frames, or a page, for the toast to step through and points the open board at the first, or offers Go while you are mid-action or it sits in another project.
 
 - `edit` changes one style, attribute, or text on one element without touching another byte, and `--drop-attr` removes an attribute, such as a boolean `muted`, that `--attr` can only set
-- `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`
+- `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
 - `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
+
+A page meant to scroll, such as one with a sticky section, takes `--scroll` on `frame add` or `frame resize`, which holds it at a screen height rather than its full length. A frame already fixed taller than a screen keeps its height, so pass `--height` with the resize.
 
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
 
@@ -26,7 +28,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 - An error means the frame renders wrong or cannot load, and a warning means it renders and a style call is in question, such as a generic font. `frameboard docs` prints each rule's level.
 - The board runs the same rules on each change, and a frame's findings badge, red for an error and amber for warnings alone, opens the list
 - A finding in a stylesheet the frame links names that file beside its line
-- A running server adds the rules only a browser can see, being clipped content, an inner scrollbar, content sized off the viewport, text under a project's minimum size or contrast, and dropped CSS
+- A running server adds the rules only a browser can see, such as clipped content, an inner scrollbar, dropped CSS, and a sticky effect in a frame that never scrolls
 - A running server also warns when an agent's write changes a rule that an element's own `style` attribute overrides, since that element keeps the value you may have set by hand
 
 ## Claims

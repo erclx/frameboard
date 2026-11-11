@@ -13,6 +13,7 @@ import { ringFocused } from '@/test/focus-ring'
 
 import { openFindings } from './findings-open'
 import { Frame, LabelRename } from './frame'
+import { frameElements } from './frame-dom'
 import { modeStore } from './mode'
 import { endPreview, setPreview } from './preview/store'
 import {
@@ -34,6 +35,7 @@ function frame(name: string): FrameRecord {
     locked: false,
     hugWidth: false,
     hugHeight: false,
+    scroll: false,
     placed: true,
     modifiedAt: '2026-10-15T00:00:00.000Z',
   }
@@ -126,6 +128,59 @@ describe('Frame in Play', () => {
 })
 
 describe('Frame', () => {
+  describe('holding scroll', () => {
+    function rootScrollbar(iframe: HTMLIFrameElement): string | undefined {
+      const document = iframe.contentDocument
+      if (!document) return undefined
+      return getComputedStyle(document.documentElement).scrollbarWidth
+    }
+
+    it('hides its own scrollbar once its page loads', async () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
+      )
+
+      await loaded(iframeOf(container, 'a'))
+
+      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('none')
+    })
+
+    it('leaves the injected style out of the element index', async () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
+      )
+      await loaded(iframeOf(container, 'a'))
+      const document = iframeOf(container, 'a').contentDocument
+      if (!document) throw new Error('no frame document')
+
+      expect(document.querySelectorAll('style')).not.toHaveLength(0)
+      expect(
+        frameElements(document).filter((node) => node.localName === 'style'),
+      ).toEqual([])
+    })
+
+    it('keeps the scrollbar on a frame without the key', async () => {
+      const { container } = render(
+        <Frame frame={frame('a')} live version={0} />,
+      )
+
+      await loaded(iframeOf(container, 'a'))
+
+      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
+    })
+
+    it('shows it again when the key clears', async () => {
+      const { container, rerender } = render(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
+      )
+      await loaded(iframeOf(container, 'a'))
+
+      rerender(<Frame frame={frame('a')} live version={0} />)
+
+      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
+    })
+  })
+
   it('loads its frame url with its reload counter', () => {
     const { container } = render(<Pair a={2} b={0} />)
 

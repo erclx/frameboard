@@ -53,6 +53,9 @@ export const layoutEntrySchema = z.looseObject({
   // running server measures and writes, and absent reads as fixed.
   hugWidth: z.boolean().optional(),
   hugHeight: z.boolean().optional(),
+  // A scroll frame holds its box on both axes and scrolls past it, so readers
+  // take either hug flag beside it as false.
+  scroll: z.boolean().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>

@@ -22,6 +22,8 @@ export const frameRecordSchema = z.object({
   /** Whether each axis takes its size from the content rather than holding it. */
   hugWidth: z.boolean(),
   hugHeight: z.boolean(),
+  /** Whether the frame holds a fixed screen height and scrolls past it, fixing both axes. */
+  scroll: z.boolean(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

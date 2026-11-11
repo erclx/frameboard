@@ -8,6 +8,7 @@ import {
   deleteFrame,
   duplicateFrame,
   fitHeight,
+  fitScrollError,
   orderFrame,
   readFrame,
   renameFrame,
@@ -389,6 +390,7 @@ export function structureRoutes(
       )
     }
     const frame = await readFrame(root, body.ref, { cwd })
+    if (frame.scroll) throw fitScrollError(frame.ref)
     const measured = await measure(frame)
     const fit = await recorded(
       (journal) =>

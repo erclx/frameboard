@@ -8,6 +8,7 @@ import {
   FRAME_GAP,
   type FrameSizeName,
   frameSizeOf,
+  referenceHeight,
 } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import type { LayoutFile, SectionEntry } from '@/shared/records/board'
@@ -47,6 +48,11 @@ export interface PositionOptions {
   y?: number
 }
 
+export interface ScrollOptions {
+  /** On to hold a screen height and scroll past it, off to clear the key, absent to leave it. */
+  scroll?: boolean
+}
+
 export type FrameFlag = 'hidden' | 'locked'
 
 /**
@@ -55,12 +61,17 @@ export type FrameFlag = 'hidden' | 'locked'
  * as `placeNext` puts it, ignoring the page's other unplaced files, unless a
  * size or position is given. Every axis no size names hugs its
  * content, a preset fixing the width alone, and the box stands in until the
- * server measures.
+ * server measures. A scroll frame hugs neither axis, and with no height named
+ * takes the reference height of its width.
  */
 export async function addFrame(
   root: string,
   ref: string,
-  options: RefOptions & SizeOptions & PositionOptions & JournalOptions,
+  options: RefOptions &
+    SizeOptions &
+    PositionOptions &
+    ScrollOptions &
+    JournalOptions,
 ): Promise<FrameRecord> {
   const { journal } = options
   const frame = await resolveFrameRef(root, ref, {
@@ -81,8 +92,10 @@ export async function addFrame(
     reserved && !sized
       ? { width: reserved.width, height: reserved.height }
       : sizeOf(options)
-  const hugs =
-    reserved && !sized
+  const scroll = options.scroll ?? false
+  const hugs = scroll
+    ? { hugWidth: false, hugHeight: false }
+    : reserved && !sized
       ? {
           hugWidth: reserved.hugWidth ?? false,
           hugHeight: reserved.hugHeight ?? false,
@@ -113,15 +126,20 @@ export async function addFrame(
         await journal?.created(frame.path)
       }
       layout.names = names
+      const width = size.width ?? computed.box.width
       layout.set(frame.name, {
         ...computed,
         box: {
           ...computed.box,
           ...size,
+          ...(scroll && size.height === undefined
+            ? { height: referenceHeight(width) }
+            : {}),
           x: options.x ?? reserved?.x ?? computed.box.x,
           y: options.y ?? reserved?.y ?? computed.box.y,
         },
         ...hugs,
+        scroll,
       })
       layout.renumber()
     },
@@ -274,29 +292,46 @@ export async function renameFrame(
   return moveFrame(root, ref, { ...options, name: newName })
 }
 
+/**
+ * Sets the size each option names and fixes those axes. `scroll` on fixes
+ * both, dropping a hugging height no option names to the reference height of
+ * the width, since a frame kept at its content's full height has nothing to
+ * scroll. `scroll` off clears the key and keeps the box as it stands.
+ */
 export async function resizeFrame(
   root: string,
   ref: string,
-  options: RefOptions & SizeOptions & JournalOptions,
+  options: RefOptions & SizeOptions & ScrollOptions & JournalOptions,
 ): Promise<FrameRecord> {
   const size = sizeOf(options)
-  if (Object.keys(size).length === 0) {
+  if (Object.keys(size).length === 0 && options.scroll === undefined) {
     throw new FrameboardError(
       'usage',
-      'Pass --size, --width, or --height to resize a frame.',
+      'Pass --size, --width, --height, --scroll, or --no-scroll to resize a frame.',
     )
   }
-  return updatePlacement(root, ref, options, (placement) => ({
-    ...placement,
-    box: { ...placement.box, ...size },
-    hugWidth: placement.hugWidth && size.width === undefined,
-    hugHeight: placement.hugHeight && size.height === undefined,
-  }))
+  return updatePlacement(root, ref, options, (placement) => {
+    const scroll = options.scroll ?? placement.scroll
+    const width = size.width ?? placement.box.width
+    const drops = scroll && placement.hugHeight && size.height === undefined
+    return {
+      ...placement,
+      box: {
+        ...placement.box,
+        ...size,
+        ...(drops ? { height: referenceHeight(width) } : {}),
+      },
+      hugWidth: !scroll && placement.hugWidth && size.width === undefined,
+      hugHeight: !scroll && placement.hugHeight && size.height === undefined,
+      scroll,
+    }
+  })
 }
 
 /**
  * Sets a frame's height to its content's measured height and turns hugging
- * back on for that axis, the inverse of the resize that fixed it.
+ * back on for that axis, the inverse of the resize that fixed it. A scroll
+ * frame refuses `fit-scroll`, since its height is fixed on purpose.
  */
 export async function fitHeight(
   root: string,
@@ -304,11 +339,23 @@ export async function fitHeight(
   height: number,
   options: RefOptions & JournalOptions,
 ): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (placement) => ({
-    ...placement,
-    box: { ...placement.box, height },
-    hugHeight: true,
-  }))
+  return updatePlacement(root, ref, options, (placement) => {
+    if (placement.scroll) throw fitScrollError(ref)
+    return {
+      ...placement,
+      box: { ...placement.box, height },
+      hugHeight: true,
+    }
+  })
+}
+
+/** The refusal a fit of a scroll frame answers, before or after measuring. */
+export function fitScrollError(ref: string): FrameboardError {
+  return new FrameboardError(
+    'fit-scroll',
+    `${ref} holds scroll, which fixes its height so the page scrolls past it, so it has no height to fit. Clear it with frame resize --no-scroll first.`,
+    { ref },
+  )
 }
 
 /**
@@ -638,12 +685,16 @@ class PageLayout {
    * Writes the seven fixed keys on the entry it creates or changes, after any
    * key the entry already held, so unknown keys survive in place. A hug flag
    * is written on an entry it creates, once it is on, or when the entry holds
-   * it, so a write to an entry from before the flags adds no key.
+   * it, so a write to an entry from before the flags adds no key. `scroll` is
+   * written once it is on or when the entry holds it, and a scroll entry
+   * writes both hug flags false, since it fixes both axes.
    */
   set(
     name: string,
-    { box, order, hidden, locked, hugWidth, hugHeight }: Placement,
+    { box, order, hidden, locked, scroll, ...hugs }: Placement,
   ): void {
+    const hugWidth = hugs.hugWidth && !scroll
+    const hugHeight = hugs.hugHeight && !scroll
     const held = this.file.frames[name]
     this.file.frames[name] = {
       ...held,
@@ -658,6 +709,7 @@ class PageLayout {
       ...(!held || hugHeight || held.hugHeight !== undefined
         ? { hugHeight }
         : {}),
+      ...(scroll || held?.scroll !== undefined ? { scroll } : {}),
     }
     this.changed = true
   }

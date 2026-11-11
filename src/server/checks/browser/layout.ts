@@ -37,6 +37,10 @@ export interface RenderedTarget {
   /** Board-relative, with forward slashes. */
   path: string
   box: { width: number; height: number }
+  /** The frame holds a fixed screen height and scrolls past it on purpose. */
+  scroll: boolean
+  /** The frame's height takes its size from its content. */
+  hugHeight: boolean
 }
 
 /**
@@ -93,7 +97,9 @@ export async function checkLayout(
     return [
       clipped(target, atBox),
       scrollbar(target, atBox),
-      viewport(target, content.height, tall.height, atBox, atTall),
+      target.scroll
+        ? null
+        : viewport(target, content.height, tall.height, atBox, atTall),
     ].filter((found) => found !== null)
   } finally {
     await page.setViewportSize({ width, height })
@@ -104,13 +110,14 @@ export async function checkLayout(
 // It reads its own boxes rather than `readContentSize`, since it reaches past
 // the width as well and names the boxes that do. The two readers are twins
 // that both leave out a box a cropping ancestor hides, so an image cropped on
-// purpose reads as neither clipped nor content to fit.
+// purpose reads as neither clipped nor content to fit. A scroll frame
+// overflows its height on purpose, so only its width is read.
 function clipped(target: RenderedTarget, read: LayoutRead): Finding | null {
   const { width, height } = target.box
   const shown = read.boxes.filter((box) => !box.cropped)
   const bottom = Math.max(read.root.bottom, ...shown.map((box) => box.bottom))
   const right = Math.max(read.root.right, ...shown.map((box) => box.right))
-  const tall = bottom > height + SLACK_PX
+  const tall = !target.scroll && bottom > height + SLACK_PX
   const wide = right > width + SLACK_PX
   if (!tall && !wide) return null
   const past = shown.filter(
@@ -133,7 +140,9 @@ function clipped(target: RenderedTarget, read: LayoutRead): Finding | null {
 
 // `frame fit` grows the height alone, so it is no answer to a width.
 function clippedAdvice(tall: boolean, wide: boolean, width: number): string {
-  if (!wide) return 'Run frame fit, or shorten the content.'
+  if (!wide) {
+    return 'Run frame fit, run frame resize --scroll for a page meant to scroll, or shorten the content.'
+  }
   if (!tall) {
     return `Reflow or shorten the content to fit its ${width} px width, since frame fit sets the height alone.`
   }

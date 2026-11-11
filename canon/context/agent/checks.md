@@ -69,6 +69,12 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - `viewport` rereads at twice the viewport height through `fit`'s `readContentSize`, two frames after the resize so a `resize` script counts, leaving out what a cropping ancestor hides
 - `min-font-size` and `min-contrast` run once `project.json` sets their `checks` key. `min-contrast` skips text over an image, a gradient, or an effect, and reads a `::before` panel as the host's
 
+A `scroll` frame overflows its height on purpose, so the tier reads it apart.
+
+- `clipped` reads its width alone, and `viewport` skips it, since its fixed screen height makes a `100vh` section meant
+- `scroll-effect`, in its own file, warns on a frame hugging its height that holds `position: sticky` outside an inner scroll box, a `scroll` listener, or a `scroll()` or `view()` timeline
+- It counts a listener on the window or the document alone, read over CDP, and reads no theme, so it runs beside `dropped-declaration`
+
 `dropped-declaration` is the one browser rule that reports per declaration rather than once per frame. Only the page's own parser knows what it drops, which is why the rule sits in the browser tier.
 
 - It reads the frame's own sheets and style attributes with postcss in node, then asks the page's `CSS.supports` for every pair in one `evaluate`

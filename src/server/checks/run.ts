@@ -8,6 +8,7 @@ import { CONTRAST_RULES } from './browser/contrast'
 import { DECLARATION_RULES } from './browser/declarations'
 import { FONT_SIZE_RULES } from './browser/font-size'
 import { LAYOUT_RULES } from './browser/layout'
+import { SCROLL_EFFECT_RULES } from './browser/scroll-effect'
 import { CUSTOM_PROPERTY_RULES } from './custom-properties'
 import { FONT_RULES } from './fonts'
 import { checkFrameIn, type ProjectContext, readProjectContext } from './frame'
@@ -31,6 +32,7 @@ export const RULES: RuleDoc[] = [
   ...FONT_SIZE_RULES,
   ...CONTRAST_RULES,
   ...DECLARATION_RULES,
+  ...SCROLL_EFFECT_RULES,
 ]
 
 /** Checks every frame on one page. */

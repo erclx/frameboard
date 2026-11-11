@@ -54,7 +54,8 @@ export function contentFormat() {
     defaultFrameSize: DEFAULT_FRAME_SIZE,
     layout: [
       'x and y are integers, width and height integers of at least 1, and order an integer of at least 0, where a higher order draws on top.',
-      'hidden, locked, hugWidth, and hugHeight read as false when absent, and an axis whose hug flag is false holds the size its entry states.',
+      'hidden, locked, hugWidth, hugHeight, and scroll read as false when absent, and an axis whose hug flag is false holds the size its entry states.',
+      `scroll marks a frame that holds a fixed screen height and scrolls past it, such as a page with a sticky section. It fixes both axes, so either hug flag beside it reads as false, frame fit refuses it, and serve never measures it. frame add --scroll sets it, taking the height given or else the preset height of the width (${FRAME_SIZES.desktop.height} px at ${FRAME_SIZES.desktop.width}). frame resize --scroll sets it on a placed frame, dropping a hugging height to that preset height unless a height is given and keeping a fixed height as it stands, so resize a frame fixed past a screen with --height too. frame resize --no-scroll clears it, keeping the box.`,
       `An axis that hugs takes its size from the frame's content: a running serve measures it after each write to the frame file and when frame add places a file already written, its width at most ${FRAME_SIZES.desktop.width} px, and writes width and height alone, never a flag. Content sized off the viewport keeps the box it has.`,
       'frame add with no size hugs both axes, --size or --width fixes the width and hugs the height, and --height fixes the height alone, its box standing in until serve measures. frame resize and a hand resize fix each axis they set, and frame fit sets the height and turns hugHeight on.',
       'Frames sort by order, then name, and a write that changes order renumbers the page from 0.',

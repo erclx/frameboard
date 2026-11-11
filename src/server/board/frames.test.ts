@@ -503,6 +503,36 @@ describe('frames', () => {
       ])
     })
 
+    it('reads a scroll entry holding both hug flags as fixed', async () => {
+      const root = open()
+      hugHero(root, { scroll: true, hugWidth: true, hugHeight: true })
+
+      const moved = await moveFrame(root, 'webapp/home/hero', {
+        cwd: root,
+        x: 40,
+      })
+
+      expect(moved).toMatchObject({
+        scroll: true,
+        hugWidth: false,
+        hugHeight: false,
+      })
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        scroll: true,
+        hugWidth: false,
+        hugHeight: false,
+      })
+    })
+
+    it('a write to an entry without the key adds no scroll key', async () => {
+      const root = open()
+      hugHero(root, { hugHeight: true })
+
+      await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 40 })
+
+      expect(layout('webapp/home').frames.hero).not.toHaveProperty('scroll')
+    })
+
     it('resize fixes the axis it sets and leaves the other hugging', async () => {
       const root = open()
       hugHero(root, { hugWidth: true, hugHeight: true })
@@ -513,6 +543,141 @@ describe('frames', () => {
       })
 
       expect([resized.hugWidth, resized.hugHeight]).toEqual([true, false])
+    })
+
+    describe('scroll', () => {
+      it('add at a preset holds its size and hugs neither axis', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'phone',
+          scroll: true,
+        })
+
+        expect(added).toMatchObject({
+          box: { width: 390, height: 844 },
+          hugWidth: false,
+          hugHeight: false,
+          scroll: true,
+        })
+        expect(layout('webapp/home').frames.card).toMatchObject({
+          scroll: true,
+          hugWidth: false,
+          hugHeight: false,
+        })
+      })
+
+      it('add with a width alone takes the reference height', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          width: 1440,
+          scroll: true,
+        })
+
+        expect(added.box).toMatchObject({ width: 1440, height: 900 })
+      })
+
+      it('add with a height keeps the height given', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          width: 390,
+          height: 700,
+          scroll: true,
+        })
+
+        expect(added.box).toMatchObject({ width: 390, height: 700 })
+      })
+
+      it('add without it writes no scroll key', async () => {
+        const root = open()
+
+        await addFrame(root, 'webapp/home/card', { cwd: root, size: 'phone' })
+
+        expect(layout('webapp/home').frames.card).not.toHaveProperty('scroll')
+      })
+
+      it('resize on drops a hugging height to the reference height', async () => {
+        const root = open()
+        hugHero(root, { height: 3816, hugHeight: true })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          scroll: true,
+        })
+
+        expect(resized).toMatchObject({
+          box: { width: 1440, height: 900 },
+          hugHeight: false,
+          scroll: true,
+        })
+      })
+
+      it('resize on keeps a fixed height', async () => {
+        const root = open()
+        hugHero(root, { height: 1200 })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          scroll: true,
+        })
+
+        expect(resized.box.height).toBe(1200)
+      })
+
+      it('resize off clears the key and keeps the box fixed', async () => {
+        const root = open()
+        hugHero(root, { scroll: true })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          scroll: false,
+        })
+
+        expect(resized).toMatchObject({
+          box: HERO,
+          hugWidth: false,
+          hugHeight: false,
+          scroll: false,
+        })
+      })
+
+      it('resize with neither a size nor the flag refuses usage', async () => {
+        const root = open()
+
+        await expect(
+          resizeFrame(root, 'webapp/home/hero', { cwd: root }),
+        ).rejects.toMatchObject({ code: 'usage' })
+      })
+
+      it('duplicate keeps the key on the copy', async () => {
+        const root = open()
+        hugHero(root, { scroll: true })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.scroll).toBe(true)
+        expect(layout('webapp/home').frames[copy.name]).toMatchObject({
+          scroll: true,
+        })
+      })
+
+      it('fitHeight refuses fit-scroll and writes nothing', async () => {
+        const root = open()
+        hugHero(root, { scroll: true })
+        const bytes = file('webapp/home/layout.json')
+
+        await expect(
+          fitHeight(root, 'webapp/home/hero', 3816, { cwd: root }),
+        ).rejects.toMatchObject({ code: 'fit-scroll' })
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
     })
 
     it('fitHeight sets the height and turns its hugging back on', async () => {
@@ -555,6 +720,22 @@ describe('frames', () => {
           root,
           'webapp/home',
           { hero: { width: 320, height: 1232 } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual([])
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
+      it('leaves a scroll entry an older fit left hugging', async () => {
+        const root = open()
+        hugHero(root, { scroll: true, hugHeight: true })
+        const bytes = file('webapp/home/layout.json')
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 1440, height: 3816 } },
           { cwd: root },
         )
 

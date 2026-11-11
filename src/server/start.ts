@@ -349,6 +349,8 @@ async function listen({
           ref: frame.ref,
           path: boardPath(root, frame.path),
           box: { width: frame.box.width, height: frame.box.height },
+          scroll: frame.scroll,
+          hugHeight: frame.hugHeight,
         },
         config: readConfig(root, frame.project),
       })

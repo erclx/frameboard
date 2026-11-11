@@ -1,8 +1,28 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import type { Browser } from 'playwright-core'
+import { PNG } from 'pngjs'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import { FrameboardError } from '@/shared/errors'
 
-import { compositeBounds, compositeImagePath, frameImagePath } from './images'
+import {
+  launchShellOrNull,
+  requireShell,
+  SHELL_HOOK_TIMEOUT_MS,
+  SHELL_TEST_TIMEOUT_MS,
+} from '../../../test/support/headless-shell'
+import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
+import { frameOf } from '../../test/board'
+import { startFrameHost } from './host'
+import {
+  captureFrameImages,
+  compositeBounds,
+  compositeImagePath,
+  frameImagePath,
+} from './images'
 
 const PAGE = { ref: 'studio/home', project: 'studio', name: 'home' }
 
@@ -68,9 +88,91 @@ describe('image paths', () => {
     )
   })
 
+  it('names a scrolled frame image with its offset ahead of the theme', () => {
+    expect(frameImagePath('/out', frame, 'light', 1, 1200)).toBe(
+      '/out/studio/home/hero.scroll-1200.light.png',
+    )
+  })
+
+  it('names a scrolled image at a scale with both', () => {
+    expect(frameImagePath('/out', frame, 'dark', 2, 1200)).toBe(
+      '/out/studio/home/hero.scroll-1200.dark@2x.png',
+    )
+  })
+
   it('names a scaled composite with its scale', () => {
     expect(compositeImagePath('/out', PAGE, 'light', 2)).toBe(
       '/out/studio/home.light@2x.png',
     )
   })
 })
+
+// A blue band, then a red header sticking to the top, then a long white page,
+// 3150 px in all, so a shot at the top shows blue and one past 100 shows red.
+const STICKY_PAGE = `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0 } .band { height: 100px; background: #00f } header { position: sticky; top: 0; height: 50px; background: #f00 } .rest { height: 3000px; background: #fff }</style></head><body><div class="band"></div><header></header><div class="rest"></div></body></html>`
+
+const shell = await launchShellOrNull()
+
+describe.skipIf(shell === null)(
+  'captureFrameImages with a scroll offset',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    afterAll(async () => {
+      await browser.close()
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    async function shoot(scroll: number) {
+      board = writeBoard({ 'studio/home/hero.html': STICKY_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        const [image] = await captureFrameImages(browser, {
+          baseUrl: host.url,
+          frames: [
+            frameOf('hero', { box: { x: 0, y: 0, width: 400, height: 300 } }),
+          ],
+          themes: ['light'],
+          out,
+          scroll,
+        })
+        if (!image) throw new Error('No image captured.')
+        return image
+      } finally {
+        await host.close()
+      }
+    }
+
+    /** The color of the shot's top left pixel, as `#rrggbb`. */
+    function topLeft(path: string): string {
+      const { data } = PNG.sync.read(readFileSync(path))
+      return `#${[...data.subarray(0, 3)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+    }
+
+    it('holds a sticky header at the top at 1200', async () => {
+      const image = await shoot(1200)
+
+      expect(image).toMatchObject({ scrollY: 1200 })
+      expect(topLeft(image.path)).toBe('#ff0000')
+    })
+
+    it('clamps an offset past the page end and records the offset reached', async () => {
+      const image = await shoot(9000)
+
+      expect(image.scrollY).toBe(2850)
+      expect(image.path).toMatch(/hero\.scroll-9000\.light\.png$/)
+    })
+  },
+)

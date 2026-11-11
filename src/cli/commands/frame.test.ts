@@ -51,6 +51,75 @@ describe('frame', () => {
     expect(result.json().error?.code).toBe('frame-not-found')
   })
 
+  describe('scroll', () => {
+    it('add --scroll at a preset holds the size and hugs neither axis', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing',
+        '--size',
+        'phone',
+        '--scroll',
+      )
+
+      expect(result.json().data).toMatchObject({
+        box: { width: 390, height: 844 },
+        hugWidth: false,
+        hugHeight: false,
+        scroll: true,
+      })
+    })
+
+    it('resize --scroll with no size sets the key', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'resize',
+        'webapp/home/hero',
+        '--scroll',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({ scroll: true })
+    })
+
+    it('resize --no-scroll clears it', async () => {
+      const run = on('basic')
+      await run('frame', 'resize', 'webapp/home/hero', '--scroll')
+
+      const result = await run(
+        'frame',
+        'resize',
+        'webapp/home/hero',
+        '--no-scroll',
+      )
+
+      expect(result.json().data).toMatchObject({ scroll: false })
+    })
+
+    it('resize with no size and no flag fails usage, exit 2', async () => {
+      const run = on('basic')
+
+      const result = await run('frame', 'resize', 'webapp/home/hero')
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+    })
+
+    it('fit refuses fit-scroll, exit 10, ahead of launching a browser', async () => {
+      const run = on('basic')
+      await run('frame', 'resize', 'webapp/home/hero', '--scroll')
+
+      const result = await run('frame', 'fit', 'webapp/home/hero')
+
+      expect(result.exitCode).toBe(10)
+      expect(result.json().error?.code).toBe('fit-scroll')
+    })
+  })
+
   it('lock --off clears the flag', async () => {
     const run = on('basic')
     const locked = await run('frame', 'lock', 'webapp/home/about')
