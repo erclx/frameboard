@@ -414,6 +414,13 @@ export function Canvas({
       markHovered(layer, ref)
     }
     const track = (event: PointerEvent) => {
+      // A held button in Play pans the board, so no frame reads as one a
+      // click would enter until it is released.
+      if (event.buttons !== 0 && modeStore.getState().mode === 'play') {
+        hover(null)
+        viewport.style.cursor = ''
+        return
+      }
       const transform = zoomTransform(viewport)
       const [x, y] = transform.invert(pointer(event, viewport))
       hover(

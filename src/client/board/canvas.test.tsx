@@ -316,6 +316,16 @@ describe('Canvas', () => {
       }).toEqual({ hovered: true, cursor: 'pointer' })
     })
 
+    it('drops the hover mark while a held button pans the board', () => {
+      const { container } = renderCanvas(playPage())
+      const at = middleOf(container, 'a')
+      moveOver(container, at)
+
+      moveOver(container, { x: at.x + 20, y: at.y }, 1)
+
+      expect(frameA(container)?.hasAttribute('data-label-hover')).toBe(false)
+    })
+
     it('enters on a press that jitters a pixel or two', () => {
       const { container, getByText } = renderCanvas(playPage())
       const at = middleOf(container, 'a')
