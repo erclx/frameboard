@@ -187,6 +187,7 @@ export function CompareControl({
   // The button and the group swap on a start or an end, unmounting whichever
   // held focus, so the one that mounts takes it rather than the body.
   const refocus = useRef(false)
+  const keyed = useRef(false)
 
   useEffect(() => {
     if (!refocus.current) return
@@ -217,9 +218,15 @@ export function CompareControl({
         ref={control}
         aria-label={`Compare ${name} with before`}
         title="Compare with before"
-        onClick={(event) => {
-          // A click a key fired carries no pointer count, and only a keyboard user needs focus carried.
-          refocus.current = event.detail === 0
+        // Only a keyboard start carries focus on. The gestures press this button
+        // through a script click, whose zero `detail` reads like a key's, so the
+        // key itself is the signal.
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') keyed.current = true
+        }}
+        onClick={() => {
+          refocus.current = keyed.current
+          keyed.current = false
           pick('flip')
         }}
         className="grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-secondary text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
