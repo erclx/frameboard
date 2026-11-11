@@ -54,9 +54,7 @@ export function AvatarMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={
-          name && caption ? `${name}, ${caption.toLowerCase()}` : 'Account'
-        }
+        aria-label={triggerName(name ?? null, caption)}
         className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <Avatar name={name ?? null} />
@@ -231,6 +229,16 @@ function NameRowBody({ name, caption }: NameRowProps) {
       </div>
     </>
   )
+}
+
+/**
+ * The trigger's name opens on the initials the avatar draws, so voice control
+ * reaches it by what it reads (WCAG 2.5.3). With no name only an icon draws.
+ */
+function triggerName(name: string | null, caption: string | null): string {
+  if (!name) return 'Account'
+  const named = `${initials(name)}: ${name}`
+  return caption ? `${named}, ${caption.toLowerCase()}` : named
 }
 
 function Avatar({ name }: { name: string | null }) {

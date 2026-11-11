@@ -89,7 +89,7 @@ describe('BoardScreen', () => {
 
     expect(screen.queryByRole('complementary')).toBeNull()
     expect(screen.getByRole('button', { name: 'Show UI' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Zoom' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /^Zoom \d+%$/ })).toBeVisible()
     expect(screen.getByRole('toolbar', { name: 'Tools' })).toBeVisible()
   })
 

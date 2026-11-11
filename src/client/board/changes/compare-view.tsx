@@ -182,9 +182,32 @@ export function CompareControl({
 }) {
   const compared = useCompare((state) => state.ref === ref)
   const mode = useCompare((state) => state.mode)
+  const control = useRef<HTMLButtonElement>(null)
+  const group = useRef<HTMLDivElement>(null)
+  // The button and the group swap on a start or an end, unmounting whichever
+  // held focus, so the one that mounts takes it rather than the body.
+  const refocus = useRef(false)
+  const keyed = useRef(false)
+
+  useEffect(() => {
+    if (!refocus.current) return
+    refocus.current = false
+    if (compared) {
+      group.current
+        ?.querySelector<HTMLElement>('[aria-checked="true"]')
+        ?.focus()
+    } else {
+      control.current?.focus()
+    }
+  }, [compared])
+
   const pick = (value: CompareMode | 'now') => {
-    if (value === 'now') endCompare()
-    else void startCompare(ref, value)
+    if (value === 'now') {
+      refocus.current = true
+      endCompare()
+    } else {
+      void startCompare(ref, value)
+    }
   }
 
   if (!compared) {
@@ -192,9 +215,20 @@ export function CompareControl({
       <button
         type="button"
         data-label-control
+        ref={control}
         aria-label={`Compare ${name} with before`}
         title="Compare with before"
-        onClick={() => pick('flip')}
+        // Only a keyboard start carries focus on. The gestures press this button
+        // through a script click, whose zero `detail` reads like a key's, so the
+        // key itself is the signal.
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') keyed.current = true
+        }}
+        onClick={() => {
+          refocus.current = keyed.current
+          keyed.current = false
+          pick('flip')
+        }}
         className="grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-secondary text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GitCompareArrows aria-hidden className="size-3" />
@@ -214,7 +248,7 @@ export function CompareControl({
     const next = OPTIONS[(at + delta + OPTIONS.length) % OPTIONS.length]
     if (!next) return
     pick(next.value)
-    // Now ends compare and with it this group, so focus stays on Before or Split alone.
+    // Now ends compare and with it this group, so the effect above refocuses the button.
     if (next.value !== 'now') {
       requestAnimationFrame(() =>
         document
@@ -227,6 +261,7 @@ export function CompareControl({
   }
   return (
     <div
+      ref={group}
       role="radiogroup"
       aria-label={`Compare ${name}`}
       onKeyDown={onKeyDown}
