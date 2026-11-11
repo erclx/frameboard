@@ -39,6 +39,8 @@ export const EXIT_CODES = {
   // A render that ran and refused what it found, writing nothing.
   'font-missing': 10,
   'fit-unbounded': 10,
+  // A fit refused on a frame holding `scroll`, which fixes its height on purpose.
+  'fit-scroll': 10,
   'capture-too-large': 10,
   // A hand move or resize refused, writing nothing.
   'frame-locked': 11,

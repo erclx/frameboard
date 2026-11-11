@@ -222,6 +222,27 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(0)
     })
 
+    it('refuses a scroll frame with 422 before measuring it', async () => {
+      const layoutPath = join(board.root, 'studio/home/layout.json')
+      const layout = JSON.parse(readFileSync(layoutPath, 'utf8'))
+      layout.frames.hero.scroll = true
+      writeFileSync(layoutPath, JSON.stringify(layout))
+      let measured = false
+      app = structureRoutes(board.root, access, history, async () => {
+        measured = true
+        return { width: 1440, height: 3816, contentWidth: 1440, empty: false }
+      })
+
+      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'fit-scroll' },
+      })
+      expect(measured).toBe(false)
+      expect(hero()).toMatchObject({ height: 900, scroll: true })
+    })
+
     it('refuses browser-not-found with 503 where no browser runs', async () => {
       const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
 
