@@ -183,6 +183,45 @@ describe('compare', () => {
     )
   })
 
+  describe('keyboard focus', () => {
+    it('lands on the checked choice when Enter starts compare', async () => {
+      serverHolding(BEFORE)
+      act(() => receiveChanges(unseenStore, [agentChange()]))
+      render(<Board />)
+      screen
+        .getByRole('button', { name: 'Compare pricing with before' })
+        .focus()
+
+      await userEvent.keyboard('{Enter}')
+
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: 'Before' })).toHaveFocus(),
+      )
+      await userEvent.keyboard('{ArrowRight}')
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: 'Split' })).toHaveFocus(),
+      )
+    })
+
+    it('returns to the compare button when Now ends compare', async () => {
+      serverHolding(BEFORE)
+      act(() => receiveChanges(unseenStore, [agentChange()]))
+      render(<Board />)
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Compare pricing with before' }),
+      )
+      ;(await screen.findByRole('radio', { name: 'Now' })).focus()
+
+      await userEvent.keyboard('{Enter}')
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Compare pricing with before' }),
+        ).toHaveFocus(),
+      )
+    })
+  })
+
   it('splits at a divider the arrow keys move', async () => {
     serverHolding(BEFORE)
     act(() => receiveChanges(unseenStore, [agentChange()]))
