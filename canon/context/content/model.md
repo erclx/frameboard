@@ -48,7 +48,8 @@ An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
 An entry's `widths` lists the extra widths one frame file shows at, each a `{ width, height }` drawn in a row past the frame at its `y`.
 
 - `widthsOf` in `src/shared/frame-widths.ts` reads a value of any other shape, or one repeating a width, as none, so a bad key never refuses the page's layout
-- Each width follows the frame's height mode, hugging at its width while `hugHeight` is on and otherwise holding its height, the preset height of its width when set
+- Each width follows the frame's height mode, hugging while `hugHeight` is on and otherwise holding its height, its preset height when set or when scroll turns on over a hugging height
+- A hand resize onto a listed width drops that width from the list, and a batch measures a hugging frame whose list changed, through `relistedRefs`
 - `PageLayout.set` writes `widths` while it lists one, removes it once a valid list empties, and leaves a value no reader understands as written
 - Every writer placing a frame beside another, `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts`, reads `drawnExtent` rather than the box, so nothing lands under a linked width
 
