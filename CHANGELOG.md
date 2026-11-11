@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.29.0](https://github.com/erclx/frameboard/compare/v0.28.0...v0.29.0) (2026-11-11)
+
+
+### Features
+
+* **canvas:** step between frames from the chip and reveal on click ([#267](https://github.com/erclx/frameboard/issues/267)) ([36f0215](https://github.com/erclx/frameboard/commit/36f021581e1faeeefb793272b55d68171a6a6ab9))
+* **home:** add a folder menu, a tab title count, and toast keycaps ([#268](https://github.com/erclx/frameboard/issues/268)) ([f06a69f](https://github.com/erclx/frameboard/commit/f06a69fd70109d6f3fc3513af50ef691d587a1ec))
+* **play:** keep the board moving until a frame is entered ([#266](https://github.com/erclx/frameboard/issues/266)) ([ad164bf](https://github.com/erclx/frameboard/commit/ad164bfcc326180bd73e9c02e18ac6977c74314f))
+* **web:** rebuild the landing page to the drive's redesign ([#258](https://github.com/erclx/frameboard/issues/258)) ([388852d](https://github.com/erclx/frameboard/commit/388852d01582477c83613daef7d37e61c0cb2d25))
+
+
+### Bug Fixes
+
+* **checks:** count custom properties a frame script writes as declared ([#265](https://github.com/erclx/frameboard/issues/265)) ([74d1d88](https://github.com/erclx/frameboard/commit/74d1d8846f9d3b737c92f78b854cc39f3c1bbac7))
+* **web:** clear three landing defects and redraw the landing record ([#262](https://github.com/erclx/frameboard/issues/262)) ([1571d24](https://github.com/erclx/frameboard/commit/1571d248f0a45fa1a23853a0a156fe8e143c37a7))
+
 ## [0.28.0](https://github.com/erclx/frameboard/compare/v0.27.0...v0.28.0) (2026-11-05)
 
 
