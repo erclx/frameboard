@@ -3,6 +3,7 @@ import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -124,6 +125,11 @@ interface CanvasProps {
   calls?: Structure
   /** Called once the view has started toward `focus`. */
   onFocused?: () => void
+  /**
+   * Called once the first staging finishes and every culled frame is live,
+   * and again each time a hidden `Activity` reveals the canvas once live.
+   */
+  onLive?: () => void
 }
 
 /**
@@ -141,6 +147,7 @@ export function Canvas({
   claims,
   focus,
   onFocused,
+  onLive,
   calls = structure,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -733,6 +740,22 @@ export function Canvas({
     [frames, settled, culled, aliases],
   )
   const { live: liveIdentities, staging } = useStagedLive(order)
+  const isLive = liveIdentities !== null && !staging
+  // Reset only when the effects are destroyed, which a hidden `Activity`
+  // does, so a reveal reports live again and a later re-stage never does.
+  const reportedLiveRef = useRef(false)
+  useEffect(
+    () => () => {
+      reportedLiveRef.current = false
+    },
+    [],
+  )
+  const reportLive = useEffectEvent(() => onLive?.())
+  useEffect(() => {
+    if (!isLive || reportedLiveRef.current) return
+    reportedLiveRef.current = true
+    reportLive()
+  }, [isLive])
   // The dwell reads what is on screen each time the cull runs.
   useDwell(
     useMemo(() => (settled ? { frames, ...settled } : null), [frames, settled]),
