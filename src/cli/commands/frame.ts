@@ -14,6 +14,7 @@ import {
   type ScrollOptions,
   setFrameFlag,
   type SizeOptions,
+  type WidthsOptions,
 } from '@/server/board/frames'
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
@@ -35,7 +36,17 @@ const ANY_INTEGER = parseInteger(Number.MIN_SAFE_INTEGER)
 
 type FrameOptions = CommonOptions &
   SizeOptions &
-  ScrollOptions & { x?: number; y?: number }
+  ScrollOptions &
+  WidthsOptions & { x?: number; y?: number }
+
+const WIDTHS_HELP =
+  'the extra widths the frame also shows at, a comma list such as 834,390, each drawn beside it and hugging or holding its height as the frame does'
+const POSITIVE = parseInteger(1)
+
+/** A comma list of positive integers, each checked as `--width` checks one. */
+function parseWidths(value: string): number[] {
+  return value.split(',').map((part) => POSITIVE(part.trim()))
+}
 
 const SCROLL_HELP =
   'hold a fixed screen height and scroll past it, fixing both axes, at the reference height of the width when no height is given'
@@ -77,7 +88,9 @@ export function registerFrame(
         verb(
           'add',
           'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
-        ).option('--scroll', SCROLL_HELP),
+        )
+          .option('--scroll', SCROLL_HELP)
+          .option('--widths <list>', WIDTHS_HELP, parseWidths),
       ),
     ),
     context,
@@ -133,7 +146,9 @@ export function registerFrame(
     withSize(
       verb('resize', 'Set a frame size, fixing each axis it sets')
         .option('--scroll', RESIZE_SCROLL_HELP)
-        .option('--no-scroll', 'clear scroll, keeping the box as it stands'),
+        .option('--no-scroll', 'clear scroll, keeping the box as it stands')
+        .option('--widths <list>', WIDTHS_HELP, parseWidths)
+        .option('--no-widths', 'clear the extra widths'),
     ),
     context,
     async ([ref = ''], options) =>

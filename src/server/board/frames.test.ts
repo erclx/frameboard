@@ -692,7 +692,188 @@ describe('frames', () => {
       })
     })
 
+    describe('widths', () => {
+      it('add writes each width at the reference height of its width', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'desktop',
+          widths: [834, 390],
+        })
+
+        const widths = [
+          { width: 834, height: 1194 },
+          { width: 390, height: 844 },
+        ]
+        expect(added.widths).toEqual(widths)
+        expect(layout('webapp/home').frames.card.widths).toEqual(widths)
+      })
+
+      it('add refuses usage on a frame hugging its width, writing no file', async () => {
+        const root = open()
+
+        await expect(
+          addFrame(root, 'webapp/home/card', { cwd: root, widths: [390] }),
+        ).rejects.toMatchObject({ code: 'usage' })
+        expect(existsSync(join(root, 'webapp/home/card.html'))).toBe(false)
+      })
+
+      it.each([
+        ['a repeated width', { widths: [390, 390] }],
+        ['its own width', { widths: [1440, 390] }],
+        ['a width it already lists', { width: 390 }],
+      ])('resize refuses usage on %s', async (_, options) => {
+        const root = open()
+        await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          widths: [390],
+        })
+        const bytes = file('webapp/home/layout.json')
+
+        await expect(
+          resizeFrame(root, 'webapp/home/hero', { cwd: root, ...options }),
+        ).rejects.toMatchObject({ code: 'usage' })
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
+      it('resize keeps the height a listed width held and adds a new one at its reference height', async () => {
+        const root = open()
+        hugHero(root, { widths: [{ width: 390, height: 2000 }] })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          widths: [834, 390],
+        })
+
+        expect(resized.widths).toEqual([
+          { width: 834, height: 1194 },
+          { width: 390, height: 2000 },
+        ])
+      })
+
+      it('resize with false removes the key', async () => {
+        const root = open()
+        await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          widths: [390],
+        })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          widths: false,
+        })
+
+        expect(resized.widths).toEqual([])
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('widths')
+      })
+
+      it('resize turning scroll on drops each linked height to its reference height', async () => {
+        const root = open()
+        hugHero(root, {
+          hugHeight: true,
+          height: 3000,
+          widths: [{ width: 390, height: 5000 }],
+        })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          scroll: true,
+        })
+
+        expect(resized.widths).toEqual([{ width: 390, height: 844 }])
+      })
+
+      it('resize fixing the height keeps each linked height', async () => {
+        const root = open()
+        hugHero(root, {
+          hugHeight: true,
+          widths: [{ width: 390, height: 5000 }],
+        })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          height: 700,
+        })
+
+        expect(resized.widths).toEqual([{ width: 390, height: 5000 }])
+      })
+
+      it('duplicate carries the list and lands past the row it draws', async () => {
+        const root = open()
+        hugHero(root, { widths: [{ width: 390, height: 844 }] })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.box.x).toBe(1990)
+        expect(layout('webapp/home').frames['hero-2'].widths).toEqual([
+          { width: 390, height: 844 },
+        ])
+      })
+
+      it('move keeps a value no reader understands as written', async () => {
+        const root = open()
+        hugHero(root, { widths: '834,390' })
+
+        await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 40 })
+
+        expect(layout('webapp/home').frames.hero.widths).toBe('834,390')
+      })
+    })
+
     describe('setMeasured', () => {
+      it('writes each linked height a hugging frame still lists', async () => {
+        const root = open()
+        hugHero(root, {
+          hugHeight: true,
+          widths: [
+            { width: 834, height: 1194 },
+            { width: 390, height: 844 },
+          ],
+        })
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          {
+            hero: {
+              widths: [
+                { width: 390, height: 2400 },
+                { width: 320, height: 3000 },
+              ],
+            },
+          },
+          { cwd: root },
+        )
+
+        expect(written).toEqual(['hero'])
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          height: 900,
+          widths: [
+            { width: 834, height: 1194 },
+            { width: 390, height: 2400 },
+          ],
+        })
+      })
+
+      it('leaves the linked heights of a fixed frame', async () => {
+        const root = open()
+        hugHero(root, { widths: [{ width: 390, height: 844 }] })
+        const bytes = file('webapp/home/layout.json')
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { widths: [{ width: 390, height: 2400 }] } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual([])
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
       it('writes a hugging axis and leaves a fixed one', async () => {
         const root = open()
         hugHero(root, { hugHeight: true })

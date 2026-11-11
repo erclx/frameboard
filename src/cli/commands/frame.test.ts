@@ -120,6 +120,61 @@ describe('frame', () => {
     })
   })
 
+  describe('widths', () => {
+    it('add --widths writes each width beside the frame', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing',
+        '--size',
+        'desktop',
+        '--widths',
+        '834,390',
+      )
+
+      expect(result.json().data).toMatchObject({
+        widths: [
+          { width: 834, height: 1194 },
+          { width: 390, height: 844 },
+        ],
+      })
+    })
+
+    it.each([
+      [
+        'a width that is not a number',
+        ['--size', 'desktop', '--widths', '834,wide'],
+      ],
+      ['a zero width', ['--size', 'desktop', '--widths', '0']],
+      ['a repeated width', ['--size', 'desktop', '--widths', '390,390']],
+      ['its own width', ['--size', 'desktop', '--widths', '1440']],
+      ['a frame hugging its width', ['--widths', '390']],
+    ])('add refuses %s, exit 2', async (_, args) => {
+      const run = on('basic')
+
+      const result = await run('frame', 'add', 'webapp/home/pricing', ...args)
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+    })
+
+    it('resize --no-widths clears the list', async () => {
+      const run = on('basic')
+      await run('frame', 'resize', 'webapp/home/hero', '--widths', '390')
+
+      const result = await run(
+        'frame',
+        'resize',
+        'webapp/home/hero',
+        '--no-widths',
+      )
+
+      expect(result.json().data).toMatchObject({ widths: [] })
+    })
+  })
+
   it('lock --off clears the flag', async () => {
     const run = on('basic')
     const locked = await run('frame', 'lock', 'webapp/home/about')

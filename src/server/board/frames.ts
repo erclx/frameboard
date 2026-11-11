@@ -10,8 +10,13 @@ import {
   frameSizeOf,
   referenceHeight,
 } from '@/shared/frame-sizes'
+import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
-import type { LayoutFile, SectionEntry } from '@/shared/records/board'
+import type {
+  LayoutEntry,
+  LayoutFile,
+  SectionEntry,
+} from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { reservedBox } from '../claims/store'
@@ -53,6 +58,11 @@ export interface ScrollOptions {
   scroll?: boolean
 }
 
+export interface WidthsOptions {
+  /** The extra widths the frame also shows at, `false` to clear them, absent to leave them. */
+  widths?: readonly number[] | false
+}
+
 export type FrameFlag = 'hidden' | 'locked'
 
 /**
@@ -71,6 +81,7 @@ export async function addFrame(
     SizeOptions &
     PositionOptions &
     ScrollOptions &
+    WidthsOptions &
     JournalOptions,
 ): Promise<FrameRecord> {
   const { journal } = options
@@ -121,12 +132,18 @@ export async function addFrame(
       )
       const computed = placeFrames(layout.file.frames, slot).get(frame.name)
       if (!computed) throw new Error(`No placement computed for ${frame.name}.`)
+      const width = size.width ?? computed.box.width
+      // Refused ahead of the skeleton, so a refusal leaves no file behind.
+      const widths = linkedWidths(refOf(frame), options.widths, {
+        width,
+        hugWidth: hugs.hugWidth,
+        held: [],
+      })
       if (!exists) {
         await writeFile(frame.path, skeleton(frame.name), { flag: 'wx' })
         await journal?.created(frame.path)
       }
       layout.names = names
-      const width = size.width ?? computed.box.width
       layout.set(frame.name, {
         ...computed,
         box: {
@@ -140,6 +157,7 @@ export async function addFrame(
         },
         ...hugs,
         scroll,
+        widths,
       })
       layout.renumber()
     },
@@ -188,10 +206,7 @@ export async function duplicateFrame(
             y: placement.box.y + offset.y,
           }
         : into === from
-          ? {
-              ...placement.box,
-              x: placement.box.x + placement.box.width + FRAME_GAP,
-            }
+          ? { ...placement.box, x: pastExtent(placement) }
           : placement.box
       const copyPath = join(into, `${copyName}${FRAME_EXTENSION}`)
       await copyFile(source.path, copyPath, constants.COPYFILE_EXCL)
@@ -301,19 +316,33 @@ export async function renameFrame(
 export async function resizeFrame(
   root: string,
   ref: string,
-  options: RefOptions & SizeOptions & ScrollOptions & JournalOptions,
+  options: RefOptions &
+    SizeOptions &
+    ScrollOptions &
+    WidthsOptions &
+    JournalOptions,
 ): Promise<FrameRecord> {
   const size = sizeOf(options)
-  if (Object.keys(size).length === 0 && options.scroll === undefined) {
+  if (
+    Object.keys(size).length === 0 &&
+    options.scroll === undefined &&
+    options.widths === undefined
+  ) {
     throw new FrameboardError(
       'usage',
-      'Pass --size, --width, --height, --scroll, or --no-scroll to resize a frame.',
+      'Pass --size, --width, --height, --scroll, --no-scroll, --widths, or --no-widths to resize a frame.',
     )
   }
-  return updatePlacement(root, ref, options, (placement) => {
+  return updatePlacement(root, ref, options, (placement, frameRef) => {
     const scroll = options.scroll ?? placement.scroll
     const width = size.width ?? placement.box.width
     const drops = scroll && placement.hugHeight && size.height === undefined
+    const hugWidth = !scroll && placement.hugWidth && size.width === undefined
+    const widths = linkedWidths(
+      frameRef,
+      options.widths ?? placement.widths.map((linked) => linked.width),
+      { width, hugWidth, held: placement.widths },
+    )
     return {
       ...placement,
       box: {
@@ -321,11 +350,73 @@ export async function resizeFrame(
         ...size,
         ...(drops ? { height: referenceHeight(width) } : {}),
       },
-      hugWidth: !scroll && placement.hugWidth && size.width === undefined,
+      hugWidth,
       hugHeight: !scroll && placement.hugHeight && size.height === undefined,
       scroll,
+      // A hugging height dropped to a screen height takes each linked width
+      // to its own, so every view of a scroll frame scrolls.
+      widths: drops
+        ? widths.map((linked) => ({
+            ...linked,
+            height: referenceHeight(linked.width),
+          }))
+        : widths,
     }
   })
+}
+
+/**
+ * The linked widths a verb writes, keeping the height each one already held
+ * and giving a new one the reference height of its width, which a hugging
+ * frame's measure replaces. A repeated width, the frame's own width, or a
+ * frame hugging its width refuses `usage`.
+ */
+export function linkedWidths(
+  ref: string,
+  requested: readonly number[] | false | undefined,
+  {
+    width,
+    hugWidth,
+    held,
+  }: { width: number; hugWidth: boolean; held: readonly LinkedWidth[] },
+): LinkedWidth[] {
+  if (!requested || requested.length === 0) return []
+  if (hugWidth) {
+    throw new FrameboardError(
+      'usage',
+      `${ref} hugs its width, so it has no width to show beside others. Fix it with --size or --width first.`,
+      { ref, widths: requested },
+    )
+  }
+  const repeated = requested.find(
+    (linked, index) => requested.indexOf(linked) !== index,
+  )
+  if (repeated !== undefined) {
+    throw new FrameboardError(
+      'usage',
+      `--widths lists ${repeated} twice, so pass each width once.`,
+      { ref, widths: requested },
+    )
+  }
+  if (requested.includes(width)) {
+    throw new FrameboardError(
+      'usage',
+      `${ref} is ${width} px wide already, so --widths lists the other widths alone.`,
+      { ref, width, widths: requested },
+    )
+  }
+  return requested.map((linked) => ({
+    width: linked,
+    height:
+      held.find((each) => each.width === linked)?.height ??
+      referenceHeight(linked),
+  }))
+}
+
+/** The x a copy placed beside a frame takes, past the row of linked widths it draws. */
+export function pastExtent({ box, widths }: Placement): number {
+  const extent = drawnExtent(box, widths)
+  return extent.x + extent.width + FRAME_GAP
 }
 
 /**
@@ -367,7 +458,7 @@ export function fitScrollError(ref: string): FrameboardError {
 export async function setMeasured(
   root: string,
   pageRef: string,
-  sizes: Readonly<Record<string, { width: number; height: number }>>,
+  sizes: Readonly<Record<string, MeasuredSize>>,
   options: RefOptions,
 ): Promise<string[]> {
   const page = await resolvePageRef(root, pageRef, options)
@@ -379,15 +470,45 @@ export async function setMeasured(
       const placement = layout.placement(name)
       const box = {
         ...placement.box,
-        width: placement.hugWidth ? size.width : placement.box.width,
-        height: placement.hugHeight ? size.height : placement.box.height,
+        width:
+          placement.hugWidth && size.width !== undefined
+            ? size.width
+            : placement.box.width,
+        height:
+          placement.hugHeight && size.height !== undefined
+            ? size.height
+            : placement.box.height,
       }
-      if (sameBox(box, placement.box)) continue
-      layout.set(name, { ...placement, box })
+      // A linked width takes its measure only while the stored entry still
+      // lists it and the frame still hugs its height.
+      const widths = placement.widths.map((linked) => ({
+        ...linked,
+        height: placement.hugHeight
+          ? (size.widths?.find((each) => each.width === linked.width)?.height ??
+            linked.height)
+          : linked.height,
+      }))
+      if (
+        sameBox(box, placement.box) &&
+        isDeepStrictEqual(widths, placement.widths)
+      ) {
+        continue
+      }
+      layout.set(name, { ...placement, box, widths })
       written.push(name)
     }
     return written
   })
+}
+
+/**
+ * What one measure of a frame read, each part absent when it was not read:
+ * the frame's own box, and the height of each linked width measured.
+ */
+export interface MeasuredSize {
+  width?: number
+  height?: number
+  widths?: readonly LinkedWidth[]
 }
 
 type Box = FrameRecord['box']
@@ -582,7 +703,7 @@ async function updatePlacement(
   root: string,
   ref: string,
   options: RefOptions & JournalOptions,
-  change: (placement: Placement) => Placement,
+  change: (placement: Placement, ref: string) => Placement,
 ): Promise<FrameRecord> {
   const frame = await resolveFrameRef(root, ref, options)
   const page = pageDir(frame)
@@ -590,7 +711,7 @@ async function updatePlacement(
     [page],
     async (layouts) => {
       const layout = layoutAt(layouts, page)
-      layout.set(frame.name, change(layout.placement(frame.name)))
+      layout.set(frame.name, change(layout.placement(frame.name), refOf(frame)))
     },
     options.journal,
   )
@@ -687,16 +808,27 @@ class PageLayout {
    * is written on an entry it creates, once it is on, or when the entry holds
    * it, so a write to an entry from before the flags adds no key. `scroll` is
    * written once it is on or when the entry holds it, and a scroll entry
-   * writes both hug flags false, since it fixes both axes.
+   * writes both hug flags false, since it fixes both axes. `widths` is
+   * written while it lists one and removed once it lists none, and a held
+   * value no reader understands is left as it stands.
    */
   set(
     name: string,
-    { box, order, hidden, locked, scroll, ...hugs }: Placement,
+    {
+      box,
+      order,
+      hidden,
+      locked,
+      scroll,
+      widths,
+      hugWidth: hugsWidth,
+      hugHeight: hugsHeight,
+    }: Placement,
   ): void {
-    const hugWidth = hugs.hugWidth && !scroll
-    const hugHeight = hugs.hugHeight && !scroll
+    const hugWidth = hugsWidth && !scroll
+    const hugHeight = hugsHeight && !scroll
     const held = this.file.frames[name]
-    this.file.frames[name] = {
+    const entry: LayoutEntry = {
       ...held,
       x: box.x,
       y: box.y,
@@ -710,7 +842,14 @@ class PageLayout {
         ? { hugHeight }
         : {}),
       ...(scroll || held?.scroll !== undefined ? { scroll } : {}),
+      ...(widths.length > 0
+        ? { widths: widths.map(({ width, height }) => ({ width, height })) }
+        : {}),
     }
+    if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
+      delete entry.widths
+    }
+    this.file.frames[name] = entry
     this.changed = true
   }
 
