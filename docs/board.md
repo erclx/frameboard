@@ -58,9 +58,11 @@ A Free element dragged past its frame's edge shows there as a dashed ghost, whic
 
 Selection colors lists every color the selection uses, and a raw color's swatch swaps it for a token on each element setting it inline, as one undo step. Select on a hovered or focused row selects the elements within the selection using that color.
 
-Images and videos come from the project's `assets/` folder and land the same way.
+Images, videos, and audio come from the project's `assets/` folder and land the same way.
 
-- Image or video in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width
-- Dragging an image or video tile from the Assets tab onto a frame places it where you let go
+- Image, video, or audio in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width, and audio lands as a player 300px wide
+- Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
+- A selected video or audio element in Edit draws a bar under it, and the inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
+- Muted in the file is the one media control that writes, setting or dropping the element's `muted` attribute
 
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
