@@ -5,8 +5,9 @@ import { refreshActions } from '@/client/actions/registry'
 const PINS_KEY = 'frameboard.home.pins'
 
 /**
- * The projects this browser pinned, by name, read from `localStorage` so a
- * reload and every mounted view agree. A pin is a viewer's favorite rather
+ * The projects this browser pinned, by name, and the folders, by `folderPin`,
+ * read from `localStorage` so a reload and every mounted view agree. A pin
+ * is a viewer's favorite rather
  * than design, so it stays out of the board folder and a second browser
  * starts with none. A name no project holds is ignored where it is read.
  */
@@ -18,6 +19,14 @@ export function pinnedProjects(): ReadonlySet<string> {
   const raw = readRaw()
   if (raw !== cache.raw) cache = { raw, pins: parse(raw) }
   return cache.pins
+}
+
+/**
+ * A folder's entry in the pins, by its key. The colon is one no project name
+ * takes, so a folder never reads as pinned through a project of its name.
+ */
+export function folderPin(key: string): string {
+  return `folder:${key}`
 }
 
 export function togglePin(project: string): void {

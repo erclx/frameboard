@@ -1182,6 +1182,14 @@ describe('folders', () => {
   const folderCard = (name: string) =>
     screen.getByRole('button', { name: new RegExp(`^${name}`) })
 
+  /** Runs an item of the open folder's ⋯ menu. */
+  const fromPanelMenu = async (panel: HTMLElement, item: string) => {
+    await userEvent.click(
+      within(panel).getByRole('button', { name: /^Folder actions/ }),
+    )
+    await userEvent.click(await screen.findByRole('menuitem', { name: item }))
+  }
+
   afterEach(() => {
     cleanup()
     liveStore.setState({ canWrite: false, board: null })
@@ -1206,7 +1214,7 @@ describe('folders', () => {
     expect(screen.getByRole('link', { name: /^drawings/ })).toBeVisible()
   })
 
-  it('opens a panel of the members with Rename and Ungroup', async () => {
+  it('opens a panel of the members with Rename and Ungroup under its ⋯', async () => {
     renderLive(CLIENT, server().calls)
 
     await userEvent.click(folderCard('Client A'))
@@ -1217,8 +1225,16 @@ describe('folders', () => {
         .getAllByRole('link')
         .map((link) => link.querySelector('[title]')?.getAttribute('title')),
     ).toEqual(['web', 'app', 'email'])
-    expect(within(panel).getByRole('button', { name: 'Rename' })).toBeEnabled()
-    expect(within(panel).getByRole('button', { name: 'Ungroup' })).toBeEnabled()
+    await userEvent.click(
+      within(panel).getByRole('button', { name: /^Folder actions/ }),
+    )
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Rename' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Ungroup' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('returns focus to the folder card when Esc closes the panel', async () => {
@@ -1237,9 +1253,7 @@ describe('folders', () => {
     await userEvent.click(folderCard('Client A'))
     const panel = await screen.findByRole('dialog')
 
-    await userEvent.click(
-      within(panel).getByRole('button', { name: 'Ungroup' }),
-    )
+    await fromPanelMenu(panel, 'Ungroup')
 
     expect(sent).toEqual([
       {
@@ -1256,9 +1270,7 @@ describe('folders', () => {
     const panel = await screen.findByRole('dialog')
     act(() => within(panel).getByRole('link', { name: /^app/ }).focus())
 
-    await userEvent.click(
-      within(panel).getByRole('button', { name: 'Ungroup' }),
-    )
+    await fromPanelMenu(panel, 'Ungroup')
 
     expect(sent).toEqual([
       {
@@ -1274,7 +1286,7 @@ describe('folders', () => {
     await userEvent.click(folderCard('Client A'))
     const panel = await screen.findByRole('dialog')
 
-    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await fromPanelMenu(panel, 'Rename')
     await userEvent.keyboard('Client B{Enter}')
 
     expect(sent).toEqual([
@@ -1290,7 +1302,7 @@ describe('folders', () => {
     const home = renderLive(CLIENT, calls)
     await userEvent.click(folderCard('Client A'))
     const panel = await screen.findByRole('dialog')
-    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await fromPanelMenu(panel, 'Rename')
     await userEvent.keyboard('Client B{Enter}')
 
     home.receive(
@@ -1314,7 +1326,7 @@ describe('folders', () => {
     const home = renderLive(CLIENT, calls)
     await userEvent.click(folderCard('Client A'))
     const panel = await screen.findByRole('dialog')
-    await userEvent.click(within(panel).getByRole('button', { name: 'Rename' }))
+    await fromPanelMenu(panel, 'Rename')
     await userEvent.keyboard('Client B{Enter}')
 
     home.receive(
@@ -1357,9 +1369,7 @@ describe('folders', () => {
     const home = renderLive(CLIENT, calls)
     await userEvent.click(folderCard('Client A'))
     const panel = await screen.findByRole('dialog')
-    await userEvent.click(
-      within(panel).getByRole('button', { name: 'Ungroup' }),
-    )
+    await fromPanelMenu(panel, 'Ungroup')
 
     home.receive(
       CLIENT.map((record) =>

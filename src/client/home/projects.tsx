@@ -22,10 +22,10 @@ import { filterProjects, setHomeFilter } from './filter'
 import { FilterField } from './filter-field'
 import { FolderCard } from './folders/card'
 import { type DropTarget, useHomeDrag } from './folders/drop'
-import { homeEntries, type HomeEntry } from './folders/entries'
+import { homeEntries, type HomeEntry, pinnedEntry } from './folders/entries'
 import { FolderRow } from './folders/row'
 import type { HomeLayout } from './layout'
-import { usePins } from './pins'
+import { folderPin, usePins } from './pins'
 import { ProjectCard, ProjectRow, ROW_COLUMNS } from './project-card'
 import { roveFocus } from './rove'
 import { SortMenu } from './sort-menu'
@@ -90,7 +90,7 @@ export function Projects({
     : projects
   const entries: HomeEntry[] = filtering
     ? shown.map((project) => ({ kind: 'project', project }))
-    : homeEntries(shown)
+    : homeEntries(shown, pins)
   // Held as one string, so the effect runs when the set of folders changes rather than on every render.
   const shownFolders = JSON.stringify(
     entries.flatMap((entry) =>
@@ -108,13 +108,9 @@ export function Projects({
       return next
     })
   const rover = roverOf(entries, focused, focusedFolder, isOpen)
-  const pinnedEntry = (entry: HomeEntry) =>
-    entry.kind === 'project'
-      ? pins.has(entry.project.name)
-      : entry.folder.projects.some((project) => pins.has(project.name))
   // The pinned come first, so the rest start at the first unpinned entry,
   // and a divider sits there only when both groups hold one.
-  const firstUnpinned = entries.findIndex((entry) => !pinnedEntry(entry))
+  const firstUnpinned = entries.findIndex((entry) => !pinnedEntry(entry, pins))
   const divideAt = firstUnpinned > 0 ? firstUnpinned : -1
   const item = (project: ProjectRecord) => ({
     project,
@@ -162,6 +158,7 @@ export function Projects({
                     folder={entry.folder}
                     tabbable={keyOf(entry) === rover}
                     unseen={folderUnseen(entry.folder.projects)}
+                    pinned={pins.has(folderPin(entry.folder.key))}
                     now={now}
                     calls={calls}
                     captures={captures}
@@ -211,6 +208,7 @@ export function Projects({
                       onToggle={() => toggle(entry.folder.key)}
                       tabbable={keyOf(entry) === rover}
                       unseen={folderUnseen(entry.folder.projects)}
+                      pinned={pins.has(folderPin(entry.folder.key))}
                       now={now}
                       calls={calls}
                     >
