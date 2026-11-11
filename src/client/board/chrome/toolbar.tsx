@@ -241,7 +241,7 @@ function ToolButton({ slot, action, pressed }: ButtonProps) {
 /**
  * The Shape tool: a button placing the last shape chosen, pressed while any
  * shape is on, and a caret opening the menu of shapes, the one chosen
- * marked, each naming its key, and below them the Image or video row.
+ * marked, each naming its key, and below them the Image, video, or audio row.
  */
 function ShapeTool({ actions, carets }: ToolProps) {
   const shown = useShape()

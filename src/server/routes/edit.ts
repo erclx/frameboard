@@ -61,9 +61,17 @@ const offset = z.number().min(-100_000).max(100_000)
 /** How many elements one batch names, well past any selection a hand makes. */
 const BATCH = 1024
 
-const changeSchema = z.discriminatedUnion('kind', [
+// A plain union, since the two attribute members share a kind. Both are
+// strict, so a body naming `value` and `remove` together is refused rather
+// than read as whichever member parses first.
+const changeSchema = z.union([
   z.object({ kind: z.literal('style'), property: name, value }),
-  z.object({ kind: z.literal('attribute'), name, value }),
+  z.strictObject({ kind: z.literal('attribute'), name, value }),
+  z.strictObject({
+    kind: z.literal('attribute'),
+    name,
+    remove: z.literal(true),
+  }),
   z.object({ kind: z.literal('text'), value }),
   z.object({
     kind: z.literal('styles'),
@@ -231,7 +239,8 @@ export type SettledVersion = (
  * An asset names a file under the project's `assets/` and the size it
  * shows at, and the server picks its tag from the file's kind. A file
  * outside that folder or not there answers 409 `asset-missing`, and one that
- * is no image, GIF, SVG, or video `asset-not-placeable`, each writing nothing.
+ * is no image, GIF, SVG, video, or audio `asset-not-placeable`, each writing
+ * nothing.
  *
  * The remove takes out the element at `index`, with what it holds, from the
  * bytes `hash` names, and records it as one step whose undo puts it back
@@ -420,7 +429,11 @@ export function editRoutes(
           409,
         )
       }
-      element = { ...body.element, video: asset.kind === 'video' }
+      element = {
+        ...body.element,
+        tag:
+          asset.kind === 'video' || asset.kind === 'audio' ? asset.kind : 'img',
+      }
     }
     const { at } = body
     const insert = (place?: PlaceInserted) =>

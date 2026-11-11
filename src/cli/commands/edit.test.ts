@@ -101,6 +101,25 @@ describe('edit', () => {
     )
   })
 
+  it('should drop an attribute rather than empty it', async () => {
+    await run('--index', HEADING, '--drop-attr', 'data-name')
+
+    expect(readFileSync(frame, 'utf8')).toContain('<h1>hero</h1>')
+  })
+
+  it('should refuse a dropped and a set attribute together as a usage error', async () => {
+    const result = await run(
+      '--index',
+      HEADING,
+      '--drop-attr',
+      'data-name',
+      '--attr',
+      'b=c',
+    )
+
+    expect(result.exitCode).toBe(EXIT_CODES.usage)
+  })
+
   it('should take a path to the frame file', async () => {
     const result = await cli(
       ['edit', frame, '--index', HEADING, '--text', 'Path', '--json'],

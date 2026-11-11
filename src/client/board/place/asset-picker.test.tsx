@@ -73,7 +73,7 @@ describe('AssetPicker', () => {
     },
   )
 
-  it('lists the images, GIFs, SVGs, and videos and leaves out every other kind', async () => {
+  it('lists the images, GIFs, SVGs, videos, and audio and leaves out every other kind', async () => {
     renderPicker(FILES)
 
     expect(
@@ -88,6 +88,7 @@ describe('AssetPicker', () => {
       'Place loader.gif',
       'Place logo.svg',
       'Place demo.mp4',
+      'Place theme.mp3',
     ])
   })
 
@@ -107,15 +108,15 @@ describe('AssetPicker', () => {
     expect(pickerStore.getState().open).toBe(false)
   })
 
-  it('offers Add files when the project has no image or video, posting what is chosen', async () => {
+  it('offers Add files when the project has no image, video, or audio, posting what is chosen', async () => {
     const posted: string[] = []
-    renderPicker(FILES.slice(4), async (_project, files) => {
+    renderPicker(FILES.slice(4, 6), async (_project, files) => {
       posted.push(...files.map((file) => file.name))
       return { added: [], refused: [] }
     })
 
     expect(
-      await screen.findByText(/No images or videos in/),
+      await screen.findByText(/No images, videos, or audio in/),
     ).toBeInTheDocument()
     await userEvent.upload(
       screen.getByLabelText('Choose files to add'),
@@ -137,7 +138,7 @@ describe('AssetPicker', () => {
     renderPicker(FILES)
 
     expect(
-      await screen.findByRole('dialog', { name: 'Image or video' }),
+      await screen.findByRole('dialog', { name: 'Image, video, or audio' }),
     ).toBeInTheDocument()
   })
 })

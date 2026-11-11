@@ -66,6 +66,12 @@ describe('placedSize', () => {
 })
 
 describe('naturalSize', () => {
+  it('lands audio 300px wide without loading the file', async () => {
+    expect(
+      (await naturalSize('data:audio/ogg,not-a-clip', 'audio'))?.width,
+    ).toBe(300)
+  })
+
   it('reads the size an SVG states', async () => {
     expect(await naturalSize(svg('width="64" height="32"'), 'svg')).toEqual({
       width: 64,

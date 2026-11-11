@@ -98,7 +98,7 @@ export type ResolvedAsset =
  * can show it, confined as `listAssets` is: a path naming a dot-named
  * segment, a `..`, or any file whose real path leaves the folder is
  * `asset-missing`, as is one that is not there. A file that is there but is
- * no image, GIF, SVG, or video is `asset-not-placeable`.
+ * no image, GIF, SVG, video, or audio is `asset-not-placeable`.
  */
 export async function resolveAsset(
   projectDir: string,
@@ -134,7 +134,7 @@ export async function resolveAsset(
     return {
       ok: false,
       code: 'asset-not-placeable',
-      message: `assets/${path} is not an image, GIF, SVG, or video, so a frame cannot show it`,
+      message: `assets/${path} is not an image, GIF, SVG, video, or audio, so a frame cannot show it`,
     }
   }
   return { ok: true, kind }

@@ -197,6 +197,27 @@ describe('elementActions', () => {
       ]).toEqual([false, false])
     })
 
+    it('stands aside while a button of a media bar on the canvas holds focus, so Tab moves through the bar', () => {
+      const { action, at } = setup({ boardFocused: focusOnBoard })
+      at(6)
+
+      const canvas = document.createElement('div')
+      canvas.setAttribute('data-canvas', '')
+      const bar = document.createElement('div')
+      bar.setAttribute('data-media-bar', '')
+      const play = document.createElement('button')
+      bar.append(play)
+      canvas.append(bar)
+      document.body.append(canvas)
+      cleanups.push(() => canvas.remove())
+      play.focus()
+
+      expect([
+        action('element.next').enabled?.(),
+        action('element.previous').enabled?.(),
+      ]).toEqual([false, false])
+    })
+
     it('stands aside with several frames selected', () => {
       const { selection, action } = setup()
       select(selection, PAGE, [HERO, 'studio/home/about'])

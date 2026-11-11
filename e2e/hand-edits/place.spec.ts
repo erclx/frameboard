@@ -533,7 +533,9 @@ test.describe('placing text and shapes into a frame', () => {
       if (!one) throw new Error('The row draws no first child')
 
       await tools(page).getByRole('button', { name: 'Shapes' }).click()
-      await page.getByRole('menuitem', { name: /Image or video/ }).click()
+      await page
+        .getByRole('menuitem', { name: /Image, video, or audio/ })
+        .click()
       await page.getByRole('button', { name: 'Place hero.png' }).click()
       await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
 

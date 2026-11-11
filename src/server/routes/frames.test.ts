@@ -242,6 +242,19 @@ describe('frameRoutes', () => {
     })
   })
 
+  it.each([
+    ['clip.mov', 'video/quicktime'],
+    ['clip.m4v', 'video/x-m4v'],
+    ['voice.ogg', 'audio/ogg'],
+    ['voice.m4a', 'audio/mp4'],
+  ])('types the media file %s as %s', async (file, type) => {
+    writeFileSync(join(board.root, 'studio/assets', file), 'media')
+
+    const response = await get(`/frames/studio/assets/${file}`)
+
+    expect(response.headers.get('content-type')).toBe(type)
+  })
+
   describe('a byte range', () => {
     const CLIP = `0123456789${'x'.repeat(980)}ABCDEFGHIJ`
 

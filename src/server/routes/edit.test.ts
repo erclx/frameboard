@@ -197,6 +197,55 @@ describe('editRoutes', () => {
     )
   })
 
+  it('drops one attribute', async () => {
+    const original = read()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'attribute', name: 'data-name', remove: true },
+    })
+
+    expect(response.status).toBe(200)
+    expect(read()).toBe(original.replace(' data-name="Headline"', ''))
+  })
+
+  it('refuses an attribute change naming a value and a removal together, writing nothing', async () => {
+    const original = read()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: {
+        kind: 'attribute',
+        name: 'data-name',
+        value: '',
+        remove: true,
+      },
+    })
+
+    expect(response.status).toBe(400)
+    expect(read()).toBe(original)
+  })
+
+  it('leaves the hash as it was when the dropped attribute is absent', async () => {
+    const readFrom = hash()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: readFrom,
+      change: { kind: 'attribute', name: 'muted', remove: true },
+    })
+
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      data: { hash: readFrom, from: readFrom },
+    })
+  })
+
   it('writes the text and answers the hash it left', async () => {
     const original = read()
     const readFrom = hash()
@@ -810,6 +859,16 @@ describe('editRoutes', () => {
 
         expect(read()).toContain(
           '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline',
+        )
+      })
+
+      it('writes an audio player for an audio file', async () => {
+        putAsset('voice.ogg')
+
+        await insert(asset('voice.ogg'))
+
+        expect(read()).toContain(
+          '<audio data-name="voice.ogg" src="../assets/voice.ogg" controls style="width: 320px"></audio>',
         )
       })
 

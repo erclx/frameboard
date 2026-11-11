@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
@@ -11,6 +12,8 @@ import { usePendingBox, usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
 import { heldStore, holdOutline } from './held'
+import { useLiveMedia } from './media'
+import { MediaBar } from './media-bar'
 import { overflowing } from './overflow'
 import { readResize, type ResizeRead } from './resize'
 
@@ -267,38 +270,75 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   if (!box) return null
   const read = holds && !settled ? held.read : (measure?.read ?? null)
   return (
-    <div
-      data-element-selection
-      className="pointer-events-none absolute"
-      style={{
-        left: box.x,
-        top: box.y,
-        width: box.width,
-        height: box.height,
-        outline: OUTLINE,
-        outlineOffset: screen(2),
-        zIndex: OVERLAY_Z,
-      }}
-    >
-      {read
-        ? CORNERS.map((corner) => (
-            <span
-              key={`${corner.left}-${corner.top}`}
-              data-element-corner
-              className="absolute -translate-1/2 border-primary bg-white"
-              style={{
-                ...corner,
-                width: screen(7),
-                height: screen(7),
-                borderWidth: screen(1.5),
-              }}
-            />
-          ))
-        : null}
-      <span data-chip className={CHIP}>
-        {sizeLabel(box, read?.hugsHeight ? 'height' : undefined)}
-      </span>
-    </div>
+    <>
+      <CanvasMediaBar element={element} box={box} container={container} />
+      <div
+        data-element-selection
+        className="pointer-events-none absolute"
+        style={{
+          left: box.x,
+          top: box.y,
+          width: box.width,
+          height: box.height,
+          outline: OUTLINE,
+          outlineOffset: screen(2),
+          zIndex: OVERLAY_Z,
+        }}
+      >
+        {read
+          ? CORNERS.map((corner) => (
+              <span
+                key={`${corner.left}-${corner.top}`}
+                data-element-corner
+                className="absolute -translate-1/2 border-primary bg-white"
+                style={{
+                  ...corner,
+                  width: screen(7),
+                  height: screen(7),
+                  borderWidth: screen(1.5),
+                }}
+              />
+            ))
+          : null}
+        <span data-chip className={CHIP}>
+          {sizeLabel(box, read?.hugsHeight ? 'height' : undefined)}
+        </span>
+      </div>
+    </>
+  )
+}
+
+interface CanvasMediaBarProps {
+  element: ElementKey | null
+  /** The element's box in board pixels. */
+  box: Box
+  container: HTMLElement | null
+}
+
+/**
+ * The media bar under a selected `<video>` or `<audio>` in Edit, at the
+ * element's width and a constant screen size. It draws in the notes layer,
+ * the board-space layer over the hit layer, since a press on the frames'
+ * layer never reaches it, and goes when the frame is culled or reloads other
+ * bytes, as the live element does.
+ */
+function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
+  const editing = useMode((state) => state.mode === 'edit')
+  const media = useLiveMedia(editing ? element : null)
+  const layer = container?.parentElement?.querySelector(
+    ':scope > [data-notes-layer]',
+  )
+  if (!media || !layer) return null
+  return createPortal(
+    <div className="absolute" style={{ left: box.x, top: box.y + box.height }}>
+      <div
+        className="pointer-events-auto mt-1.5 origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
+        style={{ width: `max(200px, calc(${box.width}px * var(--zoom, 1)))` }}
+      >
+        <MediaBar media={media} />
+      </div>
+    </div>,
+    layer,
   )
 }
 

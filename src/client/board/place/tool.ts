@@ -205,9 +205,9 @@ export function usePlaceTools(): void {
       })),
       {
         id: IMAGE_TOOL,
-        label: 'Image or video',
+        label: 'Image, video, or audio',
         group: 'tool',
-        command: { label: 'Add an image or video', icon: ImageIcon },
+        command: { label: 'Add an image, video, or audio', icon: ImageIcon },
         keys: ['$mod+Shift+KeyK'],
         enabled: canWrite,
         run: () => pickerStore.setState({ open: true }),

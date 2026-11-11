@@ -13,6 +13,7 @@ import { useAuthor, useAuthorSource } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
+import { useLiveMedia } from '../element/media'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { placeFree } from '../place/write'
@@ -37,6 +38,7 @@ import {
 } from './element/styles'
 import { TextSection } from './element/text'
 import { TypographySection } from './element/typography'
+import { VideoSection } from './element/video'
 import { type ElementChange, shownHash, writeElement } from './element/write'
 import { ExportSection } from './export-section'
 import { FrameSection } from './frame-section'
@@ -169,6 +171,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const canWrite = useLive((state) => state.canWrite)
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
+  const media = useLiveMedia(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
   const { colors, shadows, fonts } = useProjectTokens(element.frame)
 
@@ -186,6 +189,9 @@ function ElementSections({ page, element }: ElementSectionsProps) {
   const own = styles?.element
   return (
     <>
+      {media ? (
+        <VideoSection media={media} disabled={disabled} write={write} />
+      ) : null}
       <PositionSection
         placement={live.placement}
         disabled={disabled}

@@ -10,6 +10,7 @@ import {
   assetUrl,
   describeAsset,
   describeUsage,
+  formatLength,
   formatSize,
   kindLabel,
   linkPath,
@@ -32,7 +33,7 @@ const COPIED_MS = 1500
  * file no frame links, with the size kept in the accessible name. A listing
  * with no counts keeps the `<type> · <size>` line. A click copies the path a
  * frame links it by. An
- * image, GIF, SVG, or video drags onto a frame while this tab may write,
+ * image, GIF, SVG, video, or audio drags onto a frame while this tab may write,
  * landing where the canvas's drop target places it.
  */
 export function Tile({ project, file }: TileProps) {
@@ -40,6 +41,7 @@ export function Tile({ project, file }: TileProps) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
   const button = useRef<HTMLButtonElement>(null)
+  const [active, setActive] = useState(false)
   const canWrite = useLive((state) => state.canWrite)
   const { path, kind } = file
   const usage = describeUsage(file)
@@ -71,10 +73,14 @@ export function Tile({ project, file }: TileProps) {
         ref={button}
         type="button"
         onClick={() => void copyPath()}
+        onPointerEnter={() => setActive(true)}
+        onPointerLeave={() => setActive(false)}
+        onFocus={() => setActive(true)}
+        onBlur={() => setActive(false)}
         aria-label={`Copy path of ${[file.path, kindLabel(kind), formatSize(file.size), usage].filter(Boolean).join(', ')}`}
         className="group relative block w-full overflow-hidden rounded-lg bg-muted text-left outline-none hover:ring-[1.5px] hover:ring-primary focus-visible:ring-[1.5px] focus-visible:ring-primary"
       >
-        <Thumbnail project={project} file={file} />
+        <Thumbnail project={project} file={file} playing={active} />
         <span
           aria-live="polite"
           className={`absolute top-[5px] right-[5px] rounded-[5px] bg-card px-1.5 py-0.5 text-[10px] text-foreground shadow-[0_1px_3px_rgba(0,0,0,.3)] group-hover:visible group-focus-visible:visible ${copy === 'idle' ? 'invisible' : ''}`}
@@ -115,8 +121,20 @@ const PILL: Record<Copy, string> = {
 
 const THUMB = 'grid h-[72px] place-items-center text-muted-foreground'
 
-/** A file's 72px preview, the image itself or a mark for its kind. */
-export function Thumbnail({ project, file }: TileProps) {
+interface ThumbnailProps extends TileProps {
+  /** Whether its tile is hovered or focused, which plays a video muted. */
+  playing?: boolean
+  /** Where the file loads from, the board's asset route by default. */
+  url?: string
+}
+
+/** A file's 72px preview, the image itself, a video's first frame, or a mark for its kind. */
+export function Thumbnail({
+  project,
+  file,
+  playing = false,
+  url = assetUrl(project, file.path),
+}: ThumbnailProps) {
   switch (file.kind) {
     case 'image':
     case 'gif':
@@ -124,7 +142,7 @@ export function Thumbnail({ project, file }: TileProps) {
       return (
         <span className={THUMB}>
           <img
-            src={assetUrl(project, file.path)}
+            src={url}
             alt=""
             loading="lazy"
             decoding="async"
@@ -133,11 +151,7 @@ export function Thumbnail({ project, file }: TileProps) {
         </span>
       )
     case 'video':
-      return (
-        <span className={`${THUMB} bg-[#111] text-white`}>
-          <Play aria-hidden className="size-4" />
-        </span>
-      )
+      return <VideoThumbnail url={url} playing={playing} />
     case 'audio':
       return (
         <span className={THUMB}>
@@ -149,4 +163,77 @@ export function Thumbnail({ project, file }: TileProps) {
     default:
       return <span className={`${THUMB} font-mono`}>{'{ }'}</span>
   }
+}
+
+type Media =
+  | { state: 'loading' }
+  | { state: 'ready'; length: number }
+  | { state: 'unplayable' }
+
+/**
+ * A video's first frame with its length, preloading metadata alone so a tab
+ * of videos loads little, and playing muted only while `playing`, rewound on
+ * leave so the tile shows the first frame again. A file the browser cannot
+ * decode, or one that decodes no picture, as ProRes in a `.mov` does in
+ * Chrome, says so in place of a black box.
+ */
+function VideoThumbnail({ url, playing }: { url: string; playing: boolean }) {
+  const video = useRef<HTMLVideoElement>(null)
+  const [media, setMedia] = useState<Media>({ state: 'loading' })
+  const ready = media.state === 'ready'
+  useEffect(() => {
+    const element = video.current
+    if (!element || !ready) return
+    if (playing) {
+      // A play the browser refuses leaves the first frame showing, which is the idle tile.
+      element.play().catch(() => undefined)
+      return
+    }
+    element.pause()
+    element.currentTime = 0
+  }, [playing, ready])
+
+  if (media.state === 'unplayable') {
+    return (
+      <span
+        data-video-unplayable
+        className={`${THUMB} bg-[#111] px-2 text-center text-[10px] text-white`}
+      >
+        Can't play this codec
+      </span>
+    )
+  }
+  return (
+    <span className={`${THUMB} relative bg-[#111] text-white`}>
+      <video
+        ref={video}
+        src={url}
+        preload="metadata"
+        muted
+        loop
+        playsInline
+        aria-hidden
+        onLoadedMetadata={(event) => {
+          const { videoWidth, duration } = event.currentTarget
+          setMedia(
+            videoWidth > 0
+              ? { state: 'ready', length: duration }
+              : { state: 'unplayable' },
+          )
+        }}
+        onError={() => setMedia({ state: 'unplayable' })}
+        className="h-[72px] w-full object-cover"
+      />
+      {ready ? (
+        <span
+          data-video-length
+          className="absolute right-1 bottom-1 rounded-[3px] bg-black/65 px-[3px] font-mono text-[9px] font-medium text-white"
+        >
+          {formatLength(media.length)}
+        </span>
+      ) : (
+        <Play aria-hidden className="absolute size-4" />
+      )}
+    </span>
+  )
 }

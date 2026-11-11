@@ -117,7 +117,8 @@ const COUNTED_ASSETS = [
 
 /**
  * Answers the Assets tab's read with the reference's files and draws their
- * thumbnails as gradients, so no binary joins the `basic` fixture.
+ * thumbnails as gradients, so no image joins the `basic` fixture. A video
+ * plays the fixture's one second clip, so its tile shows a poster and length.
  */
 async function referenceAssets(page: Page): Promise<void> {
   await answerAssets(page, REFERENCE_ASSETS)
@@ -133,12 +134,17 @@ async function answerAssets(page: Page, files: unknown[]): Promise<void> {
     route.fulfill({ json: { ok: true, data: { files } } }),
   )
   await page.route('**/frames/*/assets/**', (route) =>
-    route.fulfill({
-      contentType: 'image/svg+xml',
-      body: route.request().url().endsWith('hero.png')
-        ? gradient('#6d5bd0', '#e07a5f')
-        : gradient('#1d2a4a', '#3b2a5c'),
-    }),
+    route.request().url().endsWith('.mp4')
+      ? route.fulfill({
+          contentType: 'video/webm',
+          body: readFileSync(join(SERVED_BOARD, 'marketing/assets/clip.webm')),
+        })
+      : route.fulfill({
+          contentType: 'image/svg+xml',
+          body: route.request().url().endsWith('hero.png')
+            ? gradient('#6d5bd0', '#e07a5f')
+            : gradient('#1d2a4a', '#3b2a5c'),
+        }),
   )
 }
 
@@ -223,7 +229,7 @@ function chooseOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens the Shape menu and then the picker from its Image or video row, once
+ * Opens the Shape menu and then the picker from its Image, video, or audio row, once
  * the server grants writes, which enable the row. Waits in an init script as
  * `pressOnLoad` does.
  */
@@ -234,7 +240,7 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
       const open = () => {
         const row = [
           ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-        ].find((item) => item.textContent?.includes('Image or video'))
+        ].find((item) => item.textContent?.includes('Image, video, or audio'))
         if (row && row.getAttribute('aria-disabled') !== 'true') {
           row.click()
           return
@@ -247,7 +253,7 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
           caret.click()
         }
         if (--left > 0) requestAnimationFrame(open)
-        else console.error('The Image or video row never enabled')
+        else console.error('The Image, video, or audio row never enabled')
       }
       document.addEventListener('DOMContentLoaded', open)
     },
@@ -2542,7 +2548,13 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        setup: themed(both(referenceAssets, leftTab('Assets'))),
+        setup: themed(
+          both(
+            referenceAssets,
+            leftTab('Assets'),
+            readyWhen('[data-video-length]'),
+          ),
+        ),
       },
       {
         section: 'assets-groups',
@@ -2551,7 +2563,29 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        setup: themed(both(countedAssets, leftTab('Assets'))),
+        setup: themed(
+          both(
+            countedAssets,
+            leftTab('Assets'),
+            readyWhen('[data-video-length]'),
+          ),
+        ),
+      },
+      {
+        // The fixture's own media, a ProRes .mov naming the codec it cannot play.
+        section: 'assets-media',
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            leftTab('Assets'),
+            readyWhen('[data-video-unplayable]'),
+          ),
+        ),
       },
       {
         section: 'shape-menu',
@@ -3049,6 +3083,28 @@ const CASES: CaptureCase[] = [
             asWriter,
             elementInFrame(`marketing/states/${frame}`, target),
             readyWhen('[data-element-selection]'),
+          ),
+        ),
+      })),
+      ...(
+        [
+          // A video wearing the media bar under it, the Video section in the inspector.
+          ['media-video', '[data-name="Free video"]'],
+          // An audio player wearing the same bar, the section named Audio.
+          ['media-audio', '[data-name="Free audio"]'],
+        ] as const
+      ).map(([section, target]) => ({
+        section,
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            elementInFrame('marketing/states/free', target),
+            readyWhen('[data-media-bar]'),
           ),
         ),
       })),

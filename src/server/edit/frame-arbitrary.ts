@@ -243,6 +243,11 @@ export const changeArbitrary: fc.Arbitrary<SingleChange> = fc.oneof(
     ),
   }),
   fc.record({
+    kind: fc.constant('attribute' as const),
+    name: fc.constantFrom('class', 'muted', 'data-x', 'hidden', 'viewBox'),
+    remove: fc.constant(true as const),
+  }),
+  fc.record({
     kind: fc.constant('text' as const),
     value: fc.constantFrom(
       '',

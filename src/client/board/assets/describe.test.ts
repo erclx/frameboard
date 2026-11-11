@@ -6,6 +6,7 @@ import {
   assetUrl,
   describeAsset,
   describeUsage,
+  formatLength,
   formatSize,
   linkPath,
 } from './describe'
@@ -51,6 +52,22 @@ describe('formatSize', () => {
 
   it('moves to megabytes rather than showing 1000 KB', () => {
     expect(formatSize(999_999)).toBe('1 MB')
+  })
+})
+
+describe('formatLength', () => {
+  it('shows minutes and seconds under an hour, rounded down', () => {
+    expect(formatLength(8.9)).toBe('0:08')
+    expect(formatLength(605)).toBe('10:05')
+  })
+
+  it('adds hours past an hour', () => {
+    expect(formatLength(3725)).toBe('1:02:05')
+  })
+
+  it('reads a length that is not finite as 0:00', () => {
+    expect(formatLength(Number.POSITIVE_INFINITY)).toBe('0:00')
+    expect(formatLength(Number.NaN)).toBe('0:00')
   })
 })
 
