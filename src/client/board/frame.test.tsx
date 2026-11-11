@@ -766,6 +766,26 @@ describe('Frame preview', () => {
     expect(root?.style.height).toBe('320px')
   })
 
+  it("reads a hugging height at the previewed width's reference height, not the box's", async () => {
+    const hugging = {
+      ...frame('a'),
+      hugHeight: true,
+      box: { x: 0, y: 0, width: 390, height: 1900 },
+    }
+    const { container } = render(<Frame frame={hugging} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const document = iframe.contentDocument
+    if (!document) throw new Error('no frame document')
+    document.body.innerHTML = '<div style="height:max(900px, 100vh)"></div>'
+    document.body.style.margin = '0'
+
+    act(() => setPreview(['studio/home/a'], 1440))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('900px')
+  })
+
   it('keeps a fixed height at a previewed width', async () => {
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     const iframe = iframeOf(container, 'a')

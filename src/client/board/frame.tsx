@@ -18,6 +18,7 @@ import {
   useFrameTheme,
   useShownTheme,
 } from '@/client/theme/store'
+import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
@@ -160,8 +161,9 @@ export const Frame = memo(function Frame({
 
   // A previewed frame hugging its height takes its content's height at the
   // previewed width, read again on each load, as an agent's write reloads it.
+  // It reads at the width's reference height, as the server's fit does.
   const previewWidth = preview?.width
-  const { hugHeight, box } = frame
+  const { hugHeight } = frame
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
@@ -169,12 +171,12 @@ export const Frame = memo(function Frame({
       measurePreview(
         frame.ref,
         previewWidth,
-        measureHeight(element, box.height),
+        measureHeight(element, referenceHeight(previewWidth)),
       )
     measure()
     element.addEventListener('load', measure)
     return () => element.removeEventListener('load', measure)
-  }, [live, previewWidth, hugHeight, frame.ref, box.height])
+  }, [live, previewWidth, hugHeight, frame.ref])
 
   useEffect(() => {
     const element = iframe.current
