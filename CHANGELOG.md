@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.31.0](https://github.com/erclx/frameboard/compare/v0.30.0...v0.31.0) (2026-11-11)
+
+
+### Features
+
+* **assets:** file audio under its own kind chip ([#282](https://github.com/erclx/frameboard/issues/282)) ([395eaf0](https://github.com/erclx/frameboard/commit/395eaf0e77626415e803866e3c22cba3c502784d))
+* **canvas:** hold the page left behind until the new one is live ([#287](https://github.com/erclx/frameboard/issues/287)) ([17f52f7](https://github.com/erclx/frameboard/commit/17f52f79c512e393ebd40efe298f85b992889c9d))
+* **canvas:** yield the empty page notice to reserved boxes ([#283](https://github.com/erclx/frameboard/issues/283)) ([49c0866](https://github.com/erclx/frameboard/commit/49c08665e5df17a1bd7c0e2f4c5726995e6d08da))
+* **layout:** hold a scrolling frame at a screen height ([#291](https://github.com/erclx/frameboard/issues/291)) ([07b589e](https://github.com/erclx/frameboard/commit/07b589ed1e4a183df79fb57c240c7b92012f0ad6))
+* **layout:** show one frame file at several widths ([#294](https://github.com/erclx/frameboard/issues/294)) ([0620830](https://github.com/erclx/frameboard/commit/06208301571ffd93a81c46beaf76fadaf28060bb))
+* **references:** file a design reference one folder deeper ([#288](https://github.com/erclx/frameboard/issues/288)) ([28dfea4](https://github.com/erclx/frameboard/commit/28dfea4cbb63cfe5e34fa86fc5d86c4efd895ac6))
+* **shortcuts:** repeat held nudges, pans, zoom, undo, and redo ([#289](https://github.com/erclx/frameboard/issues/289)) ([f1b9e18](https://github.com/erclx/frameboard/commit/f1b9e188acf3b1b28b56ca80d3355bf9baa18e50))
+
+
+### Bug Fixes
+
+* **fit:** read content at a reference height and settle each resize ([#284](https://github.com/erclx/frameboard/issues/284)) ([72fc390](https://github.com/erclx/frameboard/commit/72fc39086e40f9b1696759f7a52f5a51672c84da))
+* **labels:** match the theme marker's name and raise label focus rings ([#290](https://github.com/erclx/frameboard/issues/290)) ([c098dd9](https://github.com/erclx/frameboard/commit/c098dd98ece7ef24178f6f189c333d084a457719))
+
+
+### Performance Improvements
+
+* **frames:** revalidate project assets instead of refetching per frame ([#285](https://github.com/erclx/frameboard/issues/285)) ([91c3eda](https://github.com/erclx/frameboard/commit/91c3eda953f18b655e62e2d0b9c7950c16ecacf8))
+
 ## [0.30.0](https://github.com/erclx/frameboard/compare/v0.29.0...v0.30.0) (2026-11-11)
 
 
