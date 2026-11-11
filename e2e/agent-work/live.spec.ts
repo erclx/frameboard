@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -101,6 +101,26 @@ test.describe('the live board', () => {
     await expect
       .poll(() => marks(page))
       .toEqual({ 'studio/home/hero': false, 'studio/home/mobile': false })
+  })
+
+  test('reads the new bytes of an asset the frame already loaded once it changes', async ({
+    page,
+  }) => {
+    const dot = page.frameLocator('iframe[title="hero"]').getByRole('img')
+    // A fetch in the default mode reads the HTTP cache the image load filled,
+    // so a freshness lifetime on the asset would answer the old bytes here.
+    const served = () =>
+      dot.evaluate(async (img: HTMLImageElement) =>
+        (await fetch(img.src)).text(),
+      )
+    const asset = join(board.root, 'studio/assets/dot.svg')
+    await expect.poll(served).toBe(readFileSync(asset, 'utf8'))
+    const edited =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg>'
+
+    writeFileSync(asset, edited)
+
+    await expect.poll(served).toBe(edited)
   })
 
   test('adds a new frame and removes a deleted one with no navigation', async ({
