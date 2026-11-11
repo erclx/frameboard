@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 
 import { boardSheetPath, tokenSheetPaths } from '@/server/checks/tokens'
 import { FACES_URL } from '@/shared/faces'
+import { version } from '@/shared/version'
 
 import {
   BOARD_SHEET_URL,
@@ -13,6 +14,12 @@ import {
   frameRoutes,
   type FrameVersion,
 } from './frames'
+
+/** The answer for faces under the running release, whose bytes a release fixes. */
+const IMMUTABLE = 'public, max-age=31536000, immutable'
+
+/** A release segment as `faceSheetUrl` writes one, such as `v0.29.0`. */
+const RELEASE_SEGMENT = /^v\d+\.\d+\.\d+/
 
 const CONTENT_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -63,8 +70,13 @@ export function servedFrames(
 /**
  * Serves what every frame imports from outside the board: the faces under
  * `/frameboard/faces/*` and the board sheet at `/frameboard/tokens.css`.
- * Neither is cached, so a changed sheet reaches a frame on its reload. A
- * dot-named or escaping path answers 404, as the frame route does.
+ * The board sheet is never cached, so a changed sheet reaches a frame on its
+ * reload. The faces under the running release's segment, as
+ * `/frameboard/faces/v0.29.0/geist/index.css`, are cached for good, since
+ * only a release changes them, and any other release segment answers 404 so
+ * a stale URL never caches today's bytes. The bare faces path stays
+ * uncached for anything naming it. A dot-named or escaping path answers 404,
+ * as the frame route does.
  */
 export function lookRoutes({ facesDir, boardSheet }: LookOptions): Hono {
   const app = new Hono()
@@ -81,13 +93,19 @@ export function lookRoutes({ facesDir, boardSheet }: LookOptions): Hono {
 
   app.get(`${FACES_URL}/*`, async (c) => {
     const raw = new URL(c.req.url).pathname.slice(FACES_URL.length + 1)
-    const file = await resolveFace(facesDir, raw.split('/'))
+    const segments = raw.split('/')
+    const release = RELEASE_SEGMENT.test(segments[0] ?? '')
+    if (release && segments[0] !== `v${version}`) return c.notFound()
+    const file = await resolveFace(
+      facesDir,
+      release ? segments.slice(1) : segments,
+    )
     const type = file && CONTENT_TYPES[extname(file)]
     const bytes = type ? await readOrNull(file) : null
     if (!type || !bytes) return c.notFound()
     return c.body(bytes, 200, {
       'Content-Type': type,
-      'Cache-Control': 'no-store',
+      'Cache-Control': release ? IMMUTABLE : 'no-store',
     })
   })
 
