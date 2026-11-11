@@ -4,10 +4,12 @@ import {
   addProject,
   deleteProject,
   fileProjects,
+  type Filing,
   renameProject,
 } from '@/server/board/projects'
 import { writeStarterSheet } from '@/server/look/starter'
 import { FrameboardError } from '@/shared/errors'
+import type { ProjectRecord } from '@/shared/records/list'
 import {
   DEFAULT_LOOK,
   STARTER_ACCENTS,
@@ -85,15 +87,35 @@ export function registerProject(
     context,
     async ([name = '', folder], options) => {
       const group = folderOf(folder, options.clear === true)
-      const [record] = await fileProjects(await boardOf(options, io), [name], {
-        group,
-      })
-      if (!record) throw new FrameboardError('internal', 'No project filed.')
+      const record = await fileOne(await boardOf(options, io), name, { group })
       return {
         data: record,
         human: group
           ? `Filed project ${record.name} under ${group}`
           : `Took project ${record.name} out of its folder`,
+      }
+    },
+  )
+
+  act<CommonOptions & { restore?: boolean }>(
+    addVerb(
+      project,
+      'archive',
+      "Move a project into home's Archived section, or back out with --restore",
+    )
+      .argument('<name>', 'the project')
+      .option('--restore', 'bring the project back out of the archive'),
+    context,
+    async ([name = ''], options) => {
+      const archived = options.restore !== true
+      const record = await fileOne(await boardOf(options, io), name, {
+        archived,
+      })
+      return {
+        data: record,
+        human: archived
+          ? `Archived project ${record.name}`
+          : `Restored project ${record.name}`,
       }
     },
   )
@@ -127,6 +149,17 @@ export function registerProject(
       }
     },
   )
+}
+
+/** Files one project, answering its record as `fileProjects` leaves it. */
+async function fileOne(
+  root: string,
+  name: string,
+  filing: Filing,
+): Promise<ProjectRecord> {
+  const [record] = await fileProjects(root, [name], filing)
+  if (!record) throw new FrameboardError('internal', 'No project filed.')
+  return record
 }
 
 /**

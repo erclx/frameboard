@@ -113,7 +113,7 @@ describe('project', () => {
     })
   })
 
-  describe('group', () => {
+  describe('group and archive', () => {
     let filing: TempBoard
 
     beforeEach(() => {
@@ -214,6 +214,47 @@ describe('project', () => {
 
     it('fails project-not-found with exit 3 on an unknown project', async () => {
       const result = await file('project', 'group', 'brand', 'Client')
+
+      expect(result.exitCode).toBe(3)
+      expect(result.json().error?.code).toBe('project-not-found')
+    })
+
+    it('archives the project and answers its record', async () => {
+      const result = await file('project', 'archive', 'acme')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({ name: 'acme', archived: true })
+      expect(projectFile()).toHaveProperty('archived', true)
+    })
+
+    it('restores an archived project, dropping the flag and keeping its folder', async () => {
+      await file('project', 'group', 'acme', 'Client')
+      await file('project', 'archive', 'acme')
+
+      const result = await file('project', 'archive', 'acme', '--restore')
+
+      expect(result.json().data).toMatchObject({
+        archived: false,
+        group: 'Client',
+      })
+      expect(projectFile()).toEqual({
+        version: 1,
+        pages: ['home'],
+        checks: { tokens: 'warn' },
+        custom: [1, 2],
+        group: 'Client',
+      })
+    })
+
+    it('answers the record when restoring a project not archived', async () => {
+      const result = await file('project', 'archive', 'acme', '--restore')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({ archived: false })
+    })
+
+    it('fails project-not-found with exit 3 archiving an unknown project', async () => {
+      const result = await file('project', 'archive', 'brand')
 
       expect(result.exitCode).toBe(3)
       expect(result.json().error?.code).toBe('project-not-found')
