@@ -35,7 +35,7 @@ Owns how a claimed frame shows and how an edit waits on one, apart from `frame.t
 - The inspector header shows one initial per listening session, solid while it holds a claim, pale while it only listens, and none for a holder not listening
 - The layers row of a claimed frame carries a ringed `--claim` dot after its name
 
-`reserved.tsx` draws each reservation whose frame is not listed yet as a hatched, dashed `--claim` box at its box in Edit, labeled with its name, the agent's initial, and its place in the set. The member with the set's latest `drawingAt` reads drawing and the rest queued, and a right-click on a box offers Release reservation.
+`reserved.tsx` draws each reservation whose frame is not listed yet as a hatched `--claim` box in Edit, labeled with its name, the agent's initial, and its place in the set. The member with the set's latest `drawingAt` reads drawing and the rest queued, Zoom to fit takes the boxes in, and a right-click on one offers Release reservation.
 
 ### `src/client/board/changes/`
 
