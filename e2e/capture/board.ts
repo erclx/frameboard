@@ -3465,6 +3465,29 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        // The compare button under keyboard focus, its ring against the canvas.
+        section: 'compare-label-focus',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            seededChanges([
+              {
+                ...agentChange('webapp/home/about', 1),
+                before: '1'.repeat(64),
+              },
+            ]),
+            focusOnLoad('button[aria-label="Compare about with before"]'),
+            readyWhen(
+              'button[aria-label="Compare about with before"]:focus-visible',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'compare-flip',
         theme,
         route: '/p/webapp/home',
@@ -3999,6 +4022,22 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(pressOnLoad('^Flip hero to')),
+      },
+      {
+        // The flipped marker under keyboard focus, its ring against the canvas.
+        section: 'flipped-marker-focus',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            pressOnLoad('^Flip hero to'),
+            focusOnLoad('button[aria-label*=": flip hero to"]'),
+            readyWhen('button[aria-label*=": flip hero to"]:focus-visible'),
+          ),
+        ),
       },
     ]
   }),
