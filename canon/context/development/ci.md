@@ -57,6 +57,12 @@ Owns publishing the landing page to Cloudflare Pages.
 
 - The browser project runs in `frameboard-checks.yml` and not in `unit-tests`, which installs no browser
 - No `canon tooling sync` writes `release-please.yml`, so a later fix to canon's copy reaches this one only by hand
+- `.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and a sync overwrites `.oxfmtrc.json`
+
+### Release config
+
+Three settings in `release-please-config.json` behave against intuition.
+
 - `initial-version` is `0.0.1` against a `0.0.0` manifest, since release-please reads `0.0.0` as no release and otherwise cuts `1.0.0`
 - `bump-minor-pre-major` is on, so a breaking change on 0.x lands as a minor bump, and `bootstrap-sha` is the root commit so the first release pull request opens
-- `.prettierignore` carries `/CHANGELOG.md`, because oxfmt rejects the changelog release-please writes and a sync overwrites `.oxfmtrc.json`
+- Release-please skips a commit only when every file it touches is excluded. `exclude-paths` lists `web`, `canon`, and `.claude`, so a commit pairing one with `src/` or `plugins/` still releases.
