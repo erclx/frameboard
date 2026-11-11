@@ -1,7 +1,10 @@
 import { toast } from '@/client/components/ui/toast'
+import { useLive } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { Claim, ClaimBox } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
+
+import { useMode } from '../mode'
 
 /** A reservation the canvas draws, with where it sits in its set. */
 export interface Reserved {
@@ -56,6 +59,19 @@ export function reservedOn(
       },
     ]
   })
+}
+
+/**
+ * The reservations the canvas draws as boxes on the page, none in Play, so
+ * whatever yields to the boxes reads the same list they draw from.
+ */
+export function useReservedBoxes(
+  page: string,
+  frames: readonly FrameRecord[],
+): Reserved[] {
+  const claims = useLive((state) => state.claims)
+  const playing = useMode((state) => state.mode === 'play')
+  return playing ? [] : reservedOn(claims, frames, page)
 }
 
 /**
