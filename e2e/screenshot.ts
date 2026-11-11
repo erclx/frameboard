@@ -154,6 +154,9 @@ async function settle(
   await page.waitForFunction(
     () => {
       if (document.readyState !== 'complete') return false
+      // A board still making its frames live has iframes left to build, so
+      // the loop below would pass over frames that are empty boxes yet.
+      if (document.querySelector('[data-staging]')) return false
       for (const image of document.images) if (!image.complete) return false
       for (const frame of document.querySelectorAll('iframe')) {
         try {

@@ -1248,12 +1248,16 @@ function elementInFrame(
             : null
           const hit = document.querySelector('[data-hit-layer]')
           const layer = document.querySelector<HTMLElement>('[data-layer]')
-          const decoded = [...document.querySelectorAll('iframe')].every(
-            (each) =>
+          // A layer still staging holds frames whose iframes are not built
+          // yet, so every iframe found decoding says nothing of those.
+          const decoded =
+            layer !== null &&
+            !layer.hasAttribute('data-staging') &&
+            [...document.querySelectorAll('iframe')].every((each) =>
               [
                 ...(each.contentDocument?.querySelectorAll('video') ?? []),
               ].every((video) => video.readyState >= 2),
-          )
+            )
           if (!shown || !element || !hit || !layer || !decoded) {
             if (--left > 0) requestAnimationFrame(pick)
             else console.error(`No ${target} on ${owner} to select`)
@@ -1299,12 +1303,16 @@ function elementsInFrame(
           const iframe = shown?.querySelector('iframe')
           const hit = document.querySelector('[data-hit-layer]')
           const layer = document.querySelector<HTMLElement>('[data-layer]')
-          const decoded = [...document.querySelectorAll('iframe')].every(
-            (each) =>
+          // A layer still staging holds frames whose iframes are not built
+          // yet, so every iframe found decoding says nothing of those.
+          const decoded =
+            layer !== null &&
+            !layer.hasAttribute('data-staging') &&
+            [...document.querySelectorAll('iframe')].every((each) =>
               [
                 ...(each.contentDocument?.querySelectorAll('video') ?? []),
               ].every((video) => video.readyState >= 2),
-          )
+            )
           const drawn = document.querySelectorAll(
             '[data-element-selection]',
           ).length
