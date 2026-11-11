@@ -388,7 +388,7 @@ function ThemeMarker({
         aria-label={label}
         title={label}
         onClick={() => flipFrame(frameRef)}
-        className="invisible grid h-[18px] w-[18px] min-w-0 shrink place-items-center overflow-hidden rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [[data-label-hover]_&]:visible"
+        className="invisible grid h-[18px] w-[18px] min-w-0 shrink place-items-center overflow-hidden rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [[data-label-hover]_&]:visible"
       >
         <Sun aria-hidden className="size-3" />
       </button>
@@ -405,7 +405,7 @@ function ThemeMarker({
       aria-label={named}
       title={named}
       onClick={() => flipFrame(frameRef)}
-      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Icon aria-hidden className="size-3" />
       {shown}
@@ -500,7 +500,7 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
         data-severity={severity}
         // Play passes the pointer through the frames' layer, so the badge takes it back.
-        className="pointer-events-auto flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+        className="pointer-events-auto flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
       >
         <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
         {count}
