@@ -61,9 +61,17 @@ const offset = z.number().min(-100_000).max(100_000)
 /** How many elements one batch names, well past any selection a hand makes. */
 const BATCH = 1024
 
-const changeSchema = z.discriminatedUnion('kind', [
+// A plain union, since the two attribute members share a kind. Both are
+// strict, so a body naming `value` and `remove` together is refused rather
+// than read as whichever member parses first.
+const changeSchema = z.union([
   z.object({ kind: z.literal('style'), property: name, value }),
-  z.object({ kind: z.literal('attribute'), name, value }),
+  z.strictObject({ kind: z.literal('attribute'), name, value }),
+  z.strictObject({
+    kind: z.literal('attribute'),
+    name,
+    remove: z.literal(true),
+  }),
   z.object({ kind: z.literal('text'), value }),
   z.object({
     kind: z.literal('styles'),

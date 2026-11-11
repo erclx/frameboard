@@ -22,6 +22,8 @@ import type { NumberChange } from '../number-field'
 export type ElementChange =
   | { kind: 'style'; property: string; value: string }
   | { kind: 'attribute'; name: string; value: string }
+  /** Drops the attribute, since an empty value still states a boolean one. */
+  | { kind: 'attribute'; name: string; remove: true }
   | { kind: 'text'; value: string }
   /** Several declarations written as one edit, which one undo puts back. */
   | {

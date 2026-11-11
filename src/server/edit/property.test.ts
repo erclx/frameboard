@@ -183,25 +183,23 @@ function windowOf(
   return [Math.max(afterName, ...ends), location.startTag.endOffset]
 }
 
-/** The byte span of `before` that differs from `after`, after their common ends. */
-function changedSpan(before: Buffer, after: Buffer): [number, number] {
-  let prefix = 0
-  while (
-    prefix < before.length &&
-    prefix < after.length &&
-    before[prefix] === after[prefix]
-  ) {
-    prefix += 1
-  }
-  let suffix = 0
-  while (
-    suffix < before.length - prefix &&
-    suffix < after.length - prefix &&
-    before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
-  ) {
-    suffix += 1
-  }
-  return [prefix, before.length - suffix]
+/**
+ * Whether `after` is `before` with only the bytes from `from` to `to`
+ * replaced. A minimal diff cannot stand in for this, since removing
+ * `\thidden` before `\thref` reads as a change starting at the `h` they share.
+ */
+function keepsOutside(
+  before: Buffer,
+  after: Buffer,
+  from: number,
+  to: number,
+): boolean {
+  const tail = before.length - to
+  return (
+    after.length >= from + tail &&
+    after.subarray(0, from).equals(before.subarray(0, from)) &&
+    after.subarray(after.length - tail).equals(before.subarray(to))
+  )
 }
 
 /**
@@ -234,13 +232,10 @@ function checkEdit(source: string, index: number, change: SingleChange): void {
   )
   const sourceBytes = Buffer.from(source)
   const outputBytes = Buffer.from(output)
-  if (!sourceBytes.equals(outputBytes)) {
-    const [start, end] = changedSpan(sourceBytes, outputBytes)
-    holds(
-      start >= from && end <= to,
-      `bytes ${start}-${end} changed outside ${from}-${to}`,
-    )
-  }
+  holds(
+    keepsOutside(sourceBytes, outputBytes, from, to),
+    `bytes changed outside ${from}-${to}`,
+  )
 
   holds(
     swapSpan(output, result.span, 'after')?.html === source,
@@ -263,10 +258,17 @@ function checkEdit(source: string, index: number, change: SingleChange): void {
     target.childNodes = []
     if (change.value !== '') defaultTreeAdapter.insertText(target, change.value)
   } else if (change.kind === 'attribute') {
-    holds(
-      attributeOf(written, change.name) === change.value,
-      'the attribute is not the value',
-    )
+    if ('remove' in change) {
+      holds(
+        attributeIn(written, change.name) === undefined,
+        'the dropped attribute is still stated',
+      )
+    } else {
+      holds(
+        attributeOf(written, change.name) === change.value,
+        'the attribute is not the value',
+      )
+    }
     setAttributeOf(target, change.name, attributeIn(written, change.name))
   } else {
     const wanted = decodeStyle(attributeOf(target, 'style'))

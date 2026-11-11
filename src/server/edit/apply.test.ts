@@ -274,6 +274,55 @@ describe('applyEdit', () => {
       ).toMatchObject({ ok: false, reason: 'invalid-edit' })
     })
 
+    it('should drop a boolean attribute and leave every other byte', () => {
+      const source =
+        '<video  src="a.webm" autoplay\n  muted loop playsinline></video>'
+      expect(
+        applyEdit(source, FIRST, {
+          kind: 'attribute',
+          name: 'Muted',
+          remove: true,
+        }),
+      ).toMatchObject({
+        ok: true,
+        html: '<video  src="a.webm" autoplay loop playsinline></video>',
+      })
+    })
+
+    it('should leave the source as it was when the dropped attribute is absent', () => {
+      const source = '<video src="a.webm" loop></video>'
+      expect(
+        applyEdit(source, FIRST, {
+          kind: 'attribute',
+          name: 'muted',
+          remove: true,
+        }),
+      ).toMatchObject({ ok: true, html: source })
+    })
+
+    it.each(['<video muted muted></video>', '<video muted="" muted></video>'])(
+      'should refuse dropping from %j, where a duplicate would stay in force',
+      (source) => {
+        expect(
+          applyEdit(source, FIRST, {
+            kind: 'attribute',
+            name: 'muted',
+            remove: true,
+          }),
+        ).toMatchObject({ ok: false, reason: 'verify-failed' })
+      },
+    )
+
+    it('should refuse dropping style, which takes a style edit', () => {
+      expect(
+        applyEdit('<p style="color: red">x</p>', FIRST, {
+          kind: 'attribute',
+          name: 'style',
+          remove: true,
+        }),
+      ).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    })
+
     it.each(['a b', 'a=b', 'a>', '"a', ''])(
       'should refuse the name %j, which the tokenizer would not read as one',
       (name) => {

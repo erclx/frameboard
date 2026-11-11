@@ -21,6 +21,7 @@ export type EditOptions = CommonOptions & {
   hash?: string
   style?: string
   attr?: string
+  dropAttr?: string
   text?: string
 }
 
@@ -44,13 +45,16 @@ function pair(flag: string, value: string): [string, string] {
 
 /** The one change the flags name, refusing none or several as a usage error. */
 export function changeOf(options: EditOptions): EditChange {
-  const given = [options.style, options.attr, options.text].filter(
-    (value) => value !== undefined,
-  )
+  const given = [
+    options.style,
+    options.attr,
+    options.dropAttr,
+    options.text,
+  ].filter((value) => value !== undefined)
   if (given.length !== 1) {
     throw new FrameboardError(
       'usage',
-      'Give exactly one of --style, --attr, or --text.',
+      'Give exactly one of --style, --attr, --drop-attr, or --text.',
     )
   }
   if (options.style !== undefined) {
@@ -61,6 +65,9 @@ export function changeOf(options: EditOptions): EditChange {
     const [name, value] = pair('--attr', options.attr)
     return { kind: 'attribute', name, value }
   }
+  if (options.dropAttr !== undefined) {
+    return { kind: 'attribute', name: options.dropAttr, remove: true }
+  }
   return { kind: 'text', value: options.text ?? '' }
 }
 
@@ -70,7 +77,7 @@ export function registerEdit(program: Command, context: ProgramContext): void {
     addVerb(
       program,
       'edit',
-      'Set one inline style declaration, attribute, or text on one element of a frame, leaving every other byte',
+      'Set one inline style declaration, attribute, or text, or drop one attribute, on one element of a frame, leaving every other byte',
       { project: true },
     )
       .argument(
@@ -92,6 +99,10 @@ export function registerEdit(program: Command, context: ProgramContext): void {
         'set one declaration, or drop it with an empty value',
       )
       .option('--attr <name=value>', 'set one attribute')
+      .option(
+        '--drop-attr <name>',
+        'remove one attribute, such as a boolean muted, which --attr can only set',
+      )
       .option(
         '--text <value>',
         'replace the text of an element holding text alone',

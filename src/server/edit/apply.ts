@@ -18,7 +18,12 @@ export interface ElementAddress {
   readonly hash?: string
 }
 
-/** A change that writes one value, being a declaration, an attribute, or the text. */
+/**
+ * A change that writes one value, being a declaration, an attribute, or the
+ * text, or drops one attribute. Dropping is its own member rather than an
+ * empty value, since `muted=""` is a stated boolean attribute that keeps the
+ * element muted.
+ */
 export type SingleChange =
   | {
       readonly kind: 'style'
@@ -29,6 +34,11 @@ export type SingleChange =
       readonly kind: 'attribute'
       readonly name: string
       readonly value: string
+    }
+  | {
+      readonly kind: 'attribute'
+      readonly name: string
+      readonly remove: true
     }
   | { readonly kind: 'text'; readonly value: string }
 
@@ -135,8 +145,10 @@ function checkChange(change: EditChange): EditRefused | undefined {
     }
     return undefined
   }
-  const invalid = checkValue(change.value)
-  if (invalid) return invalid
+  if ('value' in change) {
+    const invalid = checkValue(change.value)
+    if (invalid) return invalid
+  }
   if (change.kind === 'attribute') {
     if (!ATTRIBUTE_NAME.test(change.name)) {
       return refuse('invalid-edit', `${change.name} is not an attribute name`)
@@ -192,6 +204,9 @@ function write(source: string, element: Element, change: EditChange): Written {
     return written.ok ? written : refuse('not-text-only', written.detail)
   }
   if (change.kind === 'attribute') {
+    if ('remove' in change) {
+      return { ok: true, html: removeAttribute(source, element, change.name) }
+    }
     return {
       ok: true,
       html: setRawAttribute(
@@ -280,10 +295,12 @@ function textOf(element: Element): string {
 function holdsValue(element: Element, change: EditChange): boolean {
   if (change.kind === 'text') return textOf(element) === change.value
   if (change.kind === 'attribute') {
-    return (
-      element.attrs.find((attribute) => isNamed(attribute, change.name))
-        ?.value === change.value
+    const stated = element.attrs.find((attribute) =>
+      isNamed(attribute, change.name),
     )
+    return 'remove' in change
+      ? stated === undefined
+      : stated?.value === change.value
   }
   const style =
     element.attrs.find((attribute) => attribute.name === 'style')?.value ?? ''
