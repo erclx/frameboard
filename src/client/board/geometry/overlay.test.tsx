@@ -7,6 +7,7 @@ import { registerActions } from '@/client/actions/registry'
 import type { SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
+import { ringFocused } from '@/test/focus-ring'
 
 import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectElement, selectionStore } from '../selection'
@@ -123,6 +124,26 @@ describe('SelectionOverlay', () => {
         screen.getByRole('button', { name: 'Zoom to selection' }),
       ).toBeInTheDocument()
     })
+
+    it.each([
+      ['Previous frame', 'light'],
+      ['Next frame', 'light'],
+      ['Zoom to selection', 'light'],
+      ['Previous frame', 'dark'],
+      ['Next frame', 'dark'],
+      ['Zoom to selection', 'dark'],
+    ])(
+      'rings a focused %s control at 3:1 or better on the chip in %s',
+      async (name, theme) => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+        render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+        const ring = await ringFocused(screen.getByRole('button', { name }))
+
+        expect(ring).toBeGreaterThanOrEqual(3)
+      },
+    )
 
     it('draws no step controls on a page of one frame', () => {
       act(() => select(selectionStore, PAGE, [LEFT.ref]))

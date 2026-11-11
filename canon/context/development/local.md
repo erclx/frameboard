@@ -138,6 +138,7 @@ Test support that lives inside the source tree.
 - `src/test/` owns the setup file the Vitest `browser` project loads, the board records client tests build from, and the contrast measure component tests read rendered colors with
 - `src/test/motion.js` emulates reduced motion and `hover-contrast.js` reads contrast under the real pointer, in plain JavaScript since a `.ts` import of `vitest/browser` fails typecheck
 - `src/test/real-pointer.js` moves that pointer on and off an element, for a `:hover` rule user-event never reaches, in plain JavaScript too
+- `src/test/focus-ring.js` reads a focus ring's contrast after a real key press, since user-event's untrusted keys never reach a `:focus-visible` rule, in plain JavaScript for the same reason
 
 ## Gotchas
 

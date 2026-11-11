@@ -9,6 +9,7 @@ import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
+import { ringFocused } from '@/test/focus-ring'
 
 import { openFindings } from './findings-open'
 import { Frame, LabelRename } from './frame'
@@ -640,10 +641,10 @@ describe('Frame theme marker', () => {
   })
 
   it.each([
-    ['light', 'Dark', 'Flip a to light'],
-    ['dark', 'Light', 'Flip a to dark'],
+    ['light', 'Dark', 'Dark: flip a to light'],
+    ['dark', 'Light', 'Light: flip a to dark'],
   ] as const)(
-    'names the theme of a frame flipped on a %s board',
+    'names a frame flipped on a %s board by its shown theme first',
     (board, shown, label) => {
       act(() => chooseTheme(board))
       act(() => flipFrame('studio/home/a'))
@@ -662,12 +663,90 @@ describe('Frame theme marker', () => {
       <Frame frame={frame('a')} live={false} version={0} />,
     )
 
-    await userEvent.click(getByRole('button', { name: 'Flip a to light' }))
+    await userEvent.click(
+      getByRole('button', { name: 'Dark: flip a to light' }),
+    )
 
     expect(
       container.querySelector('[aria-label="Flip a to dark"]'),
     ).toHaveTextContent('')
   })
+})
+
+describe('Frame label focus rings', () => {
+  afterEach(() => {
+    act(() =>
+      themeStore.setState({
+        choice: 'system',
+        system: 'light',
+        flipped: new Set(),
+      }),
+    )
+    document.documentElement.classList.remove('dark')
+  })
+
+  it.each(['light', 'dark'])(
+    'rings the flipped theme marker at 3:1 or better on the canvas in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      act(() => flipFrame('studio/home/a'))
+      const { getByRole } = render(
+        <div className="bg-background">
+          <Frame frame={frame('a')} live={false} version={0} />
+        </div>,
+      )
+
+      const ring = await ringFocused(
+        getByRole('button', { name: /^(Dark|Light): flip a/ }),
+      )
+
+      expect(ring).toBeGreaterThanOrEqual(3)
+    },
+  )
+
+  it.each(['light', 'dark'])(
+    'rings the sun marker at 3:1 or better on the canvas in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      const { container, getByRole } = render(
+        <div className="bg-background">
+          <Frame frame={frame('a')} live={false} version={0} />
+        </div>,
+      )
+      container
+        .querySelector('[data-frame]')
+        ?.setAttribute('data-label-hover', '')
+
+      const ring = await ringFocused(
+        getByRole('button', { name: 'Flip a to dark' }),
+      )
+
+      expect(ring).toBeGreaterThanOrEqual(3)
+    },
+  )
+
+  it.each(['light', 'dark'])(
+    'rings the findings count at 3:1 or better on the canvas in %s',
+    async (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      const { getByRole } = render(
+        <div className="bg-background">
+          <Frame
+            frame={frame('a')}
+            live={false}
+            version={0}
+            findings={[finding('One theme alone.')]}
+          />
+        </div>,
+      )
+
+      const ring = await ringFocused(
+        getByRole('button', { name: '1 check finding' }),
+      )
+
+      expect(ring).toBeGreaterThanOrEqual(3)
+    },
+  )
 })
 
 describe('Frame label at low zoom', () => {

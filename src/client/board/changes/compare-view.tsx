@@ -195,7 +195,7 @@ export function CompareControl({
         aria-label={`Compare ${name} with before`}
         title="Compare with before"
         onClick={() => pick('flip')}
-        className="grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-secondary text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-secondary text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         <GitCompareArrows aria-hidden className="size-3" />
       </button>
@@ -245,7 +245,7 @@ export function CompareControl({
             data-compare-option={`${ref}:${value}`}
             onClick={() => pick(value)}
             className={cn(
-              'flex h-4 items-center rounded px-1.5 font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+              'flex h-4 items-center rounded px-1.5 font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring',
               on
                 ? 'bg-card text-foreground shadow-[0_0_0_1px_var(--border)]'
                 : 'text-muted-foreground hover:text-foreground',

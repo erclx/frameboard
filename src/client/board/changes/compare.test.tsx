@@ -10,6 +10,7 @@ import { receiveChanges, unseenStore } from '@/client/live/unseen'
 import { flipFrame, themeStore } from '@/client/theme/store'
 import type { FrameChange } from '@/shared/records/changes'
 import type { FrameRecord } from '@/shared/records/list'
+import { ringFocused } from '@/test/focus-ring'
 
 import { Frame } from '../frame'
 import { modeStore } from '../mode'
@@ -131,6 +132,54 @@ describe('compare', () => {
     expect(shown.searchParams.get('theme')).toBe('light')
     expect(before()).toBeNull()
     expect(live()?.getAttribute('src')).toBe(liveSrc)
+  })
+
+  describe('focus rings', () => {
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it.each(['light', 'dark'])(
+      'rings the compare button at 3:1 or better on the canvas in %s',
+      async (theme) => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        act(() => receiveChanges(unseenStore, [agentChange()]))
+        render(
+          <div className="bg-background">
+            <Board />
+          </div>,
+        )
+
+        const ring = await ringFocused(
+          screen.getByRole('button', { name: 'Compare pricing with before' }),
+        )
+
+        expect(ring).toBeGreaterThanOrEqual(3)
+      },
+    )
+
+    it.each(['light', 'dark'])(
+      'rings the checked compare choice at 3:1 or better on its group in %s',
+      async (theme) => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        serverHolding(BEFORE)
+        act(() => receiveChanges(unseenStore, [agentChange()]))
+        render(
+          <div className="bg-background">
+            <Board />
+          </div>,
+        )
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Compare pricing with before' }),
+        )
+
+        const ring = await ringFocused(
+          await screen.findByRole('radio', { checked: true }),
+        )
+
+        expect(ring).toBeGreaterThanOrEqual(3)
+      },
+    )
   })
 
   it('splits at a divider the arrow keys move', async () => {
