@@ -208,6 +208,31 @@ describe('structureRoutes', () => {
       expect(hero().hugHeight).toBeUndefined()
     })
 
+    it('writes each linked width the height its content reads at that width', async () => {
+      const layoutPath = join(board.root, 'studio/home/layout.json')
+      const layout = JSON.parse(readFileSync(layoutPath, 'utf8'))
+      layout.frames.hero.widths = [{ width: 390, height: 844 }]
+      writeFileSync(layoutPath, JSON.stringify(layout))
+      app = structureRoutes(
+        board.root,
+        access,
+        history,
+        async (_frame, box) => ({
+          width: box?.width ?? 1440,
+          height: box ? 2400 : 1232,
+          contentWidth: box?.width ?? 1440,
+          empty: false,
+        }),
+      )
+
+      await post('/api/frame/fit', { ref: 'studio/home/hero' })
+
+      expect(hero()).toMatchObject({
+        height: 1232,
+        widths: [{ width: 390, height: 2400 }],
+      })
+    })
+
     it('refuses content sized off the viewport with 422 and writes nothing', async () => {
       app = structureRoutes(board.root, access, history, async () => {
         throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
