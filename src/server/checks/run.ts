@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { listFrames, listPageFolders } from '@/server/board/scan'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
+import { CONTRAST_RULES } from './browser/contrast'
 import { DECLARATION_RULES } from './browser/declarations'
 import { FONT_SIZE_RULES } from './browser/font-size'
 import { LAYOUT_RULES } from './browser/layout'
@@ -28,6 +29,7 @@ export const RULES: RuleDoc[] = [
   ...OUTRANKED_RULES,
   ...LAYOUT_RULES,
   ...FONT_SIZE_RULES,
+  ...CONTRAST_RULES,
   ...DECLARATION_RULES,
 ]
 

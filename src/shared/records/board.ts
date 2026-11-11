@@ -13,6 +13,8 @@ export const projectChecksSchema = z.looseObject({
   noUppercase: z.boolean().optional(),
   /** The smallest text size in pixels the `min-font-size` rule allows. */
   minFontSize: z.number().positive().optional(),
+  /** The lowest text contrast ratio the `min-contrast` rule allows, 4.5 being WCAG's. */
+  minContrast: z.number().min(1).optional(),
 })
 
 export type ProjectChecks = z.infer<typeof projectChecksSchema>

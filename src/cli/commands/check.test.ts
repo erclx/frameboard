@@ -99,7 +99,7 @@ describe('check', () => {
   it('checks the whole project with no target', async () => {
     const run = await check([])
 
-    expect(run.json().error?.details).toMatchObject({ checked: 30 })
+    expect(run.json().error?.details).toMatchObject({ checked: 32 })
   })
 
   it('fails frame-not-found, exit 3, on a ref that names nothing', async () => {

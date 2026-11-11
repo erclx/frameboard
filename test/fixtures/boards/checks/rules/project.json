@@ -15,13 +15,15 @@
     "clipped",
     "scrollbar",
     "viewport",
-    "min-font-size"
+    "min-font-size",
+    "min-contrast"
   ],
   "checks": {
     "allowedFonts": [
       "Geist"
     ],
     "noUppercase": true,
-    "minFontSize": 12
+    "minFontSize": 12,
+    "minContrast": 4.5
   }
 }

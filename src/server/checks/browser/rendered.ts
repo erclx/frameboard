@@ -6,6 +6,7 @@ import type { Finding } from '@/shared/records/check'
 import { type Theme, THEMES } from '@/shared/theme'
 
 import { readFrame } from '../frame-source'
+import { checkContrast, CONTRAST_RULES } from './contrast'
 import { checkDeclarations, DECLARATION_RULES } from './declarations'
 import { checkFontSize, FONT_SIZE_RULES } from './font-size'
 import { checkLayout, LAYOUT_RULES, type RenderedTarget } from './layout'
@@ -14,11 +15,12 @@ import { checkLayout, LAYOUT_RULES, type RenderedTarget } from './layout'
 export const BROWSER_RULES = [
   ...LAYOUT_RULES,
   ...FONT_SIZE_RULES,
+  ...CONTRAST_RULES,
   ...DECLARATION_RULES,
 ]
 
 /** The rules that read one theme's page and land one finding at most. */
-const THEMED_RULES = [...LAYOUT_RULES, ...FONT_SIZE_RULES]
+const THEMED_RULES = [...LAYOUT_RULES, ...FONT_SIZE_RULES, ...CONTRAST_RULES]
 
 export interface CheckRenderedOptions {
   /** The origin serving `/frames/`. */
@@ -58,6 +60,9 @@ export async function checkRendered(
         ...(config.minFontSize === undefined
           ? []
           : await checkFontSize(opened.page, frame, config.minFontSize)),
+        ...(config.minContrast === undefined
+          ? []
+          : await checkContrast(opened.page, frame, config.minContrast)),
       ])
       if (theme === THEMES[0]) {
         declarations = await checkDeclarations(opened.page, source)

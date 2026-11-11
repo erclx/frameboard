@@ -22,7 +22,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.
 
 - Red means the frame is broken, rendering wrong or not loading, and an error fails `check`. Amber means it renders and a style call is in question, so a warning never does
-- The errors are the link, markup, and naming rules, `clipped`, `theme`, and `allowed-fonts`, which a project chose. Every other rule warns, `uppercase` and `min-font-size` included
+- The errors are the link, markup, and naming rules, `clipped`, `theme`, and `allowed-fonts`, which a project chose. Every other rule warns, `uppercase`, `min-font-size`, and `min-contrast` included
 - `findingFor` binds a module's docs and stamps each finding with its rule's level, refusing a rule the docs never declare
 
 The markup rules read what parse5 recovered from, since a browser recovers from the same bytes without a word.
@@ -67,7 +67,7 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - Each rule reports at most one finding per frame, naming the first offending element by its edit index and how many more, and opens with the theme when only one theme trips it
 - `clipped` measures uncropped boxes grown to their text's line box, against the frame's box and not the block's, so a `nowrap` heading counts past the frame only. `scrollbar` takes 1 px of slack
 - `viewport` rereads the content at twice the viewport height through `fit`'s `readContentSize`, which leaves out what a cropping ancestor hides, as `clipped` does
-- `min-font-size` runs only when `project.json` sets `checks.minFontSize` to a positive number of pixels, and picks text elements the way capture's font check does
+- `min-font-size` and `min-contrast` run once `project.json` sets their `checks` key. `min-contrast` skips text over an image, a gradient, or an effect, and reads a `::before` panel as the host's
 
 `dropped-declaration` is the one browser rule that reports per declaration rather than once per frame. Only the page's own parser knows what it drops, which is why the rule sits in the browser tier.
 

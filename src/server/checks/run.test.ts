@@ -32,7 +32,7 @@ describe('checkProject', () => {
   it('checks every frame on every page', async () => {
     const { checked } = await checkProject(ROOT, 'rules')
 
-    expect(checked).toBe(30)
+    expect(checked).toBe(32)
   })
 
   it('reports each fail frame for its own rule and nothing else', async () => {
@@ -123,6 +123,22 @@ describe('readProjectContext', () => {
     ['a string', '12'],
   ])('leaves the minimum font size off for %s', (_, minFontSize) => {
     writeChecks({ minFontSize })
+
+    expect(readProjectContext(root, 'app').config).toEqual({})
+  })
+
+  it('reads a minimum contrast ratio of 1 or more', () => {
+    writeChecks({ minContrast: 4.5 })
+
+    expect(readProjectContext(root, 'app').config).toEqual({ minContrast: 4.5 })
+  })
+
+  it.each([
+    ['a ratio under 1', 0.5],
+    ['a string', '4.5'],
+    ['false', false],
+  ])('leaves the minimum contrast off for %s', (_, minContrast) => {
+    writeChecks({ minContrast })
 
     expect(readProjectContext(root, 'app').config).toEqual({})
   })

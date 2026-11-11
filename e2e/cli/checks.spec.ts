@@ -168,7 +168,13 @@ test.describe('the static font and theme rules against the browser', () => {
 })
 
 /** Each browser rule's fixture page, the rule its fail frame breaks alone. */
-const BROWSER_PAGES = ['clipped', 'scrollbar', 'viewport', 'min-font-size']
+const BROWSER_PAGES = [
+  'clipped',
+  'scrollbar',
+  'viewport',
+  'min-font-size',
+  'min-contrast',
+]
 
 test.describe('the browser rules on a running board', () => {
   let board: FixtureBoard
@@ -213,7 +219,14 @@ test.describe('the browser rules on a running board', () => {
         .filter((finding) => browserRules.has(finding.rule))
         .map((finding) => `${finding.frame} ${finding.rule}`)
         .sort(),
-    ).toEqual(BROWSER_PAGES.map((rule) => `rules/${rule}/fail ${rule}`).sort())
+    ).toEqual(
+      [
+        ...BROWSER_PAGES.map((rule) => `rules/${rule}/fail ${rule}`),
+        // The theme rule's fail frame sets a literal text color that sinks
+        // into the dark canvas, which the contrast rule reads too.
+        'rules/theme/fail min-contrast',
+      ].sort(),
+    )
   })
 })
 
