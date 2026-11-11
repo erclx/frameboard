@@ -25,7 +25,12 @@ import { THEMES } from '@/shared/theme'
 import { frameAssets } from './assets'
 import { classifyDrift } from './drift'
 import { toReference } from './format'
-import { missingFrames, parseFrameMap } from './frame-map'
+import {
+  frameTargets,
+  mappedTarget,
+  missingFrames,
+  parseFrameMap,
+} from './frame-map'
 
 export interface ReferencesOptions {
   /** The board folder holding the mapped frames. */
@@ -94,8 +99,8 @@ async function buildOutput({
   // Every frame is read and formatted ahead of the browser, so a frame the
   // formatter refuses costs no capture.
   await Promise.all(
-    [...map].map(async ([reference, ref]) => {
-      const { project, page, name } = frameOf(frames, ref)
+    [...map].map(async ([reference, value]) => {
+      const { project, page, name } = frameOf(frames, mappedTarget(value).ref)
       const source = readFrame({ root, project, page, name })
       output.set(
         `${reference}.html`,
@@ -110,22 +115,43 @@ async function buildOutput({
     }),
   )
 
+  // Each mapped value captures at the one width it names, the frame's own
+  // when it names none, so a frame's linked widths never stand in for it.
+  const targets = new Map(
+    [...map.values()].map((value) => {
+      const { ref, width } = mappedTarget(value)
+      const frame = frameOf(frames, ref)
+      return [`${ref}@${width ?? frame.box.width}`, { frame, width }] as const
+    }),
+  )
   // A folder of its own, so a check leaves nothing in the board's captures.
   const captures = await mkdtemp(join(tmpdir(), 'frameboard-references-'))
   try {
     const images = await withFrameHost(
       { root, facesDir },
       'references sync',
-      (browser, baseUrl) =>
-        captureFrameImages(browser, {
-          baseUrl,
-          frames: [...frames.values()],
-          themes: THEMES,
-          out: captures,
-        }),
+      async (browser, baseUrl) => {
+        const shot = []
+        for (const { frame, width } of targets.values()) {
+          shot.push(
+            ...(await captureFrameImages(browser, {
+              baseUrl,
+              frames: [frame],
+              themes: THEMES,
+              out: captures,
+              width: width ?? frame.box.width,
+            })),
+          )
+        }
+        return shot
+      },
     )
-    for (const [reference, ref] of map) {
-      for (const image of images.filter((image) => image.ref === ref)) {
+    for (const [reference, value] of map) {
+      const { ref, width } = mappedTarget(value)
+      const wanted = width ?? frameOf(frames, ref).box.width
+      for (const image of images.filter(
+        (image) => image.ref === ref && image.width === wanted,
+      )) {
         output.set(
           `${reference}-${image.theme}.png`,
           await readFile(image.path),
@@ -150,7 +176,10 @@ async function mappedFrames(
       .flatMap((page) => page.frames)
       .map((frame) => [frame.ref, frame]),
   )
-  const missing = missingFrames(map, new Set(board.keys()))
+  const missing = missingFrames(
+    map,
+    new Set([...board.values()].flatMap(frameTargets)),
+  )
   if (missing.length > 0) {
     throw new FrameboardError(
       'frame-not-found',
@@ -159,7 +188,10 @@ async function mappedFrames(
     )
   }
   return new Map(
-    [...map.values()].map((ref) => [ref, frameOf(board, ref)] as const),
+    [...map.values()].map((value) => {
+      const { ref } = mappedTarget(value)
+      return [ref, frameOf(board, ref)] as const
+    }),
   )
 }
 

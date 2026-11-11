@@ -36,22 +36,41 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
     ...real,
     captureFrameImages: async (
       _browser: unknown,
-      { frames, themes, out }: Parameters<typeof real.captureFrameImages>[1],
+      {
+        frames,
+        themes,
+        out,
+        width,
+      }: Parameters<typeof real.captureFrameImages>[1],
     ) =>
       frames.flatMap((frame) =>
-        themes.map((theme) => {
-          const path = real.frameImagePath(out, frame, theme)
-          mkdirSync(dirname(path), { recursive: true })
-          writeFileSync(path, theme)
-          return {
-            ref: frame.ref,
-            theme,
-            path,
-            width: frame.box.width,
-            height: frame.box.height,
-            scale: 1,
-          }
-        }),
+        [frame.box, ...frame.widths]
+          .filter((view) => width === undefined || view.width === width)
+          .flatMap((view) =>
+            themes.map((theme) => {
+              const linked =
+                view.width === frame.box.width ? undefined : view.width
+              const path = real.frameImagePath(
+                out,
+                frame,
+                theme,
+                1,
+                undefined,
+                linked,
+              )
+              mkdirSync(dirname(path), { recursive: true })
+              // A linked width's PNG names its width, so a case can tell it apart.
+              writeFileSync(path, linked ? `${theme}@${linked}` : theme)
+              return {
+                ref: frame.ref,
+                theme,
+                path,
+                width: view.width,
+                height: view.height,
+                scale: 1,
+              }
+            }),
+          ),
       ),
   }
 })
@@ -143,6 +162,61 @@ describe('references sync', () => {
     expect(readFileSync(join(folder, 'home/grid.html'), 'utf8')).toContain(
       '../assets/design/kit.css',
     )
+  })
+
+  describe('on a frame with linked widths', () => {
+    const WIDE = {
+      'design/home/grid.html': '<p>grid</p>',
+      'design/home/layout.json': JSON.stringify({
+        version: 1,
+        frames: {
+          grid: {
+            x: 0,
+            y: 0,
+            width: 1440,
+            height: 900,
+            order: 0,
+            widths: [
+              { width: 834, height: 1194 },
+              { width: 390, height: 844 },
+            ],
+          },
+        },
+      }),
+    }
+
+    it("files a frame's own width under a ref naming no width", async () => {
+      board = writeBoard(WIDE)
+      hold(
+        'frames.json',
+        JSON.stringify({ frames: { 'home/grid': 'design/home/grid' } }),
+      )
+
+      await sync()
+
+      expect(readFileSync(join(folder, 'home/grid-light.png'), 'utf8')).toBe(
+        'light',
+      )
+    })
+
+    it('files the width a ref names after @', async () => {
+      board = writeBoard(WIDE)
+      hold(
+        'frames.json',
+        JSON.stringify({
+          frames: {
+            'home/grid': 'design/home/grid',
+            'home/grid-tablet': 'design/home/grid@834',
+          },
+        }),
+      )
+
+      await sync()
+
+      expect(
+        readFileSync(join(folder, 'home/grid-tablet-dark.png'), 'utf8'),
+      ).toBe('dark@834')
+    })
   })
 
   it('keeps two projects holding one asset name apart', async () => {
@@ -299,6 +373,20 @@ describe('references sync', () => {
         missing: ['design/home/gone-a', 'design/home/gone-b'],
       })
       expect(existsSync(join(folder, 'old/kept.png'))).toBe(true)
+    })
+
+    it('refuses frame-not-found for a width the frame does not show at', async () => {
+      board = writeBoard(TWO_PROJECTS)
+      hold(
+        'frames.json',
+        JSON.stringify({ frames: { 'home/grid': 'design/home/grid@390' } }),
+      )
+
+      const run = await sync()
+
+      expect(run.json().error?.details).toEqual({
+        missing: ['design/home/grid@390'],
+      })
     })
 
     it('refuses a frame the formatter cannot parse, leaving the folder as it was', async () => {
