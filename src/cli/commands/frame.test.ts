@@ -244,6 +244,7 @@ describe('frame', () => {
     ['slide-4-3', 1024, 768],
     ['og-card', 1200, 630],
     ['linkedin-post', 1200, 627],
+    ['video-portrait', 1080, 1920],
   ])('add --size %s places %i x %i', async (size, width, height) => {
     const run = on('basic')
 

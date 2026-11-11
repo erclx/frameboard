@@ -59,3 +59,13 @@ describe('social sizes', () => {
     expect(frameSizeOf(name)).toEqual({ width, height })
   })
 })
+
+describe('video sizes', () => {
+  it.each([
+    ['video-landscape', 1920, 1080],
+    ['video-portrait', 1080, 1920],
+  ] as const)('names %s at %i x %i', (name, width, height) => {
+    expect(FRAME_SIZE_NAMES).toContain(name)
+    expect(frameSizeOf(name)).toEqual({ width, height })
+  })
+})
