@@ -116,6 +116,7 @@ test.describe('Play', () => {
       join(board.root, 'webapp/home/hero.html'),
       `<!doctype html><html lang="en"><head><title>hero</title></head><body>
 <button type="button" onclick="this.textContent = 'Started'">Get started</button>
+<div style="height: 4000px"></div>
 </body></html>`,
     )
     server = await serveBoard(board.root)
@@ -126,18 +127,57 @@ test.describe('Play', () => {
     board.cleanup()
   })
 
-  test("hands a click to a frame's button, and Esc inside the frame returns to Edit", async ({
+  test('moves the board until a frame is entered, which then takes the wheel and clicks, and Esc leaves it then Play', async ({
     page,
   }) => {
     await page.goto(`${server.url}${BOARD}`)
+    const iframe = page.locator('iframe[title="hero"]')
     const hero = page.frameLocator('iframe[title="hero"]')
-    await expect(
-      hero.getByRole('button', { name: 'Get started' }),
-    ).toBeVisible()
+    const start = hero.getByRole('button', { name: 'Get started' })
+    await expect(start).toBeVisible()
+    const frame = await (await iframe.elementHandle())?.contentFrame()
+    if (!frame) throw new Error('The hero frame has no document')
+    const scrollY = () => frame.evaluate(() => window.scrollY)
+    const view = () =>
+      page.locator('[data-layer]').evaluate((layer) => layer.style.transform)
+    const tag = page.getByText('In frame, Esc to leave')
 
     await page.getByRole('button', { name: 'Play' }).click()
-    await hero.getByRole('button', { name: 'Get started' }).click()
+    const button = await start.boundingBox()
+    if (!button) throw new Error('The hero button is not on screen')
+    const at = {
+      x: button.x + button.width / 2,
+      y: button.y + button.height / 2,
+    }
+    const before = await view()
+    await page.mouse.move(at.x, at.y + 60)
+    await page.mouse.wheel(0, 100)
+    await expect.poll(view).not.toBe(before)
+    expect(await scrollY()).toBe(0)
+
+    const shown = await start.boundingBox()
+    if (!shown) throw new Error('The hero button left the screen')
+    await page.mouse.click(
+      shown.x + shown.width / 2,
+      shown.y + shown.height / 2,
+    )
+    await expect(tag).toBeVisible()
+    await expect(start).toBeVisible()
+    await start.click()
     await expect(hero.getByRole('button', { name: 'Started' })).toBeVisible()
+
+    const entered = await view()
+    await page.mouse.move(shown.x + shown.width / 2, shown.y + 80)
+    await page.mouse.wheel(0, 100)
+    await expect.poll(scrollY).toBeGreaterThan(0)
+    expect(await view()).toBe(entered)
+
+    await page.keyboard.press('Escape')
+    await expect(tag).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Play' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await page.keyboard.press('Escape')
 
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveAttribute(
