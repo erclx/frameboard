@@ -285,6 +285,37 @@ describe('Canvas', () => {
       expect(selectionStore.getState().frames).toEqual([])
     })
 
+    /** A pointer move over the shield, with `buttons` held. */
+    function moveOver(
+      container: HTMLElement,
+      at: { x: number; y: number },
+      buttons = 0,
+    ) {
+      container.querySelector('[data-play-shield]')?.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: at.x,
+          clientY: at.y,
+          buttons,
+        }),
+      )
+    }
+
+    const frameA = (container: HTMLElement) =>
+      container.querySelector<HTMLElement>('[data-frame="studio/home/a"]')
+
+    it('marks a frame not yet entered under the pointer with a pointer cursor', () => {
+      const { container } = renderCanvas(playPage())
+
+      moveOver(container, middleOf(container, 'a'))
+
+      expect({
+        hovered: frameA(container)?.hasAttribute('data-label-hover'),
+        cursor:
+          container.querySelector<HTMLElement>('[data-canvas]')?.style.cursor,
+      }).toEqual({ hovered: true, cursor: 'pointer' })
+    })
+
     it('enters on a press that jitters a pixel or two', () => {
       const { container, getByText } = renderCanvas(playPage())
       const at = middleOf(container, 'a')
