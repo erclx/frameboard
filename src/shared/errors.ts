@@ -78,6 +78,8 @@ export const EXIT_CODES = {
   'references-stale': 14,
   // A mapped frame loading a file from its page folder, which a reference folder cannot hold.
   'page-file-load': 10,
+  // A render whose image errored or never loaded, the image twin of `font-missing`.
+  'image-missing': 10,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
