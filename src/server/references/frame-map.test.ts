@@ -42,6 +42,35 @@ describe('parseFrameMap', () => {
     expect(error.message).toContain('Home/grid-dark.png')
   })
 
+  it('should read a reference one folder deeper, as a group, a section, and a name', () => {
+    const json = JSON.stringify({
+      frames: { 'landing/hero/390': 'landing-v2/shipped/hero-390' },
+    })
+
+    expect(parseFrameMap(json)).toEqual(
+      new Map([['landing/hero/390', 'landing-v2/shipped/hero-390']]),
+    )
+  })
+
+  it('should refuse a reference four segments deep, naming it', () => {
+    const json = JSON.stringify({
+      frames: { 'landing/hero/wide/390': 'landing-v2/shipped/hero-390' },
+    })
+
+    const error = refusal(json)
+
+    expect(error.code).toBe('frame-map-invalid')
+    expect(error.message).toContain('landing/hero/wide/390')
+  })
+
+  it('should refuse a reference with an empty segment', () => {
+    const json = JSON.stringify({
+      frames: { 'landing//390': 'landing-v2/shipped/hero-390' },
+    })
+
+    expect(refusal(json).code).toBe('frame-map-invalid')
+  })
+
   it('should refuse a board ref missing its project, page, or frame', () => {
     const json = JSON.stringify({ frames: { 'home/grid': '07-home/arm-2' } })
 

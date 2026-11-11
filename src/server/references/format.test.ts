@@ -39,6 +39,16 @@ describe('toReference', () => {
     ).toContain('../assets/launch/icon.svg')
   })
 
+  it('should point a reference one folder deeper one more folder up', async () => {
+    const html =
+      '<link href="../assets/kit/kit.css"><img src="../assets/icon.svg">'
+
+    const reference = await toReference(frame(html), 'landing/hero/390', FOLDER)
+
+    expect(reference).toContain('href="../../assets/design/kit/kit.css"')
+    expect(reference).toContain('src="../../assets/design/icon.svg"')
+  })
+
   it('should point every url in a style block and a style attribute', async () => {
     const html =
       '<style>@font-face { src: url("../assets/a.woff2") } .b { background: url(../assets/b.png), url(../assets/c.png) }</style><div style="background: url(../assets/d.png)">x</div>'

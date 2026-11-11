@@ -1247,7 +1247,12 @@ function elementInFrame(
             ? iframe.contentDocument?.querySelector(target)
             : null
           const hit = document.querySelector('[data-hit-layer]')
-          const layer = document.querySelector<HTMLElement>('[data-layer]')
+          // The page just left stays mounted, hidden and first, until the
+          // shown one is live, so the shown layer is the one checked.
+          const layer =
+            [...document.querySelectorAll<HTMLElement>('[data-layer]')].find(
+              (each) => each.checkVisibility(),
+            ) ?? null
           // A layer still staging holds frames whose iframes are not built
           // yet, so every iframe found decoding says nothing of those.
           const decoded =
@@ -1302,7 +1307,12 @@ function elementsInFrame(
           const shown = document.querySelector(`[data-frame="${owner}"]`)
           const iframe = shown?.querySelector('iframe')
           const hit = document.querySelector('[data-hit-layer]')
-          const layer = document.querySelector<HTMLElement>('[data-layer]')
+          // The page just left stays mounted, hidden and first, until the
+          // shown one is live, so the shown layer is the one checked.
+          const layer =
+            [...document.querySelectorAll<HTMLElement>('[data-layer]')].find(
+              (each) => each.checkVisibility(),
+            ) ?? null
           // A layer still staging holds frames whose iframes are not built
           // yet, so every iframe found decoding says nothing of those.
           const decoded =

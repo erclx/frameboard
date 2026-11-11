@@ -36,7 +36,7 @@ export async function toReference(
   const format = await importFormat(folder)
   const result = await format(
     `${reference}.html`,
-    withProjectAssets(source),
+    withProjectAssets(source, reference),
     OPTIONS,
   )
   const [error] = result.errors
@@ -56,8 +56,12 @@ export async function toReference(
 /**
  * Rewrites the frame's text only at the spans its loads occupy, so text naming
  * `../assets/` that loads nothing, such as a `<code>` sample, keeps its bytes.
+ * The link climbs one folder per folder the reference sits in, to the folder's
+ * `assets/`.
  */
-function withProjectAssets(source: FrameSource): string {
+function withProjectAssets(source: FrameSource, reference: string): string {
+  const up = '../'.repeat(reference.split('/').length - 1)
+  const assets = `${up}assets/${source.project}/`
   const framePath = boardPath(source.root, source.path)
   const spans = new Map<number, number>()
   for (const { path, location } of frameLoads(source)) {
@@ -68,9 +72,7 @@ function withProjectAssets(source: FrameSource): string {
   let html = source.html
   // From the last span back, so each rewrite leaves the earlier offsets true.
   for (const [start, end] of [...spans].sort(([a], [b]) => b - a)) {
-    const span = html
-      .slice(start, end)
-      .replace(BOARD_ASSETS, `../assets/${source.project}/`)
+    const span = html.slice(start, end).replace(BOARD_ASSETS, assets)
     html = `${html.slice(0, start)}${span}${html.slice(end)}`
   }
   return html
