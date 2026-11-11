@@ -256,7 +256,7 @@ test.describe('a note thread longer than the canvas', () => {
     await page.getByRole('button', { name: /^Note \d+ on hero$/ }).click()
     const thread = page.getByRole('region', { name: /^Note \d+$/ })
     await expect(thread).toBeVisible()
-    const zoom = page.getByRole('button', { name: 'Zoom', exact: true })
+    const zoom = page.getByRole('button', { name: /^Zoom \d+%$/ })
     const before = await zoom.textContent()
 
     await page.keyboard.press('ControlOrMeta+Minus')

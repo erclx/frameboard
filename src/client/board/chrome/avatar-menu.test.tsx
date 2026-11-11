@@ -48,7 +48,9 @@ describe('AvatarMenu', () => {
       render(<AvatarMenu name="Eric Le" source="git" />)
 
       await userEvent.click(
-        screen.getByRole('button', { name: 'Eric Le, from git user.name' }),
+        screen.getByRole('button', {
+          name: 'EL: Eric Le, from git user.name',
+        }),
       )
 
       expect(await screen.findByText('From git user.name')).toBeInTheDocument()
@@ -59,12 +61,29 @@ describe('AvatarMenu', () => {
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: 'Grace Hopper, saved on this machine',
+          name: 'GH: Grace Hopper, saved on this machine',
         }),
       )
 
       expect(
         await screen.findByText('Saved on this machine'),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('trigger name', () => {
+    it('opens on the initials the avatar draws', () => {
+      render(<AvatarMenu name="Eric Le" source="git" />)
+
+      const trigger = screen.getByRole('button', { name: /^EL: Eric Le/ })
+      expect(trigger).toHaveTextContent('EL')
+    })
+
+    it('names a name with no source by its initials, not Account', () => {
+      render(<AvatarMenu name="Eric Le" />)
+
+      expect(
+        screen.getByRole('button', { name: 'EL: Eric Le' }),
       ).toBeInTheDocument()
     })
   })
