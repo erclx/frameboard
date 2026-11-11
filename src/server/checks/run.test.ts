@@ -126,6 +126,22 @@ describe('readProjectContext', () => {
 
     expect(readProjectContext(root, 'app').config).toEqual({})
   })
+
+  it('reads a minimum contrast ratio of 1 or more', () => {
+    writeChecks({ minContrast: 4.5 })
+
+    expect(readProjectContext(root, 'app').config).toEqual({ minContrast: 4.5 })
+  })
+
+  it.each([
+    ['a ratio under 1', 0.5],
+    ['a string', '4.5'],
+    ['false', false],
+  ])('leaves the minimum contrast off for %s', (_, minContrast) => {
+    writeChecks({ minContrast })
+
+    expect(readProjectContext(root, 'app').config).toEqual({})
+  })
 })
 
 describe('RULES', () => {

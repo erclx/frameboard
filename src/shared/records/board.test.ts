@@ -67,13 +67,19 @@ describe('projectFileSchema', () => {
     const project = projectFileSchema.parse({
       version: 1,
       pages: [],
-      checks: { allowedFonts: ['Geist'], noUppercase: true, minFontSize: 12 },
+      checks: {
+        allowedFonts: ['Geist'],
+        noUppercase: true,
+        minFontSize: 12,
+        minContrast: 4.5,
+      },
     })
 
     expect(project.checks).toEqual({
       allowedFonts: ['Geist'],
       noUppercase: true,
       minFontSize: 12,
+      minContrast: 4.5,
     })
   })
 
