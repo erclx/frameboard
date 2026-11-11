@@ -1,6 +1,6 @@
 import type { Page } from 'playwright-core'
 
-import { readContentSize } from '@/server/capture/fit'
+import { readContentSize, settleResize } from '@/server/capture/fit'
 import type { Finding } from '@/shared/records/check'
 
 import { findingFor, type RuleDoc } from '../rule'
@@ -74,7 +74,9 @@ interface LayoutRead {
 /**
  * Runs the three layout rules on a frame open at its own box, at most one
  * finding each. `viewport` reads a second time with the viewport twice as
- * tall, then puts the box back.
+ * tall, then puts the box back. Each resize settles before the next read, so
+ * a script sizing content on `resize` reads as the CSS case does, and the
+ * rules after this one see the page back at its box.
  */
 export async function checkLayout(
   page: Page,
@@ -85,6 +87,7 @@ export async function checkLayout(
   const atBox = await page.evaluate(readLayout)
   await page.setViewportSize({ width, height: height * 2 })
   try {
+    await settleResize(page)
     const tall = await page.evaluate(readContentSize)
     const atTall = await page.evaluate(readLayout)
     return [
@@ -94,6 +97,7 @@ export async function checkLayout(
     ].filter((found) => found !== null)
   } finally {
     await page.setViewportSize({ width, height })
+    await settleResize(page)
   }
 }
 
