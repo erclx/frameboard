@@ -862,6 +862,16 @@ describe('editRoutes', () => {
         )
       })
 
+      it('writes an audio player for an audio file', async () => {
+        putAsset('voice.ogg')
+
+        await insert(asset('voice.ogg'))
+
+        expect(read()).toContain(
+          '<audio data-name="voice.ogg" src="../assets/voice.ogg" controls style="width: 320px"></audio>',
+        )
+      })
+
       it('refuses a path out of the assets folder as asset-missing, writing nothing', async () => {
         putAsset('hero.png')
         const original = read()

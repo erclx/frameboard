@@ -239,7 +239,8 @@ export type SettledVersion = (
  * An asset names a file under the project's `assets/` and the size it
  * shows at, and the server picks its tag from the file's kind. A file
  * outside that folder or not there answers 409 `asset-missing`, and one that
- * is no image, GIF, SVG, or video `asset-not-placeable`, each writing nothing.
+ * is no image, GIF, SVG, video, or audio `asset-not-placeable`, each writing
+ * nothing.
  *
  * The remove takes out the element at `index`, with what it holds, from the
  * bytes `hash` names, and records it as one step whose undo puts it back
@@ -428,7 +429,11 @@ export function editRoutes(
           409,
         )
       }
-      element = { ...body.element, video: asset.kind === 'video' }
+      element = {
+        ...body.element,
+        tag:
+          asset.kind === 'video' || asset.kind === 'audio' ? asset.kind : 'img',
+      }
     }
     const { at } = body
     const insert = (place?: PlaceInserted) =>

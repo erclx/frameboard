@@ -32,7 +32,7 @@ const COPIED_MS = 1500
  * file no frame links, with the size kept in the accessible name. A listing
  * with no counts keeps the `<type> · <size>` line. A click copies the path a
  * frame links it by. An
- * image, GIF, SVG, or video drags onto a frame while this tab may write,
+ * image, GIF, SVG, video, or audio drags onto a frame while this tab may write,
  * landing where the canvas's drop target places it.
  */
 export function Tile({ project, file }: TileProps) {

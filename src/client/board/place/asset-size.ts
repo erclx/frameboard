@@ -9,6 +9,13 @@ export interface AssetSize {
 /** What a file with no intrinsic size lands at, a 16 by 9 box. */
 export const FALLBACK_SIZE: AssetSize = { width: 240, height: 135 }
 
+/**
+ * The box an audio file lands at, measured from nothing. The insert writes
+ * the width alone, so the browser's player sets its own height, and the
+ * height here only gives the route a side it takes.
+ */
+export const AUDIO_SIZE: AssetSize = { width: 300, height: 54 }
+
 /** How long a video's metadata may take before the fallback stands in. */
 const METADATA_MS = 3000
 
@@ -39,8 +46,9 @@ export function placedSize(natural: AssetSize | null, room: number): AssetSize {
 /**
  * The size a file at `url` draws at on its own, read off an image's natural
  * size, an SVG's own width and height else its view box, or a video's
- * metadata. Null when it does not load, when it states no size, as an SVG
- * with neither, or when a video's metadata has not come within a few seconds.
+ * metadata, with audio at `AUDIO_SIZE` unread. Null when it does not load,
+ * when it states no size, as an SVG with neither, or when a video's metadata
+ * has not come within a few seconds.
  */
 export function naturalSize(
   url: string,
@@ -48,6 +56,7 @@ export function naturalSize(
   timeout = METADATA_MS,
 ): Promise<AssetSize | null> {
   if (kind === 'svg') return svgSize(url)
+  if (kind === 'audio') return Promise.resolve(AUDIO_SIZE)
   return new Promise((resolve) => {
     const media =
       kind === 'video' ? document.createElement('video') : new Image()

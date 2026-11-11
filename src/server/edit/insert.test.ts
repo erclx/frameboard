@@ -78,8 +78,8 @@ describe('elementMarkup', () => {
 })
 
 describe('elementMarkup for an asset', () => {
-  const asset = (path: string, video = false) =>
-    ({ kind: 'asset', path, video, width: 320, height: 180 }) as const
+  const asset = (path: string, tag: 'img' | 'video' | 'audio' = 'img') =>
+    ({ kind: 'asset', path, tag, width: 320, height: 180 }) as const
 
   it('should write an image at its size, cropped to the box', () => {
     expect(elementMarkup(asset('hero.png'), PAINT, FONT)).toBe(
@@ -94,8 +94,14 @@ describe('elementMarkup for an asset', () => {
   })
 
   it('should write a video that plays muted on a loop with no controls', () => {
-    expect(elementMarkup(asset('demo.mp4', true), PAINT, FONT)).toBe(
+    expect(elementMarkup(asset('demo.mp4', 'video'), PAINT, FONT)).toBe(
       '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline style="width: 320px; height: 180px; object-fit: cover"></video>',
+    )
+  })
+
+  it('should write audio as a player at its width alone, so the browser sets its height', () => {
+    expect(elementMarkup(asset('voice.ogg', 'audio'), PAINT, FONT)).toBe(
+      '<audio data-name="voice.ogg" src="../assets/voice.ogg" controls style="width: 320px"></audio>',
     )
   })
 

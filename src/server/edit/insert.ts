@@ -22,13 +22,14 @@ export type InsertKind =
   | ({ readonly kind: 'asset' } & PlacedAsset)
 
 /**
- * A file under the project's `assets/`, shown as a `<video>` when `video`
- * and an `<img>` otherwise, at a size in CSS pixels.
+ * A file under the project's `assets/`, shown under the tag its kind takes,
+ * at a size in CSS pixels. An `<audio>` takes the width alone, so the
+ * browser's player sets its own height.
  */
 export interface PlacedAsset {
   /** Relative to the project's `assets/`, with `/` between segments. */
   readonly path: string
-  readonly video: boolean
+  readonly tag: 'img' | 'video' | 'audio'
   readonly width: number
   readonly height: number
 }
@@ -183,11 +184,18 @@ export function elementMarkup(
     }
     case 'asset': {
       const name = attribute(element.path.split('/').at(-1) ?? element.path)
+      const src = assetLink(element.path)
+      if (element.tag === 'audio') {
+        if (!Number.isInteger(element.width)) {
+          throw new Error(`Unexpected audio width ${element.width}`)
+        }
+        return `<audio data-name="${name}" src="${src}" controls style="width: ${element.width}px"></audio>`
+      }
       // A crop rather than a squash once a corner drag changes the ratio.
       const style = `${size(element)}; object-fit: cover`
-      return element.video
-        ? `<video data-name="${name}" src="${assetLink(element.path)}" autoplay muted loop playsinline style="${style}"></video>`
-        : `<img data-name="${name}" src="${assetLink(element.path)}" alt="" style="${style}">`
+      return element.tag === 'video'
+        ? `<video data-name="${name}" src="${src}" autoplay muted loop playsinline style="${style}"></video>`
+        : `<img data-name="${name}" src="${src}" alt="" style="${style}">`
     }
   }
 }
