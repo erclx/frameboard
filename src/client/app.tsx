@@ -15,6 +15,7 @@ import { Home } from './home/home'
 import { useLive } from './live/store'
 import { CommandPalette } from './palette/commands'
 import { ShortcutsSheet } from './palette/shortcuts'
+import { useTabTitle } from './title/use-tab-title'
 
 /** The toasts that draw their own body in the one stack. */
 const TOAST_BODIES = {
@@ -44,6 +45,7 @@ function Shell() {
   const projects = useLive((state) => state.board?.projects)
   const connected = useLive((state) => state.connected)
   useEffect(() => watchExpiredLink(), [])
+  useTabTitle()
 
   return (
     <div className="relative h-svh overflow-auto bg-background text-foreground">

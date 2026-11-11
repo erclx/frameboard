@@ -1,8 +1,15 @@
-import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import { initials, useAuthor } from '@/client/board/chrome/author'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
+import { markRepliesSeen, unseenStore } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
 import type { BoardNote } from '@/shared/records/notes'
 
@@ -47,6 +54,8 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   const images = useDraftImages()
   const messages = useRef<HTMLOListElement>(null)
   const followNewest = useNewestInView(messages, notes.length)
+  // An open thread shows every reply it holds, so each one counts as seen.
+  useEffect(() => markRepliesSeen(unseenStore, notes), [notes])
   const root = notes[0]
   if (!root) return null
   const picked = pickedSession(session, listeners, holder, dispatch, false)
