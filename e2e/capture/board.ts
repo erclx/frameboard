@@ -604,6 +604,32 @@ async function aboutAtTabletWidth(page: Page): Promise<void> {
 }
 
 /**
+ * Holds the about frame at a phone screen over a page four screens long, so
+ * the selected frame draws its scroll rail, restoring both files once the
+ * page closes, since a later case shows the frame at its own height.
+ */
+async function aboutScrolling(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const htmlPath = join(SERVED_BOARD, 'webapp/home/about.html')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const originalHtml = readFileSync(htmlPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.about.scroll = true
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  writeFileSync(
+    htmlPath,
+    originalHtml.replace(
+      '<h1>about</h1>',
+      '<h1>about</h1><div style="height: 3200px"></div>',
+    ),
+  )
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    writeFileSync(htmlPath, originalHtml)
+  })
+}
+
+/**
  * Hands the board an empty change log on every `changes` message, since
  * `rawIndigoHero` writes the hero as an outside write the change tracker
  * would otherwise raise as an agent's, racing the shot.
@@ -2843,6 +2869,22 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(onCanvas({ select: ['webapp/home/hero'] })),
+      },
+      {
+        section: 'scroll-rail',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            aboutScrolling,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/about'] }),
+            readyWhen('[data-rail-thumb]'),
+          ),
+        ),
       },
       {
         section: 'frame-size-menu',
