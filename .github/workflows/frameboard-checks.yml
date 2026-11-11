@@ -36,7 +36,7 @@ jobs:
       # The unit-tests job installs no browser, so the browser project runs
       # here instead of under test:coverage.
       - name: Install Playwright Chromium
-        run: bunx playwright install --with-deps chromium
+        run: bunx playwright install chromium
 
       - name: Run Browser Tests
         run: bunx vitest run --project browser
