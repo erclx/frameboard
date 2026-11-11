@@ -58,7 +58,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
 
 - `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so relative links resolve unrewritten, and `?at=<hash>` a replaced frame version
   - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is always served whole since its head is spliced in memory
-  - A non-frame file served whole carries a weak `ETag` from its size and `mtimeNs` with `no-cache`, and a matching `If-None-Match` answers 304, so a page switch sends each asset's bytes once while an edit still shows on reload
+  - A non-frame file served whole carries a weak `ETag` of size and `mtimeNs` under `no-cache`, and a match answers 304, so a page switch resends no unchanged bytes
   - A frame, a `?at=` version, a 206, and a 416 stay `no-store`, and nothing under `/frames/` takes a `max-age`, since an asset edit reloads every frame and the reload must see it
 - `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in `files`, behind `requireWriter` and a 64 MiB limit answering 413
   - Each listed file carries `frames`, the count of frames linking it, from the per-project cache in `src/server/board/asset-usage.ts`
