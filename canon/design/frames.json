@@ -47,6 +47,7 @@
     "inspector/position": "design/10-inspector/inspector-position",
     "inspector/position-flow": "design/10-inspector/inspector-position-flow",
     "inspector/layout": "design/10-inspector/inspector-layout",
+    "inspector/height-mode": "design/10-inspector/height-mode",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",
@@ -82,6 +83,8 @@
     "landing/footer/1440": "landing-v2/shipped/footer-1440",
     "landing/footer/834": "landing-v2/shipped/footer-834",
     "landing/footer/390": "landing-v2/shipped/footer-390",
-    "canvas/sections": "design/12-canvas/picked-sections"
+    "canvas/sections": "design/12-canvas/picked-sections",
+    "canvas/scroll-rail": "design/12-canvas/scroll-rail",
+    "canvas/open-alone": "design/12-canvas/open-alone"
   }
 }
