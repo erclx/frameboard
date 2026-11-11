@@ -23,7 +23,7 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { useDwell } from './changes/dwell'
 import { ChangeGlow } from './changes/glow'
-import { reservedOn } from './claims/reservations'
+import { reservedOn, useReservedBoxes } from './claims/reservations'
 import { ReservedBoxes } from './claims/reserved'
 import { WaitingCards, WaitingDock } from './claims/waiting-card'
 import {
@@ -977,13 +977,16 @@ function LayoutErrorNotice({
   )
 }
 
-/** A new board's guide on its untouched start page, else the empty page notice. */
+/**
+ * A new board's guide on its untouched start page, else the empty page
+ * notice, which yields to an agent's reserved boxes so it never sits under
+ * them. The guide stays, since it waits on the developer's answers.
+ */
 function EmptyState({ page, calls }: { page: PageRecord; calls: Structure }) {
-  return useShowsGuide(page) ? (
-    <GuideCard page={page} calls={calls} />
-  ) : (
-    <EmptyNotice hidden={page.frames} calls={calls} />
-  )
+  const guides = useShowsGuide(page)
+  const reserved = useReservedBoxes(page.ref, page.frames).length > 0
+  if (guides) return <GuideCard page={page} calls={calls} />
+  return reserved ? null : <EmptyNotice hidden={page.frames} calls={calls} />
 }
 
 /**

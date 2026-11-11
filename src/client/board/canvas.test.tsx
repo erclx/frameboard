@@ -9,6 +9,7 @@ import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
 import { liveStore, receiveClaims } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
+import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
@@ -64,6 +65,19 @@ function page(
     frames,
     sections: [],
     ...extra,
+  }
+}
+
+/** An agent's live reservation of `ref`, boxed where its frame will land. */
+function reservation(ref: string): Claim {
+  return {
+    frame: ref,
+    session: 's-1',
+    agent: 'claude',
+    tag: 'claude · s-1',
+    claimedAt: '2026-10-19T10:00:00.000Z',
+    expiresAt: '2999-01-01T00:00:00.000Z',
+    box: { x: 0, y: 0, width: 390, height: 844 },
   }
 }
 
@@ -670,6 +684,15 @@ describe('Canvas', () => {
     expect(getByRole('status')).toHaveTextContent('This page has no frames')
   })
 
+  it('yields the empty page notice to a reserved box in Edit', () => {
+    const { queryByRole } = renderCanvas(page('studio/empty', []))
+
+    act(() => receiveClaims(liveStore, [reservation('studio/empty/first')]))
+
+    expect(queryByRole('status')).toBeNull()
+    act(() => receiveClaims(liveStore, []))
+  })
+
   it("names the Frame tool's key on an empty page while it is live", () => {
     const { getByRole } = renderCanvas(page('studio/empty', []))
 
@@ -729,6 +752,60 @@ describe('Canvas', () => {
         '2 hidden frames stay listed under Layers.',
       )
       expect(queryByRole('button', { name: 'Show 2 frames' })).toBeNull()
+    })
+
+    describe('beside an agent reservation', () => {
+      afterEach(() => {
+        act(() => receiveClaims(liveStore, []))
+      })
+
+      it('yields to the reserved box in Edit', () => {
+        const { container, queryByRole } = renderCanvas(hiddenPage())
+
+        act(() => receiveClaims(liveStore, [reservation('studio/home/next')]))
+
+        expect(container.querySelector('[data-reserved]')).not.toBeNull()
+        expect(queryByRole('status')).toBeNull()
+      })
+
+      it('shows in Play, which draws no box', () => {
+        modeStore.setState({ mode: 'play' })
+        const { getByRole } = renderCanvas(hiddenPage())
+
+        act(() => receiveClaims(liveStore, [reservation('studio/home/next')]))
+
+        expect(getByRole('status')).toHaveTextContent(
+          'Every frame on this page is hidden',
+        )
+      })
+
+      it('returns once the reservation releases', () => {
+        const { getByRole } = renderCanvas(hiddenPage())
+        act(() => receiveClaims(liveStore, [reservation('studio/home/next')]))
+
+        act(() => receiveClaims(liveStore, []))
+
+        expect(getByRole('status')).toHaveTextContent(
+          'Every frame on this page is hidden',
+        )
+      })
+
+      it.each([
+        ['has landed as a listed frame', reservation('studio/home/profile')],
+        ['sits on another page', reservation('studio/other/next')],
+        [
+          'carries no box',
+          { ...reservation('studio/home/next'), box: undefined },
+        ],
+      ])('stays when the reservation %s', (_, claim) => {
+        const { getByRole } = renderCanvas(hiddenPage())
+
+        act(() => receiveClaims(liveStore, [claim]))
+
+        expect(getByRole('status')).toHaveTextContent(
+          'Every frame on this page is hidden',
+        )
+      })
     })
 
     it('agrees the verb with one hidden frame', () => {
