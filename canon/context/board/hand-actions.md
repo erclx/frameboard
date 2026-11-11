@@ -31,6 +31,7 @@ Several elements in one frame select together, all at one hash, with `element` h
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 
 - With one frame and no element selected, Tab and Shift+Tab step to the next and previous frame in Layers order, through `board-actions.ts`
+- `focusOnBoard()` in `element/actions.ts` gates both walks and exempts a note pin, a note card, a media bar, and any `data-label-control`, so Tab on a label or chip button moves focus natively
 - A step wraps at both ends, skips hidden frames, and centers the frame it lands on at the current zoom
 
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.

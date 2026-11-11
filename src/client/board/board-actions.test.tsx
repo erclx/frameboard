@@ -532,6 +532,23 @@ describe('useBoardActions', () => {
       expect(isEnabled(board.action('frame.next'))).toBe(false)
     })
 
+    it('stands aside while a frame label button holds focus, so Tab reaches the next one', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+      render(
+        <div data-canvas>
+          <button type="button" data-label-control>
+            Compare
+          </button>
+        </div>,
+      )
+
+      screen.getByRole('button', { name: 'Compare' }).focus()
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
     it('stands aside in Play', () => {
       const board = setup()
       done = board.done

@@ -1,11 +1,12 @@
 import '../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
+import { setAuthor } from '@/client/board/chrome/author'
 import { liveStore } from '@/client/live/store'
 import { SEEN_REPLIES_KEY, unseenStore } from '@/client/live/unseen'
 import type { Claim } from '@/shared/records/claims'
@@ -435,7 +436,7 @@ describe('Thread', () => {
 
     const messages = screen.getAllByRole('listitem')
     expect(screen.getByRole('region', { name: 'Note 2' })).toBeInTheDocument()
-    expect(messages[0]).toHaveTextContent('You')
+    expect(messages[0]).toHaveTextContent('Ada Lovelace')
     expect(messages[0]).toHaveTextContent('Tighten the header')
     expect(messages[1]).toHaveTextContent('claude')
     expect(messages[1]).toHaveTextContent('Done. The third chip')
@@ -488,6 +489,119 @@ describe('Thread', () => {
     render(<Thread notes={thread} onClose={() => {}} />)
 
     expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('AL')
+  })
+
+  describe('heading a message by who wrote it', () => {
+    /** The viewer's signing name as the server answers it, null for none. */
+    async function viewing(name: string | null): Promise<void> {
+      vi.stubGlobal('fetch', async () =>
+        Response.json({
+          ok: true,
+          data: { name, source: name === null ? null : 'config' },
+        }),
+      )
+      await act(() => setAuthor(name ?? ''))
+    }
+
+    afterEach(async () => {
+      await viewing(null)
+    })
+
+    it("heads another author's note with their name and initials", async () => {
+      await viewing('Grace Hopper')
+
+      render(<Thread notes={[note({ id: 'n_1' })]} onClose={() => {}} />)
+
+      const message = screen.getByRole('listitem')
+      expect(within(message).getByText('Ada Lovelace')).toBeInTheDocument()
+      expect(message).toHaveTextContent('AL')
+      expect(message).not.toHaveTextContent('You')
+    })
+
+    it("heads the viewer's own note with You", async () => {
+      await viewing('Ada Lovelace')
+
+      render(<Thread notes={[note({ id: 'n_1' })]} onClose={() => {}} />)
+
+      expect(
+        within(screen.getByRole('listitem')).getByText('You'),
+      ).toBeInTheDocument()
+    })
+
+    it("reads the viewer's note as theirs across case and stray spaces", async () => {
+      await viewing('ada lovelace')
+
+      render(
+        <Thread
+          notes={[note({ id: 'n_1', author: ' Ada Lovelace ' })]}
+          onClose={() => {}}
+        />,
+      )
+
+      expect(
+        within(screen.getByRole('listitem')).getByText('You'),
+      ).toBeInTheDocument()
+    })
+
+    it('heads a note with no author with You when the viewer has no name', async () => {
+      await viewing(null)
+
+      render(
+        <Thread
+          notes={[note({ id: 'n_1', author: null })]}
+          onClose={() => {}}
+        />,
+      )
+
+      expect(
+        within(screen.getByRole('listitem')).getByText('You'),
+      ).toBeInTheDocument()
+    })
+
+    it("turns the viewer's note to You once their name arrives", async () => {
+      await viewing(null)
+      render(<Thread notes={[note({ id: 'n_1' })]} onClose={() => {}} />)
+      const message = screen.getByRole('listitem')
+      expect(within(message).getByText('Ada Lovelace')).toBeInTheDocument()
+
+      await viewing('Ada Lovelace')
+
+      expect(within(message).getByText('You')).toBeInTheDocument()
+    })
+
+    it('keeps the agent labelled claude whoever views', async () => {
+      await viewing('Ada Lovelace')
+
+      render(<Thread notes={thread} onClose={() => {}} />)
+
+      const reply = screen.getAllByRole('listitem')[1]
+      if (!reply) throw new Error('no agent reply')
+      expect(within(reply).getByText('claude')).toBeInTheDocument()
+    })
+
+    it('keeps a long name on one line beside its time inside the card', async () => {
+      await viewing(null)
+      const long = 'Augusta Ada King Countess of Lovelace '.repeat(2).trim()
+
+      render(
+        <Thread
+          notes={[note({ id: 'n_1', author: long })]}
+          onClose={() => {}}
+        />,
+      )
+
+      const message = screen.getByRole('listitem')
+      const label = within(message).getByText(long)
+      const time = message.querySelector('time')
+      if (!time) throw new Error('no message time')
+      const labelBox = label.getBoundingClientRect()
+      const timeBox = time.getBoundingClientRect()
+      expect(label.scrollWidth).toBeGreaterThan(label.clientWidth)
+      expect(timeBox.top).toBeLessThan(labelBox.bottom)
+      expect(timeBox.right).toBeLessThanOrEqual(
+        message.getBoundingClientRect().right,
+      )
+    })
   })
 
   it('asks for a reply when Send has nothing to send', async () => {

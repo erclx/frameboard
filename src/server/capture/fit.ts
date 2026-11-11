@@ -38,7 +38,10 @@ export interface ContentSize {
  * height of the box's width, never the box's own height, so content sized off
  * the window height reads one height however tall the frame already is.
  * Readings that differ mean the content sizes itself off the viewport, which
- * has no height of its own to fit, so that refuses `fit-unbounded`. Finite
+ * has no height of its own to fit, so that refuses `fit-unbounded`. A fresh
+ * page then loads at the width and height it would answer, and content
+ * drawing another height there, as a block sized once off the window height,
+ * refuses the same way. Finite
  * animations finish before the first reading, so an entrance is read at its
  * settled size.
  */
@@ -67,6 +70,7 @@ export async function measureContent(
     theme: 'light',
     fonts,
   })
+  let size: ContentSize
   try {
     const { page } = opened
     await page.evaluate(finishAnimations)
@@ -86,7 +90,53 @@ export async function measureContent(
         { ref, heights: [short.height, current.height] },
       )
     }
-    return { width, height: short.height, contentWidth: current.width, empty }
+    size = { width, height: short.height, contentWidth: current.width, empty }
+  } finally {
+    await opened.close()
+  }
+  // The first page loaded at the reference height, so a page reading
+  // `innerHeight` once laid out there. Only a load at the answer height
+  // shows what the board, opening the frame there, draws.
+  if (size.empty || (size.width === box.width && size.height === reference)) {
+    return size
+  }
+  const confirmed = await readFreshAt(browser, {
+    baseUrl,
+    ref,
+    box: { width: size.width, height: size.height },
+  })
+  if (confirmed.height !== size.height) {
+    throw new FrameboardError(
+      'fit-unbounded',
+      `${ref} measures ${size.height} px but draws ${confirmed.height} px when opened at that height, so it sizes itself off the viewport it loads in, as a block set once from innerHeight does, and has no content height to fit. Size it by hand with frame resize, or with frame resize --scroll if it is meant to scroll.`,
+      { ref, heights: [size.height, confirmed.height] },
+    )
+  }
+  return size
+}
+
+/**
+ * Reads a frame's content in a page loaded fresh at `box`, animations
+ * finished. It loads under `fonts: 'wait'` whatever the first open took, since
+ * that open already refused a missing face or image, and `require` would wait
+ * out a long entrance a second time on the load budget.
+ */
+async function readFreshAt(
+  browser: Browser,
+  options: {
+    baseUrl: string
+    ref: string
+    box: { width: number; height: number }
+  },
+): Promise<Reading> {
+  const opened = await openFrame(browser, {
+    ...options,
+    theme: 'light',
+    fonts: 'wait',
+  })
+  try {
+    await opened.page.evaluate(finishAnimations)
+    return await opened.page.evaluate(readContentSize)
   } finally {
     await opened.close()
   }
