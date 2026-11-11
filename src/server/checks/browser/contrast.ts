@@ -228,7 +228,8 @@ function readContrasts(): MeasuredText[] {
       const from = stack.indexOf(element)
       if (from === -1) continue
       const layers: Rgba[] = []
-      let measurable = !rootUnmeasurable
+      let measurable = true
+      let opaque = false
       for (const layer of stack.slice(from)) {
         if (layer === html || (bodyPropagates && layer === body)) continue
         const layerStyle = getComputedStyle(layer)
@@ -244,9 +245,13 @@ function readContrasts(): MeasuredText[] {
         color[3] *= opacityOf(layer)
         if (color[3] === 0) continue
         layers.push(color)
-        if (color[3] >= 1) break
+        if (color[3] >= 1) {
+          opaque = true
+          break
+        }
       }
-      if (!measurable) continue
+      // An effect on the root shows only where no opaque layer covers it.
+      if (!measurable || (!opaque && rootUnmeasurable)) continue
       const background = layers.reduceRight(
         (below, layer) => over(layer, below),
         root,

@@ -163,6 +163,25 @@ describe.skipIf(shell === null)(
       expect(await checkHero(body)).toEqual([])
     })
 
+    it('measures text on an opaque card over a gradient page', async () => {
+      const findings = await checkHero(
+        '<div style="background: #fff"><p style="color: #ccc">a</p></div>',
+        { ground: 'linear-gradient(#fff, #eee)' },
+      )
+
+      expect(findings).toMatchObject([
+        { message: expect.stringContaining('#cccccc on #ffffff') },
+      ])
+    })
+
+    it('skips text sitting straight on a gradient page', async () => {
+      expect(
+        await checkHero('<p style="color: #ccc">a</p>', {
+          ground: 'linear-gradient(#fff, #eee)',
+        }),
+      ).toEqual([])
+    })
+
     it('composites a half-alpha background before measuring', async () => {
       // rgb(0 0 0 / 0.5) over white is #808080, which #8a8a8a sits on at 1.1:1.
       const [found] = await checkHero(
