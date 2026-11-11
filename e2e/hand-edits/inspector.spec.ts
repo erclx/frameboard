@@ -511,6 +511,7 @@ test.describe('the colors a selected frame uses', () => {
 })
 
 test.describe('setting the flow of one row a shared rule styles', () => {
+  // canon-allow-embedded: the frame this spec drives, kept beside the element names the test reads
   const ROWS = `<!doctype html>
 <html lang="en">
   <head>

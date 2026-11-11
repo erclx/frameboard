@@ -235,6 +235,7 @@ test.describe('check levels on a running board', () => {
       'site/drive/site.css':
         '.card { font-family: Geist, sans-serif; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }\n.absent-elsewhere { gap: var(--set-inline-on-another-page); }\n',
       'site/drive/lifted.html':
+        // canon-allow-embedded: the frame this spec drives, kept beside the element names the test reads
         '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Lifted</title>\n<link rel="stylesheet" href="site.css">\n</head>\n<body>\n  <p class="card">A component lifted from a built site</p>\n</body>\n</html>\n',
     })
     server = await serveBoard(board.root)
