@@ -10,6 +10,7 @@ import {
 } from './walkthrough'
 
 function renderWalk(): HTMLElement {
+  // canon-allow-embedded: the walkthrough steps the wiring runs against, kept beside the test
   document.body.innerHTML = `
     <div data-track>
       <div data-pinned>

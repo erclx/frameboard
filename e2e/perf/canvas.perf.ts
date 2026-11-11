@@ -56,6 +56,7 @@ function writeBoard(root: string): void {
 function frameHtml(index: number): string {
   const animated = index % 5 === 0
   const looping = index % 10 === 0
+  // canon-allow-embedded: a frame generated per index, interpolated throughout
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -76,7 +77,8 @@ function frameHtml(index: number): string {
     </svg>
     ${
       looping
-        ? `<canvas id="c" width="320" height="160"></canvas>
+        ? // canon-allow-embedded: the inner canvas script, interpolated into the frame generated per index
+          `<canvas id="c" width="320" height="160"></canvas>
     <script>
       const context = document.getElementById('c').getContext('2d')
       function draw(time) {

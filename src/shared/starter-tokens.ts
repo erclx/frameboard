@@ -44,6 +44,7 @@ export const DEFAULT_LOOK: StarterLook = { accent: 'blue', font: 'geist' }
 /** A project token sheet setting the names the fixture sheets use, light then dark. */
 export function starterSheet({ accent, font }: StarterLook): string {
   const pair = STARTER_ACCENTS[accent]
+  // canon-allow-embedded: interpolates the accent pair and font stack, and the bundled CLI has no substitution step for a file on disk
   return `:root {
   --accent: ${pair.light};
   --surface: #ffffff;

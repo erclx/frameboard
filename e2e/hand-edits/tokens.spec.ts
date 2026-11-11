@@ -77,6 +77,7 @@ test.describe('replacing a raw color with a token from Selection colors', () => 
   const read = () => readFileSync(path(), 'utf8')
 
   /** The hero with its headline and caption both set in raw indigo, one of them in rgb(). */
+  // canon-allow-embedded: the frame this spec drives, kept beside the element names the test reads
   const RAW = `<!doctype html>
 <html lang="en">
   <head><meta charset="utf-8" /><title>hero</title></head>

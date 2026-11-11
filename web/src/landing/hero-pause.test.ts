@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { wireHeroPause } from './hero-pause'
 
 function renderHero(): HTMLElement {
+  // canon-allow-embedded: the hero markup the pause button wiring runs against, kept beside the test
   document.body.innerHTML = `
     <section id="hero">
       <picture>
