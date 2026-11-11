@@ -531,7 +531,8 @@ async function updatePlacement(
 }
 
 /** Which axes `frame add` leaves hugging: every one no size option names, the height under a preset. */
-function hugsOf({ size, width, height }: SizeOptions): {
+/** Which axes a frame placed with these options sizes from its content. */
+export function hugsOf({ size, width, height }: SizeOptions): {
   hugWidth: boolean
   hugHeight: boolean
 } {
