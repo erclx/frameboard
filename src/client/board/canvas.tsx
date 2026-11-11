@@ -86,6 +86,8 @@ import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
 const FIT_PADDING = 64
+/** Screen pixels a press may move and still count as a click. */
+const PLAY_CLICK_SLOP = 3
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
 /** How long the view takes to travel to a shown frame. */
@@ -228,6 +230,10 @@ export function Canvas({
       unknown
     >()
       .scaleExtent(SCALE_EXTENT)
+      // d3 swallows the click ending a press that moved past this, and the
+      // Play shield enters a frame on that click, so a trackpad press that
+      // jitters a pixel or two still enters rather than panning.
+      .clickDistance(PLAY_CLICK_SLOP)
       // A primary-button drag pans under the Hand tool, in Play, and while
       // Space is held, since in Move it selects. The middle button and the
       // wheel always pan.

@@ -285,6 +285,15 @@ describe('Canvas', () => {
       expect(selectionStore.getState().frames).toEqual([])
     })
 
+    it('enters on a press that jitters a pixel or two', () => {
+      const { container, getByText } = renderCanvas(playPage())
+      const at = middleOf(container, 'a')
+
+      act(() => pressShield(container, at, { x: at.x + 2, y: at.y + 1 }))
+
+      expect(getByText('In frame, Esc to leave')).toBeVisible()
+    })
+
     /** The same tree `renderCanvas` draws, so a rerender keeps the canvas mounted. */
     const tree = (content: PageRecord) => (
       <div style={{ width: 800, height: 600 }}>
