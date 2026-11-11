@@ -4137,6 +4137,7 @@ const WRITING_SECTIONS = [
   'replace-colors-done',
   'select-color',
   'select-color-done',
+  'scroll-rail',
 ]
 
 export const BOARD_CASES: CaptureCase[] = [
