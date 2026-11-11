@@ -19,6 +19,12 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 A page meant to scroll, such as one with a sticky section, takes `--scroll` on `frame add` or `frame resize`, which holds it at a screen height rather than its full length. A frame already fixed taller than a screen keeps its height, so pass `--height` with the resize.
 
+A responsive page is one frame file shown at several widths, so every fix to the file lands at all of them.
+
+- `--widths 834,390` on `frame add` or `frame resize` draws the frame again at each width, in a row beside it
+- Each width hugs its content when the frame does and holds its device height otherwise
+- `capture` names each width's image `<frame>@<width>.<theme>.png`, and a browser finding at a width prints as `<path>@<width>`
+
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
 
 ## Content checks

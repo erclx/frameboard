@@ -37,6 +37,7 @@ The Frame tool places a phone, tablet, desktop, slide, or social card size picke
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
 - Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it, and a double click on its name renames it
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
+- A frame an agent gave several widths draws each beside it under its width, and a click or drag on one acts on the frame
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow
 - Position's Free takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
