@@ -149,7 +149,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(15)
+      expect(screen.getAllByRole('radio')).toHaveLength(17)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })
@@ -947,7 +947,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
-      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(15)
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(17)
       expect(
         within(screen.getByRole('group', { name: 'Social' })).getAllByRole(
           'menuitemradio',
@@ -964,6 +964,21 @@ describe('FrameSection', () => {
           { name: /Slide 16:9/ },
         ),
       ).toHaveTextContent('1920 × 1080')
+    })
+
+    it('lists the video sizes under Video, narrowest first', async () => {
+      renderSection([DESKTOP])
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
+
+      expect(
+        within(await screen.findByRole('group', { name: 'Video' }))
+          .getAllByRole('menuitemradio')
+          .map((row) => row.textContent),
+      ).toEqual([
+        expect.stringMatching(/Video portrait.*1080 × 1920/),
+        expect.stringMatching(/Video landscape.*1920 × 1080/),
+      ])
     })
 
     it('keeps the longest row on one line', async () => {

@@ -99,7 +99,7 @@ describe('docs', () => {
     expect(records.layout?.type).toBe('object')
   })
 
-  it('lists the social sizes after every earlier size, unchanged', async () => {
+  it('appends the social and video sizes after every earlier size, unchanged', async () => {
     const { contentFormat } = await docs()
 
     expect(contentFormat.frameSizes).toMatchObject({
@@ -107,10 +107,14 @@ describe('docs', () => {
       'slide-4-3': { width: 1024, height: 768 },
       'og-card': { width: 1200, height: 630 },
       'linkedin-post': { width: 1200, height: 627 },
+      'video-landscape': { width: 1920, height: 1080 },
+      'video-portrait': { width: 1080, height: 1920 },
     })
-    expect(Object.keys(contentFormat.frameSizes).slice(-2)).toEqual([
+    expect(Object.keys(contentFormat.frameSizes).slice(-4)).toEqual([
       'og-card',
       'linkedin-post',
+      'video-landscape',
+      'video-portrait',
     ])
   })
 

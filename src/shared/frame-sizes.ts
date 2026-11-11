@@ -23,8 +23,8 @@ export const PRESET_RANGES = {
   desktop: { min: 1024, max: Number.POSITIVE_INFINITY },
 } as const satisfies Record<FrameSizePreset, { min: number; max: number }>
 
-/** A heading in the Frame tool's list, being a preset's, the slides', or the social cards'. */
-export type FrameSizeGroup = FrameSizePreset | 'slide' | 'social'
+/** A heading in the Frame tool's list, being a preset's, the slides', the social cards', or the video sizes'. */
+export type FrameSizeGroup = FrameSizePreset | 'slide' | 'social' | 'video'
 
 export interface DeviceSize extends FrameSize {
   name: string
@@ -122,6 +122,20 @@ export const DEVICE_SIZES = [
     group: 'social',
     width: 1200,
     height: 627,
+  },
+  {
+    name: 'video-landscape',
+    label: 'Video landscape',
+    group: 'video',
+    width: 1920,
+    height: 1080,
+  },
+  {
+    name: 'video-portrait',
+    label: 'Video portrait',
+    group: 'video',
+    width: 1080,
+    height: 1920,
   },
 ] as const satisfies readonly DeviceSize[]
 

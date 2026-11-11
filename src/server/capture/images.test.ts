@@ -19,8 +19,10 @@ import { frameOf } from '../../test/board'
 import { startFrameHost } from './host'
 import {
   captureFrameImages,
+  captureMotionImages,
   compositeBounds,
   compositeImagePath,
+  filmstripBounds,
   frameImagePath,
 } from './images'
 
@@ -84,6 +86,38 @@ describe('compositeBounds', () => {
   })
 })
 
+describe('filmstripBounds', () => {
+  it('lays the frames in one row with 40 px around and between them', () => {
+    expect(
+      filmstripBounds('studio/home/hero', { width: 400, height: 300 }, 4),
+    ).toEqual({ width: 1800, height: 380 })
+  })
+
+  it('accepts a filmstrip exactly 16384 px wide', () => {
+    expect(
+      filmstripBounds('studio/home/hero', { width: 4046, height: 10 }, 4).width,
+    ).toBe(16384)
+  })
+
+  it('refuses capture-too-large, exit 10, one pixel past the limit', () => {
+    expect(() =>
+      filmstripBounds('studio/home/hero', { width: 4047, height: 10 }, 4),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'capture-too-large',
+        exitCode: 10,
+        details: expect.objectContaining({ width: 16388 }),
+      }),
+    )
+  })
+
+  it('refuses a filmstrip passing the limit only at its scale', () => {
+    expect(() =>
+      filmstripBounds('studio/home/hero', { width: 2100, height: 10 }, 4, 2),
+    ).toThrow(expect.objectContaining({ code: 'capture-too-large' }))
+  })
+})
+
 describe('image paths', () => {
   const frame = { project: 'studio', page: 'home', name: 'hero' }
 
@@ -115,6 +149,28 @@ describe('image paths', () => {
     expect(frameImagePath('/out', frame, 'dark', 2, 1200, 390)).toBe(
       '/out/studio/home/hero@390.scroll-1200.dark@2x.png',
     )
+  })
+
+  it('names a timed image with its moment ahead of the theme', () => {
+    expect(
+      frameImagePath('/out', frame, 'light', 1, undefined, undefined, {
+        at: 1000,
+      }),
+    ).toBe('/out/studio/home/hero.at-1000.light.png')
+  })
+
+  it('names a linked width ahead of the moment, theme, and scale', () => {
+    expect(
+      frameImagePath('/out', frame, 'dark', 2, undefined, 390, { at: 250 }),
+    ).toBe('/out/studio/home/hero@390.at-250.dark@2x.png')
+  })
+
+  it('names a filmstrip with its frame count', () => {
+    expect(
+      frameImagePath('/out', frame, 'light', 1, undefined, undefined, {
+        filmstrip: 4,
+      }),
+    ).toBe('/out/studio/home/hero.filmstrip-4.light.png')
   })
 
   it('names a scaled composite with its scale', () => {
@@ -277,6 +333,94 @@ describe.skipIf(shell === null)(
         [390, 'light'],
         [390, 'dark'],
       ])
+    })
+  },
+)
+
+// A red box sliding right across a white page over 2 s, so the column of its
+// left edge names the moment a shot holds.
+// canon-allow-embedded: the page whose slide the timed capture assertions hold, kept beside them
+const SLIDE_PAGE = `<!doctype html><html lang="en"><head><title>slide</title><style>
+  @keyframes slide { from { transform: translateX(0) } to { transform: translateX(200px) } }
+  body { margin: 0; background: #fff }
+  #box { width: 20px; height: 20px; background: #f00; animation: slide 2s linear forwards }
+</style></head><body><div id="box"></div></body></html>`
+
+describe.skipIf(shell === null)(
+  'captureMotionImages',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    async function shoot(timing: { at: number[] } | { filmstrip: number }) {
+      board = writeBoard({ 'studio/home/slide.html': SLIDE_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        return await captureMotionImages(browser, {
+          baseUrl: host.url,
+          frame: frameOf('slide', {
+            box: { x: 0, y: 0, width: 300, height: 40 },
+          }),
+          themes: ['light'],
+          out,
+          timing,
+        })
+      } finally {
+        await host.close()
+      }
+    }
+
+    /** The first column on the shot's top row holding red. */
+    function redColumn(path: string, from = 0): number {
+      const { data, width } = PNG.sync.read(readFileSync(path))
+      for (let x = from; x < width; x += 1) {
+        if (data[x * 4] === 255 && data[x * 4 + 1] === 0) return x
+      }
+      return -1
+    }
+
+    it('writes one image per moment, each holding its moment', async () => {
+      const { images, motion } = await shoot({ at: [0, 1000, 2000] })
+
+      expect(motion).toEqual({ source: 'css', duration: 2000 })
+      expect(
+        images.map(({ path, at }) => [path.slice(out.length), at]),
+      ).toEqual([
+        ['/studio/home/slide.at-0.light.png', 0],
+        ['/studio/home/slide.at-1000.light.png', 1000],
+        ['/studio/home/slide.at-2000.light.png', 2000],
+      ])
+      expect(images.map(({ path }) => redColumn(path))).toEqual([0, 100, 200])
+    })
+
+    it('names a moment past the end as asked and records the end it held', async () => {
+      const { images } = await shoot({ at: [5000] })
+
+      expect(images[0]?.path).toMatch(/slide\.at-5000\.light\.png$/)
+      expect(images[0]?.at).toBe(2000)
+    })
+
+    it('writes a filmstrip of evenly spaced moments in one row', async () => {
+      const { images } = await shoot({ filmstrip: 3 })
+      const [strip] = images
+      if (!strip) throw new Error('No filmstrip captured.')
+      const { width, height } = PNG.sync.read(readFileSync(strip.path))
+
+      expect(strip).toMatchObject({ width: 1060, height: 120 })
+      expect(strip.moments).toEqual([0, 1000, 2000])
+      expect([width, height]).toEqual([1060, 120])
     })
   },
 )

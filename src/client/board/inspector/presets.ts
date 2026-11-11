@@ -1,4 +1,5 @@
 import {
+  Film,
   type LucideIcon,
   Monitor,
   Presentation,
@@ -54,7 +55,8 @@ export interface SizeGroup {
 
 /**
  * The Frame tool's list, one group per preset holding the preset and the
- * devices in its group, then the slides and the social cards, each group
+ * devices in its group, then the slides, the social cards, and the video
+ * sizes, each group
  * narrowest first.
  */
 export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
@@ -79,6 +81,12 @@ export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
       label: 'Social',
       icon: Share2,
       rows: devicesIn('social'),
+    },
+    {
+      group: 'video',
+      label: 'Video',
+      icon: Film,
+      rows: devicesIn('video'),
     },
   ] satisfies SizeGroup[]
 ).map((group) => ({
