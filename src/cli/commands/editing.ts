@@ -123,7 +123,7 @@ export function registerEditing(
     if (options.release) {
       const session = sessionOf(options.session)
       const frame = ref
-        ? refOf(await resolveFrameRef(root, ref, resolving(options, io.cwd)))
+        ? await claimable(root, ref, resolving(options, io.cwd), now)
         : undefined
       const released = await release(root, session, frame, now)
       return {

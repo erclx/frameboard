@@ -164,6 +164,24 @@ describe('editing', () => {
       })
     })
 
+    it('releases a reserved frame not written yet by its ref', async () => {
+      await editing(['webapp/home/one', '--new', '--session', 'sess-a'])
+
+      const result = await editing([
+        'webapp/home/one',
+        '--release',
+        '--session',
+        'sess-a',
+      ])
+
+      expect(result.exitCode).toBe(0)
+      expect(
+        (result.json().data as { released: Claim[] }).released.map(
+          (each) => each.frame,
+        ),
+      ).toEqual(['webapp/home/one'])
+    })
+
     it('starts the row at --x and --y', async () => {
       const result = await editing([
         'webapp/home/one',
