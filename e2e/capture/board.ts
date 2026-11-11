@@ -2258,7 +2258,8 @@ const STATE_ONLY = ['320', '768', '1536']
 /**
  * The home view and one board page of the preview's `basic` fixture, the
  * home view with a card's menu open and with a card's name being renamed,
- * then the board under Hide UI, in Play, with the avatar menu open, the element
+ * then the board under Hide UI, in Play, in Play with the hero entered from
+ * its layers row, with the avatar menu open, the element
  * inspector for the hero's headline with its token menu open, the hero's
  * Selection colors, and with the Theme
  * tab open, with tokens and with none, the Assets tab with the reference's
@@ -2582,6 +2583,18 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(pressOnLoad('^Play$')),
+      },
+      {
+        // The row press follows Play's in the same frame, so it enters the hero rather than selecting it.
+        section: 'play-entered',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(pressOnLoad('^Play$'), pressOnLoad('^Select hero$')),
+        ),
       },
       {
         section: 'avatar-menu',
