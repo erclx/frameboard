@@ -37,8 +37,8 @@ function setup(frames = [A, B, C, LOCKED]) {
   const writes: Write[] = []
   /** The page each write named, in order. */
   const pages: string[] = []
-  /** The frames a fit was asked for, in order. */
-  const fits: string[] = []
+  /** The height writes asked for, in order. */
+  const fits: unknown[] = []
   const view = { page: PAGE }
   const tree: { held: ElementTree | null } = { held: null }
   const actions = geometryActions({
@@ -54,14 +54,9 @@ function setup(frames = [A, B, C, LOCKED]) {
       pages.push(page)
       return true
     },
-    fit: async (ref) => {
-      fits.push(ref)
-      return {
-        frame: frameOf('a'),
-        contentHeight: 1,
-        contentWidth: 1,
-        tooWide: false,
-      }
+    height: async (refs, heightMode, expected) => {
+      fits.push({ refs, mode: heightMode, expected })
+      return [frameOf('a')]
     },
   })
   const action = (id: string): Action => {
@@ -225,13 +220,15 @@ describe('geometryActions', () => {
   })
 
   describe('Fit height', () => {
-    it('fits the one selected frame', () => {
+    it('fits the one selected frame through the height write, from its drawn box', () => {
       const { selection, fits, action } = setup()
       select(selection, PAGE, [A.ref])
 
       action('frame.fitHeight').run()
 
-      expect(fits).toEqual([A.ref])
+      expect(fits).toEqual([
+        { refs: [A.ref], mode: 'fit', expected: { [A.ref]: A.box } },
+      ])
     })
 
     it.each([

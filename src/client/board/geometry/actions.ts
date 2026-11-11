@@ -109,8 +109,8 @@ export interface GeometryContext {
   /** Draws boxes a run of nudges has not sent yet. */
   hold: typeof holdBoxes
   write: typeof writeBoxes
-  /** Fits a frame's height to its content on the server's browser. */
-  fit: Structure['fitFrame']
+  /** Sets how frames hold their height, `fit` measuring each on the server's browser. */
+  height: Structure['setHeightMode']
   /** A frame's tree as the server last answered it, which Select all reads an element's siblings from. */
   treeOf?: typeof treeOf
 }
@@ -291,7 +291,7 @@ export function geometryActions(context: GeometryContext): Action[] {
         const [frame] = chosen()
         if (!frame) return
         context
-          .fit(frame.ref)
+          .height([frame.ref], 'fit', { [frame.ref]: frame.box })
           .catch(reportRefusal(`Couldn't fit ${frame.name} to its content`))
       },
     },
@@ -337,7 +337,7 @@ export function useGeometryActions(
         live: liveStore,
         hold: holdBoxes,
         write: writeBoxes,
-        fit: structure.fitFrame,
+        height: structure.setHeightMode,
       }),
     )
     const unsubscribe = [

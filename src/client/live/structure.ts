@@ -14,6 +14,9 @@ import { writeBoard } from './write'
 /** A layout flag the board sets by hand, never written into the frame. */
 export type FrameFlag = 'hidden' | 'locked'
 
+/** How a frame holds its height: at a size, at its content's, or at a screen the page scrolls past. */
+export type HeightMode = 'fixed' | 'fit' | 'scroll'
+
 /** What an undo or redo answers: the page to show, or null to stay, and the frames it touched. */
 export interface StepAnswer {
   page: string | null
@@ -81,6 +84,20 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Fits a frame's height to its content and turns its height hugging on. */
     fitFrame: (ref: string) =>
       held<FitResult>([ref], 'resize', '/api/frame/fit', { ref }),
+    /**
+     * Sets how each frame holds its height in one undo step, `expected`
+     * holding each frame's box as the board drew it, by ref.
+     */
+    setHeightMode: (
+      refs: readonly string[],
+      mode: HeightMode,
+      expected: Readonly<Record<string, FrameRecord['box']>>,
+    ) =>
+      held<FrameRecord[]>(refs, 'resize', '/api/frame/height', {
+        refs,
+        mode,
+        expected,
+      }),
     orderFrame: (ref: string, index: number) =>
       post<FrameRecord>('/api/frame/order', { ref, index }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
