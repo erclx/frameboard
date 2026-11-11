@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import type { Element } from 'domhandler'
 import postcss, { type Declaration, type Root, type Rule } from 'postcss'
 
@@ -8,6 +10,8 @@ import {
   attributeLocation,
   boardPath,
   type FrameSource,
+  isInside,
+  localTarget,
   locate,
   parseSheet,
   type Sheet,
@@ -20,7 +24,7 @@ export const CUSTOM_PROPERTY_RULES: RuleDoc[] = [
     tier: 'exact',
     severity: 'warning',
     description:
-      'A var() with no fallback names a custom property no token sheet, frame sheet, or style attribute declares',
+      'A var() with no fallback names a custom property no token sheet, frame sheet, style attribute, or script write declares',
   },
 ]
 
@@ -28,6 +32,17 @@ const finding = findingFor(CUSTOM_PROPERTY_RULES)
 
 /** A `var()` naming its property, with no fallback after a comma. */
 const BARE_VAR = /var\(\s*(--[\w-]+)\s*\)/g
+
+/**
+ * The two ways a script writes a custom property by a name it spells out:
+ * `setProperty('--name', …)`, and a `--name:` declaration in a string it
+ * hands a style attribute or `cssText`. A read such as `getPropertyValue`
+ * matches neither, so it still reports.
+ */
+const SCRIPT_WRITES = [
+  /\.setProperty\(\s*(['"`])(--[\w-]+)\1/g,
+  /(?<![\w-])(--[\w-]+)\s*:/g,
+]
 
 interface Use {
   name: string
@@ -39,7 +54,8 @@ interface Use {
  * `unknown-token`, one finding per bare `var()` in the frame's own sheets
  * and style attributes whose name nothing declares. A token sheet's own
  * references are the board's to answer for, so only its declarations count.
- * A property a script sets reads as unknown, which a fallback silences.
+ * A name a `<script>` writes counts as declared, read off its text since the
+ * check never runs it, so a name the script builds at runtime still reports.
  * A linked sheet's rule matching no element in the frame stays quiet, since a
  * site sheet styles other pages. The frame's own `<style>` keeps reporting,
  * since its theme and state rules match elements no static tree marks.
@@ -95,13 +111,20 @@ export function checkUnknownTokens(
     })
   }
 
+  for (const element of source.elements) {
+    if (element.name !== 'script') continue
+    for (const name of scriptWrites(scriptText(element, source))) {
+      declared.add(name)
+    }
+  }
+
   return uses
     .filter((use) => !declared.has(use.name))
     .map((use) =>
       finding('unknown-token', {
         frame: source.ref,
         path: use.path,
-        message: `var(${use.name}) names a custom property nothing declares, so the declaration resolves to nothing. Use a token the project's tokens.css declares, or give it a fallback, such as var(${use.name}, red).`,
+        message: `var(${use.name}) names a custom property nothing declares, so the declaration resolves to nothing. Use a token the project's tokens.css declares, or give it a fallback, such as var(${use.name}, red). If a script sets it at runtime under a name the check cannot read, the fallback is the way out.`,
         location: use.location,
       }),
     )
@@ -125,6 +148,35 @@ function bareVars(value: string): string[] {
   return [
     ...new Set([...value.matchAll(BARE_VAR)].map((match) => match[1] ?? '')),
   ]
+}
+
+function scriptWrites(text: string): string[] {
+  return SCRIPT_WRITES.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) => match.at(-1) ?? ''),
+  )
+}
+
+/**
+ * A script's inline text, or its `src` file's when the file sits in the
+ * board. A remote, outside, or unreadable `src` reads as empty, since the
+ * write hook never reports a read as failed.
+ */
+function scriptText(element: Element, source: FrameSource): string {
+  const src = element.attribs.src
+  if (src === undefined) return textOf(element)
+  const file = localTarget(src, source.pageDir)
+  if (!file || !isInside(source.root, file)) return ''
+  try {
+    return readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
+function textOf(element: Element): string {
+  return element.children
+    .map((node) => ('data' in node ? node.data : ''))
+    .join('')
 }
 
 function parseOrNull(css: string): Root | null {
