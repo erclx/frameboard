@@ -35,7 +35,7 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 
 - `entered.ts` holds the one entered frame by ref, cleared on leaving Play, on a page switch, and when the frame stops drawing a live page
 - `shield.tsx` sits under the frames' layer, so the wheel and a drag over any other frame reach `d3-zoom`. A click enters the frame `frameAt` finds and a click on empty canvas leaves.
-- d3-zoom swallows the click ending a drag, so a pan starting over a frame never enters it
+- d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
 - A layers row in Play reveals its frame and enters it
 
