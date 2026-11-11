@@ -17,6 +17,7 @@ documentation = [
   "CONTRIBUTING.md",
   "SECURITY.md",
   "LICENSE",
+  "docs/",
   "canon/REQUIREMENTS.md",
   "canon/context/",
   ".github/ISSUE_TEMPLATE/",

@@ -19,7 +19,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 - Run `frameboard serve --json` in the background. It creates a board in a folder that has none, and on a board already served it reports `reused: true` and binds nothing, so a second call is safe.
 - Run `frameboard list --json` to see the projects, pages, and frames before adding any.
-- Run `frameboard project add`, `rename`, or `delete` to manage projects, and `project tokens` to give one with no token sheet a starter. Take the arguments from `docs`.
+- Run `frameboard project add`, `rename`, or `delete` to manage projects, `project group <name> <folder>` to file one under a home folder (`--clear` takes it out), `project archive <name>` to move it to home's Archived section (`--restore` brings it back), and `project tokens` to give one with no token sheet a starter. Take the arguments from `docs`.
 - Run `frameboard open --no-open --json` when the developer needs a second tab that can edit, and hand them its `writeUrl`. The link works once and expires at `expiresAt`, and a tab opened on the plain address only reads.
 
 ## Draw a frame
@@ -34,6 +34,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Resize an axis only to fix it, since a resize stops that axis hugging
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
 4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done.
+   - A finding at error means the frame renders wrong or cannot load, and a warning is a style call the frame still renders through
    - An error finding exits 8 with every finding in the error's details, each naming its rule, file, line, and column
    - Warnings alone exit 0 and sit in the envelope's `data.findings`, so read them there
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
@@ -48,11 +49,7 @@ The developer draws sections on the board, and `list --json` names each section'
 
 ## Lift an existing page
 
-Lift the live DOM after the page's scripts ran, never the source markup, and copy the attributes on `<html>` with it. Bake each `<canvas>` to an image and pin animated text to its reduced-motion state before stripping scripts. Cut fixed chrome on a long page into a viewport-sized frame. Link the site's built CSS as one sheet rather than inlining matched rules, since a rewritten shorthand drops its `var()` values.
-
-### What a finding means
-
-A finding at error means the frame renders wrong or cannot load, so fix it. A finding at warning is a style call the frame still renders through. A finding whose path names a linked sheet comes from that sheet, not from the frame's own markup.
+When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md` first.
 
 ## Make every frame work in both themes
 

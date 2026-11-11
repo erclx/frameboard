@@ -3,9 +3,13 @@ import { Command, Option } from 'commander'
 import {
   addProject,
   deleteProject,
+  fileProjects,
+  type Filing,
   renameProject,
 } from '@/server/board/projects'
 import { writeStarterSheet } from '@/server/look/starter'
+import { FrameboardError } from '@/shared/errors'
+import type { ProjectRecord } from '@/shared/records/list'
 import {
   DEFAULT_LOOK,
   STARTER_ACCENTS,
@@ -71,6 +75,51 @@ export function registerProject(
     },
   )
 
+  act<CommonOptions & { clear?: boolean }>(
+    addVerb(
+      project,
+      'group',
+      'File a project under a home folder, or take it out of one with --clear',
+    )
+      .argument('<name>', 'the project')
+      .argument('[folder]', 'the home folder, created when no project holds it')
+      .option('--clear', 'take the project out of its folder'),
+    context,
+    async ([name = '', folder], options) => {
+      const group = folderOf(folder, options.clear === true)
+      const record = await fileOne(await boardOf(options, io), name, { group })
+      return {
+        data: record,
+        human: group
+          ? `Filed project ${record.name} under ${group}`
+          : `Took project ${record.name} out of its folder`,
+      }
+    },
+  )
+
+  act<CommonOptions & { restore?: boolean }>(
+    addVerb(
+      project,
+      'archive',
+      "Move a project into home's Archived section, or back out with --restore",
+    )
+      .argument('<name>', 'the project')
+      .option('--restore', 'bring the project back out of the archive'),
+    context,
+    async ([name = ''], options) => {
+      const archived = options.restore !== true
+      const record = await fileOne(await boardOf(options, io), name, {
+        archived,
+      })
+      return {
+        data: record,
+        human: archived
+          ? `Archived project ${record.name}`
+          : `Restored project ${record.name}`,
+      }
+    },
+  )
+
   act<CommonOptions & StarterLook>(
     addVerb(
       project,
@@ -101,3 +150,42 @@ export function registerProject(
     },
   )
 }
+
+/** Files one project, answering its record as `fileProjects` leaves it. */
+async function fileOne(
+  root: string,
+  name: string,
+  filing: Filing,
+): Promise<ProjectRecord> {
+  const [record] = await fileProjects(root, [name], filing)
+  if (!record) throw new FrameboardError('internal', 'No project filed.')
+  return record
+}
+
+/**
+ * The folder a `group` call names, or null for `--clear`. A blank folder is
+ * refused here, since the writer reads one as a clear.
+ */
+function folderOf(folder: string | undefined, clear: boolean): string | null {
+  if (clear && folder !== undefined) {
+    throw new FrameboardError('usage', 'Give a folder or --clear, not both.')
+  }
+  if (clear) return null
+  if (folder === undefined) {
+    throw new FrameboardError(
+      'usage',
+      'Give a folder, or --clear to leave one.',
+    )
+  }
+  const name = folder.trim()
+  if (name === '' || name.length > MAX_FOLDER) {
+    throw new FrameboardError(
+      'invalid-name',
+      `A folder name holds 1 to ${MAX_FOLDER} characters.`,
+    )
+  }
+  return name
+}
+
+/** The longest folder name the board's own filing route accepts. */
+const MAX_FOLDER = 256
