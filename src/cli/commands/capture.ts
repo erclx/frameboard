@@ -11,6 +11,7 @@ import {
   captureComposite,
   type CapturedImage,
   captureFrameImages,
+  captureMotionImages,
 } from '@/server/capture/images'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
@@ -32,6 +33,8 @@ type CaptureOptions = CommonOptions & {
   theme: Theme | 'both'
   scale: number
   scroll?: number
+  at?: number[]
+  filmstrip?: number
   out?: string
 }
 
@@ -77,6 +80,16 @@ export function registerCapture(
       parseInteger(0),
     )
     .option(
+      '--at <ms,...>',
+      'hold the frame at each of these moments of its timeline, in ms, one image apiece, adding .at-<ms> to the file name',
+      parseMoments,
+    )
+    .option(
+      '--filmstrip <n>',
+      'one image of n moments spaced from the start of the timeline to its end, adding .filmstrip-<n> to the file name',
+      parseInteger(2),
+    )
+    .option(
       '--out <dir>',
       "the folder images land in, defaulting to the board's .run/captures/",
     )
@@ -97,6 +110,27 @@ export function registerCapture(
       throw new FrameboardError(
         'usage',
         '--scroll shoots one frame, so pass a frame ref rather than --page.',
+      )
+    }
+    const timing =
+      options.at !== undefined
+        ? { at: options.at }
+        : options.filmstrip !== undefined
+          ? { filmstrip: options.filmstrip }
+          : undefined
+    if (options.at !== undefined && options.filmstrip !== undefined) {
+      throw new FrameboardError('usage', 'Pass --at or --filmstrip, not both.')
+    }
+    if (timing !== undefined && options.page !== undefined) {
+      throw new FrameboardError(
+        'usage',
+        '--at and --filmstrip seek one frame, so pass a frame ref rather than --page.',
+      )
+    }
+    if (timing !== undefined && options.scroll !== undefined) {
+      throw new FrameboardError(
+        'usage',
+        '--at and --filmstrip shoot the frame at the top, so drop --scroll.',
       )
     }
     const root = await boardOf(options, io)
@@ -155,6 +189,28 @@ export function registerCapture(
       )
     }
     const out = await outOf()
+    if (timing !== undefined) {
+      const { images, motion } = await withFrameHost(
+        { root, facesDir: context.facesDir },
+        'capture',
+        (browser, baseUrl) =>
+          captureMotionImages(browser, {
+            baseUrl,
+            frame,
+            themes,
+            out,
+            scale: options.scale,
+            timing,
+          }),
+      )
+      return {
+        data: {
+          images,
+          ...(motion === null ? {} : { motion }),
+        } satisfies CaptureResult,
+        human: describe(images),
+      }
+    }
     const images = await withFrameHost(
       { root, facesDir: context.facesDir },
       'capture',
@@ -178,6 +234,22 @@ function parseScale(value: string): number {
     throw new InvalidArgumentError('Expected 1, 2, or 3.')
   }
   return Number(value)
+}
+
+// A comma list of whole milliseconds in the order given, a repeat dropped
+// since it would write the same file twice.
+function parseMoments(value: string): number[] {
+  const moments = value.split(',').map((part) => part.trim())
+  if (
+    !moments.every(
+      (part) => /^\d+$/.test(part) && Number.isSafeInteger(Number(part)),
+    )
+  ) {
+    throw new InvalidArgumentError(
+      'Expected whole milliseconds, comma separated, such as 0,500,1000.',
+    )
+  }
+  return [...new Set(moments.map(Number))]
 }
 
 async function pageOf(

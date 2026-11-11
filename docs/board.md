@@ -33,7 +33,7 @@ Pin a note on a frame or one element with the Note tool, and Send hands it to a 
 
 In the board you move and resize frames, press Esc mid-drag to cancel a move, a resize, a section drag, a carried element, or a marquee. Alt-drag a frame to drop a copy, and hold Space to pan with any tool. You add, rename, reorder, delete, and search pages. Sections group the frames sitting in them. Shift+S draws one, Cmd+Alt+G wraps the selection in one, and dragging a section's name moves it with its frames.
 
-The Frame tool places a phone, tablet, desktop, slide, or social card size picked from its list with a click, or draws a frame at any size with a drag. A selected frame's `Frame` heading opens the same list to resize it. The inspector's Preview row redraws a frame at another width without writing, and a 393 px frame reads as a phone there.
+The Frame tool places a phone, tablet, desktop, slide, social card, or video size picked from its list with a click, or draws a frame at any size with a drag. A selected frame's `Frame` heading opens the same list to resize it. The inspector's Preview row redraws a frame at another width without writing, and a 393 px frame reads as a phone there.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
 - Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it, and a double click on its name renames it

@@ -24,6 +24,8 @@ interface Image {
   path: string
   width: number
   height: number
+  at?: number
+  moments?: number[]
 }
 
 interface Envelope {
@@ -275,6 +277,75 @@ test.describe('capture', () => {
     expect(exitCode).toBe(10)
     expect(envelope.error?.code).toBe('font-missing')
     expect(existsSync(join(out, 'studio'))).toBe(false)
+  })
+})
+
+test.describe('capture at set moments', () => {
+  let out: string
+
+  test.beforeEach(() => {
+    out = mkdtempSync(join(tmpdir(), 'frameboard-capture-'))
+  })
+
+  test.afterEach(() => {
+    rmSync(out, { recursive: true, force: true })
+  })
+
+  test('writes one image per moment, the slide at its start, middle, and end', async ({
+    page,
+  }) => {
+    const { exitCode, envelope } = await frameboard([
+      'capture',
+      'motion/slide',
+      '--at',
+      '0,1000,2000',
+      '--theme',
+      'light',
+      '--out',
+      out,
+    ])
+
+    expect(exitCode).toBe(0)
+    const images = envelope.data?.images ?? []
+    expect(images.map(({ path, at }) => [path.slice(out.length), at])).toEqual([
+      ['/studio/motion/slide.at-0.light.png', 0],
+      ['/studio/motion/slide.at-1000.light.png', 1000],
+      ['/studio/motion/slide.at-2000.light.png', 2000],
+    ])
+    expect(envelope.data?.motion).toEqual({ source: 'css', duration: 2000 })
+    // The red box's left edge sits at 0, 100, and 200 px in turn.
+    const red = { r: 255, g: 0, b: 0 }
+    const [start, middle, end] = images.map(({ path }) => path)
+    expect(await pixelAt(page, start ?? '', 10, 10)).toMatchObject(red)
+    expect(await pixelAt(page, middle ?? '', 110, 10)).toMatchObject(red)
+    expect(await pixelAt(page, end ?? '', 210, 10)).toMatchObject(red)
+  })
+
+  test('writes a filmstrip four frames wide naming each moment', async ({
+    page,
+  }) => {
+    const { exitCode, envelope } = await frameboard([
+      'capture',
+      'motion/slide',
+      '--filmstrip',
+      '4',
+      '--theme',
+      'dark',
+      '--out',
+      out,
+    ])
+
+    expect(exitCode).toBe(0)
+    const [strip] = envelope.data?.images ?? []
+    if (!strip) throw new Error('No filmstrip written.')
+    expect(strip.path.slice(out.length)).toBe(
+      '/studio/motion/slide.filmstrip-4.dark.png',
+    )
+    expect(strip.moments).toEqual([0, 667, 1333, 2000])
+    expect(await pixelAt(page, strip.path, 0, 0)).toMatchObject({
+      width: 4 * 300 + 5 * 40,
+      height: 60 + 2 * 40,
+    })
   })
 })
 

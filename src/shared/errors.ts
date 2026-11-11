@@ -82,6 +82,10 @@ export const EXIT_CODES = {
   'page-file-load': 10,
   // A render whose image errored or never loaded, the image twin of `font-missing`.
   'image-missing': 10,
+  // A timed capture of a frame with no seekable timeline, writing nothing.
+  'motion-missing': 10,
+  // A filmstrip of a frame whose every animation repeats forever, so no end spaces its moments.
+  'motion-unbounded': 10,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
