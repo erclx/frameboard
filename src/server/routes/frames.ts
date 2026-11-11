@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs'
+import { type BigIntStats, createReadStream } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, sep } from 'node:path'
 import { Readable } from 'node:stream'
@@ -70,8 +70,10 @@ const CONTENT_TYPES: Record<string, string> = {
  * caller what exists.
  *
  * A frame served from a page gets the faces and the token sheets spliced
- * first into its `head`, in the response alone, and every other file is
- * served byte for byte. A frame path carrying `?at=<hash>` serves the
+ * first into its `head`, in the response alone, and is never cached. Every
+ * other file is served byte for byte under a validator the browser checks on
+ * each use, so an edit shows on the next load and an unchanged file answers
+ * 304 with no body. A frame path carrying `?at=<hash>` serves the
  * version `version` holds under that hash in its place, with the same head,
  * and any other path carrying it answers 404.
  */
@@ -129,6 +131,24 @@ export function frameRoutes(
       }
     }
 
+    if (!isFrame && at === undefined) {
+      // A validator with no lifetime, never `max-age`, since an asset edit
+      // reloads every frame in the project and the reload has to see it.
+      const tag = weakTag(await stat(file, { bigint: true }))
+      const revalidate = { ETag: tag, 'Cache-Control': 'no-cache' }
+      if (matchesTag(c.req.header('If-None-Match'), tag)) {
+        return c.body(null, 304, revalidate)
+      }
+      const headers = {
+        'Content-Type': contentType,
+        'Accept-Ranges': 'bytes',
+        ...revalidate,
+      }
+      // Hono drops a HEAD body unread, so reading a video for it is waste.
+      if (c.req.method === 'HEAD') return c.body(null, 200, headers)
+      return c.body(new Uint8Array(await readFile(file)), 200, headers)
+    }
+
     let bytes: Uint8Array<ArrayBuffer>
     if (at === undefined) {
       bytes = new Uint8Array(await readFile(file))
@@ -138,24 +158,37 @@ export function frameRoutes(
       if (held === null) return c.notFound()
       bytes = new TextEncoder().encode(held)
     }
-    const body = isFrame
-      ? injectHead(
-          bytes,
-          frameHead(
-            sheetUrls(project, look.sheets(project)),
-            contentHash(bytes),
-          ),
-        )
-      : bytes
+    const body = injectHead(
+      bytes,
+      frameHead(sheetUrls(project, look.sheets(project)), contentHash(bytes)),
+    )
 
     return c.body(body, 200, {
       'Content-Type': contentType,
       'Cache-Control': 'no-store',
-      ...(isFrame ? {} : { 'Accept-Ranges': 'bytes' }),
     })
   })
 
   return app
+}
+
+/**
+ * A weak validator from a file's size and nanosecond mtime, so a check costs
+ * one stat rather than a read of every byte. A same-size rewrite inside one
+ * timestamp tick keeps its tag, which a coarse mount makes likelier.
+ */
+function weakTag({ size, mtimeNs }: BigIntStats): string {
+  return `W/"${size.toString(16)}-${mtimeNs.toString(16)}"`
+}
+
+/** Whether an `If-None-Match` header names `tag`, compared weakly per RFC 9110. */
+function matchesTag(header: string | undefined, tag: string): boolean {
+  if (header === undefined) return false
+  if (header.trim() === '*') return true
+  const opaque = tag.replace(/^W\//, '')
+  return header
+    .split(',')
+    .some((listed) => listed.trim().replace(/^W\//, '') === opaque)
 }
 
 interface ByteRange {

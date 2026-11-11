@@ -1,4 +1,10 @@
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -274,7 +280,7 @@ describe('frameRoutes', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('accept-ranges')).toBe('bytes')
-      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(response.headers.get('cache-control')).toBe('no-cache')
     })
 
     it('answers the asked bytes with 206', async () => {
@@ -404,6 +410,148 @@ describe('frameRoutes', () => {
       )
 
       expect(response.status).toBe(404)
+    })
+  })
+
+  describe('revalidating a file served whole', () => {
+    const ASSET = '/frames/studio/assets/dot.svg'
+
+    function getWith(
+      path: string,
+      headers: Record<string, string>,
+      method = 'GET',
+    ) {
+      return frameRoutes(board.root, {
+        sheets: (project) => tokenSheetPaths(board.root, project, null),
+      }).request(path, { method, headers })
+    }
+
+    async function tagOf(path: string): Promise<string> {
+      return (await get(path)).headers.get('etag') ?? ''
+    }
+
+    it('answers a weak tag that the browser must revalidate', async () => {
+      const response = await get(ASSET)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('etag')).toMatch(/^W\/"[^"]+"$/)
+      expect(response.headers.get('cache-control')).toBe('no-cache')
+    })
+
+    it('answers 304 with no body for the tag it served', async () => {
+      const tag = await tagOf(ASSET)
+
+      const response = await getWith(ASSET, { 'If-None-Match': tag })
+
+      expect(response.status).toBe(304)
+      expect(response.headers.get('etag')).toBe(tag)
+      expect(response.headers.get('cache-control')).toBe('no-cache')
+      expect(await response.text()).toBe('')
+    })
+
+    it.each([
+      ['a list holding the tag', (tag: string) => `W/"stale", ${tag}`],
+      ['the tag in its strong form', (tag: string) => tag.slice(2)],
+      ['a wildcard', () => '*'],
+    ])('answers 304 for %s', async (_case, header) => {
+      const tag = await tagOf(ASSET)
+
+      const response = await getWith(ASSET, { 'If-None-Match': header(tag) })
+
+      expect(response.status).toBe(304)
+    })
+
+    it('answers the whole file for a stale tag', async () => {
+      const response = await getWith(ASSET, { 'If-None-Match': 'W/"stale"' })
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe(
+        readFileSync(join(board.root, 'studio/assets/dot.svg'), 'utf8'),
+      )
+    })
+
+    it('answers a new tag and the new bytes once the file is rewritten', async () => {
+      const path = join(board.root, 'studio/assets/dot.svg')
+      const before = await tagOf(ASSET)
+      writeFileSync(path, '<svg/>')
+
+      const response = await getWith(ASSET, { 'If-None-Match': before })
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('etag')).not.toBe(before)
+      expect(await response.text()).toBe('<svg/>')
+    })
+
+    it('answers a new tag for a same-size rewrite at a later mtime', async () => {
+      const path = join(board.root, 'studio/assets/dot.svg')
+      writeFileSync(path, 'aaaa')
+      utimesSync(path, new Date(1_000_000), new Date(1_000_000))
+      const before = await tagOf(ASSET)
+      writeFileSync(path, 'bbbb')
+      utimesSync(path, new Date(2_000_000), new Date(2_000_000))
+
+      const response = await getWith(ASSET, { 'If-None-Match': before })
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe('bbbb')
+    })
+
+    it('answers a HEAD with the tag and no body', async () => {
+      const tag = await tagOf(ASSET)
+
+      const response = await getWith(ASSET, {}, 'HEAD')
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('etag')).toBe(tag)
+      expect(response.headers.get('cache-control')).toBe('no-cache')
+      expect(await response.text()).toBe('')
+    })
+
+    it.each([
+      ['a frame', '/frames/studio/home/hero.html'],
+      [
+        'a held frame version',
+        `/frames/studio/home/hero.html?at=${contentHash('<p>old</p>')}`,
+      ],
+    ])(
+      'serves %s spliced and never cached, whatever it is sent',
+      async (_case, path) => {
+        const response = await frameRoutes(
+          board.root,
+          { sheets: (project) => tokenSheetPaths(board.root, project, null) },
+          () => '<p>old</p>',
+        ).request(path, { headers: { 'If-None-Match': '*' } })
+
+        expect(response.status).toBe(200)
+        expect(response.headers.get('etag')).toBeNull()
+        expect(response.headers.get('cache-control')).toBe('no-store')
+        expect(await response.text()).toContain('<style data-frameboard')
+      },
+    )
+
+    it('answers a range on a file the browser holds whole with 206', async () => {
+      writeFileSync(join(board.root, 'studio/assets/clip.mp4'), '0123456789')
+      const tag = await tagOf('/frames/studio/assets/clip.mp4')
+
+      const response = await getWith('/frames/studio/assets/clip.mp4', {
+        'If-None-Match': tag,
+        Range: 'bytes=0-3',
+      })
+
+      expect(response.status).toBe(206)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(await response.text()).toBe('0123')
+    })
+
+    it('refuses a dot-named path before it answers any tag', async () => {
+      writeFileSync(join(board.root, 'studio/assets/.secret'), 'x')
+
+      const response = await getWith('/frames/studio/assets/.secret', {
+        'If-None-Match': '*',
+      })
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('etag')).toBeNull()
     })
   })
 
