@@ -52,6 +52,7 @@ describe('docs', () => {
       'project add',
       'project rename',
       'project delete',
+      'project group',
       'project tokens',
       'page add',
       'page duplicate',
