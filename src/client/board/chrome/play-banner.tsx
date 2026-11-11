@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 import type { FrameRecord } from '@/shared/records/list'
 
-import { pageReach } from '../play-reach'
+import { pageReach } from '../play/reach'
 
 /** A frame's load reaches a capturing listener on its host document, though it never bubbles. */
 function onFrameLoad(listener: () => void): () => void {
