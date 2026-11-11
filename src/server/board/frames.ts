@@ -565,6 +565,7 @@ export function sizeOf({ size, width, height }: SizeOptions): {
  * every element address in the file holds.
  */
 export function skeleton(name: string): string {
+  // canon-allow-embedded: interpolates the frame title, and the bundled CLI has no substitution step for a file on disk
   return `<!doctype html>
 <html lang="en">
   <head>
