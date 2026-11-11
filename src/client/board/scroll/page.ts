@@ -74,6 +74,27 @@ export function pressRail(layer: ParentNode, event: PointerEvent): boolean {
 }
 
 /**
+ * Whether a screen point sits between a frame's right edge and the right edge
+ * of the rail it draws, at the rail's height, so the pointer crossing the gap
+ * to the rail keeps the frame it belongs to and its rail stays shown.
+ */
+export function railReach(
+  frame: Element,
+  point: { clientX: number; clientY: number },
+): boolean {
+  const rail = frame.querySelector(':scope > [data-rail]')
+  if (!rail) return false
+  const edge = frame.getBoundingClientRect().right
+  const { right, top, bottom } = rail.getBoundingClientRect()
+  return (
+    point.clientX >= edge &&
+    point.clientX <= right &&
+    point.clientY >= top &&
+    point.clientY <= bottom
+  )
+}
+
+/**
  * The rail drawn under a screen point, skipping one hidden at rest, which
  * the hit layer's geometry alone would still find.
  */

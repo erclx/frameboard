@@ -173,6 +173,47 @@ test.describe('frame geometry by hand', () => {
     await expect.poll(() => layout().frames.mobile?.scroll).toBe(false)
   })
 
+  test('an unselected scroll frame keeps its rail as the pointer crosses onto it', async ({
+    page,
+  }) => {
+    writeFileSync(
+      join(board.root, 'studio/home/mobile.html'),
+      '<!doctype html><html><body style="margin:0"><div style="height:3000px">Tall</div></body></html>',
+    )
+    const scrolling = layout()
+    scrolling.frames.mobile = { ...scrolling.frames.mobile, scroll: true }
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify(scrolling),
+    )
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const mobile = page.locator(MOBILE)
+    await expect(mobile).not.toHaveAttribute('data-selected')
+    const box = await mobile.boundingBox()
+    if (!box) throw new Error('The frame has no box on screen')
+    const y = box.y + box.height - 20
+    await page.mouse.move(box.x + box.width - 10, y)
+    const rail = mobile.locator(':scope > [data-rail]')
+    await expect(rail).toBeVisible()
+
+    await page.mouse.move(box.x + box.width + 4, y, { steps: 4 })
+    const track = await rail.boundingBox()
+    if (!track) throw new Error('The rail has no box on screen')
+    await page.mouse.move(track.x + track.width / 2, y, { steps: 4 })
+    await expect(rail).toBeVisible()
+    await page.mouse.down()
+    await page.mouse.up()
+
+    await expect
+      .poll(() =>
+        mobile
+          .locator(':scope > iframe')
+          .evaluate((frame: HTMLIFrameElement) => frame.contentWindow?.scrollY),
+      )
+      .toBeGreaterThan(0)
+  })
+
   test('a locked frame selects and never moves', async ({ page }) => {
     const locked = layout()
     locked.frames.mobile = { ...locked.frames.mobile, locked: true }

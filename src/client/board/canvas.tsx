@@ -76,7 +76,7 @@ import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
 import { enteredStore } from './play/entered'
 import { PlayShield } from './play/shield'
-import { pressRail } from './scroll/page'
+import { pressRail, railReach } from './scroll/page'
 import { placeSection } from './sections/actions'
 import { SectionBoxes } from './sections/box'
 import {
@@ -442,18 +442,13 @@ export function Canvas({
         viewport.style.cursor = ''
         return
       }
-      // A scroll frame's rail sits past its edge, so the pointer on it keeps
-      // the frame marked and its rail shown to press.
-      if (
-        hovered !== null &&
-        drawnAt(
-          layer,
-          `[data-frame="${CSS.escape(hovered)}"] > [data-rail]`,
-          event,
-        )
-      ) {
-        return
-      }
+      // A scroll frame's rail sits 8px past its edge, so the pointer crossing
+      // that gap or on the rail keeps the frame marked and its rail shown.
+      const hoveredFrame =
+        hovered === null
+          ? null
+          : layer.querySelector(`[data-frame="${CSS.escape(hovered)}"]`)
+      if (hoveredFrame && railReach(hoveredFrame, event)) return
       const transform = zoomTransform(viewport)
       const [x, y] = transform.invert(pointer(event, viewport))
       hover(

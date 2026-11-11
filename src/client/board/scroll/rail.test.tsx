@@ -4,7 +4,7 @@ import { render, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { pressRail } from './page'
+import { pressRail, railReach } from './page'
 import { ScrollRail } from './rail'
 
 /** A page four times as tall as its 400px box. */
@@ -135,5 +135,38 @@ describe('ScrollRail', () => {
     )
 
     expect(container.querySelector('[data-rail]')).toBeNull()
+  })
+})
+
+describe('railReach', () => {
+  it.each([
+    ['the gap between the box and its rail', 4, true],
+    ['the rail itself', 11, true],
+    ['past the rail', 20, false],
+  ])('answers %s', async (_label, pastEdge, reached) => {
+    const { container } = await setup(1)
+    const frame =
+      container.querySelector<HTMLElement>('[data-rail]')?.parentElement
+    if (!frame) throw new Error('no frame')
+    const box = frame.getBoundingClientRect()
+
+    expect(
+      railReach(frame, {
+        clientX: box.right + pastEdge,
+        clientY: box.top + 50,
+      }),
+    ).toBe(reached)
+  })
+
+  it('answers false below the rail', async () => {
+    const { container } = await setup(1)
+    const frame =
+      container.querySelector<HTMLElement>('[data-rail]')?.parentElement
+    if (!frame) throw new Error('no frame')
+    const box = frame.getBoundingClientRect()
+
+    expect(
+      railReach(frame, { clientX: box.right + 4, clientY: box.bottom + 10 }),
+    ).toBe(false)
   })
 })
