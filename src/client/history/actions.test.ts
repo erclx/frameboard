@@ -242,6 +242,38 @@ describe('registerHistoryActions', () => {
     })
   })
 
+  it('drops an undo or redo pressed while a step is out, then takes the next', async () => {
+    const store = writableWith(3, 1)
+    let answer = (_: StepAnswer) => {}
+    const undoCall = vi
+      .fn<() => Promise<StepAnswer>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve
+          }),
+      )
+      .mockResolvedValue({ page: null, frames: [] })
+    const redoCall = vi
+      .fn<() => Promise<StepAnswer>>()
+      .mockResolvedValue({ page: null, frames: [] })
+    const { undo, redo } = register(store, {
+      calls: { undo: undoCall, redo: redoCall },
+    })
+    act(undo)
+    await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
+
+    act(undo)
+    act(redo)
+    answer({ page: null, frames: [] })
+    // Lets the answered step settle and free the next press.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    act(undo)
+
+    await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(2))
+    expect(redoCall).not.toHaveBeenCalled()
+  })
+
   describe('a step naming a frame another session holds', () => {
     const CLAIM = {
       frame: HERO.ref,

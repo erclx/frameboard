@@ -325,6 +325,29 @@ describe('geometryActions', () => {
       })
     })
 
+    it('repeats the nudges and resizes while a key is held, and nothing else', () => {
+      const { actions } = setup()
+
+      const repeating = actions
+        .filter((action) => action.repeat)
+        .map((action) => action.id)
+
+      expect(repeating).toEqual([
+        'frame.nudgeLeft',
+        'frame.nudgeLeftFar',
+        'frame.resizeLeft',
+        'frame.nudgeRight',
+        'frame.nudgeRightFar',
+        'frame.resizeRight',
+        'frame.nudgeUp',
+        'frame.nudgeUpFar',
+        'frame.resizeUp',
+        'frame.nudgeDown',
+        'frame.nudgeDownFar',
+        'frame.resizeDown',
+      ])
+    })
+
     it('stands aside while a locked frame is selected', () => {
       const { selection, action } = setup()
       select(selection, PAGE, [A.ref, LOCKED.ref])
