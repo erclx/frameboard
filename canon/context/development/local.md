@@ -17,14 +17,14 @@ Setup is Bun and the `canon` CLI from `bun add -g @erclx/canon`, which the pre-c
 
 These gate a change, and `bun run check` is the one the pre-push hook runs.
 
-| Command                            | Purpose                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `bun run check`                    | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, and markdown bans |
-| `bun run check:full`               | Runs `check`, then `test:e2e`                                                                           |
-| `bun run typecheck`                | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                           |
-| `bun run lint`, `bun run lint:fix` | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                       |
-| `bun run format`                   | Auto-fixes oxfmt formatting                                                                             |
-| `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown    |
+| Command                            | Purpose                                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`                    | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, markdown bans, and embedded code |
+| `bun run check:full`               | Runs `check`, then `test:e2e`                                                                                          |
+| `bun run typecheck`                | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                                          |
+| `bun run lint`, `bun run lint:fix` | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                                      |
+| `bun run format`                   | Auto-fixes oxfmt formatting                                                                                            |
+| `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown                   |
 
 The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale. The board needs `bun run build` outside `dev`, since a source `serve` refuses without `dist/client`, and an old build serves the old board.
 
@@ -163,7 +163,7 @@ One catches the landing page out.
 - `test:run`, `test:e2e`, and `test:e2e:changed` take it, at `~/Library/Caches/frameboard/test.lock` on macOS and under `${XDG_CACHE_HOME:-~/.cache}/frameboard/` on Linux
 - A lock whose holder exited is taken over on the next poll, so delete the file by hand only when the waiting line names a live pid that runs no test
 - `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` or `pre-push` waiting on the lock looks hung until its run ends
-- `canon tooling diff web .` marks `test:run` and `screenshot` with `!`, since the stack ships each plain, and the locked form and the board copy are the ones to keep
+- `canon tooling diff web .` marks seven scripts with `!`, being the project's forms to keep, and `--write` rewrites `lint`, `lint:fix`, and `screenshot`, so restore them after one
 
 ### Preview servers
 
