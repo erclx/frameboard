@@ -53,4 +53,4 @@ These catch a capture out.
 These catch an element address out.
 
 - Inspect prints nothing and refuses `invalid-address` for an index with no layout box, `address-mismatch` when the live tag order leaves the file's, and `stale-address` when the file changed mid-load
-- Element counting lives in five places that cannot share code, being `readTextElements`, inspect's reader, the client pick, and the two browser check readers, so changing `LOOK_MARKER` moves all five
+- Six readers count elements and cannot share code, being `readTextElements`, `waitForImages`, inspect's, the client pick, and the two browser checks, so `LOOK_MARKER` moves all six
