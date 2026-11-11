@@ -21,6 +21,8 @@ Owns the capture browser, the frame host, the render, the font check, the image 
 - `inspect` loads a frame through the same host and `openFrame`, one theme per call, and lists each element with a layout box under the `edit` index, reading the file's hash before and after the load
 - `inspect` reports `editable: false` where the browser builds an element the file does not state, such as a `tr` with no `tbody`, since `edit` refuses every index there
 
+`capture --scroll <px>` shoots one `scroll` frame that far down as `<frame>.scroll-<px>.<theme>.png`, refusing `--page` and a frame without the key as `usage`. Its record's `scrollY` names the offset the browser clamped to.
+
 The server side shares one browser and renders only on demand.
 
 - `createWarmBrowser` keeps one warm browser, shared on separate queues by `GET /api/frames/png` at its `scale` of 1 to 3 or 2 without one, the thumbnail store at scale 0.5, and the browser checker

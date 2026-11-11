@@ -38,7 +38,12 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 `layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
 
-An entry's `hugWidth` and `hugHeight` read as fixed when absent. A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size.
+An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
+
+- A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size
+- `scroll: true` holds a fixed screen height the page scrolls past, and `placeFrames` reads both hug flags beside it as false, so an older `frame fit` never reaches the hug step
+- `PageLayout.set` writes `scroll` only on an entry it turns on or one already holding it, as it does the hug flags
+- The board hides a scroll frame's native scrollbar with a style marked like the look injection
 
 ### `src/server/edit/`
 

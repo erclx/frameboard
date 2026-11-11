@@ -48,6 +48,7 @@ Owns the frame verbs, and `page.ts` reshapes pages the same way.
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 - `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
+- `--scroll` on `add` or `resize` fixes both axes at the height given or the width's reference height, and `--no-scroll` on `resize` clears the key, keeping the box
 
 ### `src/cli/commands/project.ts`
 
@@ -116,4 +117,5 @@ These catch a frame verb or a sync out.
 
 - `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own. It ignores what a cropping ancestor hides and reports too-wide content.
 - It refuses `fit-unbounded` for content sized off the viewport, like `100vh` or a block reset on `resize`. A page reading `innerHeight` once fits to a stable height that still draws clipped.
+- It refuses `fit-scroll`, exit 10, on a `scroll` frame before the browser launches, and the fit route does the same before measuring
 - A `frames.json` key is exactly `<group>/<name>`, and `parseFrameMap` refuses a third segment with `frame-map-invalid`, so a group holds its references flat rather than in subfolders
