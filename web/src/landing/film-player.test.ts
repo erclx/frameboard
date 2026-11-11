@@ -6,6 +6,7 @@ import { wireFilmPlayer } from './film-player'
 import { wireThemeButton } from './nav'
 
 function renderFilm(): HTMLElement {
+  // canon-allow-embedded: the hero markup the film wiring runs against, kept beside the test
   document.body.innerHTML = `
     <section id="hero">
       <div class="shot" data-film>
