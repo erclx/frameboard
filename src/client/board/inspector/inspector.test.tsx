@@ -497,6 +497,26 @@ describe('InspectorPanel', () => {
       await waitFor(() => expect(checked()).toEqual(['Fixed']))
     })
 
+    it('reads the stored mode again once an undo puts back the mode a pick left', async () => {
+      const { calls } = heightCalls(() => Response.json({ ok: true, data: [] }))
+      const scrolling = { ...SWATCHES, scroll: true }
+      const { rerender } = render(
+        <FrameSection page={PAGE} frames={[scrolling]} calls={calls} />,
+      )
+      await userEvent.click(screen.getByRole('radio', { name: 'Fit' }))
+
+      rerender(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...SWATCHES, hugHeight: true }]}
+          calls={calls}
+        />,
+      )
+      rerender(<FrameSection page={PAGE} frames={[scrolling]} calls={calls} />)
+
+      expect(checked()).toEqual(['Scroll'])
+    })
+
     it('moves between modes by arrow key, picking each', async () => {
       const { sent, calls } = heightCalls(() =>
         Response.json({ ok: true, data: [] }),

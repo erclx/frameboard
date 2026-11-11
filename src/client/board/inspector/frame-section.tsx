@@ -296,13 +296,17 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
   const stored = modes.every((mode) => mode === modes[0])
     ? (modes[0] ?? null)
     : null
-  // A pick stands while the frames still read the mode it was made from.
+  // A pick stands until the frames read another mode than the one it was made
+  // from, and is then forgotten, so an undo back to that mode reads as stored.
   const [pending, setPending] = useState<{
     key: string
     from: HeightMode | null
     mode: HeightMode
   } | null>(null)
   const key = refs.join('\n')
+  if (pending && (pending.key !== key || pending.from !== stored)) {
+    setPending(null)
+  }
   const shown =
     pending && pending.key === key && pending.from === stored
       ? pending.mode
