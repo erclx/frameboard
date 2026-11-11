@@ -72,7 +72,8 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 - `unseen.ts` keeps each frame's latest unseen change, dotted on its label and layers row and counted on pages and projects, with each frame's seen hash in `localStorage`
-- It keeps the newest agent reply each note thread showed in `frameboard.seen-replies`, written by an open thread card, so the tab title counts a reply until its thread opens, and only while its root is not done and its frame stands
+- It keeps the newest agent reply each note thread showed in `frameboard.seen-replies`, written by an open thread card, so the tab title counts a reply until its thread opens
+- A reply counts only while its root is not done and its frame stands, since only then can the thread open
 
 The same store carries what an agent is doing now.
 
