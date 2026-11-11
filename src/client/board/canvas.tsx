@@ -716,7 +716,7 @@ export function Canvas({
                 unseen={frame.ref in unseen}
               />
             ))}
-            <SelectionOverlay frames={frames} />
+            <SelectionOverlay frames={frames} sections={page.sections} />
             <ElementOverlay frames={frames} container={layer} />
             <DropLine
               viewport={viewportRef}

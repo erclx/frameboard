@@ -29,8 +29,9 @@ import {
   selectionStore,
   selectSection,
 } from '../selection'
+import { attachCanvas } from '../view'
 import type { Box, Point } from './box'
-import { attachGestures } from './gestures'
+import { attachGestures, REVEAL_DELAY_MS } from './gestures'
 import { SelectionOverlay } from './overlay'
 
 const PAGE = 'studio/home'
@@ -1124,6 +1125,148 @@ describe('attachGestures', () => {
     })
   })
 
+  describe('revealing the clicked frame', () => {
+    afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    })
+
+    /** A view showing the canvas up to x 500, so RIGHT sits half outside it, under a panel. */
+    function watchView(visible: Box = { x: 0, y: 0, width: 500, height: 600 }) {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const centered: Box[] = []
+      const stop = attachCanvas(
+        {
+          zoomBy: () => {},
+          zoomTo: () => {},
+          fit: () => {},
+          fitTo: () => {},
+          panBy: () => {},
+          centerOn: (box) => centered.push(box),
+          visible: () => visible,
+        },
+        PAGE,
+      )
+      return { centered, stop }
+    }
+
+    it('centers a frame partly out of view once the double-click window passes', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150)
+      const before = [...view.centered]
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(before).toEqual([])
+      expect(view.centered).toEqual([RIGHT.box])
+    })
+
+    it('leaves the view put on a double-click, which picks through it', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150)
+      canvas.pointer.click(450, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a click on the frame already selected', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+      select(selectionStore, PAGE, [RIGHT.ref])
+
+      canvas.pointer.click(450, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('never fits a frame larger than the view', () => {
+      const canvas = setup()
+      const view = watchView({ x: 0, y: 0, width: 150, height: 600 })
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(120, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put for a frame wholly in view', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(150, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a Shift-click', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150, { shiftKey: true })
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a marquee', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.drag([50, 50], [450, 150])
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a drag that starts on a frame', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.drag([450, 150], [470, 170])
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+  })
+
   describe('moving', () => {
     it('moves the frame and sends one write with the box it started from', () => {
       const canvas = setup()
@@ -1443,8 +1586,25 @@ describe('attachGestures', () => {
       canvas.pointer.down(100, 100)
       canvas.pointer.move(60, 80)
 
-      expect(canvas.part('[data-chip]')).toHaveTextContent('240 × 220')
+      expect(canvas.part('[data-move-chip]')).toHaveTextContent('240 × 220')
+      expect(canvas.part('[data-chip]')).not.toBeVisible()
       canvas.pointer.up(60, 80)
+    })
+
+    it('keeps the resting chip and its controls once the drag ends', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      canvas.pointer.down(100, 100)
+      canvas.pointer.move(60, 80)
+      canvas.pointer.up(60, 80)
+
+      expect(canvas.part('[data-move-chip]')).not.toBeVisible()
+      expect(canvas.part('[data-chip]')).toBeVisible()
+      expect(
+        canvas.part('[data-chip] [aria-label="Next frame"]'),
+      ).toBeInTheDocument()
     })
 
     describe('when Esc cancels it', () => {
@@ -1486,7 +1646,8 @@ describe('attachGestures', () => {
           drawn.style.width,
           drawn.style.height,
         ]).toEqual(['100px', '100px', '200px', '200px'])
-        expect(canvas.part('[data-chip]')).toHaveTextContent('200 × 200')
+        expect(canvas.part('[data-move-chip]')).not.toBeVisible()
+        expect(canvas.part('[data-chip]')).toHaveTextContent(LEFT.name)
       })
 
       it('puts back each frame, outline, and pin of several at the press', () => {

@@ -29,6 +29,9 @@ Several elements in one frame select together, all at one hash, with `element` h
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 
+- With one frame and no element selected, Tab and Shift+Tab step to the next and previous frame in Layers order, through `board-actions.ts`
+- A step wraps at both ends, skips hidden frames, and centers the frame it lands on at the current zoom
+
 An element selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame, since an agent's write may have shifted every index. Bytes the board's own hand edit or undo left the frame at keep it, as does a reload landing while that write is in flight, since the reload of the bytes it answered is still to come.
 
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked tree in each index, parent, and tag, and in every name but the element's own
@@ -74,6 +77,11 @@ Owns turning pointer and keys into frame boxes, apart from the canvas's pan and 
 - A dragged or resized frame snaps to other frames' edges and centers unless Ctrl is held, and its note pins follow the snapped box, a resize placing each by `board/pin-corner.ts`
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
 
+One selected frame's chip in `overlay.tsx` names the frame and its place in Layers order, read through `board/frame-order.ts`, beside previous, next, and Zoom to selection controls. Several frames read `N frames`.
+
+- The chip takes no pointer, so its controls carry `data-label-control` and the gestures click them on release
+- A move or a resize writes its live readout into `[data-move-chip]`, since rewriting the resting chip would drop its controls
+
 A press on the canvas while an inspector field has focus blurs the field, which applies its edit. A click that only leaves the field selects and clears nothing, and a drag from the same press still moves frames.
 
 A move released with Alt held puts the frames back and sends one duplicate carrying the drop's offset, so the copies land there in one undo step. A locked frame neither moves nor copies.
@@ -95,7 +103,7 @@ Owns the width a frame is previewed at, held in this tab's memory alone, so a re
 - A frame hugging its height takes its content's height at the previewed width, read as the server's fit step reads it, and a page sized off the viewport keeps its stored height
 - A frame the board stops showing, deleted, hidden, or moved to another page, drops its preview
 
-A frame draws at its pending box over its stored one at the previewed width, and a press, a hover, an element pick, a note, and a right-click all hit it there. The selection chip still names the stored size, prefixed `Stored` while a chosen frame is previewed, and the label keeps the stored box's width as room above a narrower preview.
+A frame draws at its pending box over its stored one at the previewed width, and a press, a hover, an element pick, a note, and a right-click all hit it there. The label keeps the stored box's width as room above a narrower preview.
 
 `withPending` in `geometry/write.ts` hands every gesture and action the stored and pending boxes alone, since each writes what it reads, and a box write ends the preview of each frame it names as it starts.
 

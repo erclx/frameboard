@@ -31,6 +31,7 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { UnseenDot } from '../changes/dot'
 import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
+import { type FrameGroup, groupsOf } from '../frame-order'
 import { withDrawn } from '../geometry/write'
 import { FrameRowMenu } from '../menus/layers'
 import { modeStore } from '../mode'
@@ -108,7 +109,7 @@ export function LayersList({
   const move = useCallback(
     (from: number, to: number, list: string) => {
       const group = groupsOf(frames, sections).find(
-        (candidate) => candidate.list === list,
+        (candidate) => listOf(candidate) === list,
       )
       const frame = group?.rows[from]
       if (!group || !frame) return
@@ -215,7 +216,7 @@ export function LayersList({
         <ul className="flex min-h-0 flex-col overflow-y-auto pb-1">
           {groups.map((group) => {
             const rows = group.rows.map((frame, index) =>
-              frameRow(frame, index, group.list),
+              frameRow(frame, index, listOf(group)),
             )
             if (!group.section) return rows
             const { section } = group
@@ -469,30 +470,9 @@ function pageOfFrames(frames: readonly FrameRecord[]): string {
   return first ? pageOf(first) : ''
 }
 
-interface Group {
-  /** The reorder list its rows drag within. */
-  list: string
-  /** The section holding the rows, absent for the frames in none. */
-  section?: SectionRecord
-  /** Top of the stack first. */
-  rows: readonly FrameRecord[]
-}
-
-/** The rows as Layers groups them: each section top first with its frames, then the frames in no section. */
-function groupsOf(
-  frames: readonly FrameRecord[],
-  sections: readonly SectionRecord[],
-): Group[] {
-  const top = [...frames].reverse()
-  const held = new Set(sections.flatMap((section) => section.frames))
-  return [
-    ...[...sections].reverse().map((section) => ({
-      list: `${SECTION_LIST}${section.name}`,
-      section,
-      rows: top.filter((frame) => section.frames.includes(frame.name)),
-    })),
-    { list: LIST, rows: top.filter((frame) => !held.has(frame.name)) },
-  ]
+/** The reorder list a group's rows drag within, a section's its own. */
+function listOf(group: FrameGroup): string {
+  return group.section ? `${SECTION_LIST}${group.section.name}` : LIST
 }
 
 /**
