@@ -138,6 +138,7 @@ describe('scanBoard', () => {
         hugWidth: false,
         hugHeight: false,
         scroll: false,
+        widths: [],
         placed: true,
       })
     })
@@ -168,6 +169,34 @@ describe('scanBoard', () => {
       )
 
       expect([about?.hugWidth, about?.hugHeight]).toEqual([false, true])
+    })
+
+    it.each([
+      [
+        'a list',
+        [{ width: 834, height: 1194 }],
+        [{ width: 834, height: 1194 }],
+      ],
+      ['a string', '834,390', []],
+      ['a list of numbers', [834, 390], []],
+      ['an object missing height', [{ width: 834 }], []],
+    ])('reads widths written as %s', async (_, widths, read) => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp/home/layout.json'),
+        JSON.stringify({
+          version: 1,
+          frames: {
+            about: { x: 1520, y: 0, width: 390, height: 844, order: 1, widths },
+          },
+        }),
+      )
+
+      const { projects } = await scanBoard(board.root, { project: 'webapp' })
+      const page = projects[0]?.pages[1]
+      const about = page?.frames.find((frame) => frame.name === 'about')
+
+      expect([page?.layoutError, about?.widths]).toEqual([null, read])
     })
 
     it('names the frames each section holds by center, bottom first', async () => {
@@ -293,7 +322,17 @@ describe('placeNext', () => {
       hugWidth: false,
       hugHeight: false,
       scroll: false,
+      widths: [],
       placed: false,
     })
+  })
+
+  it('sits past the linked widths a placed frame draws', () => {
+    const placed = {
+      ...placeNext([]),
+      widths: [{ width: 390, height: 844 }],
+    }
+
+    expect(placeNext([placed]).box.x).toBe(1990)
   })
 })

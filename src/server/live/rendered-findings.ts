@@ -8,6 +8,35 @@ import type { FrameRecord, ListResult } from '@/shared/records/list'
  */
 export type CheckFrame = (frame: FrameRecord) => Promise<Finding[] | null>
 
+/**
+ * Runs `check` at the frame's own box, then at each linked width it lists,
+ * tagging each finding read at a linked width with that width. A linked
+ * finding the own box already reported, being the same rule and message at
+ * the same place, is left out, since it is no fault of that width. A null
+ * reading at any box answers null for the frame.
+ */
+export async function acrossWidths(
+  frame: Pick<FrameRecord, 'box' | 'widths'>,
+  check: (box: { width: number; height: number }) => Promise<Finding[] | null>,
+): Promise<Finding[] | null> {
+  const own = await check({ width: frame.box.width, height: frame.box.height })
+  if (own === null) return null
+  const seen = new Set(own.map(sameness))
+  const findings = [...own]
+  for (const { width, height } of frame.widths) {
+    const linked = await check({ width, height })
+    if (linked === null) return null
+    for (const finding of linked) {
+      if (!seen.has(sameness(finding))) findings.push({ ...finding, width })
+    }
+  }
+  return findings
+}
+
+function sameness(finding: Finding): string {
+  return JSON.stringify([finding.rule, finding.message, finding.location])
+}
+
 export interface RenderedFindings {
   /**
    * Queues `refs` for a browser recheck, along with every frame whose box or
@@ -129,7 +158,10 @@ export function createRenderedFindings({
       known = frames
       const due = new Set(refs)
       for (const [ref, frame] of frames) {
-        const from = `${frame.box.width}x${frame.box.height}@${frame.modifiedAt}`
+        const views = [frame.box, ...frame.widths]
+          .map(({ width, height }) => `${width}x${height}`)
+          .join(',')
+        const from = `${views}@${frame.modifiedAt}`
         if (seen.get(ref) !== from) due.add(ref)
         seen.set(ref, from)
       }

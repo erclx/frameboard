@@ -4,17 +4,25 @@ import { FrameboardError } from '@/shared/errors'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
-import { createRenderedFindings } from './rendered-findings'
+import { acrossWidths, createRenderedFindings } from './rendered-findings'
 
-/** A board of one page holding frames by name, each at the box and file time given. */
+/** A board of one page holding frames by name, each at the box, linked widths, and file time given. */
 function boardOf(
   frames: Record<
     string,
-    { width: number; height: number; modifiedAt?: string }
+    {
+      width: number
+      height: number
+      modifiedAt?: string
+      widths?: FrameRecord['widths']
+    }
   >,
 ) {
   const records: FrameRecord[] = Object.entries(frames).map(
-    ([name, { modifiedAt = '2026-10-19T00:00:00.000Z', ...box }], order) => ({
+    (
+      [name, { modifiedAt = '2026-10-19T00:00:00.000Z', widths = [], ...box }],
+      order,
+    ) => ({
       ref: `site/home/${name}`,
       project: 'site',
       page: 'home',
@@ -27,6 +35,7 @@ function boardOf(
       hugWidth: false,
       hugHeight: false,
       scroll: false,
+      widths,
       placed: true,
       modifiedAt,
     }),
@@ -150,6 +159,23 @@ describe('createRenderedFindings', () => {
     await tick()
 
     expect(calls.map((call) => call.frame.box.height)).toEqual([300, 120])
+  })
+
+  it('queues a frame whose linked widths changed with no file write', async () => {
+    const { calls, check } = heldCheck()
+    const rendered = createRenderedFindings({ check, onResult: () => {} })
+    rendered.queue(boardOf({ hero: BOX }), [])
+    await tick()
+    calls[0]?.land([])
+    await tick()
+
+    rendered.queue(
+      boardOf({ hero: { ...BOX, widths: [{ width: 390, height: 844 }] } }),
+      [],
+    )
+    await tick()
+
+    expect(calls.map((call) => call.frame.widths.length)).toEqual([0, 1])
   })
 
   it('queues a frame whose file changed before any batch named it', async () => {
@@ -278,5 +304,56 @@ describe('createRenderedFindings', () => {
     await settling
 
     expect(landed).toEqual([])
+  })
+})
+
+describe('acrossWidths', () => {
+  const frame = {
+    box: { x: 0, y: 0, width: 1440, height: 900 },
+    widths: [
+      { width: 834, height: 1194 },
+      { width: 390, height: 844 },
+    ],
+  }
+
+  it('checks the own box, then each linked width at its own box', async () => {
+    const boxes: { width: number; height: number }[] = []
+
+    await acrossWidths(frame, async (box) => {
+      boxes.push(box)
+      return []
+    })
+
+    expect(boxes).toEqual([
+      { width: 1440, height: 900 },
+      { width: 834, height: 1194 },
+      { width: 390, height: 844 },
+    ])
+  })
+
+  it('tags a finding read at a linked width with that width', async () => {
+    const findings = await acrossWidths(frame, async (box) =>
+      box.width === 390 ? [clipped('site/home/hero', 'narrow')] : [],
+    )
+
+    expect(findings).toEqual([
+      { ...clipped('site/home/hero', 'narrow'), width: 390 },
+    ])
+  })
+
+  it('leaves out a linked finding the own box already reported', async () => {
+    const findings = await acrossWidths(frame, async () => [
+      clipped('site/home/hero'),
+    ])
+
+    expect(findings).toEqual([clipped('site/home/hero')])
+  })
+
+  it('answers null when any box read a file it has moved past', async () => {
+    const findings = await acrossWidths(frame, async (box) =>
+      box.width === 834 ? null : [],
+    )
+
+    expect(findings).toBeNull()
   })
 })

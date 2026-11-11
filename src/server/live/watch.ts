@@ -8,7 +8,7 @@ import {
   LAYOUT_FILE,
 } from '@/server/board/scan'
 import { CLAIMS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
-import type { ListResult } from '@/shared/records/list'
+import type { FrameRecord, ListResult } from '@/shared/records/list'
 
 const NOTES_FILE = 'notes.json'
 /** A batch closes this long after its last event. */
@@ -300,4 +300,41 @@ export function placedRefs(
           .map((frame) => frame.ref),
       ),
   )
+}
+
+/**
+ * The frames hugging their height whose list of linked widths differs
+ * between two scans, as a `frame resize --widths` leaves one. That write
+ * touches `layout.json` alone, which reloads nothing, so a width it adds is
+ * measured here or holds its stand-in height until the frame file is next
+ * written. A frame absent from `previous` is `placedRefs`'s to name.
+ */
+export function relistedRefs(previous: ListResult, next: ListResult): string[] {
+  const before = new Map(
+    previous.projects.flatMap((project) =>
+      project.pages.flatMap((page) =>
+        page.frames.map((frame) => [frame.ref, listed(frame)] as const),
+      ),
+    ),
+  )
+  return next.projects.flatMap((project) =>
+    project.pages.flatMap((page) =>
+      page.frames
+        .filter((frame) => {
+          const was = before.get(frame.ref)
+          return (
+            frame.placed &&
+            frame.hugHeight &&
+            frame.widths.length > 0 &&
+            was !== undefined &&
+            was !== listed(frame)
+          )
+        })
+        .map((frame) => frame.ref),
+    ),
+  )
+}
+
+function listed(frame: FrameRecord): string {
+  return frame.widths.map(({ width }) => width).join(',')
 }

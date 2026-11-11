@@ -12,7 +12,8 @@ import {
   SHELL_TEST_TIMEOUT_MS,
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
-import { measureContent } from './fit'
+import { readFrame } from '../board/frames'
+import { fitFrame, measureContent } from './fit'
 import { type FrameHost, startFrameHost } from './host'
 
 const shell = await launchShellOrNull()
@@ -223,6 +224,72 @@ describe.skipIf(shell === null)(
       const size = await measure('skeleton', true)
 
       expect([size.empty, size.width]).toEqual([true, 1440])
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
+  'fitFrame',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let host: FrameHost
+    let board: TempBoard
+    let faces: string
+
+    beforeAll(async () => {
+      browser = requireShell(shell)
+      faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
+      board = writeBoard({
+        'studio/home/hero.html': page(
+          '<div class="block"></div>',
+          '.block { height: 400px } @media (max-width: 500px) { .block { height: 1200px } }',
+        ),
+        'studio/home/layout.json': JSON.stringify({
+          version: 1,
+          frames: {
+            hero: {
+              x: 0,
+              y: 0,
+              width: 1440,
+              height: 900,
+              order: 0,
+              widths: [
+                { width: 834, height: 1194 },
+                { width: 390, height: 844 },
+              ],
+            },
+          },
+        }),
+      })
+      host = await startFrameHost({ root: board.root, facesDir: faces })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterAll(async () => {
+      await host.close()
+      board.cleanup()
+      rmSync(faces, { recursive: true, force: true })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    it('writes each linked width the height its content reads there', async () => {
+      const frame = await readFrame(board.root, 'studio/home/hero', {
+        cwd: board.root,
+      })
+
+      const fit = await fitFrame(browser, {
+        root: board.root,
+        cwd: board.root,
+        baseUrl: host.url,
+        frame,
+      })
+
+      expect([fit.frame.box.height, fit.frame.widths]).toEqual([
+        400,
+        [
+          { width: 834, height: 400 },
+          { width: 390, height: 1200 },
+        ],
+      ])
     })
   },
 )

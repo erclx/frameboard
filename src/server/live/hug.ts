@@ -1,24 +1,36 @@
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { setMeasured } from '@/server/board/frames'
+import { type MeasuredSize, setMeasured } from '@/server/board/frames'
 import { LAYOUT_FILE } from '@/server/board/scan'
 import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
+import { referenceHeight } from '@/shared/frame-sizes'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
-/** Measures one frame's content on the warm browser, at its box. */
-export type MeasureFrame = (frame: FrameRecord) => Promise<ContentSize>
+/**
+ * Measures one frame's content on the warm browser, at its box, or at `box`
+ * for a linked width, whose width it holds.
+ */
+export type MeasureFrame = (
+  frame: FrameRecord,
+  box?: { width: number; height: number },
+) => Promise<ContentSize>
 
 export interface Hug {
   /**
-   * Measures every hugging frame among `refs` and writes the sizes that
-   * moved, answering whether `board` now trails a stored size, so the batch
-   * rescans before it sends the board. That covers a size `later` stored
-   * after the scan, which leaves this call nothing to write.
+   * Measures every hugging frame among `refs` at its own box and writes the
+   * sizes that moved, answering whether `board` now trails a stored size, so
+   * the batch rescans before it sends the board. That covers a size `later`
+   * stored after the scan, which leaves this call nothing to write. The
+   * linked widths of those frames are queued on `later`'s queue, so the
+   * board waits on one measure per frame.
    */
   now: (board: ListResult, refs: readonly string[]) => Promise<boolean>
-  /** Measures and writes the same way on a queue of its own, holding no batch. */
+  /**
+   * Measures and writes the same way, linked widths included, on a queue of
+   * its own, holding no batch.
+   */
   later: (board: ListResult, refs: readonly string[]) => void
   /** Drops what `later` queued and lands no write after it. */
   close: () => void
@@ -45,14 +57,18 @@ export function createHug({
   const run = async (
     board: ListResult,
     refs: readonly string[],
+    parts: Parts,
   ): Promise<boolean> => {
-    const pages = new Map<string, { frame: FrameRecord; size: ContentSize }[]>()
+    const pages = new Map<
+      string,
+      { frame: FrameRecord; size: MeasuredSize }[]
+    >()
     let stale = false
-    for (const frame of huggingFrames(board, refs)) {
+    for (const frame of huggingFrames(board, refs, parts)) {
       if (closed) return false
-      let size: ContentSize
+      let size: MeasuredSize
       try {
-        size = await measure(frame)
+        size = await measureParts(measure, frame, parts)
       } catch (error) {
         if (
           error instanceof FrameboardError &&
@@ -62,10 +78,14 @@ export function createHug({
         }
         continue
       }
-      if (size.empty) continue
+      if (Object.keys(size).length === 0) continue
       stale ||=
-        (frame.hugWidth && size.width !== frame.box.width) ||
-        (frame.hugHeight && size.height !== frame.box.height)
+        (frame.hugWidth &&
+          size.width !== undefined &&
+          size.width !== frame.box.width) ||
+        (frame.hugHeight &&
+          size.height !== undefined &&
+          size.height !== frame.box.height)
       const page = `${frame.project}/${frame.page}`
       pages.set(page, [...(pages.get(page) ?? []), { frame, size }])
     }
@@ -96,21 +116,65 @@ export function createHug({
     return written || stale
   }
 
+  const enqueue = (
+    board: ListResult,
+    refs: readonly string[],
+    parts: Parts,
+  ) => {
+    if (closed || huggingFrames(board, refs, parts).length === 0) return
+    queue = queue.then(() => run(board, refs, parts)).catch(() => {})
+  }
+
   return {
-    now: (board, refs) => run(board, refs),
-    later: (board, refs) => {
-      if (closed || huggingFrames(board, refs).length === 0) return
-      queue = queue.then(() => run(board, refs)).catch(() => {})
+    now: async (board, refs) => {
+      const stale = await run(board, refs, 'own')
+      enqueue(board, refs, 'linked')
+      return stale
     },
+    later: (board, refs) => enqueue(board, refs, 'all'),
     close: () => {
       closed = true
     },
   }
 }
 
+/** Which boxes a run measures: the frame's own, its linked widths, or both. */
+type Parts = 'own' | 'linked' | 'all'
+
+/**
+ * Reads the parts a run asks for, a linked width only on a frame hugging its
+ * height. An empty body at the frame's own box, or at every linked width,
+ * reads nothing for that part, so the box it stands in for holds.
+ */
+async function measureParts(
+  measure: MeasureFrame,
+  frame: FrameRecord,
+  parts: Parts,
+): Promise<MeasuredSize> {
+  const size: MeasuredSize = {}
+  if (parts !== 'linked') {
+    const own = await measure(frame)
+    if (!own.empty)
+      Object.assign(size, { width: own.width, height: own.height })
+  }
+  if (parts !== 'own' && frame.hugHeight && frame.widths.length > 0) {
+    const widths = []
+    for (const { width } of frame.widths) {
+      const linked = await measure(frame, {
+        width,
+        height: referenceHeight(width),
+      })
+      if (!linked.empty) widths.push({ width, height: linked.height })
+    }
+    if (widths.length > 0) size.widths = widths
+  }
+  return size
+}
+
 function huggingFrames(
   board: ListResult,
   refs: readonly string[],
+  parts: Parts,
 ): FrameRecord[] {
   const wanted = new Set(refs)
   return board.projects
@@ -120,7 +184,9 @@ function huggingFrames(
       (frame) =>
         wanted.has(frame.ref) &&
         frame.placed &&
-        (frame.hugWidth || frame.hugHeight),
+        (parts === 'linked'
+          ? frame.hugHeight && frame.widths.length > 0
+          : frame.hugWidth || frame.hugHeight),
     )
 }
 

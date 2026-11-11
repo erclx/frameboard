@@ -1,11 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { FRAME_GAP } from '@/shared/frame-sizes'
 import type { LayoutEntry } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { freeFrameName, readFrame, withLayouts } from './frames'
+import { freeFrameName, pastExtent, readFrame, withLayouts } from './frames'
 import type { JournalOptions } from './journal'
 import { type RefOptions, resolveFrameRef, resolvePageRef } from './refs'
 import { FRAME_EXTENSION, type Placement } from './scan'
@@ -78,7 +77,7 @@ export async function pasteFrames(
     const { box } = frame.placement
     if (at) return { ...box, x: at.x + box.x - left, y: at.y + box.y - top }
     return frame.page === target.path
-      ? { ...box, x: box.x + box.width + FRAME_GAP }
+      ? { ...box, x: pastExtent(frame.placement) }
       : box
   }
   const names = await withLayouts(

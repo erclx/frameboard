@@ -33,6 +33,14 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
 
+### `src/client/board/widths/`
+
+Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn after the frame in a row past its drawn box, so a drag carries them along.
+
+- A linked box is a view and never a frame. `frameAt` and `framesIn` answer the frame for a point or marquee on one, and `pickAt` reads the frame's own box alone, so no element picks inside it
+- It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
+- Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
+
 ### `src/client/board/play/`
 
 Owns Play's own state and surfaces, being the frame entered, the shield, and what the banner can say about a page's reach.

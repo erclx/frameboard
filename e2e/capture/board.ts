@@ -590,6 +590,20 @@ async function rawIndigoHero(page: Page): Promise<void> {
 }
 
 /**
+ * Lists the tablet width on the `about` frame, so the board draws one linked
+ * box beside it, and puts the layout back once the capture page closes so no
+ * later case shows it.
+ */
+async function aboutAtTabletWidth(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const original = readFileSync(path, 'utf8')
+  const layout = JSON.parse(original)
+  layout.frames.about.widths = [{ width: 834, height: 1194 }]
+  writeFileSync(path, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
  * Hands the board an empty change log on every `changes` message, since
  * `rawIndigoHero` writes the hero as an outside write the change tracker
  * would otherwise raise as an agent's, racing the shot.
@@ -2526,6 +2540,20 @@ const CASES: CaptureCase[] = [
       evidence: true,
       mask: [AVATAR],
       setup: both(browserSwept, chosenTheme(theme)),
+    },
+    {
+      section: 'linked-widths',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: both(
+        aboutAtTabletWidth,
+        browserSwept,
+        chosenTheme(theme),
+        readyWhen('[data-linked-width="834"] iframe'),
+      ),
     },
   ]),
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => {

@@ -22,12 +22,7 @@ import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
-import {
-  frameThemeUrl,
-  LOOK_MARKER,
-  setFrameTheme,
-  type Theme,
-} from '@/shared/theme'
+import { frameThemeUrl, setFrameTheme, type Theme } from '@/shared/theme'
 
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
@@ -37,6 +32,7 @@ import { FindingsList } from './findings-list'
 import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
 import { useDrawnBox, usePendingBox } from './geometry/write'
+import { useHiddenScrollbar } from './hidden-scrollbar'
 import { useMode } from './mode'
 import { useEntered } from './play/entered'
 import { measureHeight } from './preview/height'
@@ -50,13 +46,6 @@ import {
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
-
-/**
- * Hides a scroll frame's own scrollbar, which takes layout width in desktop
- * Chrome on Linux, so the board lays it out at the width capture and the
- * checks do, their headless browser drawing none.
- */
-const HIDDEN_SCROLLBAR = 'html { scrollbar-width: none }'
 
 interface FrameProps {
   frame: FrameRecord
@@ -190,28 +179,7 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', measure)
   }, [live, previewWidth, hugHeight, frame.ref])
 
-  // Marked as the look injection is, so the element index skips it, and put
-  // last in the head, so the look style stays the first marked one.
-  const { scroll } = frame
-  useEffect(() => {
-    const element = iframe.current
-    if (!live || !element || !scroll) return
-    let injected: HTMLStyleElement | null = null
-    const hide = () => {
-      const document = element.contentDocument
-      if (!document?.head || injected?.ownerDocument === document) return
-      injected = document.createElement('style')
-      injected.setAttribute(LOOK_MARKER, '')
-      injected.textContent = HIDDEN_SCROLLBAR
-      document.head.append(injected)
-    }
-    hide()
-    element.addEventListener('load', hide)
-    return () => {
-      element.removeEventListener('load', hide)
-      injected?.remove()
-    }
-  }, [live, scroll])
+  useHiddenScrollbar(iframe, live, frame.scroll)
 
   useEffect(() => {
     const element = iframe.current

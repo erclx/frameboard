@@ -46,7 +46,7 @@ import type { MeasureFrame } from '@/server/live/hug'
 import { writeStarterSheet } from '@/server/look/starter'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
+import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import { nextFreeName } from '@/shared/names'
 import {
   DEFAULT_LOOK,
@@ -392,9 +392,23 @@ export function structureRoutes(
     const frame = await readFrame(root, body.ref, { cwd })
     if (frame.scroll) throw fitScrollError(frame.ref)
     const measured = await measure(frame)
+    // A fit turns height hugging on with no write to the frame file, which
+    // queues no hug measure, so each linked width is measured here too.
+    const widths: { width: number; height: number }[] = []
+    for (const { width } of frame.widths) {
+      const linked = await measure(frame, {
+        width,
+        height: referenceHeight(width),
+      })
+      widths.push({ width, height: linked.height })
+    }
     const fit = await recorded(
       (journal) =>
-        fitHeight(root, frame.ref, measured.height, { cwd, journal }),
+        fitHeight(root, frame.ref, measured.height, {
+          cwd,
+          journal,
+          widths,
+        }),
       (record) => onFrames([record.ref]),
     )
     return c.json({

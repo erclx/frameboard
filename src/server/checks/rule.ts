@@ -44,10 +44,17 @@ export function findingFor(docs: readonly RuleDoc[]) {
   }
 }
 
-/** One finding as `path:line:column  rule  message`, as `check` and the hook print it. */
+/**
+ * One finding as `path:line:column  rule  message`, as `check` and the hook
+ * print it, the path taking `@<width>` for one read at a linked width.
+ */
 export function formatFinding(finding: Finding): string {
+  const path =
+    finding.width === undefined
+      ? finding.path
+      : `${finding.path}@${finding.width}`
   const at = finding.location
-    ? `${finding.path}:${finding.location.line}:${finding.location.column}`
-    : finding.path
+    ? `${path}:${finding.location.line}:${finding.location.column}`
+    : path
   return `${at}  ${finding.rule}  ${finding.message}`
 }

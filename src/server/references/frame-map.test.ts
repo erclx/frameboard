@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { FrameboardError } from '@/shared/errors'
 
-import { missingFrames, parseFrameMap } from './frame-map'
+import {
+  frameTargets,
+  mappedTarget,
+  missingFrames,
+  parseFrameMap,
+} from './frame-map'
 
 function refusal(json: string): FrameboardError {
   try {
@@ -97,6 +102,28 @@ describe('parseFrameMap', () => {
   })
 })
 
+describe('parseFrameMap with a width', () => {
+  it('should read a board frame at a width', () => {
+    const json = JSON.stringify({
+      frames: { 'home/grid-tablet': 'design/07-home/arm-2@834' },
+    })
+
+    expect(parseFrameMap(json)).toEqual(
+      new Map([['home/grid-tablet', 'design/07-home/arm-2@834']]),
+    )
+  })
+
+  it.each([
+    'design/07-home/arm-2@',
+    'design/07-home/arm-2@0',
+    'design/07-home/arm-2@wide',
+  ])('should refuse %s', (ref) => {
+    const json = JSON.stringify({ frames: { 'home/grid': ref } })
+
+    expect(refusal(json).code).toBe('frame-map-invalid')
+  })
+})
+
 describe('missingFrames', () => {
   it('should name each mapped board frame the board does not hold', () => {
     const map = new Map([
@@ -107,5 +134,36 @@ describe('missingFrames', () => {
     expect(missingFrames(map, new Set(['design/07-home/arm-2']))).toEqual([
       'design/07-home/home-list',
     ])
+  })
+
+  it('should name a width the frame does not show at', () => {
+    const map = new Map([
+      ['home/grid-tablet', 'design/07-home/arm-2@834'],
+      ['home/grid-phone', 'design/07-home/arm-2@375'],
+    ])
+    const board = new Set(
+      frameTargets({
+        ref: 'design/07-home/arm-2',
+        box: { width: 1440 },
+        widths: [{ width: 834 }, { width: 390 }],
+      }),
+    )
+
+    expect(missingFrames(map, board)).toEqual(['design/07-home/arm-2@375'])
+  })
+})
+
+describe('mappedTarget', () => {
+  it('should read a value with no width as the frame alone', () => {
+    expect(mappedTarget('design/07-home/arm-2')).toEqual({
+      ref: 'design/07-home/arm-2',
+    })
+  })
+
+  it('should read the width after @', () => {
+    expect(mappedTarget('design/07-home/arm-2@834')).toEqual({
+      ref: 'design/07-home/arm-2',
+      width: 834,
+    })
   })
 })

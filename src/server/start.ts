@@ -48,6 +48,7 @@ import {
 } from './live/hug'
 import { openBoard } from './live/open-board'
 import {
+  acrossWidths,
   createRenderedFindings,
   type RenderedFindings,
 } from './live/rendered-findings'
@@ -56,6 +57,7 @@ import {
   type BoardWatcher,
   type MovedFolder,
   placedRefs,
+  relistedRefs,
   reloadRefs,
   unmovedRefs,
   watchBoard,
@@ -342,18 +344,21 @@ async function listen({
   await thumbnails.empty()
   const rendered = createRenderedFindings({
     check: async (frame) => {
-      const list = await checkRendered(await browser.get(), {
-        baseUrl: baseUrl(),
-        root,
-        frame: {
-          ref: frame.ref,
-          path: boardPath(root, frame.path),
-          box: { width: frame.box.width, height: frame.box.height },
-          scroll: frame.scroll,
-          hugHeight: frame.hugHeight,
-        },
-        config: readConfig(root, frame.project),
-      })
+      const list = await acrossWidths(frame, async (box) =>
+        checkRendered(await browser.get(), {
+          baseUrl: baseUrl(),
+          root,
+          frame: {
+            ref: frame.ref,
+            path: boardPath(root, frame.path),
+            box,
+            scroll: frame.scroll,
+            hugHeight: frame.hugHeight,
+          },
+          config: readConfig(root, frame.project),
+        }),
+      )
+      if (list === null) return null
       // A file written since the scan was read at the box from before the
       // write, which a hugging frame is about to leave, so that write's batch
       // checks it again instead.
@@ -368,12 +373,12 @@ async function listen({
       }
     },
   })
-  const measure: MeasureFrame = async (frame) =>
+  const measure: MeasureFrame = async (frame, box) =>
     measureContent(await browser.get(), {
       baseUrl: baseUrl(),
       ref: frame.ref,
-      box: frame.box,
-      hugWidth: frame.hugWidth,
+      box: box ?? frame.box,
+      hugWidth: box === undefined && frame.hugWidth,
       fonts: 'wait',
     })
   const hug = createHug({ root, measure })
@@ -599,6 +604,7 @@ async function pushBatch(
   let board
   let own: string[]
   let placed: string[]
+  let relisted: string[] = []
   try {
     // A reserved frame's file lands in its box ahead of the scan, so the
     // board first sees it there and a hugging frame measures from it.
@@ -612,6 +618,9 @@ async function pushBatch(
     placed = previous
       ? placedRefs(previous, board, paths).filter((ref) => !own.includes(ref))
       : []
+    // A frame given new linked widths changed only `layout.json` too, and
+    // its widths are measured after the push, as `hug.now` queues them.
+    relisted = previous ? relistedRefs(previous, board) : []
     // A frame its own file reloaded is measured first, so the board never
     // shows it at its old size, and the write's own batch reloads nothing.
     if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
@@ -642,7 +651,9 @@ async function pushBatch(
   // measured after the push rather than holding it.
   hug.later(
     board,
-    refs.filter((ref) => !own.includes(ref) && !placed.includes(ref)),
+    [...new Set([...refs, ...relisted])].filter(
+      (ref) => !own.includes(ref) && !placed.includes(ref),
+    ),
   )
   if (refs.length > 0) {
     const reloads = unmovedRefs(refs, board, moved(), last)

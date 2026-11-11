@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import type { Browser } from 'playwright-core'
 
 import { FrameboardError } from '@/shared/errors'
+import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
@@ -40,15 +41,18 @@ const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 /**
  * The file name of one image, `<name>.<theme>.png` at 1x so a path an agent
  * saved stays true, and `<name>.<theme>@<n>x.png` at any other scale. A shot
- * scrolled down takes `.scroll-<px>` after the name, the offset asked for.
+ * scrolled down takes `.scroll-<px>` after the name, the offset asked for,
+ * and a linked width takes `@<width>` ahead of both.
  */
 function imageName(
   name: string,
   theme: Theme,
   scale: number,
   scroll?: number,
+  width?: number,
 ): string {
-  const stem = scroll === undefined ? name : `${name}.scroll-${scroll}`
+  const named = width === undefined ? name : `${name}@${width}`
+  const stem = scroll === undefined ? named : `${named}.scroll-${scroll}`
   return scale === 1 ? `${stem}.${theme}.png` : `${stem}.${theme}@${scale}x.png`
 }
 
@@ -59,12 +63,13 @@ export function frameImagePath(
   theme: Theme,
   scale = 1,
   scroll?: number,
+  width?: number,
 ): string {
   return join(
     out,
     frame.project,
     frame.page,
-    imageName(frame.name, theme, scale, scroll),
+    imageName(frame.name, theme, scale, scroll, width),
   )
 }
 
@@ -81,17 +86,21 @@ export function compositeImagePath(
 /**
  * The composite's size and the shift placing each frame in it, so the
  * leftmost and topmost frames sit one margin in and one margin is left past
- * the far edges. Refuses `capture-too-large` past Chromium's screenshot limit.
+ * the far edges, each frame's linked widths included. Refuses
+ * `capture-too-large` past Chromium's screenshot limit.
  */
 export function compositeBounds(
   page: CompositePage,
-  frames: Pick<FrameRecord, 'box'>[],
+  frames: (Pick<FrameRecord, 'box'> & Partial<Pick<FrameRecord, 'widths'>>)[],
   scale = 1,
 ): { width: number; height: number; dx: number; dy: number } {
-  const left = Math.min(...frames.map(({ box }) => box.x))
-  const top = Math.min(...frames.map(({ box }) => box.y))
-  const right = Math.max(...frames.map(({ box }) => box.x + box.width))
-  const bottom = Math.max(...frames.map(({ box }) => box.y + box.height))
+  const extents = frames.map(({ box, widths }) =>
+    drawnExtent(box, widths ?? []),
+  )
+  const left = Math.min(...extents.map((box) => box.x))
+  const top = Math.min(...extents.map((box) => box.y))
+  const right = Math.max(...extents.map((box) => box.x + box.width))
+  const bottom = Math.max(...extents.map((box) => box.y + box.height))
   const width = right - left + 2 * COMPOSITE_MARGIN
   const height = bottom - top + 2 * COMPOSITE_MARGIN
   if (
@@ -114,10 +123,12 @@ export function compositeBounds(
 }
 
 /**
- * Captures each frame in each theme at its layout size times `scale`, one PNG apiece. Every
- * image renders before any is written, so a refusal on one frame leaves no
- * half-written set an agent could read as current. A `scroll` offset shoots
- * each frame that far down, clamped to the page's end.
+ * Captures each frame in each theme at its layout size times `scale`, one PNG
+ * apiece, and again at each linked width it lists, at the height that width
+ * holds. Every image renders before any is written, so a refusal on one frame
+ * leaves no half-written set an agent could read as current. A `scroll`
+ * offset shoots each view that far down, clamped to the page's end. `width`
+ * shoots each frame at that one width alone, its own or a linked one.
  */
 export async function captureFrameImages(
   browser: Browser,
@@ -128,6 +139,7 @@ export async function captureFrameImages(
     out,
     scale = 1,
     scroll,
+    width,
   }: {
     baseUrl: string
     frames: FrameRecord[]
@@ -135,32 +147,49 @@ export async function captureFrameImages(
     out: string
     scale?: number
     scroll?: number
+    width?: number
   },
 ): Promise<CapturedImage[]> {
   const rendered: Rendered[] = []
   for (const frame of frames) {
-    for (const theme of themes) {
-      const shot = await renderFrame(
-        browser,
-        baseUrl,
-        frame,
-        theme,
-        scale,
-        scroll,
-      )
-      rendered.push({
-        ref: frame.ref,
-        theme,
-        path: frameImagePath(out, frame, theme, scale, scroll),
-        width: frame.box.width,
-        height: frame.box.height,
-        scale,
-        ...(shot.scrollY === undefined ? {} : { scrollY: shot.scrollY }),
-        bytes: shot.bytes,
-      })
+    for (const view of viewsOf(frame, width)) {
+      for (const theme of themes) {
+        const shot = await renderFrame(
+          browser,
+          baseUrl,
+          frame,
+          view,
+          theme,
+          scale,
+          scroll,
+        )
+        const linked = view.width === frame.box.width ? undefined : view.width
+        rendered.push({
+          ref: frame.ref,
+          theme,
+          path: frameImagePath(out, frame, theme, scale, scroll, linked),
+          width: view.width,
+          height: view.height,
+          scale,
+          ...(shot.scrollY === undefined ? {} : { scrollY: shot.scrollY }),
+          bytes: shot.bytes,
+        })
+      }
     }
   }
   return writeImages(rendered)
+}
+
+/** The boxes a frame shows at, its own first, or the one `width` names. */
+function viewsOf(
+  frame: FrameRecord,
+  width: number | undefined,
+): { width: number; height: number }[] {
+  const own = { width: frame.box.width, height: frame.box.height }
+  const views = [own, ...frame.widths]
+  return width === undefined
+    ? views
+    : views.filter((view) => view.width === width)
 }
 
 /**
@@ -191,10 +220,19 @@ export async function captureComposite(
   for (const theme of themes) {
     const tiles: string[] = []
     for (const frame of frames) {
-      const { bytes } = await renderFrame(browser, baseUrl, frame, theme, scale)
-      tiles.push(
-        `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${frame.box.x + bounds.dx}px;top:${frame.box.y + bounds.dy}px;width:${frame.box.width}px;height:${frame.box.height}px">`,
-      )
+      for (const box of [frame.box, ...linkedBoxes(frame.box, frame.widths)]) {
+        const { bytes } = await renderFrame(
+          browser,
+          baseUrl,
+          frame,
+          box,
+          theme,
+          scale,
+        )
+        tiles.push(
+          `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${box.x + bounds.dx}px;top:${box.y + bounds.dy}px;width:${box.width}px;height:${box.height}px">`,
+        )
+      }
     }
     rendered.push({
       ref: page.ref,
@@ -214,11 +252,12 @@ async function renderFrame(
   browser: Browser,
   baseUrl: string,
   frame: FrameRecord,
+  view: { width: number; height: number },
   theme: Theme,
   scale: number,
   scroll?: number,
 ): Promise<{ bytes: Buffer; scrollY?: number }> {
-  const box = { width: frame.box.width, height: frame.box.height }
+  const box = { width: view.width, height: view.height }
   assertScreenshotFits(frame.ref, box, scale)
   const opened = await openFrame(browser, {
     baseUrl,

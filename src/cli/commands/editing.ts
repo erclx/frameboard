@@ -19,6 +19,7 @@ import {
   FRAME_SIZE_NAMES,
   FRAME_SIZES,
 } from '@/shared/frame-sizes'
+import { drawnExtent } from '@/shared/frame-widths'
 import type { Claim } from '@/shared/records/claims'
 
 import {
@@ -256,7 +257,7 @@ async function reservationsOf(
   return reservations
 }
 
-/** Where a new row starts on a frame's page, past its frames and reserved boxes. */
+/** Where a new row starts on a frame's page, past its frames' drawn rows and reserved boxes. */
 async function rightOf(
   root: string,
   frame: ResolvedRef,
@@ -265,7 +266,7 @@ async function rightOf(
   const page = await scanPage(root, frame.project, frame.page, 0)
   const prefix = `${frame.project}/${frame.page}/`
   const boxes: Box[] = [
-    ...page.frames.map((each) => each.box),
+    ...page.frames.map((each) => drawnExtent(each.box, each.widths)),
     ...live.flatMap((each) =>
       each.box && each.frame.startsWith(prefix) ? [each.box] : [],
     ),

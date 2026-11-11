@@ -42,6 +42,27 @@ describe('paste', () => {
     expect(file('webapp/home/hero-2.html')).toBe(file('webapp/home/hero.html'))
   })
 
+  it('pastes onto its own page past the linked widths the source draws, carrying them', async () => {
+    const page = JSON.parse(file('webapp/home/layout.json'))
+    page.frames.hero.widths = [{ width: 390, height: 844 }]
+    writeFileSync(
+      join(board.root, 'webapp/home/layout.json'),
+      JSON.stringify(page),
+    )
+    const held = await holdFrames(board.root, ['webapp/home/hero'], {
+      cwd: board.root,
+    })
+
+    const [pasted] = await pasteFrames(board.root, 'webapp/home', held, {
+      cwd: board.root,
+    })
+
+    expect(pasted).toMatchObject({
+      box: { x: 1990, y: 0 },
+      widths: [{ width: 390, height: 844 }],
+    })
+  })
+
   it("pastes into another project's page at the source's box, on top", async () => {
     const held = await holdFrames(board.root, ['webapp/home/about'], {
       cwd: board.root,

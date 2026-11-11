@@ -38,6 +38,18 @@ describe('frameAt', () => {
     expect(frameAt([BACK], { x: 10, y: -15 }, 1)?.name).toBe('back')
   })
 
+  it('answers the frame for a point on a linked width it draws', () => {
+    const linked = { ...BACK, widths: [{ width: 200, height: 500 }] }
+
+    expect(frameAt([linked], { x: 500, y: 450 }, 1)?.name).toBe('back')
+  })
+
+  it('answers no frame in the gap before its linked width', () => {
+    const linked = { ...BACK, widths: [{ width: 200, height: 500 }] }
+
+    expect(frameAt([linked], { x: 440, y: 100 }, 1)).toBeNull()
+  })
+
   it('keeps the strip its screen height when zoomed out', () => {
     expect(frameAt([BACK], { x: 10, y: -60 }, 0.25)?.name).toBe('back')
   })
@@ -119,6 +131,19 @@ describe('framesIn', () => {
     })
 
     expect(touched.map((frame) => frame.name)).toEqual(['back', 'front'])
+  })
+
+  it('answers a frame whose linked width alone the rectangle touches', () => {
+    const linked = { ...BACK, widths: [{ width: 200, height: 500 }] }
+
+    const touched = framesIn([linked], {
+      x: 550,
+      y: 400,
+      width: 20,
+      height: 20,
+    })
+
+    expect(touched.map((frame) => frame.name)).toEqual(['back'])
   })
 
   it('answers nothing for a rectangle over empty canvas', () => {

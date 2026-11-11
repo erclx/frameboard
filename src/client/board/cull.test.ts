@@ -19,6 +19,21 @@ describe('mountedRefs', () => {
     expect([...refs]).toEqual(['in'])
   })
 
+  it('keeps a frame whose linked width alone meets the view', () => {
+    const refs = mountedRefs(
+      [
+        {
+          ...frameAt('row', -3000, 0),
+          widths: [{ width: 2000, height: 100 }],
+        },
+      ],
+      { x: 0, y: 0, k: 1 },
+      VIEWPORT,
+    )
+
+    expect([...refs]).toEqual(['row'])
+  })
+
   it('keeps a frame within one viewport past the right edge', () => {
     const refs = mountedRefs(
       [frameAt('near', 1950, 0)],
