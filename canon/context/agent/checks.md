@@ -34,8 +34,9 @@ The markup rules read what parse5 recovered from, since a browser recovers from 
 
 The custom property rule reads declarations rather than the tree.
 
-- `unknown-token` reports a `var()` with no fallback that no token sheet, frame sheet, or style attribute declares, leaving a token sheet's own references to the board
-- A property a script sets reads as unknown to `unknown-token`, which a fallback silences
+- `unknown-token` reports a `var()` with no fallback that no token sheet, frame sheet, style attribute, or script write declares, leaving a token sheet's own references to the board
+- `unknown-token` counts a name an inline `<script>` or a local `src` file in the board writes through `setProperty('--name', …)` or a `--name:` string
+- A name a script builds at runtime or only reads still reports to `unknown-token`, which a fallback silences
 - `unknown-token` skips a linked sheet's rule matching no element in the frame, so a site sheet's other pages stay quiet. The frame's own `<style>` keeps reporting its theme and state rules
 - `parseSheet` blanks a declaration postcss reads as an unknown word and cuts the sheet at any other break, so `unknown-token` and `dropped-declaration` read every declaration a browser keeps
 
