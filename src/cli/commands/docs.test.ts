@@ -155,6 +155,7 @@ describe('docs', () => {
       'scrollbar',
       'viewport',
       'min-font-size',
+      'min-contrast',
       'dropped-declaration',
     ])
   })
@@ -166,6 +167,17 @@ describe('docs', () => {
       expect.objectContaining({
         id: 'min-font-size',
         configKey: 'minFontSize',
+      }),
+    )
+  })
+
+  it('names the minContrast key that turns on the contrast rule', async () => {
+    const { checks } = await docs()
+
+    expect(checks.rules).toContainEqual(
+      expect.objectContaining({
+        id: 'min-contrast',
+        configKey: 'minContrast',
       }),
     )
   })
