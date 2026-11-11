@@ -102,24 +102,18 @@ export async function claim(
       ...(current?.box ? { drawingAt: now.toISOString() } : {}),
     }
     const set = current?.set
-    return {
-      ...file,
-      claims: [
-        ...live
-          .filter((each) => each !== current)
-          .map((each) =>
-            set !== undefined &&
-            each.set === set &&
-            each.session === fields.session
-              ? { ...each, expiresAt }
-              : each,
-          ),
-        held,
-      ],
-    }
+    // A renewal keeps its place, so a set reads in the order it was named.
+    const renewed = live.map((each) => {
+      if (each === current) return held
+      return set !== undefined &&
+        each.set === set &&
+        each.session === fields.session
+        ? { ...each, expiresAt }
+        : each
+    })
+    return { ...file, claims: current ? renewed : [...renewed, held] }
   })
-  // The change appends the held claim last.
-  return written.claims.at(-1) as Claim
+  return written.claims.find((each) => each.frame === fields.frame) as Claim
 }
 
 /** The reservation a renewal carries over from the claim it renews. */

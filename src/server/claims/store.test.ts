@@ -177,6 +177,20 @@ describe('claims store', () => {
       })
     })
 
+    it('keeps the order the set was named in when one member is claimed again', async () => {
+      await reserveThree()
+
+      await claim(
+        board.root,
+        fieldsFor('sess-a', 'webapp/home/one'),
+        MINUTE_LATER,
+      )
+
+      expect(
+        (await readClaims(board.root, MINUTE_LATER)).map((each) => each.frame),
+      ).toEqual(['webapp/home/one', 'webapp/home/two', 'webapp/home/three'])
+    })
+
     it('lets the set lapse together five minutes after its last renewal', async () => {
       await reserveThree()
 
