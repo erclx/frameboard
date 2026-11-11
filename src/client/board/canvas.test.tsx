@@ -211,8 +211,11 @@ describe('Canvas', () => {
       modeStore.setState({ mode: 'play' })
     })
 
-    afterEach(() => {
+    // A drag leaves d3's click swallower on the window until a macrotask
+    // runs, which would eat the next case's entering click.
+    afterEach(async () => {
       leaveFrame()
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('covers every frame with the shield, so the board keeps the wheel', () => {
@@ -280,6 +283,63 @@ describe('Canvas', () => {
       act(() => pressShield(container, middleOf(container, 'a')))
 
       expect(selectionStore.getState().frames).toEqual([])
+    })
+
+    /** The same tree `renderCanvas` draws, so a rerender keeps the canvas mounted. */
+    const tree = (content: PageRecord) => (
+      <div style={{ width: 800, height: 600 }}>
+        <Profiler id="canvas" onRender={() => {}}>
+          <Canvas page={content} reloads={{}} />
+        </Profiler>
+      </div>
+    )
+
+    it('leaves the frame when the page switches', () => {
+      const { container, rerender, queryByText } = renderCanvas(playPage())
+      act(() => pressShield(container, middleOf(container, 'a')))
+
+      rerender(
+        tree(
+          page('studio/other', [
+            frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+          ]),
+        ),
+      )
+
+      expect(queryByText('In frame, Esc to leave')).toBeNull()
+    })
+
+    it('leaves the frame once it stops drawing a live page', () => {
+      const { container, rerender, queryByText } = renderCanvas(
+        page('studio/play', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+          frame('b', { x: 300, y: 0, width: 200, height: 200 }),
+        ]),
+      )
+      act(() => pressShield(container, middleOf(container, 'a')))
+
+      rerender(
+        tree(
+          page('studio/play', [
+            frame(
+              'a',
+              { x: 0, y: 0, width: 200, height: 200 },
+              { hidden: true },
+            ),
+            frame('b', { x: 300, y: 0, width: 200, height: 200 }),
+          ]),
+        ),
+      )
+      rerender(
+        tree(
+          page('studio/play', [
+            frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+            frame('b', { x: 300, y: 0, width: 200, height: 200 }),
+          ]),
+        ),
+      )
+
+      expect(queryByText('In frame, Esc to leave')).toBeNull()
     })
   })
 
