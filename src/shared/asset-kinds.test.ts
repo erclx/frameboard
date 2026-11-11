@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isPlaceableKind } from './asset-kinds'
+import { assetKind, isPlaceableKind } from './asset-kinds'
 
 describe('isPlaceableKind', () => {
   it('takes an image, a GIF, an SVG, and a video', () => {
@@ -20,5 +20,11 @@ describe('isPlaceableKind', () => {
 
   it('refuses a value that is no kind at all', () => {
     expect(isPlaceableKind(undefined)).toBe(false)
+  })
+})
+
+describe('assetKind', () => {
+  it('reads an .m4v file as a video', () => {
+    expect(assetKind('clip.M4V')).toBe('video')
   })
 })

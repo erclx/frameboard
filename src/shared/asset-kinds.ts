@@ -38,6 +38,7 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   mp4: 'video',
   webm: 'video',
   mov: 'video',
+  m4v: 'video',
   mp3: 'audio',
   wav: 'audio',
   ogg: 'audio',
