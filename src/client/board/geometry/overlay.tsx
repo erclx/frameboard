@@ -1,15 +1,22 @@
-import type { FrameRecord } from '@/shared/records/list'
+import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 
-import { usePreviews } from '../preview/store'
+import { keyLabel } from '@/client/actions/keys'
+import { findAction } from '@/client/actions/registry'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
+
+import { stepOrder } from '../frame-order'
 import { useSelection } from '../selection'
 import { boundsOf, type Box } from './box'
-import { OUTLINE, place, screen, sizeLabel } from './draw'
+import { OUTLINE, place, screen } from './draw'
 import type { Corner } from './resize'
-import { useDrawnFrames, usePendingFrames } from './write'
+import { useDrawnFrames } from './write'
 
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
 const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
+
+const NO_SECTIONS: readonly SectionRecord[] = []
 
 /** Above every frame, whose z-index is its stacking order. */
 export const OVERLAY_Z = 1_000_000
@@ -20,28 +27,27 @@ export const CHIP =
 interface OverlayProps {
   /** The page's shown frames, which the selection is drawn from. */
   frames: readonly FrameRecord[]
+  /** The page's sections, bottom first, which order the chip's count as Layers does. */
+  sections?: readonly SectionRecord[]
 }
 
 /**
  * What the board draws over the frames on the canvas layer: the selection's
- * outline, corner handles, and size chip, plus the empty marquee and guide
+ * outline, corner handles, and chip, plus the empty marquee and guide
  * layers a gesture draws into. React draws the selection at rest, and a
  * gesture writes this DOM straight from its handler through `draw.ts`, so a
  * drag renders nothing. Every length that has to keep its screen size
  * divides by `--zoom`, as the frame label does.
  */
-export function SelectionOverlay({ frames }: OverlayProps) {
+export function SelectionOverlay({
+  frames,
+  sections = NO_SECTIONS,
+}: OverlayProps) {
   const selected = useSelection((state) => state.frames)
   const inside = useSelection((state) => Boolean(state.element))
   const chosen = frames.filter((frame) => selected.includes(frame.ref))
   const shown = useDrawnFrames(chosen)
   const bounds = boundsOf(shown.map((frame) => frame.box))
-  // The chip names the size a write starts from, never a previewed width,
-  // which reads as the frame's size when it is only a view. While a chosen
-  // frame is previewed it says so, since the outline then draws another width.
-  const sized = boundsOf(usePendingFrames(chosen).map((frame) => frame.box))
-  const previews = usePreviews()
-  const previewed = chosen.some((frame) => frame.ref in previews)
   return (
     <div
       data-overlay
@@ -52,8 +58,7 @@ export function SelectionOverlay({ frames }: OverlayProps) {
         <Selection
           frames={shown}
           bounds={bounds}
-          size={sized ?? bounds}
-          previewed={previewed}
+          order={stepOrder(frames, sections)}
           inside={inside}
         />
       ) : null}
@@ -77,18 +82,16 @@ export function SelectionOverlay({ frames }: OverlayProps) {
 function Selection({
   frames,
   bounds,
-  size,
-  previewed,
+  order,
   inside,
 }: {
   frames: readonly FrameRecord[]
   bounds: Box
-  /** The bounds the chip names, being the stored or pending boxes. */
-  size: Box
-  /** A chosen frame draws a previewed width, so the chip marks `size` as stored. */
-  previewed: boolean
+  /** The frames a step walks, which place one selected frame. */
+  order: readonly FrameRecord[]
   inside: boolean
 }) {
+  const [only] = frames
   const several = frames.length > 1
   return (
     <div
@@ -128,12 +131,80 @@ function Selection({
           />
         ))}
       </div>
-      <span data-chip hidden={inside} className={CHIP}>
-        {several
-          ? `${frames.length} frames`
-          : `${previewed ? 'Stored ' : ''}${sizeLabel(size)}`}
+      <span
+        data-chip
+        hidden={inside}
+        className={`${CHIP} flex items-center gap-1`}
+      >
+        {only && !several ? (
+          <FrameChip frame={only} order={order} />
+        ) : (
+          `${frames.length} frames`
+        )}
       </span>
       <span data-move-chip hidden className={CHIP} />
     </div>
+  )
+}
+
+/**
+ * One selected frame's name and place in Layers order, with the controls
+ * that step to the previous and next frame and zoom to it. The chip takes no
+ * pointer, so the gestures click a control through `data-label-control`.
+ */
+function FrameChip({
+  frame,
+  order,
+}: {
+  frame: FrameRecord
+  order: readonly FrameRecord[]
+}) {
+  const at = order.findIndex((candidate) => candidate.ref === frame.ref)
+  return (
+    <>
+      <span className="max-w-60 min-w-0 truncate">{frame.name}</span>{' '}
+      {at === -1 ? null : (
+        <span>
+          · {at + 1} of {order.length}
+        </span>
+      )}
+      <span className="-my-0.5 -mr-1 flex">
+        <ChipControl action="frame.previous" label="Previous frame">
+          <ChevronLeft aria-hidden className="size-3" />
+        </ChipControl>
+        <ChipControl action="frame.next" label="Next frame">
+          <ChevronRight aria-hidden className="size-3" />
+        </ChipControl>
+        <ChipControl action="view.zoomToSelection" label="Zoom to selection">
+          <Maximize2 aria-hidden className="size-2.5" />
+        </ChipControl>
+      </span>
+    </>
+  )
+}
+
+/** A chip button running a registered action, named with that action's key. */
+function ChipControl({
+  action,
+  label,
+  children,
+}: {
+  action: string
+  label: string
+  children: ReactNode
+}) {
+  const key = findAction(action)?.keys?.[0]
+  return (
+    <button
+      type="button"
+      data-label-control
+      aria-label={label}
+      aria-keyshortcuts={key ? keyLabel(key) : undefined}
+      title={key ? `${label} ${keyLabel(key)}` : label}
+      onClick={() => findAction(action)?.run()}
+      className="grid size-[18px] place-items-center rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
+    >
+      {children}
+    </button>
   )
 }

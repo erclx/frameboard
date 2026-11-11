@@ -59,8 +59,11 @@ export function drawResize(
     const outline = part(selection, `[data-outline="${CSS.escape(ref)}"]`)
     if (outline) Object.assign(outline.style, px(place(box, bounds)))
   }
-  const chip = part(selection, '[data-chip]')
+  // React owns the resting chip's controls, so the size goes in the drag's own chip.
+  const chip = part(selection, '[data-move-chip]')
   if (chip && Object.keys(boxes).length === 1) {
+    hide(selection, '[data-chip]', true)
+    chip.hidden = false
     chip.textContent = sizeLabel(bounds)
   }
 }

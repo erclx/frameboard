@@ -1529,8 +1529,25 @@ describe('attachGestures', () => {
       canvas.pointer.down(100, 100)
       canvas.pointer.move(60, 80)
 
-      expect(canvas.part('[data-chip]')).toHaveTextContent('240 × 220')
+      expect(canvas.part('[data-move-chip]')).toHaveTextContent('240 × 220')
+      expect(canvas.part('[data-chip]')).not.toBeVisible()
       canvas.pointer.up(60, 80)
+    })
+
+    it('keeps the resting chip and its controls once the drag ends', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      canvas.pointer.down(100, 100)
+      canvas.pointer.move(60, 80)
+      canvas.pointer.up(60, 80)
+
+      expect(canvas.part('[data-move-chip]')).not.toBeVisible()
+      expect(canvas.part('[data-chip]')).toBeVisible()
+      expect(
+        canvas.part('[data-chip] [aria-label="Next frame"]'),
+      ).toBeInTheDocument()
     })
 
     describe('when Esc cancels it', () => {
@@ -1572,7 +1589,8 @@ describe('attachGestures', () => {
           drawn.style.width,
           drawn.style.height,
         ]).toEqual(['100px', '100px', '200px', '200px'])
-        expect(canvas.part('[data-chip]')).toHaveTextContent('200 × 200')
+        expect(canvas.part('[data-move-chip]')).not.toBeVisible()
+        expect(canvas.part('[data-chip]')).toHaveTextContent(LEFT.name)
       })
 
       it('puts back each frame, outline, and pin of several at the press', () => {
