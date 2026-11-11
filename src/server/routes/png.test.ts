@@ -61,6 +61,24 @@ describe('GET /api/frames/png', () => {
     })
   })
 
+  it('answers 422 for a frame whose image did not load', async () => {
+    const response = await get('ref=home/hero&theme=light', async () => {
+      throw new FrameboardError('image-missing', 'No photo.', {
+        ref: 'home/hero',
+        src: 'assets/photo.webp',
+        element: 3,
+      })
+    })
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'image-missing',
+        details: { src: 'assets/photo.webp', element: 3 },
+      },
+    })
+  })
+
   it('answers 503 when no browser launches', async () => {
     const response = await get('ref=home/hero&theme=light', async () => {
       throw new FrameboardError('browser-not-found', 'No browser.')

@@ -21,6 +21,7 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'page-not-found': 404,
   'frame-not-found': 404,
   'font-missing': 422,
+  'image-missing': 422,
   'capture-too-large': 422,
   'clipboard-unsupported': 501,
   'browser-not-found': 503,
