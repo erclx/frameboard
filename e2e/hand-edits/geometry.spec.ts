@@ -141,6 +141,38 @@ test.describe('frame geometry by hand', () => {
     await expect(page.locator(MOBILE)).toHaveAttribute('data-selected', 'true')
   })
 
+  test('Scroll from the Height row, a rail drag scrolling its page, and back to Fixed', async ({
+    page,
+  }) => {
+    writeFileSync(
+      join(board.root, 'studio/home/mobile.html'),
+      '<!doctype html><html><body style="margin:0"><div style="height:3000px">Tall</div></body></html>',
+    )
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const mobile = page.locator(MOBILE)
+    const at = await center(mobile)
+    await page.mouse.click(at.x, at.y)
+
+    await page.getByRole('radio', { name: 'Scroll' }).click()
+    await expect.poll(() => layout().frames.mobile?.scroll).toBe(true)
+
+    const thumb = mobile.locator('[data-rail-thumb]')
+    await expect(thumb).toBeVisible()
+    const from = await center(thumb)
+    await drag(page, from, { x: from.x, y: from.y + 60 })
+    await page.mouse.up()
+    const scrolled = () =>
+      mobile
+        .locator(':scope > iframe')
+        .evaluate((frame: HTMLIFrameElement) => frame.contentWindow?.scrollY)
+    await expect.poll(scrolled).toBeGreaterThan(0)
+    expect(layout().frames.mobile).toMatchObject({ x: 1520, y: 0 })
+
+    await page.getByRole('radio', { name: 'Fixed' }).click()
+    await expect.poll(() => layout().frames.mobile?.scroll).toBe(false)
+  })
+
   test('a locked frame selects and never moves', async ({ page }) => {
     const locked = layout()
     locked.frames.mobile = { ...locked.frames.mobile, locked: true }
