@@ -532,8 +532,9 @@ function claimed(frame: string): (page: Page) => Promise<void> {
 const claimedHero = claimed('webapp/home/hero')
 
 /**
- * Reserves three frames on the settings page as one set, a row of 360 by 240
- * boxes from the origin, which its one hidden frame leaves clear, and claims
+ * Reserves three frames on the settings page as one set, a row of 180 by 200
+ * boxes from the origin that fits the canvas between the panels at 1280,
+ * which its one hidden frame leaves clear, and claims
  * `faq` plainly so it reads drawing and the other two queued. It writes
  * through the claims store, as `claimed` does, under a session of its own,
  * since the previous page's release lands after the next page reserves, and
@@ -549,7 +550,7 @@ async function reservedRow(page: Page): Promise<void> {
     holder,
     ['pricing', 'faq', 'footer'].map((name, index) => ({
       frame: `webapp/settings/${name}`,
-      box: { x: index * 440, y: 0, width: 360, height: 240, hugHeight: true },
+      box: { x: index * 260, y: 0, width: 180, height: 200, hugHeight: true },
     })),
     at,
   )
@@ -2144,7 +2145,17 @@ function menuOn(
           requestAnimationFrame(run),
         )
       },
-      { spot, copy, ready: WRITES_GRANTED, frames: ROW_FRAMES },
+      {
+        spot,
+        copy,
+        // The settings page holds no `about` row, so a reserved spot there
+        // waits on its one frame's lock instead.
+        ready:
+          'reserved' in spot
+            ? 'button[aria-label="Lock profile"]:not([disabled])'
+            : WRITES_GRANTED,
+        frames: ROW_FRAMES,
+      },
     )
   }
 }
@@ -3307,7 +3318,7 @@ const CASES: CaptureCase[] = [
             asWriter,
             listening,
             reservedRow,
-            menuOn({ reserved: 'webapp/settings/footer' }),
+            menuOn({ reserved: 'webapp/settings/pricing' }),
             readyWhen('[data-slot="context-menu-content"]'),
           ),
         ),
