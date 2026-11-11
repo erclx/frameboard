@@ -22,7 +22,7 @@ const ROOT = fileURLToPath(
   new URL('../../../../test/fixtures/boards/checks/', import.meta.url),
 ).replace(/\/$/, '')
 
-const CONFIG: ProjectChecks = { minFontSize: 12 }
+const CONFIG: ProjectChecks = { minFontSize: 12, minContrast: 4.5 }
 
 const shell = await launchShellOrNull()
 
@@ -57,6 +57,7 @@ describe.skipIf(shell === null)(
       ['rules/scrollbar/fail', 'scrollbar', 'warning'],
       ['rules/viewport/fail', 'viewport', 'warning'],
       ['rules/min-font-size/fail', 'min-font-size', 'warning'],
+      ['rules/min-contrast/fail', 'min-contrast', 'warning'],
     ])('reports %s for %s alone, at %s', async (ref, rule, severity) => {
       const findings = await check(ref)
 
@@ -70,6 +71,7 @@ describe.skipIf(shell === null)(
       'rules/scrollbar/pass',
       'rules/viewport/pass',
       'rules/min-font-size/pass',
+      'rules/min-contrast/pass',
     ])('passes %s', async (ref) => {
       expect(await check(ref)).toEqual([])
     })
@@ -82,6 +84,26 @@ describe.skipIf(shell === null)(
 
     it('leaves the minimum font size off without the config', async () => {
       expect(await check('rules/min-font-size/fail', {})).toEqual([])
+    })
+
+    it('leaves the minimum contrast off without the config', async () => {
+      expect(await check('rules/min-contrast/fail', {})).toEqual([])
+    })
+
+    it('names the theme when one theme alone trips a rule', async () => {
+      // Literal text color reads on the light canvas and sinks into the dark one.
+      const findings = await check('rules/theme/fail')
+
+      expect(findings).toMatchObject([
+        { rule: 'min-contrast', message: expect.stringMatching(/^In dark, /) },
+      ])
+    })
+
+    it('holds text to the minimum the project sets', async () => {
+      // The fail frame's lede sits at 3.40:1 in light and 3.35:1 in dark.
+      expect(
+        await check('rules/min-contrast/fail', { minContrast: 3 }),
+      ).toEqual([])
     })
   },
 )
