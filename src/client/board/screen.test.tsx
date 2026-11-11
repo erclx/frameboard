@@ -261,12 +261,14 @@ describe('switching pages', () => {
     const { rerender } = render(boardAt('home'))
     stageFrames()
     const oldest = iframeOf('home')
-
+    // About never stages, so home is still held when contact opens.
     rerender(boardAt('about'))
-    stageFrames()
+    const held = document.querySelector('[data-frame="studio/about/about"]')
+
     rerender(boardAt('contact'))
 
     expect(oldest?.isConnected).toBe(false)
+    expect(held?.isConnected).toBe(true)
   })
 
   it('drops the page left behind when a return reveals a live one', async () => {
