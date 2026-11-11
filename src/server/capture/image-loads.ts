@@ -88,7 +88,7 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
     new Promise((done) => setTimeout(done, timeoutMs)),
   ])
 
-  const unsettled: UnsettledImage[] = []
+  const unsettled: (UnsettledImage & { loaded: boolean })[] = []
   images.forEach(({ index: own, img }, at) => {
     const state = outcomes[at]?.state
     if (state === undefined || state === 'ok') return
@@ -96,7 +96,12 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
       index: own,
       src: img.getAttribute('src') || img.currentSrc,
       state,
+      loaded: img.complete,
     })
   })
+  // A stalled load reads with no time left, so an image still decoding can
+  // be pending beside the one whose request holds the page. That one leads.
   return unsettled
+    .sort((a, b) => Number(a.loaded) - Number(b.loaded))
+    .map(({ index: own, src, state }) => ({ index: own, src, state }))
 }

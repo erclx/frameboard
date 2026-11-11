@@ -1,4 +1,10 @@
 import { mkdtempSync, rmSync } from 'node:fs'
+import {
+  type AddressInfo,
+  createServer,
+  type Server,
+  type Socket,
+} from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -13,7 +19,6 @@ import {
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
-import { settleImages } from './image-loads'
 import { openFrame } from './render'
 
 const SQUARE =
@@ -116,23 +121,50 @@ describe.skipIf(shell === null)(
 )
 
 describe.skipIf(shell === null)(
-  'settleImages on a request that never answers',
+  'openFrame on an image whose request never answers',
   { timeout: SHELL_TEST_TIMEOUT_MS },
   () => {
-    it('refuses image-missing once its time runs out', async () => {
-      const page = await requireShell(shell).newPage()
-      await page.route('**/hang.png', () => {})
-      await page.setContent('<img src="http://127.0.0.1:1/hang.png" alt="">', {
-        waitUntil: 'commit',
+    let host: FrameHost
+    let board: TempBoard
+    let faces: string
+    let silent: Server
+    const held: Socket[] = []
+
+    beforeAll(async () => {
+      // Accepts the image request and never answers, so the load event waits.
+      silent = createServer((socket) => {
+        held.push(socket)
+      })
+      await new Promise<void>((done) => silent.listen(0, '127.0.0.1', done))
+      const { port } = silent.address() as AddressInfo
+      faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
+      board = writeBoard({
+        'studio/home/hang.html': `<p>Hello</p><img src="http://127.0.0.1:${port}/hang.png" alt="">`,
+      })
+      host = await startFrameHost({ root: board.root, facesDir: faces })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterAll(async () => {
+      for (const socket of held) socket.destroy()
+      await new Promise((done) => silent.close(done))
+      await host.close()
+      board.cleanup()
+      rmSync(faces, { recursive: true, force: true })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    it('refuses image-missing for an eager image once the budget runs out', async () => {
+      const opening = openFrame(requireShell(shell), {
+        baseUrl: host.url,
+        ref: 'studio/home/hang',
+        box: BOX,
+        theme: 'light',
+        timeoutMs: 1_500,
       })
 
-      const settling = settleImages(page, 'studio/home/hang', 'require', 200)
-
-      await expect(settling).rejects.toMatchObject({
+      await expect(opening).rejects.toMatchObject({
         code: 'image-missing',
-        details: { src: 'http://127.0.0.1:1/hang.png' },
+        details: { ref: 'studio/home/hang', element: 4 },
       })
-      await page.close()
     })
   },
 )

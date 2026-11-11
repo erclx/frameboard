@@ -27,6 +27,8 @@ export interface OpenFrameOptions {
    * it, for a reading of what the board renders.
    */
   fonts?: 'require' | 'wait'
+  /** The load budget in milliseconds, 10 s unless a test asks for less. */
+  timeoutMs?: number
 }
 
 export interface OpenFrame {
@@ -45,7 +47,15 @@ export interface OpenFrame {
  */
 export async function openFrame(
   browser: Browser,
-  { baseUrl, ref, box, theme, scale = 1, fonts = 'require' }: OpenFrameOptions,
+  {
+    baseUrl,
+    ref,
+    box,
+    theme,
+    scale = 1,
+    fonts = 'require',
+    timeoutMs = LOAD_TIMEOUT_MS,
+  }: OpenFrameOptions,
 ): Promise<OpenFrame> {
   const context = await browser.newContext({
     viewport: { width: box.width, height: box.height },
@@ -53,13 +63,26 @@ export async function openFrame(
     colorScheme: theme,
   })
   const close = () => context.close()
-  const deadline = Date.now() + LOAD_TIMEOUT_MS
+  const deadline = Date.now() + timeoutMs
   try {
     const page = await context.newPage()
     // The frame route's injected script sets the root's theme from the URL.
     await page.goto(new URL(frameThemeUrl(ref, theme), baseUrl).href, {
-      timeout: LOAD_TIMEOUT_MS,
+      timeout: timeoutMs,
+      waitUntil: 'domcontentloaded',
     })
+    // An image whose request hangs holds the load event, so the load wait
+    // runs apart from the navigation and a stall can name the image.
+    const stalled = await page
+      .waitForLoadState('load', { timeout: deadline - Date.now() })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      )
+    if (stalled !== null) {
+      await settleImages(page, ref, fonts, 0)
+      throw stalled
+    }
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (fonts === 'require') await assertFontsPresent(page, ref)
     await settleImages(page, ref, fonts, deadline - Date.now())
