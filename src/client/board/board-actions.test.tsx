@@ -484,6 +484,15 @@ describe('useBoardActions', () => {
       expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
     })
 
+    it('stands aside on a page of one frame, so Tab moves focus', () => {
+      receiveBoard(liveStore, boardOf(pageOf([HERO])))
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
     it('stands aside with nothing selected', () => {
       const board = setup()
       done = board.done

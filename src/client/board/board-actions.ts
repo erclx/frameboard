@@ -103,7 +103,8 @@ function selectedFrames(): FrameRecord[] {
 
 /**
  * The frame a step of `by` lands on from the one selected frame, in Layers
- * order on its page, undefined with no frame, several, or an element selected.
+ * order on its page, undefined with no frame, several, or an element
+ * selected, or no other frame to step to.
  */
 function steppedFrame(by: 1 | -1): FrameRecord | undefined {
   const { page, frames, element } = selectionStore.getState()
@@ -113,9 +114,11 @@ function steppedFrame(by: 1 | -1): FrameRecord | undefined {
     .getState()
     .board?.projects.flatMap((project) => project.pages)
     .find((candidate) => candidate.ref === page)
-  return shown
+  const next = shown
     ? stepFrom(stepOrder(shown.frames, shown.sections), ref, by)
     : undefined
+  // A page of one frame steps onto itself, so Tab keeps moving focus there.
+  return next?.ref === ref ? undefined : next
 }
 
 function boardActions(): Action[] {

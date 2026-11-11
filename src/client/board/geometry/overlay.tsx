@@ -169,12 +169,16 @@ function FrameChip({
         </span>
       )}
       <span className="-my-0.5 -mr-1 flex">
-        <ChipControl action="frame.previous" label="Previous frame">
-          <ChevronLeft aria-hidden className="size-3" />
-        </ChipControl>
-        <ChipControl action="frame.next" label="Next frame">
-          <ChevronRight aria-hidden className="size-3" />
-        </ChipControl>
+        {order.length > 1 ? (
+          <>
+            <ChipControl action="frame.previous" label="Previous frame">
+              <ChevronLeft aria-hidden className="size-3" />
+            </ChipControl>
+            <ChipControl action="frame.next" label="Next frame">
+              <ChevronRight aria-hidden className="size-3" />
+            </ChipControl>
+          </>
+        ) : null}
         <ChipControl action="view.zoomToSelection" label="Zoom to selection">
           <Maximize2 aria-hidden className="size-2.5" />
         </ChipControl>

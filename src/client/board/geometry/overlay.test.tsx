@@ -124,6 +124,17 @@ describe('SelectionOverlay', () => {
       ).toBeInTheDocument()
     })
 
+    it('draws no step controls on a page of one frame', () => {
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      render(<SelectionOverlay frames={[LEFT]} />)
+
+      expect(screen.queryByRole('button', { name: 'Next frame' })).toBeNull()
+      expect(
+        screen.getByRole('button', { name: 'Zoom to selection' }),
+      ).toBeInTheDocument()
+    })
+
     it.each([
       ['Previous frame', 'frame.previous'],
       ['Next frame', 'frame.next'],
