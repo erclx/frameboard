@@ -3,6 +3,7 @@ import type { Browser, Page } from 'playwright-core'
 import { FrameboardError } from '@/shared/errors'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { settleAnimations } from './animation-settle'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
 
@@ -39,6 +40,8 @@ export interface OpenFrame {
  * images have decoded, all inside one load budget. Under `fonts: 'require'`,
  * the default, a missing face refuses `font-missing`, an image that failed or
  * outran the budget refuses `image-missing`, and either closes the context.
+ * It then waits, on what is left of the budget, for running animations with
+ * a finite end to finish, and never refuses for one.
  */
 export async function openFrame(
   browser: Browser,
@@ -60,6 +63,10 @@ export async function openFrame(
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (fonts === 'require') await assertFontsPresent(page, ref)
     await settleImages(page, ref, fonts, deadline - Date.now())
+    // The `wait` readers finish finite animations themselves on every write.
+    if (fonts === 'require') {
+      await settleAnimations(page, deadline - Date.now())
+    }
     return { page, close }
   } catch (error) {
     await close()
