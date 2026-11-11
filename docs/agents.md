@@ -44,6 +44,7 @@ Before writing new frames, an agent reserves them with `editing --new`, one call
 - The board draws each as a hatched box where it will land, in one row past the page's frames, naming the agent and its place in the set
 - The frame the agent turned to last reads drawing and the rest read queued, and each box becomes its frame when the file lands
 - Renewing any frame in the set keeps the whole set, so it lapses together five minutes after the agent's last `editing`
+- Adding or renaming a frame onto a reserved name waits for the reservation to end, since the agent's file would replace yours
 - Right-click a box and choose Release reservation to free the space for a frame of your own
 
 ## Change marks and following
