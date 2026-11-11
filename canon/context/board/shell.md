@@ -21,6 +21,9 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 - In Play the board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
   - The kept frames come live six per animation frame, nearest the view center first, and the layer carries `data-staging` until the last one is
+  - A page switch keeps the page left behind under a hidden React `Activity` until the new canvas calls `onLive`, so its iframes tear down after the click, and a quick return reveals them loaded
+  - `screen.tsx` holds one page at most and appends a new canvas after the held one, since moving an iframe's node reloads it
+  - Until the drop the document holds two `[data-canvas]` and two `[data-layer]`, the hidden one possibly first, so a harness reads the layer whose `checkVisibility()` passes
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 

@@ -1,4 +1,10 @@
-import { useCallback, useEffect } from 'react'
+import {
+  Activity,
+  startTransition,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
 import { Link, Redirect, useLocation } from 'wouter'
 
@@ -44,6 +50,29 @@ const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
 
 const NO_FRAMES: readonly FrameRecord[] = []
 const NO_SECTIONS: readonly SectionRecord[] = []
+const EMPTY: Mounted = { keys: [], shown: '' }
+
+/**
+ * The canvases mounted, by page identity in document order, and the one
+ * shown. Any other is the page just left, held hidden so its iframes are not
+ * torn down in the task answering the switch.
+ */
+interface Mounted {
+  keys: readonly string[]
+  shown: string
+}
+
+/**
+ * Shows `key`, holding the page it replaces. A return to the held page swaps
+ * the two in place, and a page new to the list drops any older held one and
+ * goes last, since moving an iframe's node reloads it.
+ */
+function show(mounted: Mounted, key: string): Mounted {
+  if (key === '') return { keys: [], shown: '' }
+  if (mounted.keys.includes(key)) return { keys: mounted.keys, shown: key }
+  const left = mounted.shown === '' ? [] : [mounted.shown]
+  return { keys: [...left, key], shown: key }
+}
 
 /** Where the panel widths are remembered between loads. */
 const LAYOUT_ID = 'frameboard.board.panels'
@@ -79,10 +108,20 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   })
   const current = record?.pages.find((candidate) => candidate.name === page)
   // A rename keeps the canvas, so its view and frames stay, and a page
-  // switch still mounts a fresh one.
-  const canvasKey = useLive((state) =>
-    current ? identityOf(state.aliases, current.ref) : '',
-  )
+  // switch mounts a fresh one unless it returns to the held page.
+  const aliases = useLive((state) => state.aliases)
+  const canvasKey = current ? identityOf(aliases, current.ref) : ''
+  const [mounted, setMounted] = useState<Mounted>(() => show(EMPTY, canvasKey))
+  if (mounted.shown !== canvasKey) setMounted(show(mounted, canvasKey))
+  // A transition, so the held page's teardown never lands in the task that
+  // answered a click, which a return to a live page would otherwise do.
+  const dropHeld = useCallback((key: string) => {
+    startTransition(() =>
+      setMounted((latest) =>
+        latest.shown === key ? { keys: [key], shown: key } : latest,
+      ),
+    )
+  }, [])
   const [, navigate] = useLocation()
   // Follows a rename in the same update that renames the board, whether this
   // tab, another, or an undo made it, so the old name never shows missing.
@@ -153,15 +192,28 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
         <main className="relative size-full min-w-0">
           {current ? (
             <>
-              <Canvas
-                key={canvasKey}
-                page={current}
-                reloads={reloads}
-                findings={findings}
-                claims={claims}
-                focus={focus}
-                onFocused={clearFocus}
-              />
+              {mounted.keys.map((key) => {
+                const held = key !== canvasKey
+                const content = held
+                  ? record.pages.find(
+                      (candidate) => identityOf(aliases, candidate.ref) === key,
+                    )
+                  : current
+                if (!content) return null
+                return (
+                  <Activity key={key} mode={held ? 'hidden' : 'visible'}>
+                    <Canvas
+                      page={content}
+                      reloads={reloads}
+                      findings={findings}
+                      claims={claims}
+                      focus={held ? null : focus}
+                      onFocused={clearFocus}
+                      onLive={() => dropHeld(key)}
+                    />
+                  </Activity>
+                )
+              })}
               <Toolbar project={record.name} />
               <ChangesToast />
             </>

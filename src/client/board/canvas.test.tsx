@@ -1037,6 +1037,57 @@ describe('Canvas', () => {
       ])
       expect(layerOf(container).hasAttribute('data-staging')).toBe(false)
     })
+
+    it('calls onLive once the last batch is live, and not before', () => {
+      fakeFrames()
+      const onLive = vi.fn()
+      render(
+        <div style={{ width: 800, height: 600 }}>
+          <Canvas page={row()} reloads={{}} onLive={onLive} />
+        </div>,
+      )
+
+      act(() => vi.advanceTimersToNextFrame())
+      const afterFirstBatch = onLive.mock.calls.length
+      act(() => vi.advanceTimersToNextFrame())
+
+      expect(afterFirstBatch).toBe(0)
+      expect(onLive).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not call onLive again when a later frame stages', () => {
+      fakeFrames()
+      const onLive = vi.fn()
+      const first = row()
+      const { rerender } = render(
+        <div style={{ width: 800, height: 600 }}>
+          <Canvas page={first} reloads={{}} onLive={onLive} />
+        </div>,
+      )
+      act(() => vi.advanceTimersToNextFrame())
+      act(() => vi.advanceTimersToNextFrame())
+
+      rerender(
+        <div style={{ width: 800, height: 600 }}>
+          <Canvas
+            page={{
+              ...first,
+              frames: [
+                ...first.frames,
+                frame('i', { x: 1050, y: 300, width: 200, height: 200 }),
+              ],
+            }}
+            reloads={{}}
+            onLive={onLive}
+          />
+        </div>,
+      )
+      const restaged = layerOf(document.body).hasAttribute('data-staging')
+      act(() => vi.advanceTimersToNextFrame())
+
+      expect(restaged).toBe(true)
+      expect(onLive).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('the cursor over a corner mark', () => {
