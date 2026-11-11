@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.30.0](https://github.com/erclx/frameboard/compare/v0.29.0...v0.30.0) (2026-11-11)
+
+
+### Features
+
+* **canvas:** stage frame mounts and cache faces under the release ([#280](https://github.com/erclx/frameboard/issues/280)) ([ec707c2](https://github.com/erclx/frameboard/commit/ec707c2deb8f6d1f96a45378f0ef88e5445d6451))
+* **capture:** wait for images to decode and animations to settle ([#271](https://github.com/erclx/frameboard/issues/271)) ([0999c9e](https://github.com/erclx/frameboard/commit/0999c9e8f9eaed831ed923005738a23382600545))
+* **checks:** warn on text under a minimum contrast ratio ([#278](https://github.com/erclx/frameboard/issues/278)) ([f12f571](https://github.com/erclx/frameboard/commit/f12f571fa98f02a41abc511c732f5fcef0031b3e))
+* **claims:** reserve planned frames on the board before writing them ([#272](https://github.com/erclx/frameboard/issues/272)) ([b402389](https://github.com/erclx/frameboard/commit/b402389b72e4eded9ac0b6f148bb8398a8c22858))
+* **cli:** add project group and archive verbs ([#279](https://github.com/erclx/frameboard/issues/279)) ([af61bc6](https://github.com/erclx/frameboard/commit/af61bc64ec2941adf7c112c9d96c94cb8caf1575))
+* **media:** add video posters, media controls, and audio placement ([#275](https://github.com/erclx/frameboard/issues/275)) ([28d18c1](https://github.com/erclx/frameboard/commit/28d18c11ab55dc2639dc2820d73397219e7faf4f))
+
+
+### Bug Fixes
+
+* **clipboard:** run overlapping WSL copies one at a time ([#277](https://github.com/erclx/frameboard/issues/277)) ([ef3ab41](https://github.com/erclx/frameboard/commit/ef3ab4198b3e19f7ca56f012a98983673af96b09))
+* **readme:** clear the corner smudge from the light loop and both stills ([#270](https://github.com/erclx/frameboard/issues/270)) ([5937c2a](https://github.com/erclx/frameboard/commit/5937c2a79470cdfaa196d0e06efccfba796d4c9d))
+
 ## [0.29.0](https://github.com/erclx/frameboard/compare/v0.28.0...v0.29.0) (2026-11-11)
 
 
