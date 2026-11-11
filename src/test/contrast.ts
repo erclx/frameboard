@@ -78,18 +78,50 @@ function luminance([r, g, b]: Rgb): number {
  * pseudo-element's text over the element's own background.
  */
 export function contrastOnPage(element: Element, pseudo?: string): number {
+  const ground = groundOf(element)
+  const text = over(parse(getComputedStyle(element, pseudo).color), ground)
+  return ratio(text, ground)
+}
+
+/** An unblurred box shadow's color and spread, the shape a `ring-*` utility draws. */
+const SPREAD = /((?:rgba?|oklab|color)\([^)]*\)) 0px 0px 0px ([\d.]+)px/g
+
+/**
+ * The focus ring a `ring-*` utility draws round an element, being its widest
+ * unblurred box shadow, against the ground outside the element it sits on.
+ * An element drawing no ring reads 1, since nothing sets it apart.
+ */
+export function ringContrastOnPage(element: Element): number {
+  let ring: Color | null = null
+  let widest = 0
+  for (const [, color = '', spread] of getComputedStyle(
+    element,
+  ).boxShadow.matchAll(SPREAD)) {
+    const shadow = parse(color)
+    if (Number(spread) > widest && shadow.alpha > 0) {
+      widest = Number(spread)
+      ring = shadow
+    }
+  }
+  if (!ring) return 1
+  const ground = groundOf(element.parentElement)
+  return ratio(over(ring, ground), ground)
+}
+
+/** The opaque color showing through `element`: its translucent fill and its ancestors' laid over each other, on white when none is opaque. */
+function groundOf(element: Element | null): Rgb {
   const layers: Color[] = []
-  for (let at: Element | null = element; at; at = at.parentElement) {
+  for (let at = element; at; at = at.parentElement) {
     const fill = parse(getComputedStyle(at).backgroundColor)
     if (fill.alpha > 0) layers.push(fill)
     if (fill.alpha === 1) break
   }
-  const ground = layers
+  return layers
     .reverse()
     .reduce<Rgb>((under, top) => over(top, under), [255, 255, 255])
-  const text = over(parse(getComputedStyle(element, pseudo).color), ground)
-  const [light, dark] = [luminance(text), luminance(ground)].sort(
-    (a, b) => b - a,
-  )
+}
+
+function ratio(one: Rgb, other: Rgb): number {
+  const [light, dark] = [luminance(one), luminance(other)].sort((a, b) => b - a)
   return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05)
 }
