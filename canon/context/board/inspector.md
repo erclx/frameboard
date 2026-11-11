@@ -73,8 +73,7 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
-- A hand edit writes the element's inline style, one attribute, or its text and nothing else, through `POST /api/frames/edit`, which records one undo step
-- Dropping an attribute is its own change, `remove: true` with no value, since an empty value still states a boolean such as `muted`
+- A hand edit writes the element's inline style, one attribute, or its text, or drops one attribute, through `POST /api/frames/edit`, which records one undo step
 - A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value that matches a token is still flagged
