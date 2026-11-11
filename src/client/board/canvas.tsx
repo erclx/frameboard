@@ -718,7 +718,9 @@ export function Canvas({
   )
   // The culled frames come live a batch per animation frame, nearest the
   // view center first, so a page switch or a long pan answers with empty
-  // boxes at once rather than building every iframe in one commit.
+  // boxes at once rather than building every iframe in one commit. Admission
+  // keys on a frame's identity, as its element does, so a project or page
+  // rename that moves every ref keeps each frame live.
   const order = useMemo(
     () =>
       settled && culled
@@ -726,11 +728,11 @@ export function Canvas({
             frames.filter((frame) => culled.has(frame.ref)),
             settled.view,
             settled.size,
-          )
+          ).map((ref) => identityOf(aliases, ref))
         : null,
-    [frames, settled, culled],
+    [frames, settled, culled, aliases],
   )
-  const { live, staging } = useStagedLive(order)
+  const { live: liveIdentities, staging } = useStagedLive(order)
   // The dwell reads what is on screen each time the cull runs.
   useDwell(
     useMemo(() => (settled ? { frames, ...settled } : null), [frames, settled]),
@@ -779,7 +781,9 @@ export function Canvas({
               <Frame
                 key={identityOf(aliases, frame.ref)}
                 frame={frame}
-                live={live?.has(frame.ref) ?? false}
+                live={
+                  liveIdentities?.has(identityOf(aliases, frame.ref)) ?? false
+                }
                 version={reloads[frame.ref] ?? 0}
                 findings={findings?.[frame.ref]}
                 claim={claims?.[frame.ref]}

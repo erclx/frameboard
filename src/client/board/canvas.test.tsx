@@ -159,7 +159,7 @@ describe('Canvas', () => {
     vi.useRealTimers()
     modeStore.setState({ mode: 'edit', tool: 'move', spacePan: false })
     setCharacterKeys(true)
-    liveStore.setState({ canWrite: false })
+    liveStore.setState({ canWrite: false, aliases: {} })
     clear(selectionStore)
   })
 
@@ -899,6 +899,46 @@ describe('Canvas', () => {
 
       expect(liveNames(container)).toEqual(['b', 'c', 'd', 'e', 'f', 'g'])
       expect(layerOf(container).hasAttribute('data-staging')).toBe(true)
+    })
+
+    it('keeps every iframe through a page rename', () => {
+      fakeFrames()
+      const { container, rerender } = renderCanvas(row())
+      act(() => vi.advanceTimersToNextFrame())
+      act(() => vi.advanceTimersToNextFrame())
+      const before = container.querySelector(
+        '[data-frame="studio/home/d"] iframe',
+      )
+
+      // A page rename moves every frame ref and records the alias the frame
+      // keys read, while the canvas stays mounted.
+      act(() =>
+        liveStore.setState({ aliases: { 'studio/lobby': 'studio/home' } }),
+      )
+      const renamed = row()
+      rerender(
+        <div style={{ width: 800, height: 600 }}>
+          <Profiler id="canvas" onRender={() => {}}>
+            <Canvas
+              page={{
+                ...renamed,
+                frames: renamed.frames.map((each) => ({
+                  ...each,
+                  ref: each.ref.replace('studio/home/', 'studio/lobby/'),
+                  page: 'lobby',
+                })),
+              }}
+              reloads={{}}
+            />
+          </Profiler>
+        </div>,
+      )
+
+      expect(before).not.toBeNull()
+      expect(
+        container.querySelector('[data-frame="studio/lobby/d"] iframe'),
+      ).toBe(before)
+      expect(container.querySelectorAll('[data-frame] iframe')).toHaveLength(8)
     })
 
     it('stops staging once every culled frame is live', () => {
