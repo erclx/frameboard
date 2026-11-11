@@ -4,6 +4,7 @@ import { fitHeight } from '@/server/board/frames'
 import type { RefOptions } from '@/server/board/refs'
 import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZES, referenceHeight } from '@/shared/frame-sizes'
+import type { LinkedWidth } from '@/shared/frame-widths'
 import type { FitResult } from '@/shared/records/capture'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -93,7 +94,9 @@ export async function measureContent(
 
 /**
  * Sets a frame's height to its content's own height at its layout width and
- * turns its height hugging on. The width is reported, never changed.
+ * turns its height hugging on, measuring each linked width at its own width
+ * and writing its height beside the frame's. The width is reported, never
+ * changed.
  */
 export async function fitFrame(
   browser: Browser,
@@ -109,8 +112,21 @@ export async function fitFrame(
     box: frame.box,
     hugWidth: false,
   })
+  const widths: LinkedWidth[] = []
+  for (const { width } of frame.widths) {
+    const linked = await measureContent(browser, {
+      baseUrl,
+      ref: frame.ref,
+      box: { width, height: referenceHeight(width) },
+      hugWidth: false,
+    })
+    widths.push({ width, height: linked.height })
+  }
   return {
-    frame: await fitHeight(options.root, frame.ref, measured.height, options),
+    frame: await fitHeight(options.root, frame.ref, measured.height, {
+      ...options,
+      widths,
+    }),
     contentHeight: measured.height,
     contentWidth: measured.contentWidth,
     tooWide: measured.contentWidth > frame.box.width,

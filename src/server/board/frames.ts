@@ -421,14 +421,15 @@ export function pastExtent({ box, widths }: Placement): number {
 
 /**
  * Sets a frame's height to its content's measured height and turns hugging
- * back on for that axis, the inverse of the resize that fixed it. A scroll
- * frame refuses `fit-scroll`, since its height is fixed on purpose.
+ * back on for that axis, the inverse of the resize that fixed it, writing
+ * each linked width's measured height beside it while the entry lists it. A
+ * scroll frame refuses `fit-scroll`, since its height is fixed on purpose.
  */
 export async function fitHeight(
   root: string,
   ref: string,
   height: number,
-  options: RefOptions & JournalOptions,
+  options: RefOptions & JournalOptions & { widths?: readonly LinkedWidth[] },
 ): Promise<FrameRecord> {
   return updatePlacement(root, ref, options, (placement) => {
     if (placement.scroll) throw fitScrollError(ref)
@@ -436,6 +437,12 @@ export async function fitHeight(
       ...placement,
       box: { ...placement.box, height },
       hugHeight: true,
+      widths: placement.widths.map((linked) => ({
+        ...linked,
+        height:
+          options.widths?.find((each) => each.width === linked.width)?.height ??
+          linked.height,
+      })),
     }
   })
 }

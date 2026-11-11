@@ -46,6 +46,17 @@ describe('compositeBounds', () => {
     expect(bounds).toEqual({ width: 180, height: 180, dx: 240, dy: 140 })
   })
 
+  it('grows to hold the linked widths each frame draws', () => {
+    const bounds = compositeBounds(PAGE, [
+      {
+        box: { x: 0, y: 0, width: 400, height: 300 },
+        widths: [{ width: 200, height: 500 }],
+      },
+    ])
+
+    expect(bounds).toEqual({ width: 760, height: 580, dx: 40, dy: 40 })
+  })
+
   it('accepts a composite exactly 16384 px wide', () => {
     expect(compositeBounds(PAGE, [at(0, 0, 16304, 10)]).width).toBe(16384)
   })
@@ -100,6 +111,12 @@ describe('image paths', () => {
     )
   })
 
+  it('names a linked width ahead of its offset, theme, and scale', () => {
+    expect(frameImagePath('/out', frame, 'dark', 2, 1200, 390)).toBe(
+      '/out/studio/home/hero@390.scroll-1200.dark@2x.png',
+    )
+  })
+
   it('names a scaled composite with its scale', () => {
     expect(compositeImagePath('/out', PAGE, 'light', 2)).toBe(
       '/out/studio/home.light@2x.png',
@@ -112,6 +129,10 @@ describe('image paths', () => {
 const STICKY_PAGE = `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0 } .band { height: 100px; background: #00f } header { position: sticky; top: 0; height: 50px; background: #f00 } .rest { height: 3000px; background: #fff }</style></head><body><div class="band"></div><header></header><div class="rest"></div></body></html>`
 
 const shell = await launchShellOrNull()
+
+afterAll(async () => {
+  await shell?.close()
+}, SHELL_HOOK_TIMEOUT_MS)
 
 describe.skipIf(shell === null)(
   'captureFrameImages with a scroll offset',
@@ -129,10 +150,6 @@ describe.skipIf(shell === null)(
       board.cleanup()
       rmSync(out, { recursive: true, force: true })
     })
-
-    afterAll(async () => {
-      await browser.close()
-    }, SHELL_HOOK_TIMEOUT_MS)
 
     async function shoot(scroll: number) {
       board = writeBoard({ 'studio/home/hero.html': STICKY_PAGE })
@@ -173,6 +190,93 @@ describe.skipIf(shell === null)(
 
       expect(image.scrollY).toBe(2850)
       expect(image.path).toMatch(/hero\.scroll-9000\.light\.png$/)
+    })
+  },
+)
+
+// A page whose background follows its width, so each shot names the width
+// it was rendered at by its color.
+const WIDE_PAGE = `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0; height: 100vh; background: #00f } @media (max-width: 500px) { body { background: #f00 } }</style></head><body></body></html>`
+
+describe.skipIf(shell === null)(
+  'captureFrameImages at linked widths',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    async function shoot(width?: number) {
+      board = writeBoard({ 'studio/home/hero.html': WIDE_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        return await captureFrameImages(browser, {
+          baseUrl: host.url,
+          frames: [
+            frameOf('hero', {
+              box: { x: 0, y: 0, width: 800, height: 300 },
+              widths: [{ width: 390, height: 600 }],
+            }),
+          ],
+          themes: ['light', 'dark'],
+          out,
+          width,
+        })
+      } finally {
+        await host.close()
+      }
+    }
+
+    function topLeft(path: string): string {
+      const { data } = PNG.sync.read(readFileSync(path))
+      return `#${[...data.subarray(0, 3)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+    }
+
+    it('writes the frame and each linked width in each theme, named by width', async () => {
+      const images = await shoot()
+
+      expect(
+        images.map(({ path, width, height }) => [
+          path.slice(out.length),
+          width,
+          height,
+        ]),
+      ).toEqual([
+        ['/studio/home/hero.light.png', 800, 300],
+        ['/studio/home/hero.dark.png', 800, 300],
+        ['/studio/home/hero@390.light.png', 390, 600],
+        ['/studio/home/hero@390.dark.png', 390, 600],
+      ])
+    })
+
+    it('renders a linked width at that width', async () => {
+      const images = await shoot()
+
+      expect(images.map(({ path }) => topLeft(path))).toEqual([
+        '#0000ff',
+        '#0000ff',
+        '#ff0000',
+        '#ff0000',
+      ])
+    })
+
+    it('shoots the one width named alone', async () => {
+      const images = await shoot(390)
+
+      expect(images.map(({ width, theme }) => [width, theme])).toEqual([
+        [390, 'light'],
+        [390, 'dark'],
+      ])
     })
   },
 )
