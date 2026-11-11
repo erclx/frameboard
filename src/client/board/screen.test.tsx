@@ -100,15 +100,23 @@ describe('BoardScreen', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
   })
 
-  it('keeps both panels in Play and says the frames take the clicks', async () => {
+  it('keeps both panels in Play and says a click uses a frame', async () => {
     renderBoard()
 
     await userEvent.click(screen.getByRole('button', { name: 'Play' }))
 
     expect(screen.getAllByRole('complementary')).toHaveLength(2)
     expect(
-      screen.getByText('Playing. Clicks go to the frames. Esc to edit'),
+      screen.getByText('Playing. Click a frame to use it. Esc to edit'),
     ).toBeVisible()
+  })
+
+  it('says in the inspector that nothing selects in Play', async () => {
+    renderBoard()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+
+    expect(screen.getByText('Playing. Nothing selects in Play.')).toBeVisible()
   })
 
   it('offers New project, which goes home', () => {
