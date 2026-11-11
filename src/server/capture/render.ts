@@ -8,7 +8,7 @@ import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
 
 /** How long a frame has to load, its faces and images included, before its capture fails. */
-const LOAD_TIMEOUT_MS = 10_000
+export const LOAD_TIMEOUT_MS = 10_000
 /** Chromium's screenshot surface stops at this many pixels on either side. */
 export const MAX_COMPOSITE_SIDE = 16384
 
@@ -29,6 +29,11 @@ export interface OpenFrameOptions {
   fonts?: 'require' | 'wait'
   /** The load budget in milliseconds, 10 s unless a test asks for less. */
   timeoutMs?: number
+  /**
+   * False leaves running animations where they are, for a seeked shot that
+   * sets each animation's time itself. True by default.
+   */
+  settle?: boolean
 }
 
 export interface OpenFrame {
@@ -43,7 +48,7 @@ export interface OpenFrame {
  * the default, a missing face refuses `font-missing`, an image that failed or
  * outran the budget refuses `image-missing`, and either closes the context.
  * It then waits, on what is left of the budget, for running animations with
- * a finite end to finish, and never refuses for one.
+ * a finite end to finish, and never refuses for one, unless `settle` is false.
  */
 export async function openFrame(
   browser: Browser,
@@ -55,6 +60,7 @@ export async function openFrame(
     scale = 1,
     fonts = 'require',
     timeoutMs = LOAD_TIMEOUT_MS,
+    settle = true,
   }: OpenFrameOptions,
 ): Promise<OpenFrame> {
   const context = await browser.newContext({
@@ -87,7 +93,7 @@ export async function openFrame(
     if (fonts === 'require') await assertFontsPresent(page, ref)
     await settleImages(page, ref, fonts, deadline - Date.now())
     // The `wait` readers finish finite animations themselves on every write.
-    if (fonts === 'require') {
+    if (fonts === 'require' && settle) {
       await settleAnimations(page, deadline - Date.now())
     }
     return { page, close }
