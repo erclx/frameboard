@@ -15,6 +15,7 @@ import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { ClaimAvatars } from './avatars'
 import { elapsed } from './label'
+import { ReservedBoxes } from './reserved'
 import {
   afterClaims,
   dropWaiting,
@@ -160,6 +161,107 @@ describe('the claim tag on a frame label', () => {
     )
 
     expect(container.querySelector('[data-claim-tag]')).toBeNull()
+  })
+})
+
+describe('reserved boxes', () => {
+  const SET = 'set-1'
+
+  function reservation(name: string, overrides: Partial<Claim> = {}): Claim {
+    return {
+      ...claimBy('sess-a', `studio/home/${name}`),
+      box: { x: 0, y: 0, width: 400, height: 300 },
+      set: SET,
+      ...overrides,
+    }
+  }
+
+  function draw(claims: Claim[], frames = [frameOf('hero')]) {
+    act(() => receiveClaims(liveStore, claims))
+    return render(<ReservedBoxes page="studio/home" frames={frames} />)
+  }
+
+  function states(container: HTMLElement): Record<string, string> {
+    return Object.fromEntries(
+      [...container.querySelectorAll('[data-reserved]')].map((box) => [
+        box.getAttribute('data-reserved'),
+        box.querySelector('[data-reserved-state]')?.textContent ?? '',
+      ]),
+    )
+  }
+
+  afterEach(() => {
+    act(() => {
+      receiveClaims(liveStore, [])
+      modeStore.setState({ mode: 'edit' })
+    })
+  })
+
+  it('draws each reservation at its box, named with its place in the set', () => {
+    const { getByRole } = draw([
+      reservation('pricing', {
+        box: { x: 500, y: 40, width: 400, height: 300 },
+      }),
+      reservation('faq'),
+      reservation('footer'),
+    ])
+
+    const box = getByRole('img', { name: /^pricing, reserved by Claude/ })
+    expect(box.getAttribute('aria-label')).toBe(
+      'pricing, reserved by Claude · visual-style, 1 of 3, queued',
+    )
+    expect(box.style.left).toBe('500px')
+    expect(box.style.width).toBe('400px')
+  })
+
+  it('reads every box queued before the agent turns to one', () => {
+    const { container } = draw([reservation('pricing'), reservation('faq')])
+
+    expect(states(container)).toEqual({
+      'studio/home/pricing': 'queued…',
+      'studio/home/faq': 'queued…',
+    })
+  })
+
+  it('reads the latest one claimed as drawing and the rest queued', () => {
+    const { container } = draw([
+      reservation('pricing', { drawingAt: '2026-10-19T10:00:10.000Z' }),
+      reservation('faq', { drawingAt: '2026-10-19T10:00:20.000Z' }),
+      reservation('footer'),
+    ])
+
+    expect(states(container)).toEqual({
+      'studio/home/pricing': 'queued…',
+      'studio/home/faq': 'drawing…',
+      'studio/home/footer': 'queued…',
+    })
+  })
+
+  it('stops drawing a reservation once its frame is listed, counting it in the set', () => {
+    const { container } = draw(
+      [reservation('pricing'), reservation('faq')],
+      [frameOf('pricing')],
+    )
+
+    expect(Object.keys(states(container))).toEqual(['studio/home/faq'])
+    expect(container.textContent).toContain('2 of 2')
+  })
+
+  it('leaves out a plain claim and a reservation on another page', () => {
+    const { container } = draw([
+      claimBy('sess-a', 'studio/home/hero'),
+      reservation('x', { frame: 'studio/about/x' }),
+    ])
+
+    expect(container.querySelector('[data-reserved]')).toBeNull()
+  })
+
+  it('draws nothing in Play', () => {
+    act(() => modeStore.setState({ mode: 'play' }))
+
+    const { container } = draw([reservation('pricing')])
+
+    expect(container.querySelector('[data-reserved]')).toBeNull()
   })
 })
 

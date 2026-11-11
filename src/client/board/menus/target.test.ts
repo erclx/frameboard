@@ -65,6 +65,29 @@ describe('menuTarget', () => {
     expect(menuTarget(FRAMES, { x: 50, y: 70 }, 0.5, null).kind).toBe('frame')
   })
 
+  it('answers a reserved box, by its frame ref, where no frame sits', () => {
+    const reserved = [
+      {
+        frame: 'studio/home/pricing',
+        box: { x: 700, y: 0, width: 200, height: 100 },
+      },
+    ]
+
+    expect(menuTarget(FRAMES, { x: 750, y: 50 }, 1, null, reserved)).toEqual({
+      kind: 'reserved',
+      frame: 'studio/home/pricing',
+      at: { x: 750, y: 50 },
+    })
+  })
+
+  it('answers the frame over a reserved box it overlaps', () => {
+    const reserved = [{ frame: 'studio/home/pricing', box: BACK.box }]
+
+    expect(menuTarget(FRAMES, { x: 50, y: 130 }, 1, null, reserved).kind).toBe(
+      'frame',
+    )
+  })
+
   it('answers the frame when the element box belongs to a frame no longer shown', () => {
     const gone = { frame: 'studio/home/gone', box: ELEMENT.box }
 

@@ -88,6 +88,32 @@ describe('receiveBoard', () => {
 
     expect(store.getState().reloads).toEqual({ 'studio/home/hero': 1 })
   })
+
+  it('keeps a reservation on a frame not listed yet and drops a plain claim on one gone', () => {
+    const store = createLiveStore()
+    const held = {
+      session: 's-1',
+      agent: 'claude',
+      tag: 'claude · s-1',
+      claimedAt: '2026-10-19T10:00:00.000Z',
+      expiresAt: '2026-10-19T10:05:00.000Z',
+    }
+    receiveBoard(store, boardWith('hero', 'about'))
+    receiveClaims(store, [
+      { ...held, frame: 'studio/home/about' },
+      {
+        ...held,
+        frame: 'studio/home/pricing',
+        box: { x: 0, y: 0, width: 400, height: 300 },
+      },
+    ])
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(Object.keys(store.getState().claims)).toEqual([
+      'studio/home/pricing',
+    ])
+  })
 })
 
 describe('receiveAccess', () => {

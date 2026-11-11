@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
-import { liveStore } from '@/client/live/store'
+import { liveStore, receiveClaims } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
@@ -406,6 +406,35 @@ describe('Canvas', () => {
     await expect
       .poll(() => layerOf(container).style.transform)
       .toBe('translate(64px, 200px) scale(0.5)')
+  })
+
+  it('fits the reserved boxes on the page beside its frames', async () => {
+    const { container } = renderCanvas(
+      page('studio/refit-reserved', [
+        frame('half', { x: 0, y: 0, width: 672, height: 400 }),
+      ]),
+    )
+    act(() =>
+      receiveClaims(liveStore, [
+        {
+          frame: 'studio/refit-reserved/next',
+          session: 's-1',
+          agent: 'claude',
+          tag: 'claude · s-1',
+          claimedAt: '2026-10-19T10:00:00.000Z',
+          expiresAt: '2999-01-01T00:00:00.000Z',
+          box: { x: 752, y: 0, width: 592, height: 400 },
+          set: 'set-1',
+        },
+      ]),
+    )
+
+    canvasView.fit()
+
+    await expect
+      .poll(() => layerOf(container).style.transform)
+      .toBe('translate(64px, 200px) scale(0.5)')
+    act(() => receiveClaims(liveStore, []))
   })
 
   it('reports its zoom to the controller', () => {

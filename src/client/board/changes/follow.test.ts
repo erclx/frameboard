@@ -132,6 +132,22 @@ describe('follow', () => {
     expect(centered).toEqual([{ page: 'studio/home', box: HOME_BOX }])
   })
 
+  it('stays put when the followed session reserves a frame not written yet', () => {
+    const { live, centered, visited } = setup()
+
+    live.setState({
+      claims: {
+        'studio/about/new': {
+          ...claim('studio/about/new', 's-1'),
+          box: { x: 0, y: 0, width: 400, height: 300 },
+        },
+      },
+    })
+
+    expect(visited).toEqual([])
+    expect(centered).toEqual([])
+  })
+
   it('moves to the page of a change on another page, then centers it there', () => {
     const { unseen, centered, visited, canvasOn, detach } = setup()
 

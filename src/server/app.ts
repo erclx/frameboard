@@ -17,6 +17,7 @@ import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
 import { type BrowserChecks, checkRoutes } from './routes/checks'
+import { claimsRoutes } from './routes/claims'
 import { clipboardRoutes } from './routes/clipboard'
 import { editRoutes, type SettledVersion } from './routes/edit'
 import { elementsRoutes } from './routes/elements'
@@ -157,6 +158,7 @@ export function createApp({
   app.route('/', assetsRoutes(root, actions.access, { usage: assetUsage }))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
+  app.route('/', claimsRoutes(root, actions.access))
   app.route('/', tokenRoutes(root, actions.access, history, frames.look))
   app.route(
     '/',

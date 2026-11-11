@@ -3,9 +3,11 @@ import type { Browser, Page } from 'playwright-core'
 import { FrameboardError } from '@/shared/errors'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { settleAnimations } from './animation-settle'
 import { assertFontsPresent } from './fonts'
+import { settleImages } from './image-loads'
 
-/** How long a frame has to load before its capture fails. */
+/** How long a frame has to load, its faces and images included, before its capture fails. */
 const LOAD_TIMEOUT_MS = 10_000
 /** Chromium's screenshot surface stops at this many pixels on either side. */
 export const MAX_COMPOSITE_SIDE = 16384
@@ -20,11 +22,13 @@ export interface OpenFrameOptions {
   /** Device pixels per CSS pixel, 1 for a capture. */
   scale?: number
   /**
-   * `require` refuses a frame whose face is missing, so a capture never shows
-   * a fallback as the design. `wait` loads it in the fallback the board shows,
-   * for a reading of what the board renders.
+   * `require` refuses a frame whose face or image is missing, so a capture
+   * never shows a fallback as the design. `wait` loads it as the board shows
+   * it, for a reading of what the board renders.
    */
   fonts?: 'require' | 'wait'
+  /** The load budget in milliseconds, 10 s unless a test asks for less. */
+  timeoutMs?: number
 }
 
 export interface OpenFrame {
@@ -34,13 +38,24 @@ export interface OpenFrame {
 
 /**
  * Loads a frame in its own browser context at its layout size, in the theme
- * asked for, and resolves once it has loaded and its faces have settled.
- * Under `fonts: 'require'`, the default, a missing face refuses
- * `font-missing` and closes the context.
+ * asked for, and resolves once it has loaded, its faces have settled, and its
+ * images have decoded, all inside one load budget. Under `fonts: 'require'`,
+ * the default, a missing face refuses `font-missing`, an image that failed or
+ * outran the budget refuses `image-missing`, and either closes the context.
+ * It then waits, on what is left of the budget, for running animations with
+ * a finite end to finish, and never refuses for one.
  */
 export async function openFrame(
   browser: Browser,
-  { baseUrl, ref, box, theme, scale = 1, fonts = 'require' }: OpenFrameOptions,
+  {
+    baseUrl,
+    ref,
+    box,
+    theme,
+    scale = 1,
+    fonts = 'require',
+    timeoutMs = LOAD_TIMEOUT_MS,
+  }: OpenFrameOptions,
 ): Promise<OpenFrame> {
   const context = await browser.newContext({
     viewport: { width: box.width, height: box.height },
@@ -48,14 +63,33 @@ export async function openFrame(
     colorScheme: theme,
   })
   const close = () => context.close()
+  const deadline = Date.now() + timeoutMs
   try {
     const page = await context.newPage()
     // The frame route's injected script sets the root's theme from the URL.
     await page.goto(new URL(frameThemeUrl(ref, theme), baseUrl).href, {
-      timeout: LOAD_TIMEOUT_MS,
+      timeout: timeoutMs,
+      waitUntil: 'domcontentloaded',
     })
+    // An image whose request hangs holds the load event, so the load wait
+    // runs apart from the navigation and a stall can name the image.
+    const stalled = await page
+      .waitForLoadState('load', { timeout: deadline - Date.now() })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      )
+    if (stalled !== null) {
+      await settleImages(page, ref, fonts, 0, { stalled: true })
+      throw stalled
+    }
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (fonts === 'require') await assertFontsPresent(page, ref)
+    await settleImages(page, ref, fonts, deadline - Date.now())
+    // The `wait` readers finish finite animations themselves on every write.
+    if (fonts === 'require') {
+      await settleAnimations(page, deadline - Date.now())
+    }
     return { page, close }
   } catch (error) {
     await close()

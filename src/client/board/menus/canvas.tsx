@@ -7,11 +7,14 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
+import { liveStore, useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { releaseReserved, reservedOn } from '../claims/reservations'
 import { treeOf } from '../element/tree'
 import { up } from '../element/walk'
 import { selectedElementBoxAt } from '../geometry/hit'
@@ -37,6 +40,7 @@ const WIDTH: Record<MenuTarget['kind'], string> = {
   frame: 'w-55',
   element: 'w-[230px]',
   canvas: 'w-[210px]',
+  reserved: 'w-[210px]',
 }
 
 /**
@@ -65,11 +69,16 @@ export function CanvasMenu({
     const [x, y] = transform.invert(pointer(event, view))
     const { element } = selectionStore.getState()
     const box = element ? selectedElementBoxAt(drawn, { x, y }) : null
+    const shown = frames()
     return menuTarget(
-      frames(),
+      shown,
       { x, y },
       transform.k,
       element && box ? { frame: element.frame, box } : null,
+      reservedOn(liveStore.getState().claims, shown, page).map(({ claim }) => ({
+        frame: claim.frame,
+        box: claim.box,
+      })),
     )
   }
 
@@ -97,7 +106,10 @@ export function CanvasMenu({
           }
           menuPlace.setState({
             at: landed.at,
-            frame: landed.kind === 'canvas' ? null : landed.frame.ref,
+            frame:
+              landed.kind === 'canvas' || landed.kind === 'reserved'
+                ? null
+                : landed.frame.ref,
           })
           setTarget(landed)
         }}
@@ -106,8 +118,31 @@ export function CanvasMenu({
         {target?.kind === 'frame' ? <FrameItems /> : null}
         {target?.kind === 'element' ? <ElementItems noteable /> : null}
         {target?.kind === 'canvas' ? <CanvasItems /> : null}
+        {target?.kind === 'reserved' ? (
+          <ReservedItems frame={target.frame} />
+        ) : null}
       </ContextMenuContent>
     </ContextMenu>
+  )
+}
+
+/**
+ * A reserved box's menu, whose one row drops the reservation whichever
+ * session holds it, so the box is free for the developer's own frame. A
+ * read-only tab shows it disabled, as every write row is.
+ */
+function ReservedItems({ frame }: { frame: string }) {
+  const canWrite = useLive((state) => state.canWrite)
+  return (
+    <ContextMenuGroup>
+      <MenuTitle>Reservation</MenuTitle>
+      <ContextMenuItem
+        disabled={!canWrite}
+        onClick={() => void releaseReserved(frame)}
+      >
+        Release reservation
+      </ContextMenuItem>
+    </ContextMenuGroup>
   )
 }
 

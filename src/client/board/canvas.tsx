@@ -23,6 +23,8 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { useDwell } from './changes/dwell'
 import { ChangeGlow } from './changes/glow'
+import { reservedOn } from './claims/reservations'
+import { ReservedBoxes } from './claims/reserved'
 import { WaitingCards, WaitingDock } from './claims/waiting-card'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
@@ -186,11 +188,13 @@ export function Canvas({
   const framesRef = useRef(frames)
   const sectionsRef = useRef(page.sections)
   const pageFramesRef = useRef(page.frames)
+  const pageRefRef = useRef(page.ref)
   useLayoutEffect(() => {
     framesRef.current = frames
     sectionsRef.current = page.sections
     pageFramesRef.current = page.frames
-  }, [frames, page.sections, page.frames])
+    pageRefRef.current = page.ref
+  }, [frames, page.sections, page.frames, page.ref])
   // Read by the zoom handler, which marks crowded labels with no render.
   const rooms = useMemo(() => labelRoom(frames), [frames])
   const roomsRef = useRef(rooms)
@@ -449,9 +453,17 @@ export function Canvas({
       zoomBy: (factor) => zoomer.scaleBy(selection, factor),
       zoomTo: (scale) => zoomer.scaleTo(selection, scale),
       // The toolbar's fit is the developer's, though the canvas travels it.
+      // The fit also shows where an agent's reserved frames will land.
       fit: () => {
         reportHandMove()
-        moveToRef.current?.(fitView(framesRef.current, sizeOf(viewport)))
+        const reserved = reservedOn(
+          liveStore.getState().claims,
+          pageFramesRef.current,
+          pageRefRef.current,
+        ).map(({ claim }) => ({ box: claim.box }))
+        moveToRef.current?.(
+          fitView([...framesRef.current, ...reserved], sizeOf(viewport)),
+        )
       },
       fitTo: (boxes) => {
         reportHandMove()
@@ -740,6 +752,7 @@ export function Canvas({
         {page.layoutError ? null : (
           <>
             <SectionBoxes page={page.ref} sections={page.sections} />
+            <ReservedBoxes page={page.ref} frames={page.frames} />
             {frames.map((frame) => (
               <Frame
                 key={identityOf(aliases, frame.ref)}

@@ -112,6 +112,152 @@ describe('editing', () => {
     expect(result.json().error?.code).toBe('frame-not-found')
   })
 
+  describe('--new', () => {
+    function claimsOf(result: CliRun): Claim[] {
+      return (result.json().data as { claims: Claim[] }).claims
+    }
+
+    it('reserves each frame in one row past every placed frame, answering { claims }', async () => {
+      const result = await editing([
+        'webapp/home/one',
+        'webapp/home/two',
+        '--new',
+        '--width',
+        '400',
+        '--height',
+        '300',
+        '--session',
+        'sess-a',
+      ])
+
+      expect(result.exitCode).toBe(0)
+      expect(
+        claimsOf(result).map((each) => [each.frame, each.box?.x, each.box?.y]),
+      ).toEqual([
+        ['webapp/home/one', 1990, 0],
+        ['webapp/home/two', 2470, 0],
+      ])
+      expect(claimsOf(result)[0]?.box).toMatchObject({
+        width: 400,
+        height: 300,
+        hugWidth: false,
+        hugHeight: false,
+      })
+    })
+
+    it('claims a reserved frame not written yet, marking it as the one drawing', async () => {
+      await editing([
+        'webapp/home/one',
+        'webapp/home/two',
+        '--new',
+        '--session',
+        'sess-a',
+      ])
+
+      const result = await editing(['webapp/home/two', '--session', 'sess-a'])
+
+      expect(result.exitCode).toBe(0)
+      expect(claimOf(result)).toMatchObject({
+        frame: 'webapp/home/two',
+        box: expect.objectContaining({ x: expect.any(Number) }),
+        drawingAt: expect.any(String),
+      })
+    })
+
+    it('releases a reserved frame not written yet by its ref', async () => {
+      await editing(['webapp/home/one', '--new', '--session', 'sess-a'])
+
+      const result = await editing([
+        'webapp/home/one',
+        '--release',
+        '--session',
+        'sess-a',
+      ])
+
+      expect(result.exitCode).toBe(0)
+      expect(
+        (result.json().data as { released: Claim[] }).released.map(
+          (each) => each.frame,
+        ),
+      ).toEqual(['webapp/home/one'])
+    })
+
+    it('starts the row at --x and --y', async () => {
+      const result = await editing([
+        'webapp/home/one',
+        'webapp/home/two',
+        '--new',
+        '--size',
+        'phone',
+        '--x',
+        '-500',
+        '--y',
+        '2000',
+        '--session',
+        'sess-a',
+      ])
+
+      const [one, two] = claimsOf(result)
+      expect(one?.box).toMatchObject({ x: -500, y: 2000, hugHeight: true })
+      expect(two?.box?.x).toBe(-500 + (one?.box?.width ?? 0) + 80)
+    })
+
+    it('starts a second set past the boxes the first reserved', async () => {
+      await editing([
+        'webapp/home/one',
+        '--new',
+        '--width',
+        '400',
+        '--height',
+        '300',
+        '--session',
+        'sess-a',
+      ])
+
+      const result = await editing([
+        'webapp/home/two',
+        '--new',
+        '--width',
+        '400',
+        '--height',
+        '300',
+        '--session',
+        'sess-b',
+      ])
+
+      expect(claimsOf(result)[0]?.box?.x).toBe(2470)
+    })
+
+    it('refuses an existing frame among new ones as name-taken, reserving none', async () => {
+      const result = await editing([
+        'webapp/home/hero',
+        'webapp/home/one',
+        '--new',
+        '--session',
+        'sess-a',
+      ])
+
+      expect(result.exitCode).toBe(4)
+      expect(result.json().error).toMatchObject({
+        code: 'name-taken',
+        details: { refs: ['webapp/home/hero'] },
+      })
+      expect(claimsOf(await editing([]))).toEqual([])
+    })
+  })
+
+  it('refuses two refs with no --new as usage, exit 2', async () => {
+    const result = await editing([
+      'webapp/home/hero',
+      'webapp/home/about',
+      '--session',
+      'sess-a',
+    ])
+
+    expect(result.exitCode).toBe(2)
+    expect(result.json().error?.code).toBe('usage')
+  })
+
   it('refuses a claim with no session as session-required, exit 2', async () => {
     vi.stubEnv('CLAUDE_CODE_SESSION_ID', '')
 

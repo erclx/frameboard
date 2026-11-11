@@ -303,7 +303,8 @@ function siblingPath(path: string, name: string): string {
 
 /**
  * Replaces the board, dropping the counters, findings, and claims of frames
- * it no longer holds and the notes of pages it no longer holds.
+ * it no longer holds and the notes of pages it no longer holds. A
+ * reservation's claim stays, since its frame is listed only once it lands.
  */
 export function receiveBoard(store: LiveStore, board: ListResult): void {
   const pages = board.projects.flatMap((project) => project.pages)
@@ -319,7 +320,12 @@ export function receiveBoard(store: LiveStore, board: ListResult): void {
     reloads: held(reloads, refs),
     findings: held(findings, refs),
     notes: held(notes, pageRefs),
-    claims: held(claims, refs),
+    // A reservation names a frame the board does not list until it lands.
+    claims: Object.fromEntries(
+      Object.entries(claims).filter(
+        ([ref, claim]) => refs.has(ref) || claim.box !== undefined,
+      ),
+    ),
     aliases: liveAliases(aliases, board),
   })
 }

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -6,7 +7,7 @@ import { expect, type Page } from '@playwright/test'
 import WebSocket from 'ws'
 
 import { scanBoard } from '@/server/board/scan'
-import { claim, release } from '@/server/claims/store'
+import { claim, release, reserve } from '@/server/claims/store'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { FrameChange } from '@/shared/records/changes'
 import type { ListResult } from '@/shared/records/list'
@@ -535,6 +536,35 @@ function claimed(frame: string): (page: Page) => Promise<void> {
 }
 
 const claimedHero = claimed('webapp/home/hero')
+
+/**
+ * Reserves three frames on the settings page as one set, a row of 180 by 200
+ * boxes from the origin that fits the canvas between the panels at 1280,
+ * which its one hidden frame leaves clear, and claims
+ * `faq` plainly so it reads drawing and the other two queued. It writes
+ * through the claims store, as `claimed` does, under a session of its own,
+ * since the previous page's release lands after the next page reserves, and
+ * releases that session's claims once the capture page closes.
+ */
+async function reservedRow(page: Page): Promise<void> {
+  const root = SERVED_BOARD
+  const session = `reserved-${randomUUID()}`
+  const holder = { session, agent: 'claude', tag: 'claude · frameboard' }
+  const at = new Date(Date.now() - 20_000)
+  await reserve(
+    root,
+    holder,
+    ['pricing', 'faq', 'footer'].map((name, index) => ({
+      frame: `webapp/settings/${name}`,
+      box: { x: index * 260, y: 0, width: 180, height: 200, hugHeight: true },
+    })),
+    at,
+  )
+  await claim(root, { ...holder, frame: 'webapp/settings/faq' }, new Date())
+  page.once('close', () => {
+    void release(root, session, undefined, new Date())
+  })
+}
 
 /**
  * Sets the hero's headline and caption in a raw indigo no token names, since
@@ -2012,6 +2042,7 @@ const WRITES_GRANTED = 'button[aria-label="Lock about"]:not([disabled])'
 /** Where `menuOn` right-clicks: a frame's center, empty canvas, the selected element, or a panel row. */
 type MenuSpot =
   | { frame: string }
+  | { reserved: string }
   | { empty: true }
   | { element: true }
   | { row: string }
@@ -2045,6 +2076,11 @@ function menuOn(
           }
           if ('frame' in spot) {
             return at(document.querySelector(`[data-frame="${spot.frame}"]`))
+          }
+          if ('reserved' in spot) {
+            return at(
+              document.querySelector(`[data-reserved="${spot.reserved}"]`),
+            )
           }
           if ('element' in spot) {
             return at(document.querySelector('[data-element-selection]'))
@@ -2115,7 +2151,17 @@ function menuOn(
           requestAnimationFrame(run),
         )
       },
-      { spot, copy, ready: WRITES_GRANTED, frames: ROW_FRAMES },
+      {
+        spot,
+        copy,
+        // The settings page holds no `about` row, so a reserved spot there
+        // waits on its one frame's lock instead.
+        ready:
+          'reserved' in spot
+            ? 'button[aria-label="Lock profile"]:not([disabled])'
+            : WRITES_GRANTED,
+        frames: ROW_FRAMES,
+      },
     )
   }
 }
@@ -3300,6 +3346,36 @@ const CASES: CaptureCase[] = [
             readyWhen(
               '[data-frame="webapp/home/about"] [data-claim-tag] ~ [data-findings-badge]',
             ),
+          ),
+        ),
+      },
+      {
+        // Three frames an agent reserved and has not written, the middle
+        // one drawing, per the picked reserve-row mock.
+        section: 'reserved-row',
+        theme,
+        route: '/p/webapp/settings',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(listening, reservedRow, readyWhen('[data-drawing]')),
+        ),
+      },
+      {
+        section: 'reserved-menu',
+        theme,
+        route: '/p/webapp/settings',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            listening,
+            reservedRow,
+            menuOn({ reserved: 'webapp/settings/pricing' }),
+            readyWhen('[data-slot="context-menu-content"]'),
           ),
         ),
       },

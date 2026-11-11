@@ -59,9 +59,9 @@ When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/refere
 
 ## Claim a frame before you rewrite it
 
-A new frame needs no claim, since nothing else holds a file you have just written.
+Reserve every new frame you plan with `frameboard editing <page>/<frame>... --new --json` before writing any, so the developer's board shows where each will land. Each file lands in its reserved box.
 
-Run `frameboard editing <page>/<frame> --json` before you change an existing frame, so the developer's board shows you working on it and another session knows it is taken.
+Run `frameboard editing <page>/<frame> --json` before you change an existing frame, so the developer's board shows you working on it and another session knows it is taken. Run it on each reserved frame as you turn to write it too, which marks that box as the one you are drawing and keeps the whole set held.
 
 - A claim lapses five minutes after you last ran it, so run it again while you are still at work
 - Drop it with `frameboard editing <page>/<frame> --release --json` as soon as you are done rather than letting it lapse, since the developer's hand edits on it wait for your claim to end
