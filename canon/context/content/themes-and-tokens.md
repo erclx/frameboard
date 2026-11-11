@@ -27,6 +27,7 @@ Owns the head spliced into a served frame, the Theme tab's token table, and the 
 The routes a frame imports from sit in `src/server/routes/`, which `canon/context/board/server.md` owns.
 
 - `/frameboard/faces/<family>/` serves each `FACES` face with its license and the woff2 files its sheet references, from `dist/faces/` at build or `node_modules/.cache/frameboard/faces` from source
+  - Frames import them under `v<version>/`, answered `immutable` for the running release alone and 404 for any other, while the bare path stays `no-store`
 - The build renames each face from the package's variable name, such as `Geist Variable`, to the plain family a frame names
 - `/frameboard/tokens.css` serves the board sheet, being the `--tokens` sheet when `serve` was given one, else the board's `tokens.css`
 - `/frames/<project>/tokens.css` serves the project's sheet, so its relative `url(assets/...)` resolves

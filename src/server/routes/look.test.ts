@@ -11,6 +11,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { version } from '@/shared/version'
+
 import { lookRoutes } from './look'
 
 describe('lookRoutes', () => {
@@ -44,6 +46,33 @@ describe('lookRoutes', () => {
     expect(response.headers.get('content-type')).toBe('text/css; charset=utf-8')
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(await response.text()).toBe('@font-face {}')
+  })
+
+  it("serves a face's sheet under the running release as immutable", async () => {
+    const response = await get(`/frameboard/faces/v${version}/geist/index.css`)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('text/css; charset=utf-8')
+    expect(response.headers.get('cache-control')).toBe(
+      'public, max-age=31536000, immutable',
+    )
+    expect(await response.text()).toBe('@font-face {}')
+  })
+
+  it("serves a face's woff2 file under the running release", async () => {
+    const response = await get(
+      `/frameboard/faces/v${version}/geist/files/latin.woff2`,
+    )
+
+    expect(response.headers.get('content-type')).toBe('font/woff2')
+    expect(response.headers.get('cache-control')).toContain('immutable')
+    expect(await response.text()).toBe('woff2')
+  })
+
+  it('answers 404 for a face under any other release', async () => {
+    const response = await get('/frameboard/faces/v0.0.0/geist/index.css')
+
+    expect(response.status).toBe(404)
   })
 
   it("serves a face's woff2 file", async () => {
@@ -84,6 +113,10 @@ describe('lookRoutes', () => {
       ],
       ['an encoded slash', '/frameboard/faces/..%2fsecret.css'],
       ['the faces folder itself', '/frameboard/faces/geist'],
+      [
+        'a path leaving the release folder',
+        `/frameboard/faces/v${version}/%2e%2e/secret.css`,
+      ],
     ])('refuses %s', async (_case, path) => {
       writeFileSync(join(facesDir, 'geist/.hidden.css'), 'hidden')
 

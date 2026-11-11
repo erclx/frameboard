@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { tokenSheetPaths } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
+import { version } from '@/shared/version'
 
 import {
   copyFixtureBoard,
@@ -115,11 +116,11 @@ describe('frameRoutes', () => {
       const served = await (await get('/frames/studio/home/hero.html')).text()
 
       expect(importsOf(served)).toEqual([
-        '/frameboard/faces/geist/index.css',
-        '/frameboard/faces/geist-mono/index.css',
-        '/frameboard/faces/inter/index.css',
-        '/frameboard/faces/source-serif-4/index.css',
-        '/frameboard/faces/caveat/index.css',
+        `/frameboard/faces/v${version}/geist/index.css`,
+        `/frameboard/faces/v${version}/geist-mono/index.css`,
+        `/frameboard/faces/v${version}/inter/index.css`,
+        `/frameboard/faces/v${version}/source-serif-4/index.css`,
+        `/frameboard/faces/v${version}/caveat/index.css`,
         '/frameboard/tokens.css',
         '/frames/studio/tokens.css',
       ])
