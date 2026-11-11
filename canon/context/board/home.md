@@ -37,11 +37,16 @@ A card or row takes the menu and the keys the same way.
 
 `folders/` files projects into one-level folders by the `group` key in `project.json`, so a folder is board state an agent reads in `list --json`.
 
-- `entries.ts` turns the shown order into cards, a folder standing where its first member would. It sorts and rises with the pinned through that member
+- `entries.ts` turns the shown order into cards, a folder standing where its first member would. It sorts through that member and rises with the pinned when pinned itself or holding a pinned member
 - Two groups differing only in case or trailing space read as one folder, and a folder whose last member leaves shows nothing
-- A grid folder card opens `panel.tsx`, a kit dialog with Rename and Ungroup over its members, and a list folder row opens in place on a click, Enter, Space, or Right
+- A grid folder card opens `panel.tsx`, a kit dialog with the folder menu's ⋯ in its header over its members, and a list folder row opens in place on a click, Enter, Space, or Right
 - Move to folder in the card menu lists every other folder and New folder, which files under the next free `Folder` and opens its name, as a drag of one card onto another does through `drop.ts`
 - A rename writes the new name to every member and refuses one another folder holds in any case, since writing it would merge the two
+
+A folder card or row takes its own menu and an in-place rename.
+
+- A right click on a folder card or row, or the ⋯ a card shows on hover and focus, opens `menu.tsx` with Open, Rename, Ungroup, and Pin, running the `folder.*` actions
+- A double click on a folder's name renames it in place on the card, the row, and the panel header. `title-click.ts` holds a click on the name 300ms so the double click never opens the folder first
 
 While a project is over a card or row, the target says what the drop does, clear of its name.
 
@@ -72,6 +77,7 @@ The browser keeps both, and neither reaches the board.
 - `localStorage` holds `frameboard.home.layout`, `frameboard.home.sort` and its `frameboard.home.sortDirection`, and the pins in `frameboard.home.pins`, falling back to defaults when storage refuses
 - It holds the filter text in `frameboard.home.filter` and whether the Archived section is open in `frameboard.home.archivedOpen` too
 - No pin reaches the board folder, so a second browser or an agent sees none, and a pin naming no project is ignored where it is read
+- A folder pin sits in the same set as `folder:<key>`, a colon no project name takes. A folder rename carries it and an ungroup drops it
 - Neither waits on `canWrite`, so both work in a read-only tab
 
 ### `src/client/projects/`

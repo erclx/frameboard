@@ -158,6 +158,7 @@ Owns what a tab shows about its write access, mirroring `src/server/access/`.
 The favicon files sit beside the app.
 
 - `src/client/public/` owns the files served at the site root, being the favicon set rendered from `icon.svg`
+- `src/client/title/` owns the tab title, `(3) landing-v2 · Frameboard`, counting every unseen agent change and agent note reply on the board, whichever project is open
 
 ## Gotchas
 

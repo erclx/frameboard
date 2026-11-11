@@ -72,6 +72,9 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 - `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
 - `unseen.ts` keeps each frame's latest unseen change, dotted on its label and layers row and counted on pages and projects, with each frame's seen hash in `localStorage`
+- It keeps the newest agent reply each note thread showed in `frameboard.seen-replies`, written by an open thread card, so the tab title counts a reply until its thread opens
+
+The same store carries what an agent is doing now.
 
 - Following an agent, from its initial or the palette while one session listens, centers each frame it changes or claims at the zoom it started with, and a hand move stops it
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
