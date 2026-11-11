@@ -3,7 +3,7 @@ import '../styles.css'
 import { act, render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
@@ -14,6 +14,7 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
+import { leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
 import { clear, select, selectionStore, selectSection } from './selection'
 import {
@@ -172,16 +173,114 @@ describe('Canvas', () => {
     expect(container.querySelector('[data-hit-layer]')).not.toBeNull()
   })
 
-  it('lifts the hit layer in Play, so a click reaches the frame', () => {
-    modeStore.setState({ mode: 'play' })
+  describe('in Play', () => {
+    const playPage = () =>
+      page('studio/play', [frame('a', { x: 0, y: 0, width: 200, height: 200 })])
 
-    const { container } = renderCanvas(
-      page('studio/play', [
-        frame('a', { x: 0, y: 0, width: 200, height: 200 }),
-      ]),
-    )
+    /** The screen point at the middle of a frame's box as drawn. */
+    function middleOf(container: HTMLElement, name: string) {
+      const box = container
+        .querySelector(`[data-frame="studio/home/${name}"]`)
+        ?.getBoundingClientRect()
+      if (!box) throw new Error(`no frame ${name}`)
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    }
 
-    expect(container.querySelector('[data-hit-layer]')).toBeNull()
+    /** A press on the shield, an optional move, a release, and the click a browser follows with. */
+    function pressShield(
+      container: HTMLElement,
+      from: { x: number; y: number },
+      to = from,
+    ) {
+      const shield = container.querySelector('[data-play-shield]')
+      const event = (type: string, at: { x: number; y: number }) =>
+        new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: at.x,
+          clientY: at.y,
+        })
+      shield?.dispatchEvent(event('mousedown', from))
+      if (to !== from) window.dispatchEvent(event('mousemove', to))
+      window.dispatchEvent(event('mouseup', to))
+      shield?.dispatchEvent(event('click', to))
+    }
+
+    beforeEach(() => {
+      modeStore.setState({ mode: 'play' })
+    })
+
+    afterEach(() => {
+      leaveFrame()
+    })
+
+    it('covers every frame with the shield, so the board keeps the wheel', () => {
+      const { container } = renderCanvas(playPage())
+      const { x, y } = middleOf(container, 'a')
+
+      expect(
+        document.elementFromPoint(x, y)?.hasAttribute('data-play-shield'),
+      ).toBe(true)
+    })
+
+    it('enters the frame under a click, which then takes the pointer', () => {
+      const { container } = renderCanvas(playPage())
+      const at = middleOf(container, 'a')
+
+      act(() => pressShield(container, at))
+
+      expect(document.elementFromPoint(at.x, at.y)?.tagName).toBe('IFRAME')
+    })
+
+    it('tags the entered frame with how to leave it', () => {
+      const { container, getByText } = renderCanvas(playPage())
+
+      act(() => pressShield(container, middleOf(container, 'a')))
+
+      expect(getByText('In frame, Esc to leave')).toBeVisible()
+    })
+
+    it('leaves the frame on a click over empty canvas', () => {
+      const { container, queryByText } = renderCanvas(playPage())
+      const at = middleOf(container, 'a')
+      act(() => pressShield(container, at))
+
+      act(() => pressShield(container, { x: at.x + 250, y: at.y }))
+
+      expect(queryByText('In frame, Esc to leave')).toBeNull()
+    })
+
+    it('pans rather than entering on a drag that starts over a frame', () => {
+      const { container, queryByText } = renderCanvas(playPage())
+      const at = middleOf(container, 'a')
+      const before = viewOf(container)
+
+      act(() => pressShield(container, at, { x: at.x + 40, y: at.y }))
+
+      expect({
+        moved: viewOf(container).x - before.x,
+        tag: queryByText('In frame, Esc to leave'),
+      }).toEqual({ moved: 40, tag: null })
+    })
+
+    it('leaves the frame when the board returns to Edit', () => {
+      const { container, queryByText } = renderCanvas(playPage())
+      act(() => pressShield(container, middleOf(container, 'a')))
+
+      act(() => modeStore.setState({ mode: 'edit' }))
+      act(() => modeStore.setState({ mode: 'play' }))
+
+      expect(queryByText('In frame, Esc to leave')).toBeNull()
+    })
+
+    it('writes no selection when it enters a frame', () => {
+      const { container } = renderCanvas(playPage())
+
+      act(() => pressShield(container, middleOf(container, 'a')))
+
+      expect(selectionStore.getState().frames).toEqual([])
+    })
   })
 
   it('travels back to the fitted view when the controller fits', async () => {

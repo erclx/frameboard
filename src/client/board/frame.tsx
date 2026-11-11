@@ -32,6 +32,7 @@ import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useMode } from './mode'
+import { useEntered } from './play/entered'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
@@ -61,8 +62,8 @@ interface FrameProps {
 /**
  * One frame at its box on the canvas layer, with its name above it at a
  * constant screen size. The label is the surface later rows add check
- * findings, claim tags, and the theme marker to. In Play a click moves focus
- * into the frame, so Esc is bound into its window to reach the board.
+ * findings, claim tags, and the theme marker to. In Play an entered frame
+ * takes focus, so Esc is bound into its window to reach the board.
  */
 export const Frame = memo(function Frame({
   frame,
@@ -81,6 +82,7 @@ export const Frame = memo(function Frame({
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
+  const entered = useEntered(frame.ref) && playing
   const theme = useFrameTheme(frame.ref)
   const findingsOpen = useFindingsOpen(frame.ref)
   const hasBase = useUnseen((state) => frame.ref in state.base)
@@ -192,6 +194,11 @@ export const Frame = memo(function Frame({
     }
   }, [playing, live])
 
+  // An entered frame takes the keys, so focus moves into its page.
+  useEffect(() => {
+    if (entered && live) iframe.current?.focus()
+  }, [entered, live])
+
   // Play shows the frames as they ship, so a claim draws nothing there.
   const claimed = claim && !playing ? claim : undefined
 
@@ -201,7 +208,17 @@ export const Frame = memo(function Frame({
       data-selected={selected || undefined}
       data-claimed={claimed ? true : undefined}
       data-findings-open={findingsOpen || undefined}
-      className="absolute"
+      data-entered={entered || undefined}
+      className={cn(
+        'absolute',
+        // Play passes the pointer through every frame to the shield but the
+        // entered one, and marks the frame under it as one a click enters.
+        entered &&
+          'pointer-events-auto [outline:calc(2px/var(--zoom,1))_solid_var(--primary)]',
+        playing &&
+          !entered &&
+          'data-label-hover:[outline:calc(1px/var(--zoom,1))_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]',
+      )}
       style={{ left: x, top: y, width, height, zIndex: frame.order }}
     >
       <div
@@ -269,6 +286,7 @@ export const Frame = memo(function Frame({
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
       {claimed ? <ClaimOutline /> : null}
+      {entered ? <EnteredTag /> : null}
       {findings && findings.length > 0 ? (
         <span
           aria-hidden
@@ -416,6 +434,17 @@ function severityOf(findings: readonly Finding[]): Finding['severity'] {
     : 'warning'
 }
 
+/** The entered frame's tag under its bottom left, at a constant screen size. */
+function EnteredTag() {
+  return (
+    <div className="absolute top-full left-0 origin-top-left pt-1 [transform:scale(calc(1/var(--zoom,1)))]">
+      <span className="block rounded-[4px] bg-primary-fill px-[5px] py-px text-[10px] font-medium whitespace-nowrap text-primary-foreground">
+        In frame, Esc to leave
+      </span>
+    </div>
+  )
+}
+
 /**
  * The claimed frame's dashed outline, 1.5px wide and 3px outside it on
  * screen at any zoom.
@@ -465,7 +494,8 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         data-findings-badge={frame.ref}
         aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
         data-severity={severity}
-        className="flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+        // Play passes the pointer through the frames' layer, so the badge takes it back.
+        className="pointer-events-auto flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
       >
         <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
         {count}

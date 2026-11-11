@@ -63,6 +63,8 @@ import {
 } from './place/tool'
 import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
+import { enteredStore } from './play/entered'
+import { PlayShield } from './play/shield'
 import { placeSection } from './sections/actions'
 import { SectionBoxes } from './sections/box'
 import {
@@ -413,8 +415,15 @@ export function Canvas({
           null,
       )
       // The marks draw in a layer that takes no pointer, so they cannot carry
-      // a cursor themselves.
-      viewport.style.cursor = cursorAtRef.current?.(event) ?? ''
+      // a cursor themselves. In Play a frame under the shield shows a click
+      // enters it.
+      viewport.style.cursor =
+        cursorAtRef.current?.(event) ??
+        (hovered !== null &&
+        modeStore.getState().mode === 'play' &&
+        enteredStore.getState().ref !== hovered
+          ? 'pointer'
+          : '')
     }
     const leave = () => {
       hover(null)
@@ -694,13 +703,26 @@ export function Canvas({
           'cursor-grab active:cursor-grabbing',
       )}
     >
+      {playing ? (
+        <PlayShield
+          viewport={viewportRef}
+          frames={drawnFrames}
+          page={page.ref}
+          live={live}
+        />
+      ) : null}
       <div
         ref={(element) => {
           layerRef.current = element
           setLayer(element)
         }}
         data-layer
-        className="absolute top-0 left-0 origin-top-left"
+        className={cn(
+          'absolute top-0 left-0 origin-top-left',
+          // The pointer passes through to the shield under every frame but
+          // the entered one, which takes it back.
+          playing && 'pointer-events-none',
+        )}
       >
         {page.layoutError ? null : (
           <>
@@ -731,8 +753,8 @@ export function Canvas({
         )}
       </div>
       {/* Covers every frame in Edit, so a press over one reaches the
-          gestures rather than its page. Play lifts it, so a click reaches
-          the frame. */}
+          gestures rather than its page. Play draws the shield under the
+          frames in its place, which a click enters a frame through. */}
       {playing ? null : (
         <CanvasMenu
           page={page.ref}
