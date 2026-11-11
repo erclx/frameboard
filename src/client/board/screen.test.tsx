@@ -1,8 +1,8 @@
 import '../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -10,7 +10,7 @@ import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys, findAction } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
-import type { ListResult } from '@/shared/records/list'
+import type { ListResult, PageRecord } from '@/shared/records/list'
 
 import { modeStore } from './mode'
 import { BoardScreen } from './screen'
@@ -63,6 +63,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   unbind()
   liveStore.setState({ board: null, canWrite: false })
   modeStore.setState({ mode: 'edit', tool: 'move', hideUi: false })
@@ -145,5 +146,136 @@ describe('BoardScreen', () => {
       'aria-pressed',
       'true',
     )
+  })
+})
+
+/** A page holding one frame named after it, so its iframe reads which page it is. */
+function framedPage(name: string, index: number): PageRecord {
+  return {
+    ref: `studio/${name}`,
+    project: 'studio',
+    name,
+    path: `/board/studio/${name}`,
+    index,
+    layoutError: null,
+    frames: [
+      {
+        ref: `studio/${name}/${name}`,
+        project: 'studio',
+        page: name,
+        name,
+        path: `/board/studio/${name}/${name}.html`,
+        box: { x: 0, y: 0, width: 200, height: 200 },
+        order: 0,
+        hidden: false,
+        locked: false,
+        hugWidth: false,
+        hugHeight: false,
+        placed: true,
+        modifiedAt: '2026-10-15T00:00:00.000Z',
+      },
+    ],
+    sections: [],
+  }
+}
+
+describe('switching pages', () => {
+  const NAMES = ['home', 'about', 'contact']
+
+  function boardOf(names: readonly string[]): ListResult {
+    const [project] = BOARD.projects
+    if (!project) throw new Error('no project')
+    return {
+      ...BOARD,
+      projects: [
+        { ...project, pages: names.map((name, at) => framedPage(name, at)) },
+      ],
+    }
+  }
+
+  function boardAt(name: string) {
+    return (
+      <Router hook={memoryLocation({ path: `/p/studio/${name}` }).hook}>
+        <TooltipProvider>
+          <div style={{ width: 1200, height: 800 }}>
+            <BoardScreen project="studio" page={name} />
+          </div>
+        </TooltipProvider>
+      </Router>
+    )
+  }
+
+  const iframeOf = (name: string) =>
+    document.querySelector(`[data-frame="studio/${name}/${name}"] iframe`)
+
+  /** Steps the staging a frame at a time, its clock alone faked. */
+  function stageFrames() {
+    act(() => vi.advanceTimersToNextFrame())
+    act(() => vi.advanceTimersToNextFrame())
+  }
+
+  beforeEach(() => {
+    receiveBoard(liveStore, boardOf(NAMES))
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame'],
+    })
+  })
+
+  it('keeps the page left behind, hidden, while the new one stages', () => {
+    const { rerender } = render(boardAt('home'))
+    stageFrames()
+    const left = iframeOf('home')
+
+    rerender(boardAt('about'))
+
+    expect(left).not.toBeNull()
+    expect(left?.isConnected).toBe(true)
+    expect(left).not.toBeVisible()
+  })
+
+  it('drops the page left behind once the new one is live', async () => {
+    const { rerender } = render(boardAt('home'))
+    stageFrames()
+    const left = iframeOf('home')
+
+    rerender(boardAt('about'))
+    stageFrames()
+
+    await waitFor(() => expect(left?.isConnected).toBe(false))
+    expect(iframeOf('about')).toBeVisible()
+  })
+
+  it('shows the same iframes on a return before the drop', () => {
+    const { rerender } = render(boardAt('home'))
+    stageFrames()
+    const left = iframeOf('home')
+
+    rerender(boardAt('about'))
+    rerender(boardAt('home'))
+
+    expect(iframeOf('home')).toBe(left)
+    expect(left).toBeVisible()
+  })
+
+  it('drops the older held page on a third switch', () => {
+    const { rerender } = render(boardAt('home'))
+    stageFrames()
+    const oldest = iframeOf('home')
+
+    rerender(boardAt('about'))
+    stageFrames()
+    rerender(boardAt('contact'))
+
+    expect(oldest?.isConnected).toBe(false)
+  })
+
+  it('drops the page left behind when a return reveals a live one', async () => {
+    const { rerender } = render(boardAt('home'))
+    stageFrames()
+    rerender(boardAt('about'))
+    const about = document.querySelector('[data-frame="studio/about/about"]')
+    rerender(boardAt('home'))
+
+    await waitFor(() => expect(about?.isConnected).toBe(false))
   })
 })
