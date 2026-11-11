@@ -38,3 +38,9 @@ screenshots/
 
 # Social card
 card-dist/
+.env.*
+*.local
+!.env.example
+
+# VSCode
+.vscode/
