@@ -28,7 +28,11 @@ import {
   fileProjects,
   renameProject,
 } from '@/server/board/projects'
-import { resolvePageRef, resolveProject } from '@/server/board/refs'
+import {
+  resolveFrameRef,
+  resolvePageRef,
+  resolveProject,
+} from '@/server/board/refs'
 import { listProjects, readPageOrder } from '@/server/board/scan'
 import {
   addSection,
@@ -305,6 +309,12 @@ export function structureRoutes(
 
   app.post('/api/frame/add', async (c) => {
     const body = await parseBody(c.req.raw, frameAddSchema)
+    // A name an agent reserved is held, so its later file never overwrites this one.
+    const target = await resolveFrameRef(root, body.ref, {
+      cwd,
+      allowMissing: true,
+    })
+    await refuseHeld([`${target.project}/${target.page}/${target.name}`])
     const frame = await recorded(
       (journal) => addFrame(root, body.ref, { ...body, cwd, journal }),
       (added) => onFrames([added.ref]),
@@ -326,7 +336,10 @@ export function structureRoutes(
   app.post('/api/frame/rename', async (c) => {
     const body = await parseBody(c.req.raw, renameSchema)
     const source = await readFrame(root, body.ref, { cwd })
-    await refuseHeld([source.ref])
+    await refuseHeld([
+      source.ref,
+      `${source.project}/${source.page}/${body.name}`,
+    ])
     const frame = await recorded(
       (journal) => renameFrame(root, body.ref, body.name, { cwd, journal }),
       async (renamed) => ({

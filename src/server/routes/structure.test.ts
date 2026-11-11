@@ -10,7 +10,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { scanProject } from '../board/scan'
-import { claim, release } from '../claims/store'
+import { claim, release, reserve } from '../claims/store'
 import { History } from '../history/stack'
 import { structureRoutes } from './structure'
 
@@ -920,6 +920,43 @@ describe('structureRoutes', () => {
           true,
         )
         expect(history.counts().undo).toBe(0)
+      },
+    )
+
+    it.each([
+      ['an add', '/api/frame/add', { ref: 'studio/home/pricing' }],
+      [
+        'a rename onto it',
+        '/api/frame/rename',
+        { ref: 'studio/home/mobile', name: 'pricing' },
+      ],
+    ])(
+      'refuses %s naming a reserved frame with frame-claimed',
+      async (_, path, body) => {
+        await reserve(
+          board.root,
+          { session: 'sess-b', agent: 'claude', tag: 'claude · other' },
+          [
+            {
+              frame: 'studio/home/pricing',
+              box: { x: 0, y: 2000, width: 400, height: 300 },
+            },
+          ],
+          new Date(),
+        )
+
+        const response = await post(path, body)
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          error: {
+            code: 'frame-claimed',
+            details: { frame: 'studio/home/pricing' },
+          },
+        })
+        expect(existsSync(join(board.root, 'studio/home/pricing.html'))).toBe(
+          false,
+        )
       },
     )
 
