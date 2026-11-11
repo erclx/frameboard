@@ -1,9 +1,7 @@
-import { useLive } from '@/client/live/store'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { useMode } from '../mode'
 import { initialOf } from './label'
-import { reservedOn } from './reservations'
+import { useReservedBoxes } from './reservations'
 
 /**
  * Each frame an agent reserved on the page and has not written yet, as a
@@ -18,10 +16,7 @@ export function ReservedBoxes({
   page: string
   frames: readonly FrameRecord[]
 }) {
-  const claims = useLive((state) => state.claims)
-  const playing = useMode((state) => state.mode === 'play')
-  if (playing) return null
-  return reservedOn(claims, frames, page).map(
+  return useReservedBoxes(page, frames).map(
     ({ claim, name, index, count, drawing }) => {
       const state = drawing ? 'drawing' : 'queued'
       const tag = `${initialOf(claim.tag)}${claim.tag.slice(1)}`
