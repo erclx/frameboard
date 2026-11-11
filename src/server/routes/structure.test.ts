@@ -328,6 +328,63 @@ describe('structureRoutes', () => {
       expect(frames().hero).toMatchObject({ height: 900, scroll: true })
     })
 
+    it('fits each linked width to the height its content reads at that width', async () => {
+      setHero({ widths: [{ width: 390, height: 844 }] })
+      app = structureRoutes(
+        board.root,
+        ACCESS,
+        history,
+        async (_frame, box) => ({
+          width: box?.width ?? 1440,
+          height: box ? 2400 : 1232,
+          contentWidth: box?.width ?? 1440,
+          empty: false,
+        }),
+      )
+
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(frames().hero).toMatchObject({
+        height: 1232,
+        widths: [{ width: 390, height: 2400 }],
+      })
+    })
+
+    it('refuses a fit of content sized off the viewport with 422, writing nothing', async () => {
+      app = structureRoutes(board.root, ACCESS, history, async () => {
+        throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
+      })
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'fit-unbounded' },
+      })
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a fit with browser-not-found, 503, where no browser runs', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(503)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'browser-not-found' },
+      })
+    })
+
     it('fixes a hugging height where it stands', async () => {
       setHero({ height: 1232, hugHeight: true })
 
