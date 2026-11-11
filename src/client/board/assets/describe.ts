@@ -22,6 +22,21 @@ export function formatSize(bytes: number): string {
   return `${trimmed(megabytes / 1000)} GB`
 }
 
+/**
+ * A media length or position as a player shows it, `m:ss` under an hour and
+ * `h:mm:ss` past it, rounded down to the second. Anything not a finite
+ * length, such as a live stream's, reads `0:00`.
+ */
+export function formatLength(seconds: number): string {
+  const whole = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0
+  const hours = Math.floor(whole / 3600)
+  const minutes = Math.floor((whole % 3600) / 60)
+  const rest = String(whole % 60).padStart(2, '0')
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}`
+    : `${minutes}:${rest}`
+}
+
 function trimmed(value: number): string {
   return value.toFixed(1).replace(/\.0$/, '')
 }
