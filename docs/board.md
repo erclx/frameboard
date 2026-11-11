@@ -35,7 +35,8 @@ In the board you move and resize frames, press Esc mid-drag to cancel a move, a 
 The Frame tool places a phone, tablet, desktop, slide, or social card size picked from its list with a click, or draws a frame at any size with a drag. A selected frame's `Frame` heading opens the same list to resize it. The inspector's Preview row redraws a frame at another width without writing, and a 393 px frame reads as a phone there.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- Drag one project onto another, or pick Move to folder from its menu, to file projects in a folder. Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
+- Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it, and a double click on its name renames it
+- Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow
 - Position's Free takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
