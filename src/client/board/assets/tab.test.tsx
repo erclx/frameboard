@@ -177,6 +177,60 @@ describe('AssetsTab', () => {
       ])
     })
 
+    it('counts audio on its own chip and leaves Other hidden', async () => {
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing([
+            { path: 'chime.mp3', kind: 'audio', size: 52_000 },
+            { path: 'loop.wav', kind: 'audio', size: 310_000 },
+          ])}
+        />,
+      )
+      const chips = within(
+        await screen.findByRole('group', { name: 'Filter by kind' }),
+      ).getAllByRole('button')
+
+      expect(chips.map((chip) => chip.textContent)).toEqual(['All', 'Audio 2'])
+    })
+
+    it('shows only the audio files under a pressed Audio chip', async () => {
+      const user = userEvent.setup()
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing([
+            ...COUNTED,
+            { path: 'chime.mp3', kind: 'audio', size: 52_000 },
+          ])}
+        />,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Audio 1' }))
+
+      expect(screen.getByText('chime.mp3')).toBeVisible()
+      expect(screen.queryByText('clip.mp4')).not.toBeInTheDocument()
+      expect(screen.queryByText('logo.svg')).not.toBeInTheDocument()
+    })
+
+    it('names audio in the no-match line under the Audio chip', async () => {
+      const user = userEvent.setup()
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing([
+            ...COUNTED,
+            { path: 'chime.mp3', kind: 'audio', size: 52_000 },
+          ])}
+        />,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Audio 1' }))
+      await user.type(screen.getByLabelText('Search assets'), 'logo')
+
+      expect(screen.getByText('No audio files match "logo".')).toBeVisible()
+    })
+
     it('gives each chip a target at least 24px square', async () => {
       render(<AssetsTab project="studio" load={listing(COUNTED)} />)
       const chips = within(

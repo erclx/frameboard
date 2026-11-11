@@ -1,7 +1,14 @@
 import type { AssetFile } from '@/shared/records/assets'
 
 /** The kind filters above the tiles, in the order they draw. */
-export const CHIPS = ['all', 'images', 'video', 'fonts', 'other'] as const
+export const CHIPS = [
+  'all',
+  'images',
+  'video',
+  'audio',
+  'fonts',
+  'other',
+] as const
 
 export type Chip = (typeof CHIPS)[number]
 
@@ -9,6 +16,7 @@ export const CHIP_LABELS: Record<Chip, string> = {
   all: 'All',
   images: 'Images',
   video: 'Video',
+  audio: 'Audio',
   fonts: 'Fonts',
   other: 'Other',
 }
@@ -22,6 +30,8 @@ export function chipOf(kind: AssetFile['kind']): Exclude<Chip, 'all'> {
       return 'images'
     case 'video':
       return 'video'
+    case 'audio':
+      return 'audio'
     case 'font':
       return 'fonts'
     default:

@@ -15,7 +15,7 @@ describe('chipOf', () => {
     ['svg', 'images'],
     ['video', 'video'],
     ['font', 'fonts'],
-    ['audio', 'other'],
+    ['audio', 'audio'],
     ['stylesheet', 'other'],
     ['script', 'other'],
     ['other', 'other'],
