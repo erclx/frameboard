@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import type { Element } from 'domhandler'
 import postcss, { type Declaration, type Root, type Rule } from 'postcss'
 
@@ -8,6 +10,8 @@ import {
   attributeLocation,
   boardPath,
   type FrameSource,
+  isInside,
+  localTarget,
   locate,
   parseSheet,
   type Sheet,
@@ -109,7 +113,9 @@ export function checkUnknownTokens(
 
   for (const element of source.elements) {
     if (element.name !== 'script') continue
-    for (const name of scriptWrites(textOf(element))) declared.add(name)
+    for (const name of scriptWrites(scriptText(element, source))) {
+      declared.add(name)
+    }
   }
 
   return uses
@@ -148,6 +154,23 @@ function scriptWrites(text: string): string[] {
   return SCRIPT_WRITES.flatMap((pattern) =>
     [...text.matchAll(pattern)].map((match) => match.at(-1) ?? ''),
   )
+}
+
+/**
+ * A script's inline text, or its `src` file's when the file sits in the
+ * board. A remote, outside, or unreadable `src` reads as empty, since the
+ * write hook never reports a read as failed.
+ */
+function scriptText(element: Element, source: FrameSource): string {
+  const src = element.attribs.src
+  if (src === undefined) return textOf(element)
+  const file = localTarget(src, source.pageDir)
+  if (!file || !isInside(source.root, file)) return ''
+  try {
+    return readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
 }
 
 function textOf(element: Element): string {

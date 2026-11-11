@@ -151,6 +151,27 @@ describe('checkUnknownTokens', () => {
     ).toEqual([])
   })
 
+  it('passes a property a local script file sets', () => {
+    expect(
+      check(
+        '<p style="opacity: var(--t)">x</p><script src="hero.js"></script>',
+        { 'site/home/hero.js': `p.style.setProperty("--t", ".65")` },
+      ),
+    ).toEqual([])
+  })
+
+  it('reports one when the script file is remote, outside the board, or missing', () => {
+    expect(
+      check(
+        '<p style="opacity: var(--t)">x</p><script src="https://example.com/a.js"></script><script src="../../../outside.js"></script><script src="gone.js"></script><script src="assets"></script>',
+        {
+          'site/home/assets/x.txt': '',
+          '../outside.js': `p.style.setProperty('--t', '.65')`,
+        },
+      ),
+    ).toMatchObject([{ rule: 'unknown-token' }])
+  })
+
   it('reports a property a script only reads', () => {
     expect(
       check(
