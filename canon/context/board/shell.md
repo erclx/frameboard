@@ -18,7 +18,7 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 - The Frame tool, key F, places the size picked from its list at the click, named for it, or draws a frame named `frame` at a dragged box, then selects it and returns to Move, opening no name field
 - A frame placed partly out of view moves the view to center it at the current zoom
 - An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
-- In Play a frame behaves like a page, nothing selects, and notes and claim outlines hide
+- In Play the board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claim outlines hide
 - Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
@@ -28,6 +28,16 @@ A frame's label carries a sun on hover while the frame follows the board's theme
 - It skips a point over a `[data-label-control]`, which clicks on release, and anywhere else a double-click picks inside the frame
 
 `label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
+
+### `src/client/board/play/`
+
+Owns Play's own state and surfaces, being the frame entered, the shield, and what the banner can say about a page's reach.
+
+- `entered.ts` holds the one entered frame by ref, cleared on leaving Play, on a page switch, and when the frame stops drawing a live page
+- `shield.tsx` sits under the frames' layer, so the wheel and a drag over any other frame reach `d3-zoom`. A click enters the frame `frameAt` finds and a click on empty canvas leaves.
+- d3-zoom swallows the click ending a drag, so a pan starting over a frame never enters it
+- Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
+- A layers row in Play reveals its frame and enters it
 
 ### `src/client/board/sections/`
 
@@ -164,5 +174,5 @@ The favicon files sit beside the app.
 - A frame's script keeps its reach through `parent.document` and same-origin `fetch`, which the board accepts as the developer's own agents' work
 - Pan and zoom write the layer's CSS transform from the `d3-zoom` handler, so a gesture renders nothing, and a plain wheel pans while a wheel carrying `ctrlKey` zooms
 - `wheel.ts` reads an axis in line mode or of 50 pixels or more as a mouse notch, which zooms one 1.2 step or pans over 120 ms, so a unit test polls the view after a notch-sized pan
-- Edit covers the frames with a hit layer so a press reaches the selection gestures, and Play lifts it, so a click focuses a frame's window, where the board binds Esc since its own keys never arrive
+- Edit covers the frames with a hit layer so a press reaches the selection gestures. Play swaps it for the shield, and the frames' layer passes the pointer to it everywhere but the entered frame.
 - A text step sets its weight as well as its size, so `text-label` draws at 600 unless a `font-*` class beside it says otherwise
