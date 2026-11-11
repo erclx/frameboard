@@ -240,6 +240,15 @@ describe.skipIf(shell === null)(
       expect(findings).toEqual([])
     })
 
+    it('warns on a block a script resizes to the window height on resize', async () => {
+      const findings = await checkHero(
+        'body { margin: 0 }',
+        '<div id="spacer"></div><script>const size = () => { spacer.style.height = `${innerHeight}px` }; size(); addEventListener("resize", size)</script>',
+      )
+
+      expect(findings).toMatchObject([{ rule: 'viewport' }])
+    })
+
     it('reads a 100vh element cropped by overflow hidden as no finding', async () => {
       const findings = await checkHero(
         '.crop { height: 100px; overflow: hidden } .crop div { height: 100vh }',
