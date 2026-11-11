@@ -386,6 +386,30 @@ describe('frames', () => {
       })
     })
 
+    it('drops a linked width a hand resize lands the frame on', async () => {
+      board = copyFixtureBoard('basic')
+      const root = board.root
+      const page = layout('webapp/home')
+      page.frames.hero.widths = [
+        { width: 834, height: 1194 },
+        { width: 390, height: 844 },
+      ]
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+
+      await setBoxes(
+        root,
+        'webapp/home',
+        { hero: { ...HERO, width: 834, height: 1194 } },
+        { hero: HERO },
+        { cwd: root },
+      )
+
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        width: 834,
+        widths: [{ width: 390, height: 844 }],
+      })
+    })
+
     it('refuses a locked frame and writes nothing', async () => {
       board = copyFixtureBoard('basic')
       const root = board.root
@@ -782,6 +806,26 @@ describe('frames', () => {
         })
 
         expect(resized.widths).toEqual([{ width: 390, height: 844 }])
+      })
+
+      it('resize turning scroll on with a height still drops each linked height', async () => {
+        const root = open()
+        hugHero(root, {
+          hugHeight: true,
+          height: 3000,
+          widths: [{ width: 390, height: 5000 }],
+        })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          scroll: true,
+          height: 900,
+        })
+
+        expect([resized.box.height, resized.widths]).toEqual([
+          900,
+          [{ width: 390, height: 844 }],
+        ])
       })
 
       it('resize fixing the height keeps each linked height', async () => {

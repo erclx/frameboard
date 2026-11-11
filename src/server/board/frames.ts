@@ -353,14 +353,16 @@ export async function resizeFrame(
       hugWidth,
       hugHeight: !scroll && placement.hugHeight && size.height === undefined,
       scroll,
-      // A hugging height dropped to a screen height takes each linked width
-      // to its own, so every view of a scroll frame scrolls.
-      widths: drops
-        ? widths.map((linked) => ({
-            ...linked,
-            height: referenceHeight(linked.width),
-          }))
-        : widths,
+      // Scroll turned on over a hugging height takes each linked width to
+      // its own screen height, whatever height the frame's own box is given,
+      // so every view of a scroll frame scrolls.
+      widths:
+        scroll && placement.hugHeight
+          ? widths.map((linked) => ({
+              ...linked,
+              height: referenceHeight(linked.width),
+            }))
+          : widths,
     }
   })
 }
@@ -610,6 +612,11 @@ export async function setBoxes(
           box: { ...box, ...kept },
           hugWidth: placement.hugWidth && box.width === started.width,
           hugHeight: placement.hugHeight && box.height === started.height,
+          // A hand resize onto a width the frame lists takes that view's
+          // place, so the list never names the frame's own width.
+          widths: placement.widths.filter(
+            (linked) => linked.width !== (kept.width ?? box.width),
+          ),
         })
       }
     },
