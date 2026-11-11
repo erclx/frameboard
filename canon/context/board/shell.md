@@ -27,6 +27,8 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
 
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 
+In Edit, hover or selection shows an open-alone link over the frame's right edge, opening the frame's `/frames/` address in a new tab. The label shrinks to clear it while it shows.
+
 - A double-click in the label strip opens a rename field over the label through F2's gates, so a read-only tab opens nothing, while F2 itself still opens the inspector's name
 - `LabelRename` draws that field in the notes layer, since the hit layer covers the frames' layer and would take a click meant to place the caret
 - It skips a point over a `[data-label-control]`, which clicks on release, and anywhere else a double-click picks inside the frame
@@ -40,6 +42,14 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 - A linked box is a view and never a frame. `frameAt` and `framesIn` answer the frame for a point or marquee on one, and `pickAt` reads the frame's own box alone, so no element picks inside it
 - It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
 - Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
+
+### `src/client/board/scroll/`
+
+Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
+
+- The rail draws inside the frame's box and each linked box, and only while the page is taller than its box and readable, so a page on another origin draws none
+- A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
+- The scroll offset lives on the iframe's window and is never written to the layout or to undo
 
 ### `src/client/board/play/`
 

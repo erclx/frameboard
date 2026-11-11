@@ -173,49 +173,61 @@ describe('structureRoutes', () => {
     expect((await history.redo()).page).toBe('studio/pricing')
   })
 
-  describe('fit route', () => {
-    const access = {
-      token: () => TOKEN,
-      key: 'b'.repeat(64),
-      cookieName: 'frameboard-key-111111111111',
-      isOwnOrigin: () => false,
+  describe('height route', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+    const layoutPath = () => join(board.root, 'studio/home/layout.json')
+    const frames = () => JSON.parse(readFileSync(layoutPath(), 'utf8')).frames
+    const setHero = (fields: Record<string, unknown>) => {
+      const layout = JSON.parse(readFileSync(layoutPath(), 'utf8'))
+      Object.assign(layout.frames.hero, fields)
+      writeFileSync(layoutPath(), JSON.stringify(layout))
     }
-    const hero = () =>
-      JSON.parse(
-        readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
-      ).frames.hero
-
-    it('sets the height to the measured content, hugs it, and undoes back', async () => {
-      app = structureRoutes(board.root, access, history, async () => ({
+    const measuring = (height: number) =>
+      structureRoutes(board.root, ACCESS, history, async () => ({
         width: 1440,
-        height: 1232,
-        contentWidth: 1600,
+        height,
+        contentWidth: 1440,
         empty: false,
       }))
 
-      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+    it('sets scroll in one undoable step', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': HERO },
+      })
 
       expect(await response.json()).toMatchObject({
         ok: true,
-        data: {
-          frame: { box: { height: 1232 }, hugHeight: true },
-          contentHeight: 1232,
-          tooWide: true,
-        },
+        data: [{ ref: 'studio/home/hero', scroll: true }],
       })
+      expect(history.counts().undo).toBe(1)
       await history.undo()
-      expect(hero()).toMatchObject({ height: 900 })
-      expect(hero().hugHeight).toBeUndefined()
+      expect(frames().hero.scroll).toBeUndefined()
     })
 
-    it('writes each linked width the height its content reads at that width', async () => {
-      const layoutPath = join(board.root, 'studio/home/layout.json')
-      const layout = JSON.parse(readFileSync(layoutPath, 'utf8'))
-      layout.frames.hero.widths = [{ width: 390, height: 844 }]
-      writeFileSync(layoutPath, JSON.stringify(layout))
+    it('fits a scroll frame to its content, clearing scroll, and undoes back to scroll', async () => {
+      setHero({ scroll: true })
+      app = measuring(2400)
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(200)
+      expect(frames().hero).toMatchObject({ height: 2400, hugHeight: true })
+      expect(frames().hero.scroll).toBe(false)
+      await history.undo()
+      expect(frames().hero).toMatchObject({ height: 900, scroll: true })
+    })
+
+    it('fits each linked width to the height its content reads at that width', async () => {
+      setHero({ widths: [{ width: 390, height: 844 }] })
       app = structureRoutes(
         board.root,
-        access,
+        ACCESS,
         history,
         async (_frame, box) => ({
           width: box?.width ?? 1440,
@@ -225,20 +237,28 @@ describe('structureRoutes', () => {
         }),
       )
 
-      await post('/api/frame/fit', { ref: 'studio/home/hero' })
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
 
-      expect(hero()).toMatchObject({
+      expect(frames().hero).toMatchObject({
         height: 1232,
         widths: [{ width: 390, height: 2400 }],
       })
     })
 
-    it('refuses content sized off the viewport with 422 and writes nothing', async () => {
-      app = structureRoutes(board.root, access, history, async () => {
+    it('refuses a fit of content sized off the viewport with 422, writing nothing', async () => {
+      app = structureRoutes(board.root, ACCESS, history, async () => {
         throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
       })
 
-      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
 
       expect(response.status).toBe(422)
       expect(await response.json()).toMatchObject({
@@ -247,34 +267,99 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(0)
     })
 
-    it('refuses a scroll frame with 422 before measuring it', async () => {
-      const layoutPath = join(board.root, 'studio/home/layout.json')
-      const layout = JSON.parse(readFileSync(layoutPath, 'utf8'))
-      layout.frames.hero.scroll = true
-      writeFileSync(layoutPath, JSON.stringify(layout))
-      let measured = false
-      app = structureRoutes(board.root, access, history, async () => {
-        measured = true
-        return { width: 1440, height: 3816, contentWidth: 1440, empty: false }
+    it('refuses a fit with browser-not-found, 503, where no browser runs', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
       })
-
-      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
-
-      expect(response.status).toBe(422)
-      expect(await response.json()).toMatchObject({
-        error: { code: 'fit-scroll' },
-      })
-      expect(measured).toBe(false)
-      expect(hero()).toMatchObject({ height: 900, scroll: true })
-    })
-
-    it('refuses browser-not-found with 503 where no browser runs', async () => {
-      const response = await post('/api/frame/fit', { ref: 'studio/home/hero' })
 
       expect(response.status).toBe(503)
       expect(await response.json()).toMatchObject({
         error: { code: 'browser-not-found' },
       })
+    })
+
+    it('fixes a hugging height where it stands', async () => {
+      setHero({ height: 1232, hugHeight: true })
+
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fixed',
+        expected: { 'studio/home/hero': { ...HERO, height: 1000 } },
+      })
+
+      expect(frames().hero.height).toBe(1232)
+      expect(frames().hero.hugHeight).toBe(false)
+    })
+
+    it('sets every listed frame in one step', async () => {
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        mode: 'scroll',
+        expected: {
+          'studio/home/hero': HERO,
+          'studio/home/mobile': { x: 1520, y: 0, width: 390, height: 844 },
+        },
+      })
+
+      expect(frames().hero.scroll).toBe(true)
+      expect(frames().mobile.scroll).toBe(true)
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('refuses stale-layout with 409 when the frame moved since, writing nothing', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': { ...HERO, height: 700 } },
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'stale-layout' },
+      })
+      expect(frames().hero.scroll).toBeUndefined()
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('writes no frame when a later one is stale', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        mode: 'scroll',
+        expected: {
+          'studio/home/hero': HERO,
+          'studio/home/mobile': { x: 1520, y: 0, width: 390, height: 700 },
+        },
+      })
+
+      expect(response.status).toBe(409)
+      expect(frames().hero.scroll).toBeUndefined()
+      expect(frames().mobile.scroll).toBeUndefined()
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a locked frame with 423, writing nothing', async () => {
+      setHero({ locked: true })
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(423)
+      expect(frames().hero.scroll).toBeUndefined()
+    })
+
+    it('refuses usage for a frame the body gives no expected box', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fixed',
+        expected: {},
+      })
+
+      expect(response.status).toBe(400)
     })
   })
 

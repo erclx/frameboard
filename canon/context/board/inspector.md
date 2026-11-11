@@ -16,7 +16,9 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 Owns the right panel, under a header of the avatar and the zoom level, and its controls.
 
 - **Frame size:** the `Frame ⌄` heading opens the Frame tool's sizes and names the matched row, `Custom`, or `Mixed` on its right. A pick sets W and H in one write.
-- **Frame and several frames:** name, position, and size with Fit height inside H, and for several the shared position and size with an Arrange button per align and distribute key.
+- **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key.
+- **Height:** a Fixed, Fit, and Scroll radio row under the size fields, read off `scroll` and `hugHeight`, checking none and reading `Mixed` where frames differ.
+- **Height write:** a pick writes every frame through `POST /api/frame/height` as one undo step, and a refusal puts the stored mode back. The menu's and palette's Fit height run that route too.
 - **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.

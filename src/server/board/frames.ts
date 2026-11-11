@@ -333,38 +333,48 @@ export async function resizeFrame(
       'Pass --size, --width, --height, --scroll, --no-scroll, --widths, or --no-widths to resize a frame.',
     )
   }
-  return updatePlacement(root, ref, options, (placement, frameRef) => {
-    const scroll = options.scroll ?? placement.scroll
-    const width = size.width ?? placement.box.width
-    const drops = scroll && placement.hugHeight && size.height === undefined
-    const hugWidth = !scroll && placement.hugWidth && size.width === undefined
-    const widths = linkedWidths(
-      frameRef,
-      options.widths ?? placement.widths.map((linked) => linked.width),
-      { width, hugWidth, held: placement.widths },
-    )
-    return {
-      ...placement,
-      box: {
-        ...placement.box,
-        ...size,
-        ...(drops ? { height: referenceHeight(width) } : {}),
-      },
-      hugWidth,
-      hugHeight: !scroll && placement.hugHeight && size.height === undefined,
-      scroll,
-      // Scroll turned on over a hugging height takes each linked width to
-      // its own screen height, whatever height the frame's own box is given,
-      // so every view of a scroll frame scrolls.
-      widths:
-        scroll && placement.hugHeight
-          ? widths.map((linked) => ({
-              ...linked,
-              height: referenceHeight(linked.width),
-            }))
-          : widths,
-    }
-  })
+  return updatePlacement(root, ref, options, (placement, frameRef) =>
+    resizedPlacement(placement, frameRef, size, options),
+  )
+}
+
+/** The placement `resizeFrame` writes, for the size it read off its options. */
+function resizedPlacement(
+  placement: Placement,
+  frameRef: string,
+  size: { width?: number; height?: number },
+  options: ScrollOptions & WidthsOptions,
+): Placement {
+  const scroll = options.scroll ?? placement.scroll
+  const width = size.width ?? placement.box.width
+  const drops = scroll && placement.hugHeight && size.height === undefined
+  const hugWidth = !scroll && placement.hugWidth && size.width === undefined
+  const widths = linkedWidths(
+    frameRef,
+    options.widths ?? placement.widths.map((linked) => linked.width),
+    { width, hugWidth, held: placement.widths },
+  )
+  return {
+    ...placement,
+    box: {
+      ...placement.box,
+      ...size,
+      ...(drops ? { height: referenceHeight(width) } : {}),
+    },
+    hugWidth,
+    hugHeight: !scroll && placement.hugHeight && size.height === undefined,
+    scroll,
+    // Scroll turned on over a hugging height takes each linked width to
+    // its own screen height, whatever height the frame's own box is given,
+    // so every view of a scroll frame scrolls.
+    widths:
+      scroll && placement.hugHeight
+        ? widths.map((linked) => ({
+            ...linked,
+            height: referenceHeight(linked.width),
+          }))
+        : widths,
+  }
 }
 
 /**
@@ -435,18 +445,132 @@ export async function fitHeight(
 ): Promise<FrameRecord> {
   return updatePlacement(root, ref, options, (placement) => {
     if (placement.scroll) throw fitScrollError(ref)
-    return {
-      ...placement,
-      box: { ...placement.box, height },
-      hugHeight: true,
-      widths: placement.widths.map((linked) => ({
-        ...linked,
-        height:
-          options.widths?.find((each) => each.width === linked.width)?.height ??
-          linked.height,
-      })),
-    }
+    return fittedPlacement(placement, height, options.widths)
   })
+}
+
+/** A placement hugging its measured height, each listed linked width taking its own. */
+function fittedPlacement(
+  placement: Placement,
+  height: number,
+  widths: readonly LinkedWidth[] | undefined,
+): Placement {
+  return {
+    ...placement,
+    box: { ...placement.box, height },
+    hugHeight: true,
+    widths: placement.widths.map((linked) => ({
+      ...linked,
+      height:
+        widths?.find((each) => each.width === linked.width)?.height ??
+        linked.height,
+    })),
+  }
+}
+
+/** How a frame holds its height: at a size, at its content's, or at a screen the page scrolls past. */
+export type HeightMode = 'fixed' | 'fit' | 'scroll'
+
+/** One frame a height mode write names, with the box its caller started from. */
+export interface HeightTarget {
+  ref: string
+  expected: Box
+  /** The content height `fit` takes, with each linked width's own. */
+  measured?: { height: number; widths?: readonly LinkedWidth[] }
+}
+
+/**
+ * Sets how each frame holds its height in one write under one lock, all of
+ * them or none. `fixed` keeps the box and clears hugging and scroll. `fit`
+ * takes the measured height and hugs it, clearing scroll. `scroll` fixes both
+ * axes as `frame resize --scroll` does. Every frame is checked before any is
+ * set: one moved or sized since its `expected` refuses `stale-layout`, leaving
+ * out an axis the frame hugs, since the server measures that one, and a `fit`
+ * without `measured` refuses `usage`.
+ */
+export async function setHeightModes(
+  root: string,
+  targets: readonly HeightTarget[],
+  mode: HeightMode,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord[]> {
+  const frames = await Promise.all(
+    targets.map(async (target) => ({
+      target,
+      frame: await resolveFrameRef(root, target.ref, options),
+    })),
+  )
+  await withLayouts(
+    frames.map(({ frame }) => pageDir(frame)),
+    async (layouts) => {
+      const next = frames.map(({ target, frame }) => {
+        const layout = layoutAt(layouts, pageDir(frame))
+        const placement = layout.placement(frame.name)
+        const frameRef = refOf(frame)
+        refuseStale(frameRef, placement, target.expected)
+        return {
+          layout,
+          name: frame.name,
+          placement: heightPlacement(
+            placement,
+            frameRef,
+            mode,
+            target.measured,
+          ),
+        }
+      })
+      for (const { layout, name, placement } of next) {
+        layout.set(name, placement)
+      }
+    },
+    options.journal,
+  )
+  return Promise.all(
+    frames.map(({ frame }) =>
+      frameRecord(root, frame.project, frame.page, frame.name),
+    ),
+  )
+}
+
+function heightPlacement(
+  placement: Placement,
+  frameRef: string,
+  mode: HeightMode,
+  measured: HeightTarget['measured'],
+): Placement {
+  if (mode === 'scroll') {
+    return resizedPlacement(placement, frameRef, {}, { scroll: true })
+  }
+  if (mode === 'fixed') {
+    return { ...placement, hugHeight: false, scroll: false }
+  }
+  if (!measured) {
+    throw new FrameboardError(
+      'usage',
+      `Fitting ${frameRef} needs its measured height.`,
+      { ref: frameRef },
+    )
+  }
+  return {
+    ...fittedPlacement(placement, measured.height, measured.widths),
+    scroll: false,
+  }
+}
+
+function refuseStale(ref: string, placement: Placement, expected: Box): void {
+  const { box } = placement
+  const same =
+    box.x === expected.x &&
+    box.y === expected.y &&
+    (placement.hugWidth || box.width === expected.width) &&
+    (placement.hugHeight || box.height === expected.height)
+  if (!same) {
+    throw new FrameboardError(
+      'stale-layout',
+      `${ref} moved since this edit began, so nothing was written.`,
+      { ref, stored: boxOf(box), expected },
+    )
+  }
 }
 
 /** The refusal a fit of a scroll frame answers, before or after measuring. */

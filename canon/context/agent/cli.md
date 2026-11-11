@@ -122,6 +122,6 @@ These catch a frame verb or a sync out.
 
 - `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own. It ignores what a cropping ancestor hides and reports too-wide content.
 - It refuses `fit-unbounded` for content sized off the viewport, like `100vh`, a block reset on `resize`, or one set once from `innerHeight` that reopened at the answer draws taller
-- It refuses `fit-scroll`, exit 10, on a `scroll` frame before the browser launches, and the fit route does the same before measuring
+- It refuses `fit-scroll`, exit 10, on a `scroll` frame before the browser launches, while the board's Height row fits one by clearing `scroll` through `POST /api/frame/height`
 - A `frames.json` key is `<group>/<name>` or `<group>/<section>/<name>`, and `parseFrameMap` refuses a fourth segment with `frame-map-invalid`
 - `toReference` climbs one `../` per folder in the key to reach the folder's `assets/`, so a nested reference opens styled from disk

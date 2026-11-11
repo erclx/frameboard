@@ -1,4 +1,11 @@
-import { Lock, Moon, MoveHorizontal, Sun, TriangleAlert } from 'lucide-react'
+import {
+  ExternalLink,
+  Lock,
+  Moon,
+  MoveHorizontal,
+  Sun,
+  TriangleAlert,
+} from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -18,6 +25,7 @@ import {
   useFrameTheme,
   useShownTheme,
 } from '@/client/theme/store'
+import { frameUrl } from '@/shared/board-urls'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -37,6 +45,7 @@ import { useMode } from './mode'
 import { useEntered } from './play/entered'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
+import { ScrollRail } from './scroll/rail'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
 import {
   renameFrame,
@@ -234,13 +243,17 @@ export const Frame = memo(function Frame({
           // it, it is selected, or its findings are open.
           '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:hidden',
           claimed ? 'text-claim' : 'text-muted-foreground',
+          'max-w-(--label-room)',
+          !playing &&
+            '[[data-label-hover]>&]:max-w-[calc(var(--label-room)-22px)] [[data-selected]>&]:max-w-[calc(var(--label-room)-22px)]',
           // `LabelRename` draws the field over it.
           renaming && 'invisible',
         )}
         // A preview narrower than the stored box leaves that box's room above
-        // it, so the name and the Preview chip may use it.
+        // it, so the name and the Preview chip may use it. While the
+        // open-alone link shows, the label stops short of it.
         style={{
-          maxWidth: `calc(${Math.max(width, storedWidth)}px * var(--zoom, 1))`,
+          ['--label-room' as string]: `calc(${Math.max(width, storedWidth)}px * var(--zoom, 1))`,
         }}
         title={frame.name}
       >
@@ -271,6 +284,9 @@ export const Frame = memo(function Frame({
           <FindingsMark frame={frame} findings={findings} />
         ) : null}
       </div>
+      {playing || renaming ? null : (
+        <OpenAlone frameRef={frame.ref} name={frame.name} />
+      )}
       {live ? (
         <iframe
           ref={iframe}
@@ -287,6 +303,13 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {frame.scroll && live && !playing ? (
+        <ScrollRail
+          iframe={iframe}
+          live={live}
+          className="invisible [[data-label-hover]_&]:visible [[data-selected]_&]:visible"
+        />
+      ) : null}
       {live && compared && !playing ? (
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
@@ -413,6 +436,32 @@ function ThemeMarker({
       <Icon aria-hidden className="size-3" />
       {shown}
     </button>
+  )
+}
+
+/**
+ * Opens the frame's own page in a new tab, at the right end of its label
+ * strip over the frame's right edge, clear of a long name, as
+ * `canon/design/canvas/open-alone` draws it. Shown while the pointer is over
+ * the frame or it is selected, and reaching the link through the hit layer as
+ * the theme marker does.
+ */
+function OpenAlone({ frameRef, name }: { frameRef: string; name: string }) {
+  const label = `Open ${name} alone`
+  return (
+    <div className="absolute right-0 bottom-full flex origin-bottom-right pb-1 [transform:scale(calc(1/var(--zoom,1)))]">
+      <a
+        href={frameUrl(frameRef)}
+        target="_blank"
+        rel="noopener"
+        data-label-control
+        aria-label={label}
+        title="Open alone"
+        className="invisible grid size-[18px] place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] hover:text-foreground focus-visible:visible focus-visible:ring-2 focus-visible:ring-ring [[data-label-hover]_&]:visible [[data-selected]_&]:visible"
+      >
+        <ExternalLink aria-hidden className="size-[11px]" strokeWidth={1.6} />
+      </a>
+    </div>
   )
 }
 

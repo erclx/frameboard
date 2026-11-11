@@ -16,6 +16,7 @@ import { Frame, LabelRename } from './frame'
 import { frameElements } from './frame-dom'
 import { modeStore } from './mode'
 import { endPreview, setPreview } from './preview/store'
+import { clear, select, selectionStore } from './selection'
 import {
   renamingFrame,
   startFrameRename,
@@ -671,6 +672,69 @@ describe('Frame theme marker', () => {
     expect(
       container.querySelector('[aria-label="Flip a to dark"]'),
     ).toHaveTextContent('')
+  })
+})
+
+describe('Frame open-alone link', () => {
+  afterEach(() => {
+    act(() => {
+      clear(selectionStore)
+      modeStore.setState({ tool: 'move', mode: 'edit' })
+    })
+  })
+
+  const link = (container: HTMLElement) =>
+    container.querySelector<HTMLAnchorElement>('a[aria-label="Open a alone"]')
+
+  it('opens the frame’s own address in a new tab', () => {
+    const { container } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    expect(link(container)).toHaveAttribute(
+      'href',
+      '/frames/studio/home/a.html',
+    )
+    expect(link(container)).toHaveAttribute('target', '_blank')
+    expect(link(container)).toHaveAttribute('rel', 'noopener')
+  })
+
+  it('stays out of sight at rest', () => {
+    const { container } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    expect(link(container)).not.toBeVisible()
+  })
+
+  it('shows while the pointer is over the frame', () => {
+    const { container } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    container
+      .querySelector('[data-frame]')
+      ?.setAttribute('data-label-hover', '')
+
+    expect(link(container)).toBeVisible()
+  })
+
+  it('shows while the frame is selected', () => {
+    act(() => select(selectionStore, 'studio/home', ['studio/home/a']))
+    const { container } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    expect(link(container)).toBeVisible()
+  })
+
+  it('is left out in Play', () => {
+    act(() => modeStore.setState({ mode: 'play' }))
+    const { container } = render(
+      <Frame frame={frame('a')} live={false} version={0} />,
+    )
+
+    expect(link(container)).toBeNull()
   })
 })
 
