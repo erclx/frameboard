@@ -172,6 +172,81 @@ describe('createHug', () => {
     await expect.poll(() => entries().card.height).toBe(1232)
   })
 
+  describe('linked widths', () => {
+    const LINKED = [
+      { width: 834, height: 1194 },
+      { width: 390, height: 844 },
+    ]
+
+    /** A measure reading 1000 px at the frame's own box and 3000 less the width at a linked one. */
+    function measuredAt(boxes: (number | undefined)[]) {
+      return async (
+        _frame: FrameRecord,
+        box?: { width: number; height: number },
+      ) => {
+        boxes.push(box?.width)
+        return sized(box?.width ?? 1440, box ? 3000 - box.width : 1000)
+      }
+    }
+
+    it('now answers once the own box is written, and writes each width after', async () => {
+      board = boardOf({ card: { hugHeight: true, widths: LINKED } })
+      let release: () => void = () => {}
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const boxes: (number | undefined)[] = []
+      const read = measuredAt(boxes)
+      const hug = createHug({
+        root: board.root,
+        measure: async (frame, box) => {
+          if (box) await gate
+          return read(frame, box)
+        },
+      })
+
+      await hug.now(await scanBoard(board.root), [CARD])
+      const before = entries().card
+      release()
+
+      expect([before.height, before.widths]).toEqual([1000, LINKED])
+      await expect
+        .poll(() => entries().card.widths)
+        .toEqual([
+          { width: 834, height: 2166 },
+          { width: 390, height: 2610 },
+        ])
+      expect(entries().card.height).toBe(1000)
+    })
+
+    it('later measures the own box and each width at its reference height', async () => {
+      board = boardOf({ card: { hugHeight: true, widths: LINKED } })
+      const heights: number[] = []
+      const hug = createHug({
+        root: board.root,
+        measure: async (frame, box) => {
+          heights.push((box ?? frame.box).height)
+          return sized(1440, 1000)
+        },
+      })
+
+      hug.later(await scanBoard(board.root), [CARD])
+
+      await expect.poll(() => heights).toEqual([900, 1194, 844])
+    })
+
+    it('measures no width on a frame holding a fixed height', async () => {
+      board = boardOf({ card: { hugWidth: true, widths: LINKED } })
+      const boxes: (number | undefined)[] = []
+      const hug = createHug({ root: board.root, measure: measuredAt(boxes) })
+
+      hug.later(await scanBoard(board.root), [CARD])
+
+      await expect.poll(() => boxes).toEqual([undefined])
+      expect(entries().card.widths).toEqual(LINKED)
+    })
+  })
+
   it('stores no size for a frame whose file changed after the board it measured', async () => {
     board = boardOf({
       card: { hugHeight: true },

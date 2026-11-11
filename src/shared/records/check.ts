@@ -26,6 +26,8 @@ export const findingSchema = z.object({
   path: z.string(),
   message: z.string(),
   location: z.nullable(findingLocationSchema),
+  /** The linked width a browser finding was read at, absent at the frame's own. */
+  width: z.optional(z.int().check(z.minimum(1))),
 })
 
 export type Finding = z.infer<typeof findingSchema>

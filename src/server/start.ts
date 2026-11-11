@@ -48,6 +48,7 @@ import {
 } from './live/hug'
 import { openBoard } from './live/open-board'
 import {
+  acrossWidths,
   createRenderedFindings,
   type RenderedFindings,
 } from './live/rendered-findings'
@@ -342,18 +343,21 @@ async function listen({
   await thumbnails.empty()
   const rendered = createRenderedFindings({
     check: async (frame) => {
-      const list = await checkRendered(await browser.get(), {
-        baseUrl: baseUrl(),
-        root,
-        frame: {
-          ref: frame.ref,
-          path: boardPath(root, frame.path),
-          box: { width: frame.box.width, height: frame.box.height },
-          scroll: frame.scroll,
-          hugHeight: frame.hugHeight,
-        },
-        config: readConfig(root, frame.project),
-      })
+      const list = await acrossWidths(frame, async (box) =>
+        checkRendered(await browser.get(), {
+          baseUrl: baseUrl(),
+          root,
+          frame: {
+            ref: frame.ref,
+            path: boardPath(root, frame.path),
+            box,
+            scroll: frame.scroll,
+            hugHeight: frame.hugHeight,
+          },
+          config: readConfig(root, frame.project),
+        }),
+      )
+      if (list === null) return null
       // A file written since the scan was read at the box from before the
       // write, which a hugging frame is about to leave, so that write's batch
       // checks it again instead.
@@ -368,12 +372,12 @@ async function listen({
       }
     },
   })
-  const measure: MeasureFrame = async (frame) =>
+  const measure: MeasureFrame = async (frame, box) =>
     measureContent(await browser.get(), {
       baseUrl: baseUrl(),
       ref: frame.ref,
-      box: frame.box,
-      hugWidth: frame.hugWidth,
+      box: box ?? frame.box,
+      hugWidth: box === undefined && frame.hugWidth,
       fonts: 'wait',
     })
   const hug = createHug({ root, measure })

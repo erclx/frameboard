@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findingFor, type RuleDoc } from './rule'
+import { findingFor, formatFinding, type RuleDoc } from './rule'
 import { RULES } from './run'
 
 const DOCS: RuleDoc[] = [
@@ -36,5 +36,19 @@ describe('findingFor', () => {
     const finding = findingFor(DOCS)
 
     expect(() => finding('unlisted', fields)).toThrow('unlisted')
+  })
+})
+
+describe('formatFinding', () => {
+  const finding = findingFor(DOCS)('broken', fields)
+
+  it('prints the path of a finding at the frame width', () => {
+    expect(formatFinding(finding)).toBe('site/home/hero.html  broken  m')
+  })
+
+  it('prints the linked width after the path', () => {
+    expect(formatFinding({ ...finding, width: 390 })).toBe(
+      'site/home/hero.html@390  broken  m',
+    )
   })
 })
