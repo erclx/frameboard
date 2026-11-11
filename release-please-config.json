@@ -9,7 +9,7 @@
       "changelog-path": "CHANGELOG.md",
       "initial-version": "0.0.1",
       "bump-minor-pre-major": true,
-      "exclude-paths": ["web"],
+      "exclude-paths": ["web", "canon", ".claude"],
       "extra-files": [
         {
           "type": "json",
