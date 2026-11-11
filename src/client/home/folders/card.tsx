@@ -114,7 +114,8 @@ export function FolderCard({
         />
         <FolderMore
           folder={folder}
-          className="absolute top-3 right-3 opacity-0 group-focus-within/folder:opacity-100 group-hover/folder:opacity-100 data-popup-open:opacity-100"
+          // Keyboard focus alone reveals it, since a pointer closing the menu hands focus back to the ⋯ and focus-within would pin it on.
+          className="absolute top-3 right-3 opacity-0 group-hover/folder:opacity-100 group-has-focus-visible/folder:opacity-100 data-popup-open:opacity-100"
         />
       </div>
       <FolderPanel folder={folder} {...panel} />

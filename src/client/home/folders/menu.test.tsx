@@ -18,6 +18,7 @@ import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { projectStore } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
+import { realClick } from '@/test/real-pointer'
 
 import { Home } from '../home'
 import { dropPin, folderPin, pinnedProjects } from '../pins'
@@ -115,6 +116,20 @@ describe('FolderMenu', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Client A' }),
     ).toBeInTheDocument()
+  })
+
+  it('fades the card ⋯ once a pointer closes its menu off the card', async () => {
+    renderHome()
+    const more = screen.getByRole('button', {
+      name: 'Folder actions for Client A',
+    })
+    await realClick(more)
+    await screen.findByRole('menu')
+
+    await realClick(screen.getByRole('heading', { name: 'Projects' }))
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(getComputedStyle(more).opacity).toBe('0')
   })
 
   it('opens the same menu from the card ⋯', async () => {
