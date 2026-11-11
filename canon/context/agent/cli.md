@@ -42,13 +42,21 @@ Owns handing a tab write access, beside `show.ts` and `selection.ts`, the other 
 
 ### `src/cli/commands/frame.ts`
 
-Owns the frame verbs, and `project.ts` and `page.ts` reshape projects and pages the same way.
+Owns the frame verbs, and `page.ts` reshapes pages the same way.
 
-- `project`, `page`, and `frame` add, duplicate, rename, move, and delete, and `duplicate` and `move` take a target page in any project
-- `project tokens` writes a starter token sheet the way the guide's look step does, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
+- `page` and `frame` add, duplicate, rename, move, and delete, and a frame's `duplicate` and `move` take a target page in any project
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 - `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
+
+### `src/cli/commands/project.ts`
+
+Owns the project verbs, being add, rename, delete, the two filing verbs, and tokens. A project takes no duplicate or move from the CLI.
+
+- `project group` and `project archive` file one project through `fileProjects`, the writer behind the board's filing routes, so the lock, the Edited time, and every other `project.json` key hold
+- Unlike those routes, the verbs neither refuse a project another session holds nor journal the filing for undo
+- `group` refuses a blank folder as `invalid-name`, since the writer reads one as a clear, and a call giving both or neither of a folder and `--clear` as `usage`
+- `project tokens` writes a starter token sheet the way the guide's look step does, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
 
 ### `src/cli/commands/references.ts`
 
