@@ -133,10 +133,16 @@ export function registerHistoryActions({
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
   }
+  // One undo or redo is out at a time, and a press while one is out is
+  // dropped, so a held key overshoots by one step at most rather than
+  // queueing a step per repeat that runs on after the key is released.
+  let out = false
   // The board cannot name a step's frames before the server answers, so a
   // step waits only once refused as claimed, until that claim drops.
   const step =
     (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
+      if (out) return
+      out = true
       let done = () => {}
       // The tree the selected element was picked from, read before the step
       // rewrites those bytes, which the answer's tree is checked against.
@@ -161,11 +167,13 @@ export function registerHistoryActions({
         { live: store, dropWhen: moved },
       ).then(
         (answer) => {
+          out = false
           done()
           follow(answer, before)
           settleLanded(selection, shownHash)
         },
         (error: unknown) => {
+          out = false
           done()
           settleRefused(selection, shownHash)
           // An empty stack is the one refusal with nothing to say, since the key is unlit then.
@@ -188,6 +196,7 @@ export function registerHistoryActions({
       label: 'Undo',
       group: 'edit',
       keys: ['$mod+KeyZ'],
+      repeat: true,
       run: step(calls.undo, 'Undo skipped', 'undo'),
       enabled: can('undo'),
       command: { label: 'Undo', icon: Undo2 },
@@ -197,6 +206,7 @@ export function registerHistoryActions({
       label: 'Redo',
       group: 'edit',
       keys: mac ? ['$mod+Shift+KeyZ'] : ['$mod+Shift+KeyZ', 'Control+KeyY'],
+      repeat: true,
       run: step(calls.redo, 'Redo skipped', 'redo'),
       enabled: can('redo'),
       command: { label: 'Redo', icon: Redo2 },

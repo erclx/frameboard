@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { defaultKeybindingsHandlerIgnore, tinykeys } from 'tinykeys'
+import { tinykeys } from 'tinykeys'
 import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { createStore } from 'zustand/vanilla'
@@ -51,6 +51,12 @@ interface ActionBase {
   enabled?: () => boolean
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
   checked?: () => boolean
+  /**
+   * Runs again on each auto-repeat of a held key, as a held arrow keeps
+   * nudging. Absent, a held key runs it once and its repeats are prevented,
+   * so a held walk never skips past what the person meant to stop on.
+   */
+  repeat?: boolean
 }
 
 interface RegistryState {
@@ -138,8 +144,8 @@ export function useActionGroup(group: string): Action[] {
  * registrations, and returns the function that unbinds them. `only` limits
  * it to the bindings named, as a frame's window in Play takes Esc alone.
  * A press runs the first registered action carrying that key whose
- * `enabled` is true, and no key fires while focus sits in a field or a dialog
- * other than a toast.
+ * `enabled` is true, its auto-repeats only when that action sets `repeat`,
+ * and no key fires while focus sits in a field or a dialog other than a toast.
  */
 export function bindKeys(
   target: Window | Element,
@@ -186,23 +192,30 @@ function press(key: string, event: KeyboardEvent): void {
     )
   if (!action) return
   event.preventDefault()
+  if (event.repeat && !action.repeat) return
   action.run()
 }
 
 /**
- * tinykeys skips fields by tag, and `isContentEditable` adds the children of
- * an editable root. A press inside an open dialog is skipped too, so the
+ * The skip tinykeys' default ignore makes, by composing and by field tag,
+ * without its drop of every auto-repeat, which `press` decides per action.
+ * `isContentEditable` adds the children of an editable root. A press inside an open dialog is skipped too, so the
  * Esc that closes the shortcuts sheet never clears the selection or leaves
  * Play. A toast is the exception, since base-ui gives it `role="dialog"` and
  * it takes focus on a tab or a click, which would kill every key including
  * undo. Enter there stays with the toast, so its Show button still clicks.
- * Its own check calls `matches` on the target, which a press aimed at a
+ * The tag check calls `matches` on the target, which a press aimed at a
  * document or window lacks, so those pass through.
  */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null
   if (typeof target?.matches !== 'function') return false
-  if (defaultKeybindingsHandlerIgnore(event) || target.isContentEditable)
+  if (
+    event.isComposing ||
+    target.isContentEditable ||
+    (target !== event.currentTarget &&
+      target.matches('[contenteditable],input,select,textarea'))
+  )
     return true
   if (target.closest?.('[data-slot="toast"]') != null)
     return event.key === 'Enter'
