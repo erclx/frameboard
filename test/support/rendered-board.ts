@@ -34,6 +34,8 @@ export async function serveRendered(root: string): Promise<RenderedBoard> {
         ref,
         path: boardPath(root, frame.path),
         box: { width: frame.box.width, height: frame.box.height },
+        scroll: frame.scroll,
+        hugHeight: frame.hugHeight,
       }
     },
     close: async () => {

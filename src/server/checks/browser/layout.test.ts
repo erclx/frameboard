@@ -17,15 +17,26 @@ function heroPage(css: string, body: string): string {
   return `<!doctype html><html lang="en"><head><title>hero</title><style>${css}</style></head><body>${body}</body></html>`
 }
 
-/** One frame at 400 by 200 whose body is `body`, styled by `css`. */
-function heroBoard(css: string, body: string): Record<string, string> {
+/** One frame at 400 by 200 whose body is `body`, styled by `css`, its entry taking `entry`. */
+function heroBoard(
+  css: string,
+  body: string,
+  entry: object = {},
+): Record<string, string> {
   return {
     'studio/home/hero.html': heroPage(css, body),
     'studio/home/layout.json': JSON.stringify({
       version: 1,
-      frames: { hero: { x: 0, y: 0, width: 400, height: 200, order: 0 } },
+      frames: {
+        hero: { x: 0, y: 0, width: 400, height: 200, order: 0, ...entry },
+      },
     }),
   }
+}
+
+const STICKY_PAGE = {
+  css: 'body { margin: 0 } section { height: 3800px } h2 { position: sticky; top: 0; margin: 0 }',
+  body: '<section><h2>Pinned</h2></section>',
 }
 
 const shell = await launchShellOrNull()
@@ -49,8 +60,8 @@ describe.skipIf(shell === null)(
       await browser.close()
     }, SHELL_HOOK_TIMEOUT_MS)
 
-    async function checkHero(css: string, body: string) {
-      board = writeBoard(heroBoard(css, body))
+    async function checkHero(css: string, body: string, entry: object = {}) {
+      board = writeBoard(heroBoard(css, body, entry))
       const served = await serveRendered(board.root)
       try {
         return await checkRendered(browser, {
@@ -98,6 +109,55 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    describe('on a scroll frame', () => {
+      const DESKTOP = { width: 1440, height: 900, scroll: true }
+
+      it('draws no clipped for a sticky page past its height', async () => {
+        const findings = await checkHero(
+          STICKY_PAGE.css,
+          STICKY_PAGE.body,
+          DESKTOP,
+        )
+
+        expect(findings).toEqual([])
+      })
+
+      it('still reports content past its width', async () => {
+        const findings = await checkHero(
+          `${STICKY_PAGE.css} h2 { width: 1600px }`,
+          STICKY_PAGE.body,
+          DESKTOP,
+        )
+
+        expect(findings).toMatchObject([
+          {
+            rule: 'clipped',
+            message: expect.stringMatching(/1600 px wide in its 1440 px width/),
+          },
+        ])
+        expect(findings[0]?.message).not.toContain('px tall')
+      })
+
+      it('draws no viewport for a section sized off the screen height', async () => {
+        const findings = await checkHero(
+          'body { margin: 0 } section { height: 100vh }',
+          '<section>Hero</section><section>Next</section>',
+          DESKTOP,
+        )
+
+        expect(findings).toEqual([])
+      })
+
+      it('draws clipped for the same sticky page without the key', async () => {
+        const findings = await checkHero(STICKY_PAGE.css, STICKY_PAGE.body, {
+          width: 1440,
+          height: 900,
+        })
+
+        expect(findings).toMatchObject([{ rule: 'clipped' }])
+      })
+    })
+
     it('reports content wider than the box as clipped', async () => {
       const findings = await checkHero(
         'div { width: 600px }',
@@ -124,7 +184,7 @@ describe.skipIf(shell === null)(
         {
           rule: 'clipped',
           message: expect.stringMatching(
-            /Run frame fit, or shorten the content\.$/,
+            /Run frame fit, run frame resize --scroll for a page meant to scroll, or shorten the content\.$/,
           ),
         },
       ])
