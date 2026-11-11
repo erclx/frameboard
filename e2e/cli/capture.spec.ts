@@ -278,6 +278,49 @@ test.describe('capture', () => {
   })
 })
 
+test.describe('capture at linked widths', () => {
+  let board: FixtureBoard
+  let out: string
+
+  test.beforeEach(() => {
+    board = copyFixtureBoard('capture')
+    out = mkdtempSync(join(tmpdir(), 'frameboard-capture-'))
+  })
+
+  test.afterEach(() => {
+    board.cleanup()
+    rmSync(out, { recursive: true, force: true })
+  })
+
+  test('writes the frame and each width it lists in both themes', async () => {
+    const placed = await frameboard(
+      ['frame', 'add', 'home/wide', '--size', 'desktop', '--widths', '834,390'],
+      board.root,
+    )
+    expect(placed.exitCode).toBe(0)
+
+    const { exitCode, envelope } = await frameboard(
+      ['capture', 'home/wide', '--out', out],
+      board.root,
+    )
+
+    expect(exitCode).toBe(0)
+    expect(
+      envelope.data?.images.map(({ path, width }) => [
+        path.slice(out.length),
+        width,
+      ]),
+    ).toEqual([
+      ['/studio/home/wide.light.png', 1440],
+      ['/studio/home/wide.dark.png', 1440],
+      ['/studio/home/wide@834.light.png', 834],
+      ['/studio/home/wide@834.dark.png', 834],
+      ['/studio/home/wide@390.light.png', 390],
+      ['/studio/home/wide@390.dark.png', 390],
+    ])
+  })
+})
+
 test.describe('frame fit', () => {
   let board: FixtureBoard
 

@@ -112,6 +112,35 @@ test.describe('frame geometry by hand', () => {
     expect(layout().frames.hero).toMatchObject({ y: 0 })
   })
 
+  test('a drag on a linked width moves its frame', async ({ page }) => {
+    const linked = layout()
+    linked.frames.mobile = {
+      ...linked.frames.mobile,
+      widths: [{ width: 834, height: 1194 }],
+    }
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify(linked),
+    )
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const tablet = page.locator(
+      '[data-linked-frame="studio/home/mobile"][data-linked-width="834"]',
+    )
+    await expect(tablet).toBeVisible()
+    const from = await center(tablet)
+
+    await drag(page, from, { x: from.x + 120, y: from.y + 60 })
+    await page.mouse.up()
+
+    await expect.poll(() => layout().frames.mobile?.x).toBeGreaterThan(1520)
+    expect(layout().frames.mobile).toMatchObject({
+      width: 390,
+      widths: [{ width: 834, height: 1194 }],
+    })
+    await expect(page.locator(MOBILE)).toHaveAttribute('data-selected', 'true')
+  })
+
   test('a locked frame selects and never moves', async ({ page }) => {
     const locked = layout()
     locked.frames.mobile = { ...locked.frames.mobile, locked: true }
