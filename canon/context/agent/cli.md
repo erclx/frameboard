@@ -114,6 +114,7 @@ These catch the plugin and the server out.
 
 These catch a frame verb or a sync out.
 
-- `frame fit` sets height only, at the layout width, ignores what a cropping ancestor hides, and reports too-wide content. It refuses `fit-unbounded` for content sized off the viewport, like `100vh`
+- `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own. It ignores what a cropping ancestor hides and reports too-wide content.
+- It refuses `fit-unbounded` for content sized off the viewport, like `100vh` or a block reset on `resize`. A page reading `innerHeight` once fits to a stable height that still draws clipped.
 - A `frames.json` key is `<group>/<name>` or `<group>/<section>/<name>`, and `parseFrameMap` refuses a fourth segment with `frame-map-invalid`
 - `toReference` climbs one `../` per folder in the key to reach the folder's `assets/`, so a nested reference opens styled from disk

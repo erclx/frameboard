@@ -71,6 +71,12 @@ describe.skipIf(shell === null)(
           '<h1><span>Heading</span></h1>',
           'h1 { margin: 0; font-size: 48px; line-height: 1 } span { padding: 12px 0; background: red }',
         ),
+        'studio/home/sized-once.html': page(
+          '<div id="spacer"></div><script>spacer.style.height = `${innerHeight + 1000}px`</script>',
+        ),
+        'studio/home/sized-on-resize.html': page(
+          '<div id="spacer"></div><script>const size = () => { spacer.style.height = `${innerHeight + 1000}px` }; size(); addEventListener("resize", size)</script>',
+        ),
         'studio/home/spill.html': page(
           '<p>one two three four</p>',
           'p { width: 1px; height: 20px; margin: 0; line-height: 30px }',
@@ -85,11 +91,15 @@ describe.skipIf(shell === null)(
       rmSync(faces, { recursive: true, force: true })
     }, SHELL_HOOK_TIMEOUT_MS)
 
-    const measure = (name: string, hugWidth: boolean) =>
+    const measure = (
+      name: string,
+      hugWidth: boolean,
+      box = { width: 1440, height: 900 },
+    ) =>
       measureContent(browser, {
         baseUrl: host.url,
         ref: `studio/home/${name}`,
-        box: { width: 1440, height: 900 },
+        box,
         hugWidth,
       })
 
@@ -140,6 +150,31 @@ describe.skipIf(shell === null)(
       await expect(measure('screen', false)).rejects.toMatchObject({
         code: 'fit-unbounded',
       })
+    })
+
+    it('reads a block sized once off the window height alike from a box at 900 and at 1900', async () => {
+      const fromShort = await measure('sized-once', false)
+      const fromTall = await measure('sized-once', false, {
+        width: 1440,
+        height: 1900,
+      })
+
+      expect([fromShort.height, fromTall.height]).toEqual([1900, 1900])
+    })
+
+    it('refuses a block resized off the window height on resize', async () => {
+      await expect(measure('sized-on-resize', false)).rejects.toMatchObject({
+        code: 'fit-unbounded',
+      })
+    })
+
+    it('opens a phone wide frame at the phone height', async () => {
+      const size = await measure('sized-once', false, {
+        width: 390,
+        height: 300,
+      })
+
+      expect(size.height).toBe(1844)
     })
 
     it('reads text spilling below a block shorter than it', async () => {

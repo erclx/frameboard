@@ -3,7 +3,7 @@ import type { Browser, Page } from 'playwright-core'
 import { fitHeight } from '@/server/board/frames'
 import type { RefOptions } from '@/server/board/refs'
 import { FrameboardError } from '@/shared/errors'
-import { FRAME_SIZES } from '@/shared/frame-sizes'
+import { FRAME_SIZES, referenceHeight } from '@/shared/frame-sizes'
 import type { FitResult } from '@/shared/records/capture'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -33,7 +33,9 @@ export interface ContentSize {
  * Measures a frame's content the way `frame fit` and the server's hug step
  * both read it, in one page resized between readings. A hugging width takes
  * the content's `fit-content` width up to `HUG_MAX_WIDTH`, and the height is
- * read at that width with a 1 px tall viewport and again at the box's height.
+ * read at that width with a 1 px tall viewport and again at the reference
+ * height of the box's width, never the box's own height, so content sized off
+ * the window height reads one height however tall the frame already is.
  * Readings that differ mean the content sizes itself off the viewport, which
  * has no height of its own to fit, so that refuses `fit-unbounded`. Finite
  * animations finish before the first reading, so an entrance is read at its
@@ -56,10 +58,11 @@ export async function measureContent(
     fonts?: OpenFrameOptions['fonts']
   },
 ): Promise<ContentSize> {
+  const reference = referenceHeight(box.width)
   const opened = await openFrame(browser, {
     baseUrl,
     ref,
-    box,
+    box: { width: box.width, height: reference },
     theme: 'light',
     fonts,
   })
@@ -69,15 +72,16 @@ export async function measureContent(
     const empty = await page.evaluate(isBodyEmpty)
     let width = box.width
     if (hugWidth && !empty) {
-      await page.setViewportSize({ width: HUG_MAX_WIDTH, height: box.height })
+      await page.setViewportSize({ width: HUG_MAX_WIDTH, height: reference })
+      await settleResize(page)
       width = Math.min(HUG_MAX_WIDTH, await page.evaluate(readFitWidth))
     }
     const short = await readAt(page, { width, height: 1 })
-    const current = await readAt(page, { width, height: box.height })
+    const current = await readAt(page, { width, height: reference })
     if (short.height !== current.height) {
       throw new FrameboardError(
         'fit-unbounded',
-        `${ref} grows with the viewport, measuring ${short.height} px in a 1 px viewport and ${current.height} px at its ${box.height} px height, so it has no content height to fit. Size it by hand with frame resize.`,
+        `${ref} grows with the viewport, measuring ${short.height} px in a 1 px viewport and ${current.height} px at its ${reference} px reference height, so it has no content height to fit. Size it by hand with frame resize.`,
         { ref, heights: [short.height, current.height] },
       )
     }
@@ -118,7 +122,22 @@ async function readAt(
   viewport: { width: number; height: number },
 ): Promise<Reading> {
   await page.setViewportSize(viewport)
+  await settleResize(page)
   return page.evaluate(readContentSize)
+}
+
+/**
+ * Waits two animation frames after a viewport resize, so a page's `resize`
+ * listener has run and its layout settled before the next reading. A reading
+ * taken straight after the resize sees the layout from before it.
+ */
+export async function settleResize(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      }),
+  )
 }
 
 // The functions below run in the page, so each carries everything it reads.

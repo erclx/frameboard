@@ -5,6 +5,7 @@ import {
   frameSizeOf,
   presetAt,
   previewWidth,
+  referenceHeight,
 } from './frame-sizes'
 
 describe('presetAt', () => {
@@ -19,6 +20,19 @@ describe('presetAt', () => {
     [3840, 'desktop'],
   ])('reads %i as %s', (width, preset) => {
     expect(presetAt(width)).toBe(preset)
+  })
+})
+
+describe('referenceHeight', () => {
+  it.each([
+    [390, 844],
+    [393, 844],
+    [834, 1194],
+    [1280, 900],
+    [3840, 900],
+    [300, 900],
+  ])('reads %i wide as %i tall', (width, height) => {
+    expect(referenceHeight(width)).toBe(height)
   })
 })
 
