@@ -217,10 +217,14 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
   )
 }
 
-/** One message, the developer's under their initials and the agent's under a purple C. */
+/**
+ * One message, the agent's under a purple C as claude, the viewer's own as
+ * You, and anyone else's under their name, each with the signer's initials.
+ */
 function Message({ note, page }: { note: BoardNote; page?: string }) {
-  const author = useAuthor()
+  const viewer = useAuthor()
   const agent = note.from === 'agent'
+  const mine = signedByViewer(note.author, viewer)
   return (
     <li className="flex gap-2.5 px-3 py-2.5">
       <span
@@ -230,16 +234,20 @@ function Message({ note, page }: { note: BoardNote; page?: string }) {
           agent ? 'bg-claim/25 text-claim' : 'bg-foreground text-card',
         )}
       >
-        {agent ? 'C' : initials(note.author ?? author ?? '') || 'Y'}
+        {agent ? 'C' : initials(note.author ?? viewer ?? '') || 'Y'}
       </span>
-      <div className="min-w-0">
-        <b className="font-semibold">{agent ? 'claude' : 'You'}</b>
-        <time
-          dateTime={note.createdAt}
-          className="ml-1.5 text-muted-foreground"
-        >
-          {clock(note.createdAt)}
-        </time>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <b className="min-w-0 truncate font-semibold">
+            {agent ? 'claude' : mine ? 'You' : note.author}
+          </b>
+          <time
+            dateTime={note.createdAt}
+            className="flex-none text-muted-foreground"
+          >
+            {clock(note.createdAt)}
+          </time>
+        </div>
         <p className="mt-0.5 leading-[1.45] break-words whitespace-pre-wrap">
           {note.text}
         </p>
@@ -249,6 +257,26 @@ function Message({ note, page }: { note: BoardNote; page?: string }) {
       </div>
     </li>
   )
+}
+
+/**
+ * Whether the viewer wrote a note. The server stamps a null author only when
+ * no name exists, so that note is the viewer's. A named note is theirs only
+ * once their own name has arrived and matches, so it never reads You first
+ * and flips. Git's `user.name` can differ from a saved name by case or a stray
+ * space, which the comparison forgives.
+ */
+function signedByViewer(
+  author: string | null,
+  viewer: string | null | undefined,
+): boolean {
+  if (author === null) return true
+  if (!viewer) return false
+  return sameName(author, viewer)
+}
+
+function sameName(a: string, b: string): boolean {
+  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase()
 }
 
 /** The keys a focused list scrolls on, which stay with it. */
