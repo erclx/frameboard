@@ -70,7 +70,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
 Owns putting copied frames on the OS clipboard as one file list. `routes/clipboard.ts` answers `POST /api/frames/clipboard` with `{ refs, theme }` and an optional `themes` map of ref to theme behind `requireWriter`, rendering each frame at 2x in turn in `themes[ref]` or else `theme`, on the renderer `png.ts` uses.
 
 - `files.ts` picks the backend at start, and only WSL with `powershell.exe` on its `PATH` has one
-- `wsl.ts` writes the images into Windows' temp folder and runs `Set-Clipboard -Path`
+- `wsl.ts` writes the images into Windows' temp folder and runs `Set-Clipboard -Path`, one copy at a time, since each copy clears the shared folder and would delete the files an overlapping copy names
 - With no backend the route refuses `clipboard-unsupported` and `/api/health` reports `clipboard: null`, so the board stitches several frames into one image
 
 ## Gotchas
