@@ -1,4 +1,10 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -59,16 +65,31 @@ describe('the WSL backend', () => {
   function windows() {
     linuxTemp = mkdtempSync(join(tmpdir(), 'frameboard-wsl-'))
     const commands: string[] = []
+    // Which command each call was, in the order they ran.
+    const steps: string[] = []
+    // Whether every file each `Set-Clipboard` names exists as it runs.
+    const filesFound: boolean[] = []
+    const toLinux = (windowsPath: string) =>
+      `${linuxTemp}/${windowsPath.slice('C:\\Temp\\'.length).replaceAll('\\', '/')}`
     const run = async (command: string, args: string[]) => {
       const last = args.at(-1) ?? ''
       commands.push(`${command} ${last}`)
-      if (last === '[IO.Path]::GetTempPath()') return 'C:\\Temp\\\r\n'
+      if (last === '[IO.Path]::GetTempPath()') {
+        steps.push('temp path')
+        return 'C:\\Temp\\\r\n'
+      }
       if (command === 'wslpath') {
-        return `${linuxTemp}/${last.slice('C:\\Temp\\'.length).replaceAll('\\', '/')}\n`
+        steps.push('wslpath')
+        return `${toLinux(last)}\n`
+      }
+      if (last.startsWith('Set-Clipboard')) {
+        steps.push('Set-Clipboard')
+        const paths = [...last.matchAll(/'([^']+)'/g)].map(([, path]) => path)
+        filesFound.push(paths.every((path) => existsSync(toLinux(path ?? ''))))
       }
       return ''
     }
-    return { commands, run }
+    return { commands, filesFound, run, steps }
   }
 
   it('writes every image and sets them as one quoted file list', async () => {
@@ -103,5 +124,31 @@ describe('the WSL backend', () => {
     await clipboard?.write([{ name: 'b', bytes: Buffer.from('') }])
 
     expect(readdirSync(join(linuxTemp, 'frameboard-clip'))).toHaveLength(1)
+  })
+
+  it('runs a copy started mid-copy only after the first sets the clipboard', async () => {
+    const { filesFound, run, steps } = windows()
+    const clipboard = clipboardFiles(host({ release: WSL_RELEASE, run }))
+
+    await Promise.all([
+      clipboard?.write([
+        { name: 'a1', bytes: Buffer.from('') },
+        { name: 'a2', bytes: Buffer.from('') },
+      ]),
+      clipboard?.write([
+        { name: 'b1', bytes: Buffer.from('') },
+        { name: 'b2', bytes: Buffer.from('') },
+      ]),
+    ])
+
+    expect(filesFound).toEqual([true, true])
+    expect(steps).toEqual([
+      'temp path',
+      'wslpath',
+      'Set-Clipboard',
+      'temp path',
+      'wslpath',
+      'Set-Clipboard',
+    ])
   })
 })
