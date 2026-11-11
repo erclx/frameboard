@@ -135,6 +135,40 @@ describe('checkUnknownTokens', () => {
     ).toEqual([])
   })
 
+  it('passes a property an inline script sets through setProperty', () => {
+    expect(
+      check(
+        `<p style="opacity: var(--t)">x</p><script>document.querySelector('p').style.setProperty('--t', '.65')</script>`,
+      ),
+    ).toEqual([])
+  })
+
+  it('passes a property a script writes as a declaration in a template literal', () => {
+    expect(
+      check(
+        '<p style="transition-duration: var(--t)">x</p><script>p.setAttribute("style", `--t:${delay}s`)</script>',
+      ),
+    ).toEqual([])
+  })
+
+  it('reports a property a script only reads', () => {
+    expect(
+      check(
+        `<p style="color: var(--fg)">x</p><script>getComputedStyle(p).getPropertyValue('--fg'); const s = '--fg'</script>`,
+      ),
+    ).toMatchObject([{ rule: 'unknown-token' }])
+  })
+
+  it('reports a property whose name the script builds at runtime, naming the fallback', () => {
+    const findings = check(
+      `<p style="color: var(--fg)">x</p><script>p.style.setProperty('--' + name, 'red')</script>`,
+    )
+
+    expect(findings).toMatchObject([{ rule: 'unknown-token' }])
+    expect(findings[0]?.message).toContain('script sets it at runtime')
+    expect(findings[0]?.message).toContain('var(--fg, red)')
+  })
+
   it('leaves a token sheet referencing an undeclared name to the board', () => {
     expect(
       check('<p>x</p>', { 'tokens.css': ':root { --a: var(--missing) }' }),
