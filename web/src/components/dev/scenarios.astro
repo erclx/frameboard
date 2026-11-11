@@ -48,6 +48,7 @@ const enabled = import.meta.env.DEV
 // script's children are parsed the way JSX children are, so every brace in the
 // source reads as an interpolation and the body ships as an unevaluated
 // literal. It did, once, silently.
+// canon-allow-embedded: handed to set:html, since Astro reads a script child's braces as interpolations, per the comment above
 const SOURCE = `
 const wanted = new URLSearchParams(location.search).get(param)
 const active = arms.find((arm) => arm.id === wanted)
@@ -84,6 +85,7 @@ if (active) {
 }
 `
 
+// canon-allow-embedded: the dev switcher's styles, handed to set:html beside its script
 const SWITCHER_CSS = `
 /* Bottom left rather than bottom centre, which Astro's dev toolbar owns.
    Centred, the toolbar sits over the switcher and swallows every click on it. */
