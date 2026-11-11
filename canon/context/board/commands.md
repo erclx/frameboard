@@ -15,7 +15,7 @@ Owns how every button, menu item, and key reaches the board, being the action re
 
 Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
 
-- An action is `{ id, label, group, keys?, run, enabled?, checked? }` plus `command` or `palette: false`, and a row registers its own and removes them on unmount
+- An action is `{ id, label, group, keys?, run, enabled?, checked?, repeat? }` plus `command` or `palette: false`, and a row registers its own and removes them on unmount
 - `command` is the label, icon, right-hand `hint`, search `keywords`, and `searchOnly` the palette reads, and the palette lists only enabled actions carrying it
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
@@ -51,3 +51,4 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac,
 
 - `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
 - A toast is a dialog to base-ui but takes board keys, undo among them, by its `data-slot="toast"` marker, while Enter there stays with the toast, which runs Show, or the button holding focus
+- A held key runs its action once and prevents the auto-repeats, unless the action sets `repeat`, as the nudges, resizes, pans, zoom steps, undo, and redo do
