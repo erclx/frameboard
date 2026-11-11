@@ -395,17 +395,20 @@ function ThemeMarker({
     )
   }
   const Icon = theme === 'dark' ? Moon : Sun
+  const shown = theme === 'dark' ? 'Dark' : 'Light'
+  // The name opens on the shown word, so voice control reaches it by what it reads (WCAG 2.5.3).
+  const named = `${shown}: flip ${name} to ${to}`
   return (
     <button
       type="button"
       data-label-control
-      aria-label={label}
-      title={label}
+      aria-label={named}
+      title={named}
       onClick={() => flipFrame(frameRef)}
       className="flex h-[18px] min-w-0 shrink items-center gap-1 overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
       <Icon aria-hidden className="size-3" />
-      {theme === 'dark' ? 'Dark' : 'Light'}
+      {shown}
     </button>
   )
 }

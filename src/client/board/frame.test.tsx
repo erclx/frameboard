@@ -585,10 +585,10 @@ describe('Frame theme marker', () => {
   })
 
   it.each([
-    ['light', 'Dark', 'Flip a to light'],
-    ['dark', 'Light', 'Flip a to dark'],
+    ['light', 'Dark', 'Dark: flip a to light'],
+    ['dark', 'Light', 'Light: flip a to dark'],
   ] as const)(
-    'names the theme of a frame flipped on a %s board',
+    'names a frame flipped on a %s board by its shown theme first',
     (board, shown, label) => {
       act(() => chooseTheme(board))
       act(() => flipFrame('studio/home/a'))
@@ -607,7 +607,9 @@ describe('Frame theme marker', () => {
       <Frame frame={frame('a')} live={false} version={0} />,
     )
 
-    await userEvent.click(getByRole('button', { name: 'Flip a to light' }))
+    await userEvent.click(
+      getByRole('button', { name: 'Dark: flip a to light' }),
+    )
 
     expect(
       container.querySelector('[aria-label="Flip a to dark"]'),
