@@ -16,6 +16,8 @@ export const captureResultSchema = z.object({
       height: z.int().min(1),
       /** Device pixels per CSS pixel, so the file is `width * scale` wide. */
       scale: z.int().min(1).max(3),
+      /** How far down a `--scroll` shot reached, absent on a shot taken at the top. */
+      scrollY: z.int().min(0).optional(),
     }),
   ),
 })

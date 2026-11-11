@@ -22,6 +22,7 @@ import {
   addVerb,
   boardOf,
   type CommonOptions,
+  parseInteger,
   type ProgramContext,
 } from '../program'
 
@@ -30,6 +31,7 @@ type CaptureOptions = CommonOptions & {
   composite?: boolean
   theme: Theme | 'both'
   scale: number
+  scroll?: number
   out?: string
 }
 
@@ -70,6 +72,11 @@ export function registerCapture(
         .argParser(parseScale),
     )
     .option(
+      '--scroll <px>',
+      'shoot a scroll frame this far down, clamped to the end of its page, adding .scroll-<px> to the file name',
+      parseInteger(0),
+    )
+    .option(
       '--out <dir>',
       "the folder images land in, defaulting to the board's .run/captures/",
     )
@@ -85,6 +92,12 @@ export function registerCapture(
     }
     if (options.composite && options.page === undefined) {
       throw new FrameboardError('usage', '--composite needs --page.')
+    }
+    if (options.scroll !== undefined && options.page !== undefined) {
+      throw new FrameboardError(
+        'usage',
+        '--scroll shoots one frame, so pass a frame ref rather than --page.',
+      )
     }
     const root = await boardOf(options, io)
     const refOptions = { project: options.project, cwd: io.cwd }
@@ -132,6 +145,15 @@ export function registerCapture(
     }
 
     const frame = await readFrame(root, ref ?? '', refOptions)
+    // A frame without the key never overflows by design, so a scrolled shot
+    // would show a state the board never draws.
+    if (options.scroll !== undefined && !frame.scroll) {
+      throw new FrameboardError(
+        'usage',
+        `${frame.ref} holds no scroll key, so it has nothing to scroll. Set it with frame resize --scroll first.`,
+        { ref: frame.ref },
+      )
+    }
     const out = await outOf()
     const images = await withFrameHost(
       { root, facesDir: context.facesDir },
@@ -143,6 +165,7 @@ export function registerCapture(
           themes,
           out,
           scale: options.scale,
+          scroll: options.scroll,
         }),
     )
     return { data: { images } satisfies CaptureResult, human: describe(images) }
