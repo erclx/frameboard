@@ -333,38 +333,48 @@ export async function resizeFrame(
       'Pass --size, --width, --height, --scroll, --no-scroll, --widths, or --no-widths to resize a frame.',
     )
   }
-  return updatePlacement(root, ref, options, (placement, frameRef) => {
-    const scroll = options.scroll ?? placement.scroll
-    const width = size.width ?? placement.box.width
-    const drops = scroll && placement.hugHeight && size.height === undefined
-    const hugWidth = !scroll && placement.hugWidth && size.width === undefined
-    const widths = linkedWidths(
-      frameRef,
-      options.widths ?? placement.widths.map((linked) => linked.width),
-      { width, hugWidth, held: placement.widths },
-    )
-    return {
-      ...placement,
-      box: {
-        ...placement.box,
-        ...size,
-        ...(drops ? { height: referenceHeight(width) } : {}),
-      },
-      hugWidth,
-      hugHeight: !scroll && placement.hugHeight && size.height === undefined,
-      scroll,
-      // Scroll turned on over a hugging height takes each linked width to
-      // its own screen height, whatever height the frame's own box is given,
-      // so every view of a scroll frame scrolls.
-      widths:
-        scroll && placement.hugHeight
-          ? widths.map((linked) => ({
-              ...linked,
-              height: referenceHeight(linked.width),
-            }))
-          : widths,
-    }
-  })
+  return updatePlacement(root, ref, options, (placement, frameRef) =>
+    resizedPlacement(placement, frameRef, size, options),
+  )
+}
+
+/** The placement `resizeFrame` writes, for the size it read off its options. */
+function resizedPlacement(
+  placement: Placement,
+  frameRef: string,
+  size: { width?: number; height?: number },
+  options: ScrollOptions & WidthsOptions,
+): Placement {
+  const scroll = options.scroll ?? placement.scroll
+  const width = size.width ?? placement.box.width
+  const drops = scroll && placement.hugHeight && size.height === undefined
+  const hugWidth = !scroll && placement.hugWidth && size.width === undefined
+  const widths = linkedWidths(
+    frameRef,
+    options.widths ?? placement.widths.map((linked) => linked.width),
+    { width, hugWidth, held: placement.widths },
+  )
+  return {
+    ...placement,
+    box: {
+      ...placement.box,
+      ...size,
+      ...(drops ? { height: referenceHeight(width) } : {}),
+    },
+    hugWidth,
+    hugHeight: !scroll && placement.hugHeight && size.height === undefined,
+    scroll,
+    // Scroll turned on over a hugging height takes each linked width to
+    // its own screen height, whatever height the frame's own box is given,
+    // so every view of a scroll frame scrolls.
+    widths:
+      scroll && placement.hugHeight
+        ? widths.map((linked) => ({
+            ...linked,
+            height: referenceHeight(linked.width),
+          }))
+        : widths,
+  }
 }
 
 /**
@@ -435,18 +445,90 @@ export async function fitHeight(
 ): Promise<FrameRecord> {
   return updatePlacement(root, ref, options, (placement) => {
     if (placement.scroll) throw fitScrollError(ref)
+    return fittedPlacement(placement, height, options.widths)
+  })
+}
+
+/** A placement hugging its measured height, each listed linked width taking its own. */
+function fittedPlacement(
+  placement: Placement,
+  height: number,
+  widths: readonly LinkedWidth[] | undefined,
+): Placement {
+  return {
+    ...placement,
+    box: { ...placement.box, height },
+    hugHeight: true,
+    widths: placement.widths.map((linked) => ({
+      ...linked,
+      height:
+        widths?.find((each) => each.width === linked.width)?.height ??
+        linked.height,
+    })),
+  }
+}
+
+/** How a frame holds its height: at a size, at its content's, or at a screen the page scrolls past. */
+export type HeightMode = 'fixed' | 'fit' | 'scroll'
+
+/**
+ * Sets how a frame holds its height in one write. `fixed` keeps the box and
+ * clears hugging and scroll. `fit` takes the measured height and hugs it,
+ * clearing scroll. `scroll` fixes both axes as `frame resize --scroll` does.
+ * `expected` is the box the caller started from, and a frame moved or sized
+ * since refuses `stale-layout`, leaving out an axis the frame hugs, since the
+ * server measures that one. `fit` without `measured` refuses `usage`.
+ */
+export async function setHeightMode(
+  root: string,
+  ref: string,
+  mode: HeightMode,
+  options: RefOptions &
+    JournalOptions & {
+      expected: Box
+      measured?: { height: number; widths?: readonly LinkedWidth[] }
+    },
+): Promise<FrameRecord> {
+  return updatePlacement(root, ref, options, (placement, frameRef) => {
+    refuseStale(frameRef, placement, options.expected)
+    if (mode === 'scroll') {
+      return resizedPlacement(placement, frameRef, {}, { scroll: true })
+    }
+    if (mode === 'fixed') {
+      return { ...placement, hugHeight: false, scroll: false }
+    }
+    if (!options.measured) {
+      throw new FrameboardError(
+        'usage',
+        `Fitting ${frameRef} needs its measured height.`,
+        { ref: frameRef },
+      )
+    }
     return {
-      ...placement,
-      box: { ...placement.box, height },
-      hugHeight: true,
-      widths: placement.widths.map((linked) => ({
-        ...linked,
-        height:
-          options.widths?.find((each) => each.width === linked.width)?.height ??
-          linked.height,
-      })),
+      ...fittedPlacement(
+        placement,
+        options.measured.height,
+        options.measured.widths,
+      ),
+      scroll: false,
     }
   })
+}
+
+function refuseStale(ref: string, placement: Placement, expected: Box): void {
+  const { box } = placement
+  const same =
+    box.x === expected.x &&
+    box.y === expected.y &&
+    (placement.hugWidth || box.width === expected.width) &&
+    (placement.hugHeight || box.height === expected.height)
+  if (!same) {
+    throw new FrameboardError(
+      'stale-layout',
+      `${ref} moved since this edit began, so nothing was written.`,
+      { ref, stored: boxOf(box), expected },
+    )
+  }
 }
 
 /** The refusal a fit of a scroll frame answers, before or after measuring. */

@@ -278,6 +278,123 @@ describe('structureRoutes', () => {
     })
   })
 
+  describe('height route', () => {
+    const HERO = { x: 0, y: 0, width: 1440, height: 900 }
+    const layoutPath = () => join(board.root, 'studio/home/layout.json')
+    const frames = () => JSON.parse(readFileSync(layoutPath(), 'utf8')).frames
+    const setHero = (fields: Record<string, unknown>) => {
+      const layout = JSON.parse(readFileSync(layoutPath(), 'utf8'))
+      Object.assign(layout.frames.hero, fields)
+      writeFileSync(layoutPath(), JSON.stringify(layout))
+    }
+    const measuring = (height: number) =>
+      structureRoutes(board.root, ACCESS, history, async () => ({
+        width: 1440,
+        height,
+        contentWidth: 1440,
+        empty: false,
+      }))
+
+    it('sets scroll in one undoable step', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [{ ref: 'studio/home/hero', scroll: true }],
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(frames().hero.scroll).toBeUndefined()
+    })
+
+    it('fits a scroll frame to its content, clearing scroll, and undoes back to scroll', async () => {
+      setHero({ scroll: true })
+      app = measuring(2400)
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(200)
+      expect(frames().hero).toMatchObject({ height: 2400, hugHeight: true })
+      expect(frames().hero.scroll).toBe(false)
+      await history.undo()
+      expect(frames().hero).toMatchObject({ height: 900, scroll: true })
+    })
+
+    it('fixes a hugging height where it stands', async () => {
+      setHero({ height: 1232, hugHeight: true })
+
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fixed',
+        expected: { 'studio/home/hero': { ...HERO, height: 1000 } },
+      })
+
+      expect(frames().hero.height).toBe(1232)
+      expect(frames().hero.hugHeight).toBe(false)
+    })
+
+    it('sets every listed frame in one step', async () => {
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        mode: 'scroll',
+        expected: {
+          'studio/home/hero': HERO,
+          'studio/home/mobile': { x: 1520, y: 0, width: 390, height: 844 },
+        },
+      })
+
+      expect(frames().hero.scroll).toBe(true)
+      expect(frames().mobile.scroll).toBe(true)
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('refuses stale-layout with 409 when the frame moved since, writing nothing', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': { ...HERO, height: 700 } },
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'stale-layout' },
+      })
+      expect(frames().hero.scroll).toBeUndefined()
+      expect(history.counts().undo).toBe(0)
+    })
+
+    it('refuses a locked frame with 423, writing nothing', async () => {
+      setHero({ locked: true })
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(response.status).toBe(423)
+      expect(frames().hero.scroll).toBeUndefined()
+    })
+
+    it('refuses usage for a frame the body gives no expected box', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fixed',
+        expected: {},
+      })
+
+      expect(response.status).toBe(400)
+    })
+  })
+
   describe('section routes', () => {
     const BOX = { x: -40, y: -40, width: 2000, height: 1000 }
     const sections = () =>
