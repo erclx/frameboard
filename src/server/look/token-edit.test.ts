@@ -30,6 +30,7 @@ describe('editTokenCss', () => {
   describe('a light edit', () => {
     it('replaces the value the project already sets and leaves every other byte', () => {
       const css =
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         "/* brand */\n:root {\n  --primary: #111;\n  --bg: #fff;\n}\n\n[data-theme='dark'] {\n  --primary: #eee;\n}\n"
 
       const written = editTokenCss(css, SPLIT_BOARD, {
@@ -39,6 +40,7 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         "/* brand */\n:root {\n  --primary: #222;\n  --bg: #fff;\n}\n\n[data-theme='dark'] {\n  --primary: #eee;\n}\n",
       )
     })
@@ -53,12 +55,14 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --bg: #fff;\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #818cf8;\n}\n",
       )
     })
 
     it("pins into the project's existing dark rule rather than adding one", () => {
       const css =
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --bg: #fff;\n}\n[data-theme='dark'] {\n  --bg: #000;\n}\n"
 
       const written = editTokenCss(css, SPLIT_BOARD, {
@@ -85,6 +89,7 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         "@import 'faces.css';\n\n:root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --bg: #000;\n  --primary: #818cf8;\n}\n",
       )
     })
@@ -97,12 +102,14 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #818cf8;\n}\n",
       )
     })
 
     it("adds a :root ahead of the project's dark value when the existing :root follows it", () => {
       const css =
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         "[data-theme='dark'] {\n  --primary: #111;\n}\n\n:root {\n  --x: 1px;\n}\n"
 
       const written = editTokenCss(
@@ -112,12 +119,14 @@ describe('editTokenCss', () => {
       )
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #111;\n}\n\n:root {\n  --x: 1px;\n}\n",
       )
     })
 
     it('adds a :root ahead of a dark prefers-color-scheme block holding the token', () => {
       const css =
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         '@media (prefers-color-scheme: dark) {\n  :root { --primary: #111 }\n}\n\n:root {\n  --x: 1px;\n}\n'
 
       const written = editTokenCss(
@@ -134,6 +143,7 @@ describe('editTokenCss', () => {
 
   describe('a dark edit', () => {
     it("lands in the project's existing dark rule", () => {
+      // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
       const css = ':root {\n  --bg: #fff;\n}\n\n.dark {\n  --bg: #000;\n}\n'
 
       const written = editTokenCss(css, SPLIT_BOARD, {
@@ -143,6 +153,7 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ':root {\n  --bg: #fff;\n}\n\n.dark {\n  --bg: #000;\n  --primary: #999;\n}\n',
       )
     })
@@ -157,6 +168,7 @@ describe('editTokenCss', () => {
       })
 
       expect(written).toBe(
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --bg: #fff;\n}\n\n[data-theme='dark'] {\n  --primary: #999;\n}\n",
       )
     })
@@ -208,6 +220,7 @@ describe('editTokenCss', () => {
   describe('a reset', () => {
     it('takes out every project declaration and drops a rule it leaves empty', () => {
       const css =
+        // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
         ":root {\n  --bg: #fff;\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --primary: #818cf8;\n}\n"
 
       const written = editTokenCss(css, SPLIT_BOARD, {
@@ -291,11 +304,13 @@ describe('editTokenCss', () => {
 describe('setTokenSides', () => {
   it('puts back a value an edit replaced and takes out a pin it added', () => {
     const css =
+      // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
       ":root {\n  --primary: #222;\n}\n\n[data-theme='dark'] {\n  --bg: #000;\n  --primary: #818cf8;\n}\n"
 
     const restored = setTokenSides(css, '--primary', { base: '#111' })
 
     expect(restored).toBe(
+      // canon-allow-embedded: a before or after sheet whose exact bytes this test compares, kept beside the assertion
       ":root {\n  --primary: #111;\n}\n\n[data-theme='dark'] {\n  --bg: #000;\n}\n",
     )
   })

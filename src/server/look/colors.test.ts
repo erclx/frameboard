@@ -345,6 +345,7 @@ describe('frameStyles', () => {
     it('leaves out elements that never paint, inside a parent setting the color', () => {
       expect(
         usesOf(
+          // canon-allow-embedded: the non-painting elements the assertion counts, kept beside it
           `<div id="a" style="color: #4f46e5">
             <style id="s">p { margin: 0 }</style>
             <p id="b">b</p>

@@ -49,6 +49,7 @@ describe('buildCascade firstFamily', () => {
   })
 
   it('resolves a custom property per element, as a scoped override sets it', () => {
+    // canon-allow-embedded: the cascade the assertion resolves, kept beside it
     const html = `<style>
       :root { --font: Geist }
       .alt { --font: Inter }
