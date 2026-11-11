@@ -290,6 +290,7 @@ function noMatch(search: string, chip: Chip): string {
 const CHIP_NOUNS: Record<Exclude<Chip, 'all'>, string> = {
   images: 'image',
   video: 'video',
+  audio: 'audio',
   fonts: 'font',
   other: 'other',
 }
