@@ -65,6 +65,13 @@ import { withDrawn, withPending, writeBoxes } from './write'
 /** How far, in screen pixels, a press travels before it counts as a drag rather than a click. */
 export const CLICK_DISTANCE = 3
 
+/**
+ * How long a click waits before revealing the frame it selected, the common
+ * default double-click interval, so a double-click's second press lands
+ * first and drops the reveal.
+ */
+export const REVEAL_DELAY_MS = 500
+
 /** What the gestures act on, read fresh at each press. */
 export interface GestureTarget {
   /** The element `d3-zoom` holds, whose transform maps the screen to the canvas. */
@@ -155,6 +162,8 @@ type Gesture =
       shift: boolean
       /** Whether a drag from here marquees the frame's elements, since it landed on the selected frame's bare body. */
       inner: boolean
+      /** Whether the press selected the frame, which was not selected before it. */
+      fresh: boolean
     }
   /** A marquee inside one selected frame, selecting the elements it touches. */
   | { kind: 'inner-marquee'; frame: FrameRecord; base: readonly ElementKey[] }
@@ -565,6 +574,7 @@ export function attachGestures(
         frame,
         shift: event.shiftKey,
         inner: chosen.length === 1 && !unselected && !leaving,
+        fresh: unselected,
       }
       return
     }
@@ -890,6 +900,26 @@ export function attachGestures(
       })
   }
 
+  let revealing: ReturnType<typeof setTimeout> | undefined
+  /**
+   * Centers a frame a click just selected once a double-click can no longer
+   * follow, since the double-click picks through the view and a travel
+   * started by its first click would move the point under it. A later press
+   * drops it, and a frame larger than the view is never fitted, so a click
+   * leaves the zoom the developer chose.
+   */
+  const revealLater = (frame: FrameRecord) => {
+    const turn = presses
+    clearTimeout(revealing)
+    revealing = setTimeout(() => {
+      const { page, frames } = selection.getState()
+      if (turn !== presses || page !== target.page) return
+      if (frames.length !== 1 || frames[0] !== frame.ref) return
+      // The frame was hit where it draws, so its box is the previewed one.
+      canvasView.reveal(frame.box, { fit: false })
+    }, REVEAL_DELAY_MS)
+  }
+
   const finish = (event: MouseEvent) => {
     const root = overlay()
     if (!moved) {
@@ -912,8 +942,7 @@ export function attachGestures(
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else {
           select(selection, target.page, [gesture.frame.ref])
-          // The frame was hit where it draws, so its box is the previewed one.
-          canvasView.reveal(gesture.frame.box)
+          if (gesture.fresh) revealLater(gesture.frame)
         }
       } else if (gesture.kind === 'element' && gesture.frame) {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
@@ -1169,6 +1198,7 @@ export function attachGestures(
   hit.addEventListener('contextmenu', noMenu)
   return {
     detach: () => {
+      clearTimeout(revealing)
       selectionOfHit.on('.drag', null)
       hit.removeEventListener('contextmenu', noMenu)
       removeEventListener('keydown', onEscape, true)

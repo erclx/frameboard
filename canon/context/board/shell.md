@@ -84,7 +84,8 @@ Each section's row in `section-rows.tsx` holds its frames' rows indented under i
 
 - `board/frame-order.ts` holds that grouping, so the selection chip's count and the Tab step read the order the rows draw
 - Choosing a frame not wholly in view, from its row or by a plain canvas click, centers its drawn box at the current zoom through `canvasView.reveal`
-- The reveal fits a frame larger than the view, and a Shift-click, a marquee, or a drag on the canvas leaves the view put
+- A row click fits a frame larger than the view. A canvas click never fits one, and reveals only a frame it newly selected.
+- A canvas click waits out `REVEAL_DELAY_MS` first, since a travel would move the point a double-click picks at. A Shift-click, a marquee, or a drag leaves the view put.
 - The reveal reports as a hand move, so it stops Follow, and only a frame lying wholly in view leaves the view
 
 An element row draws `T` for text, an image glyph for media, a corner bracket over a box for a placed element, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout, the rounding, and `position` from the static cascade, so a culled frame keeps its glyphs.

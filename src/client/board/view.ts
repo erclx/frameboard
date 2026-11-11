@@ -62,11 +62,17 @@ export const canvasView = {
   /**
    * Centers the box at the current zoom unless it lies wholly inside the
    * view, so a frame half under a panel comes into view too, and a box larger
-   * than the view is fitted. The developer asked for it, so it reports as a
-   * hand move, which stops Follow.
+   * than the view is fitted unless `fit` is false, which leaves the view put
+   * for one. The developer asked for it, so it reports as a hand move, which
+   * stops Follow.
    */
-  reveal: (box: Box): void => {
-    if (!controls || contains(controls.visible(), box)) return
+  reveal: (box: Box, { fit = true }: { fit?: boolean } = {}): void => {
+    if (!controls) return
+    const visible = controls.visible()
+    if (contains(visible, box)) return
+    if (!fit && (box.width > visible.width || box.height > visible.height)) {
+      return
+    }
     reportHandMove()
     controls.centerOn(box)
   },

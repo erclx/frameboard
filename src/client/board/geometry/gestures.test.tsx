@@ -31,7 +31,7 @@ import {
 } from '../selection'
 import { attachCanvas } from '../view'
 import type { Box, Point } from './box'
-import { attachGestures } from './gestures'
+import { attachGestures, REVEAL_DELAY_MS } from './gestures'
 import { SelectionOverlay } from './overlay'
 
 const PAGE = 'studio/home'
@@ -1126,8 +1126,14 @@ describe('attachGestures', () => {
   })
 
   describe('revealing the clicked frame', () => {
+    afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    })
+
     /** A view showing the canvas up to x 500, so RIGHT sits half outside it, under a panel. */
-    function watchView() {
+    function watchView(visible: Box = { x: 0, y: 0, width: 500, height: 600 }) {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       const centered: Box[] = []
       const stop = attachCanvas(
         {
@@ -1137,14 +1143,14 @@ describe('attachGestures', () => {
           fitTo: () => {},
           panBy: () => {},
           centerOn: (box) => centered.push(box),
-          visible: () => ({ x: 0, y: 0, width: 500, height: 600 }),
+          visible: () => visible,
         },
         PAGE,
       )
       return { centered, stop }
     }
 
-    it('centers a frame partly out of view on a click', () => {
+    it('centers a frame partly out of view once the double-click window passes', () => {
       const canvas = setup()
       const view = watchView()
       detach = () => {
@@ -1153,8 +1159,55 @@ describe('attachGestures', () => {
       }
 
       canvas.pointer.click(450, 150)
+      const before = [...view.centered]
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
 
+      expect(before).toEqual([])
       expect(view.centered).toEqual([RIGHT.box])
+    })
+
+    it('leaves the view put on a double-click, which picks through it', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150)
+      canvas.pointer.click(450, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a click on the frame already selected', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+      select(selectionStore, PAGE, [RIGHT.ref])
+
+      canvas.pointer.click(450, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('never fits a frame larger than the view', () => {
+      const canvas = setup()
+      const view = watchView({ x: 0, y: 0, width: 150, height: 600 })
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(120, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
+
+      expect(view.centered).toEqual([])
     })
 
     it('leaves the view put for a frame wholly in view', () => {
@@ -1166,6 +1219,7 @@ describe('attachGestures', () => {
       }
 
       canvas.pointer.click(150, 150)
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
 
       expect(view.centered).toEqual([])
     })
@@ -1179,6 +1233,7 @@ describe('attachGestures', () => {
       }
 
       canvas.pointer.click(450, 150, { shiftKey: true })
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
 
       expect(view.centered).toEqual([])
     })
@@ -1192,6 +1247,7 @@ describe('attachGestures', () => {
       }
 
       canvas.pointer.drag([50, 50], [450, 150])
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
 
       expect(view.centered).toEqual([])
     })
@@ -1205,6 +1261,7 @@ describe('attachGestures', () => {
       }
 
       canvas.pointer.drag([450, 150], [470, 170])
+      vi.advanceTimersByTime(REVEAL_DELAY_MS)
 
       expect(view.centered).toEqual([])
     })
