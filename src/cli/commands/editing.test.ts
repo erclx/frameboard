@@ -145,6 +145,25 @@ describe('editing', () => {
       })
     })
 
+    it('claims a reserved frame not written yet, marking it as the one drawing', async () => {
+      await editing([
+        'webapp/home/one',
+        'webapp/home/two',
+        '--new',
+        '--session',
+        'sess-a',
+      ])
+
+      const result = await editing(['webapp/home/two', '--session', 'sess-a'])
+
+      expect(result.exitCode).toBe(0)
+      expect(claimOf(result)).toMatchObject({
+        frame: 'webapp/home/two',
+        box: expect.objectContaining({ x: expect.any(Number) }),
+        drawingAt: expect.any(String),
+      })
+    })
+
     it('starts the row at --x and --y', async () => {
       const result = await editing([
         'webapp/home/one',

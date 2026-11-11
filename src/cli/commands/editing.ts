@@ -137,9 +137,7 @@ export function registerEditing(
 
     if (ref) {
       const session = sessionOf(options.session)
-      const frame = refOf(
-        await resolveFrameRef(root, ref, resolving(options, io.cwd)),
-      )
+      const frame = await claimable(root, ref, resolving(options, io.cwd), now)
       const held = await claim(
         root,
         {
@@ -163,6 +161,34 @@ export function registerEditing(
 
 function resolving(options: EditingOptions, cwd: string) {
   return { project: options.project, cwd }
+}
+
+/**
+ * The ref a plain claim names: an existing frame, or one a live reservation
+ * holds before its file is written, which the agent claims as it turns to
+ * draw it. Any other missing frame refuses `frame-not-found` as before.
+ */
+async function claimable(
+  root: string,
+  ref: string,
+  options: { project?: string; cwd: string },
+  now: Date,
+): Promise<string> {
+  const frame = await resolveFrameRef(root, ref, {
+    ...options,
+    allowMissing: true,
+  })
+  const canonical = refOf(frame)
+  if (existsSync(frame.path)) return canonical
+  const reserved = (await readClaims(root, now)).some(
+    (each) => each.frame === canonical && each.box,
+  )
+  if (reserved) return canonical
+  throw new FrameboardError(
+    'frame-not-found',
+    `No frame ${frame.name} in ${frame.project}/${frame.page}.`,
+    { ref },
+  )
 }
 
 /** `<project>/<page>/<frame>`, the one form a claim names a frame by. */
