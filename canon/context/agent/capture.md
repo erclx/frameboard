@@ -28,6 +28,13 @@ Two layout keys add images past the frame's own.
 - `capture --scroll <px>` shoots a `scroll` frame and each linked width that far down as `<frame>.scroll-<px>.<theme>.png`, refusing `--page` and a frame without the key as `usage`
 - Its record's `scrollY` names the offset the browser clamped to
 
+Two flags hold a frame's motion still at moments its timeline names.
+
+- `seek.ts` reads `window.__hf` first, then every `window.__timelines` entry, then `document.getAnimations()`, converting the first two from seconds once
+- `capture --at <ms,...>` writes `<frame>.at-<ms>.<theme>.png` per moment, and `--filmstrip <n>` one `<frame>.filmstrip-<n>.<theme>.png` row from 0 to the end
+- Both refuse `--page`, `--scroll`, and each other as `usage`
+- The record's `at` and `moments` name the clamped moments, and its `motion` names the source and the duration, null when every animation repeats forever
+
 The server side shares one browser and renders only on demand.
 
 - `createWarmBrowser` keeps one warm browser, shared on separate queues by `GET /api/frames/png` at its `scale` of 1 to 3 or 2 without one, the thumbnail store at scale 0.5, and the browser checker
@@ -54,6 +61,11 @@ These catch a capture out.
 - Each image waits on its `decode()`, since one marked `decoding="async"` can be loaded and still paint as an empty box. A lazy image turns eager in the page, never the file
 - Under `require`, running animations with a finite end are awaited and never refused. An infinite one is skipped, and a scene stepped by a script timer stays out of reach
 - Capture never emulates reduced motion, so a frame meant to capture alike every run shows a still
+
+A seeked shot skips that settle.
+
+- It opens with `settle: false` and shoots with `animations: 'allow'`, since `disabled` fast-forwards a finite animation and every moment would show its end
+- A frame with no timeline to seek refuses `motion-missing`, and a filmstrip of one whose animations all repeat forever refuses `motion-unbounded`
 
 ### Inspect
 
