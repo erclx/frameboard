@@ -4,12 +4,14 @@ import {
   addFrame,
   deleteFrame,
   duplicateFrame,
+  fitScrollError,
   type FrameFlag,
   moveFrame,
   orderFrame,
   readFrame,
   renameFrame,
   resizeFrame,
+  type ScrollOptions,
   setFrameFlag,
   type SizeOptions,
 } from '@/server/board/frames'
@@ -31,7 +33,12 @@ const FRAME_REF =
   'a frame ref, <page>/<frame> or <project>/<page>/<frame>, or a path to its .html file'
 const ANY_INTEGER = parseInteger(Number.MIN_SAFE_INTEGER)
 
-type FrameOptions = CommonOptions & SizeOptions & { x?: number; y?: number }
+type FrameOptions = CommonOptions &
+  SizeOptions &
+  ScrollOptions & { x?: number; y?: number }
+
+const SCROLL_HELP =
+  'hold a fixed screen height and scroll past it, fixing both axes, at the reference height of the width when no height is given'
 
 export function registerFrame(
   program: Command,
@@ -68,7 +75,7 @@ export function registerFrame(
         verb(
           'add',
           'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
-        ),
+        ).option('--scroll', SCROLL_HELP),
       ),
     ),
     context,
@@ -121,7 +128,11 @@ export function registerFrame(
   )
 
   act<FrameOptions>(
-    withSize(verb('resize', 'Set a frame size, fixing each axis it sets')),
+    withSize(
+      verb('resize', 'Set a frame size, fixing each axis it sets')
+        .option('--scroll', SCROLL_HELP)
+        .option('--no-scroll', 'clear scroll, keeping the box as it stands'),
+    ),
     context,
     async ([ref = ''], options) =>
       done(
@@ -144,6 +155,7 @@ export function registerFrame(
       const refOptions = { project: options.project, cwd: io.cwd }
       // Resolved ahead of the browser, so a missing frame never reads as a missing browser.
       const frame = await readFrame(root, ref, refOptions)
+      if (frame.scroll) throw fitScrollError(frame.ref)
       const result = await withFrameHost(
         { root, facesDir: context.facesDir },
         'frame fit',
