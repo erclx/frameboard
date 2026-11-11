@@ -151,4 +151,24 @@ describe('the WSL backend', () => {
       'Set-Clipboard',
     ])
   })
+
+  it('still runs a copy queued behind one that failed', async () => {
+    const { run, steps } = windows()
+    let calls = 0
+    const failingFirst = async (command: string, args: string[]) => {
+      calls += 1
+      if (calls === 1) throw new Error('powershell.exe exited 1')
+      return run(command, args)
+    }
+    const clipboard = clipboardFiles(
+      host({ release: WSL_RELEASE, run: failingFirst }),
+    )
+
+    const first = clipboard?.write([{ name: 'a', bytes: Buffer.from('') }])
+    const second = clipboard?.write([{ name: 'b', bytes: Buffer.from('') }])
+
+    await expect(first).rejects.toThrow('powershell.exe exited 1')
+    await expect(second).resolves.toBeUndefined()
+    expect(steps).toEqual(['temp path', 'wslpath', 'Set-Clipboard'])
+  })
 })
