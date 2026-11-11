@@ -67,7 +67,7 @@ Owns the browser tier, the rules that read a rendered page. It sits in its own f
 - Each rule reports at most one finding per frame, naming the first offending element by its edit index and how many more, and opens with the theme when only one theme trips it
 - `clipped` measures uncropped boxes grown to their text's line box, against the frame's box and not the block's, so a `nowrap` heading counts past the frame only. `scrollbar` takes 1 px of slack
 - `viewport` rereads the content at twice the viewport height through `fit`'s `readContentSize`, which leaves out what a cropping ancestor hides, as `clipped` does
-- `min-font-size` and `min-contrast` run only when `project.json` sets `checks.minFontSize` or `checks.minContrast`, and pick text elements the way capture's font check does. `min-contrast` measures against the solid layers a hit test finds under the text and skips text over an image, a gradient, or an effect, so a `::before` panel, never a hit target, reads as the host's background
+- `min-font-size` and `min-contrast` run once `project.json` sets their `checks` key. `min-contrast` skips text over an image, a gradient, or an effect, and reads a `::before` panel as the host's
 
 `dropped-declaration` is the one browser rule that reports per declaration rather than once per frame. Only the page's own parser knows what it drops, which is why the rule sits in the browser tier.
 
