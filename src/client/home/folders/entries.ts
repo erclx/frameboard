@@ -1,5 +1,7 @@
 import type { ProjectRecord } from '@/shared/records/list'
 
+import { folderPin } from '../pins'
+
 /** One folder on home, holding every project whose group reads as its key. */
 export interface HomeFolder {
   /** The group trimmed and lowercased, so two spellings differing in case are one folder. */
@@ -25,9 +27,13 @@ export function folderKey(group: string): string {
  * The cards home shows for projects already in their shown order. A folder
  * stands where its first member would, so it sorts by its newest, first-made,
  * or first-named member as the order runs, and rises with the pinned when it
- * holds one. A folder is one level deep, and one with no members never shows.
+ * is pinned itself or holds a pinned member. A folder is one level deep, and
+ * one with no members never shows.
  */
-export function homeEntries(projects: readonly ProjectRecord[]): HomeEntry[] {
+export function homeEntries(
+  projects: readonly ProjectRecord[],
+  pins: ReadonlySet<string> = new Set(),
+): HomeEntry[] {
   const entries: HomeEntry[] = []
   const folders = new Map<string, HomeFolder>()
   for (const project of projects) {
@@ -53,7 +59,21 @@ export function homeEntries(projects: readonly ProjectRecord[]): HomeEntry[] {
     folders.set(key, made)
     entries.push({ kind: 'folder', folder: made })
   }
-  return entries
+  // The projects came pinned first, so only a pinned folder moves, to the
+  // end of the pinned run, and every other entry keeps its place.
+  const pinned = entries.filter((entry) => pinnedEntry(entry, pins))
+  return [...pinned, ...entries.filter((entry) => !pinnedEntry(entry, pins))]
+}
+
+/** Whether an entry sits with the pinned: a pinned project, or a folder pinned or holding one. */
+export function pinnedEntry(
+  entry: HomeEntry,
+  pins: ReadonlySet<string>,
+): boolean {
+  return entry.kind === 'project'
+    ? pins.has(entry.project.name)
+    : pins.has(folderPin(entry.folder.key)) ||
+        entry.folder.projects.some((project) => pins.has(project.name))
 }
 
 /** The name of every folder on the board, by name, for a menu offering where to file a project. */

@@ -248,16 +248,14 @@ describe('ChangesToast', () => {
     act(() => receiveChanges(store, [change('studio/home/pricing')]))
 
     expect(await screen.findByText('Claude updated pricing')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Show \\' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
   })
 
   it('shows the change from Show, moving to its page first', async () => {
     render(<Harness />)
     act(() => receiveChanges(store, [change('studio/pricing/plans')]))
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Show \\' }),
-    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Show' }))
 
     expect(went).toEqual(['/p/studio/pricing'])
     expect(liveStore.getState().focus).toBe('studio/pricing/plans')
@@ -272,7 +270,7 @@ describe('ChangesToast', () => {
         change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
       ]),
     )
-    const next = await screen.findByRole('button', { name: 'Next ]' })
+    const next = await screen.findByRole('button', { name: 'Next' })
 
     await userEvent.click(next)
     expect(store.getState().cursor).toBe('studio/home/about')
@@ -291,7 +289,7 @@ describe('ChangesToast', () => {
         change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
       ]),
     )
-    await screen.findByRole('button', { name: 'Next ]' })
+    await screen.findByRole('button', { name: 'Next' })
 
     await userEvent.keyboard(']')
 
@@ -308,7 +306,7 @@ describe('ChangesToast', () => {
         change('studio/home/faq', { at: '2026-10-19T12:00:03Z' }),
       ]),
     )
-    await screen.findByRole('button', { name: 'Previous [' })
+    await screen.findByRole('button', { name: 'Previous' })
 
     await userEvent.keyboard('[[')
     expect(store.getState().cursor).toBe('studio/home/faq')
@@ -349,6 +347,62 @@ describe('ChangesToast', () => {
     expect(next).not.toHaveAttribute('aria-keyshortcuts')
   })
 
+  describe('keycaps', () => {
+    const pile = () => [
+      change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
+      change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
+    ]
+
+    it('sets the Show key in a keycap beside the word', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, [change('studio/home/pricing')]))
+
+      const show = await screen.findByRole('button', { name: 'Show' })
+
+      expect(show.querySelector('kbd')).toHaveTextContent('\\')
+      expect(show).toHaveAttribute('aria-keyshortcuts', '\\')
+    })
+
+    it('draws Previous and Next as arrows with their keys in keycaps', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+
+      const previous = await screen.findByRole('button', { name: 'Previous' })
+      const next = screen.getByRole('button', { name: 'Next' })
+
+      expect(previous).toHaveTextContent('‹[')
+      expect(previous.querySelector('kbd')).toHaveTextContent('[')
+      expect(next).toHaveTextContent('›]')
+      expect(next.querySelector('kbd')).toHaveTextContent(']')
+    })
+
+    it('draws no keycap while single-key shortcuts are off', async () => {
+      setCharacterKeys(false)
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+
+      const next = await screen.findByRole('button', { name: 'Next' })
+
+      expect(next.querySelector('kbd')).toBeNull()
+    })
+
+    it('keeps Shift+] off Mark all seen and in its tooltip', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const markAll = await screen.findByRole('button', {
+        name: 'Mark all seen',
+      })
+
+      await userEvent.hover(markAll)
+
+      expect(markAll.querySelector('kbd')).toBeNull()
+      expect(markAll).toHaveAttribute('aria-keyshortcuts', 'Shift+]')
+      expect(
+        await screen.findByText('Mark all seen Shift+]'),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows the change on Enter with the toast focused', async () => {
     render(<Harness />)
     act(() => receiveChanges(store, [change('studio/pricing/plans')]))
@@ -370,7 +424,7 @@ describe('ChangesToast', () => {
         change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
       ]),
     )
-    const next = await screen.findByRole('button', { name: 'Next ]' })
+    const next = await screen.findByRole('button', { name: 'Next' })
 
     act(() => next.focus())
     await userEvent.keyboard('{Enter}')
@@ -412,7 +466,7 @@ describe('ChangesToast', () => {
       act(() => receiveChanges(store, pile()))
 
       await userEvent.click(
-        await screen.findByRole('button', { name: /^Mark all seen/ }),
+        await screen.findByRole('button', { name: 'Mark all seen' }),
       )
 
       expect(store.getState().unseen).toEqual({})
@@ -424,7 +478,7 @@ describe('ChangesToast', () => {
       unbind = bindKeys(window)
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
-      await screen.findByRole('button', { name: /^Mark all seen/ })
+      await screen.findByRole('button', { name: 'Mark all seen' })
 
       await userEvent.keyboard('{Shift>}]{/Shift}')
 
@@ -435,7 +489,7 @@ describe('ChangesToast', () => {
       unbind = bindKeys(window)
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
-      await screen.findByRole('button', { name: /^Mark all seen/ })
+      await screen.findByRole('button', { name: 'Mark all seen' })
 
       await userEvent.keyboard('{Shift>}]{/Shift}')
 
@@ -458,7 +512,7 @@ describe('ChangesToast', () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
       await userEvent.click(
-        await screen.findByRole('button', { name: /^Mark all seen/ }),
+        await screen.findByRole('button', { name: 'Mark all seen' }),
       )
 
       await userEvent.click(await screen.findByRole('button', { name: 'Undo' }))
@@ -471,7 +525,7 @@ describe('ChangesToast', () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
       const markAll = await screen.findByRole('button', {
-        name: /^Mark all seen/,
+        name: 'Mark all seen',
       })
 
       act(() => markAll.focus())
@@ -484,7 +538,7 @@ describe('ChangesToast', () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
       const markAll = await screen.findByRole('button', {
-        name: /^Mark all seen/,
+        name: 'Mark all seen',
       })
       act(() => markAll.focus())
       await userEvent.keyboard('{Enter}')
@@ -492,16 +546,14 @@ describe('ChangesToast', () => {
 
       await userEvent.keyboard('{Enter}')
 
-      expect(
-        await screen.findByRole('button', { name: 'Show \\' }),
-      ).toHaveFocus()
+      expect(await screen.findByRole('button', { name: 'Show' })).toHaveFocus()
     })
 
     it('leaves focus alone when ⇧] runs Mark all seen', async () => {
       unbind = bindKeys(window)
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
-      await screen.findByRole('button', { name: /^Mark all seen/ })
+      await screen.findByRole('button', { name: 'Mark all seen' })
 
       await userEvent.keyboard('{Shift>}]{/Shift}')
 
@@ -514,7 +566,7 @@ describe('ChangesToast', () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
       await userEvent.click(
-        await screen.findByRole('button', { name: /^Mark all seen/ }),
+        await screen.findByRole('button', { name: 'Mark all seen' }),
       )
       await screen.findByText('3 changes marked seen')
 

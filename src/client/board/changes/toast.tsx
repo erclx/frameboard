@@ -1,8 +1,10 @@
-import { type MouseEvent, useEffect, useRef } from 'react'
+import { type ComponentProps, type MouseEvent, useEffect, useRef } from 'react'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import { type Action, useActions } from '@/client/actions/registry'
+import { ActionTooltip } from '@/client/board/chrome/action-tooltip'
+import { Kbd } from '@/client/components/ui/kbd'
 import {
   Toast,
   toast as kitToasts,
@@ -236,18 +238,25 @@ export function ChangeToastBody({
             <KeyedButton
               action={previous}
               label="Previous"
+              face="‹"
               keys={PREVIOUS_KEYS}
             />
-            <KeyedButton action={next} label="Next" keys={NEXT_KEYS} />
+            <KeyedButton action={next} label="Next" face="›" keys={NEXT_KEYS} />
           </>
         ) : null}
         {copy.markAll ? (
-          <KeyedButton
-            action={markAll}
+          <ActionTooltip
             label="Mark all seen"
-            keys={MARK_ALL_KEYS}
-            onClick={runFromButton(markAll)}
-          />
+            keys={markAll?.keys ?? MARK_ALL_KEYS}
+          >
+            <KeyedButton
+              action={markAll}
+              label="Mark all seen"
+              keys={MARK_ALL_KEYS}
+              keycap={false}
+              onClick={runFromButton(markAll)}
+            />
+          </ActionTooltip>
         ) : null}
         {copy.undo ? (
           <button
@@ -263,31 +272,52 @@ export function ChangeToastBody({
   )
 }
 
-/** A toast button naming its key while that key is live. */
+/**
+ * A toast button drawing its word or arrow with its key in a muted keycap
+ * beside it while that key is live, per toast-keycaps-720. The keycap is
+ * hidden from the accessible name, which `aria-keyshortcuts` carries instead.
+ */
 function KeyedButton({
   action,
   label,
+  face = label,
   keys,
+  keycap = true,
   className = 'bg-secondary text-foreground',
   onClick,
+  ...trigger
 }: {
   action: Action | undefined
   label: string
+  /** What the button draws, an arrow standing for the label. */
+  face?: string
   /** The key shown before the action registers, matching what it registers. */
   keys: readonly string[]
+  /** Whether the key draws beside the label, off where a tooltip carries it. */
+  keycap?: boolean
   className?: string
   /** Runs in place of the action, for a press that needs its event. */
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void
-}) {
+} & Omit<ComponentProps<'button'>, 'onClick'>) {
   const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
   return (
     <button
       type="button"
+      {...trigger}
+      aria-label={face === label ? undefined : label}
       aria-keyshortcuts={key ? keyLabel(key) : undefined}
       onClick={onClick ?? (() => action?.run())}
-      className={cn(TOAST_BUTTON, className)}
+      className={cn(TOAST_BUTTON, 'inline-flex items-center gap-1', className)}
     >
-      {key ? `${label} ${keyLabel(key)}` : label}
+      {face}
+      {key && keycap ? (
+        <Kbd
+          aria-hidden
+          className="h-4 min-w-4 bg-background/60 px-[3px] text-[10px]"
+        >
+          {keyLabel(key)}
+        </Kbd>
+      ) : null}
     </button>
   )
 }

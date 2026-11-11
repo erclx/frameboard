@@ -26,7 +26,13 @@ import {
   folderNames,
   nextFolderName,
 } from '@/client/home/folders/entries'
-import { dropPin, movePin, pinnedProjects, togglePin } from '@/client/home/pins'
+import {
+  dropPin,
+  folderPin,
+  movePin,
+  pinnedProjects,
+  togglePin,
+} from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
@@ -218,6 +224,7 @@ export async function renameFolder(
     if (open) projectStore.setState({ openFolder: key, pendingRename: null })
     return
   }
+  if (renamed !== key) movePin(folderPin(key), folderPin(renamed))
   focusFolder(renamed)
 }
 
@@ -248,6 +255,7 @@ export async function ungroupFolder(
 ): Promise<void> {
   const names = folderMembers(key).map((project) => project.name)
   if (!(await fileProjects(names, null, calls))) return
+  dropPin(folderPin(key))
   const first = names[0] ?? null
   projectStore.setState({ openFolder: null, focusTarget: first })
   if (first) focusProject(first)
@@ -318,8 +326,10 @@ export function focusedProject(): string | null {
  * `project.group` filing the focused project in a new folder,
  * `project.ungroup` taking it out of its own, `project.archive` and
  * `project.restore` moving it into the Archived section and back, and
- * `folder.rename` and `folder.ungroup` acting on the focused folder. Each is
- * lit while the tab may write and its target exists.
+ * `folder.open`, `folder.rename`, `folder.ungroup`, and `folder.pin` acting
+ * on the focused folder. Each write is lit while the tab may write and its
+ * target exists, and Open and Pin whenever the folder exists, since neither
+ * writes the board.
  */
 export function useFolderActions(calls: Structure = structure): void {
   useEffect(() => {
@@ -396,6 +406,18 @@ export function useFolderActions(calls: Structure = structure): void {
         },
       },
       {
+        id: 'folder.open',
+        label: 'Open',
+        group: 'project',
+        // Enter on a focused folder card, which opens it without the palette.
+        palette: false,
+        enabled: () => folder() !== undefined,
+        run: () => {
+          const target = folder()
+          if (target) projectStore.setState({ openFolder: target.key })
+        },
+      },
+      {
         id: 'folder.rename',
         label: 'Rename',
         group: 'project',
@@ -423,6 +445,21 @@ export function useFolderActions(calls: Structure = structure): void {
         run: () => {
           const target = folder()
           if (target) void ungroupFolder(target.key, calls)
+        },
+      },
+      {
+        id: 'folder.pin',
+        label: 'Pin',
+        group: 'project',
+        command: { label: 'Pin folder', icon: Pin, hint: folderHint },
+        enabled: () => folder() !== undefined,
+        checked: () => {
+          const key = projectStore.getState().folder
+          return key !== null && pinnedProjects().has(folderPin(key))
+        },
+        run: () => {
+          const target = folder()
+          if (target) togglePin(folderPin(target.key))
         },
       },
     ])

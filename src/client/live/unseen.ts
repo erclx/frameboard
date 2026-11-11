@@ -3,6 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import type { FrameChange } from '@/shared/records/changes'
 import type { ListResult } from '@/shared/records/list'
+import type { Note } from '@/shared/records/notes'
 
 import { movedKeys, movedRef } from './store'
 
@@ -10,6 +11,8 @@ import { movedKeys, movedRef } from './store'
 export const SEEN_KEY = 'frameboard.seen'
 /** Where the last shown mark this browser looked at is kept, by frame ref. */
 export const SEEN_SHOWS_KEY = 'frameboard.seen-shows'
+/** Where the newest agent reply this browser opened is kept, by root note id. */
+export const SEEN_REPLIES_KEY = 'frameboard.seen-replies'
 
 /** The part of `localStorage` the store reads and writes, any call of which may throw. */
 export interface SeenStorage {
@@ -49,6 +52,11 @@ export interface UnseenState {
    * clear, since a rename or prune rebuilds `lastCleared` without one.
    */
   clears: number
+  /**
+   * The `updatedAt` of the newest agent reply each thread showed when it was
+   * last open, by root note id, so a reply landing after it counts unseen.
+   */
+  replies: Readonly<Record<string, string>>
 }
 
 /** One frame Mark all seen cleared: the change it unmarked and the hash seen before it. */
@@ -76,6 +84,7 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
     base: {},
     lastCleared: null,
     clears: 0,
+    replies: readSeen(storage, SEEN_REPLIES_KEY),
   }))
   return Object.assign(store, { storage })
 }
@@ -376,6 +385,84 @@ function windowStorage(): SeenStorage | null {
     return window.localStorage
   } catch {
     return null
+  }
+}
+
+/** Whether a note is an agent reply its thread has not shown since it landed. */
+function unseenReply(
+  note: Note,
+  replies: Readonly<Record<string, string>>,
+): boolean {
+  if (note.from !== 'agent' || note.thread === null) return false
+  const seen = replies[note.thread]
+  return seen === undefined || note.updatedAt > seen
+}
+
+/**
+ * How many agent replies across the given pages' notes no open thread has
+ * shown. A reply counts only while its root can still open, being a root not
+ * done on a frame the board holds, since a root that draws no marker leaves
+ * no thread to open and its reply would count for good.
+ */
+export function unseenReplies(
+  notes: Readonly<Record<string, readonly Note[]>>,
+  replies: Readonly<Record<string, string>>,
+  board: ListResult | null,
+): number {
+  const frames = new Set(
+    board?.projects.flatMap((project) =>
+      project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
+    ),
+  )
+  return Object.entries(notes).reduce((count, [page, list]) => {
+    const open = new Set(
+      list
+        .filter(
+          (note) =>
+            note.thread === null &&
+            note.state !== 'done' &&
+            frames.has(`${page}/${note.frame}`),
+        )
+        .map((note) => note.id),
+    )
+    const counted = list.filter(
+      (note) =>
+        note.thread !== null &&
+        open.has(note.thread) &&
+        unseenReply(note, replies),
+    )
+    return count + counted.length
+  }, 0)
+}
+
+/**
+ * Records a thread's agent replies as seen, up to the newest it holds. The
+ * thread card calls it while open, so a reply landing in an open thread is
+ * seen as it lands.
+ */
+export function markRepliesSeen(
+  store: UnseenStore,
+  thread: readonly Note[],
+): void {
+  const root = thread[0]
+  if (!root) return
+  const { replies } = store.getState()
+  const newest = thread
+    .filter((note) => unseenReply(note, replies))
+    .reduce<string | undefined>(
+      (latest, note) =>
+        latest === undefined || note.updatedAt > latest
+          ? note.updatedAt
+          : latest,
+      undefined,
+    )
+  if (newest === undefined) return
+  const next = { ...replies, [root.id]: newest }
+  store.setState({ replies: next })
+  try {
+    store.storage?.setItem(SEEN_REPLIES_KEY, JSON.stringify(next))
+  } catch {
+    // A browser refusing storage keeps what was seen for this tab's life.
   }
 }
 

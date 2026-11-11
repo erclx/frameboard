@@ -45,6 +45,7 @@ When an agent writes a frame, the board marks it with a dot and counts it on its
 
 - A toast names the agent and offers Show, or `\`, which takes you to the change and makes the edited elements glow, and Next, or `]`, steps to the next one
 - Once several frames changed, Mark all seen, or `⇧]`, clears every page at once, and the toast offers Undo for 5 seconds after
+- The browser tab's title opens with how many changes and agent note replies you have not seen yet, such as `(3) landing-v2 · Frameboard`
 - The compare button on a changed frame's label flips it to the version before the agent's run, or splits it at a divider you drag
 - The server keeps that version until 200 later changes land
 
