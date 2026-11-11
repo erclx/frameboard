@@ -4,8 +4,9 @@ import { FrameboardError } from '@/shared/errors'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { assertFontsPresent } from './fonts'
+import { settleImages } from './image-loads'
 
-/** How long a frame has to load before its capture fails. */
+/** How long a frame has to load, its faces and images included, before its capture fails. */
 const LOAD_TIMEOUT_MS = 10_000
 /** Chromium's screenshot surface stops at this many pixels on either side. */
 export const MAX_COMPOSITE_SIDE = 16384
@@ -20,9 +21,9 @@ export interface OpenFrameOptions {
   /** Device pixels per CSS pixel, 1 for a capture. */
   scale?: number
   /**
-   * `require` refuses a frame whose face is missing, so a capture never shows
-   * a fallback as the design. `wait` loads it in the fallback the board shows,
-   * for a reading of what the board renders.
+   * `require` refuses a frame whose face or image is missing, so a capture
+   * never shows a fallback as the design. `wait` loads it as the board shows
+   * it, for a reading of what the board renders.
    */
   fonts?: 'require' | 'wait'
 }
@@ -34,9 +35,10 @@ export interface OpenFrame {
 
 /**
  * Loads a frame in its own browser context at its layout size, in the theme
- * asked for, and resolves once it has loaded and its faces have settled.
- * Under `fonts: 'require'`, the default, a missing face refuses
- * `font-missing` and closes the context.
+ * asked for, and resolves once it has loaded, its faces have settled, and its
+ * images have decoded, all inside one load budget. Under `fonts: 'require'`,
+ * the default, a missing face refuses `font-missing`, an image that failed or
+ * outran the budget refuses `image-missing`, and either closes the context.
  */
 export async function openFrame(
   browser: Browser,
@@ -48,6 +50,7 @@ export async function openFrame(
     colorScheme: theme,
   })
   const close = () => context.close()
+  const deadline = Date.now() + LOAD_TIMEOUT_MS
   try {
     const page = await context.newPage()
     // The frame route's injected script sets the root's theme from the URL.
@@ -56,6 +59,7 @@ export async function openFrame(
     })
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (fonts === 'require') await assertFontsPresent(page, ref)
+    await settleImages(page, ref, fonts, deadline - Date.now())
     return { page, close }
   } catch (error) {
     await close()
