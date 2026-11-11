@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { LOOK_MARKER } from '@/shared/theme'
 import { frameOf } from '@/test/board'
 
-import { pageReach, takesClicks } from './play-reach'
+import { pageReach, takesClicks } from './reach'
 
 function documentOf(body: string, head = ''): Document {
   const made = document.implementation.createHTMLDocument('frame')

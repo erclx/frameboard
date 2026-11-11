@@ -1,6 +1,6 @@
 import type { FrameRecord } from '@/shared/records/list'
 
-import { frameElements } from './frame-dom'
+import { frameElements } from '../frame-dom'
 
 /**
  * What can take a click in a frame. A `script` counts, since a frame wiring

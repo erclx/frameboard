@@ -30,6 +30,7 @@ import type { Box } from './geometry/box'
 import { exportStore } from './inspector/export-store'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
+import { enteredStore, enterFrame, leaveFrame } from './play/entered'
 import { clear, select, selectElement, selectionStore } from './selection'
 import { attachCanvas } from './view'
 
@@ -572,6 +573,7 @@ describe('command', () => {
     'frame.exportPng',
   ]
   const UNNAMED = [
+    'play.leaveFrame',
     'mode.exitPlay',
     'tool.disarm',
     'view.pan.left',
@@ -800,6 +802,42 @@ describe('P', () => {
     const unbind = bindKeys(window)
 
     await userEvent.keyboard('p')
+
+    expect(modeStore.getState().mode).toBe('edit')
+    unbind()
+    unmount()
+  })
+})
+
+describe('Esc in Play with a frame entered', () => {
+  afterEach(() => {
+    leaveFrame()
+    modeStore.setState({ mode: 'edit', tool: 'move' })
+  })
+
+  it('leaves the frame and stays in Play', async () => {
+    modeStore.setState({ mode: 'play' })
+    enterFrame(HERO.ref)
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('{Escape}')
+
+    expect({
+      mode: modeStore.getState().mode,
+      entered: enteredStore.getState().ref,
+    }).toEqual({ mode: 'play', entered: null })
+    unbind()
+    unmount()
+  })
+
+  it('returns to Edit on the second press', async () => {
+    modeStore.setState({ mode: 'play' })
+    enterFrame(HERO.ref)
+    const { unmount } = renderHook(() => useBoardActions())
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('{Escape}{Escape}')
 
     expect(modeStore.getState().mode).toBe('edit')
     unbind()

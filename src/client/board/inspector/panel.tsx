@@ -119,7 +119,7 @@ export function InspectorPanel() {
       ) : (
         <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
           {playing ? (
-            <p>Playing. Nothing selects while frames take the clicks.</p>
+            <p>Playing. Nothing selects in Play.</p>
           ) : (
             <>
               <p>Select a frame to see its details.</p>

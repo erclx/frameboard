@@ -63,6 +63,8 @@ import {
 } from './place/tool'
 import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
+import { enteredStore } from './play/entered'
+import { PlayShield } from './play/shield'
 import { placeSection } from './sections/actions'
 import { SectionBoxes } from './sections/box'
 import {
@@ -84,6 +86,8 @@ import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
 const FIT_PADDING = 64
+/** Screen pixels a press may move and still count as a click. */
+const PLAY_CLICK_SLOP = 3
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
 /** How long the view takes to travel to a shown frame. */
@@ -226,6 +230,10 @@ export function Canvas({
       unknown
     >()
       .scaleExtent(SCALE_EXTENT)
+      // d3 swallows the click ending a press that moved past this, and the
+      // Play shield enters a frame on that click, so a trackpad press that
+      // jitters a pixel or two still enters rather than panning.
+      .clickDistance(PLAY_CLICK_SLOP)
       // A primary-button drag pans under the Hand tool, in Play, and while
       // Space is held, since in Move it selects. The middle button and the
       // wheel always pan.
@@ -406,6 +414,13 @@ export function Canvas({
       markHovered(layer, ref)
     }
     const track = (event: PointerEvent) => {
+      // A held button in Play pans the board, so no frame reads as one a
+      // click would enter until it is released.
+      if (event.buttons !== 0 && modeStore.getState().mode === 'play') {
+        hover(null)
+        viewport.style.cursor = ''
+        return
+      }
       const transform = zoomTransform(viewport)
       const [x, y] = transform.invert(pointer(event, viewport))
       hover(
@@ -413,8 +428,15 @@ export function Canvas({
           null,
       )
       // The marks draw in a layer that takes no pointer, so they cannot carry
-      // a cursor themselves.
-      viewport.style.cursor = cursorAtRef.current?.(event) ?? ''
+      // a cursor themselves. In Play a frame under the shield shows a click
+      // enters it.
+      viewport.style.cursor =
+        cursorAtRef.current?.(event) ??
+        (hovered !== null &&
+        modeStore.getState().mode === 'play' &&
+        enteredStore.getState().ref !== hovered
+          ? 'pointer'
+          : '')
     }
     const leave = () => {
       hover(null)
@@ -694,13 +716,26 @@ export function Canvas({
           'cursor-grab active:cursor-grabbing',
       )}
     >
+      {playing ? (
+        <PlayShield
+          viewport={viewportRef}
+          frames={drawnFrames}
+          page={page.ref}
+          live={live}
+        />
+      ) : null}
       <div
         ref={(element) => {
           layerRef.current = element
           setLayer(element)
         }}
         data-layer
-        className="absolute top-0 left-0 origin-top-left"
+        className={cn(
+          'absolute top-0 left-0 origin-top-left',
+          // The pointer passes through to the shield under every frame but
+          // the entered one, which takes it back.
+          playing && 'pointer-events-none',
+        )}
       >
         {page.layoutError ? null : (
           <>
@@ -731,8 +766,8 @@ export function Canvas({
         )}
       </div>
       {/* Covers every frame in Edit, so a press over one reaches the
-          gestures rather than its page. Play lifts it, so a click reaches
-          the frame. */}
+          gestures rather than its page. Play draws the shield under the
+          frames in its place, which a click enters a frame through. */}
       {playing ? null : (
         <CanvasMenu
           page={page.ref}
