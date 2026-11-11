@@ -1,7 +1,6 @@
-import { ChevronDown, FoldVertical } from 'lucide-react'
-import { Fragment, useRef } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { Fragment, type KeyboardEvent, useRef, useState } from 'react'
 
-import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import {
   DropdownMenu,
@@ -13,14 +12,18 @@ import {
 } from '@/client/components/ui/dropdown-menu'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
-import type { Structure } from '@/client/live/structure'
+import {
+  type HeightMode,
+  type Structure,
+  structure,
+} from '@/client/live/structure'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import type { Box } from '../geometry/box'
 import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
+import { reportRefusal } from '../left-panel/page-actions'
 import {
   renameFrame,
   startFrameRename,
@@ -39,8 +42,6 @@ const FIELDS = [
 ] as const
 
 type Field = (typeof FIELDS)[number]['key']
-
-const FIT_IDS = ['frame.fitHeight'] as const
 
 interface FrameSectionProps {
   /** The selected frames as drawn, one or several. */
@@ -61,9 +62,9 @@ interface FrameSectionProps {
  * value setting every selected frame and a step on `Mixed` moving each by
  * the step, and a step or scrub draws each frame at its pending box first.
  * The heading opens the Frame tool's sizes, a pick setting W and H on every
- * frame in one write. One frame's H carries Fit height, running the registered action. The
- * Preview row under the fields shows the frames at another width and writes
- * nothing.
+ * frame in one write. The Height row under the fields sets how every frame
+ * holds its height, and the Preview row under it shows the frames at another
+ * width and writes nothing.
  */
 export function FrameSection({
   frames,
@@ -74,7 +75,6 @@ export function FrameSection({
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
   const renaming = useRenamingFrame('inspector')
-  const [fitHeight] = useActions(FIT_IDS)
   // The boxes a previewed gesture started from, which its pending boxes now hide.
   const started = useRef<Record<string, Box> | null>(null)
   const [frame] = frames
@@ -155,31 +155,25 @@ export function FrameSection({
         </button>
       )}
       <div className="grid grid-cols-2 gap-1.5">
-        {FIELDS.map(({ key, letter, label }) => {
-          const fit =
-            key === 'height' && !several && fitHeight ? fitHeight : null
-          return (
-            <div key={key} className="relative">
-              <NumberField
-                prefix={letter}
-                label={label}
-                value={shared(frames.map(({ box }) => box[key]))}
-                min={key === 'width' || key === 'height' ? 1 : undefined}
-                format={WHOLE}
-                disabled={!canWrite || locked}
-                inputClassName={fit ? 'pr-7' : undefined}
-                onPreview={(change) => preview(key, change)}
-                onCommit={(change) => commit(key, change)}
-              />
-              {fit ? (
-                <span className="absolute inset-y-0 right-0.5 flex items-center">
-                  <FitButton action={fit} />
-                </span>
-              ) : null}
-            </div>
-          )
-        })}
+        {FIELDS.map(({ key, letter, label }) => (
+          <NumberField
+            key={key}
+            prefix={letter}
+            label={label}
+            value={shared(frames.map(({ box }) => box[key]))}
+            min={key === 'width' || key === 'height' ? 1 : undefined}
+            format={WHOLE}
+            disabled={!canWrite || locked}
+            onPreview={(change) => preview(key, change)}
+            onCommit={(change) => commit(key, change)}
+          />
+        ))}
       </div>
+      <HeightRow
+        frames={frames}
+        disabled={!canWrite || locked}
+        calls={calls ?? structure}
+      />
       <PreviewRow frames={frames} />
     </section>
   )
@@ -272,21 +266,128 @@ function SizeMenu({ frames, disabled, onPick }: SizeMenuProps) {
 /** A frame's box is whole pixels, so a typed fraction rounds. */
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-/** Fit height inside the H field, naming itself on hover as the Arrange buttons do. */
-function FitButton({ action }: { action: Action }) {
-  return (
-    <ActionTooltip label={action.label} keys={action.keys} side="bottom">
-      <button
-        type="button"
-        aria-label={action.label}
-        disabled={!isEnabled(action)}
-        onClick={action.run}
-        className="grid size-6 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40"
-      >
-        <FoldVertical aria-hidden className="size-[13px]" strokeWidth={1.6} />
-      </button>
-    </ActionTooltip>
+const HEIGHT_MODES = [
+  { mode: 'fixed', label: 'Fixed' },
+  { mode: 'fit', label: 'Fit' },
+  { mode: 'scroll', label: 'Scroll' },
+] as const satisfies readonly { mode: HeightMode; label: string }[]
+
+function heightModeOf({ scroll, hugHeight }: FrameRecord): HeightMode {
+  if (scroll) return 'scroll'
+  return hugHeight ? 'fit' : 'fixed'
+}
+
+interface HeightRowProps {
+  frames: readonly FrameRecord[]
+  disabled: boolean
+  calls: Structure
+}
+
+/**
+ * How the frames hold their height, Fixed, Fit, or Scroll, as one radio
+ * group read off the records, checking nothing and reading `Mixed` where
+ * they differ. A pick writes every frame in one step and shows at once,
+ * until the board answers with the frames' new mode or the write is
+ * refused, which puts the stored mode back.
+ */
+function HeightRow({ frames, disabled, calls }: HeightRowProps) {
+  const refs = frames.map((frame) => frame.ref)
+  const modes = frames.map(heightModeOf)
+  const stored = modes.every((mode) => mode === modes[0])
+    ? (modes[0] ?? null)
+    : null
+  // A pick stands while the frames still read the mode it was made from.
+  const [pending, setPending] = useState<{
+    key: string
+    from: HeightMode | null
+    mode: HeightMode
+  } | null>(null)
+  const key = refs.join('\n')
+  const shown =
+    pending && pending.key === key && pending.from === stored
+      ? pending.mode
+      : stored
+  const buttons = useRef<(HTMLButtonElement | null)[]>([])
+
+  const pick = (mode: HeightMode) => {
+    if (mode === shown) return
+    setPending({ key, from: stored, mode })
+    const expected = Object.fromEntries(
+      frames.map(({ ref, box }) => [ref, box]),
+    )
+    calls.setHeightMode(refs, mode, expected).catch((error: unknown) => {
+      setPending(null)
+      reportRefusal('Couldn’t set the height')(error)
+    })
+  }
+
+  const step = (event: KeyboardEvent, index: number) => {
+    const by = ARROW_STEPS[event.key]
+    if (by === undefined) return
+    event.preventDefault()
+    const next = (index + by + HEIGHT_MODES.length) % HEIGHT_MODES.length
+    const target = HEIGHT_MODES[next]
+    if (!target) return
+    buttons.current[next]?.focus()
+    pick(target.mode)
+  }
+
+  // The checked radio takes the tab stop, or the first where none is.
+  const focusable = Math.max(
+    0,
+    HEIGHT_MODES.findIndex(({ mode }) => mode === shown),
   )
+
+  return (
+    <div className="mt-2.5">
+      <div className="mb-1.5 flex h-4 items-center justify-between">
+        <span
+          id="inspector-height"
+          className="text-caption text-muted-foreground"
+        >
+          Height
+        </span>
+        {shown === null ? (
+          <span className="text-caption text-muted-foreground">Mixed</span>
+        ) : null}
+      </div>
+      <div
+        role="radiogroup"
+        aria-labelledby="inspector-height"
+        className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5"
+      >
+        {HEIGHT_MODES.map(({ mode, label }, index) => (
+          <button
+            key={mode}
+            ref={(button) => {
+              buttons.current[index] = button
+            }}
+            type="button"
+            role="radio"
+            aria-checked={mode === shown}
+            tabIndex={index === focusable ? 0 : -1}
+            disabled={disabled}
+            onClick={() => pick(mode)}
+            onKeyDown={(event) => step(event, index)}
+            className={cn(
+              'grid flex-1 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40',
+              mode === shown && 'bg-sidebar text-foreground shadow-xs',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The radio group's arrow keys, each moving one radio along and picking it. */
+const ARROW_STEPS: Readonly<Record<string, number>> = {
+  ArrowRight: 1,
+  ArrowDown: 1,
+  ArrowLeft: -1,
+  ArrowUp: -1,
 }
 
 function shared(values: readonly number[]): number | null {

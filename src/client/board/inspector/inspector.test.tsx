@@ -415,43 +415,108 @@ describe('InspectorPanel', () => {
     unregister()
   })
 
-  it('runs Fit height from the one frame’s H field', async () => {
-    let runs = 0
-    const fitHeight: Action = {
-      id: 'frame.fitHeight',
-      label: 'Fit height',
-      group: 'frame',
-      palette: false,
-      run: () => {
-        runs += 1
-      },
+  describe('Height row', () => {
+    /** A structure whose height write answers `answer`, recording each body sent. */
+    function heightCalls(answer: () => Response) {
+      const sent: unknown[] = []
+      const calls = createStructure(async (_path, init) => {
+        sent.push(JSON.parse(String(init?.body)))
+        return answer()
+      })
+      return { sent, calls }
     }
-    const unregister = registerActions([fitHeight])
-    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
-    renderPanel()
+    const checked = () =>
+      within(screen.getByRole('radiogroup', { name: 'Height' }))
+        .queryAllByRole('radio', { checked: true })
+        .map((radio) => radio.textContent)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Fit height' }))
+    it.each([
+      ['Fixed', {}],
+      ['Fit', { hugHeight: true }],
+      ['Scroll', { scroll: true }],
+    ])('reads %s off the frame', (mode, fields) => {
+      render(<FrameSection page={PAGE} frames={[{ ...SWATCHES, ...fields }]} />)
 
-    expect(runs).toBe(1)
-    unregister()
-  })
+      expect(checked()).toEqual([mode])
+    })
 
-  it('leaves Fit height out for several frames', () => {
-    const unregister = registerActions([
-      {
-        id: 'frame.fitHeight',
-        label: 'Fit height',
-        group: 'frame',
-        palette: false,
-        run: () => {},
-      },
-    ])
-    act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+    it('checks nothing and reads Mixed where frames differ', () => {
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[SWATCHES, { ...SUNSET, scroll: true }]}
+        />,
+      )
 
-    renderPanel()
+      expect(checked()).toEqual([])
+      expect(screen.getByText('Mixed')).toBeInTheDocument()
+    })
 
-    expect(screen.queryByRole('button', { name: 'Fit height' })).toBeNull()
-    unregister()
+    it('posts a pick once for every frame with the boxes it drew', async () => {
+      const { sent, calls } = heightCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(
+        <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
+      )
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Scroll' }))
+
+      expect(sent).toEqual([
+        {
+          refs: [SWATCHES.ref, SUNSET.ref],
+          mode: 'scroll',
+          expected: { [SWATCHES.ref]: SWATCHES.box, [SUNSET.ref]: SUNSET.box },
+        },
+      ])
+      expect(checked()).toEqual(['Scroll'])
+    })
+
+    it('posts nothing for the mode already shown', async () => {
+      const { sent, calls } = heightCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Fixed' }))
+
+      expect(sent).toEqual([])
+    })
+
+    it('rolls back to the stored mode when the write is refused', async () => {
+      const { calls } = heightCalls(() =>
+        Response.json(
+          { ok: false, error: { code: 'stale-layout', message: 'Moved.' } },
+          { status: 409 },
+        ),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Fit' }))
+
+      await waitFor(() => expect(checked()).toEqual(['Fixed']))
+    })
+
+    it('moves between modes by arrow key, picking each', async () => {
+      const { sent, calls } = heightCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+      act(() => screen.getByRole('radio', { name: 'Fixed' }).focus())
+
+      await userEvent.keyboard('{ArrowRight}')
+
+      expect(screen.getByRole('radio', { name: 'Fit' })).toHaveFocus()
+      expect(sent).toMatchObject([{ mode: 'fit' }])
+    })
+
+    it('stands disabled on a locked frame', () => {
+      render(
+        <FrameSection page={PAGE} frames={[{ ...SWATCHES, locked: true }]} />,
+      )
+
+      expect(screen.getByRole('radio', { name: 'Scroll' })).toBeDisabled()
+    })
   })
 
   describe('Checks', () => {
