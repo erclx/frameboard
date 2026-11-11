@@ -29,6 +29,7 @@ import {
   selectionStore,
   selectSection,
 } from '../selection'
+import { attachCanvas } from '../view'
 import type { Box, Point } from './box'
 import { attachGestures } from './gestures'
 import { SelectionOverlay } from './overlay'
@@ -1121,6 +1122,91 @@ describe('attachGestures', () => {
       canvas.pointer.click(150, 150)
 
       expect(selectedRefs()).toEqual([])
+    })
+  })
+
+  describe('revealing the clicked frame', () => {
+    /** A view showing the canvas up to x 500, so RIGHT sits half outside it, under a panel. */
+    function watchView() {
+      const centered: Box[] = []
+      const stop = attachCanvas(
+        {
+          zoomBy: () => {},
+          zoomTo: () => {},
+          fit: () => {},
+          fitTo: () => {},
+          panBy: () => {},
+          centerOn: (box) => centered.push(box),
+          visible: () => ({ x: 0, y: 0, width: 500, height: 600 }),
+        },
+        PAGE,
+      )
+      return { centered, stop }
+    }
+
+    it('centers a frame partly out of view on a click', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150)
+
+      expect(view.centered).toEqual([RIGHT.box])
+    })
+
+    it('leaves the view put for a frame wholly in view', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(150, 150)
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a Shift-click', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.click(450, 150, { shiftKey: true })
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a marquee', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.drag([50, 50], [450, 150])
+
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view put on a drag that starts on a frame', () => {
+      const canvas = setup()
+      const view = watchView()
+      detach = () => {
+        canvas.detach()
+        view.stop()
+      }
+
+      canvas.pointer.drag([450, 150], [470, 170])
+
+      expect(view.centered).toEqual([])
     })
   })
 

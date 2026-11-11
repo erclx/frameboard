@@ -43,6 +43,7 @@ import {
   toggle,
   toggleElement,
 } from '../selection'
+import { canvasView } from '../view'
 import { boundsOf, type Box, type Point, sameBox } from './box'
 import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
 import {
@@ -909,7 +910,11 @@ export function attachGestures(
         pickToggle(event)
       } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
-        else select(selection, target.page, [gesture.frame.ref])
+        else {
+          select(selection, target.page, [gesture.frame.ref])
+          // The frame was hit where it draws, so its box is the previewed one.
+          canvasView.reveal(gesture.frame.box)
+        }
       } else if (gesture.kind === 'element' && gesture.frame) {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
         else select(selection, target.page, [gesture.frame.ref])
