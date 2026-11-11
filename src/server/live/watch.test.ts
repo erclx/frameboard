@@ -13,6 +13,7 @@ import {
   type BoardWatcher,
   createBatcher,
   placedRefs,
+  relistedRefs,
   reloadRefs,
   unmovedRefs,
   watchBoard,
@@ -539,5 +540,58 @@ describe('placedRefs', () => {
     expect(
       placedRefs(previous, await scanBoard(board.root), homeLayout()),
     ).toEqual([])
+  })
+})
+
+describe('relistedRefs', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('live')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  function writeHero(hero: object) {
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify({
+        version: 1,
+        frames: {
+          hero: { x: 0, y: 0, width: 1440, height: 900, order: 0, ...hero },
+          mobile: { x: 1520, y: 0, width: 390, height: 844, order: 1 },
+        },
+      }),
+    )
+  }
+
+  const PHONE = [{ width: 390, height: 844 }]
+
+  it('names a hugging frame given a new linked width', async () => {
+    writeHero({ hugHeight: true })
+    const previous = await scanBoard(board.root)
+    writeHero({ hugHeight: true, widths: PHONE })
+
+    expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([
+      'studio/home/hero',
+    ])
+  })
+
+  it('leaves out a frame whose linked widths only took a measured height', async () => {
+    writeHero({ hugHeight: true, widths: PHONE })
+    const previous = await scanBoard(board.root)
+    writeHero({ hugHeight: true, widths: [{ width: 390, height: 2400 }] })
+
+    expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([])
+  })
+
+  it('leaves out a frame holding a fixed height', async () => {
+    writeHero({})
+    const previous = await scanBoard(board.root)
+    writeHero({ widths: PHONE })
+
+    expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([])
   })
 })
