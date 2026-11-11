@@ -16,6 +16,18 @@ export interface Motion {
 }
 
 /**
+ * Stops the page's animation clock, through the DevTools Animation domain,
+ * before the page loads. A CSS animation with no fill that ended during the
+ * load would otherwise drop out of `document.getAnimations()` before the seek
+ * reads it. Script timelines run on their own clocks and keep running.
+ */
+export async function holdAnimationClock(page: Page): Promise<void> {
+  const session = await page.context().newCDPSession(page)
+  await session.send('Animation.enable')
+  await session.send('Animation.setPlaybackRate', { playbackRate: 0 })
+}
+
+/**
  * Finds the timeline a frame's motion runs on, taking `window.__hf` alone
  * when present, else every `window.__timelines` entry, else the page's
  * animations. A script loading its timeline late gets until `timeoutMs` to

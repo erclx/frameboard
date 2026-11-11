@@ -7,7 +7,12 @@ import {
   SHELL_HOOK_TIMEOUT_MS,
   SHELL_TEST_TIMEOUT_MS,
 } from '../../../test/support/headless-shell'
-import { filmstripMoments, findMotion, seekMotion } from './seek'
+import {
+  filmstripMoments,
+  findMotion,
+  holdAnimationClock,
+  seekMotion,
+} from './seek'
 
 // A box sliding 200 px right over 2 s, so its left edge names the moment.
 // canon-allow-embedded: the page whose slide the seek assertions hold, kept beside them
@@ -16,6 +21,14 @@ const SLIDE = `
   @keyframes slide { from { transform: translateX(0); } to { transform: translateX(200px); } }
   body { margin: 0; }
   #box { width: 10px; height: 10px; animation: slide 2s linear forwards; }
+</style>
+<div id="box"></div>`
+
+// A 300 ms entrance with no fill, gone from the animation list once it ends.
+const FADE = `
+<style>
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  #box { width: 10px; height: 10px; animation: fade 300ms linear; }
 </style>
 <div id="box"></div>`
 
@@ -166,6 +179,20 @@ describe.skipIf(shell === null)(
 
       expect(motion).toEqual({ source: 'timelines', duration: 4000 })
       expect([await data('intro'), await data('launch')]).toEqual(['1', '1'])
+    })
+
+    it('keeps an unfilled entrance listed past its end once the clock is held', async () => {
+      await holdAnimationClock(page)
+      await page.setContent(FADE)
+      await page.waitForTimeout(600)
+
+      const motion = await findMotion(page, 'studio/home/fade', 1_000)
+      await seekMotion(page, motion, 150)
+
+      expect(motion).toEqual({ source: 'css', duration: 300 })
+      expect(
+        await page.$eval('#box', (box) => getComputedStyle(box).opacity),
+      ).toBe('0.5')
     })
 
     it('refuses a timer-driven frame as motion-missing, exit 10', async () => {

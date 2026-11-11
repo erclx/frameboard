@@ -347,7 +347,7 @@ export async function captureMotionImages(
         box: view,
         theme,
         scale,
-        settle: false,
+        motion: 'hold',
       })
       try {
         // Each theme's context seeks on its own, so no shot waits on another.

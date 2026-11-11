@@ -6,6 +6,7 @@ import { frameThemeUrl, type Theme } from '@/shared/theme'
 import { settleAnimations } from './animation-settle'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
+import { holdAnimationClock } from './seek'
 
 /** How long a frame has to load, its faces and images included, before its capture fails. */
 export const LOAD_TIMEOUT_MS = 10_000
@@ -30,10 +31,11 @@ export interface OpenFrameOptions {
   /** The load budget in milliseconds, 10 s unless a test asks for less. */
   timeoutMs?: number
   /**
-   * False leaves running animations where they are, for a seeked shot that
-   * sets each animation's time itself. True by default.
+   * `settle` waits for finite animations to end, the default. `hold` stops
+   * the page's animation clock before it loads, so a seeked shot finds every
+   * animation still listed at its start, a short unfilled entrance included.
    */
-  settle?: boolean
+  motion?: 'settle' | 'hold'
 }
 
 export interface OpenFrame {
@@ -48,7 +50,7 @@ export interface OpenFrame {
  * the default, a missing face refuses `font-missing`, an image that failed or
  * outran the budget refuses `image-missing`, and either closes the context.
  * It then waits, on what is left of the budget, for running animations with
- * a finite end to finish, and never refuses for one, unless `settle` is false.
+ * a finite end to finish, and never refuses for one, unless `motion` is `hold`.
  */
 export async function openFrame(
   browser: Browser,
@@ -60,7 +62,7 @@ export async function openFrame(
     scale = 1,
     fonts = 'require',
     timeoutMs = LOAD_TIMEOUT_MS,
-    settle = true,
+    motion = 'settle',
   }: OpenFrameOptions,
 ): Promise<OpenFrame> {
   const context = await browser.newContext({
@@ -72,6 +74,7 @@ export async function openFrame(
   const deadline = Date.now() + timeoutMs
   try {
     const page = await context.newPage()
+    if (motion === 'hold') await holdAnimationClock(page)
     // The frame route's injected script sets the root's theme from the URL.
     await page.goto(new URL(frameThemeUrl(ref, theme), baseUrl).href, {
       timeout: timeoutMs,
@@ -93,7 +96,7 @@ export async function openFrame(
     if (fonts === 'require') await assertFontsPresent(page, ref)
     await settleImages(page, ref, fonts, deadline - Date.now())
     // The `wait` readers finish finite animations themselves on every write.
-    if (fonts === 'require' && settle) {
+    if (fonts === 'require' && motion === 'settle') {
       await settleAnimations(page, deadline - Date.now())
     }
     return { page, close }

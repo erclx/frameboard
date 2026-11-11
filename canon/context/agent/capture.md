@@ -64,7 +64,8 @@ These catch a capture out.
 
 A seeked shot skips that settle.
 
-- It opens with `settle: false` and shoots with `animations: 'allow'`, since `disabled` fast-forwards a finite animation and every moment would show its end
+- It opens with `motion: 'hold'`, stopping the animation clock before load, so an unfilled entrance that ends during the load stays listed
+- It shoots with `animations: 'allow'`, since `disabled` fast-forwards a finite animation and every moment would show its end
 - A frame with no timeline to seek refuses `motion-missing`, and a filmstrip of one whose animations all repeat forever refuses `motion-unbounded`
 
 ### Inspect
