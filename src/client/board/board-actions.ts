@@ -126,7 +126,7 @@ function boardActions(): Action[] {
   const read = () => modeStore.getState()
   const set = (patch: Partial<ModeState>) => modeStore.setState(patch)
   const zoom = (
-    action: Pick<Action, 'id' | 'label' | 'keys' | 'run'> & {
+    action: Pick<Action, 'id' | 'label' | 'keys' | 'run' | 'repeat'> & {
       command: Command
     },
   ): Action => ({
@@ -255,6 +255,7 @@ function boardActions(): Action[] {
       label: 'Zoom in',
       command: { label: 'Zoom in', icon: ZoomIn },
       keys: ['$mod+Equal'],
+      repeat: true,
       run: () => canvasView.zoomBy(ZOOM_STEP),
     }),
     zoom({
@@ -262,6 +263,7 @@ function boardActions(): Action[] {
       label: 'Zoom out',
       command: { label: 'Zoom out', icon: ZoomOut },
       keys: ['$mod+Minus'],
+      repeat: true,
       run: () => canvasView.zoomBy(1 / ZOOM_STEP),
     }),
     zoom({
@@ -310,6 +312,7 @@ function boardActions(): Action[] {
         group: 'view',
         palette: false,
         keys: [key],
+        repeat: true,
         // An arrow nudges the selection instead, so it pans with nothing selected.
         enabled: onCanvas((count) => count === 0),
         run: () => canvasView.panBy(dx * PAN_STEP, dy * PAN_STEP),
@@ -320,6 +323,7 @@ function boardActions(): Action[] {
         group: 'view',
         palette: false,
         keys: [`Shift+${key}`],
+        repeat: true,
         enabled: onCanvas((count) => count === 0),
         run: () => canvasView.panBy(dx * PAN_STEP_FAR, dy * PAN_STEP_FAR),
       },
