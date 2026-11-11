@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { version } from '@/shared/version'
+
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
 
@@ -69,7 +71,7 @@ describe('startFrameHost', () => {
     host = await startFrameHost(onBoard(board))
 
     const [face, sheet] = await Promise.all([
-      fetch(`${host.url}/frameboard/faces/geist/index.css`),
+      fetch(`${host.url}/frameboard/faces/v${version}/geist/index.css`),
       fetch(`${host.url}/frameboard/tokens.css`),
     ])
 

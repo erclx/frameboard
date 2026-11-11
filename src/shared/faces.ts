@@ -1,3 +1,5 @@
+import { version } from './version'
+
 /** A face served into every frame, copied from its package at build. */
 export interface Face {
   /** The family a frame names, which the copied sheet declares in place of the package's own. */
@@ -67,9 +69,12 @@ export const FACES = [
 /** Where the server serves the faces folder. */
 export const FACES_URL = '/frameboard/faces'
 
-/** The sheet a frame imports to get one face. */
+/**
+ * The sheet a frame imports to get one face, under the running release so
+ * the server can answer it as cached for good.
+ */
 export function faceSheetUrl(face: Face): string {
-  return `${FACES_URL}/${face.folder}/index.css`
+  return `${FACES_URL}/v${version}/${face.folder}/index.css`
 }
 
 /** The stack naming a face then its fallback, as `'Geist Mono', monospace`. */
