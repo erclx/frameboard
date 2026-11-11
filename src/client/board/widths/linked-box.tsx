@@ -13,6 +13,8 @@ import { useDrawnBox } from '../geometry/write'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { useMode } from '../mode'
 import { useEntered } from '../play/entered'
+import { ScrollRail } from '../scroll/rail'
+import { useSelection } from '../selection'
 
 /** The keys a linked box's window hands the board in Play, as its frame's does. */
 const PLAY_KEYS = ['Escape']
@@ -74,6 +76,7 @@ export function LinkedBox({
   const theme = useFrameTheme(frame.ref)
   const playing = useMode((state) => state.mode === 'play')
   const entered = useEntered(frame.ref) && playing
+  const selected = useSelection((state) => state.frames.includes(frame.ref))
   // As the frame does, the theme is read on mount and reload alone, and a
   // switch rewrites the root rather than restarting the page.
   const [loaded, setLoaded] = useState({ ref: frame.ref, version, live })
@@ -171,6 +174,14 @@ export function LinkedBox({
           className="size-full border border-border bg-card"
         />
       )}
+      {frame.scroll && live && !playing ? (
+        <ScrollRail
+          iframe={iframe}
+          live={live}
+          // The pointer marks the frame alone, so a view's rail shows while its frame is selected.
+          className={selected ? undefined : 'invisible'}
+        />
+      ) : null}
     </div>
   )
 }

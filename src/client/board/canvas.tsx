@@ -76,6 +76,7 @@ import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
 import { enteredStore } from './play/entered'
 import { PlayShield } from './play/shield'
+import { pressRail } from './scroll/page'
 import { placeSection } from './sections/actions'
 import { SectionBoxes } from './sections/box'
 import {
@@ -441,6 +442,18 @@ export function Canvas({
         viewport.style.cursor = ''
         return
       }
+      // A scroll frame's rail sits past its edge, so the pointer on it keeps
+      // the frame marked and its rail shown to press.
+      if (
+        hovered !== null &&
+        drawnAt(
+          layer,
+          `[data-frame="${CSS.escape(hovered)}"] > [data-rail]`,
+          event,
+        )
+      ) {
+        return
+      }
       const transform = zoomTransform(viewport)
       const [x, y] = transform.invert(pointer(event, viewport))
       hover(
@@ -559,6 +572,12 @@ export function Canvas({
     const layer = layerRef.current
     const hit = hitRef.current
     if (!viewport || !layer || !hit) return
+    // A press on a shown scroll rail scrolls its page, so it never reaches
+    // the hit layer's gestures under it.
+    const railPress = (event: PointerEvent) => {
+      if (pressRail(layer, event)) event.stopPropagation()
+    }
+    viewport.addEventListener('pointerdown', railPress, { capture: true })
     const { detach, cursorAt } = attachGestures(hit, {
       viewport,
       layer,
@@ -574,6 +593,7 @@ export function Canvas({
       viewport.style.cursor = ''
     })
     return () => {
+      viewport.removeEventListener('pointerdown', railPress, { capture: true })
       stopMode()
       detach()
       cursorAtRef.current = null

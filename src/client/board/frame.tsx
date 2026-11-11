@@ -45,6 +45,7 @@ import { useMode } from './mode'
 import { useEntered } from './play/entered'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
+import { ScrollRail } from './scroll/rail'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
 import {
   renameFrame,
@@ -302,6 +303,13 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {frame.scroll && live && !playing ? (
+        <ScrollRail
+          iframe={iframe}
+          live={live}
+          className="invisible [[data-label-hover]_&]:visible [[data-selected]_&]:visible"
+        />
+      ) : null}
       {live && compared && !playing ? (
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
