@@ -179,6 +179,16 @@ describe('ShortcutsSheet', () => {
     )
   })
 
+  it('lists Next frame under View with Tab', async () => {
+    register(action('frame.next', { keys: ['Tab'] }))
+    renderOnBoard(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    expect(row('Next frame').querySelector('kbd')?.textContent).toMatch(/Tab/)
+  })
+
   it('lists Find under Tools with its key', async () => {
     register(action('find.open', { keys: ['$mod+KeyF'] }))
     renderOnBoard(<ShortcutsSheet />)

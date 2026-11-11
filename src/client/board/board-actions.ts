@@ -34,7 +34,9 @@ import {
   copyStitchedImage,
   readClipboardBackend,
 } from './copy-image'
-import { withPending, writeBoxes } from './geometry/write'
+import { focusOnBoard } from './element/actions'
+import { stepFrom, stepOrder } from './frame-order'
+import { withDrawn, withPending, writeBoxes } from './geometry/write'
 import {
   exportFileNames,
   exportFrame,
@@ -44,8 +46,8 @@ import { boxesSizedTo, FRAME_TOOL_GROUPS } from './inspector/presets'
 import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
-import { selectionStore } from './selection'
-import { canvasView } from './view'
+import { select, selectionStore } from './selection'
+import { canvasView, reportHandMove } from './view'
 
 /** How far one zoom in or out step scales the view. */
 const ZOOM_STEP = 2
@@ -59,6 +61,11 @@ const PANS = [
   { name: 'right', key: 'ArrowRight', dx: 1, dy: 0 },
   { name: 'up', key: 'ArrowUp', dx: 0, dy: -1 },
   { name: 'down', key: 'ArrowDown', dx: 0, dy: 1 },
+] as const
+
+const STEPS = [
+  { name: 'next', label: 'Next frame', key: 'Tab', by: 1 },
+  { name: 'previous', label: 'Previous frame', key: 'Shift+Tab', by: -1 },
 ] as const
 
 /**
@@ -92,6 +99,23 @@ function selectedFrames(): FrameRecord[] {
     .find((candidate) => candidate.ref === page)
     ?.frames.filter((frame) => frames.includes(frame.ref))
   return withPending(shown ?? [])
+}
+
+/**
+ * The frame a step of `by` lands on from the one selected frame, in Layers
+ * order on its page, undefined with no frame, several, or an element selected.
+ */
+function steppedFrame(by: 1 | -1): FrameRecord | undefined {
+  const { page, frames, element } = selectionStore.getState()
+  const [ref] = frames
+  if (frames.length !== 1 || !ref || element) return undefined
+  const shown = liveStore
+    .getState()
+    .board?.projects.flatMap((project) => project.pages)
+    .find((candidate) => candidate.ref === page)
+  return shown
+    ? stepFrom(stepOrder(shown.frames, shown.sections), ref, by)
+    : undefined
 }
 
 function boardActions(): Action[] {
@@ -234,6 +258,29 @@ function boardActions(): Action[] {
       enabled: onCanvas((count) => count > 0),
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
     },
+    // Tab walks an element's siblings while one is selected, and moves focus
+    // off the board, so a step takes it only for one frame with focus on it.
+    ...STEPS.map(({ name, label, key, by }): Action => ({
+      id: `frame.${name}`,
+      label,
+      group: 'view',
+      // Focus sits in the palette while it is open, so a step could never run there.
+      palette: false,
+      keys: [key],
+      enabled: () =>
+        onCanvas((count) => count === 1)() &&
+        focusOnBoard() &&
+        steppedFrame(by) !== undefined,
+      run: () => {
+        const next = steppedFrame(by)
+        if (!next) return
+        select(selectionStore, `${next.project}/${next.page}`, [next.ref])
+        // A preview draws the frame wider than its stored box, so center what draws.
+        const [drawn] = withDrawn([next])
+        reportHandMove()
+        canvasView.centerOn((drawn ?? next).box)
+      },
+    })),
     ...PANS.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `view.pan.${name}`,

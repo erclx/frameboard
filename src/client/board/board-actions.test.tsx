@@ -30,7 +30,7 @@ import type { Box } from './geometry/box'
 import { exportStore } from './inspector/export-store'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
-import { clear, select, selectionStore } from './selection'
+import { clear, select, selectElement, selectionStore } from './selection'
 import { attachCanvas } from './view'
 
 const HERO = frameOf('hero', {
@@ -59,11 +59,14 @@ const IDS = [
   'frame.copyRef',
   'frame.exportPng',
   'tool.disarm',
+  'frame.next',
+  'frame.previous',
 ] as const
 
 function setup() {
   const pans: [number, number][] = []
   const fits: (readonly Box[])[] = []
+  const centers: Box[] = []
   const detach = attachCanvas(
     {
       zoomBy: () => {},
@@ -71,7 +74,7 @@ function setup() {
       fit: () => {},
       fitTo: (boxes) => fits.push(boxes),
       panBy: (dx, dy) => pans.push([dx, dy]),
-      centerOn: () => {},
+      centerOn: (box) => centers.push(box),
       visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
     },
     'studio/home',
@@ -88,6 +91,7 @@ function setup() {
   return {
     pans,
     fits,
+    centers,
     action,
     done: () => {
       unmount()
@@ -418,6 +422,117 @@ describe('useBoardActions', () => {
     },
   )
 
+  // The page sends HERO then ABOUT, bottom first, so Layers lists ABOUT then HERO.
+  describe('stepping frames', () => {
+    it('selects the next frame in Layers order and centers it', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [ABOUT.ref])
+
+      board.action('frame.next').run()
+
+      expect(selectionStore.getState().frames).toEqual([HERO.ref])
+      expect(board.centers).toEqual([HERO.box])
+    })
+
+    it('wraps from the last frame to the first', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      board.action('frame.next').run()
+
+      expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+    })
+
+    it('wraps from the first frame back to the last', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [ABOUT.ref])
+
+      board.action('frame.previous').run()
+
+      expect(selectionStore.getState().frames).toEqual([HERO.ref])
+    })
+
+    it('skips a hidden frame', () => {
+      const hidden = frameOf('hidden', { hidden: true })
+      receiveBoard(liveStore, boardOf(pageOf([HERO, hidden, ABOUT])))
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [ABOUT.ref])
+
+      board.action('frame.next').run()
+
+      expect(selectionStore.getState().frames).toEqual([HERO.ref])
+    })
+
+    it('steps on Tab and Shift+Tab with focus on the board', async () => {
+      const board = setup()
+      const unbind = bindKeys(window)
+      done = () => {
+        unbind()
+        board.done()
+      }
+      select(selectionStore, 'studio/home', [ABOUT.ref])
+
+      await userEvent.keyboard('{Tab}')
+      const stepped = selectionStore.getState().frames
+      await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+
+      expect(stepped).toEqual([HERO.ref])
+      expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+    })
+
+    it('stands aside with nothing selected', () => {
+      const board = setup()
+      done = board.done
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
+    it('stands aside with several frames selected', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
+    it('stands aside with an element selected, whose siblings Tab walks', () => {
+      const board = setup()
+      done = board.done
+      selectElement(selectionStore, 'studio/home', {
+        frame: HERO.ref,
+        index: 3,
+        hash: 'h',
+      })
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
+    it('stands aside while a panel field holds focus', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+      render(<input aria-label="Width" />)
+
+      screen.getByRole('textbox', { name: 'Width' }).focus()
+
+      expect(isEnabled(board.action('frame.next'))).toBe(false)
+    })
+
+    it('stands aside in Play', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      modeStore.setState({ mode: 'play' })
+
+      expect(isEnabled(board.action('frame.previous'))).toBe(false)
+    })
+  })
+
   it('zooms to nothing in Play', () => {
     const board = setup()
     done = board.done
@@ -452,6 +567,8 @@ describe('command', () => {
     'tool.disarm',
     'view.pan.left',
     'view.pan.rightFar',
+    'frame.next',
+    'frame.previous',
   ]
 
   it('lists every action in the palette bar Esc aliases and pans', () => {
