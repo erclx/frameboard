@@ -196,6 +196,7 @@ function VideoThumbnail({ url, playing }: { url: string; playing: boolean }) {
   if (media.state === 'unplayable') {
     return (
       <span
+        data-video-unplayable
         className={`${THUMB} bg-[#111] px-2 text-center text-[10px] text-white`}
       >
         Can't play this codec
@@ -224,7 +225,10 @@ function VideoThumbnail({ url, playing }: { url: string; playing: boolean }) {
         className="h-[72px] w-full object-cover"
       />
       {ready ? (
-        <span className="absolute right-1 bottom-1 rounded-[3px] bg-black/65 px-[3px] font-mono text-[9px] font-medium text-white">
+        <span
+          data-video-length
+          className="absolute right-1 bottom-1 rounded-[3px] bg-black/65 px-[3px] font-mono text-[9px] font-medium text-white"
+        >
           {formatLength(media.length)}
         </span>
       ) : (
