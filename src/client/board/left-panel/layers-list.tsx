@@ -35,6 +35,7 @@ import { type FrameGroup, groupsOf } from '../frame-order'
 import { withDrawn } from '../geometry/write'
 import { FrameRowMenu } from '../menus/layers'
 import { modeStore } from '../mode'
+import { enterFrame } from '../play/entered'
 import {
   type ElementKey,
   select,
@@ -83,7 +84,8 @@ const NO_SECTIONS: readonly SectionRecord[] = []
  * header's button closes every row. A frame selected, or one holding the
  * selected element, draws as one tinted band with its rows. A section's row
  * holds its frames' rows under it, then the frames in no section follow, and
- * a row restacks within its own group, never into or out of a section.
+ * a row restacks within its own group, never into or out of a section. In
+ * Play a row click brings its frame into view and enters it.
  */
 export function LayersList({
   frames,
@@ -312,7 +314,14 @@ function FrameRow({
   })
 
   const choose = (event: MouseEvent<HTMLButtonElement>) => {
-    if (frame.hidden || modeStore.getState().mode !== 'edit') return
+    if (frame.hidden) return
+    // Nothing selects in Play, so the row brings its frame in and enters it.
+    if (modeStore.getState().mode === 'play') {
+      const [drawn] = withDrawn([frame])
+      if (drawn) canvasView.reveal(drawn.box)
+      enterFrame(frame.ref)
+      return
+    }
     if (event.shiftKey) toggleSelected(selectionStore, pageOf(frame), frame.ref)
     else select(selectionStore, pageOf(frame), [frame.ref])
     // A preview draws the frame wider than its stored box, so reveal what draws.
