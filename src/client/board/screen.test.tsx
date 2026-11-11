@@ -171,6 +171,7 @@ function framedPage(name: string, index: number): PageRecord {
         locked: false,
         hugWidth: false,
         hugHeight: false,
+        scroll: false,
         placed: true,
         modifiedAt: '2026-10-15T00:00:00.000Z',
       },
