@@ -471,48 +471,90 @@ function fittedPlacement(
 /** How a frame holds its height: at a size, at its content's, or at a screen the page scrolls past. */
 export type HeightMode = 'fixed' | 'fit' | 'scroll'
 
+/** One frame a height mode write names, with the box its caller started from. */
+export interface HeightTarget {
+  ref: string
+  expected: Box
+  /** The content height `fit` takes, with each linked width's own. */
+  measured?: { height: number; widths?: readonly LinkedWidth[] }
+}
+
 /**
- * Sets how a frame holds its height in one write. `fixed` keeps the box and
- * clears hugging and scroll. `fit` takes the measured height and hugs it,
- * clearing scroll. `scroll` fixes both axes as `frame resize --scroll` does.
- * `expected` is the box the caller started from, and a frame moved or sized
- * since refuses `stale-layout`, leaving out an axis the frame hugs, since the
- * server measures that one. `fit` without `measured` refuses `usage`.
+ * Sets how each frame holds its height in one write under one lock, all of
+ * them or none. `fixed` keeps the box and clears hugging and scroll. `fit`
+ * takes the measured height and hugs it, clearing scroll. `scroll` fixes both
+ * axes as `frame resize --scroll` does. Every frame is checked before any is
+ * set: one moved or sized since its `expected` refuses `stale-layout`, leaving
+ * out an axis the frame hugs, since the server measures that one, and a `fit`
+ * without `measured` refuses `usage`.
  */
-export async function setHeightMode(
+export async function setHeightModes(
   root: string,
-  ref: string,
+  targets: readonly HeightTarget[],
   mode: HeightMode,
-  options: RefOptions &
-    JournalOptions & {
-      expected: Box
-      measured?: { height: number; widths?: readonly LinkedWidth[] }
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord[]> {
+  const frames = await Promise.all(
+    targets.map(async (target) => ({
+      target,
+      frame: await resolveFrameRef(root, target.ref, options),
+    })),
+  )
+  await withLayouts(
+    frames.map(({ frame }) => pageDir(frame)),
+    async (layouts) => {
+      const next = frames.map(({ target, frame }) => {
+        const layout = layoutAt(layouts, pageDir(frame))
+        const placement = layout.placement(frame.name)
+        const frameRef = refOf(frame)
+        refuseStale(frameRef, placement, target.expected)
+        return {
+          layout,
+          name: frame.name,
+          placement: heightPlacement(
+            placement,
+            frameRef,
+            mode,
+            target.measured,
+          ),
+        }
+      })
+      for (const { layout, name, placement } of next) {
+        layout.set(name, placement)
+      }
     },
-): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (placement, frameRef) => {
-    refuseStale(frameRef, placement, options.expected)
-    if (mode === 'scroll') {
-      return resizedPlacement(placement, frameRef, {}, { scroll: true })
-    }
-    if (mode === 'fixed') {
-      return { ...placement, hugHeight: false, scroll: false }
-    }
-    if (!options.measured) {
-      throw new FrameboardError(
-        'usage',
-        `Fitting ${frameRef} needs its measured height.`,
-        { ref: frameRef },
-      )
-    }
-    return {
-      ...fittedPlacement(
-        placement,
-        options.measured.height,
-        options.measured.widths,
-      ),
-      scroll: false,
-    }
-  })
+    options.journal,
+  )
+  return Promise.all(
+    frames.map(({ frame }) =>
+      frameRecord(root, frame.project, frame.page, frame.name),
+    ),
+  )
+}
+
+function heightPlacement(
+  placement: Placement,
+  frameRef: string,
+  mode: HeightMode,
+  measured: HeightTarget['measured'],
+): Placement {
+  if (mode === 'scroll') {
+    return resizedPlacement(placement, frameRef, {}, { scroll: true })
+  }
+  if (mode === 'fixed') {
+    return { ...placement, hugHeight: false, scroll: false }
+  }
+  if (!measured) {
+    throw new FrameboardError(
+      'usage',
+      `Fitting ${frameRef} needs its measured height.`,
+      { ref: frameRef },
+    )
+  }
+  return {
+    ...fittedPlacement(placement, measured.height, measured.widths),
+    scroll: false,
+  }
 }
 
 function refuseStale(ref: string, placement: Placement, expected: Box): void {

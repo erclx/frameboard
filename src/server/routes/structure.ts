@@ -9,11 +9,12 @@ import {
   duplicateFrame,
   fitHeight,
   fitScrollError,
+  type HeightTarget,
   orderFrame,
   readFrame,
   renameFrame,
   setFrameFlag,
-  setHeightMode,
+  setHeightModes,
 } from '@/server/board/frames'
 import {
   addPage,
@@ -50,7 +51,6 @@ import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
-import type { FrameRecord } from '@/shared/records/list'
 import {
   DEFAULT_LOOK,
   STARTER_ACCENTS,
@@ -443,31 +443,26 @@ export function structureRoutes(
   /**
    * Sets how each frame holds its height, `fixed`, `fit`, or `scroll`, in one
    * step. `expected` holds each frame's box as the caller saw it, keyed by the
-   * ref the body names, and a frame changed since refuses `stale-layout`. A
-   * locked or claimed frame refuses the whole write, and `fit` measures each
-   * frame as `/api/frame/fit` does before anything is written.
+   * ref the body names, and a frame changed since refuses `stale-layout`
+   * before any frame is written. A locked or claimed frame refuses the whole
+   * write, and `fit` measures each frame and its linked widths on the warm
+   * browser first, refusing `browser-not-found` where none runs.
    */
   app.post('/api/frame/height', async (c) => {
     const body = await parseBody(c.req.raw, frameHeightSchema)
-    const expected = new Map(
-      body.refs.map((frame) => {
-        const box = body.expected[frame]
-        if (!box) {
-          throw new FrameboardError(
-            'usage',
-            `The body gives ${frame} no expected box.`,
-            { ref: frame },
-          )
-        }
-        return [frame, box] as const
-      }),
-    )
+    const targets: HeightTarget[] = body.refs.map((ref) => {
+      const expected = body.expected[ref]
+      if (!expected) {
+        throw new FrameboardError(
+          'usage',
+          `The body gives ${ref} no expected box.`,
+          { ref },
+        )
+      }
+      return { ref, expected }
+    })
     await refuseLocked(body.refs)
     await refuseHeldFrames(body.refs)
-    const measured = new Map<
-      string,
-      { height: number; widths: LinkedWidth[] }
-    >()
     if (body.mode === 'fit') {
       if (!measure) {
         throw new FrameboardError(
@@ -475,9 +470,11 @@ export function structureRoutes(
           "Fit height needs the board server's browser, and none runs here.",
         )
       }
-      for (const ref of body.refs) {
-        const frame = await readFrame(root, ref, { cwd })
+      for (const target of targets) {
+        const frame = await readFrame(root, target.ref, { cwd })
         const content = await measure(frame)
+        // A fit turns height hugging on with no write to the frame file,
+        // which queues no hug measure, so each linked width is measured here.
         const widths: LinkedWidth[] = []
         for (const { width } of frame.widths) {
           const linked = await measure(frame, {
@@ -486,24 +483,11 @@ export function structureRoutes(
           })
           widths.push({ width, height: linked.height })
         }
-        measured.set(ref, { height: content.height, widths })
+        target.measured = { height: content.height, widths }
       }
     }
     const frames = await recorded(
-      async (journal) => {
-        const records: FrameRecord[] = []
-        for (const [frame, box] of expected) {
-          records.push(
-            await setHeightMode(root, frame, body.mode, {
-              cwd,
-              journal,
-              expected: box,
-              measured: measured.get(frame),
-            }),
-          )
-        }
-        return records
-      },
+      (journal) => setHeightModes(root, targets, body.mode, { cwd, journal }),
       (records) => onFrames(records.map((record) => record.ref)),
     )
     return c.json({ ok: true, data: frames })

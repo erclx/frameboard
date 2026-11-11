@@ -371,6 +371,22 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(0)
     })
 
+    it('writes no frame when a later one is stale', async () => {
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        mode: 'scroll',
+        expected: {
+          'studio/home/hero': HERO,
+          'studio/home/mobile': { x: 1520, y: 0, width: 390, height: 700 },
+        },
+      })
+
+      expect(response.status).toBe(409)
+      expect(frames().hero.scroll).toBeUndefined()
+      expect(frames().mobile.scroll).toBeUndefined()
+      expect(history.counts().undo).toBe(0)
+    })
+
     it('refuses a locked frame with 423, writing nothing', async () => {
       setHero({ locked: true })
 
