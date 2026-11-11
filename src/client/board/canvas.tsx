@@ -23,6 +23,7 @@ import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { useDwell } from './changes/dwell'
 import { ChangeGlow } from './changes/glow'
+import { ReservedBoxes } from './claims/reserved'
 import { WaitingCards, WaitingDock } from './claims/waiting-card'
 import { mountedRefs, type Size, type View } from './cull'
 import { useElementActions } from './element/actions'
@@ -740,6 +741,7 @@ export function Canvas({
         {page.layoutError ? null : (
           <>
             <SectionBoxes page={page.ref} sections={page.sections} />
+            <ReservedBoxes page={page.ref} frames={page.frames} />
             {frames.map((frame) => (
               <Frame
                 key={identityOf(aliases, frame.ref)}

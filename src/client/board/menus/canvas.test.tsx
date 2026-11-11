@@ -12,7 +12,7 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { IS_MAC } from '@/client/actions/keys'
-import { liveStore, receiveBoard } from '@/client/live/store'
+import { liveStore, receiveBoard, receiveClaims } from '@/client/live/store'
 import { receiveChanges, unseenStore } from '@/client/live/unseen'
 import { frameTheme, themeStore } from '@/client/theme/store'
 import type { PageRecord } from '@/shared/records/list'
@@ -172,6 +172,64 @@ describe('CanvasMenu', () => {
 
     const menu = await screen.findByRole('menu')
     expect(within(menu).getAllByRole('group')[0]).toHaveAccessibleName('Frame')
+  })
+
+  describe('on a reserved box', () => {
+    function reserve() {
+      act(() =>
+        receiveClaims(liveStore, [
+          {
+            frame: 'studio/home/pricing',
+            session: 'sess-a',
+            agent: 'claude',
+            tag: 'claude · a',
+            claimedAt: '2026-10-19T10:00:00.000Z',
+            expiresAt: '2999-01-01T00:00:00.000Z',
+            box: { x: 0, y: 400, width: 300, height: 200 },
+            set: 'set-1',
+          },
+        ]),
+      )
+    }
+
+    function centerOfReserved(): { x: number; y: number } {
+      const drawn = document.querySelector('[data-reserved]')
+      if (!drawn) throw new Error('no reserved box')
+      const box = drawn.getBoundingClientRect()
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    }
+
+    afterEach(() => {
+      act(() => receiveClaims(liveStore, []))
+    })
+
+    it('opens a Reservation menu offering Release reservation', async () => {
+      render(<Board page={PAGE} />)
+      reserve()
+
+      rightClick(centerOfReserved())
+
+      const menu = await screen.findByRole('menu')
+      expect(within(menu).getAllByRole('group')[0]).toHaveAccessibleName(
+        'Reservation',
+      )
+      expect(
+        within(menu).getByRole('menuitem', { name: 'Release reservation' }),
+      ).not.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('shows Release reservation disabled in a read-only tab', async () => {
+      liveStore.setState({ canWrite: false })
+      render(<Board page={PAGE} />)
+      reserve()
+
+      rightClick(centerOfReserved())
+
+      const menu = await screen.findByRole('menu')
+      expect(
+        within(menu).getByRole('menuitem', { name: 'Release reservation' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe.each(['light', 'dark'])('in the %s theme', (theme) => {
