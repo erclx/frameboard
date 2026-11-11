@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { drawnExtent } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 
 /** How many frames one animation frame makes live. */
@@ -18,13 +19,15 @@ export interface Size {
 }
 
 /**
- * The refs of frames worth keeping live: those whose box meets the viewport
- * grown by one viewport on every side, so a short pan never shows a
- * placeholder. A linear pass, which stays cheap at the frame counts a page
- * holds.
+ * The refs of frames worth keeping live: those whose drawn extent, the box
+ * and any linked widths beside it, meets the viewport grown by one viewport
+ * on every side, so a short pan never shows a placeholder and a frame and its
+ * linked boxes mount together. A linear pass, which stays cheap at the frame
+ * counts a page holds.
  */
 export function mountedRefs(
-  frames: readonly Pick<FrameRecord, 'ref' | 'box'>[],
+  frames: readonly (Pick<FrameRecord, 'ref' | 'box'> &
+    Partial<Pick<FrameRecord, 'widths'>>)[],
   view: View,
   size: Size,
 ): Set<string> {
@@ -36,7 +39,8 @@ export function mountedRefs(
   const bottom = top + 3 * height
 
   const refs = new Set<string>()
-  for (const { ref, box } of frames) {
+  for (const { ref, box: own, widths } of frames) {
+    const box = drawnExtent(own, widths ?? [])
     if (
       box.x < right &&
       box.x + box.width > left &&

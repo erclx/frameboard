@@ -1,6 +1,7 @@
 import { pointer, select } from 'd3-selection'
 import { zoom, type ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom'
 import {
+  Fragment,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -18,6 +19,7 @@ import { identityOf, liveStore, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
+import { drawnExtent } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
@@ -91,6 +93,7 @@ import {
   reportZoom,
 } from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
+import { LinkedBoxes } from './widths/linked-box'
 
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
@@ -800,19 +803,29 @@ export function Canvas({
           <>
             <SectionBoxes page={page.ref} sections={page.sections} />
             <ReservedBoxes page={page.ref} frames={page.frames} />
-            {frames.map((frame) => (
-              <Frame
-                key={identityOf(aliases, frame.ref)}
-                frame={frame}
-                live={
-                  liveIdentities?.has(identityOf(aliases, frame.ref)) ?? false
-                }
-                version={reloads[frame.ref] ?? 0}
-                findings={findings?.[frame.ref]}
-                claim={claims?.[frame.ref]}
-                unseen={frame.ref in unseen}
-              />
-            ))}
+            {frames.map((frame) => {
+              const identity = identityOf(aliases, frame.ref)
+              const live = liveIdentities?.has(identity) ?? false
+              const version = reloads[frame.ref] ?? 0
+              return (
+                <Fragment key={identity}>
+                  <Frame
+                    frame={frame}
+                    live={live}
+                    version={version}
+                    findings={findings?.[frame.ref]}
+                    claim={claims?.[frame.ref]}
+                    unseen={frame.ref in unseen}
+                  />
+                  <LinkedBoxes
+                    frame={frame}
+                    live={live}
+                    version={version}
+                    findings={findings?.[frame.ref]}
+                  />
+                </Fragment>
+              )
+            })}
             <SelectionOverlay frames={frames} sections={page.sections} />
             <ElementOverlay frames={frames} container={layer} />
             <DropLine
@@ -1118,18 +1131,20 @@ function sizeOf(element: HTMLElement): Size {
   return { width: element.clientWidth, height: element.clientHeight }
 }
 
-/** The view that shows every frame, never zoomed past 100 percent. */
+/** The view that shows every frame and the linked widths it draws, never zoomed past 100 percent. */
 function fitView(
-  frames: readonly Pick<FrameRecord, 'box'>[],
+  frames: readonly (Pick<FrameRecord, 'box'> &
+    Partial<Pick<FrameRecord, 'widths'>>)[],
   size: Size,
 ): View {
   if (frames.length === 0 || size.width === 0 || size.height === 0) {
     return { x: FIT_PADDING, y: FIT_PADDING, k: 1 }
   }
-  const left = Math.min(...frames.map(({ box }) => box.x))
-  const top = Math.min(...frames.map(({ box }) => box.y))
-  const right = Math.max(...frames.map(({ box }) => box.x + box.width))
-  const bottom = Math.max(...frames.map(({ box }) => box.y + box.height))
+  const boxes = frames.map(({ box, widths }) => drawnExtent(box, widths ?? []))
+  const left = Math.min(...boxes.map((box) => box.x))
+  const top = Math.min(...boxes.map((box) => box.y))
+  const right = Math.max(...boxes.map((box) => box.x + box.width))
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height))
   const k = Math.min(
     (size.width - 2 * FIT_PADDING) / (right - left),
     (size.height - 2 * FIT_PADDING) / (bottom - top),

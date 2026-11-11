@@ -1,3 +1,4 @@
+import { linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 
 import type { ElementKey } from '../selection'
@@ -178,10 +179,19 @@ function within(box: Box, point: Point): boolean {
   )
 }
 
+/** The boxes a frame draws: its own, then each linked width's, which all answer as the frame. */
+function drawnBoxes({
+  box,
+  widths,
+}: Pick<FrameRecord, 'box' | 'widths'>): Box[] {
+  return [box, ...linkedBoxes(box, widths)]
+}
+
 /**
  * The topmost shown frame under a canvas point, the strip above it where its
- * label sits counting as the frame. `frames` comes bottom to top, as the
- * board lists a page, and `zoom` sizes the strip, which keeps its screen size.
+ * label sits counting as the frame, and a linked width's box and strip
+ * counting as the frame it shows. `frames` comes bottom to top, as the board
+ * lists a page, and `zoom` sizes the strip, which keeps its screen size.
  */
 export function frameAt(
   frames: readonly FrameRecord[],
@@ -192,30 +202,32 @@ export function frameAt(
   for (let index = frames.length - 1; index >= 0; index -= 1) {
     const frame = frames[index]
     if (!frame || frame.hidden) continue
-    const { x, y, width, height } = frame.box
-    if (
-      point.x >= x &&
-      point.x <= x + width &&
-      point.y >= y - strip &&
-      point.y <= y + height
-    ) {
-      return frame
-    }
+    const hit = drawnBoxes(frame).some(
+      ({ x, y, width, height }) =>
+        point.x >= x &&
+        point.x <= x + width &&
+        point.y >= y - strip &&
+        point.y <= y + height,
+    )
+    if (hit) return frame
   }
   return null
 }
 
-/** The shown frames a marquee rectangle touches, in the order given. */
+/** The shown frames a marquee rectangle touches, by their own box or a linked one, in the order given. */
 export function framesIn(
   frames: readonly FrameRecord[],
   rect: Box,
 ): FrameRecord[] {
   return frames.filter(
-    ({ hidden, box }) =>
-      !hidden &&
-      box.x <= rect.x + rect.width &&
-      box.x + box.width >= rect.x &&
-      box.y <= rect.y + rect.height &&
-      box.y + box.height >= rect.y,
+    (frame) =>
+      !frame.hidden &&
+      drawnBoxes(frame).some(
+        (box) =>
+          box.x <= rect.x + rect.width &&
+          box.x + box.width >= rect.x &&
+          box.y <= rect.y + rect.height &&
+          box.y + box.height >= rect.y,
+      ),
   )
 }
