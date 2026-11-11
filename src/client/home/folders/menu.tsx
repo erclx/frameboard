@@ -36,6 +36,8 @@ interface FolderMenuProps {
   trigger: ReactElement
   /** Opens the folder in place of `folder.open`, as a list row does by expanding. */
   onOpen?: () => void
+  /** Leaves Open out, as on a list row already expanded. */
+  withOpen?: boolean
 }
 
 /**
@@ -45,7 +47,12 @@ interface FolderMenuProps {
  * pinned one. The menu key and Shift+F10 open it too, with focus on its
  * first item.
  */
-export function FolderMenu({ folder, trigger, onOpen }: FolderMenuProps) {
+export function FolderMenu({
+  folder,
+  trigger,
+  onOpen,
+  withOpen = true,
+}: FolderMenuProps) {
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
   return (
@@ -57,7 +64,7 @@ export function FolderMenu({ folder, trigger, onOpen }: FolderMenuProps) {
     >
       <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
       <ContextMenuContent ref={content}>
-        <FolderItems onOpen={onOpen} />
+        <FolderItems onOpen={onOpen} withOpen={withOpen} />
       </ContextMenuContent>
     </ContextMenu>
   )

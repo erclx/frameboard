@@ -95,7 +95,8 @@ export function FolderRow({
       ) : (
         <FolderMenu
           folder={folder}
-          onOpen={open ? undefined : onToggle}
+          onOpen={onToggle}
+          withOpen={!open}
           trigger={
             <button
               type="button"

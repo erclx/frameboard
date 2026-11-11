@@ -163,6 +163,16 @@ describe('FolderMenu', () => {
     expect(folder()).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('leaves Open off an expanded row, so a later grid opens no panel unasked', async () => {
+    renderHome({ layout: 'list' })
+    await userEvent.click(item(await openMenu(), 'Open'))
+
+    const menu = await openMenu()
+
+    expect(within(menu).queryByRole('menuitem', { name: 'Open' })).toBeNull()
+    expect(projectStore.getState().openFolder).toBeNull()
+  })
+
   describe('on a read-only tab', () => {
     it('opens with its writes off and Pin still on', async () => {
       renderHome({ canWrite: false })
