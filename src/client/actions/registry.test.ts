@@ -221,6 +221,134 @@ describe('bindKeys', () => {
     expect(exitPlay.runs).toBe(1)
   })
 
+  describe('with a held key', () => {
+    const held = { repeat: true }
+
+    afterEach(() => {
+      setCharacterKeys(true)
+    })
+
+    it('runs a one-shot action once and prevents its repeats', () => {
+      const copy = action('frame.copyPng', { keys: ['Shift+KeyC'] })
+      register(copy)
+      bind(window)
+
+      const first = pressBody('C', 'KeyC', { shiftKey: true })
+      const repeats = [1, 2, 3].map(() =>
+        pressBody('C', 'KeyC', { shiftKey: true, ...held }),
+      )
+
+      expect([
+        copy.runs,
+        first.defaultPrevented,
+        ...repeats.map((event) => event.defaultPrevented),
+      ]).toEqual([1, true, true, true, true])
+    })
+
+    it('runs a repeat action on every press', () => {
+      const nudge = action('frame.nudgeRight', {
+        keys: ['ArrowRight'],
+        repeat: true,
+      })
+      register(nudge)
+      bind(window)
+
+      pressBody('ArrowRight', 'ArrowRight')
+      pressBody('ArrowRight', 'ArrowRight', held)
+      pressBody('ArrowRight', 'ArrowRight', held)
+      pressBody('ArrowRight', 'ArrowRight', held)
+
+      expect(nudge.runs).toBe(4)
+    })
+
+    it('runs the far nudge rather than the plain one with Shift held', () => {
+      const near = action('frame.nudgeRight', {
+        keys: ['ArrowRight'],
+        repeat: true,
+      })
+      const far = action('frame.nudgeRightFar', {
+        keys: ['Shift+ArrowRight'],
+        repeat: true,
+      })
+      register(near, far)
+      bind(window)
+
+      pressBody('ArrowRight', 'ArrowRight', { shiftKey: true })
+      pressBody('ArrowRight', 'ArrowRight', { shiftKey: true, ...held })
+
+      expect([near.runs, far.runs]).toEqual([0, 2])
+    })
+
+    it('decides a shared key by the first enabled action', () => {
+      const walkUp = action('select.parent', { keys: ['Escape'] })
+      const clear = action('select.clear', {
+        keys: ['Escape'],
+        repeat: true,
+      })
+      register(walkUp, clear)
+      bind(window)
+
+      pressBody('Escape', 'Escape', held)
+
+      expect([walkUp.runs, clear.runs]).toEqual([0, 0])
+    })
+
+    it('leaves a repeat of a key no action carries to the browser', () => {
+      register(action('tool.move', { keys: ['v'] }))
+      bind(window)
+
+      const event = pressBody('x', 'KeyX', held)
+
+      expect(event.defaultPrevented).toBe(false)
+    })
+
+    it('leaves a repeat inside a field to the field', () => {
+      const nudge = action('frame.nudgeRight', {
+        keys: ['ArrowRight'],
+        repeat: true,
+      })
+      register(nudge)
+      bind(window)
+      const field = document.createElement('input')
+      document.body.append(field)
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        bubbles: true,
+        cancelable: true,
+        repeat: true,
+      })
+      field.dispatchEvent(event)
+
+      expect([nudge.runs, event.defaultPrevented]).toEqual([0, false])
+    })
+
+    it('leaves a repeat while composing to the input method', () => {
+      const nudge = action('frame.nudgeRight', {
+        keys: ['ArrowRight'],
+        repeat: true,
+      })
+      register(nudge)
+      bind(window)
+
+      pressBody('ArrowRight', 'ArrowRight', { ...held, isComposing: true })
+
+      expect(nudge.runs).toBe(0)
+    })
+
+    it('leaves a held character key to the browser while the switch is off', () => {
+      const hand = action('tool.hand', { keys: ['h'], repeat: true })
+      register(hand)
+      bind(window)
+      setCharacterKeys(false)
+
+      const event = pressBody('h', 'KeyH', held)
+
+      expect([hand.runs, event.defaultPrevented]).toEqual([0, false])
+    })
+  })
+
   describe('with the Single-key shortcuts switch', () => {
     afterEach(() => {
       setCharacterKeys(true)
