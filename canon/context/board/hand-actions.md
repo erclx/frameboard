@@ -26,6 +26,7 @@ Several elements in one frame select together, all at one hash, with `element` h
 - With an element selected, Shift-click on the canvas or in Layers adds an element or takes it out, and Cmd+A selects its siblings. An element in another frame starts over there.
 - A drag from a selected frame's bare `body` marquees the elements it touches, outermost first, and a drag from an element it holds still moves the frame
 - Several draw bare outlines, with marks and the chip on one alone. Delete, from its key or the menu, takes all as one step, and restack and the menu's other items act on the last picked.
+- One selected `<video>` or `<audio>` in Edit draws `media-bar.tsx` under it, portaled into the notes layer since the hit layer covers the frames' layer. `media.ts` drives the live node, so play, scrub, and sound write nothing.
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 

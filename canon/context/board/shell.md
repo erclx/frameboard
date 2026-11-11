@@ -63,9 +63,10 @@ The Place toggle's `placementStore` in `tool.ts` decides whether a new element l
 
 The Image tool and a tile drag place a file from the project's `assets/`.
 
-- `asset-picker.tsx`, opened from the Shape menu's Image or video row, lists the project's images, GIFs, SVGs, and videos and arms the Image tool with the one chosen
-- An asset posts its path under `assets/` and a size from `asset-size.ts`, the file's own capped at the container's width, else 240 by 135, and the server picks `<img>` or `<video>`
-- An image, GIF, SVG, or video tile in the Assets tab drags while the tab may write, carrying the data `src/client/board/assets/drag.ts` shapes
+- `asset-picker.tsx`, opened from the Shape menu's Image, video, or audio row, lists the project's images, GIFs, SVGs, videos, and audio and arms the Image tool with the one chosen
+- An asset posts its path under `assets/` and a size from `asset-size.ts`, the file's own capped at the container's width, else 240 by 135, and the server picks `<img>`, `<video>`, or `<audio controls>`, which takes a 300px width alone so the browser's player sets its height
+- An image, GIF, SVG, video, or audio tile in the Assets tab drags while the tab may write, carrying the data `src/client/board/assets/drag.ts` shapes
+- A video tile preloads metadata alone, shows its first frame and length, plays muted only while hovered or focused, and names a codec it cannot decode
 - `asset-drop.ts` makes the hit layer a drop target for a tile and swallows a system file dropped there, so it never opens in place of the board
 
 A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes and files land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks.

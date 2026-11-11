@@ -21,7 +21,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
-- **Layout:** sits first among an element's sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
+- **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone, then Muted in the file, which sets `muted` or drops it
+- **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
 - **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
 - **Rule caption:** names the selector of a flow rule several elements share, with its count from the static cascade. An unread sheet names no rule.
@@ -73,6 +74,7 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
 - A hand edit writes the element's inline style, one attribute, or its text and nothing else, through `POST /api/frames/edit`, which records one undo step
+- Dropping an attribute is its own change, `remove: true` with no value, since an empty value still states a boolean such as `muted`
 - A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value that matches a token is still flagged
