@@ -38,6 +38,7 @@ const HERO: FrameRecord = {
   hugWidth: false,
   hugHeight: false,
   scroll: false,
+  widths: [],
   placed: true,
   modifiedAt: '2026-10-19T00:00:00.000Z',
 }

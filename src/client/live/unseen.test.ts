@@ -89,6 +89,7 @@ function boardWith(...refs: string[]): ListResult {
           hugWidth: false,
           hugHeight: false,
           scroll: false,
+          widths: [],
           placed: true,
           modifiedAt: '2026-10-19T12:00:00.000Z',
         })),

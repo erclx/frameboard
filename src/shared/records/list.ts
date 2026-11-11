@@ -24,6 +24,8 @@ export const frameRecordSchema = z.object({
   hugHeight: z.boolean(),
   /** Whether the frame holds a fixed screen height and scrolls past it, fixing both axes. */
   scroll: z.boolean(),
+  /** The extra widths the frame also shows at, beside it in a row, none when it lists none. */
+  widths: z.array(z.object({ width: z.number(), height: z.number() })),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

@@ -15,6 +15,7 @@ import {
   FRAME_GAP,
   FRAME_SIZES,
 } from '@/shared/frame-sizes'
+import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
 import {
   type LayoutEntry,
   type LayoutFile,
@@ -59,6 +60,7 @@ export interface Placement {
   hugWidth: boolean
   hugHeight: boolean
   scroll: boolean
+  widths: LinkedWidth[]
   placed: boolean
 }
 
@@ -174,6 +176,7 @@ export function placeFrames(
       hugWidth: !scroll && (entry.hugWidth ?? false),
       hugHeight: !scroll && (entry.hugHeight ?? false),
       scroll,
+      widths: widthsOf(entry.widths),
       placed: true,
     })
   }
@@ -189,13 +192,16 @@ export function placeFrames(
 
 /**
  * Where a frame with no layout entry sits: desktop size at `y` 0, 80 past the
- * right edge of every frame already placed, on top of all of them. The board
+ * right edge of every frame already placed and the linked widths it draws, on top of all of them. The board
  * draws what the scanner returns, and `frame add` persists the same box for
  * the first unplaced file, placing any other past the placed frames alone.
  */
 export function placeNext(placed: Placement[]): Placement {
   const right = Math.max(
-    ...placed.map(({ box }) => box.x + box.width + FRAME_GAP),
+    ...placed.map(({ box, widths }) => {
+      const extent = drawnExtent(box, widths)
+      return extent.x + extent.width + FRAME_GAP
+    }),
     0,
   )
   const order = Math.max(...placed.map((placement) => placement.order + 1), 0)
@@ -207,6 +213,7 @@ export function placeNext(placed: Placement[]): Placement {
     hugWidth: false,
     hugHeight: false,
     scroll: false,
+    widths: [],
     placed: false,
   }
 }

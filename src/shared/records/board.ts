@@ -56,6 +56,15 @@ export const layoutEntrySchema = z.looseObject({
   // A scroll frame holds its box on both axes and scrolls past it, so readers
   // take either hug flag beside it as false.
   scroll: z.boolean().optional(),
+  // The extra widths the frame also shows at, each beside it on the board,
+  // with the height its view holds there. A value of another shape parses as
+  // written and reads as none, as a project's group does.
+  widths: z
+    .union([
+      z.array(z.looseObject({ width: z.int().min(1), height: z.int().min(1) })),
+      z.unknown(),
+    ])
+    .optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>
