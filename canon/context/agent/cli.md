@@ -86,7 +86,9 @@ The skill and the `docs` content format both say a `style` attribute outranks ev
 `editing` writes `.run/claims.json` under the record lock with no server, and `--release` drops one claim or all of the session's. The claim is also what names the agent on the board's change toast. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share.
 
 - A claim is cooperative, so another live session's claim refuses `frame-claimed` with exit 4, and it lapses five minutes after the last `editing`
-- A new frame is written before `frame add` places it, since `add` writes a blank skeleton when no file exists, and it is not claimed, since nothing else holds a file just written
+- A new frame is reserved first with `editing <ref>... --new`, which refuses an existing frame as `name-taken` and places the set in one row past every frame and reservation on its page, unless `--x`, `--y`, or a size flag sets it
+- Two refs with no `--new` refuse `usage`, so a single ref keeps its old arguments, `{ claim }` answer, and refusals
+- `frame add` with no position takes a live reservation's box, as the server's landing step does
 - The developer's hand edit on a held frame waits in the board until the claim drops, and the server refuses one sent anyway
 
 ## Gotchas

@@ -35,6 +35,8 @@ Owns how a claimed frame shows and how an edit waits on one, apart from `frame.t
 - The inspector header shows one initial per listening session, solid while it holds a claim, pale while it only listens, and none for a holder not listening
 - The layers row of a claimed frame carries a ringed `--claim` dot after its name
 
+`reserved.tsx` draws each reservation whose frame is not listed yet as a hatched, dashed `--claim` box at its box in Edit, labeled with its name, the agent's initial, and its place in the set. The member with the set's latest `drawingAt` reads drawing and the rest queued, and a right-click on a box offers Release reservation.
+
 ### `src/client/board/changes/`
 
 Owns the change toast, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
@@ -77,7 +79,8 @@ Owns the socket and the store every screen reads, and how an agent's changes sho
 
 The same store carries what an agent is doing now.
 
-- Following an agent, from its initial or the palette while one session listens, centers each frame it changes or claims at the zoom it started with, and a hand move stops it
+- Following an agent, from its initial or the palette while one session listens, centers each frame it changes or claims at the zoom it started with, skipping a reservation, and a hand move stops it
+- A board message keeps a reservation's claim, whose frame is listed only once it lands
 - A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
