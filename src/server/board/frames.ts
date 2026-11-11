@@ -638,12 +638,16 @@ class PageLayout {
    * Writes the seven fixed keys on the entry it creates or changes, after any
    * key the entry already held, so unknown keys survive in place. A hug flag
    * is written on an entry it creates, once it is on, or when the entry holds
-   * it, so a write to an entry from before the flags adds no key.
+   * it, so a write to an entry from before the flags adds no key. `scroll` is
+   * written once it is on or when the entry holds it, and a scroll entry
+   * writes both hug flags false, since it fixes both axes.
    */
   set(
     name: string,
-    { box, order, hidden, locked, hugWidth, hugHeight }: Placement,
+    { box, order, hidden, locked, scroll, ...hugs }: Placement,
   ): void {
+    const hugWidth = hugs.hugWidth && !scroll
+    const hugHeight = hugs.hugHeight && !scroll
     const held = this.file.frames[name]
     this.file.frames[name] = {
       ...held,
@@ -658,6 +662,7 @@ class PageLayout {
       ...(!held || hugHeight || held.hugHeight !== undefined
         ? { hugHeight }
         : {}),
+      ...(scroll || held?.scroll !== undefined ? { scroll } : {}),
     }
     this.changed = true
   }

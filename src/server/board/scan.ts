@@ -58,6 +58,7 @@ export interface Placement {
   locked: boolean
   hugWidth: boolean
   hugHeight: boolean
+  scroll: boolean
   placed: boolean
 }
 
@@ -162,13 +163,17 @@ export function placeFrames(
       unplaced.push(name)
       continue
     }
+    // A scroll frame fixes both axes, so a hug flag an older `frame fit` left
+    // beside the key reads as off and the hug step never measures it.
+    const scroll = entry.scroll ?? false
     placements.set(name, {
       box: { x: entry.x, y: entry.y, width: entry.width, height: entry.height },
       order: entry.order,
       hidden: entry.hidden ?? false,
       locked: entry.locked ?? false,
-      hugWidth: entry.hugWidth ?? false,
-      hugHeight: entry.hugHeight ?? false,
+      hugWidth: !scroll && (entry.hugWidth ?? false),
+      hugHeight: !scroll && (entry.hugHeight ?? false),
+      scroll,
       placed: true,
     })
   }
@@ -201,6 +206,7 @@ export function placeNext(placed: Placement[]): Placement {
     locked: false,
     hugWidth: false,
     hugHeight: false,
+    scroll: false,
     placed: false,
   }
 }

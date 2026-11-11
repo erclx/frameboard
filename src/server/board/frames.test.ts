@@ -503,6 +503,36 @@ describe('frames', () => {
       ])
     })
 
+    it('reads a scroll entry holding both hug flags as fixed', async () => {
+      const root = open()
+      hugHero(root, { scroll: true, hugWidth: true, hugHeight: true })
+
+      const moved = await moveFrame(root, 'webapp/home/hero', {
+        cwd: root,
+        x: 40,
+      })
+
+      expect(moved).toMatchObject({
+        scroll: true,
+        hugWidth: false,
+        hugHeight: false,
+      })
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        scroll: true,
+        hugWidth: false,
+        hugHeight: false,
+      })
+    })
+
+    it('a write to an entry without the key adds no scroll key', async () => {
+      const root = open()
+      hugHero(root, { hugHeight: true })
+
+      await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 40 })
+
+      expect(layout('webapp/home').frames.hero).not.toHaveProperty('scroll')
+    })
+
     it('resize fixes the axis it sets and leaves the other hugging', async () => {
       const root = open()
       hugHero(root, { hugWidth: true, hugHeight: true })
@@ -555,6 +585,22 @@ describe('frames', () => {
           root,
           'webapp/home',
           { hero: { width: 320, height: 1232 } },
+          { cwd: root },
+        )
+
+        expect(written).toEqual([])
+        expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
+      it('leaves a scroll entry an older fit left hugging', async () => {
+        const root = open()
+        hugHero(root, { scroll: true, hugHeight: true })
+        const bytes = file('webapp/home/layout.json')
+
+        const written = await setMeasured(
+          root,
+          'webapp/home',
+          { hero: { width: 1440, height: 3816 } },
           { cwd: root },
         )
 

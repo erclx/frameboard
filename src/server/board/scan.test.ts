@@ -137,6 +137,7 @@ describe('scanBoard', () => {
         locked: false,
         hugWidth: false,
         hugHeight: false,
+        scroll: false,
         placed: true,
       })
     })
@@ -291,6 +292,7 @@ describe('placeNext', () => {
       locked: false,
       hugWidth: false,
       hugHeight: false,
+      scroll: false,
       placed: false,
     })
   })
