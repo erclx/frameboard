@@ -243,6 +243,7 @@ export function geometryActions(context: GeometryContext): Action[] {
         group: 'frame',
         palette: false,
         keys: [key],
+        repeat: true,
         enabled: movable(1),
         run: () => step((box) => ({ ...box, x: box.x + dx, y: box.y + dy })),
       },
@@ -252,6 +253,7 @@ export function geometryActions(context: GeometryContext): Action[] {
         group: 'frame',
         palette: false,
         keys: [`Shift+${key}`],
+        repeat: true,
         enabled: movable(1),
         run: () =>
           step((box) => ({ ...box, x: box.x + dx * 10, y: box.y + dy * 10 })),
@@ -269,6 +271,7 @@ export function geometryActions(context: GeometryContext): Action[] {
         group: 'frame',
         palette: false,
         keys: [`$mod+${key}`],
+        repeat: true,
         enabled: movable(1),
         run: () =>
           step((box) => ({
