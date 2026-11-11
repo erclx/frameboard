@@ -80,7 +80,7 @@ export async function openFrame(
         (error: unknown) => error,
       )
     if (stalled !== null) {
-      await settleImages(page, ref, fonts, 0)
+      await settleImages(page, ref, fonts, 0, { stalled: true })
       throw stalled
     }
     await page.evaluate(() => document.fonts.ready.then(() => undefined))

@@ -19,6 +19,7 @@ import {
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { type FrameHost, startFrameHost } from './host'
+import { settleImages } from './image-loads'
 import { openFrame } from './render'
 
 const SQUARE =
@@ -140,6 +141,8 @@ describe.skipIf(shell === null)(
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
       board = writeBoard({
         'studio/home/hang.html': `<p>Hello</p><img src="http://127.0.0.1:${port}/hang.png" alt="">`,
+        'studio/home/square.svg': SQUARE,
+        'studio/home/held.html': `<img src="square.svg" decoding="async" alt=""><iframe src="http://127.0.0.1:${port}/"></iframe>`,
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -165,6 +168,43 @@ describe.skipIf(shell === null)(
         code: 'image-missing',
         details: { ref: 'studio/home/hang', element: 4 },
       })
+    })
+
+    it('rethrows the timeout when something else holds the load', async () => {
+      const opening = openFrame(requireShell(shell), {
+        baseUrl: host.url,
+        ref: 'studio/home/held',
+        box: BOX,
+        theme: 'light',
+        timeoutMs: 1_500,
+      })
+
+      await expect(opening).rejects.toMatchObject({ name: 'TimeoutError' })
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
+  'settleImages on a stalled load',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    it('names no image that loaded and is still decoding', async () => {
+      const page = await requireShell(shell).newPage()
+      await page.setContent(
+        `<img src="data:image/svg+xml,${encodeURIComponent(SQUARE)}" alt="">`,
+      )
+
+      // A loaded image whose decode never settles, as one still decoding reads.
+      await page.evaluate(() => {
+        HTMLImageElement.prototype.decode = () => new Promise(() => {})
+      })
+
+      const settling = settleImages(page, 'studio/home/held', 'require', 0, {
+        stalled: true,
+      })
+
+      await expect(settling).resolves.toBeUndefined()
+      await page.close()
     })
   },
 )

@@ -9,6 +9,8 @@ interface UnsettledImage {
   src: string
   /** `error` for a request or decode that failed, `pending` for one still running. */
   state: 'error' | 'pending'
+  /** Whether its request finished, so a stall cannot be laid on it. */
+  loaded: boolean
 }
 
 /**
@@ -20,15 +22,23 @@ interface UnsettledImage {
  * Under `require` an image that errored or is still loading when the time
  * runs out refuses `image-missing`. Under `wait` the frame opens with it as
  * the board shows it.
+ *
+ * `stalled` reads a page whose load event never fired, refusing only for an
+ * image that failed or whose request is still open. A loaded image still
+ * decoding cannot have held the load, so something else, such as a
+ * stylesheet or an iframe, did.
  */
 export async function settleImages(
   page: Page,
   ref: string,
   mode: 'require' | 'wait',
   timeoutMs: number,
+  { stalled = false }: { stalled?: boolean } = {},
 ): Promise<void> {
   const unsettled = await page.evaluate(waitForImages, Math.max(0, timeoutMs))
-  const [first] = unsettled
+  const [first] = stalled
+    ? unsettled.filter((image) => !image.loaded || image.state === 'error')
+    : unsettled
   if (mode === 'wait' || first === undefined) return
   const why =
     first.state === 'error'
@@ -88,7 +98,7 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
     new Promise((done) => setTimeout(done, timeoutMs)),
   ])
 
-  const unsettled: (UnsettledImage & { loaded: boolean })[] = []
+  const unsettled: UnsettledImage[] = []
   images.forEach(({ index: own, img }, at) => {
     const state = outcomes[at]?.state
     if (state === undefined || state === 'ok') return
@@ -99,9 +109,5 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
       loaded: img.complete,
     })
   })
-  // A stalled load reads with no time left, so an image still decoding can
-  // be pending beside the one whose request holds the page. That one leads.
   return unsettled
-    .sort((a, b) => Number(a.loaded) - Number(b.loaded))
-    .map(({ index: own, src, state }) => ({ index: own, src, state }))
 }
