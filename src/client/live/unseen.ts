@@ -398,14 +398,41 @@ function unseenReply(
   return seen === undefined || note.updatedAt > seen
 }
 
-/** How many agent replies across the given pages' notes no open thread has shown. */
+/**
+ * How many agent replies across the given pages' notes no open thread has
+ * shown. A reply counts only while its root can still open, being a root not
+ * done on a frame the board holds, since a root that draws no marker leaves
+ * no thread to open and its reply would count for good.
+ */
 export function unseenReplies(
   notes: Readonly<Record<string, readonly Note[]>>,
   replies: Readonly<Record<string, string>>,
+  board: ListResult | null,
 ): number {
-  return Object.values(notes)
-    .flat()
-    .filter((note) => unseenReply(note, replies)).length
+  const frames = new Set(
+    board?.projects.flatMap((project) =>
+      project.pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
+    ),
+  )
+  return Object.entries(notes).reduce((count, [page, list]) => {
+    const open = new Set(
+      list
+        .filter(
+          (note) =>
+            note.thread === null &&
+            note.state !== 'done' &&
+            frames.has(`${page}/${note.frame}`),
+        )
+        .map((note) => note.id),
+    )
+    const counted = list.filter(
+      (note) =>
+        note.thread !== null &&
+        open.has(note.thread) &&
+        unseenReply(note, replies),
+    )
+    return count + counted.length
+  }, 0)
 }
 
 /**

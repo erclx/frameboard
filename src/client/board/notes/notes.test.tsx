@@ -7,11 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
-import {
-  SEEN_REPLIES_KEY,
-  unseenReplies,
-  unseenStore,
-} from '@/client/live/unseen'
+import { SEEN_REPLIES_KEY, unseenStore } from '@/client/live/unseen'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
@@ -375,13 +371,11 @@ describe('Thread', () => {
   ]
 
   it('counts its agent reply as seen once it opens', () => {
-    expect(unseenReplies({ 'studio/home': thread }, {})).toBe(1)
-
     render(<Thread notes={thread} page="studio/home" onClose={() => {}} />)
 
-    expect(
-      unseenReplies({ 'studio/home': thread }, unseenStore.getState().replies),
-    ).toBe(0)
+    expect(unseenStore.getState().replies).toEqual({
+      n_1: '2026-10-19T16:12:00.000Z',
+    })
   })
 
   it('hands the thread to the listening session holding the frame claim', () => {

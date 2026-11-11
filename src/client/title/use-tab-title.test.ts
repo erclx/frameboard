@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -17,7 +17,9 @@ import {
   unseenStore,
 } from '@/client/live/unseen'
 import type { FrameChange } from '@/shared/records/changes'
+import type { ListResult } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
+import { frameOf, pageOf } from '@/test/board'
 
 import { useTabTitle } from './use-tab-title'
 
@@ -62,6 +64,23 @@ const root = note({
   text: 'Tighten the header',
 })
 
+/** A board holding `studio/home/hero`, the frame every note here sits on. */
+const BOARD: ListResult = {
+  root: '/board',
+  projects: [
+    {
+      name: 'studio',
+      path: '/board/studio',
+      modifiedAt: '2026-10-15T00:00:00.000Z',
+      createdAt: null,
+      group: null,
+      archived: false,
+      projectFileError: null,
+      pages: [pageOf([frameOf('hero')])],
+    },
+  ],
+}
+
 function renderAt(path: string) {
   const memory = memoryLocation({ path })
   return renderHook(() => useTabTitle(), {
@@ -69,6 +88,10 @@ function renderAt(path: string) {
       createElement(Router, { hook: memory.hook, children }),
   })
 }
+
+beforeEach(() => {
+  act(() => liveStore.setState({ board: BOARD }))
+})
 
 afterEach(() => {
   act(() => {
@@ -79,7 +102,7 @@ afterEach(() => {
       cursor: null,
       replies: {},
     })
-    liveStore.setState({ notes: {} })
+    liveStore.setState({ notes: {}, board: null })
   })
   for (const key of [SEEN_KEY, SEEN_SHOWS_KEY, SEEN_REPLIES_KEY])
     window.localStorage.removeItem(key)
@@ -170,13 +193,36 @@ describe('markRepliesSeen', () => {
     markRepliesSeen(store, thread)
 
     expect(
-      unseenReplies({ 'studio/home': thread }, store.getState().replies),
+      unseenReplies({ 'studio/home': thread }, store.getState().replies, BOARD),
     ).toBe(0)
   })
 
   it('counts no reply from the developer', () => {
     const thread = [root, note({ id: 'n_mine', from: 'developer' })]
 
-    expect(unseenReplies({ 'studio/home': thread }, {})).toBe(0)
+    expect(unseenReplies({ 'studio/home': thread }, {}, BOARD)).toBe(0)
+  })
+})
+
+describe('unseenReplies', () => {
+  it('counts a reply under an open root on a frame the board holds', () => {
+    const thread = [root, note({ id: 'n_reply' })]
+
+    expect(unseenReplies({ 'studio/home': thread }, {}, BOARD)).toBe(1)
+  })
+
+  it('counts no reply under a root closed with notes done', () => {
+    const thread = [
+      { ...root, state: 'done' as const },
+      note({ id: 'n_reply' }),
+    ]
+
+    expect(unseenReplies({ 'studio/home': thread }, {}, BOARD)).toBe(0)
+  })
+
+  it('counts no reply under a root whose frame was deleted', () => {
+    const thread = [{ ...root, frame: 'gone' }, note({ id: 'n_reply' })]
+
+    expect(unseenReplies({ 'studio/home': thread }, {}, BOARD)).toBe(0)
   })
 })

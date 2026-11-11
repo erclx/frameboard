@@ -27,7 +27,9 @@ export function useTabTitle(): void {
   )
   const changes = useUnseen((state) => Object.keys(state.unseen).length)
   const seenReplies = useUnseen((state) => state.replies)
-  const replies = useLive((state) => unseenReplies(state.notes, seenReplies))
+  const replies = useLive((state) =>
+    unseenReplies(state.notes, seenReplies, state.board),
+  )
   const title = tabTitle(changes + replies, onProject ? params.project : null)
   useEffect(() => {
     document.title = title
