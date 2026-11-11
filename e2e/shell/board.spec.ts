@@ -108,6 +108,36 @@ test.describe('the board', () => {
     await expect(page.locator('[data-element-selection]')).toBeVisible()
   })
 
+  test('steps frames from the chip through the hit layer and on Tab', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/pricing`)
+    await expect(page.locator('[data-frame]')).toHaveCount(2)
+    const chip = page.locator('[data-selection] [data-chip]')
+
+    const plans = await page
+      .locator('[data-frame="studio/pricing/plans"]')
+      .boundingBox()
+    if (!plans) throw new Error('plans frame has no box')
+    await page.mouse.click(
+      plans.x + plans.width / 2,
+      plans.y + plans.height / 2,
+    )
+    await expect(chip).toContainText('plans')
+
+    // The hit layer covers the chip, so a real press at the control's place
+    // has to reach it through the gestures rather than the button itself.
+    const next = await chip
+      .getByRole('button', { name: 'Next frame' })
+      .boundingBox()
+    if (!next) throw new Error('the chip has no Next frame control')
+    await page.mouse.click(next.x + next.width / 2, next.y + next.height / 2)
+    await expect(chip).toContainText('faq')
+
+    await page.keyboard.press('Tab')
+    await expect(chip).toContainText('plans')
+  })
+
   test('holds no live page for a frame far offscreen', async ({ page }) => {
     await page.goto(`${server.url}/p/studio/pricing`)
     const canvas = page.locator('[data-canvas]')
