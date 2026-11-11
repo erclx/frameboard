@@ -9,8 +9,12 @@ interface UnsettledImage {
   src: string
   /** `error` for a request or decode that failed, `pending` for one still running. */
   state: 'error' | 'pending'
-  /** Whether its request finished, so a stall cannot be laid on it. */
-  loaded: boolean
+  /**
+   * Whether the image could have held the load event, being one the page
+   * asked for eagerly whose request is still open. A lazy image's request
+   * starts only when this wait makes it eager, so it never held the load.
+   */
+  heldLoad: boolean
 }
 
 /**
@@ -37,7 +41,7 @@ export async function settleImages(
 ): Promise<void> {
   const unsettled = await page.evaluate(waitForImages, Math.max(0, timeoutMs))
   const [first] = stalled
-    ? unsettled.filter((image) => !image.loaded || image.state === 'error')
+    ? unsettled.filter((image) => image.heldLoad || image.state === 'error')
     : unsettled
   if (mode === 'wait' || first === undefined) return
   const why =
@@ -53,7 +57,7 @@ export async function settleImages(
 
 // Runs in the page, so it carries everything it reads.
 async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
-  const images: { index: number; img: HTMLImageElement }[] = []
+  const images: { index: number; img: HTMLImageElement; lazy: boolean }[] = []
   let index = 0
   for (const element of document.querySelectorAll('*')) {
     if (element.closest('[data-frameboard]')) continue
@@ -64,8 +68,9 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
     if (!element.getAttribute('src') && !element.getAttribute('srcset')) {
       continue
     }
-    if (element.loading === 'lazy') element.loading = 'eager'
-    images.push({ index: own, img: element })
+    const lazy = element.loading === 'lazy'
+    if (lazy) element.loading = 'eager'
+    images.push({ index: own, img: element, lazy })
   }
   if (images.length === 0) return []
 
@@ -99,14 +104,14 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
   ])
 
   const unsettled: UnsettledImage[] = []
-  images.forEach(({ index: own, img }, at) => {
+  images.forEach(({ index: own, img, lazy }, at) => {
     const state = outcomes[at]?.state
     if (state === undefined || state === 'ok') return
     unsettled.push({
       index: own,
       src: img.getAttribute('src') || img.currentSrc,
       state,
-      loaded: img.complete,
+      heldLoad: !lazy && !img.complete,
     })
   })
   return unsettled

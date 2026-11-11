@@ -50,7 +50,7 @@ describe.skipIf(shell === null)(
         'studio/home/broken.html':
           '<p>Hello</p><img src="square.svg" alt=""><img src="gone.png" alt="Gone">',
         'studio/home/below.html':
-          '<div style="height: 2000px"></div><img src="square.svg" loading="lazy" alt="">',
+          '<div style="height: 10000px"></div><img src="square.svg" loading="lazy" alt="">',
         'studio/home/chrome.html':
           '<div data-frameboard><img src="gone.png" alt=""></div><p>Hello</p>',
       })
@@ -142,6 +142,7 @@ describe.skipIf(shell === null)(
       board = writeBoard({
         'studio/home/hang.html': `<p>Hello</p><img src="http://127.0.0.1:${port}/hang.png" alt="">`,
         'studio/home/square.svg': SQUARE,
+        'studio/home/held-lazy.html': `<div style="height: 10000px"></div><img src="square.svg" loading="lazy" alt=""><iframe src="http://127.0.0.1:${port}/"></iframe>`,
         'studio/home/held.html': `<img src="square.svg" decoding="async" alt=""><iframe src="http://127.0.0.1:${port}/"></iframe>`,
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
@@ -168,6 +169,18 @@ describe.skipIf(shell === null)(
         code: 'image-missing',
         details: { ref: 'studio/home/hang', element: 4 },
       })
+    })
+
+    it('rethrows the timeout beside a lazy image below the box', async () => {
+      const opening = openFrame(requireShell(shell), {
+        baseUrl: host.url,
+        ref: 'studio/home/held-lazy',
+        box: BOX,
+        theme: 'light',
+        timeoutMs: 1_500,
+      })
+
+      await expect(opening).rejects.toMatchObject({ name: 'TimeoutError' })
     })
 
     it('rethrows the timeout when something else holds the load', async () => {
