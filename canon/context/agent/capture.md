@@ -13,7 +13,7 @@ Owns what an agent sees of a frame without a screen, being PNGs of one frame or 
 
 ### `src/server/capture/`
 
-Owns the capture browser, the frame host, the render, the font check, the image writer, `fit`, and `inspect`, with the flags and record shapes in `frameboard docs`. The CLI renders through its own loopback host over the frame routes the server mounts, so `capture`, `fit`, and `inspect` need no running server.
+Owns the capture browser, the frame host, the render, the font check, the image and animation waits, the image writer, `fit`, and `inspect`, with the flags and record shapes in `frameboard docs`. The CLI renders through its own loopback host over the frame routes the server mounts, so `capture`, `fit`, and `inspect` need no running server.
 
 - `capture` takes a frame or, with `--page`, every visible frame of a page, since a two-part ref reads as either, and `--composite` places them at their layout positions on the theme's `Canvas`
 - A frame opens at layout size from `frameThemeUrl` under an emulated `prefers-color-scheme`, on a host mounting the look and frame routes through `servedFrames`, so the injected script sets the theme
@@ -38,7 +38,15 @@ These catch a capture out.
 - Capture refuses `font-missing` when a text element's first family is neither a loaded web face nor installed per DevTools `CSS.getPlatformFontsForNode`, so a name the platform aliases reads as missing
 - Capture uses the pinned headless shell alone, since an installed Chrome or Edge rasterizes text differently, and without it refuses `browser-not-found` with the install command, downloading nothing
 - A frame or composite past 16384 device pixels a side at its scale refuses `capture-too-large`, the route's 422, since Chromium's screenshot surface stops there
-- Capture emulates the color scheme alone and never reduced motion, so an animated image shoots at whatever frame it reached, and a frame meant to capture alike every run shows a still
+
+### Waits
+
+`openFrame` spends one 10 s load budget on the load, the faces, and the images, then settles animations on what is left.
+
+- Capture refuses `image-missing` for an `<img>` that errored or was still loading when the budget ran out, naming its `src` and element index
+- Each image waits on its `decode()`, since one marked `decoding="async"` can be loaded and still paint as an empty box. A lazy image turns eager in the page, never the file
+- Under `require`, running animations with a finite end are awaited and never refused. An infinite one is skipped, and a scene stepped by a script timer stays out of reach
+- Capture never emulates reduced motion, so a frame meant to capture alike every run shows a still
 
 ### Inspect
 
