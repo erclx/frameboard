@@ -1,6 +1,5 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import type { FrameSize } from '@/shared/frame-sizes'
-import type { FitResult } from '@/shared/records/capture'
 import type {
   FrameRecord,
   PageRecord,
@@ -81,9 +80,6 @@ export function createStructure(send: typeof fetch = fetch) {
     ) => post<FrameRecord[]>('/api/frame/duplicate', { refs, offset }),
     renameFrame: (ref: string, name: string) =>
       held<FrameRecord>([ref], 'rename', '/api/frame/rename', { ref, name }),
-    /** Fits a frame's height to its content and turns its height hugging on. */
-    fitFrame: (ref: string) =>
-      held<FitResult>([ref], 'resize', '/api/frame/fit', { ref }),
     /**
      * Sets how each frame holds its height in one undo step, `expected`
      * holding each frame's box as the board drew it, by ref.

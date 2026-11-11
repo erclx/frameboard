@@ -91,7 +91,7 @@ export interface AppOptions {
   checks?: BrowserChecks
   /** The home view's captures `GET /api/thumbnails` reads, absent where nothing renders them. */
   thumbnails?: ThumbnailStore
-  /** Reads a frame's content on the warm browser for `POST /api/frame/fit`. */
+  /** Reads a frame's content on the warm browser for a fit through `POST /api/frame/height`. */
   measure?: MeasureFrame
   /** The frame versions agent writes replaced, which `?at=<hash>` serves. */
   frameVersion?: FrameVersion

@@ -7,8 +7,6 @@ import {
   addFrame,
   deleteFrame,
   duplicateFrame,
-  fitHeight,
-  fitScrollError,
   type HeightTarget,
   orderFrame,
   readFrame,
@@ -88,7 +86,6 @@ const frameDuplicateSchema = z.object({
   refs,
   offset: z.object({ x: coordinate, y: coordinate }).optional(),
 })
-const frameSchema = z.object({ ref })
 const frameHeightSchema = z.object({
   refs,
   mode: z.enum(['fixed', 'fit', 'scroll']),
@@ -390,54 +387,6 @@ export function structureRoutes(
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })
-  })
-
-  /**
-   * Sets one frame's height to its content's own and turns its height
-   * hugging on, as `frame fit` does, refusing a frame whose content sizes
-   * itself off the viewport. The width is reported, never changed.
-   */
-  app.post('/api/frame/fit', async (c) => {
-    const body = await parseBody(c.req.raw, frameSchema)
-    await refuseLocked([body.ref])
-    await refuseHeldFrames([body.ref])
-    if (!measure) {
-      throw new FrameboardError(
-        'browser-not-found',
-        "Fit height needs the board server's browser, and none runs here.",
-      )
-    }
-    const frame = await readFrame(root, body.ref, { cwd })
-    if (frame.scroll) throw fitScrollError(frame.ref)
-    const measured = await measure(frame)
-    // A fit turns height hugging on with no write to the frame file, which
-    // queues no hug measure, so each linked width is measured here too.
-    const widths: { width: number; height: number }[] = []
-    for (const { width } of frame.widths) {
-      const linked = await measure(frame, {
-        width,
-        height: referenceHeight(width),
-      })
-      widths.push({ width, height: linked.height })
-    }
-    const fit = await recorded(
-      (journal) =>
-        fitHeight(root, frame.ref, measured.height, {
-          cwd,
-          journal,
-          widths,
-        }),
-      (record) => onFrames([record.ref]),
-    )
-    return c.json({
-      ok: true,
-      data: {
-        frame: fit,
-        contentHeight: measured.height,
-        contentWidth: measured.contentWidth,
-        tooWide: measured.contentWidth > fit.box.width,
-      },
-    })
   })
 
   /**
