@@ -551,15 +551,21 @@ async function listen({
           browser.close(),
           emptyTrash(root),
         ])
-        // A turn already running, such as a settled change saving its log,
-        // would otherwise write into a folder the caller removes next. Every
-        // turn catches its own failure, so the wait is unbounded.
-        await scanning
         await new Promise<void>((done, fail) => {
           server.close((error) => (error ? fail(error) : done()))
           // A tab's keep-alive connection would hold close open indefinitely.
           server.closeAllConnections()
         })
+        // A turn still queued, such as a settled change saving its log, would
+        // otherwise write into a folder the caller removes next. A request
+        // already inside a handler can queue one more as the last drains, so
+        // this waits until the tail stops moving. Every turn catches its own
+        // failure, so the wait is unbounded.
+        let tail: Promise<unknown>
+        do {
+          tail = scanning
+          await tail
+        } while (tail !== scanning)
       })()
       return closing
     },
