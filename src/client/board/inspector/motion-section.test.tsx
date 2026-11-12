@@ -1,12 +1,14 @@
 import '../../styles.css'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 import { realClick } from '@/test/real-pointer'
 
 import { motionHoldOf, releaseMotion } from '../motion/store'
+import { exportStore } from './export-store'
 import { MotionSection } from './motion-section'
 
 const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 300, height: 40 } })
@@ -88,5 +90,61 @@ describe('MotionSection', () => {
         'PNG, hero.filmstrip-5.light@2x.png and hero.filmstrip-5.dark@2x.png',
       ),
     ).toBeVisible()
+  })
+
+  describe('for a frame whose strip outgrows the screenshot surface', () => {
+    afterEach(() => {
+      exportStore.setState({ scale: 2 })
+    })
+
+    it('offers a desktop frame at 2x no count past the 5 that fit', async () => {
+      await showFrame(SLIDE)
+      const desktop = frameOf('hero', {
+        box: { x: 0, y: 0, width: 1440, height: 900 },
+      })
+      render(<MotionSection frame={desktop} />)
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Filmstrip frames' }),
+      )
+
+      expect(
+        await screen.findByRole('menuitemradio', { name: '5 frames' }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('menuitemradio', { name: '6 frames' }),
+      ).toBeNull()
+    })
+
+    it('lowers a count past the cap when the scale rises', async () => {
+      await showFrame(SLIDE)
+      const desktop = frameOf('hero', {
+        box: { x: 0, y: 0, width: 1440, height: 900 },
+      })
+      render(<MotionSection frame={desktop} />)
+      await screen.findByText(/hero\.filmstrip-5\./)
+
+      act(() => exportStore.setState({ scale: 3 }))
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Filmstrip frames' }),
+        ).toHaveTextContent('3 frames'),
+      )
+    })
+
+    it('disables the export of a frame too wide for two, saying why', async () => {
+      await showFrame(SLIDE)
+      const wide = frameOf('hero', {
+        box: { x: 0, y: 0, width: 9000, height: 900 },
+      })
+
+      render(<MotionSection frame={wide} />)
+
+      expect(
+        await screen.findByRole('button', { name: 'Export filmstrip' }),
+      ).toBeDisabled()
+      expect(screen.getByText(/Too wide for two frames/)).toBeVisible()
+    })
   })
 })

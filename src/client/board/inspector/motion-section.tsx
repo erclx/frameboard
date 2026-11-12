@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from 'zustand'
 
 import { Button } from '@/client/components/ui/button'
+import { maxFilmstripCount } from '@/shared/capture-limits'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { PlayButton, SeekTrack } from '../element/media-bar'
@@ -21,7 +22,7 @@ import {
   filmstripFileNames,
 } from './export-store'
 
-/** The frame counts a filmstrip takes, 5 unless picked. */
+/** The frame counts a filmstrip takes, 5 unless picked, past which the board offers only those that fit. */
 const COUNTS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 const DEFAULT_COUNT = 5
 
@@ -91,8 +92,16 @@ function FilmstripRow({
 }) {
   const scale = useStore(exportStore, (state) => state.scale)
   const theme = useStore(exportStore, (state) => state.theme)
-  const [count, setCount] = useState<number>(DEFAULT_COUNT)
+  const [picked, setPicked] = useState<number>(DEFAULT_COUNT)
   const [exporting, setExporting] = useState(false)
+  // Only the counts whose strip the screenshot surface holds at this scale,
+  // so a pick never refuses after a round trip. A raised scale lowers a
+  // pick past the new cap to the cap rather than to the default.
+  const fitting = COUNTS.filter(
+    (one) => one <= maxFilmstripCount(frame.box.width, scale),
+  )
+  const count = Math.min(picked, fitting.at(-1) ?? picked)
+  const tooWide = fitting.length === 0
   const files = filmstripFileNames(frame.name, count, { scale, theme })
 
   const run = () => {
@@ -117,17 +126,17 @@ function FilmstripRow({
           label="Filmstrip frames"
           shown={`${count} frames`}
           value={String(count)}
-          options={COUNTS.map((one) => ({
+          options={fitting.map((one) => ({
             value: String(one),
             label: `${one} frames`,
           }))}
-          onPick={(value) => setCount(Number(value))}
+          onPick={(value) => setPicked(Number(value))}
         />
       </div>
       <Button
         variant="outline"
         size="sm"
-        disabled={exporting || unbounded}
+        disabled={exporting || unbounded || tooWide}
         onClick={run}
         className="w-full bg-transparent text-xs dark:bg-transparent"
       >
@@ -136,7 +145,9 @@ function FilmstripRow({
       <p className="mt-1.5 text-caption text-muted-foreground">
         {unbounded
           ? 'Its animations repeat forever, so a filmstrip has no end to space its frames across.'
-          : `PNG, ${files.join(' and ')}`}
+          : tooWide
+            ? `Too wide for two frames in a row at ${scale}x. Pick a smaller scale under Export.`
+            : `PNG, ${files.join(' and ')}`}
       </p>
     </div>
   )
