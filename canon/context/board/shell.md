@@ -69,7 +69,7 @@ Owns present mode, which shows a page's frames one at a time over the whole wind
 - It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
 - `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
 - The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
-- `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, so a slide's arrows and Space yield and no other key reaches the board
+- `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
 
 ### `src/client/board/sections/`
 
