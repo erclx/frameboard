@@ -165,6 +165,7 @@ export interface RunningServer {
   authorize: (token: string) => void
   /** The board's address with a fresh single-use ticket, which a browser trades for the write cookie. */
   boardUrl: () => string
+  /** Resolves once every queued turn has finished, and resolves again on a later call. */
   close: () => Promise<void>
 }
 
@@ -214,6 +215,7 @@ async function listen({
     scanning = run.catch(() => {})
     return run
   }
+  let closing: Promise<void> | undefined
   const findings = createBoardFindings(root, tokens ?? null)
   const delivery = createDelivery({
     pending: (session) => queuedFor(root, session),
@@ -534,25 +536,32 @@ async function listen({
       token = next
     },
     boardUrl,
-    close: async () => {
-      rendered.close()
-      hug.close()
-      claims.close()
-      for (const [timer, release] of settling) {
-        clearTimeout(timer)
-        release()
-      }
-      await Promise.all([
-        watcher.close(),
-        hub.close(),
-        browser.close(),
-        emptyTrash(root),
-      ])
-      await new Promise<void>((done, fail) => {
-        server.close((error) => (error ? fail(error) : done()))
-        // A tab's keep-alive connection would hold close open indefinitely.
-        server.closeAllConnections()
-      })
+    close: () => {
+      closing ??= (async () => {
+        rendered.close()
+        hug.close()
+        claims.close()
+        for (const [timer, release] of settling) {
+          clearTimeout(timer)
+          release()
+        }
+        await Promise.all([
+          watcher.close(),
+          hub.close(),
+          browser.close(),
+          emptyTrash(root),
+        ])
+        // A turn already running, such as a settled change saving its log,
+        // would otherwise write into a folder the caller removes next. Every
+        // turn catches its own failure, so the wait is unbounded.
+        await scanning
+        await new Promise<void>((done, fail) => {
+          server.close((error) => (error ? fail(error) : done()))
+          // A tab's keep-alive connection would hold close open indefinitely.
+          server.closeAllConnections()
+        })
+      })()
+      return closing
     },
   }
 }

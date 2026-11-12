@@ -28,6 +28,7 @@ import {
   SHELL_HOOK_TIMEOUT_MS,
 } from '../../test/support/headless-shell'
 import { withoutRepeats } from '../../test/support/live-pushes'
+import { loadChanges } from './changes/persist'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
 // The server's browser sweep refuses at once, so no spec here starts Chromium.
@@ -518,6 +519,31 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         type: 'changes',
         changes: [{ frame: 'studio/home/hero', author: { session: 'sess-a' } }],
       })
+  })
+
+  it('saves a change it has pushed before close resolves', async () => {
+    // Closing on the push lands inside the turn that broadcast it, while
+    // the change log still saves.
+    let closing: Promise<void> | undefined
+    socket.on('message', (data) => {
+      const message: ServerMessage = JSON.parse(String(data))
+      if (
+        closing === undefined &&
+        message.type === 'changes' &&
+        message.changes.length > 0
+      ) {
+        closing = server.close()
+      }
+    })
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    await expect.poll(() => closing !== undefined, { timeout: 5000 }).toBe(true)
+    await closing
+    const saved = await loadChanges(board.root, 100)
+    expect(saved.changes.map((change) => change.frame)).toEqual([
+      'studio/home/hero',
+    ])
   })
 
   it('marks nothing for a frame the board itself renamed', async () => {
