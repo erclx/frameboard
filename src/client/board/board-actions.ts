@@ -8,6 +8,7 @@ import {
   PanelLeft,
   Pencil,
   Play,
+  Presentation,
   Scaling,
   ScanSearch,
   ZoomIn,
@@ -47,6 +48,15 @@ import { reportRefusal } from './left-panel/page-actions'
 import { type ModeState, modeStore } from './mode'
 import { notesUi } from './notes/tool'
 import { enteredStore, leaveFrame } from './play/entered'
+import {
+  leavePresenting,
+  pageOf,
+  presenting,
+  presentStore,
+  startFrame,
+  startPresenting,
+  stepPresenting,
+} from './present/store'
 import { select, selectionStore } from './selection'
 import { canvasView, reportHandMove } from './view'
 
@@ -82,7 +92,14 @@ export function useBoardActions(): void {
     const unsubscribeMode = modeStore.subscribe(refreshActions)
     const unsubscribeSelection = selectionStore.subscribe(refreshActions)
     const unsubscribeCanvas = canvasView.onAttach(refreshActions)
+    const unsubscribePresent = presentStore.subscribe(refreshActions)
+    // A frame hidden or shown changes whether the page has one to present.
+    const unsubscribeBoard = liveStore.subscribe((state, previous) => {
+      if (state.board !== previous.board) refreshActions()
+    })
     return () => {
+      unsubscribeBoard()
+      unsubscribePresent()
       unsubscribeCanvas()
       unsubscribeSelection()
       unsubscribeMode()
@@ -122,6 +139,67 @@ function steppedFrame(by: 1 | -1): FrameRecord | undefined {
   return next?.ref === ref ? undefined : next
 }
 
+/** The page the mounted canvas shows, when it holds a frame that is not hidden. */
+function presentablePage() {
+  const page = pageOf(canvasView.page())
+  return page && startFrame(page.frames, page.sections, []) ? page : undefined
+}
+
+/**
+ * Presenting's own actions, registered ahead of every other so a shared key
+ * such as an arrow or Esc steps or leaves while a page presents. The overlay
+ * runs the stepping and leaving ones from its own key listener, which keeps
+ * every other key from the board.
+ */
+function presentActions(): Action[] {
+  const step = (by: 1 | -1) => () => stepPresenting(by)
+  return [
+    {
+      id: 'present.start',
+      label: 'Present page',
+      group: 'present',
+      command: {
+        label: 'Present page',
+        icon: Presentation,
+        keywords: ['slides', 'slideshow', 'full screen', 'deck'],
+      },
+      keys: ['Shift+KeyP'],
+      enabled: () => !presenting() && presentablePage() !== undefined,
+      run: () => {
+        const page = presentablePage()
+        if (page) startPresenting(page)
+      },
+    },
+    {
+      id: 'present.next',
+      label: 'Next frame',
+      group: 'present',
+      palette: false,
+      keys: ['ArrowRight', 'ArrowDown', 'Space'],
+      enabled: presenting,
+      run: step(1),
+    },
+    {
+      id: 'present.previous',
+      label: 'Previous frame',
+      group: 'present',
+      palette: false,
+      keys: ['ArrowLeft', 'ArrowUp', 'Shift+Space'],
+      enabled: presenting,
+      run: step(-1),
+    },
+    {
+      id: 'present.leave',
+      label: 'Leave presenting',
+      group: 'present',
+      palette: false,
+      keys: ['Escape'],
+      enabled: presenting,
+      run: leavePresenting,
+    },
+  ]
+}
+
 function boardActions(): Action[] {
   const read = () => modeStore.getState()
   const set = (patch: Partial<ModeState>) => modeStore.setState(patch)
@@ -139,6 +217,7 @@ function boardActions(): Action[] {
     read().mode === 'edit' &&
     selected(selectionStore.getState().frames.length)
   return [
+    ...presentActions(),
     {
       id: 'tool.move',
       label: 'Move',
