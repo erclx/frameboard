@@ -51,6 +51,16 @@ Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge a
 - A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
 - The scroll offset lives on the iframe's window and is never written to the layout or to undo
 
+### `src/client/board/motion/`
+
+Owns the hold, a frame's timeline driven by the board in this tab alone. The inspector's Motion section sets it, and the label shows a Held chip naming the moment, whose click ends it.
+
+- `store.ts` keeps each held or playing frame's moment by ref, and nothing in it reaches the server, the history, or another tab
+- `seek.ts` calls the seek functions in `src/shared/motion.ts` on the iframe's own window, so the hold lands on the frame's clock and never the board's
+- A drag keeps only the latest moment while a seek runs, and play seeks every animation frame, looping at the track's end
+- A hold ends on entering Play and when the frame leaves the canvas on a page switch, and an agent's write reloading the frame lands it on the same moment
+- Ending a hold plays CSS animations on from where they stand, and reloads a `__hf` or `__timelines` page, since neither contract names a play
+
 ### `src/client/board/play/`
 
 Owns Play's own state and surfaces, being the frame entered, the shield, and what the banner can say about a page's reach.

@@ -24,6 +24,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
 - **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone, then Muted in the file, which sets `muted` or drops it
+- **Motion:** a frame whose live page runs a timeline adds play, the time in seconds, and a scrub track between Fill and Export, moving the page in this tab and writing nothing
+- **Filmstrip:** exports 2 to 12 moments at the Export section's scale and theme, disabled for a frame whose animations all repeat forever
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
 - **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
