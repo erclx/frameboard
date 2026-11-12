@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 
 import type { Browser } from 'playwright-core'
 
+import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
@@ -47,8 +48,7 @@ export interface CompositePage {
   name: string
 }
 
-/** Space left around the frames of a composite, past each outermost edge. */
-export const COMPOSITE_MARGIN = 40
+export { COMPOSITE_MARGIN } from '@/shared/capture-limits'
 
 const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 // A seeked shot keeps `allow`, since `disabled` fast-forwards a finite
@@ -160,7 +160,7 @@ export function filmstripBounds(
   count: number,
   scale = 1,
 ): { width: number; height: number } {
-  const width = count * box.width + (count + 1) * COMPOSITE_MARGIN
+  const width = filmstripWidth(box.width, count)
   const height = box.height + 2 * COMPOSITE_MARGIN
   if (
     width * scale > MAX_COMPOSITE_SIDE ||

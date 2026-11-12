@@ -1,5 +1,6 @@
 import type { Browser, Page } from 'playwright-core'
 
+import { MAX_COMPOSITE_SIDE } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
@@ -10,8 +11,7 @@ import { holdAnimationClock } from './seek'
 
 /** How long a frame has to load, its faces and images included, before its capture fails. */
 export const LOAD_TIMEOUT_MS = 10_000
-/** Chromium's screenshot surface stops at this many pixels on either side. */
-export const MAX_COMPOSITE_SIDE = 16384
+export { MAX_COMPOSITE_SIDE } from '@/shared/capture-limits'
 
 export interface OpenFrameOptions {
   /** The origin serving `/frames/`, a frame host or the board server. */
