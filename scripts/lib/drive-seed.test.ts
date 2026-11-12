@@ -84,11 +84,11 @@ describe('the crowd page', () => {
     expect(overlapping).toEqual([])
   })
 
-  it('lists the page last in the project', async () => {
+  it("lists the page after the fixture's own, ahead of the motion page", async () => {
     await seedDrive(root, new Date())
 
     expect(readJson('marketing/project.json')).toMatchObject({
-      pages: ['launch', 'states', 'crowd'],
+      pages: ['launch', 'states', 'crowd', 'motion'],
     })
   })
 
@@ -118,6 +118,42 @@ describe('the crowd page', () => {
     expect(readJson('marketing/project.json')).toMatchObject({
       pages: ['crowd', 'launch', 'states'],
     })
+  })
+})
+
+describe('the motion page', () => {
+  it('lays one desktop frame whose box slides on a finite timeline', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.motion).toBe('laid')
+    expect(readJson('marketing/motion/layout.json')).toEqual({
+      version: 1,
+      frames: {
+        slide: {
+          x: 0,
+          y: 0,
+          width: 1440,
+          height: 900,
+          order: 0,
+          hidden: false,
+          locked: false,
+        },
+      },
+    })
+    expect(
+      readFileSync(join(root, 'marketing/motion/slide.html'), 'utf8'),
+    ).toContain('animation: slide 4s linear forwards')
+  })
+
+  it('leaves a hand-edited motion page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'marketing/motion/slide.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.motion).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
 

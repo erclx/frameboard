@@ -8,6 +8,12 @@ import { FRAME_GAP, FRAME_SIZES } from '@/shared/frame-sizes'
 /** The page a reel pans across, which no committed board carries. */
 const CROWD = { project: 'marketing', page: 'crowd', count: 40, columns: 8 }
 
+/**
+ * The page holding one frame whose box slides across over four seconds, so
+ * the Motion section, its track, and the Held chip have a timeline to drive.
+ */
+const MOTION = { project: 'marketing', page: 'motion', frame: 'slide' }
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -27,20 +33,25 @@ const SESSION = 'drive-seed'
 export interface Seeded {
   /** Whether the crowd page was laid now or was already there and kept. */
   crowd: 'laid' | 'kept'
+  /** Whether the motion page was laid now or was already there and kept. */
+  motion: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
 
 /**
  * Lays the states a drive films that the committed `basic` board lacks: a
- * 40-frame `marketing/crowd` page, and a live reservation of three boxes on
- * `webapp/settings`. A crowd page already present is left as a reel edited it,
- * and the reservation replaces the seed's own earlier set.
+ * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
+ * animates, and a live reservation of three boxes on `webapp/settings`. A
+ * page already present is left as a reel edited it, and the reservation
+ * replaces the seed's own earlier set.
  */
 export async function seedDrive(root: string, now: Date): Promise<Seeded> {
+  // In turn, since both pages append to one project.json.
   const crowd = await layCrowd(root)
+  const motion = await layMotion(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, reserved }
+  return { crowd, motion, reserved }
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
@@ -69,10 +80,60 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
       join(folder, 'layout.json'),
       `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
     ),
-    listPage(root),
+    listPage(root, CROWD.page),
   )
   await Promise.all(writes)
   return 'laid'
+}
+
+async function layMotion(root: string): Promise<'laid' | 'kept'> {
+  const folder = join(root, MOTION.project, MOTION.page)
+  if (existsSync(folder)) return 'kept'
+  await mkdir(folder)
+
+  const { width, height } = FRAME_SIZES.desktop
+  const frames = {
+    [MOTION.frame]: {
+      x: 0,
+      y: 0,
+      width,
+      height,
+      order: 0,
+      hidden: false,
+      locked: false,
+    },
+  }
+  await Promise.all([
+    writeFile(join(folder, `${MOTION.frame}.html`), slideHtml()),
+    writeFile(
+      join(folder, 'layout.json'),
+      `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
+    ),
+  ])
+  await listPage(root, MOTION.page)
+  return 'laid'
+}
+
+/**
+ * A box sliding 1000 px right over four seconds and holding there, painted in
+ * the board's tokens, so it reads in both themes and its filmstrip has an end.
+ */
+function slideHtml(): string {
+  const { height } = FRAME_SIZES.desktop
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${MOTION.frame}</title>
+    <style>
+      @keyframes slide { from { transform: translateX(0) } to { transform: translateX(1000px) } }
+      body { margin: 0; height: ${height}px; display: grid; align-items: center; padding: 0 120px; background: var(--surface); }
+      [data-name="Box"] { width: 160px; height: 160px; border-radius: 24px; background: var(--text); animation: slide 4s linear forwards; }
+    </style>
+  </head>
+  <body><div data-name="Box"></div></body>
+</html>
+`
 }
 
 /**
@@ -90,13 +151,13 @@ function frameHtml(name: string, index: number): string {
 `
 }
 
-async function listPage(root: string): Promise<void> {
-  const path = join(root, CROWD.project, 'project.json')
+async function listPage(root: string, page: string): Promise<void> {
+  const path = join(root, 'marketing', 'project.json')
   const project = JSON.parse(await readFile(path, 'utf8')) as {
     pages: string[]
   }
-  if (project.pages.includes(CROWD.page)) return
-  project.pages.push(CROWD.page)
+  if (project.pages.includes(page)) return
+  project.pages.push(page)
   await writeFile(path, `${JSON.stringify(project, null, 2)}\n`)
 }
 
