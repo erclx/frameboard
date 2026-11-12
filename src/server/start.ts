@@ -20,6 +20,7 @@ import { createAssetUsage } from './board/asset-usage'
 import { FRAME_EXTENSION, scanBoard } from './board/scan'
 import { launchCaptureBrowser, type Launcher } from './capture/browser'
 import { measureContent } from './capture/fit'
+import { createWarmFilmstripRenderer } from './capture/images'
 import { createWarmBrowser, createWarmRenderer } from './capture/render'
 import { createThumbnailStore, type ThumbnailStore } from './capture/thumbnails'
 import { type ChangeTracker, createChangeTracker } from './changes/tracker'
@@ -335,6 +336,7 @@ async function listen({
   )
   const baseUrl = () => `http://${HOSTNAME}:${bound}`
   const renderFrame = createWarmRenderer({ baseUrl, browser, scale: 2 })
+  const renderFilmstrip = createWarmFilmstripRenderer({ baseUrl, browser })
   const thumbnails = createThumbnailStore({
     root,
     run: randomUUID().slice(0, 8),
@@ -398,6 +400,7 @@ async function listen({
     history,
     selection,
     renderFrame,
+    renderFilmstrip,
     clipboard: clipboardFiles(),
     thumbnails,
     measure,

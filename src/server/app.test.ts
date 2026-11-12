@@ -44,6 +44,7 @@ describe('createApp', () => {
         show: async () => 0,
       },
       renderFrame: async () => Buffer.alloc(0),
+      renderFilmstrip: async () => Buffer.alloc(0),
       clipboard,
       history: new History('/board'),
       selection: createSelectionHolder(() => 0),

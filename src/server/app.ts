@@ -5,6 +5,7 @@ import { version } from '@/shared/version'
 
 import type { Tickets } from './access/tickets'
 import type { AssetUsage } from './board/asset-usage'
+import type { RenderFilmstrip } from './capture/images'
 import type { RenderFrame } from './capture/render'
 import type { ThumbnailStore } from './capture/thumbnails'
 import type { ClipboardFiles } from './clipboard/files'
@@ -73,6 +74,8 @@ export interface AppOptions {
   openRoute?: boolean
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
+  /** Renders a frame's filmstrip for `GET /api/frames/png?filmstrip=<n>`. */
+  renderFilmstrip: RenderFilmstrip
   /** Puts copied frames on the OS clipboard, null or absent where this system has no backend. */
   clipboard?: ClipboardFiles | null
   /** The folder holding the faces every frame imports. */
@@ -109,6 +112,7 @@ export function createApp({
   tickets,
   openRoute,
   renderFrame,
+  renderFilmstrip,
   clipboard = null,
   facesDir,
   tokens,
@@ -170,7 +174,7 @@ export function createApp({
       frames.look.sheets,
     ),
   )
-  app.route('/', pngRoutes(root, renderFrame))
+  app.route('/', pngRoutes(root, renderFrame, renderFilmstrip))
   app.route('/', clipboardRoutes(root, actions.access, renderFrame, clipboard))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
