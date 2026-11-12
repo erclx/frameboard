@@ -145,7 +145,13 @@ describe('useBoardActions', () => {
       await userEvent.click(
         await screen.findByRole('menuitemradio', { name: /Hand/ }),
       )
-      expect(document.activeElement).not.toBe(document.body)
+      // The menu hands focus back to its trigger once it closes, which lands
+      // late under load, after a disarm that ran too early.
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('button', { name: 'Pointer tools' }),
+        ),
+      )
 
       board.action('tool.disarm').run()
 

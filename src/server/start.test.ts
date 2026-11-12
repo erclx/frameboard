@@ -28,6 +28,7 @@ import {
   SHELL_HOOK_TIMEOUT_MS,
 } from '../../test/support/headless-shell'
 import { withoutRepeats } from '../../test/support/live-pushes'
+import { loadChanges } from './changes/persist'
 import { BoardTabs, type RunningServer, startServer } from './start'
 
 // The server's browser sweep refuses at once, so no spec here starts Chromium.
@@ -520,6 +521,31 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       })
   })
 
+  it('saves a change it has pushed before close resolves', async () => {
+    // Closing on the push lands inside the turn that broadcast it, while
+    // the change log still saves.
+    let closing: Promise<void> | undefined
+    socket.on('message', (data) => {
+      const message: ServerMessage = JSON.parse(String(data))
+      if (
+        closing === undefined &&
+        message.type === 'changes' &&
+        message.changes.length > 0
+      ) {
+        closing = server.close()
+      }
+    })
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    await expect.poll(() => closing !== undefined, { timeout: 5000 }).toBe(true)
+    await closing
+    const saved = await loadChanges(board.root, 100)
+    expect(saved.changes.map((change) => change.frame)).toEqual([
+      'studio/home/hero',
+    ])
+  })
+
   it('marks nothing for a frame the board itself renamed', async () => {
     const token = 'c'.repeat(64)
     server.authorize(token)
@@ -732,6 +758,21 @@ describe.skipIf(shell === null)(
                 message.data.projects[0]?.pages.some((page) =>
                   page.frames.some((frame) => frame.ref === 'studio/home/tall'),
                 ),
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      // The watcher can split the write into two batches under load. A frame
+      // written after it is read in the second batch or a later one, so its
+      // reload means no reload of tall is still on its way.
+      writeFileSync(join(board.root, 'studio/home/sentinel.html'), '<p>s</p>')
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'reload' &&
+                message.refs.includes('studio/home/sentinel'),
             ),
           { timeout: 10_000 },
         )

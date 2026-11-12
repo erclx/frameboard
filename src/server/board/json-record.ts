@@ -138,10 +138,7 @@ async function acquire(lock: string, timeoutMs: number): Promise<string> {
     }
 
     const stale = await staleContent(lock)
-    if (stale !== null) {
-      await breakLock(lock, stale)
-      continue
-    }
+    if (stale !== null && (await breakLock(lock, stale))) continue
     if (Date.now() >= deadline) {
       throw new FrameboardError(
         'lock-timeout',
@@ -177,27 +174,78 @@ async function staleContent(lock: string): Promise<string | null> {
 }
 
 /**
- * Breaks a stale lock by renaming it aside, so of two waiters judging one
- * lock stale only the first rename wins. A waiter whose rename caught a fresh
- * lock instead, taken since it judged, puts that lock back.
+ * Breaks a stale lock under a guard, so one writer at a time re-reads the
+ * lock and retires it only while it still holds the content judged stale.
+ * Without the guard, a second breaker could rename aside the lock a first
+ * one had just taken, and put it back after its owner released it, leaving
+ * a lock nobody holds. A guard a crashed breaker left behind ages out like a
+ * lock. False while another breaker holds the guard, so the caller waits.
  */
-async function breakLock(lock: string, judged: string): Promise<void> {
-  const record = lock.slice(0, -LOCK_SUFFIX.length)
-  const aside = `${record}.${randomBytes(4).toString('hex')}.broken${LOCK_SUFFIX}`
+async function breakLock(lock: string, judged: string): Promise<boolean> {
+  const guard = `${lock.slice(0, -LOCK_SUFFIX.length)}.break${LOCK_SUFFIX}`
+  const nonce = randomBytes(8).toString('hex')
   try {
-    await rename(lock, aside)
+    const handle = await open(guard, 'wx')
+    await handle.writeFile(nonce)
+    await handle.close()
+  } catch (error) {
+    if (!isCode(error, 'EEXIST')) throw error
+    await clearAgedGuard(guard)
+    return false
+  }
+  try {
+    if ((await readOrNull(lock)) === judged) await retire(lock, judged)
+    return true
+  } finally {
+    if ((await readOrNull(guard)) === nonce) await rm(guard, { force: true })
+  }
+}
+
+async function clearAgedGuard(guard: string): Promise<void> {
+  let text: string
+  let modifiedAt: number
+  try {
+    ;[text, { mtimeMs: modifiedAt }] = await Promise.all([
+      readFile(guard, 'utf8'),
+      stat(guard),
+    ])
+  } catch (error) {
+    if (isCode(error, 'ENOENT')) return
+    throw error
+  }
+  if (Date.now() - modifiedAt > LOCK_STALE_MS) await retire(guard, text)
+}
+
+/**
+ * Removes a file by renaming it aside, so of two writers retiring it only
+ * the first rename wins. A rename that caught a newer file, written since
+ * the content was judged, puts that file back.
+ */
+async function retire(path: string, judged: string): Promise<void> {
+  const aside = `${path.slice(0, -LOCK_SUFFIX.length)}.${randomBytes(4).toString('hex')}.broken${LOCK_SUFFIX}`
+  try {
+    await rename(path, aside)
   } catch (error) {
     if (isCode(error, 'ENOENT')) return
     throw error
   }
   try {
     if ((await readFile(aside, 'utf8')) !== judged) {
-      await link(aside, lock).catch((error: unknown) => {
+      await link(aside, path).catch((error: unknown) => {
         if (!isCode(error, 'EEXIST')) throw error
       })
     }
   } finally {
     await rm(aside, { force: true })
+  }
+}
+
+async function readOrNull(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch (error) {
+    if (isCode(error, 'ENOENT')) return null
+    throw error
   }
 }
 
