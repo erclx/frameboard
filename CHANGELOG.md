@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.32.0](https://github.com/erclx/frameboard/compare/v0.31.0...v0.32.0) (2026-11-12)
+
+
+### Features
+
+* **canvas:** scroll, set the height mode of, and open frames alone ([#302](https://github.com/erclx/frameboard/issues/302)) ([a3c9847](https://github.com/erclx/frameboard/commit/a3c9847516661901adc07c1da5296cf7a960e07c))
+* **canvas:** scrub and filmstrip a frame's motion on the board ([#306](https://github.com/erclx/frameboard/issues/306)) ([bca392f](https://github.com/erclx/frameboard/commit/bca392fbd914bf0a58e9b0d06f319f4ebea3afdd))
+* **capture:** capture a frame's motion at chosen moments ([#300](https://github.com/erclx/frameboard/issues/300)) ([3348658](https://github.com/erclx/frameboard/commit/3348658342f207918eaa313baaced04260c192ac))
+* **present:** present a page's frames full screen one at a time ([#305](https://github.com/erclx/frameboard/issues/305)) ([c6e65a1](https://github.com/erclx/frameboard/commit/c6e65a1014543ddc6326a71d638c74e3332010d4))
+
+
+### Bug Fixes
+
+* **fit:** refuse content that draws taller at the height fit answers ([#298](https://github.com/erclx/frameboard/issues/298)) ([d0f2e52](https://github.com/erclx/frameboard/commit/d0f2e52fdb368b67578104b85b9ab9baa08e6a83))
+* **notes:** label a message You only when the viewer wrote it ([#297](https://github.com/erclx/frameboard/issues/297)) ([7cbd44a](https://github.com/erclx/frameboard/commit/7cbd44a70f6684e5a4111876974154213c72d8c2))
+* **server:** wait out close and break dead locks under a guard ([#304](https://github.com/erclx/frameboard/issues/304)) ([5fe598f](https://github.com/erclx/frameboard/commit/5fe598fa8d77ecd255320145cdfab1c6a5d655dc))
+* **shell:** name triggers by their text and keep keyboard focus in reach ([#299](https://github.com/erclx/frameboard/issues/299)) ([a037837](https://github.com/erclx/frameboard/commit/a037837f9b2d764f1890ed26ba5f5ff9eabd52ee))
+
 ## [0.31.0](https://github.com/erclx/frameboard/compare/v0.30.0...v0.31.0) (2026-11-11)
 
 
