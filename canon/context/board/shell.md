@@ -61,6 +61,18 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
 - A layers row in Play reveals its frame and enters it
 
+### `src/client/board/present/`
+
+Owns present mode, which shows a page's frames one at a time over the whole window on black, each scaled to fit, through the browser's Fullscreen API. It is a view and never a write, so it records no undo step.
+
+- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in Layers order, or the next shown one when that is hidden
+- It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
+- `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
+- The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
+- `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, so a slide's arrows and Space yield and no other key reaches the board
+
+`bar.tsx` draws back, the count, the name, next, and leave, shown on a pointer move and hidden after two seconds still, with no fade under reduced motion.
+
 ### `src/client/board/sections/`
 
 Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which is the panel's section heading and shares only the word.
@@ -152,7 +164,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
-- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, the Place toggle, Undo, Redo, Zoom to fit, the theme toggle, and the Edit and Play toggle
+- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, the Place toggle, Undo, Redo, Zoom to fit, the theme toggle, the Edit and Play toggle, and Present
 - The Move button shows Hand while Hand is on, and the Frame button Frame or Section, whichever was chosen last, and each caret opens both, keys V and H, and F and Shift+S
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
@@ -161,7 +173,7 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 The toolbar folds in stages to fit its column.
 
 - `toolbar-stage.ts` picks one of five stages from the column's width, never the window's, since a dragged panel narrows the column at any window size
-- Below a 731 px column Place folds to a dropdown and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
+- Below a 778 px column Place folds to a dropdown and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
 - The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, and the clip test in `toolbar.test.tsx` catches a width that stopped fitting
 
 The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner.
