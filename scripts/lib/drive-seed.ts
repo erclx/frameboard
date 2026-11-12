@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { reserve } from '@/server/claims/store'
@@ -13,6 +13,9 @@ const CROWD = { project: 'marketing', page: 'crowd', count: 40, columns: 8 }
  * the Motion section, its track, and the Held chip have a timeline to drive.
  */
 const MOTION = { project: 'marketing', page: 'motion', frame: 'slide' }
+
+/** A box sliding 1000 px right over four seconds and holding there, in the board's tokens. */
+const SLIDE_PAGE = join(import.meta.dirname, 'drive-slide.html')
 
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
@@ -104,7 +107,7 @@ async function layMotion(root: string): Promise<'laid' | 'kept'> {
     },
   }
   await Promise.all([
-    writeFile(join(folder, `${MOTION.frame}.html`), slideHtml()),
+    copyFile(SLIDE_PAGE, join(folder, `${MOTION.frame}.html`)),
     writeFile(
       join(folder, 'layout.json'),
       `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
@@ -112,28 +115,6 @@ async function layMotion(root: string): Promise<'laid' | 'kept'> {
   ])
   await listPage(root, MOTION.page)
   return 'laid'
-}
-
-/**
- * A box sliding 1000 px right over four seconds and holding there, painted in
- * the board's tokens, so it reads in both themes and its filmstrip has an end.
- */
-function slideHtml(): string {
-  const { height } = FRAME_SIZES.desktop
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${MOTION.frame}</title>
-    <style>
-      @keyframes slide { from { transform: translateX(0) } to { transform: translateX(1000px) } }
-      body { margin: 0; height: ${height}px; display: grid; align-items: center; padding: 0 120px; background: var(--surface); }
-      [data-name="Box"] { width: 160px; height: 160px; border-radius: 24px; background: var(--text); animation: slide 4s linear forwards; }
-    </style>
-  </head>
-  <body><div data-name="Box"></div></body>
-</html>
-`
 }
 
 /**
