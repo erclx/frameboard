@@ -762,6 +762,21 @@ describe.skipIf(shell === null)(
           { timeout: 10_000 },
         )
         .toBe(true)
+      // The watcher can split the write into two batches under load. A frame
+      // written after it is read in the second batch or a later one, so its
+      // reload means no reload of tall is still on its way.
+      writeFileSync(join(board.root, 'studio/home/sentinel.html'), '<p>s</p>')
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'reload' &&
+                message.refs.includes('studio/home/sentinel'),
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
       messages = []
 
       await cli(['frame', 'add', 'studio/home/tall', '--size', 'desktop'], {
