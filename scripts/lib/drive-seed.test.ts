@@ -151,7 +151,7 @@ describe('the settings reservation', () => {
     expect(new Set(live.map((each) => each.set)).size).toBe(1)
   })
 
-  it('lays its reservation over a .run that already holds a claim', async () => {
+  it('drops a claim in .run that lapses before the day-ahead stamp', async () => {
     await claim(
       root,
       {
@@ -166,8 +166,10 @@ describe('the settings reservation', () => {
     await seedDrive(root, new Date())
 
     const live = await readClaims(root, new Date())
-    expect(
-      live.filter((each) => each.frame.startsWith('webapp/settings/')),
-    ).toHaveLength(3)
+    expect(live.map((each) => each.frame).sort()).toEqual([
+      'webapp/settings/billing',
+      'webapp/settings/security',
+      'webapp/settings/team',
+    ])
   })
 })
