@@ -27,6 +27,7 @@ import {
 const race = vi.hoisted(() => ({
   onLockStat: [] as (() => Promise<void>)[],
   onLink: undefined as (() => Promise<void>) | undefined,
+  onGuardRename: undefined as (() => Promise<void>) | undefined,
 }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -37,6 +38,12 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       if (String(args[0]).endsWith('layout.json.lock'))
         await race.onLockStat.shift()?.()
       return fs.stat(...args)
+    },
+    rename: async (...args: Parameters<typeof fs.rename>) => {
+      if (String(args[0]).endsWith('layout.json.break.lock')) {
+        await race.onGuardRename?.()
+      }
+      return fs.rename(...args)
     },
     link: async (...args: Parameters<typeof fs.link>) => {
       await race.onLink?.()
@@ -67,6 +74,7 @@ describe('json-record', () => {
   afterEach(() => {
     race.onLockStat = []
     race.onLink = undefined
+    race.onGuardRename = undefined
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -233,6 +241,25 @@ describe('json-record', () => {
       })
 
       expect(readdirSync(dir)).toEqual(['layout.json'])
+    })
+
+    it('keeps a fresh break guard that replaced an aged one it judged', async () => {
+      const deadPid = spawnSync('true').pid
+      writeFileSync(`${path}.lock`, JSON.stringify({ pid: deadPid }))
+      writeFileSync(`${path}.break.lock`, '')
+      const old = new Date(Date.now() - 11_000)
+      utimesSync(`${path}.break.lock`, old, old)
+      // Another breaker clears the aged guard and takes its own while this
+      // writer is about to retire the one it judged aged.
+      race.onGuardRename = async () => {
+        race.onGuardRename = undefined
+        writeFileSync(`${path}.break.lock`, 'theirs')
+      }
+
+      await expect(
+        updateRecord(path, layoutSpec, (layout) => layout, { timeoutMs: 100 }),
+      ).rejects.toMatchObject({ code: 'lock-timeout' })
+      expect(readFileSync(`${path}.break.lock`, 'utf8')).toBe('theirs')
     })
 
     it('waits out a dead lock while a fresh break guard is held', async () => {
