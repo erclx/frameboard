@@ -52,6 +52,24 @@
       "thread": "n_5e1a0b02",
       "createdAt": "2026-10-19T16:13:00.000Z",
       "updatedAt": "2026-10-19T16:13:00.000Z"
+    },
+    {
+      "id": "n_5e1a0b04",
+      "number": null,
+      "frame": "hero",
+      "anchor": {
+        "index": 5,
+        "hash": "1e06b944f1061d1b09b2651ab3d4bdcae11b8cfd12e58a706860c9050a954184"
+      },
+      "text": "Thanks. Try the caption in the same face.",
+      "from": "developer",
+      "author": null,
+      "session": null,
+      "to": null,
+      "state": "open",
+      "thread": "n_5e1a0b02",
+      "createdAt": "2026-10-19T16:20:00.000Z",
+      "updatedAt": "2026-10-19T16:20:00.000Z"
     }
   ]
 }
