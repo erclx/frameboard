@@ -1949,6 +1949,38 @@ async function markAllSeenOnLoad(page: Page): Promise<void> {
 }
 
 /**
+ * Presents the page from the toolbar once its Present button lights, then
+ * keeps the bar shown with a pointer move every half second, since it hides
+ * two seconds still. The click carries no user activation, so the page
+ * presents in the window rather than full screen.
+ */
+async function presentOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const press = () => {
+        const button = document.querySelector<HTMLButtonElement>(
+          'button[aria-label="Present page"]:not([aria-disabled])',
+        )
+        if (!button) {
+          if (--left > 0) requestAnimationFrame(press)
+          else console.error('The Present button never lit')
+          return
+        }
+        button.click()
+        setInterval(() => {
+          document
+            .querySelector('[data-presenting]')
+            ?.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }))
+        }, 500)
+      }
+      document.addEventListener('DOMContentLoaded', press)
+    },
+    { frames: ROW_FRAMES },
+  )
+}
+
+/**
  * Opens the selected frame's size menu once write access lights its
  * trigger, waiting in an init script as `pressOnLoad` does. The trigger is
  * named by its text, which the toolbar's Frame tool shares as a label.
@@ -2883,6 +2915,20 @@ const CASES: CaptureCase[] = [
             noAgentChanges,
             onCanvas({ select: ['webapp/home/about'] }),
             readyWhen('[data-rail-thumb]'),
+          ),
+        ),
+      },
+      {
+        section: 'present',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            noAgentChanges,
+            presentOnLoad,
+            readyWhen('[data-presenting] [data-shown]'),
           ),
         ),
       },
