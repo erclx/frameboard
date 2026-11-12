@@ -108,12 +108,14 @@ describe('MotionSection', () => {
         await screen.findByRole('button', { name: 'Filmstrip frames' }),
       )
 
-      expect(
-        await screen.findByRole('menuitemradio', { name: '5 frames' }),
-      ).toBeVisible()
-      expect(
-        screen.queryByRole('menuitemradio', { name: '6 frames' }),
-      ).toBeNull()
+      const offered = await screen.findAllByRole('menuitemradio')
+
+      expect(offered.map((item) => item.textContent)).toEqual([
+        '2 frames',
+        '3 frames',
+        '4 frames',
+        '5 frames',
+      ])
     })
 
     it('lowers a count past the cap when the scale rises', async () => {
