@@ -54,6 +54,8 @@ function bindingMatches(binding: string, event: KeyboardEvent): boolean {
  */
 function takeKeys(target: Window, frame: boolean): () => void {
   const press = (event: KeyboardEvent) => {
+    // Space and Enter press a focused bar button, which a step would cancel.
+    if (pressesButton(event)) return
     const action = PRESENT_KEYS.map((id) => findAction(id)).find((candidate) =>
       candidate?.keys?.some((binding) => bindingMatches(binding, event)),
     )
@@ -67,6 +69,33 @@ function takeKeys(target: Window, frame: boolean): () => void {
   }
   target.addEventListener('keydown', press, true)
   return () => target.removeEventListener('keydown', press, true)
+}
+
+function pressesButton(event: KeyboardEvent): boolean {
+  return (
+    (event.code === 'Space' || event.key === 'Enter') &&
+    event.target instanceof Element &&
+    event.target.closest('button') !== null
+  )
+}
+
+/**
+ * Makes every other part of the page inert while presenting, so Tab never
+ * leaves the overlay for the board behind it and a press there runs nothing.
+ */
+function useInertBehind(layer: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    const own = layer.current
+    if (!own) return
+    const behind = [...document.body.children].filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && !child.contains(own) && !child.inert,
+    )
+    for (const element of behind) element.inert = true
+    return () => {
+      for (const element of behind) element.inert = false
+    }
+  }, [layer])
 }
 
 /** How long the pointer rests before the bar fades out. */
@@ -162,6 +191,7 @@ function Presenting({ frame, at, count }: PresentingProps) {
   const room = useRoom(layer)
   const { shown, wake } = useBarWake()
   useLeaveWithFullscreen()
+  useInertBehind(layer)
 
   useEffect(() => takeKeys(window, false), [])
   useEffect(() => {

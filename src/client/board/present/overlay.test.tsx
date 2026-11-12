@@ -141,6 +141,30 @@ describe('presenting a page', () => {
     expect(selectionStore.getState().frames).toEqual(['studio/home/second'])
   })
 
+  it('presses a focused bar button with Space rather than stepping', async () => {
+    present(framesOf('second', 'first'))
+    screen.getByRole('button', { name: 'Leave presenting' }).focus()
+
+    await userEvent.keyboard('[Space]')
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(selectionStore.getState().frames).toEqual(['studio/home/first'])
+  })
+
+  it('makes the board behind it inert, so Tab stays in the overlay', () => {
+    const behind = document.createElement('div')
+    behind.innerHTML = '<button type="button">Home</button>'
+    document.body.append(behind)
+    present(framesOf('first'))
+
+    expect(behind.inert).toBe(true)
+
+    act(() => presentStore.setState({ page: null, frame: null }))
+
+    expect(behind.inert).toBe(false)
+    behind.remove()
+  })
+
   it('leaves from the bar', async () => {
     present(framesOf('first'))
 
