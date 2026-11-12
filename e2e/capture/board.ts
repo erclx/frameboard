@@ -1955,8 +1955,23 @@ async function markAllSeenOnLoad(page: Page): Promise<void> {
  * presents in the window rather than full screen.
  */
 async function presentOnLoad(page: Page): Promise<void> {
+  await presentingOnLoad(page, null)
+}
+
+/**
+ * Presents as `presentOnLoad` does, then puts keyboard focus on the bar
+ * button named `focus`, so the capture shows its focus ring.
+ */
+function presentFocusedOnLoad(focus: string): (page: Page) => Promise<void> {
+  return (page) => presentingOnLoad(page, focus)
+}
+
+async function presentingOnLoad(
+  page: Page,
+  focus: string | null,
+): Promise<void> {
   await page.addInitScript(
-    ({ frames }) => {
+    ({ frames, focus }) => {
       let left = frames
       const press = () => {
         const button = document.querySelector<HTMLButtonElement>(
@@ -1973,10 +1988,22 @@ async function presentOnLoad(page: Page): Promise<void> {
             .querySelector('[data-presenting]')
             ?.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }))
         }, 500)
+        if (focus === null) return
+        let tries = frames
+        const reach = () => {
+          const target = document.querySelector<HTMLButtonElement>(
+            `[data-presenting] button[aria-label="${focus}"]`,
+          )
+          if (target) {
+            target.focus({ focusVisible: true } as FocusOptions)
+            target.setAttribute('data-focused', '')
+          } else if (--tries > 0) requestAnimationFrame(reach)
+        }
+        reach()
       }
       document.addEventListener('DOMContentLoaded', press)
     },
-    { frames: ROW_FRAMES },
+    { frames: ROW_FRAMES, focus },
   )
 }
 
@@ -2929,6 +2956,20 @@ const CASES: CaptureCase[] = [
             noAgentChanges,
             presentOnLoad,
             readyWhen('[data-presenting] [data-shown]'),
+          ),
+        ),
+      },
+      {
+        section: 'present-focus',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            noAgentChanges,
+            presentFocusedOnLoad('Next frame'),
+            readyWhen('[data-presenting] [data-focused]'),
           ),
         ),
       },
