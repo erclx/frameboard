@@ -78,25 +78,11 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
 /** A numbered frame whose hue steps with its index, so a pan reads as movement. */
 function frameHtml(name: string, index: number): string {
   const hue = Math.round((index * 360) / CROWD.count)
+  const style = `margin: 0; min-height: 100vh; display: grid; place-items: center; background: hsl(${hue} 60% 85%); font: 600 96px system-ui, sans-serif`
   return `<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${name}</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: hsl(${hue} 60% 85%);
-        font: 600 96px system-ui, sans-serif;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>${index + 1}</h1>
-  </body>
+  <head><meta charset="utf-8" /><title>${name}</title></head>
+  <body style="${style}"><h1>${index + 1}</h1></body>
 </html>
 `
 }
