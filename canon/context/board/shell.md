@@ -63,15 +63,13 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 
 ### `src/client/board/present/`
 
-Owns present mode, which shows a page's frames one at a time over the whole window on black, each scaled to fit, through the browser's Fullscreen API. It is a view and never a write, so it records no undo step.
+Owns present mode, which shows a page's frames one at a time over the whole window on black, each scaled to fit, through the browser's Fullscreen API. It is a view and never a write, so it records no undo step. `bar.tsx` draws back, the count, the name, next, and leave, shown on a pointer move and hidden after two seconds still.
 
 - `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in Layers order, or the next shown one when that is hidden
 - It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
 - `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
 - The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
 - `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, so a slide's arrows and Space yield and no other key reaches the board
-
-`bar.tsx` draws back, the count, the name, next, and leave, shown on a pointer move and hidden after two seconds still, with no fade under reduced motion.
 
 ### `src/client/board/sections/`
 
