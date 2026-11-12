@@ -1,6 +1,8 @@
+import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { createSeeker, readFrameMotion } from './seek'
+import { createSeeker, readFrameMotion, useMotionDriver } from './seek'
+import { holdMotion, releaseMotion } from './store'
 
 // A box sliding 200 px right over 2 s, so its left edge names the moment.
 // canon-allow-embedded: the page whose slide the hold assertions read, kept beside them
@@ -133,5 +135,34 @@ describe('a drag over a slow seek', () => {
     await Promise.all(runs)
 
     expect((view as unknown as { seeks: number[] }).seeks).toEqual([0, 2.95])
+  })
+})
+
+describe('a held frame an agent rewrites while its timeline is read', () => {
+  afterEach(() => {
+    releaseMotion('studio/home/slide')
+  })
+
+  it('holds the page it reloads into, though the read of the page it left never settles', async () => {
+    const view = await frameWith(SLIDE)
+    const iframe = mounted[0]
+    if (!iframe) throw new Error('No frame mounted.')
+    renderHook(() =>
+      useMotionDriver({ current: iframe }, 'studio/home/slide', true, false),
+    )
+
+    holdMotion('studio/home/slide', 1000)
+    const reloaded = new Promise((done) =>
+      iframe.addEventListener('load', done, { once: true }),
+    )
+    // A write landing before the first read's frame runs discards that document.
+    iframe.srcdoc = `${SLIDE}<!-- rewritten -->`
+    await reloaded
+
+    await waitFor(() => {
+      const animation = view.document.getAnimations()[0]
+      expect(animation?.playState).toBe('paused')
+      expect(animation?.currentTime).toBe(1000)
+    })
   })
 })

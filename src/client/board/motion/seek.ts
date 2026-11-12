@@ -165,7 +165,11 @@ export function useMotionDriver(
       found: FrameMotion
       seek: (ms: number) => Promise<void>
     } | null = null
-    let binding = false
+    // Each load is a new generation. A read started for an older one is
+    // dropped, and may never settle, since a discarded document runs no
+    // animation frames, so it never blocks the bind of the page now shown.
+    let generation = 0
+    let bindingFor: number | null = null
     // Whether this document has been seeked, so a release touches only a page the board moved.
     let driven = false
     let clock: { from: number; started: number; frame: number } | null = null
@@ -213,11 +217,12 @@ export function useMotionDriver(
 
     const bind = async () => {
       const view = element.contentWindow
-      if (binding || !view) return
-      binding = true
+      const asked = generation
+      if (bindingFor === asked || !view) return
+      bindingFor = asked
       const found = await readFrameMotion(view).catch(() => null)
-      binding = false
-      if (disposed || element.contentWindow !== view || !found) return
+      if (bindingFor === asked) bindingFor = null
+      if (disposed || asked !== generation || !found) return
       bound = { view, found, seek: createSeeker(view, found.motion) }
       apply()
     }
@@ -225,6 +230,7 @@ export function useMotionDriver(
     // An agent's write reloads the page, so the hold binds the new document
     // and lands on the same moment.
     const reload = () => {
+      generation += 1
       stopClock()
       bound = null
       driven = false
