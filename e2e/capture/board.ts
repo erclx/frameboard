@@ -566,6 +566,68 @@ async function reservedRow(page: Page): Promise<void> {
   })
 }
 
+/** A box sliding 800 px right over 4 s, so a hold names the moment by where it stands. */
+const SLIDE_FRAME = join(
+  import.meta.dirname,
+  '../../test/fixtures/frames/slide.html',
+)
+
+/**
+ * Serves the slide in the hero's place, so the hero draws a Motion section,
+ * and puts the file back once the capture page closes so no later case shows it.
+ */
+async function slidingHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(path, readFileSync(SLIDE_FRAME, 'utf8'))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Sets the Motion section's track to its middle once it lights, as a drag
+ * releasing there would, then marks the body `data-capture-held` once the
+ * hero's page reads its animation paused at that moment. The Held chip
+ * draws before the seek lands, so the shot waits on the page rather than it.
+ */
+async function heldMidway(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      let set = false
+      const step = () => {
+        const track = document.querySelector<HTMLInputElement>(
+          'section[aria-labelledby="inspector-motion"] input[aria-label="Position"]',
+        )
+        if (!set && track && !track.disabled && Number(track.max) > 0) {
+          const value = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value',
+          )
+          value?.set?.call(track, String(Number(track.max) / 2))
+          track.dispatchEvent(new Event('input', { bubbles: true }))
+          set = true
+        }
+        const hero = document.querySelector<HTMLIFrameElement>(
+          '[data-frame="webapp/home/hero"] > iframe',
+        )
+        const animation = hero?.contentDocument?.getAnimations()[0]
+        if (
+          set &&
+          animation?.playState === 'paused' &&
+          animation.currentTime === 2000
+        ) {
+          document.body.dataset.captureHeld = ''
+          return
+        }
+        if (--left > 0) requestAnimationFrame(step)
+        else console.error('The hero never held mid-slide')
+      }
+      document.addEventListener('DOMContentLoaded', step)
+    },
+    { frames: PRESS_FRAMES },
+  )
+}
+
 /**
  * Sets the hero's headline and caption in a raw indigo no token names, since
  * the fixture paints only through tokens, and puts the file back once the
@@ -3828,6 +3890,25 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'motion-held',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // An animated hero held mid-slide: the Motion section with its time,
+        // track, and Filmstrip row, and the Held chip on the label.
+        setup: themed(
+          both(
+            slidingHero,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            heldMidway,
+            readyWhen('[data-capture-held] [data-held-chip]'),
+          ),
+        ),
+      },
+      {
         section: 'export-section',
         theme,
         route: '/p/webapp/home',
@@ -4138,6 +4219,7 @@ const WRITING_SECTIONS = [
   'select-color',
   'select-color-done',
   'scroll-rail',
+  'motion-held',
 ]
 
 export const BOARD_CASES: CaptureCase[] = [
