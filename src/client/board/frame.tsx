@@ -42,6 +42,8 @@ import { renderedHash } from './frame-dom'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
 import { useMode } from './mode'
+import { useMotionDriver } from './motion/seek'
+import { formatMoment, releaseMotion, useMotionHold } from './motion/store'
 import { useEntered } from './play/entered'
 import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
@@ -89,6 +91,7 @@ export const Frame = memo(function Frame({
   const { x, y, width, height } = useDrawnBox(frame)
   const storedWidth = (usePendingBox(frame.ref) ?? frame.box).width
   const preview = usePreview(frame.ref)
+  const hold = useMotionHold(frame.ref)
   const renaming = useRenamingFrame('canvas') === frame.ref
   const selected = useSelection((state) => state.frames.includes(frame.ref))
   const iframe = useRef<HTMLIFrameElement>(null)
@@ -189,6 +192,7 @@ export const Frame = memo(function Frame({
   }, [live, previewWidth, hugHeight, frame.ref])
 
   useHiddenScrollbar(iframe, live, frame.scroll)
+  useMotionDriver(iframe, frame.ref, live, playing)
 
   useEffect(() => {
     const element = iframe.current
@@ -215,6 +219,7 @@ export const Frame = memo(function Frame({
 
   // Play shows the frames as they ship, so a claim draws nothing there.
   const claimed = claim && !playing ? claim : undefined
+  const held = hold && !hold.playing && !playing ? hold : undefined
 
   return (
     <div
@@ -268,11 +273,15 @@ export const Frame = memo(function Frame({
         {/* The claim's tag stands in for the mark while it lives. */}
         {unseen && !claim ? <UnseenDot /> : null}
         <span
-          className={cn('truncate', (preview || claimed) && 'shrink-[1000]')}
+          className={cn(
+            'truncate',
+            (preview || claimed || held) && 'shrink-[1000]',
+          )}
         >
           {frame.name}
         </span>
         {preview ? <PreviewChip width={preview.width} /> : null}
+        {held ? <HeldChip frameRef={frame.ref} at={held.at} /> : null}
         {playing ? null : (
           <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
         )}
@@ -482,6 +491,29 @@ function PreviewChip({ width }: { width: number }) {
       <MoveHorizontal aria-hidden className="size-3 shrink-0" />
       <span className="truncate">Preview {width}</span>
     </span>
+  )
+}
+
+/**
+ * The moment a held frame stands still at, beside its name, so a frame left
+ * frozen after deselecting never reads as broken. Pressing it hands the
+ * frame back to its own clock. It sits beside the preview chip in the same
+ * shape and shrinks the same way.
+ */
+function HeldChip({ frameRef, at }: { frameRef: string; at: number }) {
+  const moment = `${formatMoment(at)} s`
+  return (
+    <button
+      type="button"
+      data-label-control
+      data-held-chip
+      aria-label={`Held at ${moment}. Resume`}
+      title="Held in this tab. Press to resume."
+      onClick={() => releaseMotion(frameRef)}
+      className="flex h-[18px] min-w-0 shrink items-center overflow-hidden rounded-[5px] bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-[5px] text-foreground outline-none hover:bg-[color-mix(in_srgb,var(--foreground)_20%,transparent)] focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="truncate">Held {moment}</span>
+    </button>
   )
 }
 

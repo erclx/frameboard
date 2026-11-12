@@ -8,12 +8,24 @@ import type { LiveMedia, MediaReading } from './media'
 const ICON_BUTTON =
   'grid shrink-0 place-items-center rounded-[5px] text-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50'
 
+/** What play and pause read: whether the page is paused, and the toggle. */
+export interface Playable {
+  reading: Pick<MediaReading, 'paused'>
+  togglePlay: () => void
+}
+
+/** What the scrub track reads: the position and length, and the seek. */
+export interface Seekable {
+  reading: Pick<MediaReading, 'time' | 'length'>
+  seek: (position: number) => void
+}
+
 /** Play or pause on the live page, which writes nothing. */
 export function PlayButton({
   media,
   className,
 }: {
-  media: LiveMedia
+  media: Playable
   className?: string
 }) {
   const { paused } = media.reading
@@ -64,13 +76,16 @@ export function MediaTime({ reading }: { reading: MediaReading }) {
 
 /**
  * The scrub track, a native range so the arrow keys step it, moving the live
- * page's position as it is dragged and writing nothing.
+ * page's position as it is dragged and writing nothing. `format` reads a
+ * position aloud in the unit the track counts, m:ss of seconds by default.
  */
 export function SeekTrack({
   media,
+  format = formatLength,
   className,
 }: {
-  media: LiveMedia
+  media: Seekable
+  format?: (position: number) => string
   className?: string
 }) {
   const { time, length } = media.reading
@@ -79,7 +94,7 @@ export function SeekTrack({
     <input
       type="range"
       aria-label="Position"
-      aria-valuetext={`${formatLength(time)} of ${formatLength(length)}`}
+      aria-valuetext={`${format(time)} of ${format(length)}`}
       min={0}
       max={known ? length : 0}
       step="any"

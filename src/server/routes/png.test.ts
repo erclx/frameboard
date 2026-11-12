@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import type { RenderFilmstrip } from '@/server/capture/images'
 import type { RenderFrame } from '@/server/capture/render'
 import { FrameboardError } from '@/shared/errors'
 
@@ -15,9 +16,17 @@ describe('GET /api/frames/png', () => {
     board.cleanup()
   })
 
-  function get(query: string, render: RenderFrame) {
+  function get(
+    query: string,
+    render: RenderFrame,
+    filmstrip: RenderFilmstrip = async () => {
+      throw new Error('No filmstrip was asked for.')
+    },
+  ) {
     board = writeBoard({ 'studio/home/hero.html': '<p>Hello</p>' })
-    return pngRoutes(board.root, render).request(`/api/frames/png?${query}`)
+    return pngRoutes(board.root, render, filmstrip).request(
+      `/api/frames/png?${query}`,
+    )
   }
 
   it('answers the rendered bytes as image/png', async () => {
@@ -141,6 +150,70 @@ describe('GET /api/frames/png', () => {
     expect(response.status).toBe(422)
     expect(await response.json()).toMatchObject({
       error: { code: 'capture-too-large' },
+    })
+  })
+
+  describe('with a filmstrip', () => {
+    const still: RenderFrame = async () => {
+      throw new Error('A filmstrip never renders the frame at rest.')
+    }
+
+    it('answers the strip the filmstrip renderer drew, at the count and scale asked', async () => {
+      const asked: string[] = []
+      const response = await get(
+        'ref=home/hero&theme=dark&scale=1&filmstrip=5',
+        still,
+        async (frame, theme, scale, count) => {
+          asked.push(`${frame.ref} ${theme} ${scale}x ${count}`)
+          return PNG
+        },
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('image/png')
+      expect(asked).toEqual(['studio/home/hero dark 1x 5'])
+    })
+
+    it.each(['1', '0', '2.5', '-3', 'five', ''])(
+      'answers 400 usage for a count of %j',
+      async (count) => {
+        const response = await get(
+          `ref=home/hero&theme=light&filmstrip=${count}`,
+          still,
+        )
+
+        expect(response.status).toBe(400)
+        expect(await response.json()).toMatchObject({
+          error: { code: 'usage' },
+        })
+      },
+    )
+
+    it('answers 422 motion-missing for a still frame', async () => {
+      const response = await get(
+        'ref=home/hero&theme=light&filmstrip=3',
+        still,
+        async () => {
+          throw new FrameboardError('motion-missing', 'Nothing moves.')
+        },
+      )
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'motion-missing' },
+      })
+    })
+
+    it('answers 422 motion-unbounded for a frame that never ends', async () => {
+      const response = await get(
+        'ref=home/hero&theme=light&filmstrip=3',
+        still,
+        async () => {
+          throw new FrameboardError('motion-unbounded', 'It spins forever.')
+        },
+      )
+
+      expect(response.status).toBe(422)
     })
   })
 })

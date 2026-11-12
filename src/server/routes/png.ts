@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { readFrame } from '@/server/board/frames'
+import type { RenderFilmstrip } from '@/server/capture/images'
 import type { RenderFrame } from '@/server/capture/render'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import type { Theme } from '@/shared/theme'
@@ -15,6 +16,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'font-missing': 422,
   'image-missing': 422,
   'capture-too-large': 422,
+  'motion-missing': 422,
+  'motion-unbounded': 422,
   'browser-not-found': 503,
 }
 
@@ -24,11 +27,17 @@ const DEFAULT_SCALE = 2
 /**
  * `GET /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>`, a
  * frame rendered at `scale` times its layout size, twice when no scale is
- * given. It takes no token, since the image shows only
- * what the frame route already serves, and a refusal answers the CLI's
- * `{ ok, error }` envelope.
+ * given. An added `filmstrip=<n>` of 2 or more renders `n` moments of its
+ * timeline in one row instead, refusing a frame with no timeline as
+ * `motion-missing` and one that never ends as `motion-unbounded`. It takes
+ * no token, since the image shows only what the frame route already serves,
+ * and a refusal answers the CLI's `{ ok, error }` envelope.
  */
-export function pngRoutes(root: string, render: RenderFrame): Hono {
+export function pngRoutes(
+  root: string,
+  render: RenderFrame,
+  renderFilmstrip: RenderFilmstrip,
+): Hono {
   const app = new Hono()
 
   app.get('/api/frames/png', async (c) => {
@@ -36,15 +45,29 @@ export function pngRoutes(root: string, render: RenderFrame): Hono {
       const ref = c.req.query('ref') ?? ''
       const theme = c.req.query('theme') ?? ''
       const scale = parseScale(c.req.query('scale'))
-      if (ref === '' || !isTheme(theme) || scale === null) {
+      const filmstrip = parseFilmstrip(c.req.query('filmstrip'))
+      if (
+        ref === '' ||
+        !isTheme(theme) ||
+        scale === null ||
+        filmstrip === null
+      ) {
         throw new FrameboardError(
           'usage',
-          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>.',
-          { ref, theme, scale: c.req.query('scale') ?? null },
+          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>, adding &filmstrip=<n> of 2 or more for a filmstrip.',
+          {
+            ref,
+            theme,
+            scale: c.req.query('scale') ?? null,
+            filmstrip: c.req.query('filmstrip') ?? null,
+          },
         )
       }
       const frame = await readFrame(root, ref, { cwd: root })
-      const bytes = await render(frame, theme, scale)
+      const bytes =
+        filmstrip === undefined
+          ? await render(frame, theme, scale)
+          : await renderFilmstrip(frame, theme, scale, filmstrip)
       return c.body(new Uint8Array(bytes), 200, {
         'Content-Type': 'image/png',
         'Cache-Control': 'no-store',
@@ -77,4 +100,13 @@ function parseScale(value: string | undefined): number | null {
   if (value === undefined) return DEFAULT_SCALE
   if (value === '1' || value === '2' || value === '3') return Number(value)
   return null
+}
+
+// Whole numbers from 2 alone, so `1`, `2.5`, and an empty value refuse, and
+// a count too wide to shoot refuses later as `capture-too-large`.
+function parseFilmstrip(value: string | undefined): number | undefined | null {
+  if (value === undefined) return undefined
+  if (!/^[1-9][0-9]*$/.test(value)) return null
+  const count = Number(value)
+  return count >= 2 ? count : null
 }

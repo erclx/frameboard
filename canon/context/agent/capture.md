@@ -30,9 +30,10 @@ Two layout keys add images past the frame's own.
 
 Two flags hold a frame's motion still at moments its timeline names.
 
-- `seek.ts` reads `window.__hf` first, then every `window.__timelines` entry, then `document.getAnimations()`, converting the first two from seconds once
+- `src/shared/motion.ts` reads `__hf`, then every `__timelines` entry, then `document.getAnimations()`, and `seek.ts` runs it in the page by source text, so it stays self-contained
 - `capture --at <ms,...>` writes `<frame>.at-<ms>.<theme>.png` per moment, and `--filmstrip <n>` one `<frame>.filmstrip-<n>.<theme>.png` row from 0 to the end
 - Both refuse `--page`, `--scroll`, and each other as `usage`
+- The PNG route's `filmstrip=<n>` of 2 or more renders on its own queue, answering `motion-missing` and `motion-unbounded` at 422
 - The record's `at` and `moments` name the clamped moments, and its `motion` names the source and the duration, null when every animation repeats forever
 
 The server side shares one browser and renders only on demand.

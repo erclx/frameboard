@@ -1210,10 +1210,12 @@ export function attachGestures(
 }
 
 /** The inspector text field focus sits in, which a press on the canvas leaves. */
+// A scrub track applies as it moves and holds no edit to leave, so a press
+// after one acts at once rather than only blurring it.
 function inspectorField(): HTMLElement | null {
   const active = document.activeElement
   return active instanceof HTMLElement &&
-    active.matches('input, textarea') &&
+    active.matches('input:not([type="range"]), textarea') &&
     active.closest('[data-inspector]')
     ? active
     : null

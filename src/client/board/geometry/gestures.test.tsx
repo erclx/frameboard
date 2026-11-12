@@ -701,6 +701,22 @@ describe('attachGestures', () => {
       expect([first, opened]).toEqual([[], [LEFT.ref]])
     })
 
+    it('opens on the first press while an inspector scrub track holds focus, since a track holds no edit to leave', () => {
+      const { pointer, opened } = setup(undefined, { badge: BADGE })
+      const panel = document.createElement('aside')
+      panel.dataset.inspector = ''
+      const track = document.createElement('input')
+      track.type = 'range'
+      panel.append(track)
+      document.body.append(panel)
+      track.focus()
+
+      pointer.click(150, 88)
+      panel.remove()
+
+      expect(opened).toEqual([LEFT.ref])
+    })
+
     it('opens nothing and moves nothing on a drag from it', () => {
       const { pointer, opened, writes } = setup(undefined, { badge: BADGE })
 

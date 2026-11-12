@@ -15,6 +15,12 @@ import { openFindings } from './findings-open'
 import { Frame, LabelRename } from './frame'
 import { frameElements } from './frame-dom'
 import { modeStore } from './mode'
+import {
+  holdMotion,
+  motionHoldOf,
+  playMotion,
+  releaseMotion,
+} from './motion/store'
 import { endPreview, setPreview } from './preview/store'
 import { clear, select, selectionStore } from './selection'
 import {
@@ -1147,5 +1153,61 @@ describe('Frame label while the canvas renames it', () => {
     act(() => startFrameRename('studio/home/hero', 'canvas'))
 
     expect(getByTitle('hero')).not.toBeVisible()
+  })
+})
+
+describe('Frame held at a moment', () => {
+  afterEach(() => {
+    act(() => {
+      releaseMotion('studio/home/a')
+      modeStore.setState({ mode: 'edit' })
+    })
+  })
+
+  it('names the held moment in the label', () => {
+    const { getByRole } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => holdMotion('studio/home/a', 1250))
+
+    expect(
+      getByRole('button', { name: 'Held at 1.25 s. Resume' }),
+    ).toBeVisible()
+  })
+
+  it('resumes the frame when the chip is pressed', async () => {
+    const { getByRole } = render(<Frame frame={frame('a')} live version={0} />)
+    act(() => holdMotion('studio/home/a', 1250))
+
+    await userEvent.click(getByRole('button', { name: /^Held at/ }))
+
+    expect(motionHoldOf('studio/home/a')).toBeUndefined()
+  })
+
+  it('shows no chip while the board plays the frame', () => {
+    const { queryByRole } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+
+    act(() => playMotion('studio/home/a', 500))
+
+    expect(queryByRole('button', { name: /^Held at/ })).toBeNull()
+  })
+
+  it('hands the frame back to its own clock on entering Play', () => {
+    render(<Frame frame={frame('a')} live version={0} />)
+    act(() => holdMotion('studio/home/a', 1250))
+
+    act(() => modeStore.setState({ mode: 'play' }))
+
+    expect(motionHoldOf('studio/home/a')).toBeUndefined()
+  })
+
+  it('drops the hold when the frame leaves the canvas', () => {
+    const { unmount } = render(<Frame frame={frame('a')} live version={0} />)
+    act(() => holdMotion('studio/home/a', 1250))
+
+    unmount()
+
+    expect(motionHoldOf('studio/home/a')).toBeUndefined()
   })
 })
