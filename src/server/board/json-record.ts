@@ -138,10 +138,7 @@ async function acquire(lock: string, timeoutMs: number): Promise<string> {
     }
 
     const stale = await staleContent(lock)
-    if (stale !== null) {
-      await breakLock(lock, stale)
-      continue
-    }
+    if (stale !== null && (await breakLock(lock, stale))) continue
     if (Date.now() >= deadline) {
       throw new FrameboardError(
         'lock-timeout',
@@ -177,27 +174,64 @@ async function staleContent(lock: string): Promise<string | null> {
 }
 
 /**
- * Breaks a stale lock by renaming it aside, so of two waiters judging one
- * lock stale only the first rename wins. A waiter whose rename caught a fresh
- * lock instead, taken since it judged, puts that lock back.
+ * Breaks a stale lock under a guard, so one writer at a time re-reads the
+ * lock and renames it aside only while it still holds the content judged
+ * stale. Without the guard, a second breaker could rename aside the lock a
+ * first one had just taken, and put it back after its owner released it,
+ * leaving a lock nobody holds. The rename and the check after it still
+ * cover a holder that aged past 10 s releasing between the read and the
+ * rename. A guard a crashed breaker left behind ages out like a lock.
+ * False while another breaker holds the guard, so the caller waits.
  */
-async function breakLock(lock: string, judged: string): Promise<void> {
+async function breakLock(lock: string, judged: string): Promise<boolean> {
   const record = lock.slice(0, -LOCK_SUFFIX.length)
-  const aside = `${record}.${randomBytes(4).toString('hex')}.broken${LOCK_SUFFIX}`
+  const guard = `${record}.break${LOCK_SUFFIX}`
   try {
-    await rename(lock, aside)
+    await (await open(guard, 'wx')).close()
   } catch (error) {
-    if (isCode(error, 'ENOENT')) return
-    throw error
+    if (!isCode(error, 'EEXIST')) throw error
+    await clearAgedGuard(guard)
+    return false
   }
   try {
-    if ((await readFile(aside, 'utf8')) !== judged) {
-      await link(aside, lock).catch((error: unknown) => {
-        if (!isCode(error, 'EEXIST')) throw error
-      })
+    if ((await readOrNull(lock)) !== judged) return true
+    const aside = `${record}.${randomBytes(4).toString('hex')}.broken${LOCK_SUFFIX}`
+    try {
+      await rename(lock, aside)
+    } catch (error) {
+      if (isCode(error, 'ENOENT')) return true
+      throw error
     }
+    try {
+      if ((await readFile(aside, 'utf8')) !== judged) {
+        await link(aside, lock).catch((error: unknown) => {
+          if (!isCode(error, 'EEXIST')) throw error
+        })
+      }
+    } finally {
+      await rm(aside, { force: true })
+    }
+    return true
   } finally {
-    await rm(aside, { force: true })
+    await rm(guard, { force: true })
+  }
+}
+
+async function clearAgedGuard(guard: string): Promise<void> {
+  try {
+    const { mtimeMs } = await stat(guard)
+    if (Date.now() - mtimeMs > LOCK_STALE_MS) await rm(guard, { force: true })
+  } catch (error) {
+    if (!isCode(error, 'ENOENT')) throw error
+  }
+}
+
+async function readOrNull(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch (error) {
+    if (isCode(error, 'ENOENT')) return null
+    throw error
   }
 }
 

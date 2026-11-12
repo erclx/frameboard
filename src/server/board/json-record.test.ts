@@ -10,12 +10,40 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FrameboardError } from '@/shared/errors'
 import { type LayoutFile, layoutFileSchema } from '@/shared/records/board'
 
-import { readRecord, type RecordSpec, updateRecord } from './json-record'
+import {
+  readRecord,
+  type RecordSpec,
+  updateRecord,
+  withLocks,
+} from './json-record'
+
+// Lets a test hold one writer between two steps of its lock handling, which
+// is the only way to order two writers breaking one lock.
+const race = vi.hoisted(() => ({
+  onLockStat: [] as (() => Promise<void>)[],
+  onLink: undefined as (() => Promise<void>) | undefined,
+}))
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...fs,
+    stat: async (...args: Parameters<typeof fs.stat>) => {
+      if (String(args[0]).endsWith('layout.json.lock'))
+        await race.onLockStat.shift()?.()
+      return fs.stat(...args)
+    },
+    link: async (...args: Parameters<typeof fs.link>) => {
+      await race.onLink?.()
+      return fs.link(...args)
+    },
+  }
+})
 
 const layoutSpec: RecordSpec<LayoutFile> = {
   schema: layoutFileSchema,
@@ -37,6 +65,8 @@ describe('json-record', () => {
   })
 
   afterEach(() => {
+    race.onLockStat = []
+    race.onLink = undefined
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -142,6 +172,77 @@ describe('json-record', () => {
         Object.keys(JSON.parse(readFileSync(path, 'utf8')).frames).sort(),
       ).toEqual(['about', 'hero'])
       expect(readdirSync(dir)).toEqual(['layout.json'])
+    })
+
+    it('lands a writer that judged a dead lock stale after another broke and released it', async () => {
+      const deadPid = spawnSync('true').pid
+      writeFileSync(`${path}.lock`, JSON.stringify({ pid: deadPid }))
+      let reachedStat = () => {}
+      const atStat = new Promise<void>((resolve) => {
+        reachedStat = resolve
+      })
+      let resumeLate = () => {}
+      const lateHeld = new Promise<void>((resolve) => {
+        resumeLate = resolve
+      })
+      race.onLockStat.push(() => {
+        reachedStat()
+        return lateHeld
+      })
+      // The late writer has read the dead lock and waits to judge it.
+      const late = withLocks([path], async () => {}, { timeoutMs: 500 })
+      await atStat
+
+      let holding = () => {}
+      const held = new Promise<void>((resolve) => {
+        holding = resolve
+      })
+      let finish = () => {}
+      const finished = new Promise<void>((resolve) => {
+        finish = resolve
+      })
+      // The first writer breaks the dead lock and takes its own in its place.
+      const first = withLocks([path], async () => {
+        holding()
+        await finished
+      })
+      await held
+      // The first writer releases while the late one handles the lock it
+      // judged, whether that is putting a lock back or waiting on it.
+      const release = async () => {
+        finish()
+        await first
+      }
+      race.onLink = release
+      race.onLockStat.push(release)
+      resumeLate()
+
+      await late
+      expect(readdirSync(dir)).toEqual([])
+    })
+
+    it('breaks a dead lock past a break guard older than 10 s', async () => {
+      const deadPid = spawnSync('true').pid
+      writeFileSync(`${path}.lock`, JSON.stringify({ pid: deadPid }))
+      writeFileSync(`${path}.break.lock`, '')
+      const old = new Date(Date.now() - 11_000)
+      utimesSync(`${path}.break.lock`, old, old)
+
+      await updateRecord(path, layoutSpec, (layout) => layout, {
+        timeoutMs: 200,
+      })
+
+      expect(readdirSync(dir)).toEqual(['layout.json'])
+    })
+
+    it('waits out a dead lock while a fresh break guard is held', async () => {
+      const deadPid = spawnSync('true').pid
+      writeFileSync(`${path}.lock`, JSON.stringify({ pid: deadPid }))
+      writeFileSync(`${path}.break.lock`, '')
+
+      await expect(
+        updateRecord(path, layoutSpec, (layout) => layout, { timeoutMs: 100 }),
+      ).rejects.toMatchObject({ code: 'lock-timeout' })
     })
 
     it('leaves a lock another writer took in its place on release', async () => {
