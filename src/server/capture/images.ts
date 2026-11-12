@@ -13,6 +13,7 @@ import {
   LOAD_TIMEOUT_MS,
   MAX_COMPOSITE_SIDE,
   openFrame,
+  type WarmBrowser,
 } from './render'
 import { filmstripMoments, findMotion, type Motion, seekMotion } from './seek'
 
@@ -335,83 +336,167 @@ export async function captureMotionImages(
   let found: Motion | null = null
   for (const view of viewsOf(frame, width)) {
     const linked = view.width === frame.box.width ? undefined : view.width
-    const strip =
-      'at' in timing
-        ? null
-        : filmstripBounds(frame.ref, view, timing.filmstrip, scale)
     for (const theme of themes) {
-      assertScreenshotFits(frame.ref, view, scale)
-      const opened = await openFrame(browser, {
+      if ('filmstrip' in timing) {
+        const strip = await renderFilmstrip(browser, {
+          baseUrl,
+          frame: { ref: frame.ref, box: view },
+          theme,
+          scale,
+          count: timing.filmstrip,
+          motionTimeoutMs,
+        })
+        found ??= strip.motion
+        rendered.push({
+          ref: frame.ref,
+          theme,
+          path: frameImagePath(out, frame, theme, scale, undefined, linked, {
+            filmstrip: strip.moments.length,
+          }),
+          width: strip.width,
+          height: strip.height,
+          scale,
+          moments: strip.moments,
+          bytes: strip.bytes,
+        })
+        continue
+      }
+      const shots = await holdShots(browser, {
         baseUrl,
         ref: frame.ref,
-        box: view,
+        view,
         theme,
         scale,
-        motion: 'hold',
+        motionTimeoutMs,
+        moments: () => timing.at,
       })
-      try {
-        // Each theme's context seeks on its own, so no shot waits on another.
-        const motion = await findMotion(opened.page, frame.ref, motionTimeoutMs)
-        found ??= motion
-        const moments =
-          'at' in timing
-            ? timing.at
-            : filmstripMoments(frame.ref, motion, timing.filmstrip)
-        const shots: { held: number; bytes: Buffer }[] = []
-        for (const moment of moments) {
-          const held = await seekMotion(opened.page, motion, moment)
-          shots.push({
-            held,
-            bytes: await opened.page.screenshot(HELD_SCREENSHOT),
-          })
-        }
-        if (strip === null) {
-          shots.forEach(({ held, bytes }, index) => {
-            rendered.push({
-              ref: frame.ref,
-              theme,
-              path: frameImagePath(
-                out,
-                frame,
-                theme,
-                scale,
-                undefined,
-                linked,
-                {
-                  at: moments[index] ?? held,
-                },
-              ),
-              width: view.width,
-              height: view.height,
-              scale,
-              at: held,
-              bytes,
-            })
-          })
-        } else {
-          const tiles = shots.map(
-            ({ bytes }, index) =>
-              `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${COMPOSITE_MARGIN + index * (view.width + COMPOSITE_MARGIN)}px;top:${COMPOSITE_MARGIN}px;width:${view.width}px;height:${view.height}px">`,
-          )
-          rendered.push({
-            ref: frame.ref,
-            theme,
-            path: frameImagePath(out, frame, theme, scale, undefined, linked, {
-              filmstrip: shots.length,
-            }),
-            width: strip.width,
-            height: strip.height,
-            scale,
-            moments: shots.map(({ held }) => held),
-            bytes: await renderComposite(browser, strip, theme, tiles, scale),
-          })
-        }
-      } finally {
-        await opened.close()
-      }
+      found ??= shots.motion
+      shots.held.forEach(({ held, bytes }, index) => {
+        rendered.push({
+          ref: frame.ref,
+          theme,
+          path: frameImagePath(out, frame, theme, scale, undefined, linked, {
+            at: timing.at[index] ?? held,
+          }),
+          width: view.width,
+          height: view.height,
+          scale,
+          at: held,
+          bytes,
+        })
+      })
     }
   }
   return { images: await writeImages(rendered), motion: found }
+}
+
+export interface RenderedFilmstrip {
+  bytes: Buffer
+  /** The strip's size in CSS pixels, margins included. */
+  width: number
+  height: number
+  /** The moment in ms each frame of the strip holds, left to right. */
+  moments: number[]
+  motion: Motion
+}
+
+/**
+ * One frame's filmstrip in one theme: `count` moments spaced from 0 to the
+ * timeline's end, held one by one and laid in a row on the theme's canvas
+ * color. Refuses `motion-missing` for a frame with no seekable timeline and
+ * `motion-unbounded` for one that never ends, and `capture-too-large` before
+ * opening the frame for a strip past the screenshot limit.
+ */
+export async function renderFilmstrip(
+  browser: Browser,
+  {
+    baseUrl,
+    frame,
+    theme,
+    scale = 1,
+    count,
+    motionTimeoutMs = LOAD_TIMEOUT_MS,
+  }: {
+    baseUrl: string
+    frame: { ref: string; box: { width: number; height: number } }
+    theme: Theme
+    scale?: number
+    count: number
+    motionTimeoutMs?: number
+  },
+): Promise<RenderedFilmstrip> {
+  const view = { width: frame.box.width, height: frame.box.height }
+  const strip = filmstripBounds(frame.ref, view, count, scale)
+  const { motion, held } = await holdShots(browser, {
+    baseUrl,
+    ref: frame.ref,
+    view,
+    theme,
+    scale,
+    motionTimeoutMs,
+    moments: (found) => filmstripMoments(frame.ref, found, count),
+  })
+  const tiles = held.map(
+    ({ bytes }, index) =>
+      `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${COMPOSITE_MARGIN + index * (view.width + COMPOSITE_MARGIN)}px;top:${COMPOSITE_MARGIN}px;width:${view.width}px;height:${view.height}px">`,
+  )
+  return {
+    bytes: await renderComposite(browser, strip, theme, tiles, scale),
+    width: strip.width,
+    height: strip.height,
+    moments: held.map((shot) => shot.held),
+    motion,
+  }
+}
+
+/**
+ * Opens one frame with its animation clock held, finds its timeline, and
+ * shoots it at each moment `moments` picks from what it found.
+ */
+async function holdShots(
+  browser: Browser,
+  {
+    baseUrl,
+    ref,
+    view,
+    theme,
+    scale,
+    motionTimeoutMs,
+    moments,
+  }: {
+    baseUrl: string
+    ref: string
+    view: { width: number; height: number }
+    theme: Theme
+    scale: number
+    motionTimeoutMs: number
+    moments: (motion: Motion) => number[]
+  },
+): Promise<{ motion: Motion; held: { held: number; bytes: Buffer }[] }> {
+  assertScreenshotFits(ref, view, scale)
+  const opened = await openFrame(browser, {
+    baseUrl,
+    ref,
+    box: view,
+    theme,
+    scale,
+    motion: 'hold',
+  })
+  try {
+    // Each theme's context seeks on its own, so no shot waits on another.
+    const motion = await findMotion(opened.page, ref, motionTimeoutMs)
+    const held: { held: number; bytes: Buffer }[] = []
+    for (const moment of moments(motion)) {
+      const at = await seekMotion(opened.page, motion, moment)
+      held.push({
+        held: at,
+        bytes: await opened.page.screenshot(HELD_SCREENSHOT),
+      })
+    }
+    return { motion, held }
+  } finally {
+    await opened.close()
+  }
 }
 
 // One frame at a time, so a slow frame never holds several tabs open.
@@ -491,4 +576,46 @@ async function writeImages(rendered: Rendered[]): Promise<CapturedImage[]> {
     }),
   )
   return rendered.map(({ bytes: _bytes, ...image }) => image)
+}
+
+/**
+ * Renders a frame's filmstrip to PNG bytes in a theme, as the server's PNG
+ * route asks, `count` moments wide at `scale` device pixels per CSS pixel.
+ */
+export type RenderFilmstrip = (
+  frame: { ref: string; box: { width: number; height: number } },
+  theme: Theme,
+  scale: number,
+  count: number,
+) => Promise<Buffer>
+
+/**
+ * Renders filmstrips on a server's warm browser one at a time. The queue is
+ * its own, so Copy as PNG and a plain export never wait behind a strip of
+ * many moments.
+ */
+export function createWarmFilmstripRenderer({
+  baseUrl,
+  browser,
+}: {
+  /** Read per render, since the server's port is known only once listening. */
+  baseUrl: () => string
+  browser: WarmBrowser
+}): RenderFilmstrip {
+  let queue: Promise<unknown> = Promise.resolve()
+
+  return (frame, theme, scale, count) => {
+    const run = queue.then(async () => {
+      const strip = await renderFilmstrip(await browser.get(), {
+        baseUrl: baseUrl(),
+        frame,
+        theme,
+        scale,
+        count,
+      })
+      return strip.bytes
+    })
+    queue = run.catch(() => {})
+    return run
+  }
 }

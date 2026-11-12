@@ -24,6 +24,7 @@ import {
   compositeImagePath,
   filmstripBounds,
   frameImagePath,
+  renderFilmstrip,
 } from './images'
 
 const PAGE = { ref: 'studio/home', project: 'studio', name: 'home' }
@@ -421,6 +422,55 @@ describe.skipIf(shell === null)(
       expect(strip).toMatchObject({ width: 1060, height: 120 })
       expect(strip.moments).toEqual([0, 1000, 2000])
       expect([width, height]).toEqual([1060, 120])
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
+  'renderFilmstrip',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let board: TempBoard
+    let host: { url: string; close: () => Promise<void> }
+
+    beforeAll(async () => {
+      board = writeBoard({ 'studio/home/slide.html': SLIDE_PAGE })
+      host = await startFrameHost({ root: board.root, facesDir: board.root })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterAll(async () => {
+      await host.close()
+      board.cleanup()
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    it('lays the moments in one row at the scale asked', async () => {
+      const strip = await renderFilmstrip(requireShell(shell), {
+        baseUrl: host.url,
+        frame: { ref: 'studio/home/slide', box: { width: 300, height: 40 } },
+        theme: 'dark',
+        scale: 2,
+        count: 4,
+      })
+      const png = PNG.sync.read(strip.bytes)
+
+      expect(strip).toMatchObject({
+        width: 1400,
+        height: 120,
+        moments: [0, 667, 1333, 2000],
+        motion: { source: 'css', duration: 2000 },
+      })
+      expect([png.width, png.height]).toEqual([2800, 240])
+    })
+
+    it('refuses a strip past the screenshot limit as capture-too-large', async () => {
+      await expect(
+        renderFilmstrip(requireShell(shell), {
+          baseUrl: host.url,
+          frame: { ref: 'studio/home/slide', box: { width: 4000, height: 40 } },
+          theme: 'light',
+          count: 5,
+        }),
+      ).rejects.toMatchObject({ code: 'capture-too-large' })
     })
   },
 )
