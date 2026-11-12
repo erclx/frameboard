@@ -75,10 +75,13 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
   return 'laid'
 }
 
-/** A numbered frame whose hue steps with its index, so a pan reads as movement. */
+/**
+ * A frame carrying its number in the board's tokens, at a height of its own,
+ * so it draws in both themes and passes every content rule a reel would show.
+ */
 function frameHtml(name: string, index: number): string {
-  const hue = Math.round((index * 360) / CROWD.count)
-  const style = `margin: 0; min-height: 100vh; display: grid; place-items: center; background: hsl(${hue} 60% 85%); font: 600 96px system-ui, sans-serif`
+  const { height } = FRAME_SIZES.desktop
+  const style = `margin: 0; height: ${height}px; display: grid; place-items: center; background: var(--surface); color: var(--text); font-family: var(--font-text); font-size: 96px`
   return `<!doctype html>
 <html lang="en">
   <head><meta charset="utf-8" /><title>${name}</title></head>
