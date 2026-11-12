@@ -5,10 +5,10 @@ export type ToolbarStage = 'full' | 'folded' | 'tools' | 'active' | 'more'
 
 /** The room each stage needs, read from `canon/design/toolbar/narrow`, widest first. */
 const STAGE_FLOORS = [
-  [707, 'full'],
-  [513, 'folded'],
-  [310, 'tools'],
-  [174, 'active'],
+  [754, 'full'],
+  [560, 'folded'],
+  [357, 'tools'],
+  [221, 'active'],
 ] as const
 
 /** The bar's `max-w` keeps this much of its column clear. */

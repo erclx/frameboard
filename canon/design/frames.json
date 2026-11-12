@@ -85,6 +85,8 @@
     "landing/footer/390": "landing-v2/shipped/footer-390",
     "canvas/sections": "design/12-canvas/picked-sections",
     "canvas/scroll-rail": "design/12-canvas/scroll-rail",
-    "canvas/open-alone": "design/12-canvas/open-alone"
+    "canvas/open-alone": "design/12-canvas/open-alone",
+    "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
+    "present/bar": "drive-30/05-present-step/present-step-hover-bar-960"
   }
 }

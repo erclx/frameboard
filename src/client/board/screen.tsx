@@ -40,6 +40,7 @@ import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme/tab'
 import { useMode } from './mode'
+import { PresentOverlay } from './present/overlay'
 import { usePreviewActions } from './preview/actions'
 import { useSectionActions } from './sections/actions'
 import { useStructureActions } from './structure/actions'
@@ -216,6 +217,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
               })}
               <Toolbar project={record.name} />
               <ChangesToast />
+              <PresentOverlay />
             </>
           ) : (
             <Missing
