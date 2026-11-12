@@ -35,6 +35,8 @@ import {
   NOTE_TOOL,
   PLACINGS,
   POINTER_TOOLS,
+  PRESENT,
+  PRESENT_NOTHING,
   type Slot,
   TEXT_TOOL,
 } from './toolbar-tools'
@@ -44,7 +46,7 @@ const IDS = [
   ...[...POINTER_TOOLS, ...BOX_TOOLS, TEXT_TOOL, NOTE_TOOL, IMAGE_ROW].map(
     (row) => row.id,
   ),
-  ...[...EDIT_AND_VIEW.flat(), ...MODES].map((slot) => slot.id),
+  ...[...EDIT_AND_VIEW.flat(), ...MODES, PRESENT].map((slot) => slot.id),
   ...SHAPES.map((row) => row.id),
 ]
 
@@ -168,6 +170,8 @@ export function Toolbar({ project }: { project?: string }) {
               />
             ))}
           </div>
+          <Rule />
+          <PresentButton action={actions.get(PRESENT.id)} />
         </>
       )}
       {project === undefined ? null : (
@@ -207,16 +211,18 @@ interface ButtonProps {
   action: Action | undefined
   /** Shows the button pressed whatever its action reads, as the Shape tool does for any shape. */
   pressed?: boolean
+  /** The tooltip in place of the label, as a disabled button says why. */
+  tip?: string
 }
 
-function ToolButton({ slot, action, pressed }: ButtonProps) {
+function ToolButton({ slot, action, pressed, tip }: ButtonProps) {
   const shown = read(slot, action)
   const { label, keys, enabled, run } = shown
   const on = pressed ?? shown.on
   const Icon = slot.icon
   const DarkIcon = slot.darkIcon
   return (
-    <ActionTooltip label={label} keys={keys}>
+    <ActionTooltip label={tip ?? label} keys={tip ? undefined : keys}>
       <button
         type="button"
         aria-label={label}
@@ -537,6 +543,21 @@ function ModeButton({
         {iconOnly ? null : label}
       </button>
     </ActionTooltip>
+  )
+}
+
+/**
+ * Presents the page, from the selected frame when one is. While the page has
+ * no frame to show it stays disabled, its tooltip saying why.
+ */
+function PresentButton({ action }: { action: Action | undefined }) {
+  const enabled = action ? isEnabled(action) : false
+  return (
+    <ToolButton
+      slot={PRESENT}
+      action={action}
+      tip={action && !enabled ? PRESENT_NOTHING : undefined}
+    />
   )
 }
 

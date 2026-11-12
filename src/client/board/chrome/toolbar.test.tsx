@@ -226,6 +226,51 @@ describe('Toolbar', () => {
     expect(await screen.findByText('Frame F')).toBeInTheDocument()
   })
 
+  describe('the Present button', () => {
+    const presentAction = (enabled: boolean): Action => ({
+      id: 'present.start',
+      label: 'Present page',
+      group: 'present',
+      palette: false,
+      keys: ['Shift+KeyP'],
+      enabled: () => enabled,
+      run: () => {},
+    })
+
+    it('sits after the Edit and Play segment, naming its key on hover', async () => {
+      register(presentAction(true))
+      renderToolbar()
+      const names = screen
+        .getAllByRole('button')
+        .map(
+          (button) => button.getAttribute('aria-label') ?? button.textContent,
+        )
+      const present = screen.getByRole('button', { name: 'Present page' })
+
+      await userEvent.hover(present)
+
+      expect(names.slice(-3)).toEqual(['Edit', 'Play', 'Present page'])
+      expect(
+        await screen.findByText(`Present page ${keyLabel('Shift+KeyP')}`),
+      ).toBeInTheDocument()
+    })
+
+    it('says why it is off while the page has no frame to show', async () => {
+      register(presentAction(false))
+      renderToolbar()
+      const present = screen.getByRole('button', { name: 'Present page' })
+
+      await userEvent.hover(present)
+
+      expect(present).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        await screen.findByText(
+          'Nothing to present, every frame here is hidden',
+        ),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('places Text and the Shape tool after Frame, ahead of Note', () => {
     renderToolbar()
 
@@ -599,14 +644,14 @@ describe('Toolbar', () => {
 
 describe('the stage a room picks', () => {
   it.each([
-    [707, 'full'],
-    [706, 'folded'],
-    [513, 'folded'],
-    [512, 'tools'],
-    [310, 'tools'],
-    [309, 'active'],
-    [174, 'active'],
-    [173, 'more'],
+    [754, 'full'],
+    [753, 'folded'],
+    [560, 'folded'],
+    [559, 'tools'],
+    [357, 'tools'],
+    [356, 'active'],
+    [221, 'active'],
+    [220, 'more'],
     [44, 'more'],
   ] as const)('at %i reads %s', (room, stage) => {
     expect(stageForRoom(room)).toBe(stage)
@@ -675,7 +720,7 @@ describe('the toolbar in a narrow column', () => {
 
   it.each([
     [
-      707,
+      754,
       [
         'Move',
         'Pointer tools',
@@ -694,10 +739,11 @@ describe('the toolbar in a narrow column', () => {
         'Theme',
         'Edit',
         'Play',
+        'Present page',
       ],
     ],
     [
-      513,
+      560,
       [
         'Move',
         'Pointer tools',
@@ -711,10 +757,11 @@ describe('the toolbar in a narrow column', () => {
         'More tools',
         'Edit',
         'Play',
+        'Present page',
       ],
     ],
     [
-      310,
+      357,
       [
         'Move',
         'Frame',
@@ -724,10 +771,11 @@ describe('the toolbar in a narrow column', () => {
         'More tools',
         'Edit',
         'Play',
+        'Present page',
       ],
     ],
-    [174, ['Move', 'More tools', 'Edit', 'Play']],
-    [173, ['More tools']],
+    [221, ['Move', 'More tools', 'Edit', 'Play', 'Present page']],
+    [220, ['More tools']],
   ])('shows the controls room %i holds', (room, names) => {
     renderInRoom(room)
 
@@ -744,10 +792,10 @@ describe('the toolbar in a narrow column', () => {
   ]
 
   it.each([
-    [513, FOUR],
-    [310, ['Hand', 'Section', ...SHAPE_ROWS, ...PLACE, ...FOUR]],
+    [560, FOUR],
+    [357, ['Hand', 'Section', ...SHAPE_ROWS, ...PLACE, ...FOUR]],
     [
-      174,
+      221,
       [
         'Move',
         'Hand',
@@ -761,10 +809,11 @@ describe('the toolbar in a narrow column', () => {
       ],
     ],
     [
-      173,
+      220,
       [
         'Edit',
         'Play',
+        'Present page',
         'Move',
         'Hand',
         'Frame',
@@ -783,12 +832,12 @@ describe('the toolbar in a narrow column', () => {
   })
 
   it('draws no More while every control fits', () => {
-    renderInRoom(707)
+    renderInRoom(754)
 
     expect(screen.queryByRole('button', { name: 'More tools' })).toBeNull()
   })
 
-  it.each([707, 513, 310, 174, 44])(
+  it.each([754, 560, 357, 221, 44])(
     'clips nothing at the narrowest room %i',
     (room) => {
       renderInRoom(room)
@@ -799,10 +848,10 @@ describe('the toolbar in a narrow column', () => {
   )
 
   it('changes stage when the column narrows, closing an open More', async () => {
-    const column = renderInRoom(513)
+    const column = renderInRoom(560)
     await openMore()
 
-    column.style.width = `${310 + 24}px`
+    column.style.width = `${357 + 24}px`
 
     await vi.waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
     expect(screen.queryByRole('button', { name: 'Pointer tools' })).toBeNull()
@@ -828,7 +877,7 @@ describe('the toolbar in a narrow column', () => {
   it('runs the action the bar button runs from its More row', async () => {
     let runs = 0
     register(action('edit.undo', { label: 'Undo', run: () => (runs += 1) }))
-    renderInRoom(513)
+    renderInRoom(560)
 
     await openMore()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Undo' }))
@@ -843,7 +892,7 @@ describe('the toolbar in a narrow column', () => {
     }
     liveStore.setState({ canWrite: true })
     render(<PlaceTools />)
-    renderInRoom(310)
+    renderInRoom(357)
 
     await openMore()
     await userEvent.click(
@@ -858,7 +907,7 @@ describe('the toolbar in a narrow column', () => {
       action('tool.move', { label: 'Move', checked: () => false }),
       action('tool.hand', { label: 'Hand', checked: () => true }),
     )
-    renderInRoom(310)
+    renderInRoom(357)
 
     expect(screen.getByRole('button', { name: 'Hand' })).toHaveAttribute(
       'aria-pressed',
@@ -872,7 +921,7 @@ describe('the toolbar in a narrow column', () => {
   it('offers Frame in More while Section fills the Frame slot', async () => {
     boxToolStore.setState({ tool: 'section' })
     cleanups.push(() => boxToolStore.setState({ tool: 'frame' }))
-    renderInRoom(310)
+    renderInRoom(357)
 
     const rows = rowNames(await openMore())
 
@@ -882,7 +931,7 @@ describe('the toolbar in a narrow column', () => {
 
   it('shows whichever tool is on at the single tool stage', () => {
     register(action('tool.note', { label: 'Note', checked: () => true }))
-    renderInRoom(174)
+    renderInRoom(221)
 
     expect(screen.getByRole('button', { name: 'Note' })).toHaveAttribute(
       'aria-pressed',
@@ -892,7 +941,7 @@ describe('the toolbar in a narrow column', () => {
 
   it('marks the tool on in More', async () => {
     register(action('tool.note', { label: 'Note', checked: () => true }))
-    renderInRoom(174)
+    renderInRoom(221)
 
     await openMore()
 
@@ -903,11 +952,11 @@ describe('the toolbar in a narrow column', () => {
   })
 
   it('carries a Place choice made in More to the wider folded button', async () => {
-    const column = renderInRoom(310)
+    const column = renderInRoom(357)
 
     await openMore()
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Free' }))
-    column.style.width = `${513 + 24}px`
+    column.style.width = `${560 + 24}px`
 
     expect(
       await screen.findByRole('button', { name: 'Place new elements, Free' }),
@@ -917,7 +966,7 @@ describe('the toolbar in a narrow column', () => {
 
   it('marks the Place choice on in More', async () => {
     placementStore.setState({ placing: 'free' })
-    renderInRoom(310)
+    renderInRoom(357)
 
     await openMore()
 
@@ -928,7 +977,7 @@ describe('the toolbar in a narrow column', () => {
   })
 
   it('sets Place from the folded button', async () => {
-    renderInRoom(513)
+    renderInRoom(560)
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Place new elements, Auto' }),
@@ -942,7 +991,7 @@ describe('the toolbar in a narrow column', () => {
 
   it('disables a row whose action cannot run, and leaves Place usable', async () => {
     register(action('edit.undo', { label: 'Undo', enabled: () => false }))
-    renderInRoom(310)
+    renderInRoom(357)
 
     await openMore()
 
@@ -1012,7 +1061,7 @@ describe('the toolbar in a narrow column', () => {
     setCharacterKeys(false)
     cleanups.push(() => setCharacterKeys(true))
     register(action('tool.hand', { label: 'Hand', keys: ['h'] }))
-    renderInRoom(310)
+    renderInRoom(357)
 
     await openMore()
 
@@ -1029,7 +1078,7 @@ describe('the toolbar in a narrow column', () => {
         checked: () => true,
       }),
     )
-    renderInRoom(310)
+    renderInRoom(357)
 
     expect(screen.getByRole('button', { name: 'Edit' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Play' })).toHaveAttribute(

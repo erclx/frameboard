@@ -31,6 +31,7 @@ import {
   NOTE_TOOL,
   PLACINGS,
   POINTER_TOOLS,
+  PRESENT,
   type Slot,
   TEXT_TOOL,
 } from './toolbar-tools'
@@ -254,6 +255,7 @@ export function MoreMenu({
         {stage === 'more' ? (
           <>
             <ModeRows actions={actions} />
+            <SlotRow slot={PRESENT} action={actions.get(PRESENT.id)} />
             <DropdownMenuSeparator />
           </>
         ) : null}
