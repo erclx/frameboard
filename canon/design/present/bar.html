@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>present-step-hover-bar-960</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --accentfill: #1f6fe5;
+        --accentfg: #fff;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --accentfill: #2068dc;
+        --accentfg: #fff;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        -webkit-font-smoothing: antialiased;
+      }
+      .ic {
+        flex: none;
+        display: block;
+      }
+      .stage {
+        position: relative;
+        overflow: hidden;
+      }
+      .cap {
+        position: absolute;
+        left: 16px;
+        top: 12px;
+        right: 16px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+        z-index: 9;
+      }
+      .cap b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .dark .cap,
+      .dark .cap b {
+        color: #bbb;
+      }
+      .pill {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 5px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow:
+          0 6px 24px rgba(0, 0, 0, 0.18),
+          0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+      .sep {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        margin: 0 5px;
+      }
+      .tb {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        color: var(--text);
+        position: relative;
+      }
+      .tb.on {
+        background: var(--accentfill);
+        color: var(--accentfg);
+      }
+      .tb.hov {
+        background: color-mix(in srgb, var(--text) 8%, transparent);
+      }
+      .seg {
+        display: flex;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 8px;
+      }
+      .seg span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .seg .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .seg .hov {
+        color: var(--text);
+      }
+      .tip {
+        position: absolute;
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: #1a1a1a;
+        color: #fff;
+        font-size: 11px;
+        white-space: nowrap;
+        z-index: 9;
+      }
+      .mini {
+        position: absolute;
+        background: #fff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .flabel {
+        position: absolute;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .pal {
+        position: absolute;
+        left: 50%;
+        top: 44px;
+        transform: translateX(-50%);
+        width: 420px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+      .pal .q {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+      }
+      .pal .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        color: var(--text);
+      }
+      .pal .row.on {
+        background: color-mix(in srgb, var(--text) 7%, transparent);
+      }
+      .pal .row kbd {
+        margin-left: auto;
+        font: inherit;
+        color: var(--muted);
+      }
+      .ctx {
+        position: absolute;
+        width: 180px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+      }
+      .ctx div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 5px;
+      }
+      .ctx div.on {
+        background: color-mix(in srgb, var(--text) 7%, transparent);
+      }
+      .ctx kbd {
+        margin-left: auto;
+        font: inherit;
+        color: var(--muted);
+      }
+      .ctx hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 4px 0;
+      }
+      .full {
+        background: #111;
+      }
+      .slide {
+        position: absolute;
+        background: #fff;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+        color: #0f172a;
+      }
+      .slide h1 {
+        font-size: 40px;
+        margin: 70px 64px 12px;
+        letter-spacing: -0.02em;
+      }
+      .slide p {
+        margin: 0 64px;
+        font-size: 16px;
+        color: #475569;
+        max-width: 520px;
+        line-height: 1.5;
+      }
+      .slide .chart {
+        position: absolute;
+        left: 64px;
+        right: 64px;
+        bottom: 56px;
+        height: 120px;
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+      }
+      .slide .chart i {
+        flex: 1;
+        background: #6366f1;
+        border-radius: 4px 4px 0 0;
+      }
+      .hud {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 10px;
+        background: rgba(30, 30, 30, 0.82);
+        color: #eee;
+        backdrop-filter: blur(8px);
+      }
+      .hud .b {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+      }
+      .hud .n {
+        padding: 0 8px;
+        font-variant-numeric: tabular-nums;
+        color: #ddd;
+      }
+      .hud .nm {
+        padding: 0 8px;
+        color: #aaa;
+        max-width: 180px;
+      }
+      .hud .sep {
+        background: #444;
+      }
+      .hint {
+        position: absolute;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: rgba(30, 30, 30, 0.82);
+        color: #ddd;
+        font-size: 12px;
+      }
+      .hint kbd {
+        font: inherit;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: #444;
+        color: #fff;
+        margin: 0 2px;
+      }
+      .prog {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        background: #6366f1;
+      }
+      .half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+      }
+      .cursor {
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 14px solid #fff;
+        transform: rotate(-30deg);
+        filter: drop-shadow(0 1px 1px #000);
+      }
+      .corner {
+        position: absolute;
+        color: #888;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage full dark" style="width: 960px; height: 600px">
+      <div
+        class="slide"
+        style="left: 0; top: 30px; width: 960px; height: 540px"
+      >
+        <h1>Orders grew 3x this quarter</h1>
+        <p>
+          Checkout on the new flow converts better on phones, and the order
+          count followed.
+        </p>
+        <div class="chart">
+          <i style="height: 40%"></i><i style="height: 55%"></i
+          ><i style="height: 48%"></i><i style="height: 70%"></i
+          ><i style="height: 62%"></i><i style="height: 85%"></i
+          ><i style="height: 78%"></i><i style="height: 96%"></i>
+        </div>
+      </div>
+      <div class="hud" style="left: 330px; bottom: 24px">
+        <span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" /></svg></span
+        ><span class="n">3 / 12</span
+        ><span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 18l6-6-6-6" /></svg></span
+        ><span
+          class="sep"
+          style="width: 1px; height: 18px; margin: 0 4px"
+        ></span
+        ><span class="nm">Growth chart</span
+        ><span
+          class="sep"
+          style="width: 1px; height: 18px; margin: 0 4px"
+        ></span
+        ><span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6L6 18M6 6l12 12" /></svg
+        ></span>
+      </div>
+      <div class="cursor" style="left: 520px; top: 490px"></div>
+      <div class="cap" style="top: auto; bottom: auto; top: 6px; color: #999">
+        <b>Hover bar.</b> Moving the pointer fades in a bar with back, count,
+        the frame's name, next, and leave. It fades out after two seconds still.
+      </div>
+    </div>
+  </body>
+</html>

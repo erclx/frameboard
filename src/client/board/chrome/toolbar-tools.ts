@@ -10,6 +10,7 @@ import {
   PanelTop,
   Pencil,
   Play,
+  Presentation,
   Redo2,
   Sun,
   Type,
@@ -112,3 +113,14 @@ export const MODES: readonly Slot[] = [
 
 /** The one key flipping between the two modes, which both halves of the segment name. */
 export const MODE_TOGGLE = 'mode.toggle'
+
+/** The button after the Edit and Play segment presenting the page, and its row in More once folded. */
+export const PRESENT: Slot = {
+  id: 'present.start',
+  label: 'Present page',
+  keys: ['Shift+KeyP'],
+  icon: Presentation,
+}
+
+/** What the Present button names while the page holds no frame to show. */
+export const PRESENT_NOTHING = 'Nothing to present, every frame here is hidden'
