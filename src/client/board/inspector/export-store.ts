@@ -52,6 +52,38 @@ export async function exportFrame(
   blobs.forEach((blob, index) => download(blob, files[index] ?? ''))
 }
 
+/** The files a filmstrip export saves, one per theme, in the form `capture --filmstrip` names one. */
+export function filmstripFileNames(
+  frame: string,
+  count: number,
+  { scale, theme }: ExportSettings,
+): string[] {
+  return themesOf(theme).map(
+    (one) => `${frame}.filmstrip-${count}.${one}@${scale}x.png`,
+  )
+}
+
+/**
+ * Downloads one frame's filmstrip of `count` moments at the Export section's
+ * scale, in one theme or both. Every theme renders before any file
+ * downloads, so a refusal on one, such as a frame that stopped moving,
+ * leaves nothing half saved. It writes nothing, so a view-only tab exports too.
+ */
+export async function exportFilmstrip(
+  frame: Pick<FrameRecord, 'ref' | 'name'>,
+  count: number,
+  settings: ExportSettings,
+): Promise<void> {
+  const files = filmstripFileNames(frame.name, count, settings)
+  const blobs = await renderThemes(
+    frame.ref,
+    themesOf(settings.theme),
+    settings.scale,
+    { filmstrip: String(count) },
+  )
+  blobs.forEach((blob, index) => download(blob, files[index] ?? ''))
+}
+
 function themesOf(theme: ExportTheme): readonly Theme[] {
   return theme === 'both' ? THEMES : [theme]
 }
@@ -61,11 +93,17 @@ async function renderThemes(
   ref: string,
   themes: readonly Theme[],
   scale: ExportScale,
+  extra: Record<string, string> = {},
 ): Promise<Blob[]> {
   const blobs: Blob[] = []
   // In turn, since the route renders one at a time whatever is asked of it.
   for (const theme of themes) {
-    const query = new URLSearchParams({ ref, theme, scale: String(scale) })
+    const query = new URLSearchParams({
+      ref,
+      theme,
+      scale: String(scale),
+      ...extra,
+    })
     const response = await fetch(`/api/frames/png?${query}`)
     if (!response.ok) throw new Error(await refusalOf(response))
     blobs.push(await response.blob())

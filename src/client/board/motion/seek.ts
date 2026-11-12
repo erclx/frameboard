@@ -248,3 +248,37 @@ export function useMotionDriver(
     }
   }, [iframe, ref, live])
 }
+
+/**
+ * The moment a free-running frame shows now, so pausing it holds where it
+ * stood. CSS reads its animations' clock and GSAP its `time()`. `__hf`
+ * exposes no reading, so a HyperFrames page pauses at its start.
+ */
+export function liveMomentOf(ref: string, found: FrameMotion): number {
+  const frame = document.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] > iframe`,
+  )?.contentWindow
+  if (!frame) return 0
+  const { motion, span } = found
+  let at = 0
+  if (motion.source === 'css') {
+    const times = frame.document
+      .getAnimations()
+      .map((animation) => Number(animation.currentTime))
+      .filter((time) => Number.isFinite(time))
+    at = Math.max(0, ...times)
+  } else if (motion.source === 'timelines') {
+    const registry = (
+      frame as unknown as { __timelines?: Record<string, { time?: unknown }> }
+    ).__timelines
+    const clock = Object.values(registry ?? {}).find(
+      (timeline) => typeof timeline?.time === 'function',
+    )
+    const seconds = clock
+      ? Number((clock.time as () => unknown).call(clock))
+      : 0
+    at = Number.isFinite(seconds) ? seconds * 1000 : 0
+  }
+  if (span <= 0) return Math.round(at)
+  return Math.round(motion.duration === null ? at % span : Math.min(at, span))
+}

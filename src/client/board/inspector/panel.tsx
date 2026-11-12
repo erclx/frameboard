@@ -42,6 +42,7 @@ import { VideoSection } from './element/video'
 import { type ElementChange, shownHash, writeElement } from './element/write'
 import { ExportSection } from './export-section'
 import { FrameSection } from './frame-section'
+import { MotionSection } from './motion-section'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
@@ -109,6 +110,10 @@ export function InspectorPanel() {
           {frames.length === 1 && !inFrame && frames[0] ? (
             <>
               <FrameFill page={page} frame={frames[0].ref} />
+              <MotionSection
+                key={`motion:${frames[0].ref}`}
+                frame={frames[0]}
+              />
               <ExportSection key={frames[0].ref} frame={frames[0]} />
             </>
           ) : null}

@@ -66,3 +66,8 @@ function write(ref: string, hold: MotionHold): void {
   if (current?.at === hold.at && current.playing === hold.playing) return
   motionStore.setState({ byRef: { ...byRef, [ref]: hold } })
 }
+
+/** A moment in ms as seconds to two places, so a 2 s slide reads finer than whole seconds. */
+export function formatMoment(ms: number): string {
+  return (ms / 1000).toFixed(2)
+}

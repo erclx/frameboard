@@ -98,7 +98,14 @@ interface ExportMenuProps {
   onPick: (value: string) => void
 }
 
-function ExportMenu({ label, shown, value, options, onPick }: ExportMenuProps) {
+/** One of the Export section's pickers, a row opening a menu of choices. */
+export function ExportMenu({
+  label,
+  shown,
+  value,
+  options,
+  onPick,
+}: ExportMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
