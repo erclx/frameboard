@@ -17,6 +17,12 @@ export interface MediaReading {
   muted: boolean
   /** Whether the file states `muted`, which only a written edit changes. */
   mutedInFile: boolean
+  /** Whether the file states `controls`, so the page draws the browser's own strip. */
+  controls: boolean
+  /** Whether the file states `autoplay`, which a browser honors only beside `muted`. */
+  autoplay: boolean
+  /** Whether the file states `loop`. */
+  loop: boolean
 }
 
 /**
@@ -73,6 +79,9 @@ export function readMedia(media: HTMLMediaElement): MediaReading {
     length: media.duration,
     muted: media.muted,
     mutedInFile: media.defaultMuted,
+    controls: media.hasAttribute('controls'),
+    autoplay: media.hasAttribute('autoplay'),
+    loop: media.hasAttribute('loop'),
   }
 }
 
