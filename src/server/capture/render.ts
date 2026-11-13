@@ -2,6 +2,15 @@ import type { Browser, Page } from 'playwright-core'
 
 import { MAX_COMPOSITE_SIDE } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
+import {
+  BEZEL_COLORS,
+  bezelBox,
+  BEZELS,
+  bezelShadow,
+  type Device,
+  HOME_BAR,
+  PHONE_ISLAND,
+} from '@/shared/frame-device'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { settleAnimations } from './animation-settle'
@@ -129,10 +138,16 @@ export function assertScreenshotFits(
 
 /**
  * Renders a frame to PNG bytes in a theme, as the server's PNG route asks,
- * at `scale` device pixels per CSS pixel or the renderer's own default.
+ * at `scale` device pixels per CSS pixel or the renderer's own default. A
+ * `device` draws the frame inside that device's body, the PNG growing by
+ * the body on every side, its corners past the body transparent.
  */
 export type RenderFrame = (
-  frame: { ref: string; box: { width: number; height: number } },
+  frame: {
+    ref: string
+    box: { width: number; height: number }
+    device?: Device
+  },
   theme: Theme,
   scale?: number,
 ) => Promise<Buffer>
@@ -194,24 +209,75 @@ export function createWarmRenderer({
 
   return (frame, theme, scale = defaultScale) => {
     const run = queue.then(async () => {
-      assertScreenshotFits(frame.ref, frame.box, scale)
-      const opened = await openFrame(await browser.get(), {
+      assertScreenshotFits(
+        frame.ref,
+        bezelBox({ x: 0, y: 0, ...frame.box }, frame.device),
+        scale,
+      )
+      const open = await browser.get()
+      const opened = await openFrame(open, {
         baseUrl: baseUrl(),
         ref: frame.ref,
         box: frame.box,
         theme,
         scale,
       })
+      let shot: Buffer
       try {
-        return await opened.page.screenshot({
+        shot = await opened.page.screenshot({
           animations: 'disabled',
           caret: 'hide',
         })
       } finally {
         await opened.close()
       }
+      return frame.device
+        ? drawBezel(open, shot, frame.box, frame.device, scale)
+        : shot
     })
     queue = run.catch(() => {})
     return run
   }
+}
+
+/**
+ * A frame's shot drawn inside a device's body, as the board draws it, on a
+ * page the size of the body, so the PNG holds the body and nothing past it.
+ */
+async function drawBezel(
+  browser: Browser,
+  shot: Buffer,
+  box: { width: number; height: number },
+  device: Device,
+  scale: number,
+): Promise<Buffer> {
+  const { border, screenRadius } = BEZELS[device]
+  const outer = bezelBox({ x: 0, y: 0, ...box }, device)
+  const context = await browser.newContext({
+    viewport: { width: outer.width, height: outer.height },
+    deviceScaleFactor: scale,
+  })
+  try {
+    const page = await context.newPage()
+    const marks =
+      device === 'phone'
+        ? `<span style="${pill(PHONE_ISLAND.width, PHONE_ISLAND.height, BEZEL_COLORS.island)}top:${PHONE_ISLAND.top}px"></span>` +
+          `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+        : ''
+    await page.setContent(
+      `<!doctype html><html><body style="margin:0;background:transparent">` +
+        `<div style="position:absolute;left:${border}px;top:${border}px;width:${box.width}px;height:${box.height}px">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%">` +
+        `<div style="position:absolute;inset:0;border-radius:${screenRadius}px;box-shadow:${bezelShadow(device, { drop: false })}">${marks}</div>` +
+        `</div></body></html>`,
+      { waitUntil: 'load' },
+    )
+    return await page.screenshot({ omitBackground: true, caret: 'hide' })
+  } finally {
+    await context.close()
+  }
+}
+
+function pill(width: number, height: number, color: string): string {
+  return `position:absolute;left:50%;transform:translateX(-50%);width:${width}px;height:${height}px;border-radius:${height / 2}px;background:${color};`
 }

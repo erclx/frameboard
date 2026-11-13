@@ -53,14 +53,18 @@ export const HOME_BAR = { width: 140, height: 5, bottom: 8 } as const
  * The CSS `box-shadow` drawing a device's body: a spread the border wide
  * around a box rounded to the screen radius, which also covers the frame's
  * corners past that radius, so the body's outer radius is the screen's plus
- * the border. Shared with the capture, which draws the same body into a PNG.
+ * the border, its last pixel a hairline edge. The export leaves out the drop
+ * shadow, which would fall past the PNG's edge.
  */
-export function bezelShadow(device: Device): string {
+export function bezelShadow(
+  device: Device,
+  { drop = true }: { drop?: boolean } = {},
+): string {
   const { border } = BEZELS[device]
   return [
-    `0 0 0 ${border}px ${BEZEL_COLORS.body}`,
-    `0 0 0 ${border + 1}px ${BEZEL_COLORS.edge}`,
-    `0 ${border}px ${border * 3}px rgba(0, 0, 0, 0.3)`,
+    `0 0 0 ${border - 1}px ${BEZEL_COLORS.body}`,
+    `0 0 0 ${border}px ${BEZEL_COLORS.edge}`,
+    ...(drop ? [`0 ${border}px ${border * 3}px rgba(0, 0, 0, 0.3)`] : []),
   ].join(', ')
 }
 

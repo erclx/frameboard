@@ -29,9 +29,11 @@ const DEFAULT_SCALE = 2
  * frame rendered at `scale` times its layout size, twice when no scale is
  * given. An added `filmstrip=<n>` of 2 or more renders `n` moments of its
  * timeline in one row instead, refusing a frame with no timeline as
- * `motion-missing` and one that never ends as `motion-unbounded`. It takes
- * no token, since the image shows only what the frame route already serves,
- * and a refusal answers the CLI's `{ ok, error }` envelope.
+ * `motion-missing` and one that never ends as `motion-unbounded`. An added
+ * `device=1` draws a frame holding a device inside its body, and leaves a
+ * frame holding none as it is. It takes no token, since the image shows only
+ * what the frame route already serves, and a refusal answers the CLI's
+ * `{ ok, error }` envelope.
  */
 export function pngRoutes(
   root: string,
@@ -46,27 +48,36 @@ export function pngRoutes(
       const theme = c.req.query('theme') ?? ''
       const scale = parseScale(c.req.query('scale'))
       const filmstrip = parseFilmstrip(c.req.query('filmstrip'))
+      const device = parseDevice(c.req.query('device'))
       if (
         ref === '' ||
         !isTheme(theme) ||
         scale === null ||
-        filmstrip === null
+        filmstrip === null ||
+        device === null
       ) {
         throw new FrameboardError(
           'usage',
-          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>, adding &filmstrip=<n> of 2 or more for a filmstrip.',
+          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>, adding &filmstrip=<n> of 2 or more for a filmstrip or &device=1 for the frame inside its device.',
           {
             ref,
             theme,
             scale: c.req.query('scale') ?? null,
             filmstrip: c.req.query('filmstrip') ?? null,
+            device: c.req.query('device') ?? null,
           },
         )
       }
-      const frame = await readFrame(root, ref, { cwd: root })
+      const { device: held, ...frame } = await readFrame(root, ref, {
+        cwd: root,
+      })
       const bytes =
         filmstrip === undefined
-          ? await render(frame, theme, scale)
+          ? await render(
+              device && held ? { ...frame, device: held } : frame,
+              theme,
+              scale,
+            )
           : await renderFilmstrip(frame, theme, scale, filmstrip)
       return c.body(new Uint8Array(bytes), 200, {
         'Content-Type': 'image/png',
@@ -100,6 +111,12 @@ function parseScale(value: string | undefined): number | null {
   if (value === undefined) return DEFAULT_SCALE
   if (value === '1' || value === '2' || value === '3') return Number(value)
   return null
+}
+
+// `1` alone asks for the device, so `true` or an empty value refuses.
+function parseDevice(value: string | undefined): boolean | null {
+  if (value === undefined) return false
+  return value === '1' ? true : null
 }
 
 // Whole numbers from 2 alone, so `1`, `2.5`, and an empty value refuse, and

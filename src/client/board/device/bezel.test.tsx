@@ -36,10 +36,12 @@ function bezelOf(container: HTMLElement): HTMLElement {
   return bezel
 }
 
-/** The spread of the first shadow, the body's width past the screen. */
+/** The widest spread of its shadows, the body's width past the screen. */
 function borderOf(bezel: HTMLElement): number {
-  const spread = /0px 0px 0px (\d+)px/.exec(getComputedStyle(bezel).boxShadow)
-  return Number(spread?.[1])
+  const spreads = [
+    ...getComputedStyle(bezel).boxShadow.matchAll(/0px 0px 0px (\d+)px/g),
+  ]
+  return Math.max(...spreads.map((spread) => Number(spread[1])))
 }
 
 describe('Bezel', () => {

@@ -47,6 +47,73 @@ describe('GET /api/frames/png', () => {
     expect(asked).toEqual(['studio/home/hero dark 1440x900'])
   })
 
+  describe('device', () => {
+    function getPhone(query: string, render: RenderFrame) {
+      board = writeBoard({
+        'studio/home/hero.html': '<p>Hello</p>',
+        'studio/home/layout.json': JSON.stringify({
+          version: 1,
+          frames: {
+            hero: {
+              x: 0,
+              y: 0,
+              width: 402,
+              height: 874,
+              order: 0,
+              device: 'phone',
+            },
+          },
+        }),
+      })
+      return pngRoutes(board.root, render, async () => PNG).request(
+        `/api/frames/png?${query}`,
+      )
+    }
+
+    it('renders a frame in its device when asked', async () => {
+      const asked: unknown[] = []
+
+      await getPhone('ref=home/hero&theme=light&device=1', async (frame) => {
+        asked.push(frame.device)
+        return PNG
+      })
+
+      expect(asked).toEqual(['phone'])
+    })
+
+    it('renders the bare frame when not asked', async () => {
+      const asked: unknown[] = []
+
+      await getPhone('ref=home/hero&theme=light', async (frame) => {
+        asked.push(frame.device)
+        return PNG
+      })
+
+      expect(asked).toEqual([undefined])
+    })
+
+    it('renders a frame holding no device bare when asked', async () => {
+      const asked: unknown[] = []
+
+      await get('ref=home/hero&theme=light&device=1', async (frame) => {
+        asked.push(frame.device)
+        return PNG
+      })
+
+      expect(asked).toEqual([undefined])
+    })
+
+    it.each(['true', '0', ''])('refuses device=%s as usage', async (value) => {
+      const response = await getPhone(
+        `ref=home/hero&theme=light&device=${value}`,
+        async () => PNG,
+      )
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    })
+  })
+
   it('answers 404 with the envelope for an unknown frame', async () => {
     const response = await get('ref=home/missing&theme=light', async () => PNG)
 
