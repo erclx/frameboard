@@ -61,7 +61,14 @@ describe('runCli', () => {
     expect(run.json().error).toMatchObject({
       code: 'usage',
       details: {
-        commands: ['add', 'duplicate', 'rename', 'move', 'delete'],
+        commands: [
+          'add',
+          'duplicate',
+          'rename',
+          'move',
+          'transition',
+          'delete',
+        ],
       },
     })
   })

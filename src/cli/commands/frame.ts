@@ -15,6 +15,7 @@ import {
   type ScrollOptions,
   setFrameDevice,
   setFrameFlag,
+  setFrameTransition,
   type SizeOptions,
   type WidthsOptions,
 } from '@/server/board/frames'
@@ -22,6 +23,11 @@ import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
 import { deviceOf, DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
+import {
+  TRANSITION_LABELS,
+  transitionNameOf,
+  TRANSITIONS,
+} from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 
 import {
@@ -32,6 +38,11 @@ import {
   parseInteger,
   type ProgramContext,
 } from '../program'
+import {
+  type TransitionFlags,
+  transitionFrom,
+  withTransitionFlags,
+} from './transition-flags'
 
 const FRAME_REF =
   'a frame ref, <page>/<frame> or <project>/<page>/<frame>, or a path to its .html file'
@@ -57,6 +68,12 @@ function parseWidths(value: string): number[] {
 
 const SCROLL_HELP =
   'hold a fixed screen height and scroll past it, fixing both axes, at the reference height of the width when no height is given'
+/** The override `frame transition` stores, null for `page`, which clears it. */
+function transitionOrPage(name: string, flags: TransitionFlags) {
+  const chosen = transitionNameOf(name)
+  return chosen ? transitionFrom(chosen, flags) : null
+}
+
 const RESIZE_SCROLL_HELP =
   'hold a fixed screen height and scroll past it, fixing both axes, dropping a hugging height to the reference height of the width and keeping a fixed one'
 
@@ -265,6 +282,35 @@ export function registerFrame(
       return done(
         record,
         record.device ? `Set ${record.device} on` : 'Cleared the device on',
+      )
+    },
+  )
+
+  act<CommonOptions & TransitionFlags>(
+    withTransitionFlags(
+      verb(
+        'transition',
+        'Set the transition present mode draws as this slide arrives, over its page’s, or clear it with page so it takes the page’s, writing only layout.json',
+      ).addArgument(
+        new Argument(
+          '<transition>',
+          'the transition, page to take the page’s',
+        ).choices([...TRANSITIONS, 'page']),
+      ),
+    ),
+    context,
+    async ([ref = '', name = ''], options) => {
+      const record = await setFrameTransition(
+        await boardOf(options, io),
+        ref,
+        transitionOrPage(name, options),
+        { ...options, cwd: io.cwd },
+      )
+      return done(
+        record,
+        record.transition
+          ? `Set ${TRANSITION_LABELS[record.transition.name]} on`
+          : 'Cleared the transition on',
       )
     },
   )

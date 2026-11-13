@@ -28,6 +28,16 @@ import {
   NAME_PATTERN,
   RESERVED_PAGE_NAMES,
 } from '@/shared/names'
+import {
+  DEFAULT_TRANSITION_MS,
+  DIRECTED,
+  DIRECTIONS,
+  STEP_ATTRIBUTES,
+  STEP_EFFECTS,
+  STEP_STARTS,
+  TRANSITION_MS,
+  TRANSITIONS,
+} from '@/shared/present-transition'
 import { LOOK_MARKER } from '@/shared/theme'
 
 /** The content format `docs` prints, built from the constants the verbs run on. */
@@ -67,6 +77,11 @@ export function contentFormat() {
       `A ${LAYOUT_FILE} that does not parse is reported by list and refused by every verb writing that page, never overwritten.`,
       `Moving or resizing a frame writes ${LAYOUT_FILE} alone and never the frame file.`,
       "sections, when present, maps a section name to its x, y, width, height, and order. A frame belongs to the topmost section holding its center, left and top edges inside, and is never listed in it, so list --json names each section's frames and an agent moving a frame out of the box takes it out of the section. The developer writes sections by hand on the board.",
+    ],
+    present: [
+      `A page's slide transition sits on the present key of its ${LAYOUT_FILE} as { transition: { name, direction, ms } }, and a frame's entry may hold its own transition, which wins as that slide arrives. name is one of ${TRANSITIONS.join(', ')}. direction is one of ${DIRECTIONS.join(', ')}, taken by ${DIRECTED.join(' and ')} alone and defaulting to left. ms runs ${TRANSITION_MS.min} to ${TRANSITION_MS.max}, a frame's taking its page's when absent and the page's defaulting to ${DEFAULT_TRANSITION_MS}. Any other value reads as none and is kept on write. The board draws a transition itself and never writes it into a frame file.`,
+      "page transition <page-ref> <name> sets the page's, and none clears it so slides cut. frame transition <frame-ref> <name> sets a frame's, and page clears it so the frame takes its page's. Both take --ms and --direction and write only layout.json.",
+      `A step is an element present mode holds back until a press reveals it, marked by three attributes on that element and nothing else. ${STEP_ATTRIBUTES.step}="<n>" is a positive integer, and steps show in number order with equal numbers together and gaps closed. ${STEP_ATTRIBUTES.effect} is one of ${STEP_EFFECTS.join(', ')}, defaulting to appear. ${STEP_ATTRIBUTES.start} is one of ${STEP_STARTS.join(', ')}, defaulting to click, where with shows the step beside the one before it and after shows it once that one finishes. Set them with edit --attr. Edit, Play, capture, and an exported PNG show every step.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
