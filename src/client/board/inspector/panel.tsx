@@ -27,6 +27,7 @@ import { LayoutSection } from './element/layout'
 import { PositionSection } from './element/position'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
+import { StepSection } from './element/step'
 import { StrokeSection } from './element/stroke'
 import {
   fetchStyles,
@@ -280,6 +281,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         disabled={disabled}
         write={write}
       />
+      <StepSection step={live.step} disabled={disabled} write={write} />
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}
