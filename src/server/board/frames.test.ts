@@ -25,6 +25,7 @@ import {
   renameFrame,
   resizeFrame,
   setBoxes,
+  setFrameDevice,
   setFrameFlag,
   setMeasured,
   skeleton,
@@ -701,6 +702,72 @@ describe('frames', () => {
           fitHeight(root, 'webapp/home/hero', 3816, { cwd: root }),
         ).rejects.toMatchObject({ code: 'fit-scroll' })
         expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+    })
+
+    describe('device', () => {
+      it('sets a device on the entry and leaves the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+
+        const set = await setFrameDevice(root, 'webapp/home/hero', 'phone', {
+          cwd: root,
+        })
+
+        expect(set.device).toBe('phone')
+        expect(layout('webapp/home').frames.hero.device).toBe('phone')
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('clears a device, leaving no key and the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+        await setFrameDevice(root, 'webapp/home/hero', 'tablet', { cwd: root })
+
+        const cleared = await setFrameDevice(root, 'webapp/home/hero', null, {
+          cwd: root,
+        })
+
+        expect(cleared).not.toHaveProperty('device')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('device')
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('reads an unknown value as none and leaves it as written', async () => {
+        const root = open()
+        hugHero(root, { device: 'watch' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved).not.toHaveProperty('device')
+        expect(layout('webapp/home').frames.hero.device).toBe('watch')
+      })
+
+      it('add writes the device it is given', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'phone',
+          device: 'phone',
+        })
+
+        expect(added.device).toBe('phone')
+        expect(layout('webapp/home').frames.card.device).toBe('phone')
+      })
+
+      it('duplicate lands 80 past the bezel of a frame in a device', async () => {
+        const root = open()
+        await setFrameDevice(root, 'webapp/home/about', 'tablet', { cwd: root })
+
+        const copy = await duplicateFrame(root, 'webapp/home/about', {
+          cwd: root,
+        })
+
+        expect(copy.box.x).toBe(1520 + 390 + 44 + 80)
       })
     })
 

@@ -40,6 +40,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
 - A frame an agent gave several widths draws each beside it under its width, and a click or drag on one acts on the frame
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past
+- Its Device row draws a generic phone or tablet around the frame, leaving the file unchanged, and Export's Include device puts it in the PNG
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow

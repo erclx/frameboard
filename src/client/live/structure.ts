@@ -1,4 +1,5 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
+import type { Device } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
 import type {
   FrameRecord,
@@ -96,6 +97,9 @@ export function createStructure(send: typeof fetch = fetch) {
       }),
     orderFrame: (ref: string, index: number) =>
       post<FrameRecord>('/api/frame/order', { ref, index }),
+    /** Sets the device drawn around each frame in one undo step, null clearing it. */
+    setDevice: (refs: readonly string[], device: Device | null) =>
+      post<FrameRecord[]>('/api/frame/device', { refs, device }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
       post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
     deleteFrames: (refs: readonly string[]) =>

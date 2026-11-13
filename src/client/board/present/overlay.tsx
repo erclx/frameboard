@@ -12,9 +12,11 @@ import { createPortal } from 'react-dom'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
+import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
 import {
@@ -226,7 +228,8 @@ function Presenting({ frame, at, count }: PresentingProps) {
   }, [frame?.ref, wake])
 
   if (!frame) return null
-  const scale = fitScale(frame.box, room)
+  // A frame in a device fits with its body, which draws past its box.
+  const scale = fitScale(bezelBox(frame.box, frame.device), room)
   return (
     <div
       ref={layer}
@@ -247,6 +250,7 @@ function Presenting({ frame, at, count }: PresentingProps) {
         }}
       >
         <PresentedFrame key={frame.ref} frame={frame} iframe={iframe} />
+        {frame.device ? <Bezel device={frame.device} /> : null}
       </div>
       <PresentBar
         shown={shown}

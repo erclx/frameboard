@@ -605,6 +605,35 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(1)
     })
 
+    it('sets a device on several frames as one step and undoes it', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/frame/device', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        device: 'phone',
+      })
+      expect(layout()).toMatchObject({
+        hero: { device: 'phone' },
+        mobile: { device: 'phone' },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('device')
+      expect(layout().mobile).not.toHaveProperty('device')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('refuses an unknown device and writes nothing', async () => {
+      const response = await post('/api/frame/device', {
+        refs: ['studio/home/hero'],
+        device: 'watch',
+      })
+
+      expect(response.status).toBe(400)
+      expect(layout().hero).not.toHaveProperty('device')
+    })
+
     it('deletes frames and undoes them back byte for byte', async () => {
       const bytes = readFileSync(frameFile('hero'))
 

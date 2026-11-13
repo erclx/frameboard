@@ -26,6 +26,7 @@ import {
   useShownTheme,
 } from '@/client/theme/store'
 import { frameUrl } from '@/shared/board-urls'
+import { BEZELS } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -36,6 +37,7 @@ import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
+import { Bezel } from './device/bezel'
 import { FindingsList } from './findings-list'
 import { openFindings, useFindingsOpen } from './findings-open'
 import { renderedHash } from './frame-dom'
@@ -220,6 +222,8 @@ export const Frame = memo(function Frame({
   // Play shows the frames as they ship, so a claim draws nothing there.
   const claimed = claim && !playing ? claim : undefined
   const held = hold && !hold.playing && !playing ? hold : undefined
+  // Chrome beside the frame stands past a device body rather than on it.
+  const inset = frame.device ? BEZELS[frame.device].border : 0
 
   return (
     <div
@@ -259,6 +263,7 @@ export const Frame = memo(function Frame({
         // open-alone link shows, the label stops short of it.
         style={{
           ['--label-room' as string]: `calc(${Math.max(width, storedWidth)}px * var(--zoom, 1))`,
+          ...(inset ? { bottom: `calc(100% + ${inset}px)`, left: -inset } : {}),
         }}
         title={frame.name}
       >
@@ -294,7 +299,7 @@ export const Frame = memo(function Frame({
         ) : null}
       </div>
       {playing || renaming ? null : (
-        <OpenAlone frameRef={frame.ref} name={frame.name} />
+        <OpenAlone frameRef={frame.ref} name={frame.name} inset={inset} />
       )}
       {live ? (
         <iframe
@@ -312,10 +317,12 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {frame.device ? <Bezel device={frame.device} /> : null}
       {frame.scroll && live && !playing ? (
         <ScrollRail
           iframe={iframe}
           live={live}
+          inset={inset}
           className="invisible [[data-label-hover]_&]:visible [[data-selected]_&]:visible"
         />
       ) : null}
@@ -323,7 +330,7 @@ export const Frame = memo(function Frame({
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
       {claimed ? <ClaimOutline /> : null}
-      {entered ? <EnteredTag /> : null}
+      {entered ? <EnteredTag inset={inset} /> : null}
       {findings && findings.length > 0 ? (
         <span
           aria-hidden
@@ -455,10 +462,22 @@ function ThemeMarker({
  * the frame or it is selected, and reaching the link through the hit layer as
  * the theme marker does.
  */
-function OpenAlone({ frameRef, name }: { frameRef: string; name: string }) {
+function OpenAlone({
+  frameRef,
+  name,
+  inset,
+}: {
+  frameRef: string
+  name: string
+  /** Board units past the frame's top right, the width of any device body. */
+  inset: number
+}) {
   const label = `Open ${name} alone`
   return (
-    <div className="absolute right-0 bottom-full flex origin-bottom-right pb-1 [transform:scale(calc(1/var(--zoom,1)))]">
+    <div
+      className="absolute right-0 bottom-full flex origin-bottom-right pb-1 [transform:scale(calc(1/var(--zoom,1)))]"
+      style={inset ? { bottom: `calc(100% + ${inset}px)`, right: -inset } : {}}
+    >
       <a
         href={frameUrl(frameRef)}
         target="_blank"
@@ -524,9 +543,12 @@ function severityOf(findings: readonly Finding[]): Finding['severity'] {
 }
 
 /** The entered frame's tag under its bottom left, at a constant screen size. */
-function EnteredTag() {
+function EnteredTag({ inset }: { inset: number }) {
   return (
-    <div className="absolute top-full left-0 origin-top-left pt-1 [transform:scale(calc(1/var(--zoom,1)))]">
+    <div
+      className="absolute top-full left-0 origin-top-left pt-1 [transform:scale(calc(1/var(--zoom,1)))]"
+      style={inset ? { top: `calc(100% + ${inset}px)`, left: -inset } : {}}
+    >
       <span className="block rounded-[4px] bg-primary-fill px-[5px] py-px text-[10px] font-medium whitespace-nowrap text-primary-foreground">
         In frame, Esc to leave
       </span>

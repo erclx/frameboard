@@ -43,9 +43,19 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 - It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
 - Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
 
+### `src/client/board/device/`
+
+Owns `bezel.tsx`, the phone or tablet body drawn around a frame whose entry names a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
+
+- One element over the frame rounds its page to the screen radius and spreads the body as a `box-shadow`, so the body's outer radius is the screen's plus the border
+- The body and the island scale with the canvas, while its hairline edge stays one screen pixel at any zoom
+- It takes no pointer events, so a click reaches the frame as it would bare
+- The label, the open-alone link, the rail, and the In frame tag stand past the body, and a linked width draws no device
+- Present fits the frame with its body through `bezelBox`
+
 ### `src/client/board/scroll/`
 
-Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
+Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge, or past its device body, at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
 
 - The rail draws inside the frame's box and each linked box, and only while the page is taller than its box and readable, so a page on another origin draws none
 - A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone

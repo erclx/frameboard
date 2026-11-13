@@ -691,6 +691,18 @@ async function aboutScrolling(page: Page): Promise<void> {
   })
 }
 
+/** Draws the phone-sized about frame inside a phone, putting its layout back when the page closes. */
+async function aboutInPhone(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.about.device = 'phone'
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
 /**
  * Hands the board an empty change log on every `changes` message, since
  * `rawIndigoHero` writes the hero as an outside write the change tracker
@@ -3147,6 +3159,22 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'device-bezel',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            aboutInPhone,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/about'] }),
+            readyWhen('[data-bezel="phone"]'),
+          ),
+        ),
+      },
+      {
         section: 'present',
         theme,
         route: '/p/webapp/home',
@@ -4478,6 +4506,7 @@ const WRITING_SECTIONS = [
   'select-color',
   'select-color-done',
   'scroll-rail',
+  'device-bezel',
   'motion-held',
 ]
 
