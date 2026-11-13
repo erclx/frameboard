@@ -91,7 +91,10 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
   const folder = join(root, CROWD.project, CROWD.page)
-  if (existsSync(folder)) return 'kept'
+  if (existsSync(folder)) {
+    await relistKept(root, CROWD.project, CROWD.page)
+    return 'kept'
+  }
   await mkdir(folder)
 
   const { width, height } = FRAME_SIZES.desktop
@@ -136,7 +139,10 @@ async function layOne(
   } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)
-  if (existsSync(folder)) return 'kept'
+  if (existsSync(folder)) {
+    await relistKept(root, project, page)
+    return 'kept'
+  }
   await mkdir(folder)
 
   const frames = {
@@ -187,6 +193,20 @@ async function listPage(
   if (listed.pages.includes(page)) return
   listed.pages.push(page)
   await writeFile(path, `${JSON.stringify(listed, null, 2)}\n`)
+}
+
+/**
+ * Lists a page left in place, since a drive copy rebuilt from a seeded checkout
+ * can carry its folder beside a `project.json` reset to the fixture's own. A
+ * project with no `project.json` is left as it is rather than given one.
+ */
+async function relistKept(
+  root: string,
+  project: string,
+  page: string,
+): Promise<void> {
+  if (!existsSync(join(root, project, 'project.json'))) return
+  await listPage(root, project, page)
 }
 
 async function reserveSettings(root: string, now: Date): Promise<string[]> {
