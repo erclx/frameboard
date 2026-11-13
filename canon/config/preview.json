@@ -1,8 +1,4 @@
 {
   "writes": ["test/fixtures/boards/basic"],
-  "keep": [
-    "test/fixtures/boards/basic/.run",
-    "test/fixtures/boards/basic/marketing/crowd",
-    "test/fixtures/boards/basic/marketing/motion"
-  ]
+  "keep": ["test/fixtures/boards/basic/.run"]
 }
