@@ -87,6 +87,17 @@ describe('ShortcutsSheet', () => {
     ])
   })
 
+  it('scrolls its body rather than running past the window', async () => {
+    renderOnBoard(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      window.innerHeight,
+    )
+  })
+
   it('lists the present keys under Present', async () => {
     register(
       action('present.start', { keys: ['Shift+KeyP'] }),

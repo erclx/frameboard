@@ -208,7 +208,8 @@ export function ShortcutsSheet() {
         </div>
         <div
           className={cn(
-            'grid gap-x-7 gap-y-[18px] px-5 pt-4 pb-5',
+            // The sheet sits 90px down under a 48px header, so the body scrolls rather than running past the window.
+            'grid max-h-[calc(100dvh-158px)] gap-x-7 gap-y-[18px] overflow-y-auto px-5 pt-4 pb-5',
             home ? 'grid-cols-[1.3fr_1fr_1fr]' : 'grid-cols-3',
           )}
         >
