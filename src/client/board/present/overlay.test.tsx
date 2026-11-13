@@ -289,6 +289,33 @@ describe('the bar', () => {
     expect(bar()).not.toHaveAttribute('data-shown')
   })
 
+  it('keeps one width for a short name and a long one', () => {
+    present(framesOf('a', 'a-frame-name-far-longer-than-the-slot-holds'))
+    const short = bar().getBoundingClientRect().width
+
+    act(() =>
+      presentStore.setState({
+        frame: 'studio/home/a-frame-name-far-longer-than-the-slot-holds',
+      }),
+    )
+
+    expect(bar().getBoundingClientRect().width).toBe(short)
+  })
+
+  it('keeps the whole long name in the dialog label', () => {
+    present(framesOf('a-frame-name-far-longer-than-the-slot-holds'))
+
+    expect(screen.getByRole('dialog')).toHaveAccessibleName(
+      'Presenting a-frame-name-far-longer-than-the-slot-holds, 1 of 1',
+    )
+  })
+
+  it('leaves its count out of a text selection', () => {
+    present(framesOf('first'))
+
+    expect(getComputedStyle(screen.getByText('1 / 1')).userSelect).toBe('none')
+  })
+
   it('fades its opacity', () => {
     present(framesOf('first'))
 

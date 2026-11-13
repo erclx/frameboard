@@ -39,7 +39,7 @@ export function PresentBar({
         disabled={at <= 1}
         onClick={onPrevious}
       />
-      <span className="px-2 text-[#ddd] tabular-nums">
+      <span className="px-2 text-[#ddd] tabular-nums select-none">
         {at} / {count}
       </span>
       <BarButton
@@ -49,7 +49,7 @@ export function PresentBar({
         onClick={onNext}
       />
       <Separator />
-      <span className="max-w-[180px] truncate px-2 text-[#aaa]">{name}</span>
+      <span className="w-[150px] truncate px-2 text-[#aaa]">{name}</span>
       <Separator />
       <BarButton label="Leave presenting" icon={X} onClick={onLeave} />
     </div>
