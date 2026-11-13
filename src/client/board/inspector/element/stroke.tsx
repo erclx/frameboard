@@ -9,6 +9,13 @@ import type { PreviewStyle, WriteElement } from './write'
 /** The token the stroke `+` reaches for first. */
 const BORDER_TOKEN = '--border'
 
+/**
+ * The stroke `+` writes where the project names no color token: a mid grey
+ * reading on a light and a dark frame alike, and a hex rather than
+ * `currentcolor` so the row's opacity field stays live.
+ */
+const TOKENLESS_STROKE = '#808080'
+
 interface StrokeSectionProps {
   /** Whether the element draws a border, which shows the row. */
   bordered: boolean
@@ -28,7 +35,7 @@ interface StrokeSectionProps {
 /**
  * Stroke: one color row writing `border-color` while the element draws a
  * border. `+` writes `border: 1px solid var(--border)`, else the first color
- * token, matching the 1px stroke Figma adds. Remove drops the element's own
+ * token, else a raw grey, matching the 1px stroke Figma adds. Remove drops the element's own
  * `border` and its longhands, or writes `border-style: none` over a rule's.
  * The width has no control and stays the agent's.
  */
@@ -54,13 +61,12 @@ export function StrokeSection({
       title="Stroke"
       add={{
         label: 'Add stroke',
-        disabled: disabled || bordered || token === undefined,
+        disabled: disabled || bordered,
         onAdd: () => {
-          if (token === undefined) return
           void write({
             kind: 'style',
             property: 'border',
-            value: `1px solid var(${token})`,
+            value: `1px solid ${token === undefined ? TOKENLESS_STROKE : `var(${token})`}`,
           })
         },
       }}

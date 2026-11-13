@@ -2010,6 +2010,43 @@ describe('StrokeSection', () => {
     ])
   })
 
+  it('adds a 1px grey border in a project with no color token', async () => {
+    const { changes, write } = recorder()
+    render(
+      <StrokeSection
+        bordered={false}
+        borderColor={null}
+        tokens={[]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add stroke' }))
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'border', value: '1px solid #808080' },
+    ])
+  })
+
+  it('disables Add stroke with no color token where the inspector is disabled', () => {
+    render(
+      <StrokeSection
+        bordered={false}
+        borderColor={null}
+        tokens={[]}
+        theme="light"
+        inline={false}
+        disabled
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Add stroke' })).toBeDisabled()
+  })
+
   it('shows no color row and enables Add stroke on an element with no border', () => {
     render(
       <StrokeSection
