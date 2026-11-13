@@ -39,7 +39,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it, and a double click on its name renames it
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
 - A frame an agent gave several widths draws each beside it under its width, and a click or drag on one acts on the frame
-- The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past
+- The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
 - Its Device row draws a generic phone or tablet around the frame, leaving the file unchanged, and Export's Include device puts it in the PNG
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
@@ -50,7 +50,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 - The inspector's Export section saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, named like `hero.light@2x.png`, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
-- A selected frame that animates gets a Motion section, whose track holds it at any moment and whose play runs it on, in your tab alone. A Held chip on its label resumes it.
+- A selected frame that animates gets a Motion section, whose track holds it at any moment and whose play runs it on to its end, in your tab alone. A Held chip on its label resumes it.
 - The Motion section's Filmstrip exports up to 12 moments in one row at the Export section's scale and theme, offering only the counts that fit, named like `hero.filmstrip-5.light@2x.png`
 - Open on a phone, under the Preview row, shows a code a phone on the same Wi-Fi scans to open the frame's project, read only, until the card closes
 - Copy as PNG with several frames selected puts each on the clipboard as its own file under WSL, so one paste lands them all, and elsewhere copies one image laid out as on the canvas
@@ -59,7 +59,7 @@ The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a
 
 Drag a corner of selected upright text, a shape, an image, or a video to resize it. Text wraps to the new width with its height following, and Shift keeps a shape's or media's ratio. Inline text, a container, and a divider draw no corner marks.
 
-A Free element dragged past its frame's edge shows there as a dashed ghost, which a press drags back. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
+Past a frame's edge, a Free element shows as a dashed ghost a press drags back, unless the frame scrolls. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
 
 - The toolbar's Place toggle decides where a new element lands, and Auto puts it Free where you drew it unless its parent lays out as flex or grid
 - Flow and Free force one or the other, and a divider always joins the flow
