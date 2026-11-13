@@ -21,7 +21,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Height write:** a pick writes every frame through `POST /api/frame/height` as one undo step, and a refusal puts the stored mode back. The menu's and palette's Fit height run that route too.
 - **Device:** a None, Phone, and Tablet radio row under Height, drawn through the same `ChoiceRow`, writing every frame through `POST /api/frame/device` as one undo step
 - **This slide:** a menu under Device reading Same as page or a named transition, writing every frame through `POST /api/frame/transition` as one undo step
-- **Page:** `page-section.tsx` shows with nothing selected, holding Slide transition, Direction for Slide and Push alone, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
+- **Page:** `page-section.tsx` shows with nothing selected, holding Slide transition, Direction, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
 - **Step:** `element/step.tsx` adds a Present section to one element with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
 - **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.

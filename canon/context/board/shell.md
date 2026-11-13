@@ -106,8 +106,7 @@ A transition between slides and the steps inside one are the board's own drawing
 - `travel.ts` resolves a frame's own transition over its page's. Going back, the leaving slide takes back the one it arrived with, and reduced motion makes every one a cut.
 - `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
 - `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
-- `bar.tsx` draws one dot per step beside the count on a slide holding any, filled up to the step shown
-- Only present mode injects that style, so Edit, Play, a capture, and an export show every step
+- `bar.tsx` draws one dot per step, filled up to the step shown. Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
 
 ### `src/client/board/sections/`
 
