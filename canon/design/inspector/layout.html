@@ -50,6 +50,19 @@
         margin-left: -2px;
         color: var(--muted);
       }
+      .hbtn {
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .hgrp {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
     </style>
     <meta charset="utf-8" />
     <title>inspector-layout</title>
@@ -1864,11 +1877,29 @@
         <div class="isec">
           <div class="ihead">
             <span>Layout</span
-            ><span
-              class="lcap"
-              title="The flow comes from a rule these elements share. An edit writes this element alone."
-              ><b>.row</b> · shared by 3 elements</span
-            >
+            ><span class="hgrp"
+              ><span
+                class="lcap"
+                title="The flow comes from a rule these elements share. An edit writes this element alone."
+                ><b>.row</b> · shared by 3 elements</span
+              ><span class="hbtn" title="Use auto layout Shift+A"
+                ><svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 7V5c0-1.1.9-2 2-2h2" />
+                  <path d="M17 3h2c1.1 0 2 .9 2 2v2" />
+                  <path d="M21 17v2c0 1.1-.9 2-2 2h-2" />
+                  <path d="M7 21H5c-1.1 0-2-.9-2-2v-2" />
+                  <rect width="7" height="5" x="7" y="7" rx="1" />
+                  <rect width="7" height="5" x="10" y="12" rx="1" /></svg></span
+            ></span>
           </div>
           <div class="flow">
             <button title="Block">

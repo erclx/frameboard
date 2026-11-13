@@ -7,6 +7,7 @@ import {
 } from '@/client/actions/registry'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
+import { align, type Alignment, type Axis, distribute } from '@/shared/arrange'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { treeOf } from '../element/tree'
@@ -19,7 +20,6 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
-import { align, type Alignment, type Axis, distribute } from './arrange'
 import type { Box } from './box'
 import { holdBoxes, withPending, writeBoxes } from './write'
 

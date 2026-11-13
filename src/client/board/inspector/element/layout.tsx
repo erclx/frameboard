@@ -3,6 +3,7 @@ import {
   AlignHorizontalSpaceBetween,
   ArrowDown,
   ArrowRight,
+  Group,
   LayoutGrid,
   Plus,
   Scan,
@@ -11,10 +12,12 @@ import {
 } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
+import { isEnabled, useActions } from '@/client/actions/registry'
 import { cn } from '@/client/lib/cn'
 import type { ElementFlow } from '@/shared/records/elements'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
+import { WRAP_ACTION } from '../../element/actions'
 import { NumberField } from '../number-field'
 import { SizeRow } from './size'
 import type { Flow, LiveLayout } from './styles'
@@ -105,6 +108,40 @@ function flowDisplay({ flow, inline }: LiveLayout): string {
   return inline ? 'inline-flex' : 'flex'
 }
 
+/** Why Use auto layout stands disabled on a selection it cannot wrap. */
+export const WRAP_SIBLINGS_ONLY =
+  'Use auto layout wraps elements that share one parent'
+
+/**
+ * The Layout header's Use auto layout button, which wraps the selected
+ * elements in one flow container through the registered action and names
+ * its key on hover, or why it cannot while it stands disabled. It stays
+ * focusable when disabled, so the reason reaches a keyboard too.
+ */
+export function WrapButton({ disabled }: { disabled: boolean }) {
+  const [action] = useActions([WRAP_ACTION])
+  if (!action) return null
+  const enabled = !disabled && isEnabled(action)
+  return (
+    <ActionTooltip
+      label={enabled || disabled ? action.label : WRAP_SIBLINGS_ONLY}
+      keys={enabled ? action.keys : undefined}
+    >
+      <button
+        type="button"
+        aria-label={action.label}
+        aria-disabled={!enabled}
+        onClick={() => {
+          if (enabled) action.run()
+        }}
+        className="grid size-5 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:opacity-50 aria-disabled:hover:text-muted-foreground"
+      >
+        <Group aria-hidden className="size-[13px]" />
+      </button>
+    </ActionTooltip>
+  )
+}
+
 interface LayoutSectionProps {
   layout: LiveLayout
   /** The static read, absent until the styles answer or from an older server. */
@@ -161,6 +198,7 @@ export function LayoutSection({
             </span>
           </ActionTooltip>
         ) : null}
+        <WrapButton disabled={disabled} />
         {!textOnly && layout.flow === 'block' ? (
           <ActionTooltip label="Add flow">
             <button

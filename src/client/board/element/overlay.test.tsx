@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
@@ -62,7 +62,7 @@ describe('ElementOverlay', () => {
       { frame: HERO.ref, index: 4, hash: HASH },
     ]
 
-    it('draws one outline each, with no corner marks or size chip', async () => {
+    it('draws one outline each inside one box carrying their size', async () => {
       const mounted = await mountFrame(TWO)
       act(() => selectElements(selectionStore, 'studio/home', members))
 
@@ -70,14 +70,81 @@ describe('ElementOverlay', () => {
         <ElementOverlay frames={[HERO]} container={mounted} />,
       )
 
+      await vi.waitFor(() =>
+        expect(container.querySelector('[data-chip]')).toHaveTextContent(
+          '400 × 80',
+        ),
+      )
       const drawn = container.querySelectorAll<HTMLElement>(
         '[data-element-selection]',
       )
       expect([...drawn].map((outline) => outline.dataset.elementIndex)).toEqual(
         ['3', '4'],
       )
+      expect(container.querySelectorAll('[data-element-group]')).toHaveLength(1)
+    })
+
+    it('draws no corner marks on the box while a member sits in the flow', async () => {
+      const mounted = await mountFrame(TWO)
+      act(() => selectElements(selectionStore, 'studio/home', members))
+
+      const { container } = render(
+        <ElementOverlay frames={[HERO]} container={mounted} />,
+      )
+
+      await vi.waitFor(() =>
+        expect(container.querySelector('[data-element-group]')).not.toBeNull(),
+      )
       expect(container.querySelector('[data-element-corner]')).toBeNull()
-      expect(container.querySelector('[data-chip]')).toBeNull()
+    })
+
+    it('draws four corner marks on the box once every member is free', async () => {
+      const free = TWO.replace(
+        'h1,h2{margin:0;height:40px}',
+        'h1,h2{margin:0;height:40px;position:absolute;left:10px}h1{top:10px}h2{top:100px}',
+      )
+      const mounted = await mountFrame(free)
+      act(() => selectElements(selectionStore, 'studio/home', members))
+
+      const { container } = render(
+        <ElementOverlay frames={[HERO]} container={mounted} />,
+      )
+
+      await vi.waitFor(() =>
+        expect(
+          container.querySelectorAll(
+            '[data-element-group] [data-element-corner]',
+          ),
+        ).toHaveLength(4),
+      )
+    })
+
+    it('follows a member whose inline offsets a drag previews', async () => {
+      const free = TWO.replace(
+        'h1,h2{margin:0;height:40px}',
+        'h1,h2{margin:0;height:40px;width:100px;position:absolute;left:10px}h1{top:10px}h2{top:100px}',
+      )
+      const mounted = await mountFrame(free)
+      act(() => selectElements(selectionStore, 'studio/home', members))
+      const { container } = render(
+        <ElementOverlay frames={[HERO]} container={mounted} />,
+      )
+      await vi.waitFor(() =>
+        expect(container.querySelector('[data-chip]')).toHaveTextContent(
+          '100 × 130',
+        ),
+      )
+
+      const h2 = mounted
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('h2')
+      act(() => h2?.style.setProperty('left', '110px'))
+
+      await vi.waitFor(() =>
+        expect(container.querySelector('[data-chip]')).toHaveTextContent(
+          '200 × 130',
+        ),
+      )
     })
 
     it('draws the marks again once one is left', async () => {

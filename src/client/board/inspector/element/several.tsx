@@ -10,12 +10,14 @@ import { ActionTooltip } from '../../chrome/action-tooltip'
 import { placeFreeAll } from '../../place/write'
 import { type ElementKey, useSelection } from '../../selection'
 import { useTokenTable } from '../../tokens'
+import { ArrangeSection } from '../arrange-section'
 import { type NumberChange, NumberField } from '../number-field'
 import { SelectionColors } from '../selection-colors'
 import { OpacityIcon, RadiusIcon } from './appearance'
 import { ColorRow } from './color-row'
 import { faceOf, familyIn, familyOptions, firstFamily } from './families'
 import { ColorSection, type ColorSectionProps } from './fill'
+import { WrapButton } from './layout'
 import { FREE_TIP } from './position'
 import { ShadowSection } from './shadow'
 import { sizeDeclarations } from './size-declarations'
@@ -45,6 +47,10 @@ const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
 const MIXED_FIELD = 'placeholder:text-muted-foreground placeholder:italic'
 
 const SECTION = 'border-b border-sidebar-border px-3 pt-2.5 pb-3'
+
+/** Why Arrange stands disabled while a member sits in the flow, whose place its container's alignment sets. */
+export const ARRANGE_FREE_ONLY =
+  'Arrange moves free elements. Set each one to Free to align it here.'
 
 /** Sends a change to each member `change` names one for, as one write. */
 type Fan = (
@@ -169,6 +175,13 @@ export function SeveralElements({
             members={members}
             disabled={disabled}
             fan={fan}
+          />
+          <ArrangeSection
+            note={
+              members.every(({ live }) => live.placement.free)
+                ? undefined
+                : ARRANGE_FREE_ONLY
+            }
           />
           <SizePart members={members} disabled={disabled} fan={fan} />
           <AppearancePart members={members} disabled={disabled} fan={fan} />
@@ -332,9 +345,12 @@ function PositionPart({
 function SizePart({ members, disabled, fan }: PartProps) {
   return (
     <section aria-labelledby="inspector-layout" className={SECTION}>
-      <h2 id="inspector-layout" className="mb-2 text-xs font-semibold">
-        Layout
-      </h2>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 id="inspector-layout" className="text-xs font-semibold">
+          Layout
+        </h2>
+        <WrapButton disabled={disabled} />
+      </div>
       <p className="mb-[3px] ml-0.5 text-caption text-muted-foreground">Size</p>
       <div className="grid grid-cols-2 gap-1.5">
         {(['width', 'height'] as const).map((axis) => (

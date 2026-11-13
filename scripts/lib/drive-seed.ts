@@ -52,6 +52,15 @@ const DECK = {
 
 const DECK_PAGES = join(import.meta.dirname, 'drive-deck')
 
+/**
+ * The page holding one frame of two free shapes, two free texts side by
+ * side, and one text in the flow, so a group has members to box, move,
+ * scale, align, and wrap, and Arrange has a selection it refuses.
+ */
+const GROUP = { project: 'webapp', page: 'shapes', frame: 'group' }
+
+const GROUP_PAGE = join(import.meta.dirname, 'drive-group.html')
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -82,6 +91,8 @@ export interface Seeded {
   feed: 'laid' | 'kept'
   /** Whether the deck page was laid now or was already there and kept. */
   deck: 'laid' | 'kept'
+  /** Whether the free shapes page was laid now or was already there and kept. */
+  shapes: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
@@ -93,7 +104,7 @@ export interface Seeded {
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
  * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped, a Drives folder of two projects, and a live
+ * transition with one stepped, a `webapp/shapes` page of free elements, a Drives folder of two projects, and a live
  * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
@@ -110,9 +121,10 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     scroll: true,
   })
   const deck = await layDeck(root)
+  const shapes = await layOne(root, GROUP, GROUP_PAGE)
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, deck, folder, reserved }
+  return { crowd, motion, raw, feed, deck, shapes, folder, reserved }
 }
 
 /**

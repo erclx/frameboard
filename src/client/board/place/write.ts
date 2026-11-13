@@ -6,6 +6,7 @@ import type {
   MoveResult,
   PlaceResult,
   RemoveResult,
+  WrapResult,
 } from '@/shared/records/edit'
 import type { ElementTree } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
@@ -30,6 +31,7 @@ import {
   selectionStore,
 } from '../selection'
 import { type AssetSize, naturalSize, placedSize } from './asset-size'
+import type { FlowGuess } from './flow-guess'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
 import { placementStore, placesFree } from './tool'
 
@@ -745,6 +747,107 @@ export async function placeFreeAll(
             ? sentence(error.message)
             : 'The board could not be reached, so nothing was written.',
       })
+      return null
+    } finally {
+      done()
+    }
+  })
+  return landed !== null
+}
+
+/** What a wrap sends beyond the elements: the flow, and where the container sits when every one was free. */
+export interface WrapRequest {
+  flow: FlowGuess
+  spot: { left: number; top: number } | null
+}
+
+/**
+ * Wraps the selected elements `keys` names, siblings in one frame at one
+ * hash, in one flow container, in the frame's turn behind any edit queued on
+ * it, and selects the container where it landed. A wrap shifts every index
+ * after the container, so an edit queued behind it goes from the indices it
+ * answered for the members and from its own hash for anything else. A frame
+ * another session holds, or a refusal, raises a toast and answers false.
+ */
+export async function wrapSelection(
+  page: string,
+  keys: readonly ElementKey[],
+  { flow, spot }: WrapRequest,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+    catchUp = catchUpTree,
+  }: Omit<PlaceDeps, 'mode' | 'size'> & {
+    /** Brings the frame's element tree up to the bytes the wrap answered, `catchUpTree` by default. */
+    catchUp?: (ref: string, hash: string) => Promise<void>
+  } = {},
+): Promise<boolean> {
+  const [key] = keys
+  if (!key) return false
+  const ref = key.frame
+  const holder = live.getState().claims[ref]
+  if (holder) {
+    notify({
+      title: 'Nothing wrapped',
+      description: `${holder.tag} is editing ${ref.split('/').at(-1) ?? ref}, so nothing was written.`,
+    })
+    return false
+  }
+  const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
+    const before = prior ? await prior : undefined
+    if (before === null) return null
+    const follows = before !== undefined && before.from.includes(key.hash)
+    const rebased =
+      follows &&
+      (!before.shifted || keys.every(({ index }) => before.at.has(index)))
+    const from = rebased ? before.to : key.hash
+    const indexes = keys.map(({ index }) =>
+      rebased ? (before.at.get(index) ?? index) : index,
+    )
+    const done = awaitHash(ref)
+    rememberHash(ref, from)
+    try {
+      const answer = await writeBoard<WrapResult>(
+        '/api/frames/wrap',
+        { ref, hash: from, indexes, flow, spot },
+        'POST',
+        send,
+      )
+      rememberHash(ref, answer.hash)
+      if (selection.getState().page === page) {
+        selectElement(selection, page, {
+          frame: ref,
+          index: answer.index,
+          hash: answer.hash,
+        })
+      }
+      done()
+      // A wrap shifts every index after its container, so the turn is held
+      // until Layers reads the new tree. A failed read leaves it to the reload.
+      await catchUp(ref, answer.hash).catch(() => {})
+      const at = new Map(follows ? before.at : [])
+      for (const [place, { index }] of keys.entries()) {
+        const now = answer.members[place]
+        if (now !== undefined) at.set(index, now)
+      }
+      return {
+        from: follows ? [...before.from, from] : [from],
+        to: answer.hash,
+        at,
+        shifted: true,
+      }
+    } catch (error) {
+      if (!(error instanceof WaitDropped)) {
+        notify({
+          title: 'Nothing wrapped',
+          description:
+            error instanceof BoardWriteError
+              ? sentence(error.message)
+              : 'The board could not be reached, so nothing was written.',
+        })
+      }
       return null
     } finally {
       done()

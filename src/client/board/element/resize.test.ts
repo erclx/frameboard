@@ -7,6 +7,7 @@ import {
   placedOffsets,
   resizeDeclarations,
   resizeKindOf,
+  shownGroup,
   shownResize,
   startElementResize,
 } from './resize'
@@ -225,6 +226,56 @@ describe('a live element', () => {
   afterEach(() => {
     container?.remove()
     container = undefined
+  })
+
+  describe('shownGroup', () => {
+    const at = (index: number) => ({ ...KEY, index })
+
+    it('reads each free member with its offsets and box', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 10px; top: 20px; width: 30px; height: 40px"></div><div style="position: absolute; left: 100px; top: 5px; width: 10px; height: 10px"></div>',
+      )
+
+      expect(shownGroup(shown, [at(3), at(4)])).toMatchObject([
+        {
+          index: 3,
+          placed: { left: 10, top: 20 },
+          box: { x: 10, y: 20, width: 30, height: 40 },
+        },
+        { index: 4, placed: { left: 100, top: 5 } },
+      ])
+    })
+
+    it('leaves a free member inside another selected one unplaced, since its parent carries it', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 0; top: 0; width: 200px; height: 200px"><div style="position: absolute; left: 10px; top: 10px; width: 20px; height: 20px"></div></div>',
+      )
+
+      expect(
+        shownGroup(shown, [at(3), at(4)])?.map(({ placed }) => placed),
+      ).toEqual([{ left: 0, top: 0 }, null])
+    })
+
+    it('leaves a member in the flow unplaced', async () => {
+      const shown = await mount(
+        '<p>Words</p><div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div>',
+      )
+
+      expect(
+        shownGroup(shown, [at(3), at(4)])?.map(({ placed }) => placed),
+      ).toEqual([null, { left: 0, top: 0 }])
+    })
+
+    it('answers null for keys read from other bytes', async () => {
+      const shown = await mount('<div></div><div></div>')
+
+      expect(
+        shownGroup(shown, [
+          { ...at(3), hash: 'e'.repeat(64) },
+          { ...at(4), hash: 'e'.repeat(64) },
+        ]),
+      ).toBeNull()
+    })
   })
 
   describe('shownResize', () => {

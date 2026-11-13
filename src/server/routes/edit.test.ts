@@ -1079,6 +1079,94 @@ describe('editRoutes', () => {
     })
   })
 
+  describe('POST /api/frames/wrap', () => {
+    function wrap(body: unknown) {
+      return editRoutes(
+        board.root,
+        {
+          token: () => TOKEN,
+          key: 'b'.repeat(64),
+          cookieName: 'frameboard-key-111111111111',
+          isOwnOrigin: () => false,
+        },
+        history,
+      ).request('/api/frames/wrap', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    // The headline at 5 and the caption at 6, holding its code at 7.
+    const headlineAndCaption = () => ({
+      ref: HERO,
+      hash: hash(),
+      indexes: [HEADLINE, 6],
+      flow: { direction: 'column', gap: 8 },
+      spot: null,
+    })
+
+    it('wraps both in one container and answers where each landed', async () => {
+      const response = await wrap(headlineAndCaption())
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { ref: HERO, index: 5, members: [6, 7], hash: hash() },
+      })
+      expect(read()).toContain(
+        '<div style="display: flex; flex-direction: column; gap: 8px">\n      <h1 data-name="Headline">hero</h1>\n      <p data-name="Caption">',
+      )
+    })
+
+    it('records one step, which undo reverts byte for byte', async () => {
+      const original = read()
+      await wrap(headlineAndCaption())
+
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(read()).toBe(original)
+    })
+
+    it('wraps them again on redo', async () => {
+      await wrap(headlineAndCaption())
+      const wrapped = read()
+      await history.undo()
+
+      await history.redo()
+
+      expect(read()).toBe(wrapped)
+    })
+
+    it('refuses a hash the file left and writes nothing', async () => {
+      const original = read()
+
+      const response = await wrap({
+        ...headlineAndCaption(),
+        hash: 'f'.repeat(64),
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(read()).toBe(original)
+    })
+
+    it('refuses elements that are not siblings', async () => {
+      const response = await wrap({ ...headlineAndCaption(), indexes: [5, 7] })
+
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-address' },
+      })
+    })
+  })
+
   describe('POST /api/frames/place', () => {
     /** The `<code>` inside the caption, a static `<p>`. */
     const COMMAND = 7

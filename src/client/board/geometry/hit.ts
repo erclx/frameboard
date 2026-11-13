@@ -100,6 +100,23 @@ function drawnBox({ style }: HTMLElement): Box {
 }
 
 /**
+ * The box several selected elements draw around them on the canvas, and
+ * whether it carries corner marks, being whether a corner drag scales them.
+ * Null while fewer than two are selected or it has not measured.
+ */
+export function selectedGroupBox(
+  layer: ParentNode,
+): { box: Box; scales: boolean } | null {
+  const drawn = layer.querySelector<HTMLElement>('[data-element-group]')
+  return drawn
+    ? {
+        box: drawnBox(drawn),
+        scales: drawn.querySelector('[data-element-corner]') !== null,
+      }
+    : null
+}
+
+/**
  * The selected element's outline box on the canvas, as the layer draws it,
  * null while none draws. With several selected, the last picked's, which the
  * layer draws last.

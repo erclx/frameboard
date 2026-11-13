@@ -27,6 +27,7 @@ import {
   type Spot,
 } from './place'
 import { type Recolor, recolorElements } from './recolor'
+import { wrapElements, type WrapFlow } from './wrap'
 
 export type FrameFileEdit =
   | {
@@ -558,6 +559,50 @@ export function placeFrameFileAll(
     spans,
     sized: places.map((place) => sized.get(place) ?? []),
     remap: identity,
+  }
+}
+
+export type FrameFileWrap =
+  | {
+      readonly ok: true
+      readonly hash: string
+      /** The container's index in the file as written. */
+      readonly index: number
+      /** Each member's index as written, in the order sent. */
+      readonly members: readonly number[]
+      /** The parent's whole element on both sides, which one undo puts back. */
+      readonly span: ElementSpan
+      readonly remap: Remap
+    }
+  | EditRefused
+
+/**
+ * Wraps sibling elements of a frame file in one flow container, written as
+ * `moveFrameFile` writes and refused as stale on a hash the file no longer
+ * has, since the indices name nothing once the file moved. `facts` is the
+ * static cascade read from the bytes `hash` names.
+ */
+export function wrapFrameFile(
+  path: string,
+  hash: string,
+  indexes: readonly number[],
+  flow: WrapFlow,
+  spot: Pick<Spot, 'left' | 'top'> | null,
+  facts: readonly PlaceFacts[],
+): FrameFileWrap {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const wrapped = wrapElements(read.source, indexes, flow, spot, facts)
+  if (!wrapped.ok) return wrapped
+  if (!replaceFile(path, hash, wrapped.html)) return stale(path)
+  return {
+    ok: true,
+    hash: contentHash(wrapped.html),
+    index: wrapped.index,
+    members: wrapped.members,
+    span: wrapped.span,
+    remap: wrapped.remap,
   }
 }
 

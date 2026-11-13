@@ -28,6 +28,7 @@ This record holds at most 650 words.
 - By hand, a developer sets a frame's position, size, and fill, and an element's name, opacity, radius, rotation, flip, type, fill, stroke, shadow, and text. Colors show their token names, and number fields scrub.
 - A developer places text, a shape, an image, video, or audio in a frame, sizes it by drag or corners, deletes it, and edits text in place
 - A developer sets a container's flow, gap, padding, and alignment and a child's fixed, hug, or fill size, places an element freely or back in the flow, and restacks it among siblings
+- A developer wraps several selected elements in one flow container
 
 ### Working with the agent
 

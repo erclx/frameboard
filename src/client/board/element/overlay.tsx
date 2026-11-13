@@ -11,11 +11,12 @@ import { CHIP, OVERLAY_Z } from '../geometry/overlay'
 import { usePendingBox, usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
+import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
 import { overflowing } from './overflow'
-import { readResize, type ResizeRead } from './resize'
+import { placedIn, readResize, type ResizeRead } from './resize'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -23,6 +24,9 @@ const CORNERS = [
   { left: 0, top: '100%' },
   { left: '100%', top: '100%' },
 ] as const
+
+/** A member's outline inside a group's box, thinner so the group reads as one. */
+const MEMBER_OUTLINE = `${screen(1)} solid var(--primary)`
 
 /** An element past its frame's edge, its box in the frame's own pixels. */
 interface Ghost {
@@ -201,52 +205,102 @@ function useGhosts(
   return read?.key === key ? read.ghosts : []
 }
 
-/** One outline per selected element, the marks and the chip on a single selection only. */
+/** The selected element's outline, or several's group box around their outlines. */
 function ElementOutlines({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
   const members = useSelection((state) => state.elements)
   const several = (members?.length ?? 0) > 1 ? members : undefined
   if (several) {
-    return several.map((key) => (
-      <MemberOutline
-        key={key.index}
-        element={key}
-        frames={frames}
-        container={container}
-      />
-    ))
+    return (
+      <GroupOutline elements={several} frames={frames} container={container} />
+    )
   }
   return (
     <ElementOutline element={element} frames={frames} container={container} />
   )
 }
 
-interface MemberOutlineProps extends ElementOverlayProps {
-  element: ElementKey
+interface GroupOutlineProps extends ElementOverlayProps {
+  elements: readonly ElementKey[]
 }
 
-/** One of several selected elements' outline, bare, which never holds a dropped box. */
-function MemberOutline({ element, frames, container }: MemberOutlineProps) {
-  const frame = frames.find((candidate) => candidate.ref === element.frame)
+/**
+ * One box around several selected elements with their size in its chip, as
+ * a design tool draws a selection, and four corner marks while every member
+ * is free and takes a corner resize, since only then does a corner drag
+ * scale them. Each member keeps a thin outline of its own, drawn after the
+ * box so the last picked reads last. Both follow a drag's preview, since the
+ * measure watches the members' inline styles, and draw once every member
+ * measures.
+ */
+function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
+  const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const rect = useElementMeasure(container, element)?.box
+  const measured = useElementMeasures(container, elements)
   const at = pending ?? frame?.box
-  if (!at || !rect) return null
-  return (
+  if (!at || !measured) return null
+  const members: GroupMember[] = measured.map(({ index, box, read, free }) => ({
+    index,
+    box,
+    placed: free ? { left: 0, top: 0 } : null,
+    read,
+  }))
+  const bounds = groupBounds(members)
+  if (!bounds) return null
+  const group = (
     <div
-      data-element-selection
-      data-element-index={element.index}
+      data-element-group
       className="pointer-events-none absolute"
       style={{
-        left: at.x + rect.x,
-        top: at.y + rect.y,
-        width: rect.width,
-        height: rect.height,
+        left: at.x + bounds.x,
+        top: at.y + bounds.y,
+        width: bounds.width,
+        height: bounds.height,
         outline: OUTLINE,
         outlineOffset: screen(2),
         zIndex: OVERLAY_Z,
       }}
-    />
+    >
+      {scalesAsGroup(members)
+        ? CORNERS.map((corner) => (
+            <span
+              key={`${corner.left}-${corner.top}`}
+              data-element-corner
+              className="absolute -translate-1/2 border-primary bg-white"
+              style={{
+                ...corner,
+                width: screen(7),
+                height: screen(7),
+                borderWidth: screen(1.5),
+              }}
+            />
+          ))
+        : null}
+      <span data-chip className={CHIP}>
+        {sizeLabel(bounds)}
+      </span>
+    </div>
+  )
+  return (
+    <>
+      {group}
+      {measured.map(({ index, box }) => (
+        <div
+          key={index}
+          data-element-selection
+          data-element-index={index}
+          className="pointer-events-none absolute"
+          style={{
+            left: at.x + box.x,
+            top: at.y + box.y,
+            width: box.width,
+            height: box.height,
+            outline: MEMBER_OUTLINE,
+            zIndex: OVERLAY_Z,
+          }}
+        />
+      ))}
+    </>
   )
 }
 
@@ -348,6 +402,100 @@ function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
     </div>,
     layer,
   )
+}
+
+/** A measured member of a group: its box in its frame, how it resizes, and whether it is placed freely. */
+interface MemberMeasure {
+  index: number
+  box: Box
+  read: ResizeRead | null
+  free: boolean
+}
+
+/**
+ * Every named element's box inside their one frame, measured as
+ * `useElementMeasure` measures one, and again when any of them resizes or
+ * its inline style changes, since a group drag previews offsets no
+ * `ResizeObserver` sees. Null until all of them measure.
+ */
+function useElementMeasures(
+  container: HTMLElement | null,
+  elements: readonly ElementKey[],
+): MemberMeasure[] | null {
+  const [measured, setMeasured] = useState<{
+    key: string
+    at: MemberMeasure[] | null
+  } | null>(null)
+  const frame = elements[0]?.frame
+  const hash = elements[0]?.hash
+  const indexes = elements.map(({ index }) => index).join(',')
+  const key = frame === undefined ? null : `${frame}:${indexes}:${hash}`
+  useEffect(() => {
+    if (!container || key === null || frame === undefined) return
+    const wanted = indexes.split(',').map(Number)
+    let stopWatching = () => {}
+    const measure = () => {
+      stopWatching()
+      const document = container.querySelector<HTMLIFrameElement>(
+        `[data-frame="${CSS.escape(frame)}"] iframe`,
+      )?.contentDocument
+      const view = document?.defaultView
+      const targets =
+        document && view && renderedHash(document) === hash
+          ? wanted.flatMap((index) => {
+              const target = elementAt(document, index)
+              return target ? [{ index, target }] : []
+            })
+          : []
+      if (!document || !view || targets.length !== wanted.length) {
+        setMeasured({ key, at: null })
+        return
+      }
+      const read = () => {
+        setMeasured({
+          key,
+          at: targets.map(({ index, target }) => {
+            const rect = target.getBoundingClientRect()
+            const group = targets.map((member) => member.target)
+            return {
+              index,
+              box: {
+                x: Math.round(rect.left),
+                y: Math.round(rect.top),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+              },
+              read: readResize(target),
+              free: placedIn(target, group) !== null,
+            }
+          }),
+        })
+      }
+      read()
+      // Observers from the frame's own window, since the elements live there.
+      const observer = new view.ResizeObserver(read)
+      const styles = new view.MutationObserver(read)
+      for (const { target } of targets) {
+        observer.observe(target)
+        styles.observe(target, { attributes: true, attributeFilter: ['style'] })
+      }
+      observer.observe(document.documentElement)
+      view.addEventListener('scroll', read, true)
+      stopWatching = () => {
+        observer.disconnect()
+        styles.disconnect()
+        view.removeEventListener('scroll', read, true)
+      }
+    }
+    measure()
+    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
+    container.addEventListener('load', measure, true)
+    return () => {
+      container.removeEventListener('load', measure, true)
+      stopWatching()
+    }
+  }, [container, key, frame, indexes, hash])
+  return measured?.key === key ? measured.at : null
 }
 
 /**

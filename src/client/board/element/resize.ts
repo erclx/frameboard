@@ -5,8 +5,10 @@ import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
 import { degreesOf, previewStyle } from '../inspector/element/styles'
-import { writeElement } from '../inspector/element/write'
+import { writeElement, writeElements } from '../inspector/element/write'
+import type { Margins } from '../place/flow-guess'
 import type { ElementKey } from '../selection'
+import type { GroupMember, MemberEdit } from './group'
 
 /** An element's size in its frame's CSS pixels. */
 export interface ElementSize {
@@ -258,15 +260,7 @@ export function placedOffsets(
   )?.contentDocument
   if (!shown || renderedHash(shown) !== key.hash) return null
   const element = elementAt(shown, key.index)
-  const style = element
-    ? shown.defaultView?.getComputedStyle(element)
-    : undefined
-  if (!style || (style.position !== 'absolute' && style.position !== 'fixed')) {
-    return null
-  }
-  const left = parseFloat(style.left)
-  const top = parseFloat(style.top)
-  return Number.isNaN(left) || Number.isNaN(top) ? null : { left, top }
+  return element ? placedIn(element, []) : null
 }
 
 /** A drag of one placed element, previewed on its live node and written once on release. */
@@ -315,5 +309,146 @@ export function startPlacedMove(
       return written
     },
     cancel: () => show(null),
+  }
+}
+
+/**
+ * The `left` and `top` a live element holds when it is placed freely and no
+ * other element of `group` holds it, else null. One inside another selected
+ * element moves with that one, so a group drag moving it too would carry it
+ * twice.
+ */
+export function placedIn(
+  element: Element,
+  group: readonly Element[],
+): PlacedOffsets | null {
+  if (group.some((other) => other !== element && other.contains(element))) {
+    return null
+  }
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
+  if (!style || (style.position !== 'absolute' && style.position !== 'fixed')) {
+    return null
+  }
+  const left = parseFloat(style.left)
+  const top = parseFloat(style.top)
+  return Number.isNaN(left) || Number.isNaN(top) ? null : { left, top }
+}
+
+/**
+ * The selected elements `keys` names as a group drag reads them at the press,
+ * each box in its frame's own pixels, off a live frame showing the bytes they
+ * were read from, or null while it shows other bytes or misses one.
+ */
+export function shownGroup(
+  container: ParentNode,
+  keys: readonly ElementKey[],
+): GroupMember[] | null {
+  const [first] = keys
+  const shown = first
+    ? container.querySelector<HTMLIFrameElement>(
+        `[data-frame="${CSS.escape(first.frame)}"] iframe`,
+      )?.contentDocument
+    : undefined
+  if (!first || !shown || renderedHash(shown) !== first.hash) return null
+  const found = keys.flatMap(({ index }) => {
+    const element = elementAt(shown, index)
+    return element ? [{ index, element }] : []
+  })
+  if (found.length !== keys.length) return null
+  const elements = found.map(({ element }) => element)
+  return found.map(({ index, element }) => {
+    const rect = element.getBoundingClientRect()
+    return {
+      index,
+      box: {
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      },
+      placed: placedIn(element, elements),
+      read: readResize(element),
+      margin: marginsOf(element),
+    }
+  })
+}
+
+/** The margins the frame's own window computed for `element`, 0 where it reads none. */
+function marginsOf(element: Element): Margins {
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
+  const px = (value: string | undefined) => Number.parseFloat(value ?? '') || 0
+  return {
+    top: px(style?.marginTop),
+    right: px(style?.marginRight),
+    bottom: px(style?.marginBottom),
+    left: px(style?.marginLeft),
+  }
+}
+
+/** A drag of several elements, previewed on their live nodes and written once on release. */
+export interface GroupEdit {
+  preview: (edits: readonly MemberEdit[]) => void
+  /** Writes every member's declarations as one edit and one undo step, putting the preview back when it is refused. */
+  commit: (edits: readonly MemberEdit[]) => Promise<boolean>
+  /** Puts the preview back with nothing written. */
+  cancel: () => void
+}
+
+/**
+ * Starts a group drag of the elements `keys` names, all of one frame at one
+ * hash, or answers null for a frame another session holds, refused with the
+ * claim's toast before anything previews.
+ */
+export function startGroupEdit(
+  page: string,
+  keys: readonly ElementKey[],
+): GroupEdit | null {
+  const [first] = keys
+  if (!first) return null
+  const holder = liveStore.getState().claims[first.frame]
+  if (holder) {
+    toast.add({
+      title: 'Nothing moved',
+      description: `${holder.tag} is editing ${first.frame.split('/').at(-1)}, so nothing was written.`,
+      type: 'warning',
+    })
+    return null
+  }
+  const keyOf = new Map(keys.map((key) => [key.index, key]))
+  const shown = new Set<string>()
+  const putBack = () => {
+    for (const at of shown) {
+      const [index, property] = at.split(':')
+      const key = keyOf.get(Number(index))
+      if (key && property) previewStyle(key, property, null)
+    }
+    shown.clear()
+  }
+  return {
+    preview: (edits) => {
+      for (const { index, declarations } of edits) {
+        const key = keyOf.get(index)
+        if (!key) continue
+        for (const { property, value } of declarations) {
+          shown.add(`${index}:${property}`)
+          previewStyle(key, property, value)
+        }
+      }
+    },
+    commit: async (edits) => {
+      const written = await writeElements(
+        page,
+        edits.flatMap(({ index, declarations }) => {
+          const key = keyOf.get(index)
+          return key
+            ? [{ key, change: { kind: 'styles' as const, declarations } }]
+            : []
+        }),
+      )
+      // A landed write reloads the frame with the offsets, so only a refusal puts them back.
+      if (!written) putBack()
+      return written
+    },
+    cancel: putBack,
   }
 }

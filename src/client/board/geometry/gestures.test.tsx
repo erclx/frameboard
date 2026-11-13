@@ -9,6 +9,7 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
+import type { GroupMember, MemberEdit } from '../element/group'
 import { heldOutline, holdOutline } from '../element/held'
 import type {
   ElementSize,
@@ -86,6 +87,7 @@ function setup(
     bare = () => false,
     inner = [],
     outlines = [],
+    group,
     live,
     sections = [],
     lands = true,
@@ -123,6 +125,17 @@ function setup(
     /** Outlines drawn for several selected elements, last picked last. */
     outlines?: { index: number; box: Box }[]
     /**
+     * The box several selected elements draw at a canvas box, with corner
+     * marks when `scales`, and the members a group drag reads, in a frame
+     * free to write or held by another session.
+     */
+    group?: {
+      box: Box
+      scales: boolean
+      members: GroupMember[]
+      held?: boolean
+    }
+    /**
      * A body LEFT renders live in an iframe filling its box, whose pin is
      * anchored to the element at file index 3, the first in the body.
      */
@@ -144,6 +157,13 @@ function setup(
     kind: ResizeKind
     previews: ElementSize[]
     commits: ElementSize[]
+    cancelled: boolean
+  }[] = []
+  const groupEdits: {
+    page: string
+    keys: readonly ElementKey[]
+    previews: (readonly MemberEdit[])[]
+    commits: (readonly MemberEdit[])[]
     cancelled: boolean
   }[] = []
   const placedMoves: {
@@ -195,6 +215,20 @@ function setup(
                 height: elementBox.height,
               }}
             />
+          ) : null}
+          {group ? (
+            <div
+              data-element-group
+              className="pointer-events-none absolute"
+              style={{
+                left: group.box.x,
+                top: group.box.y,
+                width: group.box.width,
+                height: group.box.height,
+              }}
+            >
+              {group.scales ? <span data-element-corner /> : null}
+            </div>
           ) : null}
           {outlines.map(({ index, box }) => (
             <div
@@ -328,6 +362,28 @@ function setup(
       elementsIn: () => inner,
       resizeOf: () => (shape === undefined ? null : resizeRead),
       placedOffsets: () => placed ?? null,
+      groupOf: () => group?.members ?? null,
+      editGroup: (page, keys) => {
+        if (group?.held) return null
+        const edit = {
+          page,
+          keys,
+          previews: [] as (readonly MemberEdit[])[],
+          commits: [] as (readonly MemberEdit[])[],
+          cancelled: false,
+        }
+        groupEdits.push(edit)
+        return {
+          preview: (edits) => edit.previews.push(edits),
+          commit: async (edits) => {
+            edit.commits.push(edits)
+            return lands
+          },
+          cancel: () => {
+            edit.cancelled = true
+          },
+        }
+      },
       movePlaced: (page, key) => {
         const move = {
           page,
@@ -383,6 +439,7 @@ function setup(
     moves,
     resizes,
     placedMoves,
+    groupEdits,
     part,
     pointer,
     detach,
@@ -2051,9 +2108,30 @@ describe('attachGestures', () => {
         expect(canvas.writes).toHaveLength(1)
       })
 
-      it('carries the pressed member alone, selecting it', () => {
+      const BOX = { kind: 'box', inset: { width: 0, height: 0 } } as const
+      const FREE: GroupMember[] = [
+        {
+          index: 3,
+          box: { x: 10, y: 10, width: 50, height: 30 },
+          placed: { left: 10, top: 10 },
+          read: BOX,
+        },
+        {
+          index: 4,
+          box: { x: 10, y: 100, width: 50, height: 30 },
+          placed: { left: 10, top: 100 },
+          read: BOX,
+        },
+      ]
+      const GROUP = { x: 110, y: 110, width: 50, height: 120 }
+
+      it('carries the pressed member alone while none of them is free', () => {
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
-        const canvas = setup(undefined, { outlines: OUTLINES })
+        const inFlow = FREE.map((member) => ({ ...member, placed: null }))
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: inFlow },
+        })
 
         canvas.pointer.drag([130, 120], [130, 260])
 
@@ -2061,21 +2139,121 @@ describe('attachGestures', () => {
         expect(held()).toEqual([FIRST])
       })
 
-      it('takes no corner press on several, where no marks draw', () => {
+      it('moves every free member by the drag in one write, keeping the selection', async () => {
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
-        const canvas = setup(undefined, { outlines: OUTLINES, shape: 'free' })
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: FREE },
+        })
 
-        canvas.pointer.drag([110, 110], [90, 90])
+        canvas.pointer.drag([130, 120], [150, 150])
+        await Promise.resolve()
 
-        expect(canvas.resizes).toEqual([])
+        expect(canvas.groupEdits[0]?.commits).toEqual([
+          [
+            {
+              index: 3,
+              declarations: [
+                { property: 'left', value: '30px' },
+                { property: 'top', value: '40px' },
+              ],
+            },
+            {
+              index: 4,
+              declarations: [
+                { property: 'left', value: '30px' },
+                { property: 'top', value: '130px' },
+              ],
+            },
+          ],
+        ])
+        expect(held()).toEqual([FIRST, SECOND])
+        expect(canvas.moves).toEqual([])
       })
 
-      it('shows no resize cursor over a member’s corner, where the press takes none', () => {
+      it('moves the group on a drag from the bare space inside its box', async () => {
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
-        const canvas = setup(undefined, { outlines: OUTLINES, shape: 'free' })
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: FREE },
+        })
 
-        // The last picked's corner, which the gate alone keeps from answering.
-        expect(canvas.cursorOver(110, 200)).toBeNull()
+        canvas.pointer.drag([130, 170], [140, 170])
+        await Promise.resolve()
+
+        expect(canvas.groupEdits[0]?.commits).toHaveLength(1)
+        expect(canvas.writes).toEqual([])
+      })
+
+      it('puts every member back and writes nothing on Esc', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: FREE },
+        })
+
+        canvas.pointer.down(130, 120)
+        canvas.pointer.move(150, 150)
+        pressEscape()
+        canvas.pointer.up(150, 150)
+
+        expect(canvas.groupEdits[0]).toMatchObject({
+          cancelled: true,
+          commits: [],
+        })
+      })
+
+      it('moves nothing in a frame another session holds', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: FREE, held: true },
+        })
+
+        canvas.pointer.drag([130, 120], [150, 150])
+
+        expect([canvas.groupEdits, canvas.moves]).toEqual([[], []])
+      })
+
+      it('scales every member from a corner of the group box', async () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: true, members: FREE },
+        })
+
+        // The south-east corner, dragged to double the group's width.
+        canvas.pointer.drag([160, 230], [210, 230])
+        await Promise.resolve()
+
+        const [commit] = canvas.groupEdits[0]?.commits ?? []
+        expect(
+          commit?.map(
+            ({ declarations }) =>
+              declarations.find(({ property }) => property === 'width')?.value,
+          ),
+        ).toEqual(['100px', '100px'])
+      })
+
+      it('takes no corner press on several while their box draws no marks', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          shape: 'free',
+          group: { box: GROUP, scales: false, members: FREE },
+        })
+
+        expect(canvas.cursorOver(160, 230)).toBeNull()
+      })
+
+      it('shows the resize cursor over a corner of a box that scales', () => {
+        selectElements(selectionStore, PAGE, [FIRST, SECOND])
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: true, members: FREE },
+        })
+
+        expect(canvas.cursorOver(160, 230)).not.toBeNull()
       })
     })
 

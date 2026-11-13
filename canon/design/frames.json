@@ -92,6 +92,7 @@
     "canvas/sections": "design/12-canvas/picked-sections",
     "canvas/scroll-rail": "design/12-canvas/scroll-rail",
     "canvas/open-alone": "design/12-canvas/open-alone",
+    "canvas/group-box": "drive-32/36-group-select/group-select-box-720",
     "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
     "present/bar": "drive-30/05-present-step/present-step-hover-bar-960",
     "present/steps": "drive-32/28-present-steps/present-steps-marked-720"

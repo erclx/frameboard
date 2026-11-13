@@ -61,6 +61,16 @@ export const placeResultSchema = z.object({
 
 export type PlaceResult = z.infer<typeof placeResultSchema>
 
+/** What `POST /api/frames/wrap` returns: the frame it wrote, the new container's index, each member's index in the order sent, and the hash the next write is made from. */
+export const wrapResultSchema = z.object({
+  ref: z.string(),
+  index: z.int().min(0),
+  members: z.array(z.int().min(0)),
+  hash,
+})
+
+export type WrapResult = z.infer<typeof wrapResultSchema>
+
 /** What `POST /api/frames/recolor` returns: the frame, the hash the next write is made from, and how many elements the replace rewrote. */
 export const recolorResultSchema = z.object({
   ref: z.string(),

@@ -17,6 +17,8 @@ On the board, Cmd-click or double-click selects an element inside a frame.
 - With an element selected, Shift-click on the canvas or in the layers panel adds another from that frame or takes one out, and Cmd+A selects its siblings
 - A drag from the empty body of a selected frame selects the elements it touches, and a drag from an element in it moves the frame
 - With several selected, the inspector shows `Mixed` where their values differ and `1 of 3` on a section only some have, and an edit or Delete applies to them all as one undo step
+- Several selected elements take one box with corner handles and their size. A drag or an arrow key moves every free one together, and a corner drag scales them in proportion, each as one undo step.
+- Several free elements get the Arrange row and keys frames have, which align and distribute them
 
 ## Notes
 
@@ -48,6 +50,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow
+- Use auto layout in the Layout header, or Shift+A, wraps the selected elements in one flow container, a row or a column by how they sit with their spacing as its gap, when they share one parent
 - Position's Free takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
 - Every inspector number steps on arrows and scrubs from its label
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
