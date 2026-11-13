@@ -984,6 +984,24 @@ describe('structureRoutes', () => {
         expect([filed, undone]).toEqual([before, before])
       })
 
+      it.each([
+        ['a checks value that is not an object', 'strict'],
+        ['an empty checks object', {}],
+      ])('keeps %s through a filing and its undo', async (_, checks) => {
+        writeFileSync(
+          join(board.root, 'studio/project.json'),
+          JSON.stringify({ ...projectFile('studio'), checks }),
+        )
+        await post('/api/project/group', { refs: ['studio'], group: 'Client' })
+        const filed = projectFile('studio')
+
+        await history.undo()
+
+        expect(filed).toMatchObject({ group: 'Client', checks })
+        expect(projectFile('studio').checks).toEqual(checks)
+        expect(projectFile('studio').group).toBeUndefined()
+      })
+
       it('takes projects out of their folder on a null group', async () => {
         await post('/api/project/group', {
           refs: ['studio', 'brand'],

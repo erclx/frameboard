@@ -235,10 +235,18 @@ export async function setProjectRule(
 
 /**
  * `file` with its `checks.off` set to `off`, or without the key for
- * undefined, every other check kept in place. A `checks` left holding nothing
- * goes too, so turning a rule off and on leaves no empty object behind.
+ * undefined, every other check kept in place. A `checks` this empties goes
+ * too, so turning a rule off and on leaves no empty object behind. A file
+ * holding no `off` to take out comes back as it is, so a `checks` of another
+ * type, or an empty one, survives the undo of a write that never touched it.
  */
 export function withOff(file: ProjectFile, off: unknown): ProjectFile {
+  if (
+    off === undefined &&
+    !(isRecord(file.checks) && file.checks.off !== undefined)
+  ) {
+    return file
+  }
   const { off: _off, ...kept } = isRecord(file.checks) ? file.checks : {}
   const checks = off === undefined ? kept : { ...kept, off }
   if (Object.keys(checks).length > 0) return { ...file, checks }
