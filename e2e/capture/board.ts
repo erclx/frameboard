@@ -706,6 +706,32 @@ async function heldMidway(page: Page): Promise<void> {
 }
 
 /**
+ * Finishes the hero's slide on its own clock once its page runs it, as a
+ * page left to play reaches its end, so the Motion section reads it ended.
+ */
+async function slideFinished(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const step = () => {
+        const hero = document.querySelector<HTMLIFrameElement>(
+          '[data-frame="webapp/home/hero"] > iframe',
+        )
+        const animations = hero?.contentDocument?.getAnimations() ?? []
+        if (animations.length > 0) {
+          for (const animation of animations) animation.finish()
+          return
+        }
+        if (--left > 0) requestAnimationFrame(step)
+        else console.error('The hero never ran its slide')
+      }
+      document.addEventListener('DOMContentLoaded', step)
+    },
+    { frames: PRESS_FRAMES },
+  )
+}
+
+/**
  * Sets the hero's headline and caption in a raw indigo no token names, since
  * the fixture paints only through tokens, and puts the file back once the
  * capture page closes so no later case shows it.
@@ -3300,6 +3326,24 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'scroll-no-ghost',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // A selected scroll frame whose page runs past its screen: the rail
+        // says there is more, and no overflow ghost fills the canvas under it.
+        setup: themed(
+          both(
+            aboutScrolling,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/about'] }),
+            readyWhen('[data-rail-thumb]', '[data-element-ghost]'),
+          ),
+        ),
+      },
+      {
         section: 'device-bezel',
         theme,
         route: '/p/webapp/home',
@@ -4437,6 +4481,27 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'motion-ended',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // An animated hero that ran to its end on its own clock: the Motion
+        // section reads Play at its end time, with the track full.
+        setup: themed(
+          both(
+            slidingHero,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            slideFinished,
+            readyWhen(
+              'section[aria-labelledby="inspector-motion"] button[aria-label="Play"]',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'export-section',
         theme,
         route: '/p/webapp/home',
@@ -4747,8 +4812,10 @@ const WRITING_SECTIONS = [
   'select-color',
   'select-color-done',
   'scroll-rail',
+  'scroll-no-ghost',
   'device-bezel',
   'motion-held',
+  'motion-ended',
 ]
 
 export const BOARD_CASES: CaptureCase[] = [
