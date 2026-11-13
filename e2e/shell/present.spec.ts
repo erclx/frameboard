@@ -80,6 +80,9 @@ test.describe('presenting a page', () => {
     await expect(
       page.getByRole('button', { name: 'Present page' }),
     ).toBeFocused()
+    // The board's tooltips open with no delay, so one the returned focus
+    // opened would already show once that focus has landed.
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0)
   })
 
   test('steps and leaves from the bar a pointer move shows', async ({

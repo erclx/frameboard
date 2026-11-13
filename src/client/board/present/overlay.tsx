@@ -15,6 +15,7 @@ import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
@@ -102,7 +103,7 @@ function useInertBehind(layer: RefObject<HTMLElement | null>): void {
 /**
  * Returns focus on leave to whatever held it when presenting began, as a
  * dialog does, or to the toolbar's Present page button when that element is
- * gone or was the body. The opener is read during the first render, since
+ * gone or was the body, opening no tooltip over the board. The opener is read during the first render, since
  * `useInertBehind` blurs it before any effect runs, and this is called after
  * `useInertBehind` so its cleanup runs once the board is no longer inert.
  */
@@ -118,7 +119,7 @@ function useReturnFocus(): void {
           : document.querySelector<HTMLElement>(
               `button[aria-label="${PRESENT.label}"]`,
             )
-      back?.focus()
+      if (back) focusWithoutTooltip(back)
     },
     [opener],
   )
