@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
+import { LOOK_MARKER } from '@/shared/theme'
 
 import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
@@ -391,6 +392,8 @@ function hideVideoStrips(doc: Document): () => void {
   if (doc.getElementById(STRIP_ID)) return () => {}
   const style = doc.createElement('style')
   style.id = STRIP_ID
+  // Marked as the board's own, so no element's file index moves.
+  style.setAttribute(LOOK_MARKER, '')
   style.textContent =
     'video::-webkit-media-controls { display: none !important }'
   doc.head?.append(style)

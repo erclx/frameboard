@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { frameOf } from '@/test/board'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
+import { elementIndex } from '../frame-dom'
 import { modeStore } from '../mode'
 import {
   clear,
@@ -436,6 +437,15 @@ describe('ElementOverlay', () => {
 
       // A computed style never reads the strip's pseudo-element, so the rule is read off the page's sheets.
       await waitFor(() => expect(stripRules(element)).toHaveLength(1))
+    })
+
+    it('keeps the video at its file index while its strip is hidden', async () => {
+      const { element } = await drawBar(
+        `<video src="${CLIP}" controls style="display:block;width:320px;height:180px"></video>`,
+      )
+      await waitFor(() => expect(stripRules(element)).toHaveLength(1))
+
+      expect(elementIndex(element.ownerDocument, element)).toBe(3)
     })
 
     it("leaves an audio's own player drawn above its bar", async () => {
