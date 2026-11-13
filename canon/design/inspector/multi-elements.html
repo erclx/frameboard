@@ -168,6 +168,36 @@
         color: var(--muted);
         font-weight: 400;
       }
+      .alrow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .align {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+        width: max-content;
+      }
+      .align button {
+        all: unset;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 22px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .hbtn {
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
@@ -190,7 +220,153 @@
         </div>
       </div>
       <div class="isec">
-        <div class="ihead"><span>Layout</span></div>
+        <div class="ihead"><span>Arrange</span></div>
+        <div class="alrow">
+          <div class="align">
+            <button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 4v16M9 8h10M9 16h6" />
+              </svg></button
+            ><button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 4v16M6 8h12M8 16h8" />
+              </svg></button
+            ><button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M19 4v16M5 8h10M9 16h6" />
+              </svg>
+            </button>
+          </div>
+          <div class="align">
+            <button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 5h16M8 9v10M16 9v6" />
+              </svg></button
+            ><button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 12h16M8 6v12M16 8v8" />
+              </svg></button
+            ><button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 19h16M8 5v10M16 9v6" />
+              </svg>
+            </button>
+          </div>
+          <div class="align">
+            <button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 4v16M20 4v16M10 8v8M14 8v8" />
+              </svg></button
+            ><button>
+              <svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 4h16M4 20h16M8 10h8M8 14h8" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="isec">
+        <div class="ihead">
+          <span>Layout</span
+          ><span class="hbtn" title="Use auto layout Shift+A"
+            ><svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 7V5c0-1.1.9-2 2-2h2" />
+              <path d="M17 3h2c1.1 0 2 .9 2 2v2" />
+              <path d="M21 17v2c0 1.1-.9 2-2 2h-2" />
+              <path d="M7 21H5c-1.1 0-2-.9-2-2v-2" />
+              <rect width="7" height="5" x="7" y="7" rx="1" />
+              <rect width="7" height="5" x="10" y="12" rx="1" /></svg
+          ></span>
+        </div>
         <span class="cap" style="margin-top: 0">Size</span>
         <div class="grid2">
           <div class="fld">
