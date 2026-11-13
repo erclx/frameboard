@@ -81,7 +81,7 @@ The same store carries what an agent is doing now.
 
 - Following an agent, from its initial or the palette while one session listens, centers each frame it changes or claims at the zoom it started with, skipping a reservation, and a hand move stops it
 - A board message keeps a reservation's claim, whose frame is listed only once it lands
-- A frame breaking a content rule carries a warning triangle in `--note` and its count in the text color, since the amber is too light for 11px text, cleared on the batch that fixes the file
+- A frame breaking a content rule carries its count beside the name, a filled red pill with a triangle for any error and a grey dot and count for warnings alone, cleared on the batch that fixes the file
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
 
 `unseen.ts` also keeps each frame's compare base, the `before` of the first change since the developer last looked. It reads the base off the replayed log rather than the seen hash, keeps it past the look, and moves it on the next change after.

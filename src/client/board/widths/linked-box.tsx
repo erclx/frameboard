@@ -1,4 +1,3 @@
-import { TriangleAlert } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -9,6 +8,8 @@ import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { FINDINGS_MARK, severityOf } from '../findings/level'
+import { FindingsCount } from '../findings/mark'
 import { useDrawnBox } from '../geometry/write'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { useMode } from '../mode'
@@ -123,9 +124,7 @@ export function LinkedBox({
   }, [playing, live])
 
   const count = findings?.length ?? 0
-  const severity = findings?.some((finding) => finding.severity === 'error')
-    ? 'error'
-    : 'warning'
+  const severity = severityOf(findings ?? [])
   const label = `${frame.name} at ${box.width}`
 
   return (
@@ -153,10 +152,9 @@ export function LinkedBox({
             role="img"
             aria-label={`${count} check finding${count === 1 ? '' : 's'} at ${box.width}`}
             data-severity={severity}
-            className="flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+            className={FINDINGS_MARK}
           >
-            <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
-            {count}
+            <FindingsCount count={count} severity={severity} />
           </span>
         ) : null}
       </div>

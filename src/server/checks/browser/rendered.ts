@@ -6,6 +6,7 @@ import type { Finding } from '@/shared/records/check'
 import { type Theme, THEMES } from '@/shared/theme'
 
 import { readFrame } from '../frame-source'
+import { withoutOff } from '../rule'
 import { checkContrast, CONTRAST_RULES } from './contrast'
 import { checkDeclarations, DECLARATION_RULES } from './declarations'
 import { checkFontSize, FONT_SIZE_RULES } from './font-size'
@@ -39,7 +40,7 @@ export interface CheckRenderedOptions {
  * theme in its message. A missing face is measured in the fallback the board
  * shows rather than refused, since the board shows it too. The declaration
  * and scroll-effect rules read no theme, so they run on the first theme's
- * page alone.
+ * page alone. A rule the project turned off lands no finding.
  */
 export async function checkRendered(
   browser: Browser,
@@ -77,7 +78,7 @@ export async function checkRendered(
       await opened.close()
     }
   }
-  return [...mergeThemes(byTheme), ...unthemed]
+  return withoutOff([...mergeThemes(byTheme), ...unthemed], config.off)
 }
 
 /**

@@ -17,10 +17,13 @@ const HERO = frameOf('hero', {
   ],
 })
 
-function finding(width?: number): Finding {
+function finding(
+  width?: number,
+  severity: Finding['severity'] = 'error',
+): Finding {
   return {
     rule: 'clipped',
-    severity: 'error',
+    severity,
     frame: HERO.ref,
     path: 'studio/home/hero.html',
     message: 'cut off',
@@ -61,6 +64,48 @@ describe('LinkedBoxes', () => {
       ['834', '1620px', '40px', '834px', '1194px'],
       ['390', '2534px', '40px', '390px', '844px'],
     ])
+  })
+
+  describe('the pill’s form', () => {
+    const CLEAR = 'rgba(0, 0, 0, 0)'
+    const pillOf = (findings: Finding[]) => {
+      render(
+        <LinkedBoxes
+          frame={HERO}
+          live={false}
+          version={0}
+          findings={findings}
+        />,
+      )
+      const pill = screen.getByRole('img', { name: /check findings? at 390/ })
+      return { pill, style: getComputedStyle(pill) }
+    }
+
+    it('draws warnings alone as a dot and a count with no fill', () => {
+      const { pill, style } = pillOf([
+        finding(390, 'warning'),
+        finding(390, 'warning'),
+      ])
+
+      expect(pill).toHaveTextContent('2')
+      expect(pill.querySelector('[data-findings-quiet]')).toBeVisible()
+      expect(style.backgroundColor).toBe(CLEAR)
+      expect(style.boxShadow).toBe('none')
+    })
+
+    it('keeps the filled pill for an error alone', () => {
+      const { pill, style } = pillOf([finding(390)])
+
+      expect(pill.querySelector('svg')).toBeVisible()
+      expect(style.backgroundColor).not.toBe(CLEAR)
+    })
+
+    it('keeps the filled pill for one error among warnings and counts every finding', () => {
+      const { pill, style } = pillOf([finding(390, 'warning'), finding(390)])
+
+      expect(pill).toHaveTextContent('2')
+      expect(style.backgroundColor).not.toBe(CLEAR)
+    })
   })
 
   it('counts the findings read at its own width alone', () => {

@@ -61,6 +61,28 @@ const GROUP = { project: 'webapp', page: 'shapes', frame: 'group' }
 
 const GROUP_PAGE = join(import.meta.dirname, 'drive-group.html')
 
+/**
+ * The page holding three frames in a column 8 px apart, a clean one over one
+ * with a warning alone over one with an error, so the lower two labels have
+ * no room at any zoom and each frame's corner dot shows in its own hue.
+ */
+const STACKED = {
+  project: 'webapp',
+  page: 'stacked',
+  width: 640,
+  height: 240,
+  gap: 8,
+  frames: [
+    { name: 'top', style: 'font-family: var(--font-text)' },
+    { name: 'warned', style: 'font-family: sans-serif' },
+    {
+      name: 'broken',
+      style:
+        'background: #fafafa; color: #222222; font-family: var(--font-text)',
+    },
+  ],
+}
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -93,6 +115,8 @@ export interface Seeded {
   deck: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
   shapes: 'laid' | 'kept'
+  /** Whether the stacked findings page was laid now or was already there and kept. */
+  stacked: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
@@ -104,7 +128,7 @@ export interface Seeded {
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
  * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped, a `webapp/shapes` page of free elements, a Drives folder of two projects, and a live
+ * transition with one stepped, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two projects, and a live
  * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
@@ -122,9 +146,10 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   })
   const deck = await layDeck(root)
   const shapes = await layOne(root, GROUP, GROUP_PAGE)
+  const stacked = await layStacked(root)
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, deck, shapes, folder, reserved }
+  return { crowd, motion, raw, feed, deck, shapes, stacked, folder, reserved }
 }
 
 /**
@@ -268,6 +293,54 @@ async function layDeck(root: string): Promise<'laid' | 'kept'> {
   ])
   await listPage(root, DECK.project, DECK.page)
   return 'laid'
+}
+
+async function layStacked(root: string): Promise<'laid' | 'kept'> {
+  const folder = join(root, STACKED.project, STACKED.page)
+  if (existsSync(folder)) {
+    await relistKept(root, STACKED.project, STACKED.page)
+    return 'kept'
+  }
+  await mkdir(folder)
+
+  const layout = {
+    version: 1,
+    frames: Object.fromEntries(
+      STACKED.frames.map(({ name }, index) => [
+        name,
+        {
+          x: 0,
+          y: index * (STACKED.height + STACKED.gap),
+          width: STACKED.width,
+          height: STACKED.height,
+          order: index,
+          hidden: false,
+          locked: false,
+        },
+      ]),
+    ),
+  }
+  await Promise.all([
+    ...STACKED.frames.map(({ name, style }) =>
+      writeFile(join(folder, `${name}.html`), stackedHtml(name, style)),
+    ),
+    writeFile(
+      join(folder, 'layout.json'),
+      `${JSON.stringify(layout, null, 2)}\n`,
+    ),
+  ])
+  await listPage(root, STACKED.project, STACKED.page)
+  return 'laid'
+}
+
+/** A frame naming itself in one heading, whose body takes `style` for the rule it trips or passes. */
+function stackedHtml(name: string, style: string): string {
+  return `<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>${name}</title></head>
+  <body style="margin: 0; padding: 16px; ${style}"><h1>${name}</h1></body>
+</html>
+`
 }
 
 /**

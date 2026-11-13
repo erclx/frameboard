@@ -135,6 +135,80 @@ describe('change findings', () => {
   })
 })
 
+describe('a rule turned off', () => {
+  const outranked: Finding = {
+    rule: 'outranked',
+    severity: 'warning',
+    frame: 'site/home/hero',
+    path: 'site/home/hero.html',
+    message: 'first',
+    location: null,
+  }
+  const clipped: Finding = { ...outranked, rule: 'clipped', severity: 'error' }
+
+  function writeChecks(root: string, checks: unknown): string {
+    const file = join(root, 'site/project.json')
+    writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'], checks }))
+    return file
+  }
+
+  it('takes a held change finding out of the merged list and puts it back when turned on', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setChanged('site/home/hero', [outranked])
+
+    const off = findings.update(await scanBoard(board.root), [
+      writeChecks(board.root, { off: ['outranked'] }),
+    ])
+    const heldOff = findings.changed(['site/home/hero'])
+    const on = findings.update(await scanBoard(board.root), [
+      writeChecks(board.root, {}),
+    ])
+
+    expect(off).toEqual({ 'site/home/hero': [] })
+    expect(heldOff).toEqual({ 'site/home/hero': [] })
+    expect(rulesOf(on)).toEqual({ 'site/home/hero': ['outranked'] })
+  })
+
+  it('takes a held browser finding out the same way', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setRendered('site/home/hero', [clipped])
+
+    const off = findings.update(await scanBoard(board.root), [
+      writeChecks(board.root, { off: ['clipped'] }),
+    ])
+
+    expect(off).toEqual({ 'site/home/hero': [] })
+    expect(findings.rendered(['site/home/hero'])).toEqual({
+      'site/home/hero': [],
+    })
+  })
+
+  it('keeps the rule on in a project that never turned it off', async () => {
+    board = writeBoard({
+      'site/home/hero.html': CLEAN,
+      'docs/home/hero.html': CLEAN,
+    })
+    const findings = createBoardFindings(board.root)
+    findings.update(await scanBoard(board.root), 'all')
+    findings.setChanged('docs/home/hero', [
+      { ...outranked, frame: 'docs/home/hero', path: 'docs/home/hero.html' },
+    ])
+
+    findings.update(await scanBoard(board.root), [
+      writeChecks(board.root, { off: ['outranked'] }),
+    ])
+
+    expect(rulesOf(findings.all())).toEqual({
+      'site/home/hero': [],
+      'docs/home/hero': ['outranked'],
+    })
+  })
+})
+
 describe('browser findings', () => {
   const CLIPPED: Finding = {
     rule: 'clipped',

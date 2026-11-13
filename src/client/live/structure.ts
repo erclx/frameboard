@@ -59,6 +59,13 @@ export function createStructure(send: typeof fetch = fetch) {
       post<ProjectRecord[]>('/api/project/group', { refs, group }),
     archiveProjects: (refs: readonly string[], archived: boolean) =>
       post<ProjectRecord[]>('/api/project/archive', { refs, archived }),
+    /** Turns one check rule off for the project, or back on, in `checks.off` of its `project.json`. */
+    setProjectRule: (project: string, rule: string, off: boolean) =>
+      post<{ project: string; off: string[] }>('/api/project/rule', {
+        project,
+        rule,
+        off,
+      }),
     /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
     projectTokens: (ref: string, look: StarterLook) =>
       post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),

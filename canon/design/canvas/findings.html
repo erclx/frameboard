@@ -174,29 +174,44 @@
         font-size: 11px;
         color: var(--muted);
       }
+      .pill.wn {
+        background: none;
+        box-shadow: none;
+        color: var(--muted);
+        padding: 0 2px;
+      }
+      .qd {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .off {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        margin-top: 6px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--text);
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .fx.on .off {
+        background: var(--panel);
+      }
     </style>
   </head>
   <body>
     <div class="cap">
-      <b>arm 2a</b> · Stronger tint: 34% fill, 75% hairline, and the count in
-      the hue. Cost: still a pill, a little louder. Pricing shows its list open.
+      <b>arm 2a</b> · An error keeps the filled pill, 34% fill and 75% hairline,
+      with the count in the hue. Warnings alone show a grey dot and the count
+      with no fill. Pricing shows its list open, each card ending on the button
+      that turns its rule off for the project.
     </div>
     <div class="fl" style="left: 90px; top: 126px">
-      Hello world<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >1</span
-      >
+      Hello world<span class="pill 2a wn"><i class="qd"></i>1</span>
     </div>
     <div class="fr" style="left: 90px; top: 150px; width: 380px; height: 170px">
       <i></i><b></b>
@@ -246,7 +261,7 @@
             >The frame sets its own colors for one theme alone. Define the other
             through [data-theme] or prefers-color-scheme, or take the colors
             from token variables.</small
-          >
+          ><span class="off">Turn off in studio</span>
         </div>
       </div>
       <div class="fx er">
@@ -268,7 +283,7 @@
           ><small
             >Text renders in the browser default font. Name a font in the frame
             or take one from the tokens.</small
-          >
+          ><span class="off">Turn off in studio</span>
         </div>
       </div>
       <div class="fx wn">
@@ -290,7 +305,7 @@
           ><small
             >The frame sizes its content off the viewport, so it grows with any
             box. Give it a height of its own.</small
-          >
+          ><span class="off">Turn off in studio</span>
         </div>
       </div>
     </div>
@@ -305,21 +320,7 @@
       Same labels on a busy board: twelve small frames, five with findings.
     </div>
     <div class="fl" style="left: 90px; top: 400px">
-      Frame 1<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >1</span
-      >
+      Frame 1<span class="pill 2a wn"><i class="qd"></i>1</span>
     </div>
     <div class="fr" style="left: 90px; top: 424px; width: 190px; height: 70px">
       <i></i>
@@ -349,21 +350,7 @@
       <i></i>
     </div>
     <div class="fl" style="left: 750px; top: 400px">
-      Frame 4<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >1</span
-      >
+      Frame 4<span class="pill 2a wn"><i class="qd"></i>1</span>
     </div>
     <div class="fr" style="left: 750px; top: 424px; width: 190px; height: 70px">
       <i></i>
@@ -373,21 +360,7 @@
       <i></i>
     </div>
     <div class="fl" style="left: 1190px; top: 400px">
-      Frame 6<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >2</span
-      >
+      Frame 6<span class="pill 2a wn"><i class="qd"></i>2</span>
     </div>
     <div
       class="fr"
@@ -400,21 +373,7 @@
       <i></i>
     </div>
     <div class="fl" style="left: 310px; top: 525px">
-      Frame 8<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >1</span
-      >
+      Frame 8<span class="pill 2a wn"><i class="qd"></i>1</span>
     </div>
     <div class="fr" style="left: 310px; top: 549px; width: 190px; height: 70px">
       <i></i>
@@ -444,21 +403,7 @@
       <i></i>
     </div>
     <div class="fl" style="left: 970px; top: 525px">
-      Frame 11<span class="pill 2a wn"
-        ><svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 3l10 18H2z" />
-          <path d="M12 10v5M12 18v.5" /></svg
-        >1</span
-      >
+      Frame 11<span class="pill 2a wn"><i class="qd"></i>1</span>
     </div>
     <div class="fr" style="left: 970px; top: 549px; width: 190px; height: 70px">
       <i></i>

@@ -14,7 +14,7 @@ import { FONT_RULES } from './fonts'
 import { checkFrameIn, type ProjectContext, readProjectContext } from './frame'
 import { LINK_RULES } from './links'
 import { OUTRANKED_RULES } from './outranked'
-import type { RuleDoc } from './rule'
+import { type RuleDoc, withoutOff } from './rule'
 import { checkDotFolders, STRUCTURE_RULES } from './structure'
 import { THEME_RULES } from './theme'
 import { UPPERCASE_RULES } from './uppercase'
@@ -54,19 +54,18 @@ export async function checkProject(
     listPageFolders(projectDir),
     readdir(projectDir, { withFileTypes: true }),
   ])
-  const result = await checkPages(
-    root,
-    project,
-    pages,
-    readProjectContext(root, project),
-  )
+  const context = readProjectContext(root, project)
+  const result = await checkPages(root, project, pages, context)
   const folders = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
   return {
     checked: result.checked,
     findings: [
-      ...checkDotFolders(root, projectDir, folders),
+      ...withoutOff(
+        checkDotFolders(root, projectDir, folders),
+        context.config.off,
+      ),
       ...result.findings,
     ],
   }

@@ -45,6 +45,20 @@ export function findingFor(docs: readonly RuleDoc[]) {
 }
 
 /**
+ * `findings` without those of a rule `off` names, which a project's
+ * `checks.off` lists. Every path that reports a finding returns through it,
+ * so the board, `check`, and the hook agree on what is off. An id no rule
+ * declares matches no finding and drops nothing.
+ */
+export function withoutOff(
+  findings: Finding[],
+  off: readonly string[] | undefined,
+): Finding[] {
+  if (!off || off.length === 0) return findings
+  return findings.filter((finding) => !off.includes(finding.rule))
+}
+
+/**
  * One finding as `path:line:column  rule  message`, as `check` and the hook
  * print it, the path taking `@<width>` for one read at a linked width.
  */

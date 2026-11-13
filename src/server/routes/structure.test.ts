@@ -984,6 +984,24 @@ describe('structureRoutes', () => {
         expect([filed, undone]).toEqual([before, before])
       })
 
+      it.each([
+        ['a checks value that is not an object', 'strict'],
+        ['an empty checks object', {}],
+      ])('keeps %s through a filing and its undo', async (_, checks) => {
+        writeFileSync(
+          join(board.root, 'studio/project.json'),
+          JSON.stringify({ ...projectFile('studio'), checks }),
+        )
+        await post('/api/project/group', { refs: ['studio'], group: 'Client' })
+        const filed = projectFile('studio')
+
+        await history.undo()
+
+        expect(filed).toMatchObject({ group: 'Client', checks })
+        expect(projectFile('studio').checks).toEqual(checks)
+        expect(projectFile('studio').group).toBeUndefined()
+      })
+
       it('takes projects out of their folder on a null group', async () => {
         await post('/api/project/group', {
           refs: ['studio', 'brand'],
@@ -1026,6 +1044,128 @@ describe('structureRoutes', () => {
 
         expect(response.status).toBe(400)
         expect(history.counts().undo).toBe(undo)
+      })
+    })
+
+    describe('rule switch', () => {
+      const projectFile = () =>
+        JSON.parse(
+          readFileSync(join(board.root, 'studio/project.json'), 'utf8'),
+        )
+
+      it('turns a rule off for the project and undoes it back on', async () => {
+        const before = projectFile()
+
+        const response = await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'generic-font',
+          off: true,
+        })
+        expect(await response.json()).toEqual({
+          ok: true,
+          data: { project: 'studio', off: ['generic-font'] },
+        })
+        expect(projectFile().checks).toEqual({ off: ['generic-font'] })
+
+        await history.undo()
+
+        expect(projectFile()).toEqual(before)
+      })
+
+      it('undoes a rule switch and keeps the checks written beside it', async () => {
+        writeFileSync(
+          join(board.root, 'studio/project.json'),
+          JSON.stringify({ ...projectFile(), checks: { noUppercase: true } }),
+        )
+        await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'theme',
+          off: true,
+        })
+
+        await history.undo()
+        const undone = projectFile().checks
+        await history.redo()
+
+        expect(undone).toEqual({ noUppercase: true })
+        expect(projectFile().checks).toEqual({
+          noUppercase: true,
+          off: ['theme'],
+        })
+      })
+
+      it('still undoes a filing made after a rule was turned off', async () => {
+        await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'theme',
+          off: true,
+        })
+        await post('/api/project/group', { refs: ['studio'], group: 'Client' })
+
+        await history.undo()
+
+        expect(projectFile()).toMatchObject({ checks: { off: ['theme'] } })
+        expect(projectFile().group).toBeUndefined()
+      })
+
+      it('records nothing for a rule already off', async () => {
+        await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'theme',
+          off: true,
+        })
+        const undo = history.counts().undo
+
+        await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'theme',
+          off: true,
+        })
+
+        expect(history.counts().undo).toBe(undo)
+      })
+
+      it.each([
+        [
+          'a rule no check declares',
+          { project: 'studio', rule: 'nope', off: true },
+        ],
+        ['no off flag', { project: 'studio', rule: 'theme' }],
+      ])('answers usage for %s and writes nothing', async (_, body) => {
+        const before = projectFile()
+
+        const response = await post('/api/project/rule', body)
+
+        expect(response.status).toBe(400)
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code: 'usage' },
+        })
+        expect(projectFile()).toEqual(before)
+      })
+
+      it('answers project-not-found for a project the board does not hold', async () => {
+        const response = await post('/api/project/rule', {
+          project: 'nope',
+          rule: 'theme',
+          off: true,
+        })
+
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code: 'project-not-found' },
+        })
+      })
+
+      it('refuses a caller with no write access', async () => {
+        const response = await post(
+          '/api/project/rule',
+          { project: 'studio', rule: 'theme', off: true },
+          {},
+        )
+
+        expect(response.status).toBeGreaterThanOrEqual(401)
+        expect(projectFile().checks).toBeUndefined()
       })
     })
 

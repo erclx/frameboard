@@ -1,6 +1,7 @@
 import type { Stats } from 'node:fs'
 import { cp, mkdir, rename, rm, stat, utimes } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import { nextFreeName } from '@/shared/names'
@@ -159,16 +160,106 @@ function filed(file: ProjectFile, filing: Filing): ProjectFile {
   }
 }
 
-/** The filing keys a project file holds, leaving out the ones it lacks. */
-export function filingOf(file: ProjectFiling): ProjectFiling {
+/** The hand-written keys a project file holds, leaving out the ones it lacks. */
+export function filingOf(file: ProjectFile): ProjectFiling {
+  const off = isRecord(file.checks) ? file.checks.off : undefined
   return {
     ...(file.group === undefined ? {} : { group: file.group }),
     ...(file.archived === undefined ? {} : { archived: file.archived }),
+    ...(off === undefined ? {} : { off }),
   }
 }
 
 function isSameFiling(a: ProjectFiling, b: ProjectFiling): boolean {
-  return a.group === b.group && a.archived === b.archived
+  return (
+    a.group === b.group &&
+    a.archived === b.archived &&
+    isDeepStrictEqual(a.off, b.off)
+  )
+}
+
+/** What a rule switch answers: the project and every rule id it now turns off. */
+export interface ProjectRules {
+  project: string
+  off: string[]
+}
+
+/**
+ * Turns one check rule off for the project, or back on, by adding or removing
+ * its id in `checks.off` of `project.json` under the file's lock, so every
+ * other key stays as written. A rule already as asked writes nothing, and an
+ * `off` that is not a list of ids reads as none and is replaced by the first
+ * rule turned off. A `checks` that is not an object refuses as
+ * `project-file-invalid`, since no rule could be written beside it. The times
+ * are put back as a filing's are, since a rule switch draws nothing.
+ */
+export async function setProjectRule(
+  root: string,
+  name: string,
+  rule: string,
+  off: boolean,
+  { journal }: JournalOptions = {},
+): Promise<ProjectRules> {
+  const project = await resolveProject(root, name)
+  const path = join(project.path, PROJECT_FILE)
+  return keepingTimes([path], (keep) =>
+    withLocks([path], async () => {
+      const file = await readRecord(path, {
+        ...projectSpec,
+        empty: emptyProject,
+      })
+      if (file.checks !== undefined && !isRecord(file.checks)) {
+        throw new FrameboardError(
+          'project-file-invalid',
+          `${project.name}/${PROJECT_FILE} holds a checks value that is not an object. Make it an object and turn the rule off again.`,
+          { project: project.name },
+        )
+      }
+      const stored = filingOf(file).off
+      const list = isRuleList(stored) ? stored : []
+      const next = off
+        ? list.includes(rule)
+          ? list
+          : [...list, rule]
+        : list.filter((each) => each !== rule)
+      if (next.length !== list.length) {
+        const written = withOff(file, next.length === 0 ? undefined : next)
+        await keep(path)
+        await writeRecord(path, written)
+        journal?.project(path, filingOf(file), filingOf(written))
+      }
+      return { project: project.name, off: next }
+    }),
+  )
+}
+
+/**
+ * `file` with its `checks.off` set to `off`, or without the key for
+ * undefined, every other check kept in place. A `checks` this empties goes
+ * too, so turning a rule off and on leaves no empty object behind. A file
+ * holding no `off` to take out comes back as it is, so a `checks` of another
+ * type, or an empty one, survives the undo of a write that never touched it.
+ */
+export function withOff(file: ProjectFile, off: unknown): ProjectFile {
+  if (
+    off === undefined &&
+    !(isRecord(file.checks) && file.checks.off !== undefined)
+  ) {
+    return file
+  }
+  const { off: _off, ...kept } = isRecord(file.checks) ? file.checks : {}
+  const checks = off === undefined ? kept : { ...kept, off }
+  if (Object.keys(checks).length > 0) return { ...file, checks }
+  const { checks: _checks, ...rest } = file
+  return rest
+}
+
+function isRuleList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((each) => typeof each === 'string')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**

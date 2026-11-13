@@ -5,6 +5,7 @@ import {
   type ProjectContext,
   readProjectContext,
 } from '@/server/checks/frame'
+import { withoutOff } from '@/server/checks/rule'
 import { PROJECT_FILE } from '@/shared/board-files'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
@@ -48,6 +49,11 @@ export interface BoardFindings {
  * write raised against the bytes it replaced, then the browser findings the
  * server's warm checker last landed for it. `tokens` is the
  * server's `--tokens` sheet, null for none.
+ *
+ * The change and browser findings are held as they landed and read without
+ * the rules their project's `checks.off` named at its last recheck, so one
+ * leaves when its rule is turned off and comes back when it is turned on,
+ * with no write to the frame between.
  */
 export function createBoardFindings(
   root: string,
@@ -56,10 +62,14 @@ export function createBoardFindings(
   const held = new Map<string, Finding[]>()
   const change = new Map<string, Finding[]>()
   const browser = new Map<string, Finding[]>()
+  /** Each project's `checks.off` as its last recheck read it. */
+  const off = new Map<string, readonly string[] | undefined>()
+  const on = (ref: string, list: Finding[] | undefined) =>
+    withoutOff(list ?? [], off.get(projectOf(ref)))
   const merged = (ref: string, own: Finding[]) => [
     ...own,
-    ...(change.get(ref) ?? []),
-    ...(browser.get(ref) ?? []),
+    ...on(ref, change.get(ref)),
+    ...on(ref, browser.get(ref)),
   ]
 
   return {
@@ -73,14 +83,14 @@ export function createBoardFindings(
       return own ? { [ref]: merged(ref, own) } : {}
     },
     rendered: (refs) =>
-      Object.fromEntries(refs.map((ref) => [ref, browser.get(ref) ?? []])),
+      Object.fromEntries(refs.map((ref) => [ref, on(ref, browser.get(ref))])),
     setChanged: (ref, findings) => {
       change.set(ref, findings)
       const own = held.get(ref)
       return own ? { [ref]: merged(ref, own) } : {}
     },
     changed: (refs) =>
-      Object.fromEntries(refs.map((ref) => [ref, change.get(ref) ?? []])),
+      Object.fromEntries(refs.map((ref) => [ref, on(ref, change.get(ref))])),
     update: (board, paths) => {
       const frames = framesOf(board)
       for (const ref of [...held.keys(), ...change.keys(), ...browser.keys()]) {
@@ -103,6 +113,7 @@ export function createBoardFindings(
         if (!context) {
           context = readProjectContext(root, frame.project, tokens)
           contexts.set(frame.project, context)
+          off.set(frame.project, context.config.off)
         }
         const findings = checkOne(root, frame, context)
         if (findings === null) continue
@@ -139,6 +150,11 @@ export function recheckRefs(
     }
   }
   return [...refs]
+}
+
+/** The project a frame ref `<project>/<page>/<frame>` sits in. */
+function projectOf(ref: string): string {
+  return ref.slice(0, ref.indexOf('/'))
 }
 
 function framesOf(board: ListResult): Map<string, FrameRecord> {

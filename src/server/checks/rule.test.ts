@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findingFor, formatFinding, type RuleDoc } from './rule'
+import { findingFor, formatFinding, type RuleDoc, withoutOff } from './rule'
 import { RULES } from './run'
 
 const DOCS: RuleDoc[] = [
@@ -50,5 +50,29 @@ describe('formatFinding', () => {
     expect(formatFinding({ ...finding, width: 390 })).toBe(
       'site/home/hero.html@390  broken  m',
     )
+  })
+})
+
+describe('withoutOff', () => {
+  const finding = findingFor(DOCS)
+  const findings = [finding('broken', fields), finding('styled', fields)]
+
+  it('drops the findings of a rule turned off and keeps the rest', () => {
+    expect(withoutOff(findings, ['styled'])).toEqual([findings[0]])
+  })
+
+  it('drops an error rule as it does a warning', () => {
+    expect(withoutOff(findings, ['broken'])).toEqual([findings[1]])
+  })
+
+  it('keeps every finding when the list names an id no rule declares', () => {
+    expect(withoutOff(findings, ['unlisted'])).toEqual(findings)
+  })
+
+  it.each([
+    ['no list', undefined],
+    ['an empty list', []],
+  ])('keeps every finding for %s', (_, off) => {
+    expect(withoutOff(findings, off)).toEqual(findings)
   })
 })

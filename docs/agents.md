@@ -43,10 +43,17 @@ A responsive page is one frame file shown at several widths, so every fix to the
 `frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
 
 - An error means the frame renders wrong or cannot load, and a warning means it renders and a style call is in question, such as a generic font. `frameboard docs` prints each rule's level.
-- The board runs the same rules on each change, and a frame's findings badge, red for an error and amber for warnings alone, opens the list
+- The board runs the same rules on each change, and a frame's findings mark opens the list. Any error draws it as a filled red badge, and warnings alone as a grey dot and a count
 - A finding in a stylesheet the frame links names that file beside its line
 - A running server adds the rules only a browser can see, such as clipped content, an inner scrollbar, dropped CSS, and a sticky effect in a frame that never scrolls
 - A running server also warns when an agent's write changes a rule that an element's own `style` attribute overrides, since that element keeps the value you may have set by hand
+
+A project turns off a rule that does not fit it, an error rule included.
+
+- List the rule's id in `checks.off` of the project's `project.json`, such as `"off": ["generic-font"]`
+- A rule turned off is silent on the board, in `check`, and in the plugin hook
+- Each finding's card on the board carries a Turn off button that writes that key for the frame's project
+- Undo, or a hand edit of the file, turns the rule back on
 
 ## Claims
 

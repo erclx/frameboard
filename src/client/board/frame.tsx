@@ -1,11 +1,4 @@
-import {
-  ExternalLink,
-  Lock,
-  Moon,
-  MoveHorizontal,
-  Sun,
-  TriangleAlert,
-} from 'lucide-react'
+import { ExternalLink, Lock, Moon, MoveHorizontal, Sun } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { bindKeys } from '@/client/actions/registry'
@@ -38,8 +31,10 @@ import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { Bezel } from './device/bezel'
-import { FindingsList } from './findings-list'
-import { openFindings, useFindingsOpen } from './findings-open'
+import { FINDINGS_MARK, severityOf } from './findings/level'
+import { FindingsList } from './findings/list'
+import { FindingsCount } from './findings/mark'
+import { openFindings, useFindingsOpen } from './findings/open'
 import { renderedHash } from './frame-dom'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
@@ -338,7 +333,7 @@ export const Frame = memo(function Frame({
           data-findings-badge={frame.ref}
           data-severity={severityOf(findings)}
           className={cn(
-            'absolute top-0 left-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-note',
+            'absolute top-0 left-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-muted-foreground',
             // Shown exactly while the label hides, by the label's own rule,
             // on the top left where the label starts, since a frame note
             // takes the top right.
@@ -536,12 +531,6 @@ function HeldChip({ frameRef, at }: { frameRef: string; at: number }) {
   )
 }
 
-function severityOf(findings: readonly Finding[]): Finding['severity'] {
-  return findings.some((finding) => finding.severity === 'error')
-    ? 'error'
-    : 'warning'
-}
-
 /** The entered frame's tag under its bottom left, at a constant screen size. */
 function EnteredTag({ inset }: { inset: number }) {
   return (
@@ -585,14 +574,15 @@ interface FindingsMarkProps {
 }
 
 /**
- * The count of a frame's check findings beside its name, as a pill tinted in
- * the destructive hue when any finding is an error and the note hue when all
- * are warnings. It never shrinks, so a narrow frame truncates the name and
+ * The count of a frame's check findings beside its name, as a pill filled in
+ * the destructive hue when any finding is an error and a grey dot and count
+ * with no fill when all are warnings. It never shrinks, so a narrow frame truncates the name and
  * any claim tag and keeps the count. It opens a popover listing each finding, which a press
  * reaches through the hit layer and a key through the badge itself.
  */
 function FindingsMark({ frame, findings }: FindingsMarkProps) {
   const open = useFindingsOpen(frame.ref)
+  const popup = useRef<HTMLDivElement>(null)
   const count = findings.length
   const severity = severityOf(findings)
   const counted = `${count} finding${count === 1 ? '' : 's'}`
@@ -606,22 +596,27 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         aria-label={`${count} check finding${count === 1 ? '' : 's'}`}
         data-severity={severity}
         // Play passes the pointer through the frames' layer, so the badge takes it back.
-        className="pointer-events-auto flex h-[18px] shrink-0 items-center gap-[3px] rounded-[9px] bg-[color-mix(in_srgb,var(--h)_34%,transparent)] pr-1.5 pl-[5px] font-medium text-[color-mix(in_srgb,var(--h)_55%,var(--foreground))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--h)_75%,transparent)] outline-none focus-visible:ring-2 focus-visible:ring-ring data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
+        className={cn(
+          FINDINGS_MARK,
+          'pointer-events-auto outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        )}
       >
-        <TriangleAlert aria-hidden className="size-3 text-[var(--h)]" />
-        {count}
+        <FindingsCount count={count} severity={severity} />
       </PopoverTrigger>
       <PopoverContent
         side="bottom"
         align="start"
         sideOffset={6}
-        initialFocus
+        ref={popup}
+        // The list opens with focus on itself rather than on its first Turn
+        // off button, so a second Enter on the badge switches no rule off.
+        initialFocus={popup}
         className="w-[330px] gap-1.5 p-2.5 text-body"
       >
         <PopoverTitle className="text-[11px] font-semibold text-muted-foreground">
           {counted} on {frame.name}
         </PopoverTitle>
-        <FindingsList findings={findings} />
+        <FindingsList findings={findings} project={frame.project} />
       </PopoverContent>
     </Popover>
   )

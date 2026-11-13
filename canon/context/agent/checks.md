@@ -16,14 +16,30 @@ Owns the content rules and where they run. A frame that breaks one is reported w
 Owns the rules, the cascade they read, and the runner over a frame, a page, or a project. It imports only `src/shared/` and its libraries, so the hook bundles it without the server. While a server runs, the board sheet is the `--tokens` sheet the address file records.
 
 - The `check` verb, the server on every watched batch, and the plugin hook all run `checkFrameIn`, so no path drifts from another
+- A project turns a rule off by listing its id in `checks.off` of `project.json`, an error rule included, and every path returns through `withoutOff` in `rule.ts`, so none reports it
 - `check` exits 8 with `check-findings` and the result in the error's details when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, and `unknown-token`
 
 Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.
 
-- Red means the frame is broken, rendering wrong or not loading, and an error fails `check`. Amber means it renders and a style call is in question, so a warning never does
+- An error means the frame is broken, rendering wrong or not loading, and fails `check`. A warning means it renders and a style call is in question, so it never does
+- The board fills a frame's mark red for any error and draws warnings alone as a grey dot and count, keeping amber for a warning's glyph inside the open list
 - The errors are the link, markup, and naming rules, `clipped`, `theme`, and `allowed-fonts`, which a project chose. Every other rule warns, `uppercase`, `min-font-size`, and `min-contrast` included
 - `findingFor` binds a module's docs and stamps each finding with its rule's level, refusing a rule the docs never declare
+
+Four places filter through `withoutOff`, which imports the finding type alone so the hook's start stays as it was.
+
+- `checkFrameIn` filters the static rules, which covers `check` on a frame or a page, the hook, and the board's held static findings
+- `checkProject` filters its folder findings, and `checkRendered` the browser tier's
+- `createBoardFindings` filters held change and browser findings at read, against the `off` list its last recheck read, so `outranked` leaves and returns with no frame write
+- `readConfig` reads `off` by hand, and an `off` that is not a list of ids, or an id no rule declares, turns nothing off
+
+The board writes the key through `POST /api/project/rule` with `{ project, rule, off }`, which `canon/context/board/server.md` owns with the other structure routes.
+
+- `setProjectRule` in `src/server/board/projects.ts` adds or removes one id under the file's lock and keeps every other key
+- It writes nothing for a rule already as asked, and puts the file's times back as a filing does
+- The journal's project entry carries `checks.off` beside the filing keys, so undo restores the list as it stood
+- A `checks` value that is not an object refuses as `project-file-invalid`, and a rule id no check declares answers `usage`
 
 The markup rules read what parse5 recovered from, since a browser recovers from the same bytes without a word.
 

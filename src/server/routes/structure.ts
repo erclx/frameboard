@@ -31,6 +31,7 @@ import {
   duplicateProject,
   fileProjects,
   renameProject,
+  setProjectRule,
 } from '@/server/board/projects'
 import {
   resolveFrameRef,
@@ -43,6 +44,7 @@ import {
   deleteSection,
   renameSection,
 } from '@/server/board/sections'
+import { RULES } from '@/server/checks/run'
 import { refuseClaimed } from '@/server/claims/gate'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
@@ -166,6 +168,11 @@ const projectGroupSchema = z.object({
 const projectArchiveSchema = z.object({
   refs: projectRefs,
   archived: z.boolean(),
+})
+const projectRuleSchema = z.object({
+  project: ref,
+  rule: z.enum(RULES.map((rule) => rule.id) as [string, ...string[]]),
+  off: z.boolean(),
 })
 const projectTokensSchema = z.object({
   ref,
@@ -679,6 +686,21 @@ export function structureRoutes(
       onHome,
     )
     return c.json({ ok: true, data: projects })
+  })
+
+  /**
+   * Turns one check rule off for the project, or back on, as one undo step.
+   * It waits on no claim, since it writes `project.json` alone and under its
+   * lock. A rule no check declares answers `usage`.
+   */
+  app.post('/api/project/rule', async (c) => {
+    const body = await parseBody(c.req.raw, projectRuleSchema)
+    const rules = await recorded(
+      (journal) =>
+        setProjectRule(root, body.project, body.rule, body.off, { journal }),
+      onHome,
+    )
+    return c.json({ ok: true, data: rules })
   })
 
   /** Creates the project's `tokens.css` from a preset, refusing where any sheet already reaches it. */
