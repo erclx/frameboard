@@ -15,10 +15,13 @@ import { fitScale } from './fit'
 import { PresentOverlay } from './overlay'
 import { presentStore, startPresenting } from './store'
 
-/** Bottom of the stack first, as the server sends them, so Layers reads them reversed. */
+/** One row on the canvas, laid left to right in the order named, so reading order follows it. */
 function framesOf(...names: string[]): FrameRecord[] {
-  return names.map((name, order) =>
-    frameOf(name, { order, hidden: name.startsWith('hidden') }),
+  return names.map((name, at) =>
+    frameOf(name, {
+      box: { x: at * 500, y: 0, width: 390, height: 844 },
+      hidden: name.startsWith('hidden'),
+    }),
   )
 }
 
@@ -63,8 +66,8 @@ describe('the scale a frame presents at', () => {
 })
 
 describe('presenting a page', () => {
-  it('opens on the top frame in Layers with nothing selected', () => {
-    present(framesOf('third', 'second', 'first'))
+  it('opens on the first frame in reading order with nothing selected', () => {
+    present(framesOf('first', 'second', 'third'))
 
     expect(shownFrame()?.title).toBe('first')
     expect(count()).toContain('1 / 3')
@@ -81,8 +84,8 @@ describe('presenting a page', () => {
     expect(box?.left).toBeCloseTo(0)
   })
 
-  it('steps by arrow in Layers order, skipping hidden frames', async () => {
-    present(framesOf('third', 'hidden', 'second', 'first'))
+  it('steps by arrow in reading order, skipping hidden frames', async () => {
+    present(framesOf('first', 'second', 'hidden', 'third'))
 
     await userEvent.keyboard('{ArrowRight}')
     expect(shownFrame()?.title).toBe('second')
@@ -93,7 +96,7 @@ describe('presenting a page', () => {
   })
 
   it('stays on the last frame on Next, the count reading n / n', async () => {
-    present(framesOf('second', 'first'))
+    present(framesOf('first', 'second'))
 
     await userEvent.keyboard('{ArrowRight}{ArrowRight}[Space]')
 
@@ -102,19 +105,34 @@ describe('presenting a page', () => {
   })
 
   it('starts from the selected frame', () => {
-    present(framesOf('third', 'second', 'first'), ['second'])
+    present(framesOf('first', 'second', 'third'), ['second'])
 
     expect(shownFrame()?.title).toBe('second')
   })
 
+  it('starts from a selected frame in the second row, Back reaching the first', async () => {
+    present(
+      [
+        frameOf('below', { box: { x: 0, y: 1000, width: 390, height: 844 } }),
+        frameOf('above', { box: { x: 0, y: 0, width: 390, height: 844 } }),
+      ],
+      ['below'],
+    )
+    expect(shownFrame()?.title).toBe('below')
+
+    await userEvent.keyboard('{ArrowLeft}')
+
+    expect(shownFrame()?.title).toBe('above')
+  })
+
   it('starts from a selected hidden frame at the next shown one', () => {
-    present(framesOf('third', 'hidden', 'first'), ['hidden'])
+    present(framesOf('first', 'hidden', 'third'), ['hidden'])
 
     expect(shownFrame()?.title).toBe('third')
   })
 
   it('keeps the frame shown when an agent hides it mid-presentation', () => {
-    const frames = framesOf('second', 'first')
+    const frames = framesOf('first', 'second')
     present(frames)
 
     act(() =>
@@ -133,7 +151,7 @@ describe('presenting a page', () => {
   })
 
   it('leaves on Esc with the presented frame selected', async () => {
-    present(framesOf('second', 'first'))
+    present(framesOf('first', 'second'))
 
     await userEvent.keyboard('{ArrowRight}{Escape}')
 
@@ -142,7 +160,7 @@ describe('presenting a page', () => {
   })
 
   it('presses a focused bar button with Space rather than stepping', async () => {
-    present(framesOf('second', 'first'))
+    present(framesOf('first', 'second'))
     screen.getByRole('button', { name: 'Leave presenting' }).focus()
 
     await userEvent.keyboard('[Space]')

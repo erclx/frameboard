@@ -169,7 +169,7 @@ export function PresentOverlay() {
           .find((candidate) => candidate.ref === pageRef),
   )
   if (pageRef === null || frameRef === null) return null
-  const order = page ? presentOrder(page.frames, page.sections, frameRef) : []
+  const order = page ? presentOrder(page.frames, frameRef) : []
   const at = order.findIndex((frame) => frame.ref === frameRef)
   const frame = order[at]
   return createPortal(
