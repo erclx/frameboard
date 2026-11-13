@@ -14,8 +14,8 @@ import { STARTER_ACCENTS } from '@/shared/starter-tokens'
 
 import { cli } from '../../test/support/cli'
 import { type BoardServer, serveBoard } from '../support/board-server'
-
-const UNDO = 'ControlOrMeta+KeyZ'
+import { liveCanvas } from '../support/canvas'
+import { undo } from '../support/history'
 
 /** Picks a guide option through the card that wraps its radio, the way a pointer reaches it. */
 async function choose(radio: Locator): Promise<void> {
@@ -89,21 +89,21 @@ test.describe('a new board guided to its first frame', () => {
       .poll(() =>
         inside(
           page.locator('[data-frame="acme-mobile/page-1/desktop"]'),
-          page.locator('[data-canvas]'),
+          liveCanvas(page),
         ),
       )
       .toBe(true)
 
     await page.keyboard.press('Escape')
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect
       .poll(() => existsSync(at('acme-mobile/page-1/desktop.html')))
       .toBe(false)
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect
       .poll(() => existsSync(at('acme-mobile/tokens.css')))
       .toBe(false)
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect.poll(() => existsSync(at('untitled/page-1'))).toBe(true)
   })
 
@@ -128,7 +128,7 @@ test.describe('a new board guided to its first frame', () => {
       cwd: root,
     })
 
-    const canvas = await page.locator('[data-canvas]').boundingBox()
+    const canvas = await liveCanvas(page).boundingBox()
     const frame = page.locator('[data-frame="acme-web/page-1/home"]')
     await expect(frame).toBeVisible()
     await expect

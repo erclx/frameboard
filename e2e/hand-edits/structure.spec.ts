@@ -8,8 +8,8 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
-
-const UNDO = 'ControlOrMeta+KeyZ'
+import { liveLayer } from '../support/canvas'
+import { undo } from '../support/history'
 
 test.describe('page structure by hand, and its undo', () => {
   let board: FixtureBoard
@@ -46,14 +46,6 @@ test.describe('page structure by hand, and its undo', () => {
     return page
       .getByRole('navigation', { name: 'Pages' })
       .getByRole('link', { name, exact: true })
-  }
-
-  /** Waits for Undo to light, which the server's history message does once a step is recorded. */
-  async function undo(page: Page): Promise<void> {
-    await expect(
-      page.getByRole('button', { name: 'Undo' }),
-    ).not.toHaveAttribute('aria-disabled')
-    await page.keyboard.press(UNDO)
   }
 
   test('adds a page after the current one, and undo takes it away', async ({
@@ -286,13 +278,15 @@ test.describe('page structure by hand, and its undo', () => {
     await page.keyboard.press('Delete')
 
     await expect.poll(() => existsSync(at('studio/pricing'))).toBe(false)
-    expect(pageOrder()).toEqual(['home'])
+    // The folder goes ahead of the order rewrite dropping it.
+    await expect.poll(pageOrder).toEqual(['home'])
 
     await undo(page)
 
     await expect.poll(() => existsSync(at('studio/pricing'))).toBe(true)
     expect(readFileSync(at('studio/pricing/notes.json'), 'utf8')).toBe(notes)
-    expect(pageOrder()).toEqual(['home', 'pricing'])
+    // The folder comes back ahead of the order rewrite naming it.
+    await expect.poll(pageOrder).toEqual(['home', 'pricing'])
   })
 
   test('refuses an undo an agent overtook and says so', async ({ page }) => {
@@ -529,19 +523,21 @@ test.describe('page structure by hand, and its undo', () => {
       page,
     }) => {
       await openAsWriter(page)
-      const zoom = await page
-        .locator('[data-layer]')
-        .evaluate(
-          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
-        )
+      const zoom = await liveLayer(page).evaluate(
+        (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+      )
       // Zoomed out far enough that 30 screen px cover more than 40 board px,
       // so the short drag below proves the floor reads on screen.
       expect(zoom).toBeLessThan(0.75)
       const hit = await page.locator('[data-hit-layer]').boundingBox()
       if (!hit) throw new Error('The canvas draws no hit layer')
       const start = { x: hit.x + 40, y: hit.y + 40 }
+      const frameTool = page
+        .getByRole('toolbar', { name: 'Tools' })
+        .getByRole('button', { name: 'Frame', exact: true })
 
       await page.keyboard.press('f')
+      await expect(frameTool).toHaveAttribute('aria-pressed', 'true')
       await page.mouse.move(start.x, start.y)
       await page.mouse.down()
       await page.mouse.move(start.x + 100, start.y + 80, { steps: 4 })
@@ -554,6 +550,7 @@ test.describe('page structure by hand, and its undo', () => {
       expect(layout().frame?.height).toBeCloseTo(150 / zoom, -0.5)
 
       await page.keyboard.press('f')
+      await expect(frameTool).toHaveAttribute('aria-pressed', 'true')
       await page.mouse.move(start.x, start.y)
       await page.mouse.down()
       await page.mouse.move(start.x + 30, start.y + 30, { steps: 4 })

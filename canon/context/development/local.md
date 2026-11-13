@@ -112,6 +112,11 @@ Owns the Playwright specs, grouped by role into `cli/`, `agent-work/`, `hand-edi
 - A capture case that writes the served board joins `WRITING_SECTIONS` in `e2e/capture/board.ts`, which runs it after the rest
 - Those cases run last because a fresh browser paints the server's whole change log as unseen in every later case
 
+Two helpers keep a spec off the board's timing.
+
+- A spec presses undo through `e2e/support/history.ts`, which waits until the board counts the step, since an early press does nothing. Home reads Undo off the command palette.
+- A spec reads the canvas and its layer through `e2e/support/canvas.ts`, since a page switch keeps a hidden canvas beside the live one
+
 ### `test/`
 
 Owns the fixture boards under `test/fixtures/boards/` and the helpers under `test/support/`, and holds no tests itself, so unit tests, specs, and later rows read one copy.

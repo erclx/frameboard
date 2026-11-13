@@ -8,9 +8,8 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undoAtHome } from '../support/history'
 import { openSheetAtDesktop } from '../support/shortcuts-sheet'
-
-const UNDO = 'ControlOrMeta+KeyZ'
 
 type Box = NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>
 
@@ -105,7 +104,7 @@ test.describe('projects by hand from the home view', () => {
     await expect(card(page, 'studio')).toHaveCount(0)
     expect(existsSync(at('studio'))).toBe(false)
 
-    await page.keyboard.press(UNDO)
+    await undoAtHome(page)
 
     await expect(card(page, 'studio')).toBeVisible()
     expect(readFileSync(at('studio/assets/dot.svg'))).toEqual(asset)
@@ -135,7 +134,7 @@ test.describe('projects by hand from the home view', () => {
       page.getByRole('button', { name: /^Folder\s*2 projects/ }),
     ).toBeVisible()
 
-    await page.keyboard.press(UNDO)
+    await undoAtHome(page)
 
     await expect(card(page, 'studio')).toBeVisible()
     await expect(card(page, 'brand')).toBeVisible()
@@ -178,7 +177,7 @@ test.describe('projects by hand from the home view', () => {
     await card(page, 'brand').dragTo(card(page, 'studio'))
 
     await expect.poll(() => groupOf('brand')).toBe('Client')
-    await page.keyboard.press(UNDO)
+    await undoAtHome(page)
     await expect.poll(() => groupOf('brand')).toBeUndefined()
     expect(filings).toEqual([
       JSON.stringify({ refs: ['brand'], group: 'Client' }),

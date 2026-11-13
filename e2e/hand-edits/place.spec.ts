@@ -9,6 +9,8 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas, liveLayer } from '../support/canvas'
+import { undo } from '../support/history'
 
 const HERO = 'webapp/home/hero'
 const ROW =
@@ -79,7 +81,7 @@ test.describe('placing text and shapes into a frame', () => {
     ).toHaveAttribute('aria-pressed', 'false')
     await expect(page.locator('[data-element-selection]')).toBeVisible()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
     await expect(page.locator('[data-element-selection]')).toBeHidden()
@@ -183,9 +185,9 @@ test.describe('placing text and shapes into a frame', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     const one = await hero(page).locator('[data-name="One"]').boundingBox()
     if (!one) throw new Error('The row draws no first child')
-    const zoom = await page
-      .locator('[data-layer]')
-      .evaluate((layer) => Number(layer.style.getPropertyValue('--zoom')) || 1)
+    const zoom = await liveLayer(page).evaluate(
+      (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+    )
     const start = { x: one.x + one.width + 20, y: one.y + one.height / 2 }
 
     await tools(page).getByRole('button', { name: 'Rectangle' }).click()
@@ -258,7 +260,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(placed.height).toBeCloseTo(60, -0.5)
     expect(read()).not.toContain('position: relative')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -289,7 +291,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(placed.x + placed.width / 2).toBeCloseTo(point.x, -0.5)
     expect(placed.y + placed.height / 2).toBeCloseTo(point.y, -0.5)
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -301,9 +303,9 @@ test.describe('placing text and shapes into a frame', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     const one = await hero(page).locator('[data-name="One"]').boundingBox()
     if (!one) throw new Error('The row draws no first child')
-    const zoom = await page
-      .locator('[data-layer]')
-      .evaluate((layer) => Number(layer.style.getPropertyValue('--zoom')) || 1)
+    const zoom = await liveLayer(page).evaluate(
+      (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+    )
     await tools(page).getByRole('button', { name: 'Shapes' }).click()
     await page.getByRole('menuitemradio', { name: /Ellipse/ }).click()
     await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
@@ -331,7 +333,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(Number(width)).toBeCloseTo(100 + 80 / zoom, -0.5)
     expect(Number(height)).toBeCloseTo(100 + 40 / zoom, -0.5)
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(placed)
   })
@@ -368,7 +370,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(readFileSync(layout, 'utf8')).toBe(placed)
     await expect(page.locator('[data-element-selection]')).toBeVisible()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -548,7 +550,7 @@ test.describe('placing text and shapes into a frame', () => {
           ),
         )
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -584,7 +586,7 @@ test.describe('placing text and shapes into a frame', () => {
           ),
         )
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -633,14 +635,12 @@ test.describe('placing text and shapes into a frame', () => {
       await expect(outline.locator('[data-element-corner]')).toHaveCount(4)
       const box = await outline.boundingBox()
       if (!box) throw new Error(`${name} draws no outline`)
-      const zoom = await page
-        .locator('[data-layer]')
-        .evaluate(
-          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
-        )
+      const zoom = await liveLayer(page).evaluate(
+        (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+      )
       const corner = { x: box.x + box.width, y: box.y + box.height }
       await page.mouse.move(corner.x, corner.y)
-      const canvas = page.locator('[data-canvas]')
+      const canvas = liveCanvas(page)
       await expect(canvas).toHaveCSS('cursor', 'nwse-resize')
       await page.mouse.down()
       await page.mouse.move(corner.x + dx, corner.y + dy, { steps: 8 })
@@ -673,7 +673,7 @@ test.describe('placing text and shapes into a frame', () => {
         page.locator('[data-element-selection] [data-chip]'),
       ).toHaveText(`${width} × Hug`)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -689,7 +689,7 @@ test.describe('placing text and shapes into a frame', () => {
       expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
       expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -706,7 +706,7 @@ test.describe('placing text and shapes into a frame', () => {
       expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
       expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -734,11 +734,9 @@ test.describe('placing text and shapes into a frame', () => {
       await page.mouse.click(center.x, center.y)
       await page.keyboard.up('Meta')
       await expect(page.locator('[data-element-selection]')).toBeVisible()
-      const zoom = await page
-        .locator('[data-layer]')
-        .evaluate(
-          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
-        )
+      const zoom = await liveLayer(page).evaluate(
+        (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+      )
       return { center, zoom }
     }
 

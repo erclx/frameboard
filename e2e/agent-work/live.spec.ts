@@ -9,6 +9,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas, liveLayer } from '../support/canvas'
 
 const HOME = '/p/studio/home'
 
@@ -69,8 +70,8 @@ test.describe('the live board', () => {
   })
 
   test('reloads a changed frame alone and keeps the view', async ({ page }) => {
-    const layer = page.locator('[data-layer]')
-    await page.locator('[data-canvas]').hover()
+    const layer = liveLayer(page)
+    await liveCanvas(page).hover()
     await page.mouse.wheel(120, 80)
     const view = await layer.evaluate((element) => element.style.transform)
 
@@ -109,10 +110,14 @@ test.describe('the live board', () => {
     const dot = page.frameLocator('iframe[title="hero"]').getByRole('img')
     // A fetch in the default mode reads the HTTP cache the image load filled,
     // so a freshness lifetime on the asset would answer the old bytes here.
+    // The write reloads the frame, which can tear down a read in flight, so a
+    // torn read answers null and the poll asks again.
     const served = () =>
-      dot.evaluate(async (img: HTMLImageElement) =>
-        (await fetch(img.src)).text(),
-      )
+      dot
+        .evaluate(async (img: HTMLImageElement) =>
+          (await fetch(img.src)).text(),
+        )
+        .catch(() => null)
     const asset = join(board.root, 'studio/assets/dot.svg')
     await expect.poll(served).toBe(readFileSync(asset, 'utf8'))
     const edited =

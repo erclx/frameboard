@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas, liveLayer } from '../support/canvas'
 
 const CLI = resolve('dist/cli.js')
 const SESSION = 'e2e-follow-1'
@@ -343,7 +344,7 @@ test.describe('what an agent changed', () => {
     /** How far a frame's center sits from the canvas's, in screen pixels. */
     async function offCenter(page: Page, frame: Locator): Promise<number> {
       const [canvas, box] = await Promise.all([
-        page.locator('[data-canvas]').boundingBox(),
+        liveCanvas(page).boundingBox(),
         frame.boundingBox(),
       ])
       if (!canvas || !box) return Infinity
@@ -388,12 +389,12 @@ test.describe('what an agent changed', () => {
       const plans = page.locator('[data-frame="studio/pricing/plans"]')
       await expect.poll(() => offCenter(page, plans)).toBeLessThan(2)
 
-      const canvas = page.locator('[data-canvas]')
+      const canvas = liveCanvas(page)
       await canvas.hover()
       await page.mouse.wheel(120, 80)
       await expect(initial).toHaveAttribute('aria-pressed', 'false')
       await expect(initial).not.toContainText('Following')
-      const layer = page.locator('[data-layer]')
+      const layer = liveLayer(page)
       const panned = await layer.getAttribute('style')
 
       await claimAndWrite('studio/home/hero.html', 'Hero, later')

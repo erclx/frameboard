@@ -8,6 +8,8 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas } from '../support/canvas'
+import { undo } from '../support/history'
 
 const HERO = '[data-frame="studio/home/hero"]'
 const MOBILE = '[data-frame="studio/home/mobile"]'
@@ -76,10 +78,7 @@ test.describe('page sections by hand', () => {
 
     const corner = await center(page.locator('[data-section-corner="se"]'))
     await page.mouse.move(corner.x, corner.y)
-    await expect(page.locator('[data-canvas]')).toHaveCSS(
-      'cursor',
-      'nwse-resize',
-    )
+    await expect(liveCanvas(page)).toHaveCSS('cursor', 'nwse-resize')
 
     // Pressed at its left end, which sits clear of hero's label and its buttons.
     const label = await page
@@ -100,7 +99,7 @@ test.describe('page sections by hand', () => {
       1520 + dx,
     ])
 
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
 
     await expect
       .poll(() => [
