@@ -443,7 +443,7 @@ describe('SelectionColors', () => {
       expect(written).toEqual(['#4f46e5'])
     })
 
-    it('tabs from the swatch to the copy to Select', async () => {
+    it('tabs from the swatch to the copy to Select to the swap', async () => {
       render(
         <SelectionColors
           colors={[{ ...raw('#4f46e5'), uses: [3] }]}
@@ -468,6 +468,79 @@ describe('SelectionColors', () => {
       expect(
         screen.getByRole('button', { name: /^Select 1 element/ }),
       ).toHaveFocus()
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      ).toHaveFocus()
+    })
+
+    it('marks no row in a project with no color token', () => {
+      renderReplacing([raw('#4f46e5'), raw('#111827')], () => {}, [])
+
+      expect(rows()).toEqual(['4f46e5100%', '111827100%'])
+      expect(screen.queryByRole('img')).toBeNull()
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('offers the equal token on a raw row, replacing it on a press', async () => {
+      const replaced: [StyleValue, string][] = []
+      renderReplacing([raw('#4f46e5')], (color, token) =>
+        replaced.push([color, token]),
+      )
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      )
+
+      expect(replaced).toEqual([[raw('#4f46e5'), '--primary']])
+    })
+
+    it('offers nothing on a raw row no token equals', () => {
+      renderReplacing([raw('#4f46e6')])
+
+      expect(rows()).toEqual(['4f46e6100%'])
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('offers no swap where the selection cannot take one', () => {
+      render(
+        <SelectionColors
+          colors={[raw('#4f46e5')]}
+          tokens={TOKENS}
+          theme="light"
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('keeps the swap clear of Select on a hovered row', async () => {
+      const replaced: string[] = []
+      render(
+        <SelectionColors
+          colors={[{ ...raw('#4f46e5'), uses: [3] }]}
+          tokens={TOKENS}
+          theme="light"
+          onReplace={(_, name) => replaced.push(name)}
+          selectIn={{
+            page: 'studio/home',
+            frame: 'studio/home/hero',
+            hash: 'a'.repeat(64),
+          }}
+        />,
+      )
+      const use = screen.getByRole('button', { name: 'Use primary for 4f46e5' })
+      const select = screen.getByRole('button', { name: /^Select 1 element/ })
+
+      await pointerOver(use)
+
+      const [from, to] = [
+        use.getBoundingClientRect(),
+        select.getBoundingClientRect(),
+      ]
+      expect(to.right).toBeLessThanOrEqual(from.left)
+      await userEvent.click(use)
+      expect(replaced).toEqual(['--primary'])
     })
 
     it('says the project names no color tokens when it has none', async () => {

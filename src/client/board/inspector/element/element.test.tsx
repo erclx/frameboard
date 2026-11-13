@@ -1894,7 +1894,7 @@ describe('FillSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('flags a raw value and names a token with its chip', () => {
+  it('names a raw value no token matches by its hex alone, and a token by its chip', () => {
     render(
       <>
         <FillSection
@@ -1920,14 +1920,122 @@ describe('FillSection', () => {
     )
 
     expect(
-      screen.getByRole('img', { name: 'Raw value, not a token' }),
-    ).toBeInTheDocument()
-    expect(
       screen.getByRole('button', { name: 'Fill token' }),
     ).toHaveTextContent('111827')
+    expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    expect(screen.queryByRole('img')).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Stroke token' }),
     ).toHaveTextContent('border')
+  })
+
+  describe('a raw value equal to a token', () => {
+    function renderFill(
+      value: string,
+      {
+        percent = 100,
+        tokens = [PRIMARY],
+        theme = 'light',
+        disabled = false,
+      }: {
+        percent?: number
+        tokens?: TokenRow[]
+        theme?: 'light' | 'dark'
+        disabled?: boolean
+      } = {},
+    ) {
+      const { changes, write } = recorder()
+      render(
+        <FillSection
+          textOnly
+          color={{ value, token: null, percent }}
+          backgroundColor={null}
+          tokens={tokens}
+          theme={theme}
+          inline={false}
+          disabled={disabled}
+          write={write}
+        />,
+      )
+      return changes
+    }
+
+    it('swaps to the token at the row’s percent', async () => {
+      const changes = renderFill('#4f46e5', { percent: 28 })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      )
+
+      expect(changes).toEqual([
+        {
+          kind: 'style',
+          property: 'color',
+          value: 'color-mix(in srgb, var(--primary) 28%, transparent)',
+        },
+      ])
+    })
+
+    it('matches across hex case and an rgb() value', () => {
+      renderFill('rgb(79, 70, 229)', {
+        tokens: [tokenOf('--primary', '#4F46E5')],
+      })
+
+      expect(
+        screen.getByRole('button', { name: /^Use primary for / }),
+      ).toHaveTextContent('Use primary')
+    })
+
+    it('names the first of two equal tokens in sheet order', () => {
+      renderFill('#4f46e5', {
+        tokens: [tokenOf('--brand', '#4f46e5'), PRIMARY],
+      })
+
+      expect(
+        screen.getByRole('button', { name: 'Use brand for 4f46e5' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Use primary/ })).toBeNull()
+    })
+
+    it('matches the token’s value in the theme the frame shows', () => {
+      renderFill('#4f46e5', { theme: 'dark' })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it.each([
+      ['rgba(79, 70, 229, 0.8)', '#4f46e5'],
+      ['#4f4c', '#44ff44'],
+    ])(
+      'offers nothing for %s, whose alpha the row’s percent does not carry',
+      (value, token) => {
+        renderFill(value, { tokens: [tokenOf('--primary', token)] })
+
+        expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+      },
+    )
+
+    it('offers nothing where the token itself is translucent', () => {
+      renderFill('#4f46e5', {
+        tokens: [tokenOf('--primary', 'rgba(79, 70, 229, 0.5)')],
+      })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('offers nothing for a raw value no hex or rgb() states', () => {
+      renderFill('indigo', { tokens: [tokenOf('--primary', 'indigo')] })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('disables the swap where the inspector is disabled', () => {
+      renderFill('#4f46e5', { disabled: true })
+
+      expect(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      ).toBeDisabled()
+    })
   })
 })
 
@@ -2010,6 +2118,43 @@ describe('StrokeSection', () => {
     ])
   })
 
+  it('adds a 1px grey border in a project with no color token', async () => {
+    const { changes, write } = recorder()
+    render(
+      <StrokeSection
+        bordered={false}
+        borderColor={null}
+        tokens={[]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add stroke' }))
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'border', value: '1px solid #808080' },
+    ])
+  })
+
+  it('disables Add stroke with no color token where the inspector is disabled', () => {
+    render(
+      <StrokeSection
+        bordered={false}
+        borderColor={null}
+        tokens={[]}
+        theme="light"
+        inline={false}
+        disabled
+        write={recorder().write}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Add stroke' })).toBeDisabled()
+  })
+
   it('shows no color row and enables Add stroke on an element with no border', () => {
     render(
       <StrokeSection
@@ -2074,6 +2219,22 @@ describe('StrokeSection', () => {
 })
 
 describe('ShadowSection', () => {
+  it('shows a raw shadow by its value with no mark', () => {
+    render(
+      <ShadowSection
+        boxShadow={{ value: '0 2px 4px #0003', token: null, percent: 100 }}
+        shadows={[SHADOW]}
+        theme="light"
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Shadow' })
+    expect(trigger).toHaveTextContent('0 2px 4px #0003')
+    expect(within(trigger).queryByRole('img')).toBeNull()
+  })
+
   it('writes a shadow token', async () => {
     const { changes, write } = recorder()
     render(
@@ -2514,7 +2675,7 @@ describe('AppearanceSection commit field', () => {
 })
 
 describe('SelectionColors', () => {
-  it('lists each color with its chip or raw hex and the raw flag', () => {
+  it('lists each color with its chip or raw hex and no raw flag', () => {
     render(
       <SelectionColors
         colors={[
@@ -2532,8 +2693,8 @@ describe('SelectionColors', () => {
       'primary50%',
     ])
     expect(
-      screen.getAllByRole('img', { name: 'Raw value, not a token' }),
-    ).toHaveLength(1)
+      screen.queryByRole('img', { name: 'Raw value, not a token' }),
+    ).toBeNull()
   })
 })
 

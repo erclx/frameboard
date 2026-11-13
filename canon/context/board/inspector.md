@@ -63,10 +63,12 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
 - **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
-- **Select:** a row's end shows it on hover and keyboard focus, selecting every element the read's `uses` names, under `<n> elements · using <color>`. Several frames offer none.
+- **Use a token:** an opaque raw value whose red, green, and blue equal an opaque token's in the shown theme offers `Use <token>` after its percent, naming the first in sheet order.
+- **Select:** over a row's percent, short of any `Use <token>`, it shows on hover and keyboard focus, selecting every element the read's `uses` names, under `<n> elements · using <color>`.
+- **Where Select is absent:** a selection spanning several frames offers none.
 - **What `uses` names:** an element inheriting the color as well as one stating it, and never `body`, which selects as the frame, or one drawing no box, such as `br` or `script`.
 
-The Frame section stays above an element's sections and hides its name row while an element is selected. A frame's findings show only in its label's badge popover. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token.
+The Frame section stays above an element's sections and hides its name row while an element is selected. A frame's findings show only in its label's badge popover. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token, else `#808080` in a project naming no color token.
 
 - Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, Desktop, Slide, Social, and Video in place of the selection, and the chosen row is what the next click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
@@ -82,9 +84,9 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
 - A hand edit writes the element's inline style, one attribute, or its text, or drops one attribute, through `POST /api/frames/edit`, which records one undo step
-- A token pick writes `var(--token)`, so it keeps following the theme, and a raw value is marked raw
+- A token pick writes `var(--token)`, so it keeps following the theme, and a raw value carries no mark
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
-- Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value that matches a token is still flagged
+- Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value equal to a token is not named as one
 - Only a token sheet's name reads as a token. A frame's own name reads as the first token its chain reaches, else its light value, as the cascade sees no `data-theme`.
 
 ## Gotchas

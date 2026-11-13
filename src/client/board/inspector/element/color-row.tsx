@@ -1,4 +1,4 @@
-import { CircleAlert, Link2, Minus } from 'lucide-react'
+import { Link2, Minus } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
@@ -20,6 +20,7 @@ import {
   colorCss,
   type ColorSource,
   HEX,
+  matchingToken,
   SWATCH_RING,
   swatchOf,
   TOKEN_CHIP,
@@ -61,12 +62,34 @@ function MixedSwatch() {
   )
 }
 
-/** The mark on a raw value, which no token names. */
-export function RawFlag() {
+/**
+ * The swap a raw color equal to a token offers, as the `Use <token>` of the
+ * picked arm. It sits after the percent and never inside another button.
+ */
+export function UseToken({
+  token,
+  shown,
+  disabled = false,
+  onUse,
+}: {
+  token: string
+  /** The raw value the swap replaces, which names it for a screen reader. */
+  shown: string
+  disabled?: boolean
+  onUse: () => void
+}) {
+  const name = chipName(token)
   return (
-    <span role="img" aria-label="Raw value, not a token" title="Raw value">
-      <CircleAlert aria-hidden className="size-[13px] text-note" />
-    </span>
+    <button
+      type="button"
+      aria-label={`Use ${name} for ${shown.replace(/^#/, '')}`}
+      title={`Replace with the ${name} token`}
+      disabled={disabled}
+      onClick={onUse}
+      className="shrink-0 rounded-sm text-[11px] whitespace-nowrap text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
+    >
+      Use {name}
+    </button>
   )
 }
 
@@ -115,8 +138,9 @@ const PERCENT: Intl.NumberFormatOptions = {
  * The token-first color row of `inspector/text`. The swatch opens the
  * picker on Custom and the chip or hex on Tokens, the percent writes the
  * paint's opacity, stepping and scrubbing from a drag on the number with a
- * preview, and the link detaches a token to its value in the frame's theme. A raw value carries the raw flag in place of the link, and
- * the minus after either removes the paint.
+ * preview, and the link detaches a token to its value in the frame's theme.
+ * A raw value equal to a token offers `Use <token>` in place of the link,
+ * and the minus after either removes the paint.
  *
  * The picker previews a custom color while open and writes it once as it
  * closes, or on Enter in its hex field, and Esc puts the stored color back
@@ -146,6 +170,8 @@ export function ColorRow({
   const detached = value.token ? tokenValue(tokens, value.token, theme) : null
   const swatch = swatchOf(value, tokens, theme)
   const mixable = value.token !== null || HEX.test(value.value)
+  const match =
+    mixed || value.token ? null : matchingToken(value.value, tokens, theme)
 
   const open = (tab: PickerTab) => {
     const base = value.token ? detached : value.value
@@ -310,9 +336,16 @@ export function ColorRow({
         >
           <Link2 aria-hidden className="size-[13px]" />
         </button>
-      ) : (
-        <RawFlag />
-      )}
+      ) : match ? (
+        <UseToken
+          token={match.name}
+          shown={value.value}
+          disabled={disabled}
+          onUse={() =>
+            void onWrite(colorCss({ token: match.name }, value.percent))
+          }
+        />
+      ) : null}
       {onRemove ? (
         <button
           type="button"

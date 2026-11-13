@@ -46,6 +46,37 @@ async function noTokens(page: Page): Promise<void> {
 }
 
 /**
+ * Answers the token read with the project's sheets and every token but its
+ * colors, as a project whose sheets hold radius and font tokens alone, so
+ * the inspector has no color to offer or match. Filtered in the page's own
+ * `fetch`, since a route that fetches the real answer waits behind the held
+ * `readyWhen` route and the board never draws.
+ */
+async function noColorTokens(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const pass = window.fetch.bind(window)
+    window.fetch = async (input, init) => {
+      const response = await pass(input, init)
+      const url = input instanceof Request ? input.url : String(input)
+      if (
+        !/\/api\/projects\/[^/]+\/tokens$/.test(
+          new URL(url, location.href).pathname,
+        )
+      ) {
+        return response
+      }
+      const read = (await response.json()) as {
+        data: { tokens: { group: string }[] }
+      }
+      read.data.tokens = read.data.tokens.filter(
+        (token) => token.group !== 'color',
+      )
+      return Response.json(read, { status: response.status })
+    }
+  })
+}
+
+/**
  * Answers the author read as a machine with no name, whatever git or the saved
  * config holds, and aborts any write on that path, since the preview server
  * would save it under the developer's real config folder.
@@ -693,6 +724,23 @@ async function rawIndigoHero(page: Page): Promise<void> {
         '<p data-name="Caption">',
         '<p data-name="Caption" style="border: 1px solid #4f46e5">',
       ),
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Gives the hero's headline the stroke Add stroke writes where no color
+ * token exists, and puts the file back once the capture page closes.
+ */
+async function greyStrokeHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    original.replace(
+      '<h1 data-name="Headline">',
+      '<h1 data-name="Headline" style="border: 1px solid #808080">',
+    ),
   )
   page.once('close', () => writeFileSync(path, original))
 }
@@ -2190,6 +2238,40 @@ function focusOnLoad(
         document.addEventListener('DOMContentLoaded', act)
       },
       { selector, key, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/** Set on `body` once `focusHeld` has kept its target focused for `HELD_FRAMES`. */
+const FOCUS_HELD = 'body[data-focus-held]'
+const HELD_FRAMES = 30
+
+/**
+ * Focuses `selector` every frame until it has kept focus for `HELD_FRAMES`,
+ * then marks `body` with `FOCUS_HELD`. A focus set once is lost when a
+ * dblclick selects the frame before its element, or a write remounts the
+ * inspector, and the focus scrolls a low inspector row into the shot.
+ */
+function focusHeld(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ selector, frames, needed }) => {
+        let left = frames
+        let held = 0
+        const step = () => {
+          const target = document.querySelector<HTMLElement>(selector)
+          if (target && document.activeElement === target) held += 1
+          else {
+            held = 0
+            target?.focus()
+          }
+          if (held >= needed) document.body.dataset.focusHeld = ''
+          else if (--left > 0) requestAnimationFrame(step)
+          else console.error(`${selector} never held focus`)
+        }
+        document.addEventListener('DOMContentLoaded', step)
+      },
+      { selector, frames: PRESS_FRAMES * 2, needed: HELD_FRAMES },
     )
   }
 }
@@ -4227,6 +4309,71 @@ const CASES: CaptureCase[] = [
               'button[aria-label="Copy var(--primary)"]',
               'button[aria-label="Replace 4f46e5 with a token"]',
             ),
+          ),
+        ),
+      },
+      {
+        section: 'colors-no-tokens',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The hero's Selection colors in a project no token sheet reaches,
+        // whose raw indigo row reads plain, with no mark and no swap.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            noTokens,
+            asWriter,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen('button[aria-label="Copy #4f46e5"]'),
+          ),
+        ),
+      },
+      {
+        section: 'use-token',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The raw indigo headline equals primary in light alone, so its Fill
+        // row and Selection colors offer `Use primary` in light and nothing
+        // in dark, where primary reads 818cf8.
+        setup: themed(
+          both(
+            rawIndigoHero,
+            noAgentChanges,
+            asWriter,
+            headlineOnHero,
+            // Focus brings Selection colors into view under the Fill row, and
+            // shows Select over the percent alone, short of the swap.
+            focusHeld('button[aria-label="Copy #4f46e5"]'),
+            readyWhen(FOCUS_HELD),
+          ),
+        ),
+      },
+      {
+        section: 'stroke-no-tokens',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The headline holding the 1px 808080 stroke Add stroke writes in a
+        // project whose sheets name no color token. Seeded rather than
+        // pressed, since a press here kept the headline from selecting.
+        setup: themed(
+          both(
+            greyStrokeHero,
+            noAgentChanges,
+            noColorTokens,
+            asWriter,
+            headlineOnHero,
+            focusHeld('button[aria-label="Stroke color"]'),
+            readyWhen(FOCUS_HELD),
           ),
         ),
       },

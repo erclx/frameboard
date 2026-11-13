@@ -59,12 +59,12 @@ The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a
 
 Drag a corner of selected upright text, a shape, an image, or a video to resize it. Text wraps to the new width with its height following, and Shift keeps a shape's or media's ratio. Inline text, a container, and a divider draw no corner marks.
 
-A Free element dragged past its frame's edge shows there as a dashed ghost, which a press drags back. The color picker holds a hex field, opacity, and token swatches, and flags a color no token names.
+A Free element dragged past its frame's edge shows there as a dashed ghost, which a press drags back. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
 
 - The toolbar's Place toggle decides where a new element lands, and Auto puts it Free where you drew it unless its parent lays out as flex or grid
 - Flow and Free force one or the other, and a divider always joins the flow
 
-Selection colors lists every color the selection uses, and a raw color's swatch swaps it for a token on each element setting it inline, as one undo step. Select on a hovered or focused row selects the elements within the selection using that color.
+Selection colors lists every color the selection uses, and a raw color's swatch, or its `Use <token>`, swaps it for a token on each element setting it inline, as one undo step. Select on a hovered or focused row selects the elements within the selection using that color.
 
 Images, videos, and audio come from the project's `assets/` folder and land the same way.
 
