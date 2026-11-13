@@ -174,11 +174,16 @@ One catches the landing page out.
 
 These catch a running `preview` out.
 
-- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` lists it under `keep`, so a running `preview` keeps its address file and board key
+- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` lists only that path under `keep`, so a running `preview` keeps its address file and board key
 - `canon/config/app-drive.toml` carries the launch, data, and personas a drive reads, so a drive stops asking for them, and the skills read it and never write it
 - The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
 - A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
+
+Two catch a copy missing the seeded states.
+
+- A rebuild copies the checkout as it stands, so the seeded pages reach the copy only when the `launch` line seeded the worktree's own fixture before the reviewer's `--baseline`
+- The rebuild never copies `.run/` either, so the seed's reservation on `webapp/settings` is missing from a fresh copy
 
 One catches a drive that needs a claimed frame.
 
