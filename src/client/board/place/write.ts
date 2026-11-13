@@ -326,12 +326,15 @@ export async function moveElementTo(
         moves,
       }
     } catch (error) {
+      // A move refused behind an edit leaves that edit in the file, so the
+      // toast says the element itself is all that stayed.
       notify({
         title: 'Nothing moved',
-        description:
+        description: `${
           error instanceof BoardWriteError
             ? sentence(error.message)
-            : 'The board could not be reached, so nothing was written.',
+            : 'The board could not be reached, so nothing was written.'
+        } The element stays where it was.`,
       })
       return null
     } finally {

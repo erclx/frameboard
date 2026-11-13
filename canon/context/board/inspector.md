@@ -73,7 +73,7 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 - The prefix sits in a full-height zone at least 24px wide, and a fill or stroke opacity with no room for one scrubs from a drag on the number while a click still types
 - A step or a scrub previews first, a frame at its pending box and an element through an inline style on its live node, and writes once on the arrow's keyup or the scrub's release
 - Esc during either puts the stored value back and writes nothing, and a refused write puts back the preview too
-- The picker under `element/color-picker/` previews a custom color and writes it once as it closes or on Enter in its hex field
+- The picker under `element/color-picker/` previews a color and writes it once on Enter or as it closes, which a press outside does as it goes down, since a drag fires no click
 - Esc in the picker writes nothing, and a token swatch writes at once and closes it
 
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.

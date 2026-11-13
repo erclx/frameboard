@@ -928,11 +928,21 @@ describe('LeftPanel', () => {
       /** Records each frame edit the board sends, answering it as written. */
       function edits() {
         const sent: unknown[] = []
+        heroTree()
+        const held = trees.store.getState().byRef[HERO]
+        const tree = held?.status === 'ready' ? held.tree : null
         vi.stubGlobal(
           'fetch',
           async (input: RequestInfo | URL, init?: RequestInit) => {
             if (String(input).endsWith('/api/frames/edit')) {
               sent.push(JSON.parse(String(init?.body)))
+            }
+            // The board reads the tree again at the bytes an edit answered.
+            if (String(input).includes('/api/frames/elements')) {
+              return Response.json({
+                ok: true,
+                data: { ...tree, hash: 'b'.repeat(64) },
+              })
             }
             return Response.json({ ok: true, data: { hash: 'b'.repeat(64) } })
           },
