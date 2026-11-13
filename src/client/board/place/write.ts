@@ -778,7 +778,11 @@ export async function wrapSelection(
     live = liveStore,
     send = fetch,
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
-  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+    catchUp = catchUpTree,
+  }: Omit<PlaceDeps, 'mode' | 'size'> & {
+    /** Brings the frame's element tree up to the bytes the wrap answered, `catchUpTree` by default. */
+    catchUp?: (ref: string, hash: string) => Promise<void>
+  } = {},
 ): Promise<boolean> {
   const [key] = keys
   if (!key) return false
@@ -812,7 +816,6 @@ export async function wrapSelection(
         send,
       )
       rememberHash(ref, answer.hash)
-      void catchUpTree(ref, answer.hash)
       if (selection.getState().page === page) {
         selectElement(selection, page, {
           frame: ref,
@@ -820,6 +823,10 @@ export async function wrapSelection(
           hash: answer.hash,
         })
       }
+      done()
+      // A wrap shifts every index after its container, so the turn is held
+      // until Layers reads the new tree. A failed read leaves it to the reload.
+      await catchUp(ref, answer.hash).catch(() => {})
       const at = new Map(follows ? before.at : [])
       for (const [place, { index }] of keys.entries()) {
         const now = answer.members[place]

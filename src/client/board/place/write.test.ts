@@ -1127,6 +1127,54 @@ describe('wrapSelection', () => {
     expect(sent[1]).toMatchObject({ index: 6, hash: ANSWERED })
   })
 
+  it('holds an edit queued behind it until Layers reads the wrapped tree', async () => {
+    const answers = [
+      { ref: HERO.ref, index: 4, members: [5, 6], hash: ANSWERED },
+      { ref: HERO.ref, index: 6, hash: 'e'.repeat(64) },
+    ]
+    const sent: unknown[] = []
+    const send: typeof fetch = async (_url, init) => {
+      sent.push(JSON.parse(String(init?.body)))
+      return Response.json({ ok: true, data: answers[sent.length - 1] })
+    }
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+      send,
+    }
+    let caughtUp = () => {}
+    const reading = new Promise<void>((resolve) => {
+      caughtUp = resolve
+    })
+    let asked = () => {}
+    const reached = new Promise<void>((resolve) => {
+      asked = resolve
+    })
+
+    const wrapping = wrapSelection('studio/home', [FIRST, SECOND], ROW_FLOW, {
+      ...deps,
+      catchUp: () => {
+        asked()
+        return reading
+      },
+    })
+    const editing = writeElement(
+      'studio/home',
+      SECOND,
+      { kind: 'style', property: 'opacity', value: '0.5' },
+      { ...deps, catchUp: async () => {} },
+    )
+    await reached
+    // A window for the queued edit to send in, were the turn already free.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const sentWhileReading = sent.length
+    caughtUp()
+    await Promise.all([wrapping, editing])
+
+    expect(sentWhileReading).toBe(1)
+    expect(sent).toHaveLength(2)
+  })
+
   it('tells why and answers false when the server refuses it', async () => {
     const told: string[] = []
     const { send } = server(409, {
