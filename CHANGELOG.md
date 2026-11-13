@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.34.0](https://github.com/erclx/frameboard/compare/v0.33.0...v0.34.0) (2026-11-13)
+
+
+### Features
+
+* **canvas:** move, align, and wrap several elements together ([#321](https://github.com/erclx/frameboard/issues/321)) ([cbf6f28](https://github.com/erclx/frameboard/commit/cbf6f280bf0c68419d1477180ed93b9354582852))
+* **home:** add a folder pen, delete Undo toast, and a Pinned label ([#319](https://github.com/erclx/frameboard/issues/319)) ([e90e609](https://github.com/erclx/frameboard/commit/e90e609876ae5a5f3ed319edd69961ba83f5c2bd))
+* **present:** add slide transitions and steps inside a slide ([#320](https://github.com/erclx/frameboard/issues/320)) ([ce25a15](https://github.com/erclx/frameboard/commit/ce25a153da35f8ba21b036a207d061bb5f6928e5))
+
+
+### Bug Fixes
+
+* **board:** drop scroll frame ghosts, keep screen height, end Play ([#316](https://github.com/erclx/frameboard/issues/316)) ([c33b204](https://github.com/erclx/frameboard/commit/c33b204956a49ec51119f20f1f31c824ddf21575))
+* **drive:** carry seeded pages through a drive copy rebuild ([#318](https://github.com/erclx/frameboard/issues/318)) ([667e577](https://github.com/erclx/frameboard/commit/667e577746ce1c41ac096ced3a02ce8e4dd9c2b3))
+
 ## [0.33.0](https://github.com/erclx/frameboard/compare/v0.32.0...v0.33.0) (2026-11-13)
 
 
