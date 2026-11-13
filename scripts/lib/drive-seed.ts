@@ -28,6 +28,15 @@ const RAW = { project: 'webapp', page: 'raw', frame: 'swatches' }
 
 const RAW_PAGE = join(import.meta.dirname, 'drive-raw.html')
 
+/**
+ * The page holding one phone frame on Scroll over a feed about twice its
+ * screen, so the rail, the Height row's round trip, and a scroll frame with
+ * no overflow ghost have a frame to show.
+ */
+const FEED = { project: 'webapp', page: 'feed', frame: 'feed-scroll' }
+
+const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -51,6 +60,8 @@ export interface Seeded {
   motion: 'laid' | 'kept'
   /** Whether the raw colors page was laid now or was already there and kept. */
   raw: 'laid' | 'kept'
+  /** Whether the scroll feed page was laid now or was already there and kept. */
+  feed: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -58,7 +69,8 @@ export interface Seeded {
 /**
  * Lays the states a drive films that the committed `basic` board lacks: a
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
- * animates, a `webapp/raw` page stating raw colors, and a live reservation of three boxes on `webapp/settings`. A
+ * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
+ * whose phone frame scrolls, and a live reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
@@ -67,8 +79,14 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   const crowd = await layCrowd(root)
   const motion = await layOne(root, MOTION, SLIDE_PAGE)
   const raw = await layOne(root, RAW, RAW_PAGE)
+  const { width, height } = FRAME_SIZES.phone
+  const feed = await layOne(root, FEED, FEED_PAGE, {
+    width,
+    height,
+    scroll: true,
+  })
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, reserved }
+  return { crowd, motion, raw, feed, reserved }
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
@@ -103,26 +121,32 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
   return 'laid'
 }
 
-/** Lays a page holding one desktop frame copied from `source`, unless the page is there. */
+/**
+ * Lays a page holding one frame copied from `source`, a desktop frame unless
+ * `placed` gives its size and flags, unless the page is there.
+ */
 async function layOne(
   root: string,
   { project, page, frame }: { project: string; page: string; frame: string },
   source: string,
+  placed: {
+    width: number
+    height: number
+    scroll?: boolean
+  } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)
   if (existsSync(folder)) return 'kept'
   await mkdir(folder)
 
-  const { width, height } = FRAME_SIZES.desktop
   const frames = {
     [frame]: {
       x: 0,
       y: 0,
-      width,
-      height,
       order: 0,
       hidden: false,
       locked: false,
+      ...placed,
     },
   }
   await Promise.all([
