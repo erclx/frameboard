@@ -88,6 +88,8 @@ function setup({
   const deleted: unknown[][] = []
   /** Each move asked for, with the place it lands an element holding place 1 of 3 on. */
   const moved: unknown[][] = []
+  /** Each wrap asked for, with the keys and the request it carried. */
+  const wraps: unknown[][] = []
   /** Each group edit a nudge run started, with what it previewed and wrote. */
   const edits: {
     previews: (readonly MemberEdit[])[]
@@ -105,6 +107,7 @@ function setup({
     remove: (...args) => void deleted.push(args),
     move: (at, key, to) => void moved.push([at, key, to(1, 3)]),
     group: () => members,
+    wrap: (...args) => void wraps.push(args),
     editGroup: () => {
       if (held) return null
       const edit = {
@@ -132,7 +135,17 @@ function setup({
   }
   const at = (index: number) =>
     selectElement(selection, PAGE, { frame: HERO, index, hash: HASH })
-  return { selection, mode, action, at, actions, deleted, moved, edits }
+  return {
+    selection,
+    mode,
+    action,
+    at,
+    actions,
+    deleted,
+    moved,
+    edits,
+    wraps,
+  }
 }
 
 const cleanups: (() => void)[] = []
@@ -766,5 +779,92 @@ describe('arranging elements', () => {
     both(selection)
 
     expect(action('element.distributeHorizontal').enabled?.()).toBe(false)
+  })
+})
+
+describe('wrapping elements', () => {
+  const BOX = { kind: 'box', inset: { width: 0, height: 0 } } as const
+  const FREE: GroupMember[] = [
+    {
+      index: 7,
+      box: { x: 10, y: 20, width: 40, height: 18 },
+      placed: { left: 10, top: 20 },
+      read: BOX,
+    },
+    {
+      index: 8,
+      box: { x: 98, y: 20, width: 50, height: 18 },
+      placed: { left: 98, top: 24 },
+      read: BOX,
+    },
+  ]
+  const select = (
+    selection: ReturnType<typeof setup>['selection'],
+    indexes: number[],
+  ) =>
+    selectElements(
+      selection,
+      PAGE,
+      indexes.map((index) => ({ frame: HERO, index, hash: HASH })),
+    )
+
+  it('wraps two free siblings in a row with their spacing, placed where the group sat', () => {
+    const { selection, action, wraps } = setup({ members: FREE })
+    select(selection, [7, 8])
+
+    action('element.wrap').run()
+
+    expect(wraps).toEqual([
+      [
+        PAGE,
+        [
+          { frame: HERO, index: 7, hash: HASH },
+          { frame: HERO, index: 8, hash: HASH },
+        ],
+        {
+          flow: { direction: 'row', gap: 48 },
+          spot: { left: 10, top: 20 },
+        },
+      ],
+    ])
+  })
+
+  it('keeps the container in the flow while a member sits there', () => {
+    const { selection, action, wraps } = setup({
+      members: [
+        FREE[0] as GroupMember,
+        { ...(FREE[1] as GroupMember), placed: null },
+      ],
+    })
+    select(selection, [7, 8])
+
+    action('element.wrap').run()
+
+    expect(wraps[0]?.[2]).toMatchObject({ spot: null })
+  })
+
+  it('wraps one element on its own', () => {
+    const { action, at } = setup({ members: FREE.slice(0, 1) })
+    at(7)
+
+    expect(action('element.wrap').enabled?.()).toBe(true)
+  })
+
+  it('stands disabled for elements of different parents', () => {
+    // The main at 6 and its own h1 at 7.
+    const { selection, action } = setup({ members: FREE })
+    select(selection, [6, 7])
+
+    expect(action('element.wrap').enabled?.()).toBe(false)
+  })
+
+  it('stands disabled while the tree reads other bytes', () => {
+    const { selection, action } = setup({
+      members: FREE,
+      tree: { ...TREE, hash: 'f'.repeat(64) },
+    })
+    select(selection, [7, 8])
+
+    expect(action('element.wrap').enabled?.()).toBe(false)
   })
 })

@@ -2,12 +2,14 @@ import '../../../styles.css'
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
+import { registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import type { ElementFlow } from '@/shared/records/elements'
 
-import { LayoutSection } from './layout'
+import { WRAP_ACTION } from '../../element/actions'
+import { LayoutSection, WRAP_SIBLINGS_ONLY, WrapButton } from './layout'
 import type { LiveLayout } from './styles'
 import type { ElementChange } from './write'
 
@@ -541,5 +543,69 @@ describe('LayoutSection size', () => {
         ],
       },
     ])
+  })
+})
+
+describe('WrapButton', () => {
+  const cleanups: (() => void)[] = []
+  afterEach(() => {
+    while (cleanups.length > 0) cleanups.pop()?.()
+  })
+
+  function register(enabled: boolean) {
+    const runs: number[] = []
+    cleanups.push(
+      registerActions([
+        {
+          id: WRAP_ACTION,
+          label: 'Use auto layout',
+          group: 'selection',
+          palette: false,
+          keys: ['Shift+KeyA'],
+          enabled: () => enabled,
+          run: () => runs.push(1),
+        },
+      ]),
+    )
+    return runs
+  }
+
+  it('wraps the selection on a click', async () => {
+    const runs = register(true)
+    render(
+      <TooltipProvider>
+        <WrapButton disabled={false} />
+      </TooltipProvider>,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Use auto layout' }),
+    )
+
+    expect(runs).toEqual([1])
+  })
+
+  it('stays focusable while it cannot wrap, naming why, and runs nothing', async () => {
+    const runs = register(false)
+    render(
+      <TooltipProvider>
+        <WrapButton disabled={false} />
+      </TooltipProvider>,
+    )
+    const button = screen.getByRole('button', { name: 'Use auto layout' })
+
+    await userEvent.tab()
+
+    expect(button).toHaveFocus()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      await screen.findByText(WRAP_SIBLINGS_ONLY, {
+        selector: '[data-slot="tooltip-content"]',
+      }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(button)
+
+    expect(runs).toEqual([])
   })
 })

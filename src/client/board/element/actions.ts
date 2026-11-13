@@ -20,7 +20,13 @@ import { ALIGNMENTS, DISTRIBUTIONS, NUDGE_REST_MS } from '../geometry/actions'
 import type { Box } from '../geometry/box'
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
-import { deleteElements, moveElementTo } from '../place/write'
+import { guessFlow } from '../place/flow-guess'
+import {
+  deleteElements,
+  moveElementTo,
+  type WrapRequest,
+  wrapSelection,
+} from '../place/write'
 import {
   type ElementKey,
   select,
@@ -36,6 +42,12 @@ import { down, sibling, siblingPlace, up } from './walk'
 
 /** What a restack row is found by beside its label. */
 const STACK_WORDS = ['layer', 'stack', 'order'] as const
+
+/** The wrap's action, which the Layout section's header button runs. */
+export const WRAP_ACTION = 'element.wrap'
+
+/** The document's own wrappers, which a wrap never moves. */
+const ROOTS = new Set(['html', 'head', 'body'])
 
 const NUDGES = [
   { name: 'Left', key: 'ArrowLeft', dx: -1, dy: 0 },
@@ -69,6 +81,12 @@ export interface ElementContext {
   group: (keys: readonly ElementKey[]) => readonly GroupMember[] | null
   /** Starts a previewed edit of the selected elements, null when their frame is held, which `startGroupEdit` does on the board. */
   editGroup: (page: string, keys: readonly ElementKey[]) => GroupEdit | null
+  /** Wraps the selected elements in one flow container, which `wrapSelection` does on the board. */
+  wrap: (
+    page: string,
+    keys: readonly ElementKey[],
+    request: WrapRequest,
+  ) => void
 }
 
 /**
@@ -283,6 +301,31 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
+  /**
+   * The selected elements a wrap takes: siblings of one parent read off a
+   * tree at their own bytes, none of them the document's own wrappers, all
+   * shown live. Elements of different parents stay disabled, since moving
+   * one between parents changes what it inherits.
+   */
+  const wrappable = () => {
+    const state = selection.getState()
+    if (!elementSelected() || !context.writable() || !state.page) return null
+    const keys = selectedElements(state)
+    const [first] = keys
+    const tree = first ? context.treeOf(first.frame) : null
+    if (!first || !tree || tree.hash !== first.hash) return null
+    const rows = keys.map(({ index }) =>
+      tree.elements.find((row) => row.index === index),
+    )
+    const parent = rows[0]?.parent
+    if (
+      rows.some((row) => !row || row.parent !== parent || ROOTS.has(row.tag))
+    ) {
+      return null
+    }
+    const members = context.group(keys)
+    return members ? { page: state.page, keys, members } : null
+  }
   // The walks and the sibling moves take no palette row. Enter, Tab, and the
   // Alt+Shift moves need focus on the board, which the open palette holds,
   // and Esc's walk up is a navigation key. The restack rows cover the moves.
@@ -326,6 +369,35 @@ export function elementActions(context: ElementContext): Action[] {
       keys: [key],
       ...arrange(3, (boxes) => distribute(boxes, axis)),
     })),
+    {
+      id: WRAP_ACTION,
+      label: 'Use auto layout',
+      group: 'selection',
+      command: {
+        label: 'Use auto layout',
+        keywords: ['wrap', 'flex', 'container', 'group'],
+      },
+      keys: ['Shift+KeyA'],
+      enabled: () => wrappable() !== null,
+      run: () => {
+        const found = wrappable()
+        if (!found) return
+        const placed = found.members.flatMap(({ placed }) =>
+          placed ? [placed] : [],
+        )
+        context.wrap(found.page, found.keys, {
+          flow: guessFlow(found.members.map(({ box }) => box)),
+          // A member in the flow keeps the container there too.
+          spot:
+            placed.length === found.members.length
+              ? {
+                  left: Math.min(...placed.map(({ left }) => left)),
+                  top: Math.min(...placed.map(({ top }) => top)),
+                }
+              : null,
+        })
+      },
+    },
     {
       id: 'element.down',
       label: 'Select child',
@@ -460,6 +532,7 @@ export function useElementActions(page: string): void {
         move: (at, key, to) => void moveElementTo(at, key, to),
         group: (keys) => shownGroup(document, keys),
         editGroup: startGroupEdit,
+        wrap: (at, keys, request) => void wrapSelection(at, keys, request),
       }),
     )
     // The keys walk the one selected frame's tree, so it is fetched once

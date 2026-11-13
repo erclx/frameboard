@@ -17,6 +17,7 @@ import { OpacityIcon, RadiusIcon } from './appearance'
 import { ColorRow } from './color-row'
 import { faceOf, familyIn, familyOptions, firstFamily } from './families'
 import { ColorSection, type ColorSectionProps } from './fill'
+import { WrapButton } from './layout'
 import { FREE_TIP } from './position'
 import { ShadowSection } from './shadow'
 import { sizeDeclarations } from './size-declarations'
@@ -344,9 +345,12 @@ function PositionPart({
 function SizePart({ members, disabled, fan }: PartProps) {
   return (
     <section aria-labelledby="inspector-layout" className={SECTION}>
-      <h2 id="inspector-layout" className="mb-2 text-xs font-semibold">
-        Layout
-      </h2>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 id="inspector-layout" className="text-xs font-semibold">
+          Layout
+        </h2>
+        <WrapButton disabled={disabled} />
+      </div>
       <p className="mb-[3px] ml-0.5 text-caption text-muted-foreground">Size</p>
       <div className="grid grid-cols-2 gap-1.5">
         {(['width', 'height'] as const).map((axis) => (
