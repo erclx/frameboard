@@ -34,7 +34,7 @@ This record holds at most 650 words.
 
 - The agent sees the developer's selection and works through notes pinned on frames, carrying images, which reach a listening session or start one, and take replies.
 - The board shows the frame an agent is editing and warns a second session
-- A frame breaking a content rule is reported at once to its agent and the board, and projects add rules.
+- A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off.
 - An agent screenshots a frame or page, and the developer exports a frame as a PNG at 1x to 3x, in either theme or both
 - A developer or an agent opens one project's frames on a phone on the same network, read only, from a link and a code
 
