@@ -381,6 +381,7 @@ describe('ElementOverlay', () => {
         bar: bar.getBoundingClientRect(),
         media: element.getBoundingClientRect(),
         time: bar.querySelector('[data-media-time]'),
+        track: bar.querySelector('input[type="range"]'),
       }
     }
 
@@ -395,14 +396,24 @@ describe('ElementOverlay', () => {
       expect(bar.top).toBeGreaterThan(media.top)
     })
 
-    it('keeps the bar inside a video 80px wide and drops the time', async () => {
-      const { bar, media, time } = await drawBar(
+    it('keeps the bar inside a video 80px wide, dropping the time and the track', async () => {
+      const { bar, media, time, track } = await drawBar(
         `<video src="${CLIP}" style="display:block;width:80px;height:45px"></video>`,
       )
 
       expect(bar.left).toBeGreaterThanOrEqual(media.left)
       expect(bar.right).toBeLessThanOrEqual(media.right)
       expect(time).not.toBeVisible()
+      expect(track).not.toBeVisible()
+    })
+
+    it('holds the track and the time in a bar wide enough for them', async () => {
+      const { time, track } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      expect(time).toBeVisible()
+      expect(track).toBeVisible()
     })
 
     it("draws an audio's bar under it at the audio's width", async () => {

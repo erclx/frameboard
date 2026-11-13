@@ -146,7 +146,10 @@ const OVER_VIDEO = {
  * The slim bar of a selected `<video>` or `<audio>` on the canvas in Edit:
  * play and pause, the scrub track, the time, and the speaker, each acting on
  * the live page alone. A video's sits over its picture, so it takes the dark
- * scrim, and the time gives way once the bar is too narrow to hold it.
+ * scrim. As the bar narrows the time gives way first, then the track, then
+ * the speaker, each before it would overflow, so no control is left in the
+ * tab order with nothing drawn. The inspector's section holds all four at
+ * any zoom.
  */
 export function MediaBar({ media }: { media: LiveMedia }) {
   const over = media.reading.tag === 'video'
@@ -164,15 +167,18 @@ export function MediaBar({ media }: { media: LiveMedia }) {
       {media.reading.playable ? (
         <>
           <PlayButton media={media} className={button} />
-          <SeekTrack media={media} />
+          <SeekTrack media={media} className="hidden @min-[68px]:block" />
           <MediaTime
             reading={media.reading}
             className={cn(
-              'hidden @min-[160px]:inline',
+              'hidden @min-[146px]:inline',
               over && OVER_VIDEO.time,
             )}
           />
-          <SoundButton media={media} className={button} />
+          <SoundButton
+            media={media}
+            className={cn(button, 'hidden @min-[42px]:grid')}
+          />
         </>
       ) : (
         <Unplayable />
