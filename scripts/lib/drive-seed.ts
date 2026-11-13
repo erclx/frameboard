@@ -37,6 +37,21 @@ const FEED = { project: 'webapp', page: 'feed', frame: 'feed-scroll' }
 
 const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
+/**
+ * The page holding three slides in a row under a Push transition, the middle
+ * one marking three steps, so present mode has a transition to draw, a slide
+ * to walk, and the inspector a page and a step to read.
+ */
+const DECK = {
+  project: 'webapp',
+  page: 'deck',
+  slides: ['01-intro', '02-build', '03-closing'],
+  width: 1280,
+  height: 720,
+}
+
+const DECK_PAGES = join(import.meta.dirname, 'drive-deck')
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -62,6 +77,8 @@ export interface Seeded {
   raw: 'laid' | 'kept'
   /** Whether the scroll feed page was laid now or was already there and kept. */
   feed: 'laid' | 'kept'
+  /** Whether the deck page was laid now or was already there and kept. */
+  deck: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -70,7 +87,8 @@ export interface Seeded {
  * Lays the states a drive films that the committed `basic` board lacks: a
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
- * whose phone frame scrolls, and a live reservation of three boxes on `webapp/settings`. A
+ * whose phone frame scrolls, a `webapp/deck` page of three slides under a
+ * transition with one stepped, and a live reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
@@ -85,8 +103,9 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height,
     scroll: true,
   })
+  const deck = await layDeck(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, reserved }
+  return { crowd, motion, raw, feed, deck, reserved }
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
@@ -157,6 +176,43 @@ async function layOne(
     ),
   ])
   await listPage(root, project, page)
+  return 'laid'
+}
+
+async function layDeck(root: string): Promise<'laid' | 'kept'> {
+  const folder = join(root, DECK.project, DECK.page)
+  if (existsSync(folder)) return 'kept'
+  await mkdir(folder)
+
+  const frames = Object.fromEntries(
+    DECK.slides.map((name, index) => [
+      name,
+      {
+        x: index * (DECK.width + FRAME_GAP),
+        y: 0,
+        width: DECK.width,
+        height: DECK.height,
+        order: index,
+        hidden: false,
+        locked: false,
+      },
+    ]),
+  )
+  const layout = {
+    version: 1,
+    present: { transition: { name: 'push', ms: 500 } },
+    frames,
+  }
+  await Promise.all([
+    ...DECK.slides.map((name) =>
+      copyFile(join(DECK_PAGES, `${name}.html`), join(folder, `${name}.html`)),
+    ),
+    writeFile(
+      join(folder, 'layout.json'),
+      `${JSON.stringify(layout, null, 2)}\n`,
+    ),
+  ])
+  await listPage(root, DECK.project, DECK.page)
   return 'laid'
 }
 
