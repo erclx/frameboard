@@ -68,9 +68,10 @@ Owns the hold, a frame's timeline driven by the board in this tab alone. The ins
 - `store.ts` keeps each held or playing frame's moment by ref, and nothing in it reaches the server, the history, or another tab
 - `seek.ts` calls the seek functions in `src/shared/motion.ts` on the iframe's own window, so the hold lands on the frame's clock and never the board's
 - A drag keeps only the latest moment while a seek runs, and play seeks every animation frame. A finite timeline stops held at its end, and one that repeats forever loops over one iteration.
-- A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded` rather than a read every frame
 - A hold ends on entering Play and when the frame leaves the canvas on a page switch, and an agent's write reloading the frame lands it on the same moment
 - Ending a hold plays CSS animations on from where they stand, and reloads a `__hf` or `__timelines` page, since neither contract names a play
+
+A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded` rather than a read every frame.
 
 ### `src/client/board/play/`
 

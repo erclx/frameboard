@@ -45,7 +45,9 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 
 A drag on a Free element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside an element's corner drag. Esc writes nothing.
 
-The released outline stays at the drop through `held.ts` until the reloaded frame measures the element, since `ResizeObserver` never fires on a move, and a refused write lets it go. An element past its frame's edge draws a dashed ghost there while its frame is selected, read by `overflow.ts`, and a press on the ghost selects and drags it. A scroll frame draws none, since its rail already shows there is more.
+- The released outline stays at the drop through `held.ts` until the reloaded frame measures the element, since `ResizeObserver` never fires on a move, and a refused write lets it go
+- An element past its frame's edge draws a dashed ghost there while its frame is selected, read by `overflow.ts`, and a press on the ghost selects and drags it
+- A scroll frame draws no ghost, since its rail already shows there is more
 
 ### `src/client/board/menus/`
 
