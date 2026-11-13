@@ -58,8 +58,10 @@ function rgbOf(css: string): Rgba | null {
 /**
  * The first color token, in sheet order, whose value in the theme shows the
  * same red, green, and blue as the raw `value`, or null. Equal rather than
- * near, since a swap is meant to keep the color it replaces. Alpha is left
- * out, as the row's percent carries it.
+ * near, since a swap is meant to keep the color it replaces. Both sides must
+ * be opaque: the server folds only an 8-digit hex's alpha into the row's
+ * percent, so a translucent `rgba()` or 4-digit hex reads 100 percent and a
+ * swap written at it would drop the alpha.
  */
 export function matchingToken(
   value: string,
@@ -67,13 +69,17 @@ export function matchingToken(
   theme: Theme,
 ): TokenRow | null {
   const from = rgbOf(value)
-  if (!from) return null
+  if (!from || from.a !== 1) return null
   return (
     tokens.find((token) => {
       const shown = token[theme]
       const to = shown === null ? null : rgbOf(shown)
       return (
-        to !== null && to.r === from.r && to.g === from.g && to.b === from.b
+        to !== null &&
+        to.a === 1 &&
+        to.r === from.r &&
+        to.g === from.g &&
+        to.b === from.b
       )
     }) ?? null
   )

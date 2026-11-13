@@ -2003,6 +2003,26 @@ describe('FillSection', () => {
       expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
     })
 
+    it.each([
+      ['rgba(79, 70, 229, 0.8)', '#4f46e5'],
+      ['#4f4c', '#44ff44'],
+    ])(
+      'offers nothing for %s, whose alpha the row’s percent does not carry',
+      (value, token) => {
+        renderFill(value, { tokens: [tokenOf('--primary', token)] })
+
+        expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+      },
+    )
+
+    it('offers nothing where the token itself is translucent', () => {
+      renderFill('#4f46e5', {
+        tokens: [tokenOf('--primary', 'rgba(79, 70, 229, 0.5)')],
+      })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
     it('offers nothing for a raw value no hex or rgb() states', () => {
       renderFill('indigo', { tokens: [tokenOf('--primary', 'indigo')] })
 
