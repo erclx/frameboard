@@ -11,6 +11,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { checkFrame } from '@/server/checks/frame'
 import { claim, readClaims } from '@/server/claims/store'
 
 import { seedDrive, type Seeded } from './drive-seed.ts'
@@ -190,7 +191,7 @@ describe('the raw colors page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes', 'stacked'],
     })
   })
 
@@ -223,7 +224,7 @@ describe('the scroll feed page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes', 'stacked'],
     })
   })
 
@@ -299,6 +300,51 @@ describe('the free shapes page', () => {
   })
 })
 
+describe('the stacked page', () => {
+  const rulesOf = (name: string) =>
+    checkFrame({ root, project: 'webapp', page: 'stacked', name }).findings.map(
+      (finding) => `${finding.rule}:${finding.severity}`,
+    )
+
+  it('lays three frames in a column, each 8 px under the one above', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.stacked).toBe('laid')
+    expect(readJson('webapp/stacked/layout.json')).toMatchObject({
+      frames: {
+        top: { x: 0, y: 0, height: 240 },
+        warned: { x: 0, y: 248, height: 240 },
+        broken: { x: 0, y: 496, height: 240 },
+      },
+    })
+  })
+
+  it('gives the lower two frames a warning alone and an error alone', async () => {
+    await seedDrive(root, new Date())
+
+    expect({
+      top: rulesOf('top'),
+      warned: rulesOf('warned'),
+      broken: rulesOf('broken'),
+    }).toEqual({
+      top: [],
+      warned: ['generic-font:warning'],
+      broken: ['theme:error'],
+    })
+  })
+
+  it('leaves a hand-edited stacked page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/stacked/warned.html')
+    writeFileSync(edited, '<p>edited</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.stacked).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited</p>')
+  })
+})
+
 describe('a kept page whose project listing was reset', () => {
   it.each<{
     project: string
@@ -311,6 +357,7 @@ describe('a kept page whose project listing was reset', () => {
     { project: 'webapp', page: 'feed', own: ['settings', 'home'] },
     { project: 'webapp', page: 'deck', own: ['settings', 'home'] },
     { project: 'webapp', page: 'shapes', own: ['settings', 'home'] },
+    { project: 'webapp', page: 'stacked', own: ['settings', 'home'] },
   ])('lists $project/$page again', async ({ project, page, own }) => {
     await seedDrive(root, new Date())
     writeFileSync(
