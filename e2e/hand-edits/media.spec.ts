@@ -1,4 +1,10 @@
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -66,6 +72,29 @@ test.describe('video and audio placed by hand', () => {
         '<video data-name="clip.webm" src="../assets/clip.webm" controls autoplay muted loop playsinline style="width: 160px; height: 90px; object-fit: cover"></video>',
       )
     const bar = page.locator('[data-media-bar]')
+    // At the fit zoom the video is too narrow on screen for the bar to hold
+    // its track, so the view pinches in on it, keeping it under the pointer.
+    const small = await hero(page).locator('video').boundingBox()
+    if (!small) throw new Error('The placed video draws no box')
+    await page.mouse.move(small.x + small.width / 2, small.y + small.height / 2)
+    await pinch(page, -100)
+    await expect(bar.getByRole('slider', { name: 'Position' })).toBeVisible()
+    // The bar sits inside the video's bottom edge, 4px in on three sides.
+    await expect
+      .poll(async () => {
+        const [inside, around] = await Promise.all([
+          bar.boundingBox(),
+          hero(page).locator('video').boundingBox(),
+        ])
+        return inside && around
+          ? [
+              Math.round(inside.x - around.x),
+              Math.round(around.x + around.width - inside.x - inside.width),
+              Math.round(around.y + around.height - inside.y - inside.height),
+            ]
+          : null
+      })
+      .toEqual([4, 4, 4])
     await bar.getByRole('button', { name: 'Pause' }).click()
     // Tab moves through the bar's controls rather than walking the selection.
     await page.keyboard.press('Tab')
@@ -107,6 +136,82 @@ test.describe('video and audio placed by hand', () => {
       )
   })
 
+  test('a video tile dropped on empty canvas makes a frame its size, which pauses from its own strip in Play', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await page.getByRole('tab', { name: 'Assets' }).click()
+    const layer = await page.locator('[data-hit-layer]').boundingBox()
+    const frames = await page
+      .locator('[data-frame]')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getBoundingClientRect().bottom),
+      )
+    if (!layer) throw new Error('The hit layer draws no box')
+    // Under every frame, where the canvas is bare.
+    const bare = {
+      x: layer.x + layer.width / 2,
+      y: (Math.max(...frames) + layer.y + layer.height) / 2,
+    }
+    const made = join(board.root, 'webapp/home/clip.html')
+
+    await page.getByRole('button', { name: /^Copy path of clip.webm,/ }).hover()
+    await page.mouse.down()
+    await page.mouse.move(bare.x - 30, bare.y, { steps: 5 })
+    await page.mouse.move(bare.x, bare.y, { steps: 5 })
+    await expect(page.locator('[data-drop-ghost]')).toContainText('160 × 90')
+    await page.mouse.up()
+
+    await expect
+      .poll(() => (existsSync(made) ? readFileSync(made, 'utf8') : ''))
+      .toContain(
+        '<video data-name="clip.webm" src="../assets/clip.webm" controls autoplay muted loop playsinline style="width: 160px; height: 90px; object-fit: cover"></video>',
+      )
+    const video = page
+      .frameLocator('[data-frame="webapp/home/clip"] iframe')
+      .locator('video')
+    await expect
+      .poll(() => video.evaluate((node: HTMLVideoElement) => node.paused))
+      .toBe(false)
+    // The frame is the media's size, so the video fills its page edge to edge.
+    expect(
+      await video.evaluate((node) => {
+        const box = node.getBoundingClientRect()
+        return [
+          box.left,
+          box.top,
+          box.width,
+          box.height,
+          innerWidth,
+          innerHeight,
+        ]
+      }),
+    ).toEqual([0, 0, 160, 90, 160, 90])
+
+    const play = page.getByRole('button', { name: 'Play' })
+    await play.click()
+    await expect(play).toHaveAttribute('aria-pressed', 'true')
+    // In Play a frame takes no pointer until it is entered, so the press goes by its point.
+    const madeBox = await video.boundingBox()
+    if (!madeBox) throw new Error('The new frame draws no video')
+    const middle = {
+      x: madeBox.x + madeBox.width / 2,
+      y: madeBox.y + madeBox.height / 2,
+    }
+    await page.mouse.click(middle.x, middle.y)
+    await expect(
+      page.locator('[data-frame="webapp/home/clip"][data-entered]'),
+    ).toBeVisible()
+    // The strip's own key, which a video with no `controls` never takes.
+    await video.focus()
+    await page.keyboard.press('Space')
+
+    await expect
+      .poll(() => video.evaluate((node: HTMLVideoElement) => node.paused))
+      .toBe(true)
+  })
+
   test('a picked audio file lands as a player 300px wide', async ({ page }) => {
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
@@ -124,3 +229,16 @@ test.describe('video and audio placed by hand', () => {
       )
   })
 })
+
+/**
+ * A trackpad pinch of `deltaY` in all, sent as the small Ctrl wheels a
+ * trackpad sends, since one large wheel reads as a mouse notch and steps once.
+ */
+async function pinch(page: Page, deltaY: number): Promise<void> {
+  const parts = Math.ceil(Math.abs(deltaY) / 25)
+  await page.keyboard.down('Control')
+  for (let sent = 0; sent < parts; sent++) {
+    await page.mouse.wheel(0, deltaY / parts)
+  }
+  await page.keyboard.up('Control')
+}
