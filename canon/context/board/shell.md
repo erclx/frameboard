@@ -211,7 +211,7 @@ The toolbar folds in stages to fit its column.
 - Below a 778 px column Place folds to a dropdown and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
 - The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, and the clip test in `toolbar.test.tsx` catches a width that stopped fitting
 
-The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner. The stack layers over a dialog's overlay, so a toast raised inside a dialog takes its clicks, and tooltips layer over the stack.
+The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner. The stack layers over a dialog's overlay, so a toast raised inside a dialog takes its clicks, and menus, popovers, and tooltips layer over the stack.
 
 ### `src/client/`
 
