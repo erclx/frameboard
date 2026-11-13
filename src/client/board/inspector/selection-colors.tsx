@@ -14,10 +14,11 @@ import {
   parseHex,
   type Rgba,
 } from './element/color-picker/space'
-import { RawFlag, Swatch } from './element/color-row'
+import { Swatch, UseToken } from './element/color-row'
 import {
   chipName,
   COLOR_ROW,
+  matchingToken,
   SWATCH_RING,
   swatchOf,
   TOKEN_CHIP,
@@ -55,8 +56,9 @@ interface SelectionColorsProps {
  * Selection colors: one row per color the selection uses, raw values first
  * since they are the ones to replace, capped at five rows until `Show all`.
  * A row shows its swatch, its token chip or raw hex, its percent, and the
- * link on a token or the raw flag on a value no token names, and pressing it
- * copies the hex or the token's `var()`. A raw row's swatch is its own button
+ * link on a token, and pressing it copies the hex or the token's `var()`.
+ * A raw value equal to a token offers `Use <token>` after its percent where
+ * the selection can take a replace. A raw row's swatch is its own button
  * opening the project's color tokens, nearest value first, and a pick
  * replaces the value with that token. A Select over the row's end on hover
  * and keyboard focus selects the elements using the color. A caller keys it
@@ -227,9 +229,7 @@ function ColorButton({
             aria-label="Token"
             className="size-[13px] shrink-0 text-muted-foreground"
           />
-        ) : (
-          <RawFlag />
-        )}
+        ) : null}
       </button>
       {select}
     </div>
@@ -261,6 +261,7 @@ function RawColorRow({
   // inside it, where no board key fires.
   const picked = useRef<string | null>(null)
   const shown = color.value.replace(/^#/, '')
+  const match = matchingToken(color.value, tokens, theme)
   return (
     <div ref={row} className={cn(COLOR_ROW, 'group relative hover:bg-accent')}>
       <button
@@ -281,12 +282,21 @@ function RawColorRow({
         className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="min-w-0 flex-1 truncate tabular-nums">{shown}</span>
-        <span className="ml-auto text-muted-foreground tabular-nums">
+      </button>
+      {/* Select covers the percent alone here, so the swap after it stays in reach. */}
+      <span className="relative flex shrink-0 items-center self-stretch bg-inherit">
+        <span className="text-muted-foreground tabular-nums">
           {color.percent}%
         </span>
-        <RawFlag />
-      </button>
-      {select}
+        {select}
+      </span>
+      {match ? (
+        <UseToken
+          token={match.name}
+          shown={color.value}
+          onUse={() => onReplace(match.name)}
+        />
+      ) : null}
       <Popover
         open={open}
         onOpenChange={setOpen}

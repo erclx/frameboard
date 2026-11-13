@@ -2548,7 +2548,7 @@ describe('AppearanceSection commit field', () => {
 })
 
 describe('SelectionColors', () => {
-  it('lists each color with its chip or raw hex and the raw flag', () => {
+  it('lists each color with its chip or raw hex and no raw flag', () => {
     render(
       <SelectionColors
         colors={[
@@ -2566,8 +2566,8 @@ describe('SelectionColors', () => {
       'primary50%',
     ])
     expect(
-      screen.getAllByRole('img', { name: 'Raw value, not a token' }),
-    ).toHaveLength(1)
+      screen.queryByRole('img', { name: 'Raw value, not a token' }),
+    ).toBeNull()
   })
 })
 
