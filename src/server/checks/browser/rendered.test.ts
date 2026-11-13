@@ -90,6 +90,12 @@ describe.skipIf(shell === null)(
       expect(await check('rules/min-contrast/fail', {})).toEqual([])
     })
 
+    it('lands no finding for a browser rule the project turned off', async () => {
+      expect(
+        await check('rules/clipped/fail', { ...CONFIG, off: ['clipped'] }),
+      ).toEqual([])
+    })
+
     it('names the theme when one theme alone trips a rule', async () => {
       // Literal text color reads on the light canvas and sinks into the dark one.
       const findings = await check('rules/theme/fail')
