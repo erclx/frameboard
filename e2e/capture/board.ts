@@ -10,6 +10,7 @@ import { scanBoard } from '@/server/board/scan'
 import { claim, release, reserve } from '@/server/claims/store'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { FrameChange } from '@/shared/records/changes'
+import type { Finding } from '@/shared/records/check'
 import type { ListResult } from '@/shared/records/list'
 import type { BoardNote } from '@/shared/records/notes'
 
@@ -2692,41 +2693,58 @@ function menuOn(
 }
 
 /**
- * Adds a finding in a sheet the about frame links to every findings message
- * the server sends, so its list shows that sheet's path beside the line.
- * Faked, since a linked sheet in the committed fixture would change every
- * board case.
+ * Adds one finding on the about frame to every findings message the server
+ * sends. Faked, since a frame tripping it in the committed fixture would
+ * change every board case.
  */
-async function linkedSheetFinding(page: Page): Promise<void> {
+function aboutFinding(
+  added: Pick<Finding, 'rule' | 'severity' | 'path' | 'message' | 'location'>,
+): (page: Page) => Promise<void> {
   const frame = 'webapp/home/about'
-  const linked = {
-    rule: 'unknown-token',
-    severity: 'warning',
-    frame,
-    path: 'webapp/home/site.css',
-    message:
-      "var(--brand) names a custom property nothing declares, so the declaration resolves to nothing. Use a token the project's tokens.css declares, or give it a fallback, such as var(--brand, red).",
-    location: { line: 1, column: 9, startOffset: 8, endOffset: 28 },
-  }
-  await page.routeWebSocket('**/api/live', (socket) => {
-    const server = socket.connectToServer()
-    server.onMessage((message) => {
-      const parsed = JSON.parse(String(message)) as ServerMessage
-      const held = parsed.type === 'findings' ? parsed.findings[frame] : null
-      if (parsed.type !== 'findings' || !held) {
-        socket.send(message)
-        return
-      }
-      socket.send(
-        JSON.stringify({
-          ...parsed,
-          findings: { ...parsed.findings, [frame]: [...held, linked] },
-        }),
-      )
+  return async (page) => {
+    await page.routeWebSocket('**/api/live', (socket) => {
+      const server = socket.connectToServer()
+      server.onMessage((message) => {
+        const parsed = JSON.parse(String(message)) as ServerMessage
+        const held = parsed.type === 'findings' ? parsed.findings[frame] : null
+        if (parsed.type !== 'findings' || !held) {
+          socket.send(message)
+          return
+        }
+        socket.send(
+          JSON.stringify({
+            ...parsed,
+            findings: {
+              ...parsed.findings,
+              [frame]: [...held, { ...added, frame }],
+            },
+          }),
+        )
+      })
+      socket.onMessage((message) => server.send(message))
     })
-    socket.onMessage((message) => server.send(message))
-  })
+  }
 }
+
+/** A warning in a sheet the about frame links, so its list shows that sheet's path beside the line. */
+const linkedSheetFinding = aboutFinding({
+  rule: 'unknown-token',
+  severity: 'warning',
+  path: 'webapp/home/site.css',
+  message:
+    "var(--brand) names a custom property nothing declares, so the declaration resolves to nothing. Use a token the project's tokens.css declares, or give it a fallback, such as var(--brand, red).",
+  location: { line: 1, column: 9, startOffset: 8, endOffset: 28 },
+})
+
+/** An error beside the about frame's warning, so its mark draws the filled pill a warning alone leaves out. */
+const errorFinding = aboutFinding({
+  rule: 'clipped',
+  severity: 'error',
+  path: 'webapp/home/about.html',
+  message:
+    'webapp/home/about is 640 px tall in its 480 px box, so 160 px is cut off. Fit the frame, or give the content a height of its own.',
+  location: null,
+})
 
 /**
  * Presses a frame's findings badge through the hit layer above it once the
@@ -2943,8 +2961,8 @@ const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
  * the selected element, on empty canvas, and on a page and a layers row, and
  * the guide a new board's start page shows. The "Edited" times count back from
  * each file's checkout time, so they are masked. The `about` frame sets no
- * font, so the board cases also hold the label's check findings mark in both
- * themes, beside the hero taking its colors and faces from the tokens. Every
+ * font, a warning, so the board cases also hold the label's quiet findings
+ * mark in both themes, and one case adds an error for the filled pill, beside the hero taking its colors and faces from the tokens. Every
  * board case waits on the server's browser sweep first, so the mark's count
  * is settled.
  */
@@ -3580,7 +3598,7 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
-        // The about frame sets no font, so its badge opens on its one finding.
+        // The about frame sets no font, a warning, so its quiet mark opens on one card ending on Turn off.
         section: 'findings-open',
         theme,
         route: '/p/webapp/home',
@@ -3608,6 +3626,23 @@ const CASES: CaptureCase[] = [
           both(
             asWriter,
             linkedSheetFinding,
+            findingsOn('webapp/home/about'),
+            readyWhen('[data-slot="popover-content"]'),
+          ),
+        ),
+      },
+      {
+        // An error among the warnings keeps the filled pill, and each card ends on its Turn off button.
+        section: 'findings-error',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR, '[data-note-marker]'],
+        setup: themed(
+          both(
+            asWriter,
+            errorFinding,
             findingsOn('webapp/home/about'),
             readyWhen('[data-slot="popover-content"]'),
           ),
