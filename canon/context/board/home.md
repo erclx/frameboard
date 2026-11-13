@@ -47,6 +47,7 @@ A folder card or row takes its own menu and an in-place rename.
 
 - A right click on a folder card or row, or the ⋯ a card shows on hover and focus, opens `menu.tsx` with Open, Rename, Ungroup, and Pin, running the `folder.*` actions
 - A double click on a folder's name renames it in place on the card, the row, and the panel header. `title-click.ts` holds a click on the name 300ms so the double click never opens the folder first
+- The panel header adds a pen beside the name, opening the field in one click, shown on hover or keyboard focus and gone while the field is open or the tab may not write
 
 While a project is over a card or row, the target says what the drop does, clear of its name.
 
@@ -70,7 +71,8 @@ A typed name in `filter-field.tsx` shows its matches flat, archived ones include
 - `sort.ts` orders the projects by last edited, created, or name, last edited newest first by default, and `home.tsx` orders them once so the cards, the arrow keys, and the tab stop follow what is shown
 - Choosing a key starts it in its natural direction, the dates newest first and the name from A. Either way an undated project sits last and a tie falls to the name from A.
 - A pinned project sits above the rest in the grid and the list, each group in the chosen order, and carries a filled pin after its name
-- The rest start on a new grid row under a hairline, and the list parts the groups with a band, since every list row already ends on a hairline
+- A quiet Pinned label sits over the pinned group, and the rest start on a new grid row under a hairline, while the list parts the groups with a band, since every list row already ends on a hairline
+- The label and the parting show only while both groups hold a project
 
 The browser keeps both, and neither reaches the board.
 
@@ -87,3 +89,5 @@ Owns the `project.*` actions, shared by the home view, where they act on the foc
 - `nav.home` goes home on Alt+ArrowUp, Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
 - A rename carries a pin to the new name, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned
+- A delete acts at once and raises a toast naming the project and what it held, whose Undo runs `edit.undo` and puts back the pin the delete dropped
+- That toast closes on the next history message after the delete's own, since the capped journal's counts cannot tell a later step apart and Undo would take that step back instead
