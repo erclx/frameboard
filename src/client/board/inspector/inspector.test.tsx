@@ -149,7 +149,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(17)
+      expect(screen.getAllByRole('radio')).toHaveLength(18)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })
@@ -1112,7 +1112,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
-      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(17)
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(18)
       expect(
         within(screen.getByRole('group', { name: 'Social' })).getAllByRole(
           'menuitemradio',
