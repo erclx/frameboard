@@ -84,11 +84,11 @@ describe('the crowd page', () => {
     expect(overlapping).toEqual([])
   })
 
-  it("lists the page after the fixture's own, ahead of the motion and raw pages", async () => {
+  it("lists the page after the fixture's own, ahead of the motion page", async () => {
     await seedDrive(root, new Date())
 
     expect(readJson('marketing/project.json')).toMatchObject({
-      pages: ['launch', 'states', 'crowd', 'motion', 'raw'],
+      pages: ['launch', 'states', 'crowd', 'motion'],
     })
   })
 
@@ -158,34 +158,42 @@ describe('the motion page', () => {
 })
 
 describe('the raw colors page', () => {
-  /** A token's light value as the fixture's board sheet states it. */
+  /** A token's light value as the webapp project's own sheet states it. */
   function lightValue(token: string): string {
-    const sheet = readFileSync(join(root, 'tokens.css'), 'utf8')
+    const sheet = readFileSync(join(root, 'webapp/tokens.css'), 'utf8')
     const light = sheet.slice(0, sheet.indexOf('[data-theme'))
     const value = new RegExp(`${token}:\\s*(#[0-9a-f]{6})`, 'i').exec(light)
-    if (!value?.[1]) throw new Error(`The board sheet sets no ${token}`)
+    if (!value?.[1]) throw new Error(`The webapp sheet sets no ${token}`)
     return value[1]
   }
 
-  it('lays one frame stating primary’s light value raw beside a color no token holds', async () => {
+  it('lays one webapp frame stating its own accent raw beside a color no token holds', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    const html = readFileSync(join(root, 'marketing/raw/swatches.html'), 'utf8')
+    const html = readFileSync(join(root, 'webapp/raw/swatches.html'), 'utf8')
     expect(seeded.raw).toBe('laid')
     expect(html).toContain(
-      `data-name="Equal" style="color: ${lightValue('--primary')}"`,
+      `data-name="Equal" style="color: ${lightValue('--accent')}"`,
     )
     expect(html).toContain('data-name="Unequal" style="color: #be123c"')
     expect(
       Object.keys(
-        (readJson('marketing/raw/layout.json') as { frames: object }).frames,
+        (readJson('webapp/raw/layout.json') as { frames: object }).frames,
       ),
     ).toEqual(['swatches'])
   })
 
+  it("lists the page after the webapp project's own", async () => {
+    await seedDrive(root, new Date())
+
+    expect(readJson('webapp/project.json')).toMatchObject({
+      pages: ['settings', 'home', 'raw'],
+    })
+  })
+
   it('leaves a hand-edited raw colors page alone on a second seed', async () => {
     await seedDrive(root, new Date())
-    const edited = join(root, 'marketing/raw/swatches.html')
+    const edited = join(root, 'webapp/raw/swatches.html')
     writeFileSync(edited, '<p>edited by a reel</p>')
 
     const seeded = await seedDrive(root, new Date())

@@ -1,6 +1,6 @@
 // Lays the states a drive films into the drive copy's `basic` board, being a
 // 40-frame `marketing/crowd` page, an animated `marketing/motion` frame, a
-// `marketing/raw` frame stating raw colors, and a
+// `webapp/raw` frame stating raw colors, and a
 // live reservation on `webapp/settings`,
 // which the committed fixture lacks so the evidence baselines never move. Run
 // by the `launch` line in `canon/config/app-drive.toml` before `preview`.

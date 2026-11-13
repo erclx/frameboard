@@ -19,10 +19,12 @@ const SLIDE_PAGE = join(import.meta.dirname, 'drive-slide.html')
 
 /**
  * The page holding one frame whose text states raw colors, one equal to
- * primary's light value and one equal to no token, so the inspector's
- * `Use <token>` swap has a row to offer it on and a row to leave plain.
+ * webapp's own accent in light and one equal to no token, so the
+ * inspector's `Use <token>` swap has a row to offer it on and a row to
+ * leave plain. Webapp's own sheet sets that accent, so the swap still
+ * offers on a board served with a `--tokens` sheet holding no color.
  */
-const RAW = { project: 'marketing', page: 'raw', frame: 'swatches' }
+const RAW = { project: 'webapp', page: 'raw', frame: 'swatches' }
 
 const RAW_PAGE = join(import.meta.dirname, 'drive-raw.html')
 
@@ -56,7 +58,7 @@ export interface Seeded {
 /**
  * Lays the states a drive films that the committed `basic` board lacks: a
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
- * animates, a `marketing/raw` page stating raw colors, and a live reservation of three boxes on `webapp/settings`. A
+ * animates, a `webapp/raw` page stating raw colors, and a live reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
@@ -95,7 +97,7 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
       join(folder, 'layout.json'),
       `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
     ),
-    listPage(root, CROWD.page),
+    listPage(root, CROWD.project, CROWD.page),
   )
   await Promise.all(writes)
   return 'laid'
@@ -130,7 +132,7 @@ async function layOne(
       `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
     ),
   ])
-  await listPage(root, page)
+  await listPage(root, project, page)
   return 'laid'
 }
 
@@ -149,14 +151,18 @@ function frameHtml(name: string, index: number): string {
 `
 }
 
-async function listPage(root: string, page: string): Promise<void> {
-  const path = join(root, 'marketing', 'project.json')
-  const project = JSON.parse(await readFile(path, 'utf8')) as {
+async function listPage(
+  root: string,
+  project: string,
+  page: string,
+): Promise<void> {
+  const path = join(root, project, 'project.json')
+  const listed = JSON.parse(await readFile(path, 'utf8')) as {
     pages: string[]
   }
-  if (project.pages.includes(page)) return
-  project.pages.push(page)
-  await writeFile(path, `${JSON.stringify(project, null, 2)}\n`)
+  if (listed.pages.includes(page)) return
+  listed.pages.push(page)
+  await writeFile(path, `${JSON.stringify(listed, null, 2)}\n`)
 }
 
 async function reserveSettings(root: string, now: Date): Promise<string[]> {
