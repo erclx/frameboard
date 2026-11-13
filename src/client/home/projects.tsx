@@ -1,3 +1,4 @@
+import { Pin } from 'lucide-react'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
@@ -109,7 +110,7 @@ export function Projects({
     })
   const rover = roverOf(entries, focused, focusedFolder, isOpen)
   // The pinned come first, so the rest start at the first unpinned entry,
-  // and a divider sits there only when both groups hold one.
+  // and the Pinned label and the divider show only when both groups hold one.
   const firstUnpinned = entries.findIndex((entry) => !pinnedEntry(entry, pins))
   const divideAt = firstUnpinned > 0 ? firstUnpinned : -1
   const item = (project: ProjectRecord) => ({
@@ -143,6 +144,16 @@ export function Projects({
         >
           {entries.map((entry, at) => (
             <Fragment key={keyOf(entry)}>
+              {at === 0 && divideAt > 0 ? (
+                <li
+                  aria-hidden
+                  data-pin-label
+                  className="col-span-full -mb-2 flex items-center gap-1.5 text-label font-semibold text-muted-foreground"
+                >
+                  <Pin className="size-3 fill-current" />
+                  Pinned
+                </li>
+              ) : null}
               {at === divideAt ? (
                 <li
                   aria-hidden
@@ -185,6 +196,16 @@ export function Projects({
           <ul onKeyDown={(event) => roveFocus(event, 'list')}>
             {entries.map((entry, at) => (
               <Fragment key={keyOf(entry)}>
+                {at === 0 && divideAt > 0 ? (
+                  <li
+                    aria-hidden
+                    data-pin-label
+                    className="flex h-7 items-center gap-1.5 border-b border-border px-4 text-label font-semibold text-muted-foreground"
+                  >
+                    <Pin className="size-3 fill-current" />
+                    Pinned
+                  </li>
+                ) : null}
                 {at === divideAt ? (
                   // Every row already ends on a hairline, so the groups part on a band.
                   <li

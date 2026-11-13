@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { claim, readClaims } from '@/server/claims/store'
 
-import { seedDrive } from './drive-seed.ts'
+import { seedDrive, type Seeded } from './drive-seed.ts'
 
 const FIXTURE = join(
   import.meta.dirname,
@@ -110,13 +110,16 @@ describe('the crowd page', () => {
     await seedDrive(root, new Date())
     writeFileSync(
       join(root, 'marketing/project.json'),
-      JSON.stringify({ version: 1, pages: ['crowd', 'launch', 'states'] }),
+      JSON.stringify({
+        version: 1,
+        pages: ['crowd', 'launch', 'motion', 'states'],
+      }),
     )
 
     await seedDrive(root, new Date())
 
     expect(readJson('marketing/project.json')).toMatchObject({
-      pages: ['crowd', 'launch', 'states'],
+      pages: ['crowd', 'launch', 'motion', 'states'],
     })
   })
 })
@@ -269,6 +272,81 @@ describe('the deck page', () => {
 
     expect(seeded.deck).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('a kept page whose project listing was reset', () => {
+  it.each<{
+    project: string
+    page: Exclude<keyof Seeded, 'reserved'>
+    own: string[]
+  }>([
+    { project: 'marketing', page: 'crowd', own: ['launch', 'states'] },
+    { project: 'marketing', page: 'motion', own: ['launch', 'states'] },
+    { project: 'webapp', page: 'raw', own: ['settings', 'home'] },
+    { project: 'webapp', page: 'feed', own: ['settings', 'home'] },
+    { project: 'webapp', page: 'deck', own: ['settings', 'home'] },
+  ])('lists $project/$page again', async ({ project, page, own }) => {
+    await seedDrive(root, new Date())
+    writeFileSync(
+      join(root, project, 'project.json'),
+      JSON.stringify({ version: 1, pages: own }),
+    )
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded[page]).toBe('kept')
+    expect(
+      (readJson(`${project}/project.json`) as { pages: string[] }).pages,
+    ).toContain(page)
+  })
+
+  it('leaves a project file that already lists every page byte for byte', async () => {
+    await seedDrive(root, new Date())
+    const path = join(root, 'marketing/project.json')
+    const listed = '{"version":1,"pages":["motion","crowd","launch","states"]}'
+    writeFileSync(path, listed)
+
+    await seedDrive(root, new Date())
+
+    expect(readFileSync(path, 'utf8')).toBe(listed)
+  })
+
+  it('keeps a kept page whose project file is missing without throwing', async () => {
+    await seedDrive(root, new Date())
+    rmSync(join(root, 'marketing/project.json'))
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.crowd).toBe('kept')
+    expect(seeded.motion).toBe('kept')
+    expect(readdirSync(join(root, 'marketing'))).not.toContain('project.json')
+  })
+})
+
+describe('the Drives folder', () => {
+  it('files two projects of one page each in one folder', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.folder).toBe('laid')
+    expect([
+      readJson('drive-app/project.json'),
+      readJson('drive-site/project.json'),
+    ]).toEqual([
+      { version: 1, pages: ['home'], group: 'Drives' },
+      { version: 1, pages: ['home'], group: 'Drives' },
+    ])
+    expect(readdirSync(join(root, 'drive-app/home'))).toContain('layout.json')
+  })
+
+  it('leaves a folder a reel deleted from alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    rmSync(join(root, 'drive-site'), { recursive: true })
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.folder).toBe('kept')
+    expect(readdirSync(root)).not.toContain('drive-site')
   })
 })
 

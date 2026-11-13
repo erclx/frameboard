@@ -52,6 +52,9 @@ const DECK = {
 
 const DECK_PAGES = join(import.meta.dirname, 'drive-deck')
 
+/** The folder home opens on in a reel, holding two projects the fixture lacks. */
+const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -79,6 +82,8 @@ export interface Seeded {
   feed: 'laid' | 'kept'
   /** Whether the deck page was laid now or was already there and kept. */
   deck: 'laid' | 'kept'
+  /** Whether the Drives folder was laid now or was already there and kept. */
+  folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -88,7 +93,8 @@ export interface Seeded {
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
  * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped, and a live reservation of three boxes on `webapp/settings`. A
+ * transition with one stepped, a Drives folder of two projects, and a live
+ * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
@@ -104,13 +110,43 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     scroll: true,
   })
   const deck = await layDeck(root)
+  const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, deck, reserved }
+  return { crowd, motion, raw, feed, deck, folder, reserved }
+}
+
+/**
+ * Files two projects of one empty page each in the Drives folder, so a reel
+ * opens a folder, renames it, and deletes a project out of it. A folder a reel
+ * already changed is kept while either project is there.
+ */
+async function layFolder(root: string): Promise<'laid' | 'kept'> {
+  if (FOLDER.projects.some((project) => existsSync(join(root, project))))
+    return 'kept'
+  await Promise.all(
+    FOLDER.projects.map(async (project) => {
+      await mkdir(join(root, project, 'home'), { recursive: true })
+      await Promise.all([
+        writeFile(
+          join(root, project, 'home', 'layout.json'),
+          `${JSON.stringify({ version: 1, frames: {} }, null, 2)}\n`,
+        ),
+        writeFile(
+          join(root, project, 'project.json'),
+          `${JSON.stringify({ version: 1, pages: ['home'], group: FOLDER.name }, null, 2)}\n`,
+        ),
+      ])
+    }),
+  )
+  return 'laid'
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
   const folder = join(root, CROWD.project, CROWD.page)
-  if (existsSync(folder)) return 'kept'
+  if (existsSync(folder)) {
+    await relistKept(root, CROWD.project, CROWD.page)
+    return 'kept'
+  }
   await mkdir(folder)
 
   const { width, height } = FRAME_SIZES.desktop
@@ -155,7 +191,10 @@ async function layOne(
   } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)
-  if (existsSync(folder)) return 'kept'
+  if (existsSync(folder)) {
+    await relistKept(root, project, page)
+    return 'kept'
+  }
   await mkdir(folder)
 
   const frames = {
@@ -181,7 +220,10 @@ async function layOne(
 
 async function layDeck(root: string): Promise<'laid' | 'kept'> {
   const folder = join(root, DECK.project, DECK.page)
-  if (existsSync(folder)) return 'kept'
+  if (existsSync(folder)) {
+    await relistKept(root, DECK.project, DECK.page)
+    return 'kept'
+  }
   await mkdir(folder)
 
   const frames = Object.fromEntries(
@@ -243,6 +285,20 @@ async function listPage(
   if (listed.pages.includes(page)) return
   listed.pages.push(page)
   await writeFile(path, `${JSON.stringify(listed, null, 2)}\n`)
+}
+
+/**
+ * Lists a page left in place, since a drive copy rebuilt from a seeded checkout
+ * can carry its folder beside a `project.json` reset to the fixture's own. A
+ * project with no `project.json` is left as it is rather than given one.
+ */
+async function relistKept(
+  root: string,
+  project: string,
+  page: string,
+): Promise<void> {
+  if (!existsSync(join(root, project, 'project.json'))) return
+  await listPage(root, project, page)
 }
 
 async function reserveSettings(root: string, now: Date): Promise<string[]> {

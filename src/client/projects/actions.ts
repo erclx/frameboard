@@ -15,12 +15,16 @@ import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
+import { keyLabel } from '@/client/actions/keys'
 import {
   type Action,
+  findAction,
+  isEnabled,
   refreshActions,
   registerActions,
 } from '@/client/actions/registry'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
+import { toast } from '@/client/components/ui/toast'
 import {
   folderKey,
   folderNames,
@@ -637,12 +641,18 @@ export function useProjectActions(
         run: () => {
           const project = focused()
           if (!project) return
+          const pinned = pinnedProjects().has(project.name)
+          const deleted = watchDeleteSteps()
           calls.deleteProject(project.name).then(
             () => {
               dropPin(project.name)
+              deleted.show(project, pinned)
               onDeleted?.()
             },
-            reportRefusal(`Couldn't delete ${project.name}`),
+            (error: unknown) => {
+              deleted.stop()
+              reportRefusal(`Couldn't delete ${project.name}`)(error)
+            },
           )
         },
       },
@@ -661,4 +671,91 @@ export function useProjectActions(
       projectStore.setState({ focused: null, renaming: null })
     }
   }, [calls, navigate, target, onDeleted])
+}
+
+/** `1 page, 0 frames`, what a deleted project held, as its toast names it. */
+function heldCopy(project: ProjectRecord): string {
+  const pages = project.pages.length
+  const frames = project.pages.reduce(
+    (sum, page) => sum + page.frames.length,
+    0,
+  )
+  return `${pages} ${pages === 1 ? 'page' : 'pages'}, ${frames} ${frames === 1 ? 'frame' : 'frames'}`
+}
+
+/**
+ * Follows the undo journal from just before a delete is sent, so its toast,
+ * per `project-delete-undo-toast-720`, can offer Undo while the newest step
+ * is still the delete. The journal is capped, so its counts cannot tell a
+ * later step from the delete's own, and the history messages are counted
+ * instead: the first after the send is the delete's, and any later one is
+ * a step Undo would take back in its place, which closes the toast. The
+ * count starts before the send, since the socket can report the step ahead
+ * of the write's own answer or behind it, and an Undo pressed before the
+ * delete's step is counted waits for it.
+ */
+function watchDeleteSteps(): {
+  show: (project: ProjectRecord, pinned: boolean) => void
+  stop: () => void
+} {
+  let steps = 0
+  let id: string | null = null
+  let waiting: (() => void) | null = null
+  const unsubscribe = liveStore.subscribe((state, previous) => {
+    if (state.history === previous.history) return
+    steps++
+    if (waiting) {
+      const run = waiting
+      waiting = null
+      unsubscribe()
+      run()
+    } else if (steps > 1) close()
+  })
+  const close = () => {
+    if (id !== null) toast.close(id)
+    id = null
+  }
+  const stop = () => {
+    if (!waiting) unsubscribe()
+  }
+  // A pin lives outside the journal, so the delete's drop is put back by hand,
+  // and only once the undo runs, since a pin on a project still deleted would
+  // pin a later project of that name.
+  const undoFor = (project: ProjectRecord, pinned: boolean) => () => {
+    const action = findAction('edit.undo')
+    if (!action || !isEnabled(action)) return
+    action.run()
+    if (pinned && !pinnedProjects().has(project.name)) togglePin(project.name)
+  }
+  return {
+    stop,
+    show: (project, pinned) => {
+      if (steps > 1) {
+        unsubscribe()
+        return
+      }
+      const key = findAction('edit.undo')?.keys?.[0]
+      id = toast.add({
+        title: `Deleted ${project.name}`,
+        description: heldCopy(project),
+        // It stays until dismissed or the next step, which closes it.
+        timeout: 0,
+        onClose: stop,
+        actionProps: {
+          children: 'Undo',
+          title: key ? `Undo ${keyLabel(key)}` : 'Undo',
+          'aria-keyshortcuts': key ? keyLabel(key) : undefined,
+          onClick: () => {
+            const undo = undoFor(project, pinned)
+            if (steps === 0) waiting = undo
+            else {
+              unsubscribe()
+              undo()
+            }
+            close()
+          },
+        },
+      })
+    },
+  }
 }

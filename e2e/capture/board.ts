@@ -2833,6 +2833,104 @@ const AVATAR = '[data-avatar]'
 const STATE_ONLY = ['320', '768', '1536']
 
 /**
+ * The home bundle's states: the change toast with Next under focus naming its
+ * key in a tooltip, the open folder with its pen under focus, the Deleted
+ * toast a delete raises with its Undo, and the Pinned label over the pinned
+ * group in the grid and the list. The delete is answered in the browser, so
+ * the served board keeps its project.
+ */
+const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
+  (theme): CaptureCase[] => [
+    {
+      section: 'unseen-next-tooltip',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: both(
+        browserSwept,
+        chosenTheme(theme),
+        seededChanges([
+          agentChange('webapp/home/about', 1),
+          agentChange('webapp/home/hero', 2),
+          agentChange('webapp/settings/profile', 3),
+        ]),
+        focusOnLoad('[data-change-toast] button[aria-label="Next"]'),
+        readyWhen('[data-slot="tooltip-content"]'),
+      ),
+    },
+    {
+      section: 'home-folder-pen',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[role="dialog"] [data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard(),
+        hiddenBehind('main [data-edited]'),
+        openClientFolder,
+        focusOnLoad('[role="dialog"] button[aria-label="Rename folder"]'),
+        readyWhen(
+          '[role="dialog"] button[aria-label="Rename folder"]:focus-visible',
+        ),
+      ),
+    },
+    {
+      section: 'home-deleted-toast',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        async (page) => {
+          await page.route('**/api/project/delete', (route) =>
+            route.fulfill({
+              contentType: 'application/json',
+              body: JSON.stringify({ ok: true, data: { deleted: 'webapp' } }),
+            }),
+          )
+        },
+        focusOnLoad('main a[href^="/p/webapp"]', 'Backspace'),
+        readyWhen('[data-slot="toast"]:not([data-starting-style])'),
+      ),
+    },
+    {
+      section: 'home-pinned',
+      theme,
+      route: '/',
+      evidence: true,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        homeStored('frameboard.home.pins', JSON.stringify(['webapp'])),
+        readyWhen('[data-pin-label]'),
+      ),
+    },
+    {
+      section: 'home-pinned-list',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        homeStored('frameboard.home.pins', JSON.stringify(['webapp'])),
+        homeStored('frameboard.home.layout', 'list'),
+        readyWhen('[data-pin-label]'),
+      ),
+    },
+  ],
+)
+
+/**
  * The home view and one board page of the preview's `basic` fixture, the
  * home view with a card's menu open and with a card's name being renamed,
  * then the board under Hide UI, in Play, in Play with the hero entered from
@@ -4857,6 +4955,7 @@ const CASES: CaptureCase[] = [
       },
     ]
   }),
+  ...HOME_BUNDLE_CASES,
 ]
 
 /**

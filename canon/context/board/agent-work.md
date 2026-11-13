@@ -41,7 +41,7 @@ Owns how a claimed frame shows and how an edit waits on one, apart from `frame.t
 
 Owns the change toast, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
 
-- The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, and Enter on the toast itself runs Show
+- The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, each key in its button's tooltip rather than on the button, and Enter on the toast itself runs Show
 - It rides the kit's one stack above the toolbar, per `canon/context/board/shell.md`, so no form covers a tool
 - Mark all seen clears every page and turns the toast into a cleared form whose Undo lasts 5 seconds, a kit timer that pauses while the stack is hovered or focused
 - Undo restores the `lastCleared` snapshot in `unseen.ts` and never joins `edit.undo`, since seen state touches no file

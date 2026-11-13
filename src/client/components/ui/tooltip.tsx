@@ -43,7 +43,8 @@ function TooltipContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        // Over the toast stack, which sits over dialogs, so a toast button's tooltip shows whole.
+        className="isolate z-[70]"
       >
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"

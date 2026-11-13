@@ -18,6 +18,7 @@ import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { projectStore } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
+import { keyboardFocus } from '@/test/focus-ring'
 import { realClick } from '@/test/real-pointer'
 
 import { Home } from '../home'
@@ -246,6 +247,115 @@ describe('renaming in place', () => {
         body: { refs: ['web', 'app'], group: 'Client B' },
       },
     ])
+  })
+
+  describe('the pen in the open folder', () => {
+    it('opens the rename field from one click', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      expect(
+        screen.getByRole('textbox', { name: 'Rename folder Client A' }),
+      ).toHaveFocus()
+    })
+
+    it('leaves the header while the field is open', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      expect(
+        within(panel).queryByRole('button', { name: 'Rename folder' }),
+      ).toBeNull()
+    })
+
+    it('comes back once Esc cancels the rename', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBe(panel)
+    })
+
+    it('keeps the pen out of the panel name', async () => {
+      renderHome()
+      await userEvent.click(folder())
+
+      const panel = await screen.findByRole('dialog')
+
+      expect(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      ).toBeInTheDocument()
+      expect(panel).toHaveAccessibleName('Client A')
+    })
+
+    it('keeps the pen hidden when a pointer opens the folder away from its header', async () => {
+      renderHome()
+
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      const pen = within(panel).getByRole('button', { name: 'Rename folder' })
+      expect(getComputedStyle(pen).opacity).toBe('0')
+    })
+
+    it('shows the pen while the keyboard focuses it', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      const pen = within(panel).getByRole('button', { name: 'Rename folder' })
+
+      await keyboardFocus(pen)
+
+      expect(getComputedStyle(pen).opacity).toBe('1')
+    })
+
+    it('lays the Deleted toast over the open folder, so its Undo takes a click', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      act(() => within(panel).getByRole('link', { name: /^web/ }).focus())
+
+      await userEvent.keyboard('{Backspace}')
+      const undo = await screen.findByRole('button', { name: 'Undo' })
+
+      await waitFor(() => {
+        const box = undo.getBoundingClientRect()
+        expect(
+          document.elementFromPoint(
+            box.left + box.width / 2,
+            box.top + box.height / 2,
+          ),
+        ).toBe(undo)
+      })
+    })
+
+    it('shows no pen in a tab that cannot write', async () => {
+      renderHome({ canWrite: false })
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      expect(
+        within(panel).queryByRole('button', { name: 'Rename folder' }),
+      ).toBeNull()
+    })
   })
 
   it('renames from a double click on a row title, leaving it closed', async () => {

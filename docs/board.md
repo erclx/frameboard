@@ -36,7 +36,9 @@ In the board you move and resize frames, press Esc mid-drag to cancel a move, a 
 The Frame tool places a phone, tablet, desktop, slide, social card, or video size picked from its list with a click, or draws a frame at any size with a drag. A selected frame's `Frame` heading opens the same list to resize it. The inspector's Preview row redraws a frame at another width without writing, and a 393 px frame reads as a phone there.
 
 - On the home view, New project adds a project, a card's right-click menu opens, renames, duplicates, pins, or deletes one, and Sort orders them by last edited, created, or name, in either direction
-- Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it, and a double click on its name renames it
+- A delete happens at once and leaves a toast with Undo, and pinned projects sit under a Pinned label above the rest
+- Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it.
+- A double click on a folder's name renames it, as does the pen beside the name in an open folder
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
 - A frame an agent gave several widths draws each beside it under its width, and a click or drag on one acts on the frame
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.

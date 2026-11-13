@@ -1,6 +1,12 @@
 import '../../styles.css'
 
-import { act, render, renderHook, screen } from '@testing-library/react'
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -347,43 +353,87 @@ describe('ChangesToast', () => {
     expect(next).not.toHaveAttribute('aria-keyshortcuts')
   })
 
-  describe('keycaps', () => {
+  describe('keys in tooltips', () => {
     const pile = () => [
       change('studio/home/hero', { at: '2026-10-19T12:00:01Z' }),
       change('studio/home/about', { at: '2026-10-19T12:00:02Z' }),
     ]
 
-    it('sets the Show key in a keycap beside the word', async () => {
+    it('draws Show with no keycap and names its key in the tooltip', async () => {
       render(<Harness />)
       act(() => receiveChanges(store, [change('studio/home/pricing')]))
-
       const show = await screen.findByRole('button', { name: 'Show' })
 
-      expect(show.querySelector('kbd')).toHaveTextContent('\\')
+      await userEvent.hover(show)
+
+      expect(show.querySelector('kbd')).toBeNull()
+      expect(show).toHaveTextContent(/^Show$/)
       expect(show).toHaveAttribute('aria-keyshortcuts', '\\')
+      expect(await screen.findByText('Show \\')).toBeInTheDocument()
     })
 
-    it('draws Previous and Next as arrows with their keys in keycaps', async () => {
+    it('draws Previous as an arrow alone and names its key in the tooltip', async () => {
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
-
       const previous = await screen.findByRole('button', { name: 'Previous' })
-      const next = screen.getByRole('button', { name: 'Next' })
 
-      expect(previous).toHaveTextContent('‹[')
-      expect(previous.querySelector('kbd')).toHaveTextContent('[')
-      expect(next).toHaveTextContent('›]')
-      expect(next.querySelector('kbd')).toHaveTextContent(']')
+      await userEvent.hover(previous)
+
+      expect(previous).toHaveTextContent(/^‹$/)
+      expect(await screen.findByText('Previous change [')).toBeInTheDocument()
     })
 
-    it('draws no keycap while single-key shortcuts are off', async () => {
+    it('draws Next as an arrow alone and names its key in the tooltip', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const next = await screen.findByRole('button', { name: 'Next' })
+
+      await userEvent.hover(next)
+
+      expect(next).toHaveTextContent(/^›$/)
+      expect(await screen.findByText('Next change ]')).toBeInTheDocument()
+    })
+
+    it('lays the tooltip over the toast it names', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const next = await screen.findByRole('button', { name: 'Next' })
+
+      await userEvent.hover(next)
+      const tip = await screen.findByText('Next change ]')
+
+      await waitFor(() => {
+        const box = tip.getBoundingClientRect()
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.bottom - 2,
+        )
+        expect(tip.contains(hit)).toBe(true)
+      })
+    })
+
+    it('opens the tooltip on keyboard focus as on hover', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const previous = await screen.findByRole('button', { name: 'Previous' })
+      act(() => previous.focus())
+
+      await userEvent.tab()
+
+      expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus()
+      expect(await screen.findByText('Next change ]')).toBeInTheDocument()
+    })
+
+    it('names no key in the tooltip while single-key shortcuts are off', async () => {
       setCharacterKeys(false)
       render(<Harness />)
       act(() => receiveChanges(store, pile()))
-
       const next = await screen.findByRole('button', { name: 'Next' })
 
+      await userEvent.hover(next)
+
       expect(next.querySelector('kbd')).toBeNull()
+      expect(await screen.findByText('Next change')).toBeInTheDocument()
     })
 
     it('keeps Shift+] off Mark all seen and in its tooltip', async () => {

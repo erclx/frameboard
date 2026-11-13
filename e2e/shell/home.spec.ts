@@ -103,10 +103,14 @@ test.describe('projects by hand from the home view', () => {
     await runFromMenu(page, 'studio', 'Delete')
     await expect(card(page, 'studio')).toHaveCount(0)
     expect(existsSync(at('studio'))).toBe(false)
+    const deleted = page
+      .locator('[data-slot="toast"]')
+      .filter({ hasText: 'Deleted studio' })
 
-    await undoAtHome(page)
+    await deleted.getByRole('button', { name: 'Undo' }).click()
 
     await expect(card(page, 'studio')).toBeVisible()
+    await expect(deleted).toHaveCount(0)
     expect(readFileSync(at('studio/assets/dot.svg'))).toEqual(asset)
     await expect(page).toHaveURL(`${server.url}/`)
   })
