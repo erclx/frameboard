@@ -14,6 +14,7 @@ import type { MeasureFrame } from './live/hug'
 import type { SelectionHolder } from './live/selection'
 import type { Delivery } from './notes/delivery'
 import type { Dispatch } from './notes/dispatch'
+import type { PreviewSlot } from './preview/listener'
 import { accessRoutes } from './routes/access'
 import { apiRoutes, type BoardActions } from './routes/api'
 import { assetsRoutes } from './routes/assets'
@@ -28,6 +29,7 @@ import { historyRoutes } from './routes/history'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
+import { previewRoutes } from './routes/preview'
 import { structureRoutes } from './routes/structure'
 import { thumbnailRoutes } from './routes/thumbnails'
 import { tokenRoutes } from './routes/tokens'
@@ -102,6 +104,8 @@ export interface AppOptions {
   settledVersion?: SettledVersion
   /** Counts the frames linking each asset, which the assets listing carries when given. */
   assetUsage?: AssetUsage
+  /** The phone listener `/api/preview` starts and stops, absent where nothing serves one. */
+  preview?: PreviewSlot
 }
 
 export function createApp({
@@ -126,6 +130,7 @@ export function createApp({
   frameVersion,
   settledVersion,
   assetUsage,
+  preview,
 }: AppOptions): Hono {
   const app = new Hono()
   // The server knows its own sheet, so it never reads the address file for it.
@@ -178,6 +183,7 @@ export function createApp({
   app.route('/', clipboardRoutes(root, actions.access, renderFrame, clipboard))
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
+  if (preview) app.route('/', previewRoutes(root, actions.access, preview))
   app.route('/', frames.routes)
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.

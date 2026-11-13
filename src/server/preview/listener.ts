@@ -158,3 +158,50 @@ function bind(app: Hono, port: number): Promise<Server> {
     created.once('error', reject)
   })
 }
+
+/** The one phone listener a board holds at a time, so a new link ends the last. */
+export interface PreviewSlot {
+  /** Ends any listener running, then starts one for `project`, with a new token. */
+  start: (project: string, port: number) => Promise<PreviewListener>
+  /**
+   * Ends the running listener, or only the one holding `token` when given, so
+   * a card closing in one tab leaves a link another tab opened since. True
+   * when a listener ended.
+   */
+  stop: (token?: string) => Promise<boolean>
+}
+
+/**
+ * Holds the board's phone listener, running each start and stop in turn so
+ * two never race to bind. The board ends it with `stop()` as it closes.
+ */
+export function createPreviewSlot(
+  options: Omit<PreviewOptions, 'project'>,
+): PreviewSlot {
+  let running: PreviewListener | null = null
+  let turn: Promise<unknown> = Promise.resolve()
+  const inTurn = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = turn.then(work, work)
+    turn = next.catch(() => undefined)
+    return next
+  }
+  const end = async (token?: string): Promise<boolean> => {
+    if (!running || (token !== undefined && running.token !== token)) {
+      return false
+    }
+    const ending = running
+    running = null
+    await ending.close()
+    return true
+  }
+
+  return {
+    start: (project, port) =>
+      inTurn(async () => {
+        await end()
+        running = await startPreviewListener({ ...options, project, port })
+        return running
+      }),
+    stop: (token) => inTurn(() => end(token)),
+  }
+}
