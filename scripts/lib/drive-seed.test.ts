@@ -190,7 +190,7 @@ describe('the raw colors page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes'],
     })
   })
 
@@ -223,7 +223,7 @@ describe('the scroll feed page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes'],
     })
   })
 
@@ -275,6 +275,30 @@ describe('the deck page', () => {
   })
 })
 
+describe('the free shapes page', () => {
+  it('lays one frame of free elements beside one in the flow', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(join(root, 'webapp/shapes/group.html'), 'utf8')
+    expect(seeded.shapes).toBe('laid')
+    expect(html.match(/position: absolute/g)).toHaveLength(4)
+    expect(html).toContain(
+      '<p data-name="Flowing" style="margin: 0; padding: 40px 160px">',
+    )
+  })
+
+  it('leaves a hand-edited shapes page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/shapes/group.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.shapes).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
 describe('a kept page whose project listing was reset', () => {
   it.each<{
     project: string
@@ -286,6 +310,7 @@ describe('a kept page whose project listing was reset', () => {
     { project: 'webapp', page: 'raw', own: ['settings', 'home'] },
     { project: 'webapp', page: 'feed', own: ['settings', 'home'] },
     { project: 'webapp', page: 'deck', own: ['settings', 'home'] },
+    { project: 'webapp', page: 'shapes', own: ['settings', 'home'] },
   ])('lists $project/$page again', async ({ project, page, own }) => {
     await seedDrive(root, new Date())
     writeFileSync(
