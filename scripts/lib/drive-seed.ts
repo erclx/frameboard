@@ -37,6 +37,9 @@ const FEED = { project: 'webapp', page: 'feed', frame: 'feed-scroll' }
 
 const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
+/** The folder home opens on in a reel, holding two projects the fixture lacks. */
+const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -62,6 +65,8 @@ export interface Seeded {
   raw: 'laid' | 'kept'
   /** Whether the scroll feed page was laid now or was already there and kept. */
   feed: 'laid' | 'kept'
+  /** Whether the Drives folder was laid now or was already there and kept. */
+  folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -70,7 +75,8 @@ export interface Seeded {
  * Lays the states a drive films that the committed `basic` board lacks: a
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
- * whose phone frame scrolls, and a live reservation of three boxes on `webapp/settings`. A
+ * whose phone frame scrolls, a Drives folder of two projects, and a live
+ * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
@@ -85,8 +91,35 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height,
     scroll: true,
   })
+  const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, reserved }
+  return { crowd, motion, raw, feed, folder, reserved }
+}
+
+/**
+ * Files two projects of one empty page each in the Drives folder, so a reel
+ * opens a folder, renames it, and deletes a project out of it. A folder a reel
+ * already changed is kept while either project is there.
+ */
+async function layFolder(root: string): Promise<'laid' | 'kept'> {
+  if (FOLDER.projects.some((project) => existsSync(join(root, project))))
+    return 'kept'
+  await Promise.all(
+    FOLDER.projects.map(async (project) => {
+      await mkdir(join(root, project, 'home'), { recursive: true })
+      await Promise.all([
+        writeFile(
+          join(root, project, 'home', 'layout.json'),
+          `${JSON.stringify({ version: 1, frames: {} }, null, 2)}\n`,
+        ),
+        writeFile(
+          join(root, project, 'project.json'),
+          `${JSON.stringify({ version: 1, pages: ['home'], group: FOLDER.name }, null, 2)}\n`,
+        ),
+      ])
+    }),
+  )
+  return 'laid'
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {

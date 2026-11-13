@@ -287,6 +287,32 @@ describe('a kept page whose project listing was reset', () => {
   })
 })
 
+describe('the Drives folder', () => {
+  it('files two projects of one page each in one folder', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.folder).toBe('laid')
+    expect([
+      readJson('drive-app/project.json'),
+      readJson('drive-site/project.json'),
+    ]).toEqual([
+      { version: 1, pages: ['home'], group: 'Drives' },
+      { version: 1, pages: ['home'], group: 'Drives' },
+    ])
+    expect(readdirSync(join(root, 'drive-app/home'))).toContain('layout.json')
+  })
+
+  it('leaves a folder a reel deleted from alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    rmSync(join(root, 'drive-site'), { recursive: true })
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.folder).toBe('kept')
+    expect(readdirSync(root)).not.toContain('drive-site')
+  })
+})
+
 describe('the settings reservation', () => {
   it('holds three boxes on webapp/settings live at the real clock', async () => {
     await seedDrive(root, new Date())
