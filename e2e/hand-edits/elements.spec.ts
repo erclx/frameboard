@@ -373,6 +373,38 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toBe(placed)
   })
 
+  test('Shift+A wraps two selected elements in one flow container, and one undo takes it back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    const original = read()
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+
+    await cmdClick(page, 'h1')
+    const caption = await settledBox(page, 'p')
+    await page.keyboard.down('Shift')
+    await page.mouse.click(
+      caption.x + caption.width / 2,
+      caption.y + caption.height / 2,
+    )
+    await page.keyboard.up('Shift')
+    await expect(page.locator('[data-element-selection]')).toHaveCount(2)
+    await page.keyboard.press('Shift+A')
+
+    await expect
+      .poll(read)
+      .toMatch(
+        /<div style="display: flex; flex-direction: column; gap: \d+px">\s*<h1 data-name="Headline">hero<\/h1>\s*<p data-name="Caption">/,
+      )
+    await expect(page.locator('[data-element-selection]')).toHaveCount(1)
+
+    await undo(page)
+
+    await expect.poll(read).toBe(original)
+  })
+
   test('a marquee from the selected frame’s bare body selects what it touches, and Delete takes them out', async ({
     page,
   }) => {
