@@ -31,7 +31,8 @@ const DEFAULT_SCALE = 2
  * timeline in one row instead, refusing a frame with no timeline as
  * `motion-missing` and one that never ends as `motion-unbounded`. An added
  * `device=1` draws a frame holding a device inside its body, and leaves a
- * frame holding none as it is. It takes no token, since the image shows only
+ * frame holding none as it is. A filmstrip draws no device, so the two
+ * together refuse as `usage`. It takes no token, since the image shows only
  * what the frame route already serves, and a refusal answers the CLI's
  * `{ ok, error }` envelope.
  */
@@ -54,11 +55,12 @@ export function pngRoutes(
         !isTheme(theme) ||
         scale === null ||
         filmstrip === null ||
-        device === null
+        device === null ||
+        (device && filmstrip !== undefined)
       ) {
         throw new FrameboardError(
           'usage',
-          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>, adding &filmstrip=<n> of 2 or more for a filmstrip or &device=1 for the frame inside its device.',
+          'Ask for /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>, adding either &filmstrip=<n> of 2 or more for a filmstrip or &device=1 for the frame inside its device.',
           {
             ref,
             theme,

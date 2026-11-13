@@ -36,7 +36,7 @@ Two flags hold a frame's motion still at moments its timeline names.
 - The PNG route's `filmstrip=<n>` of 2 or more renders on its own queue, answering `motion-missing` and `motion-unbounded` at 422
 - The record's `at` and `moments` name the clamped moments, and its `motion` names the source and the duration, null when every animation repeats forever
 
-The PNG route's `device=1` draws a frame holding a device inside its body on a second page, its corners past the body transparent, and leaves a frame holding none bare.
+The PNG route's `device=1` draws a frame holding a device inside its body on a second page, its corners past the body transparent, and leaves a frame holding none bare. Beside `filmstrip=<n>` it refuses as `usage`, since a filmstrip draws no device.
 
 The server side shares one browser and renders only on demand.
 

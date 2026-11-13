@@ -103,6 +103,16 @@ describe('GET /api/frames/png', () => {
       expect(asked).toEqual([undefined])
     })
 
+    it('refuses device=1 beside a filmstrip as usage', async () => {
+      const response = await getPhone(
+        'ref=home/hero&theme=light&device=1&filmstrip=3',
+        async () => PNG,
+      )
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    })
+
     it.each(['true', '0', ''])('refuses device=%s as usage', async (value) => {
       const response = await getPhone(
         `ref=home/hero&theme=light&device=${value}`,
