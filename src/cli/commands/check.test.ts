@@ -45,6 +45,18 @@ describe('check', () => {
     })
   })
 
+  it('answers a failing result under data too, equal to the details', async () => {
+    const run = await check(['theme/fail'])
+
+    const data = checkResultSchema.parse(run.json().data)
+    const details = checkResultSchema.parse(run.json().error?.details)
+    expect(data.checked).toBe(1)
+    expect(data.findings).toMatchObject([
+      { rule: 'theme', frame: 'rules/theme/fail' },
+    ])
+    expect(data.findings).toEqual(details.findings)
+  })
+
   it('takes a project-qualified frame ref', async () => {
     const run = await check(['rules/theme/pass'])
 

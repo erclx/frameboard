@@ -47,7 +47,7 @@ export function registerCheck(program: Command, context: ProgramContext): void {
   const command = addVerb(
     program,
     'check',
-    'Report every content rule a frame, page, or project breaks, with the browser rules while a server runs, exiting 8 on any error',
+    'Report every content rule a frame, page, or project breaks, with the browser rules while a server runs, exiting 8 on any error, with checked and findings under data in both answers',
     { project: true },
   ).argument(
     '[target]',
@@ -76,9 +76,13 @@ export function registerCheck(program: Command, context: ProgramContext): void {
       if (!options.json) {
         context.io.stdout(`${describe(result, { count: false })}\n`)
       }
-      throw new FrameboardError('check-findings', summarize(result), {
-        ...result,
-      })
+      // The details keep the result for scripts that read it there.
+      throw new FrameboardError(
+        'check-findings',
+        summarize(result),
+        { ...result },
+        { data: result },
+      )
     }
     return { data: result, human: describe(result) }
   })

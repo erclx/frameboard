@@ -24,7 +24,14 @@ export async function runCli(
     if (error instanceof CommanderError && error.exitCode === 0) return 0
     const failure = toFailure(error, program, argv)
     if (json) {
-      io.stdout(`${JSON.stringify({ ok: false, error: failure }, null, 2)}\n`)
+      // A verb that fails with a result still answers it at `data`, the path
+      // its passing answer uses.
+      const data = error instanceof FrameboardError ? error.data : undefined
+      const envelope =
+        data === undefined
+          ? { ok: false, error: failure }
+          : { ok: false, data, error: failure }
+      io.stdout(`${JSON.stringify(envelope, null, 2)}\n`)
     } else if (!(error instanceof CommanderError)) {
       io.stderr(`frameboard: ${failure.message}\n`)
     }
