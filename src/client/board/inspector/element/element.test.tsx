@@ -2601,6 +2601,29 @@ describe('writeElement', () => {
     expect(selection.getState().element?.hash).toBe('b'.repeat(64))
   })
 
+  it('answers a landed edit as written when the tree catch-up after it rejects', async () => {
+    const selection = createSelectionStore()
+    const told: string[] = []
+
+    const written = await writeElement(
+      'studio/home',
+      KEY,
+      { kind: 'style', property: 'background-color', value: '#e02b2b' },
+      {
+        selection,
+        send: answering(200, {
+          ok: true,
+          data: { ref: KEY.frame, index: 5, hash: 'b'.repeat(64) },
+        }),
+        notify: ({ title }) => told.push(title),
+        catchUp: () => Promise.reject(new Error('the tree read failed')),
+      },
+    )
+
+    expect(written).toBe(true)
+    expect(told).toEqual([])
+  })
+
   it('reselects the element at the index it landed at, once the agent’s reload dropped it', async () => {
     const selection = createSelectionStore()
     selectElement(selection, 'studio/home', KEY)

@@ -264,7 +264,8 @@ async function batchInTurn(
     }
     done()
     settleLanded(selection, shownHash)
-    await catchUp(frame, answer.hash)
+    // The edit already landed, so a failed tree read only leaves the Layers keys to the reload.
+    await catchUp(frame, answer.hash).catch(() => {})
     const at = new Map(follows ? before.at : [])
     for (const [from, to] of landedAt) at.set(from, to)
     return {
@@ -355,7 +356,8 @@ async function editInTurn(
     }
     done()
     settleLanded(selection, shownHash)
-    await catchUp(key.frame, answer.hash)
+    // The edit already landed, so a failed tree read only leaves the Layers keys to the reload.
+    await catchUp(key.frame, answer.hash).catch(() => {})
     const at = new Map(follows ? before.at : [])
     at.set(key.index, answer.index)
     return {
