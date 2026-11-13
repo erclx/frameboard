@@ -22,11 +22,14 @@ import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
 import {
+  endTransition,
   leavePresenting,
   presentOrder,
   stepPresenting,
   usePresent,
 } from './store'
+import { TransitionKeyframes, TransitionLayer } from './transition'
+import { CUT, type Travel } from './travel'
 
 /** The actions a press reaches while presenting, every other key stopping short of the board. */
 const PRESENT_KEYS = [
@@ -190,6 +193,7 @@ function useRoom(element: RefObject<HTMLElement | null>) {
 export function PresentOverlay() {
   const pageRef = usePresent((state) => state.page)
   const frameRef = usePresent((state) => state.frame)
+  const leaving = usePresent((state) => state.leaving)
   const page = useLive((state) =>
     pageRef === null
       ? undefined
@@ -201,8 +205,17 @@ export function PresentOverlay() {
   const order = page ? presentOrder(page.frames, frameRef) : []
   const at = order.findIndex((frame) => frame.ref === frameRef)
   const frame = order[at]
+  const left = leaving
+    ? page?.frames.find((candidate) => candidate.ref === leaving.ref)
+    : undefined
   return createPortal(
-    <Presenting key={pageRef} frame={frame} at={at + 1} count={order.length} />,
+    <Presenting
+      key={pageRef}
+      frame={frame}
+      leaving={left && leaving ? { ...leaving, frame: left } : null}
+      at={at + 1}
+      count={order.length}
+    />,
     document.body,
   )
 }
@@ -210,13 +223,14 @@ export function PresentOverlay() {
 interface PresentingProps {
   /** Undefined once the page or the frame is gone, which leaves. */
   frame: FrameRecord | undefined
+  /** The frame a step left, drawn under `frame` while its transition plays. */
+  leaving: { frame: FrameRecord; travel: Travel; id: number } | null
   at: number
   count: number
 }
 
-function Presenting({ frame, at, count }: PresentingProps) {
+function Presenting({ frame, leaving, at, count }: PresentingProps) {
   const layer = useRef<HTMLDivElement>(null)
-  const iframe = useRef<HTMLIFrameElement>(null)
   const room = useRoom(layer)
   const { shown, wake } = useBarWake()
   useLeaveWithFullscreen()
@@ -231,33 +245,23 @@ function Presenting({ frame, at, count }: PresentingProps) {
     layer.current?.focus()
   }, [])
 
-  // Each load is a new document, so the keys and the pointer bind into it again.
+  const leavingId = leaving?.id
+  const leavingMs = leaving?.travel.transition.ms ?? 0
   useEffect(() => {
-    const element = iframe.current
-    if (!element) return
-    let unbind = () => {}
-    const bind = () => {
-      unbind()
-      const target = element.contentWindow
-      if (!target) return
-      const untake = takeKeys(target, true)
-      target.addEventListener('pointermove', wake)
-      unbind = () => {
-        untake()
-        target.removeEventListener('pointermove', wake)
-      }
-    }
-    bind()
-    element.addEventListener('load', bind)
-    return () => {
-      element.removeEventListener('load', bind)
-      unbind()
-    }
-  }, [frame?.ref, wake])
+    if (leavingId === undefined) return
+    const timer = setTimeout(() => endTransition(leavingId), leavingMs)
+    return () => clearTimeout(timer)
+  }, [leavingId, leavingMs])
 
   if (!frame) return null
-  // A frame in a device fits with its body, which draws past its box.
-  const scale = fitScale(bezelBox(frame.box, frame.device), room)
+  const travel = leaving?.travel ?? CUT
+  // Keyed by frame, so a frame turning from arriving to leaving keeps its document.
+  const layers = [
+    ...(leaving && leaving.frame.ref !== frame.ref
+      ? [{ frame: leaving.frame, role: 'leave' as const }]
+      : []),
+    { frame, role: 'enter' as const },
+  ]
   return (
     <div
       ref={layer}
@@ -267,19 +271,20 @@ function Presenting({ frame, at, count }: PresentingProps) {
       tabIndex={-1}
       data-presenting
       onPointerMove={wake}
-      className="fixed inset-0 z-50 overflow-hidden bg-black outline-none"
+      className="fixed inset-0 z-50 overflow-hidden bg-black outline-none perspective-[2000px]"
     >
-      <div
-        className="absolute top-1/2 left-1/2"
-        style={{
-          width: frame.box.width,
-          height: frame.box.height,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
-      >
-        <PresentedFrame key={frame.ref} frame={frame} iframe={iframe} />
-        {frame.device ? <Bezel device={frame.device} /> : null}
-      </div>
+      <TransitionKeyframes />
+      {layers.map(({ frame: drawn, role }) => (
+        <TransitionLayer key={drawn.ref} role={role} travel={travel}>
+          <ScaledFrame
+            frame={drawn}
+            room={room}
+            live={role === 'enter'}
+            held={role === 'enter' && leaving !== null}
+            wake={wake}
+          />
+        </TransitionLayer>
+      ))}
       <PresentBar
         shown={shown}
         at={at}
@@ -293,17 +298,94 @@ function Presenting({ frame, at, count }: PresentingProps) {
   )
 }
 
+interface LiveProps {
+  /** Whether the frame is the one arriving, which alone takes the present keys and the pointer. */
+  live: boolean
+  /** Whether the frame's own animations wait, as they do while it arrives, so its clock starts once it lands. */
+  held: boolean
+  wake: () => void
+}
+
+/** One frame centered in the room at the scale that fits it, inside its device when it has one. */
+function ScaledFrame({
+  frame,
+  room,
+  ...live
+}: {
+  frame: FrameRecord
+  room: { width: number; height: number }
+} & LiveProps) {
+  // A frame in a device fits with its body, which draws past its box.
+  const scale = fitScale(bezelBox(frame.box, frame.device), room)
+  return (
+    <div
+      className="absolute top-1/2 left-1/2"
+      style={{
+        width: frame.box.width,
+        height: frame.box.height,
+        transform: `translate(-50%, -50%) scale(${scale})`,
+      }}
+    >
+      <PresentedFrame frame={frame} {...live} />
+      {frame.device ? <Bezel device={frame.device} /> : null}
+    </div>
+  )
+}
+
+const HOLD_ID = 'frameboard-present-hold'
+
+/**
+ * Pauses or resumes every CSS animation in `doc` by one injected style, which
+ * reaches an animation the frame starts later too.
+ */
+function holdAnimations(doc: Document, held: boolean): void {
+  const style = doc.getElementById(HOLD_ID)
+  if (!held) {
+    style?.remove()
+    return
+  }
+  if (style) return
+  const added = doc.createElement('style')
+  added.id = HOLD_ID
+  added.textContent =
+    '*, *::before, *::after { animation-play-state: paused !important }'
+  doc.head?.append(added)
+}
+
+/**
+ * Runs `write` on the iframe's document now and on every load after, since
+ * each load is a new document, undoing the last run before the next and on
+ * the cleanup it returns.
+ */
+function onEachLoad(
+  iframe: HTMLIFrameElement | null,
+  write: (element: HTMLIFrameElement) => (() => void) | void,
+): (() => void) | undefined {
+  if (!iframe) return
+  let undo: (() => void) | void
+  const run = () => {
+    undo?.()
+    undo = write(iframe)
+  }
+  run()
+  iframe.addEventListener('load', run)
+  return () => {
+    iframe.removeEventListener('load', run)
+    undo?.()
+  }
+}
+
 /**
  * One frame's live page through the same `/frames/` address the canvas
  * loads, in the theme the frame shows on the board, never a capture.
  */
 function PresentedFrame({
   frame,
-  iframe,
-}: {
-  frame: { ref: string; name: string }
-  iframe: RefObject<HTMLIFrameElement | null>
-}) {
+  live,
+  held,
+  wake,
+}: { frame: { ref: string; name: string } } & LiveProps) {
+  const iframe = useRef<HTMLIFrameElement>(null)
   const theme = useFrameTheme(frame.ref)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // The theme is read when the page loads or reloads, and a later flip
@@ -312,17 +394,37 @@ function PresentedFrame({
     () => frameThemeUrl(frame.ref, frameTheme(frame.ref), version),
     [frame.ref, version],
   )
-  useEffect(() => {
-    const element = iframe.current
-    if (!element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [iframe, theme])
+  useEffect(
+    () =>
+      onEachLoad(iframe.current, (element) => {
+        const root = element.contentDocument?.documentElement
+        if (root) setFrameTheme(root, theme)
+      }),
+    [theme],
+  )
+  useEffect(
+    () =>
+      onEachLoad(iframe.current, (element) => {
+        const doc = element.contentDocument
+        if (doc) holdAnimations(doc, held)
+      }),
+    [held],
+  )
+  // Only the arriving frame takes the present keys and wakes the bar.
+  useEffect(
+    () =>
+      onEachLoad(iframe.current, (element) => {
+        const target = element.contentWindow
+        if (!live || !target) return
+        const untake = takeKeys(target, true)
+        target.addEventListener('pointermove', wake)
+        return () => {
+          untake()
+          target.removeEventListener('pointermove', wake)
+        }
+      }),
+    [live, wake],
+  )
   return (
     <iframe
       ref={iframe}

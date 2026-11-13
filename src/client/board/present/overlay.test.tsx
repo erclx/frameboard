@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
+import type { Transition } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { emulateReducedMotion } from '@/test/motion'
@@ -13,7 +14,7 @@ import { useBoardActions } from '../board-actions'
 import { selectionStore } from '../selection'
 import { fitScale } from './fit'
 import { PresentOverlay } from './overlay'
-import { presentStore, startPresenting } from './store'
+import { presentStore, startPresenting, stepPresenting } from './store'
 
 /** One row on the canvas, laid left to right in the order named, so reading order follows it. */
 function framesOf(...names: string[]): FrameRecord[] {
@@ -25,13 +26,28 @@ function framesOf(...names: string[]): FrameRecord[] {
   )
 }
 
+/** `frames` with the one named `name` holding its own transition. */
+function withTransition(
+  frames: FrameRecord[],
+  name: string,
+  transition: Transition,
+): FrameRecord[] {
+  return frames.map((frame) =>
+    frame.name === name ? { ...frame, transition } : frame,
+  )
+}
+
 function Board() {
   useBoardActions()
   return <PresentOverlay />
 }
 
-function present(frames: FrameRecord[], selected: string[] = []) {
-  const page = pageOf(frames)
+function present(
+  frames: FrameRecord[],
+  selected: string[] = [],
+  transition?: Transition,
+) {
+  const page = { ...pageOf(frames), ...(transition ? { transition } : {}) }
   liveStore.setState({ board: boardOf(page) })
   selectionStore.setState({
     page: selected.length > 0 ? page.ref : null,
@@ -46,7 +62,7 @@ const count = () =>
   screen.getByRole('toolbar', { name: 'Presenting' }).textContent
 
 afterEach(() => {
-  presentStore.setState({ page: null, frame: null })
+  presentStore.setState({ page: null, frame: null, leaving: null })
   selectionStore.setState({ page: null, frames: [] })
   liveStore.setState({ board: null })
 })
@@ -213,7 +229,7 @@ describe('presenting a page', () => {
 
     expect(behind.inert).toBe(true)
 
-    act(() => presentStore.setState({ page: null, frame: null }))
+    act(() => presentStore.setState({ page: null, frame: null, leaving: null }))
 
     expect(behind.inert).toBe(false)
     behind.remove()
@@ -227,6 +243,108 @@ describe('presenting a page', () => {
     )
 
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('a transition between slides', () => {
+  const titled = (name: string) =>
+    screen.getByRole('dialog').querySelector(`iframe[title="${name}"]`)
+  /** The animation the layer holding a frame plays, which draws its side of the transition. */
+  const animationOf = (name: string) => {
+    const layer = titled(name)?.closest('[data-present-layer]')
+    return layer ? getComputedStyle(layer).animationName : null
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('draws the page transition with the leaving slide under the arriving one', () => {
+    present(framesOf('first', 'second'), [], { name: 'fade', ms: 400 })
+
+    act(() => stepPresenting(1))
+
+    expect(animationOf('second')).toBe('fb-present-fade-enter')
+    expect(animationOf('first')).toBe('fb-present-fade-leave')
+  })
+
+  it('takes the leaving slide away once the transition ends', () => {
+    present(framesOf('first', 'second'), [], { name: 'fade', ms: 400 })
+    act(() => stepPresenting(1))
+
+    act(() => vi.advanceTimersByTime(400))
+
+    expect(titled('first')).toBeNull()
+    expect(titled('second')).not.toBeNull()
+  })
+
+  it('lets a frame override win over its page', () => {
+    present(
+      withTransition(framesOf('first', 'second'), 'second', {
+        name: 'push',
+        direction: 'up',
+      }),
+      [],
+      { name: 'fade' },
+    )
+
+    act(() => stepPresenting(1))
+
+    expect(animationOf('second')).toBe('fb-present-push-enter')
+  })
+
+  it('plays the leaving slide its own transition back on a step back', () => {
+    present(
+      withTransition(framesOf('first', 'second'), 'second', { name: 'zoom' }),
+      ['second'],
+    )
+
+    act(() => stepPresenting(-1))
+
+    expect(animationOf('first')).toBe('fb-present-zoom-enter')
+  })
+
+  it('cuts with no page transition, drawing one slide', () => {
+    present(framesOf('first', 'second'))
+
+    act(() => stepPresenting(1))
+
+    expect(titled('first')).toBeNull()
+  })
+
+  it('turns the arriving slide into the leaving one on a press mid-transition', () => {
+    present(framesOf('first', 'second', 'third'), [], { name: 'fade' })
+    act(() => stepPresenting(1))
+
+    act(() => stepPresenting(1))
+
+    expect(titled('first')).toBeNull()
+    expect(animationOf('second')).toBe('fb-present-fade-leave')
+    expect(animationOf('third')).toBe('fb-present-fade-enter')
+  })
+
+  describe('under reduced motion', () => {
+    beforeEach(async () => {
+      await emulateReducedMotion(true)
+    })
+
+    afterEach(async () => {
+      await emulateReducedMotion(false)
+    })
+
+    it('cuts, drawing one slide', () => {
+      present(framesOf('first', 'second'), [], { name: 'slide' })
+
+      act(() => stepPresenting(1))
+
+      expect(titled('first')).toBeNull()
+      expect(animationOf('second')).toBe('none')
+    })
   })
 })
 

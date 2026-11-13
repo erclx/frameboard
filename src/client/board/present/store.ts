@@ -2,11 +2,13 @@ import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { liveStore } from '@/client/live/store'
+import { resolveTransition } from '@/shared/present-transition'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { select, selectionStore } from '../selection'
 import { canvasView } from '../view'
 import { readingOrder } from './order'
+import { CUT, prefersReducedMotion, type Travel, travelOf } from './travel'
 
 /**
  * The page presenting and the frame it shows, by ref, both null while
@@ -17,11 +19,18 @@ import { readingOrder } from './order'
 export interface PresentState {
   page: string | null
   frame: string | null
+  /**
+   * The frame a step left, drawn under the arriving one until its transition
+   * ends, null once it has or when the step cut. `id` tells one step's
+   * leaving from the next, so a press mid-transition starts a fresh one.
+   */
+  leaving: { ref: string; travel: Travel; id: number } | null
 }
 
 export const presentStore = createStore<PresentState>()(() => ({
   page: null,
   frame: null,
+  leaving: null,
 }))
 
 export function usePresent<T>(selector: (state: PresentState) => T): T {
@@ -93,7 +102,7 @@ export function startPresenting(page: PageRecord): void {
   const { page: selectedPage, frames } = selectionStore.getState()
   const first = startFrame(page.frames, selectedPage === page.ref ? frames : [])
   if (!first) return
-  presentStore.setState({ page: page.ref, frame: first.ref })
+  presentStore.setState({ page: page.ref, frame: first.ref, leaving: null })
   document.documentElement.requestFullscreen?.().catch(() => {})
 }
 
@@ -102,8 +111,45 @@ export function stepPresenting(by: 1 | -1): void {
   const { page, frame } = presentStore.getState()
   const shown = pageOf(page)
   if (!shown) return
-  const next = stepWithin(presentOrder(shown.frames, frame), frame, by)
-  if (next && next.ref !== frame) presentStore.setState({ frame: next.ref })
+  const order = presentOrder(shown.frames, frame)
+  const next = stepWithin(order, frame, by)
+  if (!next || next.ref === frame) return
+  const from = order.find((candidate) => candidate.ref === frame)
+  presentStore.setState({
+    frame: next.ref,
+    leaving: from ? leavingOf(shown, from, next, by) : null,
+  })
+}
+
+let steps = 0
+
+/**
+ * What a step from `from` to `to` leaves drawn under the arriving frame. Going
+ * forward the arriving frame's transition plays, and going back the leaving
+ * frame takes back the one it arrived with.
+ */
+function leavingOf(
+  page: PageRecord,
+  from: FrameRecord,
+  to: FrameRecord,
+  by: 1 | -1,
+): PresentState['leaving'] {
+  const back = by < 0
+  const travel = travelOf(
+    resolveTransition(page.transition, (back ? from : to).transition),
+    back,
+    prefersReducedMotion(),
+  )
+  if (travel === CUT) return null
+  steps += 1
+  return { ref: from.ref, travel, id: steps }
+}
+
+/** Ends the transition of step `id`, leaving a later step's alone. */
+export function endTransition(id: number): void {
+  if (presentStore.getState().leaving?.id === id) {
+    presentStore.setState({ leaving: null })
+  }
 }
 
 /**
@@ -114,7 +160,7 @@ export function stepPresenting(by: 1 | -1): void {
 export function leavePresenting(): void {
   const { page, frame } = presentStore.getState()
   if (page === null) return
-  presentStore.setState({ page: null, frame: null })
+  presentStore.setState({ page: null, frame: null, leaving: null })
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   const shown = pageOf(page)?.frames.find(
     (candidate) => candidate.ref === frame,
