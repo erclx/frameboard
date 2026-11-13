@@ -6,7 +6,7 @@ import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { Finding } from '@/shared/records/check'
 
-import { FindingsList } from './findings-list'
+import { FindingsList } from './list'
 
 function finding(path: string, line: number | null): Finding {
   return {

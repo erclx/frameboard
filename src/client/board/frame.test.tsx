@@ -11,7 +11,7 @@ import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
 
-import { openFindings } from './findings-open'
+import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
 import { frameElements } from './frame-dom'
 import { modeStore } from './mode'

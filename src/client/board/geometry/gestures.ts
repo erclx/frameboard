@@ -35,7 +35,7 @@ import {
   startPlacedMove,
 } from '../element/resize'
 import { readTree, treeOf } from '../element/tree'
-import { openFindings } from '../findings-open'
+import { openFindings } from '../findings/open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import { cornerOf } from '../pin-corner'
