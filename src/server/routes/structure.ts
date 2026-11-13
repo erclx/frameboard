@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import { resolveAsset } from '@/server/board/assets'
 import {
   addFrame,
   deleteFrame,
@@ -46,9 +47,11 @@ import {
 } from '@/server/board/sections'
 import { RULES } from '@/server/checks/run'
 import { refuseClaimed } from '@/server/claims/gate'
+import { elementMarkup } from '@/server/edit/insert'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
 import { writeStarterSheet } from '@/server/look/starter'
+import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { DEVICES } from '@/shared/frame-device'
@@ -60,6 +63,7 @@ import {
   TRANSITION_MS,
   TRANSITIONS,
 } from '@/shared/present-transition'
+import { shapePaint } from '@/shared/shape-paint'
 import {
   DEFAULT_LOOK,
   STARTER_ACCENTS,
@@ -91,6 +95,8 @@ const frameAddSchema = z.object({
   height: z.int().min(1).optional(),
   x: coordinate.optional(),
   y: coordinate.optional(),
+  /** A file under the project's `assets/` the new frame holds, at the frame's size. */
+  asset: z.string().min(1).max(1024).optional(),
 })
 const framesSchema = z.object({ refs })
 const frameDuplicateSchema = z.object({
@@ -183,6 +189,34 @@ const projectTokensSchema = z.object({
     .enum(Object.keys(STARTER_FONTS) as [StarterFont])
     .default(DEFAULT_LOOK.font),
 })
+
+/**
+ * The bytes a new frame holds for the asset at `path`, as an insert writes
+ * them, at the size the frame is added at. An audio takes the width alone, so
+ * its frame hugs the player's height, and every other kind refuses `usage`
+ * without both sides.
+ */
+function mediaMarkup(
+  ref: string,
+  path: string,
+  kind: PlaceableKind,
+  { width, height }: { width?: number; height?: number },
+): string {
+  const tag = kind === 'video' || kind === 'audio' ? kind : 'img'
+  if (width === undefined || (tag !== 'audio' && height === undefined)) {
+    throw new FrameboardError(
+      'usage',
+      `A frame added with an asset takes the media's width${tag === 'audio' ? '' : ' and height'}.`,
+      { ref, path },
+    )
+  }
+  // An asset's markup reads neither the paint nor the font.
+  return elementMarkup(
+    { kind: 'asset', path, tag, width, height: height ?? 0 },
+    shapePaint([]),
+    '',
+  )
+}
 
 /**
  * The board's structure writes, each behind `requireWriter`, its body
@@ -380,9 +414,30 @@ export function structureRoutes(
       cwd,
       allowMissing: true,
     })
-    await refuseHeld([`${target.project}/${target.page}/${target.name}`])
+    const targetRef = `${target.project}/${target.page}/${target.name}`
+    await refuseHeld([targetRef])
+    const { asset: path, ...placing } = body
+    let media: string | undefined
+    if (path !== undefined) {
+      const asset = await resolveAsset(join(root, target.project), path)
+      if (!asset.ok) {
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: asset.code,
+              message: asset.message,
+              details: { ref: targetRef, path },
+            },
+          },
+          409,
+        )
+      }
+      media = mediaMarkup(targetRef, path, asset.kind, body)
+    }
     const frame = await recorded(
-      (journal) => addFrame(root, body.ref, { ...body, cwd, journal }),
+      (journal) =>
+        addFrame(root, body.ref, { ...placing, body: media, cwd, journal }),
       (added) => onFrames([added.ref]),
     )
     return c.json({ ok: true, data: frame })
