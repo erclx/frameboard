@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createElement } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   type Action,
@@ -12,6 +12,7 @@ import { CommandPalette } from '@/client/palette/commands'
 import { openOverlay } from '@/client/palette/overlay'
 import type { ElementTree } from '@/shared/records/elements'
 
+import { NUDGE_REST_MS } from '../geometry/actions'
 import { createModeStore } from '../mode'
 import {
   createSelectionStore,
@@ -20,6 +21,7 @@ import {
   selectElements,
 } from '../selection'
 import { elementActions, focusOnBoard } from './actions'
+import type { GroupMember, MemberEdit } from './group'
 
 const PAGE = 'studio/home'
 const HERO = 'studio/home/hero'
@@ -78,12 +80,20 @@ function setup({
   tree = TREE as ElementTree | null,
   boardFocused = (): boolean => true,
   writable = true,
+  members = null as readonly GroupMember[] | null,
+  held = false,
 } = {}) {
   const selection = createSelectionStore()
   const mode = createModeStore(1280)
   const deleted: unknown[][] = []
   /** Each move asked for, with the place it lands an element holding place 1 of 3 on. */
   const moved: unknown[][] = []
+  /** Each group edit a nudge run started, with what it previewed and wrote. */
+  const edits: {
+    previews: (readonly MemberEdit[])[]
+    commits: (readonly MemberEdit[])[]
+    cancelled: boolean
+  }[] = []
   const actions = elementActions({
     page: () => PAGE,
     selection,
@@ -94,6 +104,26 @@ function setup({
     writable: () => writable,
     remove: (...args) => void deleted.push(args),
     move: (at, key, to) => void moved.push([at, key, to(1, 3)]),
+    group: () => members,
+    editGroup: () => {
+      if (held) return null
+      const edit = {
+        previews: [] as (readonly MemberEdit[])[],
+        commits: [] as (readonly MemberEdit[])[],
+        cancelled: false,
+      }
+      edits.push(edit)
+      return {
+        preview: (made) => edit.previews.push(made),
+        commit: async (made) => {
+          edit.commits.push(made)
+          return true
+        },
+        cancel: () => {
+          edit.cancelled = true
+        },
+      }
+    },
   })
   const action = (id: string): Action => {
     const found = actions.find((candidate) => candidate.id === id)
@@ -102,7 +132,7 @@ function setup({
   }
   const at = (index: number) =>
     selectElement(selection, PAGE, { frame: HERO, index, hash: HASH })
-  return { selection, mode, action, at, actions, deleted, moved }
+  return { selection, mode, action, at, actions, deleted, moved, edits }
 }
 
 const cleanups: (() => void)[] = []
@@ -558,5 +588,122 @@ describe('element.forward and element.backward', () => {
     expect(
       await screen.findByRole('option', { name: 'Bring forward' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('nudging elements', () => {
+  const BOX = { kind: 'box', inset: { width: 0, height: 0 } } as const
+  const FREE: GroupMember[] = [
+    {
+      index: 7,
+      box: { x: 0, y: 0, width: 10, height: 10 },
+      placed: { left: 10, top: 20 },
+      read: BOX,
+    },
+    {
+      index: 8,
+      box: { x: 0, y: 50, width: 10, height: 10 },
+      placed: { left: 10, top: 70 },
+      read: BOX,
+    },
+  ]
+  const both = (selection: ReturnType<typeof setup>['selection']) =>
+    selectElements(selection, PAGE, [
+      { frame: HERO, index: 7, hash: HASH },
+      { frame: HERO, index: 8, hash: HASH },
+    ])
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('writes a run of presses on every free element once, after the rest', () => {
+    const { selection, action, edits } = setup({ members: FREE })
+    both(selection)
+
+    action('element.nudgeRight').run()
+    action('element.nudgeRight').run()
+    action('element.nudgeDownFar').run()
+    expect(edits[0]?.commits).toEqual([])
+    vi.advanceTimersByTime(NUDGE_REST_MS)
+
+    expect(edits).toHaveLength(1)
+    expect(edits[0]?.commits).toEqual([
+      [
+        {
+          index: 7,
+          declarations: [
+            { property: 'left', value: '12px' },
+            { property: 'top', value: '30px' },
+          ],
+        },
+        {
+          index: 8,
+          declarations: [
+            { property: 'left', value: '12px' },
+            { property: 'top', value: '80px' },
+          ],
+        },
+      ],
+    ])
+  })
+
+  it('moves one selected free element too', () => {
+    const { action, at, edits } = setup({ members: FREE.slice(0, 1) })
+    at(7)
+
+    action('element.nudgeLeft').run()
+    vi.advanceTimersByTime(NUDGE_REST_MS)
+
+    expect(edits[0]?.commits[0]?.[0]?.declarations[0]).toEqual({
+      property: 'left',
+      value: '9px',
+    })
+  })
+
+  it('stands aside for the frame while no selected element is free', () => {
+    const { selection, action } = setup({
+      members: FREE.map((member) => ({ ...member, placed: null })),
+    })
+    both(selection)
+
+    expect(action('element.nudgeLeft').enabled?.()).toBe(false)
+  })
+
+  it('stands aside while focus sits on a control', () => {
+    const { selection, action } = setup({
+      members: FREE,
+      boardFocused: () => false,
+    })
+    both(selection)
+
+    expect(action('element.nudgeLeft').enabled?.()).toBe(false)
+  })
+
+  it('writes nothing in a frame another session holds', () => {
+    const { selection, action, edits } = setup({ members: FREE, held: true })
+    both(selection)
+
+    action('element.nudgeLeft').run()
+    vi.advanceTimersByTime(NUDGE_REST_MS)
+
+    expect(edits).toEqual([])
+  })
+
+  it('sends the run so far before a press on another selection starts its own', () => {
+    const { selection, action, at, edits } = setup({ members: FREE })
+    both(selection)
+
+    action('element.nudgeRight').run()
+    at(7)
+    action('element.nudgeRight').run()
+
+    expect(edits).toHaveLength(2)
+    expect(edits[0]?.commits).toHaveLength(1)
   })
 })

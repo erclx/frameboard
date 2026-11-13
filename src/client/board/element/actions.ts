@@ -15,6 +15,7 @@ import {
 import { liveStore } from '@/client/live/store'
 import type { ElementTree } from '@/shared/records/elements'
 
+import { NUDGE_REST_MS } from '../geometry/actions'
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
 import { deleteElements, moveElementTo } from '../place/write'
@@ -26,11 +27,20 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
+import { type GroupMember, moveMembers } from './group'
+import { type GroupEdit, shownGroup, startGroupEdit } from './resize'
 import { requestTree, treeOf, trees } from './tree'
 import { down, sibling, siblingPlace, up } from './walk'
 
 /** What a restack row is found by beside its label. */
 const STACK_WORDS = ['layer', 'stack', 'order'] as const
+
+const NUDGES = [
+  { name: 'Left', key: 'ArrowLeft', dx: -1, dy: 0 },
+  { name: 'Right', key: 'ArrowRight', dx: 1, dy: 0 },
+  { name: 'Up', key: 'ArrowUp', dx: 0, dy: -1 },
+  { name: 'Down', key: 'ArrowDown', dx: 0, dy: 1 },
+] as const
 
 export interface ElementContext {
   /** The page the canvas shows. */
@@ -53,6 +63,10 @@ export interface ElementContext {
     key: ElementKey,
     to: (place: number, count: number) => number,
   ) => void
+  /** The selected elements as their live frame shows them, which `shownGroup` reads on the board. */
+  group: (keys: readonly ElementKey[]) => readonly GroupMember[] | null
+  /** Starts a previewed edit of the selected elements, null when their frame is held, which `startGroupEdit` does on the board. */
+  editGroup: (page: string, keys: readonly ElementKey[]) => GroupEdit | null
 }
 
 /**
@@ -182,10 +196,87 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
+  /**
+   * The selected elements an arrow moves, while one of them is placed
+   * freely, since a flow element's place is its container's. With none free
+   * the press falls through to the frame's nudge.
+   */
+  const nudged = () => {
+    const state = selection.getState()
+    if (!elementSelected() || !context.writable() || !context.boardFocused()) {
+      return null
+    }
+    const keys = selectedElements(state)
+    const members = context.group(keys)
+    return state.page && members?.some(({ placed }) => placed !== null)
+      ? { page: state.page, keys, members }
+      : null
+  }
+  // A run of nudges holds its own elements, so the write it sends names the
+  // offsets it started from even when the selection changes before it rests.
+  let run: {
+    keys: readonly ElementKey[]
+    members: readonly GroupMember[]
+    edit: GroupEdit
+    dx: number
+    dy: number
+  } | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const flush = () => {
+    clearTimeout(timer)
+    const done = run
+    run = null
+    if (!done) return
+    const edits = moveMembers(done.members, done.dx, done.dy)
+    if (edits.length > 0 && (done.dx !== 0 || done.dy !== 0)) {
+      void done.edit.commit(edits)
+    } else {
+      done.edit.cancel()
+    }
+  }
+  const nudge = (dx: number, dy: number) => ({
+    enabled: () => nudged() !== null,
+    run: () => {
+      const keys = selectedElements(selection.getState())
+      if (run && !sameKeys(run.keys, keys)) flush()
+      if (!run) {
+        const found = nudged()
+        const edit = found ? context.editGroup(found.page, found.keys) : null
+        if (!found || !edit) return
+        run = { keys: found.keys, members: found.members, edit, dx: 0, dy: 0 }
+      }
+      run.dx += dx
+      run.dy += dy
+      run.edit.preview(moveMembers(run.members, run.dx, run.dy))
+      clearTimeout(timer)
+      timer = setTimeout(flush, NUDGE_REST_MS)
+    },
+  })
   // The walks and the sibling moves take no palette row. Enter, Tab, and the
   // Alt+Shift moves need focus on the board, which the open palette holds,
   // and Esc's walk up is a navigation key. The restack rows cover the moves.
   return [
+    // Ahead of the frame's nudges, which hold the same keys.
+    ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
+      {
+        id: `element.nudge${name}`,
+        label: `Nudge ${name.toLowerCase()}`,
+        group: 'selection',
+        palette: false,
+        keys: [key],
+        repeat: true,
+        ...nudge(dx, dy),
+      },
+      {
+        id: `element.nudge${name}Far`,
+        label: `Nudge ${name.toLowerCase()} 10 px`,
+        group: 'selection',
+        palette: false,
+        keys: [`Shift+${key}`],
+        repeat: true,
+        ...nudge(dx * 10, dy * 10),
+      },
+    ]),
     {
       id: 'element.down',
       label: 'Select child',
@@ -318,6 +409,8 @@ export function useElementActions(page: string): void {
         writable: () => liveStore.getState().canWrite,
         remove: (at, keys) => void deleteElements(at, keys),
         move: (at, key, to) => void moveElementTo(at, key, to),
+        group: (keys) => shownGroup(document, keys),
+        editGroup: startGroupEdit,
       }),
     )
     // The keys walk the one selected frame's tree, so it is fetched once
@@ -345,4 +438,16 @@ export function useElementActions(page: string): void {
       unregister()
     }
   }, [page])
+}
+
+function sameKeys(a: readonly ElementKey[], b: readonly ElementKey[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (key, at) =>
+        key.frame === b[at]?.frame &&
+        key.index === b[at]?.index &&
+        key.hash === b[at]?.hash,
+    )
+  )
 }
