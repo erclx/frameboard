@@ -40,6 +40,8 @@ export interface LiveElement {
   /** Whether it holds text and no element, so its text is edited as a whole. */
   textOnly: boolean
   text: string
+  /** Whether its computed `white-space` shows a newline in its text as a line. */
+  keepsBreaks: boolean
   rotation: Rotation
   placement: Placement
   layout: LiveLayout
@@ -370,6 +372,7 @@ function readLive(element: Element, view: Window): LiveElement {
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
+    keepsBreaks: style.whiteSpace !== 'normal' && style.whiteSpace !== 'nowrap',
     rotation: {
       degrees: degreesOf(style.rotate),
       scale: scaleOf(style.scale),

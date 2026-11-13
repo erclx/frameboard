@@ -51,7 +51,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
 - **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
 - **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
-- **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
+- **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. The field adds no line.
+- **Text breaks:** a pasted newline becomes a space, unless the element's style shows breaks as lines, as a text given lines on the canvas does.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width

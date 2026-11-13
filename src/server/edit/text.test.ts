@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { type Element, parseFrame } from './address'
+import { applyEdit } from './apply'
 import { setText } from './text'
 
 function first(source: string, tag: string): Element {
@@ -25,6 +26,20 @@ describe('setText', () => {
     expect(setText(source, first(source, 'p'), 'x')).toEqual({
       ok: true,
       html: '<p>x</p>',
+    })
+  })
+
+  it('should write a newline as itself, which the parser reads back as the text', () => {
+    const source = '<p>Old</p>'
+
+    const written = setText(source, first(source, 'p'), 'One\nTwo')
+
+    expect(written).toEqual({ ok: true, html: '<p>One\nTwo</p>' })
+    expect(
+      applyEdit(source, { index: 3 }, { kind: 'text', value: 'One\nTwo' }),
+    ).toMatchObject({
+      ok: true,
+      html: '<p>One\nTwo</p>',
     })
   })
 
