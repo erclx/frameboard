@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas } from '../support/canvas'
 import { undo } from '../support/history'
 
 const MOBILE = '[data-frame="studio/home/mobile"]'
@@ -70,10 +71,7 @@ test.describe('frame geometry by hand', () => {
     await expect(mobile).toBeVisible()
     const handle = await center(page.locator('[data-handle="ne"]'))
     await page.mouse.move(handle.x, handle.y)
-    await expect(page.locator('[data-canvas]')).toHaveCSS(
-      'cursor',
-      'nesw-resize',
-    )
+    await expect(liveCanvas(page)).toHaveCSS('cursor', 'nesw-resize')
     const from = await center(mobile)
 
     await drag(page, from, { x: from.x + 120, y: from.y + 60 })
@@ -95,7 +93,7 @@ test.describe('frame geometry by hand', () => {
     server = await serveBoard(board.root)
     await openAsWriter(page, server)
     await expect(page.locator(MOBILE)).toBeVisible()
-    const canvas = await page.locator('[data-canvas]').boundingBox()
+    const canvas = await liveCanvas(page).boundingBox()
     if (!canvas) throw new Error('The canvas has no box on screen')
 
     await drag(

@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas } from '../support/canvas'
 import { openSheetAtDesktop } from '../support/shortcuts-sheet'
 
 test.describe('the board', () => {
@@ -140,7 +141,7 @@ test.describe('the board', () => {
 
   test('holds no live page for a frame far offscreen', async ({ page }) => {
     await page.goto(`${server.url}/p/studio/pricing`)
-    const canvas = page.locator('[data-canvas]')
+    const canvas = liveCanvas(page)
     await expect(page.locator('[data-frame]')).toHaveCount(2)
 
     // Zoom in on the plans frame, leaving faq dozens of viewports away.

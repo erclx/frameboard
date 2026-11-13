@@ -9,6 +9,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveLayer } from '../support/canvas'
 
 const CLI = resolve('dist/cli.js')
 const run = promisify(execFile)
@@ -72,7 +73,7 @@ test.describe('serve and show', () => {
 
   test('zooms the open page to the frame shown', async ({ page }) => {
     await page.goto(`${server.url}/p/studio/home`)
-    const layer = page.locator('[data-layer]')
+    const layer = liveLayer(page)
     await expect(page.locator('[data-frame]')).toHaveCount(2)
     // Fitting both home frames between the two panels scales to about 0.35.
     await expect

@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveLayer } from '../support/canvas'
 
 const BOARD = '/p/webapp/home'
 
@@ -139,7 +140,7 @@ test.describe('Play', () => {
     if (!frame) throw new Error('The hero frame has no document')
     const scrollY = () => frame.evaluate(() => window.scrollY)
     const view = () =>
-      page.locator('[data-layer]').evaluate((layer) => layer.style.transform)
+      liveLayer(page).evaluate((layer) => layer.style.transform)
     const tag = page.getByText('In frame, Esc to leave')
 
     await page.getByRole('button', { name: 'Play' }).click()

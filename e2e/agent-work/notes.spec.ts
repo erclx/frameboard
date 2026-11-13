@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas } from '../support/canvas'
 
 const CLI = resolve('dist/cli.js')
 const SESSION = 'e2e-session-1'
@@ -204,7 +205,7 @@ test.describe('a note thread longer than the canvas', () => {
   async function clearance(
     page: Page,
   ): Promise<{ top: number; bottom: number }> {
-    const canvas = await page.locator('[data-canvas]').boundingBox()
+    const canvas = await liveCanvas(page).boundingBox()
     const card = await page
       .getByRole('region', { name: /^Note \d+$/ })
       .boundingBox()

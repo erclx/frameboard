@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveLayer } from '../support/canvas'
 import { undo } from '../support/history'
 
 test.describe('page structure by hand, and its undo', () => {
@@ -520,11 +521,9 @@ test.describe('page structure by hand, and its undo', () => {
       page,
     }) => {
       await openAsWriter(page)
-      const zoom = await page
-        .locator('[data-layer]')
-        .evaluate(
-          (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
-        )
+      const zoom = await liveLayer(page).evaluate(
+        (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
+      )
       // Zoomed out far enough that 30 screen px cover more than 40 board px,
       // so the short drag below proves the floor reads on screen.
       expect(zoom).toBeLessThan(0.75)

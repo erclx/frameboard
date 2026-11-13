@@ -9,6 +9,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { liveCanvas, liveLayer } from '../support/canvas'
 
 const HOME = '/p/studio/home'
 
@@ -69,8 +70,8 @@ test.describe('the live board', () => {
   })
 
   test('reloads a changed frame alone and keeps the view', async ({ page }) => {
-    const layer = page.locator('[data-layer]')
-    await page.locator('[data-canvas]').hover()
+    const layer = liveLayer(page)
+    await liveCanvas(page).hover()
     await page.mouse.wheel(120, 80)
     const view = await layer.evaluate((element) => element.style.transform)
 
