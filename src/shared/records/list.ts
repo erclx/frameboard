@@ -1,10 +1,18 @@
 import { z } from 'zod'
 
 import { DEVICES } from '../frame-device'
+import { DIRECTIONS, TRANSITIONS } from '../present-transition'
 
 const recordErrorSchema = z
   .object({ path: z.string(), message: z.string() })
   .nullable()
+
+/** A transition as present mode reads it, `direction` and `ms` absent at their default. */
+export const transitionRecordSchema = z.object({
+  name: z.enum(TRANSITIONS),
+  direction: z.enum(DIRECTIONS).optional(),
+  ms: z.int().optional(),
+})
 
 export const frameRecordSchema = z.object({
   ref: z.string(),
@@ -30,6 +38,8 @@ export const frameRecordSchema = z.object({
   widths: z.array(z.object({ width: z.number(), height: z.number() })),
   /** The device the board draws around the frame, absent when it has none. */
   device: z.enum(DEVICES).optional(),
+  /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
+  transition: transitionRecordSchema.optional(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })
@@ -58,6 +68,8 @@ export const pageRecordSchema = z.object({
   path: z.string(),
   index: z.number(),
   layoutError: recordErrorSchema,
+  /** The transition present mode draws between the page's slides, absent when it holds none. */
+  transition: transitionRecordSchema.optional(),
   frames: z.array(frameRecordSchema),
   /** Bottom first, as frames are. */
   sections: z.array(sectionRecordSchema),

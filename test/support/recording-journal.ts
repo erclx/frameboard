@@ -19,6 +19,7 @@ export type JournalCall =
       before: unknown
       after: unknown
     }
+  | { kind: 'present'; page: string; before: unknown; after: unknown }
   | { kind: 'pages'; project: string; before: string[]; after: string[] }
   | { kind: 'project'; file: string; before: unknown; after: unknown }
   | { kind: 'moved'; from: string; to: string }
@@ -50,6 +51,9 @@ export function recordingJournal(root: string): {
       },
       section: (page, section, before, after) => {
         calls.push({ kind: 'section', page: at(page), section, before, after })
+      },
+      present: (page, before, after) => {
+        calls.push({ kind: 'present', page: at(page), before, after })
       },
       pages: (project, before, after) => {
         calls.push({ kind: 'pages', project: at(project), before, after })

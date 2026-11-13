@@ -17,6 +17,7 @@ import {
   FRAME_SIZES,
 } from '@/shared/frame-sizes'
 import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
+import { type Transition, transitionOf } from '@/shared/present-transition'
 import {
   type LayoutEntry,
   type LayoutFile,
@@ -64,6 +65,8 @@ export interface Placement {
   widths: LinkedWidth[]
   /** Absent for a frame with no device or one holding a value no reader knows. */
   device?: Device
+  /** Absent for a frame with no override or one holding a value no reader knows. */
+  transition?: Transition
   placed: boolean
 }
 
@@ -172,6 +175,7 @@ export function placeFrames(
     // beside the key reads as off and the hug step never measures it.
     const scroll = entry.scroll ?? false
     const device = deviceOf(entry.device)
+    const transition = transitionOf(entry.transition)
     placements.set(name, {
       box: { x: entry.x, y: entry.y, width: entry.width, height: entry.height },
       order: entry.order,
@@ -182,6 +186,7 @@ export function placeFrames(
       scroll,
       widths: widthsOf(entry.widths),
       ...(device ? { device } : {}),
+      ...(transition ? { transition } : {}),
       placed: true,
     })
   }
@@ -288,10 +293,12 @@ export async function scanPage(
   let frames: Record<string, LayoutEntry> = {}
   let sections: Record<string, SectionEntry> = {}
   let layoutError: PageRecord['layoutError'] = null
+  let transition: Transition | null = null
   try {
     const file = await readRecord(layoutPath, layoutSpec)
     frames = file.frames
     sections = file.sections ?? {}
+    transition = pageTransitionOf(file)
   } catch (error) {
     if (!(error instanceof FrameboardError)) throw error
     layoutError = { path: layoutPath, message: error.message }
@@ -323,9 +330,17 @@ export async function scanPage(
     path,
     index,
     layoutError,
+    ...(transition ? { transition } : {}),
     frames: stacked,
     sections: sectionRecords(sections, stacked),
   }
+}
+
+/** The transition a layout's `present` key holds, null for none or one no reader knows. */
+export function pageTransitionOf(file: LayoutFile): Transition | null {
+  const present = file.present
+  if (typeof present !== 'object' || present === null) return null
+  return transitionOf((present as { transition?: unknown }).transition)
 }
 
 /** The page's sections bottom first, each naming its members in stacking order. */

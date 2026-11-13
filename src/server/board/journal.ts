@@ -21,6 +21,8 @@ export interface Journal {
     before: SectionEntry | undefined,
     after: SectionEntry | undefined,
   ): void
+  /** The `present` key in the layout of the page folder `page`, undefined when it has none. */
+  present(page: string, before: unknown, after: unknown): void
   /** The page order `project.json` holds in the project folder `project`. */
   pages(project: string, before: string[], after: string[]): void
   /** The folder and archive keys the `project.json` at `file` holds on each side of a filing. */

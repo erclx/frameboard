@@ -68,6 +68,9 @@ export const layoutEntrySchema = z.looseObject({
   // The device the board draws around the frame, phone or tablet. A value of
   // another kind parses as written and reads as none, as widths does.
   device: z.unknown().optional(),
+  // The transition the frame arrives with in present mode, over its page's.
+  // A value no reader knows parses as written and reads as none.
+  transition: z.unknown().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>
@@ -88,6 +91,9 @@ export const layoutFileSchema = z.looseObject({
   frames: z.record(z.string(), layoutEntrySchema),
   // Optional, so a layout from before sections reads and writes as it was.
   sections: z.record(z.string(), sectionEntrySchema).optional(),
+  // What present mode draws for the page, being its slide transition. A
+  // value no reader knows parses as written and reads as none.
+  present: z.unknown().optional(),
 })
 
 export type LayoutFile = z.infer<typeof layoutFileSchema>

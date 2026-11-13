@@ -27,6 +27,7 @@ import {
   setBoxes,
   setFrameDevice,
   setFrameFlag,
+  setFrameTransition,
   setHeightModes,
   setMeasured,
   skeleton,
@@ -804,6 +805,66 @@ describe('frames', () => {
         })
 
         expect(copy.box.x).toBe(1520 + 390 + 44 + 80)
+      })
+    })
+
+    describe('transition', () => {
+      it('sets an override on the entry and leaves the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+
+        const set = await setFrameTransition(
+          root,
+          'webapp/home/hero',
+          { name: 'push', direction: 'up' },
+          { cwd: root },
+        )
+
+        expect(set.transition).toEqual({ name: 'push', direction: 'up' })
+        expect(layout('webapp/home').frames.hero.transition).toEqual({
+          name: 'push',
+          direction: 'up',
+        })
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('clears an override, leaving no key and the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+        await setFrameTransition(
+          root,
+          'webapp/home/hero',
+          { name: 'fade' },
+          { cwd: root },
+        )
+
+        const cleared = await setFrameTransition(
+          root,
+          'webapp/home/hero',
+          null,
+          { cwd: root },
+        )
+
+        expect(cleared).not.toHaveProperty('transition')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty(
+          'transition',
+        )
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('reads an unknown transition as none and leaves it as written', async () => {
+        const root = open()
+        hugHero(root, { transition: { name: 'cube' } })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved).not.toHaveProperty('transition')
+        expect(layout('webapp/home').frames.hero.transition).toEqual({
+          name: 'cube',
+        })
       })
     })
 

@@ -13,6 +13,7 @@ import {
 } from '@/shared/frame-sizes'
 import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
+import { type Transition, transitionOf } from '@/shared/present-transition'
 import type {
   LayoutEntry,
   LayoutFile,
@@ -840,6 +841,23 @@ export async function setFrameDevice(
   })
 }
 
+/**
+ * Sets the transition a frame arrives with in present mode, over its page's,
+ * or clears it with null so the frame takes its page's. The frame's file and
+ * box are left as they stand.
+ */
+export async function setFrameTransition(
+  root: string,
+  ref: string,
+  transition: Transition | null,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  return updatePlacement(root, ref, options, (placement) => {
+    const { transition: _held, ...rest } = placement
+    return transition ? { ...rest, transition } : rest
+  })
+}
+
 export async function deleteFrame(
   root: string,
   ref: string,
@@ -974,7 +992,8 @@ class PageLayout {
    * written while it lists one and removed once it lists none, and a held
    * value no reader understands is left as it stands. `device` is written
    * while the frame holds one and removed once it is cleared, leaving a held
-   * value no reader understands as `widths` does.
+   * value no reader understands as `widths` does. `transition` is written
+   * the same way as `device`.
    */
   set(
     name: string,
@@ -986,6 +1005,7 @@ class PageLayout {
       scroll,
       widths,
       device,
+      transition,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
     }: Placement,
@@ -1011,12 +1031,31 @@ class PageLayout {
         ? { widths: widths.map(({ width, height }) => ({ width, height })) }
         : {}),
       ...(device ? { device } : {}),
+      ...(transition ? { transition: { ...transition } } : {}),
     }
     if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
     }
     if (!device && deviceOf(held?.device)) delete entry.device
+    if (!transition && transitionOf(held?.transition)) delete entry.transition
     this.file.frames[name] = entry
+    this.changed = true
+  }
+
+  /**
+   * Sets the page's transition on the `present` key, or clears it with null,
+   * keeping any other key `present` holds and dropping `present` once empty.
+   */
+  setTransition(transition: Transition | null): void {
+    const held = this.file.present
+    const present: Record<string, unknown> =
+      typeof held === 'object' && held !== null && !Array.isArray(held)
+        ? { ...held }
+        : {}
+    if (transition) present.transition = { ...transition }
+    else delete present.transition
+    if (Object.keys(present).length > 0) this.file.present = present
+    else delete this.file.present
     this.changed = true
   }
 
@@ -1124,6 +1163,9 @@ function reportEntries(
     const from = wasSections[section]
     const to = nowSections[section]
     if (!isDeepStrictEqual(from, to)) journal.section(page, section, from, to)
+  }
+  if (!isDeepStrictEqual(before?.present, after.present)) {
+    journal.present(page, before?.present, after.present)
   }
 }
 
