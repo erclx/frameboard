@@ -242,7 +242,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
             {...PANEL}
             groupResizeBehavior="preserve-pixel-size"
           >
-            <InspectorPanel />
+            <InspectorPanel open={current?.ref} />
           </ResizablePanel>
         </>
       )}

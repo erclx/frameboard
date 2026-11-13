@@ -19,6 +19,11 @@ import {
 } from '@/client/live/structure'
 import type { Device } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
+import {
+  TRANSITION_LABELS,
+  type TransitionName,
+  TRANSITIONS,
+} from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
@@ -31,7 +36,9 @@ import {
   stopFrameRename,
   useRenamingFrame,
 } from '../structure/actions'
+import { TypePicker } from './element/typography'
 import { type NumberChange, NumberField } from './number-field'
+import { TransitionNote } from './page-section'
 import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
@@ -180,6 +187,11 @@ export function FrameSection({
       <DeviceRow
         frames={frames}
         disabled={!canWrite || locked}
+        calls={calls ?? structure}
+      />
+      <SlideRow
+        frames={frames}
+        disabled={!canWrite}
         calls={calls ?? structure}
       />
       <PreviewRow frames={frames} />
@@ -381,6 +393,56 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
         can include it.
       </p>
     </>
+  )
+}
+
+const SAME_AS_PAGE = 'page'
+
+/**
+ * The transition each frame arrives with while presenting, Same as page or
+ * a named one over its page's, reading Mixed where the frames differ. A
+ * pick writes every frame's `layout.json` entry in one undo step.
+ */
+function SlideRow({ frames, disabled, calls }: HeightRowProps) {
+  const values = frames.map(
+    (frame): TransitionName | typeof SAME_AS_PAGE =>
+      frame.transition?.name ?? SAME_AS_PAGE,
+  )
+  const current = values.every((value) => value === values[0])
+    ? (values[0] ?? null)
+    : null
+  const label = (value: TransitionName | typeof SAME_AS_PAGE) =>
+    value === SAME_AS_PAGE ? 'Same as page' : TRANSITION_LABELS[value]
+  return (
+    <div className="mt-2.5">
+      <span
+        aria-hidden
+        className="mb-1.5 block text-caption text-muted-foreground"
+      >
+        This slide
+      </span>
+      <TypePicker
+        label="This slide"
+        shown={current === null ? 'Mixed' : label(current)}
+        current={current}
+        options={[
+          { value: SAME_AS_PAGE, name: label(SAME_AS_PAGE) },
+          ...TRANSITIONS.map((value) => ({ value, name: label(value) })),
+        ]}
+        disabled={disabled}
+        onPick={(value) => {
+          const name = TRANSITIONS.find((candidate) => candidate === value)
+          calls
+            .setFrameTransition(
+              frames.map((frame) => frame.ref),
+              name ? { name } : null,
+            )
+            .catch(reportRefusal('Couldn’t set the slide transition'))
+        }}
+        className="w-full"
+      />
+      <TransitionNote />
+    </div>
   )
 }
 
