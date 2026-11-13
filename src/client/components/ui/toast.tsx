@@ -21,13 +21,18 @@ function ToastPortal({ ...props }: ToastPrimitive.Portal.Props) {
   return <ToastPrimitive.Portal data-slot="toast-portal" {...props} />
 }
 
-/** The board's toolbar publishes `--toast-lift` while it shows, so no toast lands on it. */
+/**
+ * The board's toolbar publishes `--toast-lift` while it shows, so no toast
+ * lands on it. The stack sits above a dialog's overlay, so a toast raised from
+ * inside one, such as Undo on a project deleted from an open folder, takes
+ * its click.
+ */
 function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   return (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
       className={cn(
-        'pointer-events-none fixed right-4 bottom-[var(--toast-lift,1rem)] z-50 w-[340px] max-w-[calc(100vw-2rem)] outline-none',
+        'pointer-events-none fixed right-4 bottom-[var(--toast-lift,1rem)] z-[60] w-[340px] max-w-[calc(100vw-2rem)] outline-none',
         className,
       )}
       {...props}

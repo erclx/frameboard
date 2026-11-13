@@ -327,6 +327,26 @@ describe('renaming in place', () => {
       expect(getComputedStyle(pen).opacity).toBe('1')
     })
 
+    it('lays the Deleted toast over the open folder, so its Undo takes a click', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      act(() => within(panel).getByRole('link', { name: /^web/ }).focus())
+
+      await userEvent.keyboard('{Backspace}')
+      const undo = await screen.findByRole('button', { name: 'Undo' })
+
+      await waitFor(() => {
+        const box = undo.getBoundingClientRect()
+        expect(
+          document.elementFromPoint(
+            box.left + box.width / 2,
+            box.top + box.height / 2,
+          ),
+        ).toBe(undo)
+      })
+    })
+
     it('shows no pen in a tab that cannot write', async () => {
       renderHome({ canWrite: false })
       await userEvent.click(folder())
