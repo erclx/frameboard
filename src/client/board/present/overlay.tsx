@@ -21,7 +21,7 @@ import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
-import { readSteps, showSteps, type StepGroup } from './steps'
+import { readSteps, showSteps, type StepGroup, touchesSteps } from './steps'
 import {
   countSteps,
   endTransition,
@@ -263,13 +263,15 @@ function Presenting({ frame, leaving, at, count }: PresentingProps) {
 
   if (!frame) return null
   const travel = leaving?.travel ?? CUT
-  // Keyed by frame, so a frame turning from arriving to leaving keeps its document.
+  // Keyed by frame and ordered by ref rather than by role, so a press that
+  // swaps the two roles moves neither node. A moved iframe loads again, and
+  // the layer's own stacking puts the arriving one on top.
   const layers = [
     ...(leaving && leaving.frame.ref !== frame.ref
       ? [{ frame: leaving.frame, role: 'leave' as const }]
       : []),
     { frame, role: 'enter' as const },
-  ]
+  ].sort((a, b) => (a.frame.ref < b.frame.ref ? -1 : 1))
   return (
     <div
       ref={layer}
@@ -402,6 +404,8 @@ function useStepsWhileLive(
   const [loaded, setLoaded] = useState(false)
   const read = useRef<{ doc: Document; groups: StepGroup[] } | null>(null)
   const revealed = useRef(0)
+  /** The group the last press revealed, which a reread keeps entering. */
+  const entering = useRef<number | null>(null)
 
   useEffect(() => {
     if (!live) return
@@ -415,13 +419,17 @@ function useStepsWhileLive(
         countSteps(groups.length)
         read.current = { doc, groups }
         revealed.current = shownStep()
-        showSteps(doc, groups, revealed.current)
+        if (entering.current !== revealed.current - 1) entering.current = null
+        showSteps(doc, groups, revealed.current, entering.current)
       }
+      entering.current = null
       reread()
       setLoaded(true)
       const view = doc.defaultView
       if (!view) return
-      const observer = new view.MutationObserver(reread)
+      const observer = new view.MutationObserver((records) => {
+        if (touchesSteps(records)) reread()
+      })
       observer.observe(doc.documentElement, {
         subtree: true,
         childList: true,
@@ -436,9 +444,9 @@ function useStepsWhileLive(
     return presentStore.subscribe(() => {
       const shown = shownStep()
       if (!read.current || shown === revealed.current) return
-      const entering = shown > revealed.current ? shown - 1 : null
+      entering.current = shown > revealed.current ? shown - 1 : null
       revealed.current = shown
-      showSteps(read.current.doc, read.current.groups, shown, entering)
+      showSteps(read.current.doc, read.current.groups, shown, entering.current)
     })
   }, [live])
 

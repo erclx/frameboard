@@ -348,24 +348,40 @@ describe('a transition between slides', () => {
   })
 })
 
+/** The loaded document of the presented frame named `name`, once it is the frame's own. */
+async function documentOf(name: string): Promise<Document> {
+  return vi.waitFor(() => {
+    const doc = screen
+      .getByRole('dialog')
+      .querySelector<HTMLIFrameElement>(
+        `iframe[title="${name}"]`,
+      )?.contentDocument
+    if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
+      throw new Error(`${name} is still loading`)
+    }
+    return doc
+  })
+}
+
+describe('a press back during a transition', () => {
+  it('keeps the document of the slide it returns to', async () => {
+    present(framesOf('first', 'second'), [], { name: 'fade' })
+    const doc = await documentOf('first')
+    doc.body.dataset.kept = 'yes'
+    act(() => stepPresenting(1))
+
+    act(() => stepPresenting(-1))
+
+    const returned = screen
+      .getByRole('dialog')
+      .querySelector<HTMLIFrameElement>('iframe[title="first"]')
+    expect(returned?.contentDocument?.body.dataset.kept).toBe('yes')
+  })
+})
+
 describe('steps inside a slide', () => {
   const STEPPED =
     '<p id="a" data-step="1">One</p><p id="b" data-step="2">Two</p>'
-
-  /** The loaded document of the presented frame named `name`, once it is the frame's own. */
-  async function documentOf(name: string): Promise<Document> {
-    return vi.waitFor(() => {
-      const doc = screen
-        .getByRole('dialog')
-        .querySelector<HTMLIFrameElement>(
-          `iframe[title="${name}"]`,
-        )?.contentDocument
-      if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
-        throw new Error(`${name} is still loading`)
-      }
-      return doc
-    })
-  }
 
   /** Writes `body` into a presented frame, as an agent's file would hold it. */
   async function fill(name: string, body: string): Promise<Document> {
@@ -392,6 +408,24 @@ describe('steps inside a slide', () => {
     await userEvent.keyboard('{ArrowRight}')
 
     expect(shownFrame()?.title).toBe('second')
+  })
+
+  it('keeps a step entering while the slide changes something else', async () => {
+    present(framesOf('first'))
+    const doc = await fill(
+      'first',
+      '<p id="a" data-step="1" data-step-effect="fade">One</p>',
+    )
+    await dots('Step 0 of 1')
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 1 of 1')
+
+    doc.body.append(doc.createElement('span'))
+    await act(async () => {})
+
+    expect(
+      getComputedStyle(doc.getElementById('a') as Element).animationName,
+    ).toBe('frameboard-step-fade')
   })
 
   it('hides the last revealed step on a press back', async () => {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { clearSteps, readSteps, showSteps } from './steps'
+import { clearSteps, readSteps, showSteps, touchesSteps } from './steps'
 
 /** A document holding `body`, standing in for a presented frame. */
 function slide(body: string): Document {
@@ -23,6 +23,59 @@ function visibility(doc: Document): Record<string, string> {
     ]),
   )
 }
+
+/** The records one change to `doc` leaves an observer of its subtree. */
+function recordsOf(doc: Document, change: () => void): MutationRecord[] {
+  const observer = new MutationObserver(() => {})
+  observer.observe(doc.documentElement, {
+    subtree: true,
+    childList: true,
+    attributeFilter: ['data-step'],
+  })
+  change()
+  const records = observer.takeRecords()
+  observer.disconnect()
+  return records
+}
+
+describe('touchesSteps', () => {
+  it('reads an unmarked node added or removed as no change to the steps', () => {
+    const doc = slide('<p id="a" data-step="1"></p><span id="tick"></span>')
+
+    const added = recordsOf(doc, () => doc.body.append(doc.createElement('i')))
+    const removed = recordsOf(doc, () => doc.getElementById('tick')?.remove())
+
+    expect([touchesSteps(added), touchesSteps(removed)]).toEqual([false, false])
+  })
+
+  it('reads a marked node added, alone or inside another, as a change', () => {
+    const doc = slide('<p id="a" data-step="1"></p>')
+    const wrapped = doc.createElement('div')
+    wrapped.innerHTML = '<p data-step="2"></p>'
+
+    const records = recordsOf(doc, () => doc.body.append(wrapped))
+
+    expect(touchesSteps(records)).toBe(true)
+  })
+
+  it('reads a marked node removed as a change', () => {
+    const doc = slide('<p id="a" data-step="1"></p>')
+
+    const records = recordsOf(doc, () => doc.getElementById('a')?.remove())
+
+    expect(touchesSteps(records)).toBe(true)
+  })
+
+  it('reads a step attribute written as a change', () => {
+    const doc = slide('<p id="a" data-step="1"></p>')
+
+    const records = recordsOf(doc, () =>
+      doc.getElementById('a')?.setAttribute('data-step', '2'),
+    )
+
+    expect(touchesSteps(records)).toBe(true)
+  })
+})
 
 describe('readSteps', () => {
   it('orders steps by number, keeping document order for ties', () => {

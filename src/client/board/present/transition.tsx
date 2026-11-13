@@ -95,8 +95,9 @@ function animationName(name: TransitionName, role: LayerRole): string {
 
 /**
  * One slide filling the overlay, playing its side of the step's transition.
- * A leaving layer sits under the arriving one and takes no pointer, so a
- * press during a transition lands on the slide arriving.
+ * A leaving layer stacks under the arriving one wherever it sits among its
+ * siblings and takes no pointer, so a press during a transition lands on
+ * the slide arriving.
  */
 export function TransitionLayer({
   role,
@@ -113,7 +114,7 @@ export function TransitionLayer({
       data-present-layer={role}
       data-transition={playing ? travel.transition.name : undefined}
       inert={role === 'leave' || undefined}
-      className="absolute inset-0 overflow-hidden data-[present-layer=leave]:pointer-events-none"
+      className="absolute inset-0 overflow-hidden data-[present-layer=leave]:pointer-events-none data-[present-layer=leave]:-z-10"
       style={playing ? layerStyle(role, travel) : undefined}
     >
       {children}

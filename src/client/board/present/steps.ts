@@ -120,6 +120,30 @@ export function readSteps(doc: Document): StepGroup[] {
   return groups
 }
 
+const MARKED = `[${STEP_ATTRIBUTES.step}]`
+
+function holdsStep(node: Node): boolean {
+  return (
+    node.nodeType === 1 &&
+    ((node as Element).matches(MARKED) ||
+      (node as Element).querySelector(MARKED) !== null)
+  )
+}
+
+/**
+ * Whether a batch of mutations can change a document's steps: a step
+ * attribute written, or a marked element added or removed. Anything else a
+ * slide does to itself, a ticking clock or a style the board injects, leaves
+ * the steps as read.
+ */
+export function touchesSteps(records: readonly MutationRecord[]): boolean {
+  return records.some(
+    (record) =>
+      record.type === 'attributes' ||
+      [...record.addedNodes, ...record.removedNodes].some(holdsStep),
+  )
+}
+
 /**
  * Shows the first `shown` groups and hides the rest. With `entering`, the
  * group at that index plays its entrances, and every other shown group
