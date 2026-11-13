@@ -4,6 +4,7 @@ import { createLiveStore } from '@/client/live/store'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
+import { writeElement } from '../inspector/element/write'
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
 import { placementStore } from './tool'
@@ -744,6 +745,53 @@ describe('moveElementTo', () => {
       { ref: HERO.ref, hash: ANSWERED, index: 5, parent: 3, before: 7 },
       { ref: HERO.ref, hash: SECOND_HASH, index: 6, parent: 3, before: null },
     ])
+  })
+
+  it('sends a move pressed from the bytes a style edit read, once the edit answered and before the tree caught up, from the hash the edit answered', async () => {
+    const { sent, send } = answers(
+      { ref: HERO.ref, index: 4, hash: ANSWERED },
+      { ref: HERO.ref, index: 5, hash: SECOND_HASH },
+    )
+    const selection = createSelectionStore()
+    let answered = () => {}
+    const reached = new Promise<void>((resolve) => (answered = resolve))
+    let caughtUp = () => {}
+    const held = new Promise<void>((resolve) => (caughtUp = resolve))
+    const picked = writeElement(
+      'studio/home',
+      FIRST_DIV,
+      { kind: 'style', property: 'background-color', value: '#e02b2b' },
+      {
+        selection,
+        send,
+        notify: () => {},
+        catchUp: () => {
+          answered()
+          return held
+        },
+      },
+    )
+    await reached
+
+    // The Layers row still keys the element off the tree at the bytes the edit read.
+    const moving = moveElementTo('studio/home', FIRST_DIV, (p) => p + 1, {
+      selection,
+      live: createLiveStore(),
+      send,
+      tree,
+    })
+    caughtUp()
+    const [written, moved] = await Promise.all([picked, moving])
+
+    expect(written).toBe(true)
+    expect(sent[1]).toEqual({
+      ref: HERO.ref,
+      hash: ANSWERED,
+      index: 4,
+      parent: 3,
+      before: 6,
+    })
+    expect(moved).toEqual({ frame: HERO.ref, index: 5, hash: SECOND_HASH })
   })
 
   it('refuses a frame another session holds and sends nothing', async () => {
