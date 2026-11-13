@@ -849,12 +849,15 @@ describe('moveElementTo', () => {
         live: createLiveStore(),
         send,
         tree,
-        notify: ({ title }) => told.push(title),
+        notify: ({ title, description }) =>
+          told.push(`${title}: ${description}`),
       },
     )
 
     expect(moved).toBeNull()
-    expect(told).toEqual(['Nothing moved'])
+    expect(told).toEqual([
+      'Nothing moved: The parser would move it. The element stays where it was.',
+    ])
     expect(selection.getState().element).toEqual(FIRST_DIV)
   })
 })
