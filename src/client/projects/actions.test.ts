@@ -250,6 +250,8 @@ describe('the Deleted toast', () => {
         group: 'edit',
         palette: false,
         keys: ['$mod+KeyZ'],
+        // As the history row's, lit only while the tab may write.
+        enabled: () => liveStore.getState().canWrite,
         run: () => {
           undone++
         },
@@ -326,6 +328,18 @@ describe('the Deleted toast', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
 
     expect([...pinnedProjects()]).toEqual(['studio'])
+  })
+
+  it('leaves the pin off when the undo cannot run', async () => {
+    renderDeleting()
+    act(() => findAction('project.pin')?.run())
+    await deleteAndLand()
+    act(() => liveStore.setState({ canWrite: false }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    expect(undone).toBe(0)
+    expect([...pinnedProjects()]).toEqual([])
   })
 
   it("stays through the delete's own step", async () => {

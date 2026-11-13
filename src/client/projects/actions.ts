@@ -718,9 +718,14 @@ function watchDeleteSteps(): {
   const stop = () => {
     if (!waiting) unsubscribe()
   }
-  const undo = () => {
+  // A pin lives outside the journal, so the delete's drop is put back by hand,
+  // and only once the undo runs, since a pin on a project still deleted would
+  // pin a later project of that name.
+  const undoFor = (project: ProjectRecord, pinned: boolean) => () => {
     const action = findAction('edit.undo')
-    if (action && isEnabled(action)) action.run()
+    if (!action || !isEnabled(action)) return
+    action.run()
+    if (pinned && !pinnedProjects().has(project.name)) togglePin(project.name)
   }
   return {
     stop,
@@ -741,15 +746,13 @@ function watchDeleteSteps(): {
           title: key ? `Undo ${keyLabel(key)}` : 'Undo',
           'aria-keyshortcuts': key ? keyLabel(key) : undefined,
           onClick: () => {
+            const undo = undoFor(project, pinned)
             if (steps === 0) waiting = undo
             else {
               unsubscribe()
               undo()
             }
             close()
-            // A pin lives outside the journal, so the delete's drop is put back by hand.
-            if (pinned && !pinnedProjects().has(project.name))
-              togglePin(project.name)
           },
         },
       })
