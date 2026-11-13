@@ -324,18 +324,24 @@ const DEVICE_CHOICES = [
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   return (
-    <ChoiceRow
-      id="inspector-device"
-      title="Device"
-      choices={DEVICE_CHOICES}
-      frames={frames}
-      valueOf={(frame) => frame.device ?? 'none'}
-      disabled={disabled}
-      refusal="Couldn’t set the device"
-      write={(refs, device) =>
-        calls.setDevice(refs, device === 'none' ? null : device)
-      }
-    />
+    <>
+      <ChoiceRow
+        id="inspector-device"
+        title="Device"
+        choices={DEVICE_CHOICES}
+        frames={frames}
+        valueOf={(frame) => frame.device ?? 'none'}
+        disabled={disabled}
+        refusal="Couldn’t set the device"
+        write={(refs, device) =>
+          calls.setDevice(refs, device === 'none' ? null : device)
+        }
+      />
+      <p className="mt-1.5 text-caption text-muted-foreground">
+        Drawn by the board around the frame. The file is unchanged, and export
+        can include it.
+      </p>
+    </>
   )
 }
 
