@@ -62,11 +62,15 @@ These catch a capture out.
 
 - Capture refuses `image-missing` for an `<img>` that errored or was still loading when the budget ran out, naming its `src` and element index
 - Each image waits on its `decode()`, since one marked `decoding="async"` can be loaded and still paint as an empty box. A lazy image turns eager in the page, never the file
-- Under `require`, each `<video>` is held paused on its poster, or on its first frame without one, so two captures match. Autoplay is dropped and `preload="none"` lifted in the page, never the file
-- A video with no picture by the end of the budget never refuses. It lands in the image's `videos` with its frame ref, element index, `src`, and `error` or `pending`, and a hanging request spends what is left of the budget
-- The PNG route and thumbnails take the same wait and return bytes alone, so they cannot name an unloaded video
 - Under `require`, running animations with a finite end are awaited and never refused. An infinite one is skipped, and a scene stepped by a script timer stays out of reach
 - Capture never emulates reduced motion, so a frame meant to capture alike every run shows a still
+
+A video waits under `require` and never refuses.
+
+- Each `<video>` is held paused on its poster, or its first frame without one, with autoplay dropped and `preload="none"` lifted in the page, never the file, so two captures match
+- One with no picture by the end of the budget lands in the image's `videos` with its frame ref, element index, `src`, and `error` or `pending`
+- A hanging request spends what is left of the budget, once per open
+- The PNG route and thumbnails take the same wait and return bytes alone, so they cannot name an unloaded video
 
 A seeked shot skips that settle.
 

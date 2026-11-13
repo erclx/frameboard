@@ -16,10 +16,12 @@ Owns the agent interface, being every verb an agent or script runs, the `docs` v
 Owns the program and the conventions every verb shares, with `index.ts` bundled to `dist/cli.js` and `hook.ts` to `dist/hook.js`, the check hook's own entry.
 
 - Every verb takes `--json` and `--root`, exits with a stable code, and never prompts, because an agent cannot answer a prompt
-- With `--json`, stdout carries one envelope, `{ ok, data }` or `{ ok, error }`, even on a parse error, and each error code keeps one exit in `src/shared/errors.ts`. A failing verb that still has a result, as `check` does, answers it as `data` beside `error`
+- With `--json`, stdout carries one envelope, `{ ok, data }` or `{ ok, error }`, even on a parse error, and each error code keeps one exit in `src/shared/errors.ts`
 - A page ref is `<page>` or `<project>/<page>`, a frame ref adds `/<frame>`, and an argument ending in `.html` is the frame file itself
 - A verb given no project takes the board's only project, else fails `project-required`, since guessing would write to the wrong one
 - Every `edit` and `remove` refusal exits 7 with its reason as the code, so a script tells a refused write from a missing frame
+
+A failing verb that still has a result, as `check` does, answers it as `data` beside `error`.
 
 ### `src/cli/commands/`
 
