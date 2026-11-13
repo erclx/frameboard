@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { DEVICES } from '../frame-device'
+
 const recordErrorSchema = z
   .object({ path: z.string(), message: z.string() })
   .nullable()
@@ -26,6 +28,8 @@ export const frameRecordSchema = z.object({
   scroll: z.boolean(),
   /** The extra widths the frame also shows at, beside it in a row, none when it lists none. */
   widths: z.array(z.object({ width: z.number(), height: z.number() })),
+  /** The device the board draws around the frame, absent when it has none. */
+  device: z.enum(DEVICES).optional(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

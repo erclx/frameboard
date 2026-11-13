@@ -65,6 +65,9 @@ export const layoutEntrySchema = z.looseObject({
       z.unknown(),
     ])
     .optional(),
+  // The device the board draws around the frame, phone or tablet. A value of
+  // another kind parses as written and reads as none, as widths does.
+  device: z.unknown().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>
