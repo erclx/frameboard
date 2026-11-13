@@ -1818,6 +1818,82 @@ describe('FillSection', () => {
     expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull()
   })
 
+  it.each([
+    [
+      'a row it cannot focus',
+      <div key="row" role="listitem" aria-label="Headline" />,
+      'listitem',
+    ],
+    [
+      'a button',
+      <button key="button" type="button">
+        Headline
+      </button>,
+      'button',
+    ],
+  ] as const)(
+    'writes a pick once as a press on %s goes down, before it is released into a drag',
+    async (_target, outside, role) => {
+      const { changes, write } = recorder()
+      render(
+        <>
+          <FillSection
+            textOnly={false}
+            color={null}
+            backgroundColor={{ value: '#111827', token: null, percent: 100 }}
+            tokens={[PRIMARY]}
+            theme="light"
+            inline={false}
+            disabled={false}
+            write={write}
+          />
+          {outside}
+        </>,
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'Fill color' }))
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      await userEvent.clear(hex)
+      await userEvent.type(hex, 'FF0000')
+
+      await userEvent.pointer({
+        keys: '[MouseLeft>]',
+        target: screen.getByRole(role, { name: 'Headline' }),
+      })
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'background-color', value: '#ff0000' },
+      ])
+    },
+  )
+
+  it('keeps the picker open and writes nothing for a press in a menu it opened', async () => {
+    const { changes, write } = recorder()
+    render(
+      <FillSection
+        textOnly={false}
+        color={null}
+        backgroundColor={{ value: '#111827', token: null, percent: 100 }}
+        tokens={[PRIMARY]}
+        theme="light"
+        inline={false}
+        disabled={false}
+        write={write}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Fill color' }))
+    const hex = await screen.findByRole('textbox', { name: 'Hex' })
+    await userEvent.clear(hex)
+    await userEvent.type(hex, 'FF0000')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Color format' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'RGB' }))
+
+    expect(changes).toEqual([])
+    expect(
+      screen.getByRole('dialog', { name: 'Fill color picker' }),
+    ).toBeInTheDocument()
+  })
+
   it('flags a raw value and names a token with its chip', () => {
     render(
       <>
@@ -3388,7 +3464,10 @@ describe('InspectorPanel with an element selected', () => {
     )
 
     await waitFor(() => expect(result.current).not.toBeNull())
-    expect(result.current).toMatchObject({ lineHeight: null, letterSpacing: 0 })
+    expect(result.current).toMatchObject({
+      lineHeight: null,
+      letterSpacing: 0,
+    })
   })
 
   it('reads the element’s own rotate and scale and a translating transform', async () => {
