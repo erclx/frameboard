@@ -106,7 +106,7 @@ function startRename(folder: HomeFolder) {
 /**
  * The pen beside an open folder's name, per `folder-rename-pen-720`, opening
  * the rename field in one click. It shows while the nearest `group` is hovered
- * or holds focus, or always where nothing hovers, and leaves while the field
+ * or holds keyboard focus, or always where nothing hovers, and leaves while the field
  * is open or the tab may not write.
  */
 export function FolderPen({ folder }: { folder: HomeFolder }) {
@@ -119,7 +119,7 @@ export function FolderPen({ folder }: { folder: HomeFolder }) {
       aria-label="Rename folder"
       title="Rename folder"
       onClick={() => startRename(folder)}
-      className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground outline-none group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [@media(hover:hover)]:opacity-0"
+      className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground outline-none group-has-focus-visible:opacity-100 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [@media(hover:hover)]:opacity-0"
     >
       <Pencil aria-hidden className="size-3.5" />
     </button>
