@@ -531,8 +531,12 @@ test.describe('page structure by hand, and its undo', () => {
       const hit = await page.locator('[data-hit-layer]').boundingBox()
       if (!hit) throw new Error('The canvas draws no hit layer')
       const start = { x: hit.x + 40, y: hit.y + 40 }
+      const frameTool = page
+        .getByRole('toolbar', { name: 'Tools' })
+        .getByRole('button', { name: 'Frame', exact: true })
 
       await page.keyboard.press('f')
+      await expect(frameTool).toHaveAttribute('aria-pressed', 'true')
       await page.mouse.move(start.x, start.y)
       await page.mouse.down()
       await page.mouse.move(start.x + 100, start.y + 80, { steps: 4 })
@@ -545,6 +549,7 @@ test.describe('page structure by hand, and its undo', () => {
       expect(layout().frame?.height).toBeCloseTo(150 / zoom, -0.5)
 
       await page.keyboard.press('f')
+      await expect(frameTool).toHaveAttribute('aria-pressed', 'true')
       await page.mouse.move(start.x, start.y)
       await page.mouse.down()
       await page.mouse.move(start.x + 30, start.y + 30, { steps: 4 })
