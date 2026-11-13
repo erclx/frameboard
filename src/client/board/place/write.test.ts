@@ -15,6 +15,7 @@ import {
   placeElement,
   placeFile,
   placeFree,
+  wrapSelection,
 } from './write'
 
 const HASH = 'c'.repeat(64)
@@ -1045,6 +1046,113 @@ describe('placeFree', () => {
       false,
       ['Nothing placed'],
       KEY,
+    ])
+  })
+})
+
+describe('wrapSelection', () => {
+  const FIRST = { frame: HERO.ref, index: 4, hash: HASH }
+  const SECOND = { frame: HERO.ref, index: 5, hash: HASH }
+  const ROW_FLOW = {
+    flow: { direction: 'row', gap: 16 },
+    spot: { left: 10, top: 20 },
+  } as const
+
+  it('sends the elements with their flow and selects the container where it landed', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', FIRST)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 4, members: [5, 6], hash: ANSWERED },
+    })
+
+    const wrapped = await wrapSelection(
+      'studio/home',
+      [FIRST, SECOND],
+      ROW_FLOW,
+      {
+        selection,
+        live: createLiveStore(),
+        send,
+      },
+    )
+
+    expect(wrapped).toBe(true)
+    expect(sent).toEqual([
+      {
+        ref: HERO.ref,
+        hash: HASH,
+        indexes: [4, 5],
+        flow: { direction: 'row', gap: 16 },
+        spot: { left: 10, top: 20 },
+      },
+    ])
+    expect(selection.getState().element).toEqual({
+      frame: HERO.ref,
+      index: 4,
+      hash: ANSWERED,
+    })
+  })
+
+  it('sends an edit queued behind it to the member where it landed', async () => {
+    const answers = [
+      { ref: HERO.ref, index: 4, members: [5, 6], hash: ANSWERED },
+      { ref: HERO.ref, index: 6, hash: 'e'.repeat(64) },
+    ]
+    const sent: unknown[] = []
+    const send: typeof fetch = async (_url, init) => {
+      sent.push(JSON.parse(String(init?.body)))
+      return Response.json({ ok: true, data: answers[sent.length - 1] })
+    }
+    const deps = {
+      selection: createSelectionStore(),
+      live: createLiveStore(),
+      send,
+    }
+
+    const wrapping = wrapSelection(
+      'studio/home',
+      [FIRST, SECOND],
+      ROW_FLOW,
+      deps,
+    )
+    const editing = writeElement(
+      'studio/home',
+      SECOND,
+      { kind: 'style', property: 'opacity', value: '0.5' },
+      { ...deps, catchUp: async () => {} },
+    )
+    await Promise.all([wrapping, editing])
+
+    expect(sent[1]).toMatchObject({ index: 6, hash: ANSWERED })
+  })
+
+  it('tells why and answers false when the server refuses it', async () => {
+    const told: string[] = []
+    const { send } = server(409, {
+      ok: false,
+      error: {
+        code: 'invalid-address',
+        message:
+          'a wrap takes stated sibling elements of one parent, each named once',
+      },
+    })
+
+    const wrapped = await wrapSelection(
+      'studio/home',
+      [FIRST, SECOND],
+      ROW_FLOW,
+      {
+        selection: createSelectionStore(),
+        live: createLiveStore(),
+        send,
+        notify: ({ description }) => told.push(description),
+      },
+    )
+
+    expect(wrapped).toBe(false)
+    expect(told).toEqual([
+      'A wrap takes stated sibling elements of one parent, each named once.',
     ])
   })
 })
