@@ -73,6 +73,16 @@ describe('previewApp', () => {
       expect(await response.text()).toBe('@font-face {}')
     })
 
+    it.each([
+      ['a frame', `/v/${TOKEN}/frames/studio/home/hero.html`],
+      ['an asset', `/v/${TOKEN}/frames/studio/assets/clip.mp4`],
+      ['a refusal', '/v/wrong-token-1/frames/studio/home/hero.html'],
+    ])('sends no referrer from %s', async (_case, path) => {
+      const response = await request(path)
+
+      expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    })
+
     it('answers HEAD for a frame', async () => {
       const response = await request(
         `/v/${TOKEN}/frames/studio/home/hero.html`,

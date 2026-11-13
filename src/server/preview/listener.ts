@@ -44,6 +44,13 @@ export function previewApp(token: string, options: PreviewOptions): Hono {
   }).routes
   const app = new Hono()
 
+  // A frame's outbound link or asset would otherwise carry the token in its
+  // Referer to whatever host it names.
+  app.use('*', async (c, next) => {
+    await next()
+    c.res = withHeader(c.res, 'Referrer-Policy', 'no-referrer')
+  })
+
   app.all('*', async (c) => {
     const method = c.req.method
     if (method !== 'GET' && method !== 'HEAD') return c.notFound()
@@ -95,6 +102,17 @@ function innerPath(
     return null
   }
   return decoded === project ? inner : null
+}
+
+/** The response with one header set, copied first since a forwarded one may be immutable. */
+function withHeader(response: Response, name: string, value: string): Response {
+  const headers = new Headers(response.headers)
+  headers.set(name, value)
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
 }
 
 function sameToken(given: string, token: string): boolean {
