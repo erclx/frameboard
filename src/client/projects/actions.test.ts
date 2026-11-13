@@ -1,11 +1,24 @@
-import { renderHook } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { findAction, isEnabled } from '@/client/actions/registry'
+import {
+  findAction,
+  isEnabled,
+  registerActions,
+} from '@/client/actions/registry'
+import { toast, Toaster } from '@/client/components/ui/toast'
 import { pinnedProjects } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
-import { boardOf } from '@/test/board'
+import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import {
   focusedProject,
@@ -220,5 +233,133 @@ describe('renameProject', () => {
     )
 
     expect(await renameProject('studio', '..', calls)).toBeNull()
+  })
+})
+
+describe('the Deleted toast', () => {
+  let undone = 0
+  let stopUndo: () => void = () => {}
+
+  beforeEach(() => {
+    undone = 0
+    // Stands in for the history row, which answers from the server's journal.
+    stopUndo = registerActions([
+      {
+        id: 'edit.undo',
+        label: 'Undo',
+        group: 'edit',
+        palette: false,
+        keys: ['$mod+KeyZ'],
+        run: () => {
+          undone++
+        },
+      },
+    ])
+    liveStore.setState({
+      board: boardOf(pageOf([frameOf('hero'), frameOf('about')])),
+      history: { undo: 0, redo: 0 },
+    })
+  })
+
+  afterEach(() => {
+    stopUndo()
+    act(() => toast.close())
+    cleanup()
+  })
+
+  const renderDeleting = (calls = server().calls) =>
+    renderHook(() => useProjectActions(OPEN, { calls }), {
+      wrapper: ({ children }) => createElement(Toaster, null, children),
+    })
+
+  const deleteAndLand = async () => {
+    act(() => findAction('project.delete')?.run())
+    await screen.findByText('Deleted studio')
+    // The delete's own step reaches the journal.
+    act(() => liveStore.setState({ history: { undo: 1, redo: 0 } }))
+  }
+
+  it('names the project and what it held', async () => {
+    renderDeleting()
+
+    act(() => findAction('project.delete')?.run())
+
+    expect(await screen.findByText('Deleted studio')).toBeInTheDocument()
+    expect(screen.getByText('1 page, 2 frames')).toBeInTheDocument()
+  })
+
+  it('runs undo from its Undo and closes', async () => {
+    renderDeleting()
+    await deleteAndLand()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    expect(undone).toBe(1)
+    await waitFor(() => expect(screen.queryByText('Deleted studio')).toBeNull())
+  })
+
+  it("waits on the delete's own step when Undo is pressed ahead of it", async () => {
+    renderDeleting()
+    act(() => findAction('project.delete')?.run())
+    await userEvent.click(await screen.findByRole('button', { name: 'Undo' }))
+
+    act(() => liveStore.setState({ history: { undo: 1, redo: 0 } }))
+
+    expect(undone).toBe(1)
+  })
+
+  it('names the undo key on its Undo with no keycap', async () => {
+    renderDeleting()
+    await deleteAndLand()
+
+    const undo = screen.getByRole('button', { name: 'Undo' })
+
+    expect(undo).toHaveAttribute('aria-keyshortcuts')
+    expect(undo.querySelector('kbd')).toBeNull()
+  })
+
+  it('puts back a pin the delete dropped', async () => {
+    renderDeleting()
+    act(() => findAction('project.pin')?.run())
+    await deleteAndLand()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+    expect([...pinnedProjects()]).toEqual(['studio'])
+  })
+
+  it("stays through the delete's own step", async () => {
+    renderDeleting()
+
+    await deleteAndLand()
+
+    expect(screen.getByText('Deleted studio')).toBeInTheDocument()
+  })
+
+  it('closes on the next step after the delete', async () => {
+    renderDeleting()
+    await deleteAndLand()
+
+    act(() => liveStore.setState({ history: { undo: 2, redo: 0 } }))
+
+    await waitFor(() => expect(screen.queryByText('Deleted studio')).toBeNull())
+  })
+
+  it('shows no Deleted toast on a refused delete', async () => {
+    renderDeleting(
+      createStructure(async () =>
+        Response.json(
+          { ok: false, error: { code: 'busy', message: 'In use' } },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    act(() => findAction('project.delete')?.run())
+
+    expect(
+      await screen.findByText("Couldn't delete studio"),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Deleted studio')).toBeNull()
   })
 })
