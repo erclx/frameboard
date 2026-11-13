@@ -16,6 +16,8 @@ import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
 
+import { focusWithoutTooltip } from '../chrome/quiet-focus'
+import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
@@ -100,6 +102,31 @@ function useInertBehind(layer: RefObject<HTMLElement | null>): void {
   }, [layer])
 }
 
+/**
+ * Returns focus on leave to whatever held it when presenting began, as a
+ * dialog does, or to the toolbar's Present page button when that element is
+ * gone or was the body, opening no tooltip over the board. The opener is read during the first render, since
+ * `useInertBehind` blurs it before any effect runs, and this is called after
+ * `useInertBehind` so its cleanup runs once the board is no longer inert.
+ */
+function useReturnFocus(): void {
+  const [opener] = useState(() => document.activeElement)
+  useEffect(
+    () => () => {
+      const back =
+        opener instanceof HTMLElement &&
+        opener.isConnected &&
+        opener !== document.body
+          ? opener
+          : document.querySelector<HTMLElement>(
+              `button[aria-label="${PRESENT.label}"]`,
+            )
+      if (back) focusWithoutTooltip(back)
+    },
+    [opener],
+  )
+}
+
 /** How long the pointer rests before the bar fades out. */
 const BAR_REST_MS = 2000
 
@@ -171,7 +198,7 @@ export function PresentOverlay() {
           .find((candidate) => candidate.ref === pageRef),
   )
   if (pageRef === null || frameRef === null) return null
-  const order = page ? presentOrder(page.frames, page.sections, frameRef) : []
+  const order = page ? presentOrder(page.frames, frameRef) : []
   const at = order.findIndex((frame) => frame.ref === frameRef)
   const frame = order[at]
   return createPortal(
@@ -194,6 +221,7 @@ function Presenting({ frame, at, count }: PresentingProps) {
   const { shown, wake } = useBarWake()
   useLeaveWithFullscreen()
   useInertBehind(layer)
+  useReturnFocus()
 
   useEffect(() => takeKeys(window, false), [])
   useEffect(() => {

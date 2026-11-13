@@ -704,6 +704,19 @@ async function aboutInPhone(page: Page): Promise<void> {
 }
 
 /**
+ * Shrinks `about` to a 390 by 264 card, under half the window each way, so
+ * presenting it shows the scale stopping at twice the frame's size.
+ */
+async function aboutSmall(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.about.height = 264
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(layoutPath, originalLayout))
+}
+
+/**
  * Hands the board an empty change log on every `changes` message, since
  * `rawIndigoHero` writes the hero as an outside write the change tracker
  * would otherwise raise as an agent's, racing the shot.
@@ -3044,6 +3057,22 @@ const CASES: CaptureCase[] = [
         setup: themed(
           both(
             noAgentChanges,
+            presentOnLoad,
+            readyWhen('[data-presenting] [data-shown]'),
+          ),
+        ),
+      },
+      {
+        section: 'present-small',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            aboutSmall,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/about'] }),
             presentOnLoad,
             readyWhen('[data-presenting] [data-shown]'),
           ),

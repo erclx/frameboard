@@ -272,7 +272,10 @@
       .hud .nm {
         padding: 0 8px;
         color: #aaa;
-        max-width: 180px;
+        width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .hud .sep {
         background: #444;
@@ -342,7 +345,10 @@
           ><i style="height: 78%"></i><i style="height: 96%"></i>
         </div>
       </div>
-      <div class="hud" style="left: 330px; bottom: 24px">
+      <div
+        class="hud"
+        style="left: 50%; bottom: 24px; transform: translateX(-50%)"
+      >
         <span class="b"
           ><svg
             class="ic"

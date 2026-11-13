@@ -2,15 +2,11 @@ import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { liveStore } from '@/client/live/store'
-import type {
-  FrameRecord,
-  PageRecord,
-  SectionRecord,
-} from '@/shared/records/list'
+import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
-import { groupsOf, stepOrder } from '../frame-order'
 import { select, selectionStore } from '../selection'
 import { canvasView } from '../view'
+import { readingOrder } from './order'
 
 /**
  * The page presenting and the frame it shows, by ref, both null while
@@ -37,35 +33,34 @@ export function presenting(): boolean {
 }
 
 /**
- * The frames presenting steps through, in Layers order with the hidden ones
- * left out, keeping `current` in its place even once hidden, so the frame on
- * screen stays shown and a step leaves from where it stands.
+ * The frames presenting steps through, in canvas reading order per
+ * `readingOrder`, with the hidden ones left out. `current` keeps its place
+ * even once hidden, so the frame on screen stays shown and a step leaves
+ * from where it stands. `frames` arrives as the server sends a page's.
  */
 export function presentOrder(
   frames: readonly FrameRecord[],
-  sections: readonly SectionRecord[],
   current: string | null,
 ): FrameRecord[] {
-  return groupsOf(frames, sections)
-    .flatMap((group) => group.rows)
-    .filter((frame) => !frame.hidden || frame.ref === current)
+  return readingOrder(frames).filter(
+    (frame) => !frame.hidden || frame.ref === current,
+  )
 }
 
 /**
- * The frame presenting opens on: the first selected one in Layers order, or
- * when that is hidden the next shown frame after it, and the first shown
+ * The frame presenting opens on: the first selected one in reading order,
+ * or when that is hidden the next shown frame after it, and the first shown
  * frame with nothing selected. Undefined when the page shows no frame.
  */
 export function startFrame(
   frames: readonly FrameRecord[],
-  sections: readonly SectionRecord[],
   selected: readonly string[],
 ): FrameRecord | undefined {
-  const shown = stepOrder(frames, sections)
-  const layers = groupsOf(frames, sections).flatMap((group) => group.rows)
-  const at = layers.findIndex((frame) => selected.includes(frame.ref))
-  if (at === -1) return shown[0]
-  return layers.slice(at).find((frame) => !frame.hidden) ?? shown[0]
+  const order = readingOrder(frames)
+  const first = order.find((frame) => !frame.hidden)
+  const at = order.findIndex((frame) => selected.includes(frame.ref))
+  if (at === -1) return first
+  return order.slice(at).find((frame) => !frame.hidden) ?? first
 }
 
 /** The frame a step of `by` lands on, staying put past either end. */
@@ -96,11 +91,7 @@ export function pageOf(ref: string | null): PageRecord | undefined {
  */
 export function startPresenting(page: PageRecord): void {
   const { page: selectedPage, frames } = selectionStore.getState()
-  const first = startFrame(
-    page.frames,
-    page.sections,
-    selectedPage === page.ref ? frames : [],
-  )
+  const first = startFrame(page.frames, selectedPage === page.ref ? frames : [])
   if (!first) return
   presentStore.setState({ page: page.ref, frame: first.ref })
   document.documentElement.requestFullscreen?.().catch(() => {})
@@ -111,11 +102,7 @@ export function stepPresenting(by: 1 | -1): void {
   const { page, frame } = presentStore.getState()
   const shown = pageOf(page)
   if (!shown) return
-  const next = stepWithin(
-    presentOrder(shown.frames, shown.sections, frame),
-    frame,
-    by,
-  )
+  const next = stepWithin(presentOrder(shown.frames, frame), frame, by)
   if (next && next.ref !== frame) presentStore.setState({ frame: next.ref })
 }
 

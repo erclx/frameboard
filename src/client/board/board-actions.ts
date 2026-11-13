@@ -142,7 +142,7 @@ function steppedFrame(by: 1 | -1): FrameRecord | undefined {
 /** The page the mounted canvas shows, when it holds a frame that is not hidden. */
 function presentablePage() {
   const page = pageOf(canvasView.page())
-  return page && startFrame(page.frames, page.sections, []) ? page : undefined
+  return page && startFrame(page.frames, []) ? page : undefined
 }
 
 /**

@@ -83,12 +83,19 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 
 ### `src/client/board/present/`
 
-Owns present mode, which shows a page's frames one at a time over the whole window on black, each scaled to fit, through the browser's Fullscreen API. It is a view and never a write, so it records no undo step. `bar.tsx` draws back, the count, the name, next, and leave, shown on a pointer move and hidden after two seconds still.
+Owns present mode, which shows a page's frames one at a time over the whole window on black, through the browser's Fullscreen API. Each frame scales to fit, never past twice its size. It is a view and never a write, so it records no undo step.
 
-- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in Layers order, or the next shown one when that is hidden
+- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in reading order, or the next shown one when that is hidden
 - It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
+- `order.ts` reads rows top to bottom, each left to right. A frame joins the open row while its top sits above the middle of that row's first frame.
+- Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
 - `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
+
+The overlay and its bar carry the stepping, the keys, and the way back.
+
+- `bar.tsx` draws back, the count, the name in a fixed 150px slot, next, and leave, shown on a pointer move and hidden after two seconds still
 - The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
+- Leaving returns focus to what opened presenting, or to the Present button once that is gone
 - `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
 
 ### `src/client/board/sections/`
