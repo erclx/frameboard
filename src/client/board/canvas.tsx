@@ -44,6 +44,7 @@ import {
   editTextInPlace,
   editTextWhenShown,
   overElement,
+  type WriteText,
 } from './element/text-in-place'
 import { readTree } from './element/tree'
 import { Frame, LabelRename } from './frame'
@@ -54,7 +55,7 @@ import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
 import { GuideCard } from './guide/card'
 import { useShowsGuide } from './guide/state'
-import { writeElement } from './inspector/element/write'
+import { writeElement, writeElements } from './inspector/element/write'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -644,8 +645,16 @@ export function Canvas({
   /** Opens a text element's text for typing, a double-click's or a placed Text's. */
   const editText = (key: ElementKey, waits: boolean): boolean => {
     if (!layer) return false
-    const write = (change: Parameters<typeof writeElement>[2]) =>
-      writeElement(page.ref, key, change)
+    // A text with a break carries its white-space beside it, as one undo step.
+    const write: WriteText = ([change, ...rest]) =>
+      !change
+        ? Promise.resolve(false)
+        : rest.length === 0
+          ? writeElement(page.ref, key, change)
+          : writeElements(
+              page.ref,
+              [change, ...rest].map((each) => ({ key, change: each })),
+            )
     stopEditing.current?.()
     stopEditing.current = null
     if (waits) {
@@ -661,7 +670,7 @@ export function Canvas({
   }
 
   // A double-click on the text element selected before it edits that
-  // text, and anywhere else picks inside the frame.
+  // text, and anywhere else picks inside the frame, editing a text it picks.
   const doubleClick = (event: MouseEvent) => {
     const viewport = viewportRef.current
     const held = pressedOn.current
@@ -677,10 +686,11 @@ export function Canvas({
         return
       }
     }
-    pickInside(event)
+    pickInside(event, true)
   }
 
-  const pickInside = (event: MouseEvent) => {
+  /** Selects the element under `event`, and opens it for typing when `edit` and it holds only text. */
+  const pickInside = (event: MouseEvent, edit = false) => {
     const viewport = viewportRef.current
     // Only the Move tool selects, so every other tool picks nothing.
     if (
@@ -698,9 +708,10 @@ export function Canvas({
     const turn = ++picks.current
     void pickElementRead(layer, withDrawn(frames), { x, y }, readTree).then(
       (element) => {
-        if (element && turn === picks.current) {
-          selectElement(selectionStore, page.ref, element)
-        }
+        if (!element || turn !== picks.current) return
+        // Opening an edit selects the element first, text or not.
+        if (edit) editText(element, false)
+        else selectElement(selectionStore, page.ref, element)
       },
     )
   }
@@ -843,13 +854,20 @@ export function Canvas({
             })}
             <SelectionOverlay frames={frames} sections={page.sections} />
             <ElementOverlay frames={frames} container={layer} />
+            {/* Under the drop line, which a shape placed in the flow lands at. */}
+            <ShapeDraft
+              viewport={viewportRef}
+              toBoard={toBoard}
+              container={layer}
+              frames={drawnFrames}
+              project={page.project}
+            />
             <DropLine
               viewport={viewportRef}
               container={layer}
               frames={drawnFrames}
               toBoard={toBoard}
             />
-            <ShapeDraft viewport={viewportRef} toBoard={toBoard} />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>

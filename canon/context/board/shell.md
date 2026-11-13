@@ -83,12 +83,19 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 
 ### `src/client/board/present/`
 
-Owns present mode, which shows a page's frames one at a time over the whole window on black, each scaled to fit, through the browser's Fullscreen API. It is a view and never a write, so it records no undo step. `bar.tsx` draws back, the count, the name, next, and leave, shown on a pointer move and hidden after two seconds still.
+Owns present mode, which shows a page's frames one at a time over the whole window on black, through the browser's Fullscreen API. Each frame scales to fit, never past twice its size. It is a view and never a write, so it records no undo step.
 
-- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in Layers order, or the next shown one when that is hidden
+- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in reading order, or the next shown one when that is hidden
 - It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
+- `order.ts` reads rows top to bottom, each left to right. A frame joins the open row while its top sits above the middle of that row's first frame.
+- Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
 - `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
+
+The overlay and its bar carry the stepping, the keys, and the way back.
+
+- `bar.tsx` draws back, the count, the name in a fixed 150px slot, next, and leave, shown on a pointer move and hidden after two seconds still
 - The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
+- Leaving returns focus to what opened presenting, or to the Present button once that is gone
 - `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
 
 ### `src/client/board/sections/`
@@ -110,6 +117,8 @@ Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which d
 - `drop-line.tsx` draws a 2px selection-blue line at that gap while a tool is on, an element is carried, or a tile is dragged, never over bare canvas, a loading frame, or a carried element's own spot
 - `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
 - A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
+  - Enter and Shift+Enter add a line, and Esc or a click outside writes the text
+  - A break is a newline in the element's one text node, never a `<br>`, and goes out with `white-space: pre-line` in the same write on an element that collapses newlines
 
 The Place toggle's `placementStore` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. Auto lands it free unless the container is flex or grid, or its static parent would move an element anchored above it, and a Divider always joins the flow.
 
@@ -121,7 +130,13 @@ The Image tool and a tile drag place a file from the project's `assets/`.
 - A video tile preloads metadata alone, shows its first frame and length, plays muted only while hovered or focused, and names a codec it cannot decode
 - `asset-drop.ts` makes the hit layer a drop target for a tile and swallows a system file dropped there, so it never opens in place of the board
 
-A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a box through `shape-draft.tsx`. Shapes and files land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks.
+A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a preview through `shape-draft.tsx`.
+
+- A Rectangle or Ellipse draws as the shape, with its corners and size, and draws nothing over bare canvas
+- Its fill is the token `src/shared/shape-paint.ts` names, read in the frame's own document and theme
+- The others draw a tinted box
+
+Shapes and files land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks.
 
 `moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
 

@@ -2170,6 +2170,7 @@ describe('TextSection', () => {
     render(
       <TextSection
         text="Hello"
+        keepsBreaks={false}
         disabled={false}
         write={recorder().write}
         element={AT}
@@ -2184,6 +2185,7 @@ describe('TextSection', () => {
     render(
       <TextSection
         text="Hello"
+        keepsBreaks={false}
         disabled={false}
         write={recorder().write}
         element={AT}
@@ -2202,6 +2204,7 @@ describe('TextSection', () => {
     render(
       <TextSection
         text="Hello"
+        keepsBreaks={false}
         disabled={false}
         write={recorder().write}
         element={AT}
@@ -2221,6 +2224,7 @@ describe('TextSection', () => {
     render(
       <TextSection
         text="Hello"
+        keepsBreaks={false}
         disabled={false}
         write={colliding()}
         element={AT}
@@ -2239,7 +2243,13 @@ describe('TextSection', () => {
     const { changes, write } = recorder()
 
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
     const area = screen.getByRole('textbox', { name: 'Text' })
     expect(area).toHaveValue('Welcome')
@@ -2252,7 +2262,13 @@ describe('TextSection', () => {
     await colliding()({ kind: 'text', value: 'Welcome' })
     const { changes, write } = recorder()
     const { unmount } = render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     await userEvent.type(
@@ -2261,17 +2277,49 @@ describe('TextSection', () => {
     )
     unmount()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
     expect(changes).toEqual([])
   })
 
+  it('keeps the break of a text that shows its breaks as a character is typed into it', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TextSection
+        text={'One\nTwo'}
+        keepsBreaks
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
+    )
+
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Text' }),
+      's{Enter}',
+    )
+
+    expect(changes).toEqual([{ kind: 'text', value: 'One\nTwos' }])
+  })
+
   it('writes the text on Cmd+Enter', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2284,7 +2332,13 @@ describe('TextSection', () => {
   it('writes the text once on Enter and keeps nothing for the blur', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2298,7 +2352,13 @@ describe('TextSection', () => {
   it('adds no line on Shift+Enter', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2311,7 +2371,13 @@ describe('TextSection', () => {
   it('writes a pasted line break as a space', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2325,7 +2391,13 @@ describe('TextSection', () => {
   it('hints the keys only while it has focus', async () => {
     const { write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     expect(screen.getByText('to apply', { exact: false })).not.toBeVisible()
@@ -2337,7 +2409,13 @@ describe('TextSection', () => {
   it('cancels on Esc and writes nothing', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2350,7 +2428,13 @@ describe('TextSection', () => {
   it('shows the stored text again after a refused write', async () => {
     const { write } = recorder(false)
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
 
     const area = screen.getByRole('textbox', { name: 'Text' })
@@ -2368,6 +2452,7 @@ describe('TextSection', () => {
       render(
         <TextSection
           text="Hello"
+          keepsBreaks={false}
           disabled={false}
           write={write}
           element={AT}
@@ -2387,7 +2472,13 @@ describe('TextSection', () => {
   it('follows a historyUndo while the field is focused', async () => {
     const { changes, write } = recorder()
     render(
-      <TextSection text="Hello" disabled={false} write={write} element={AT} />,
+      <TextSection
+        text="Hello"
+        keepsBreaks={false}
+        disabled={false}
+        write={write}
+        element={AT}
+      />,
     )
     const area = screen.getByRole('textbox', { name: 'Text' })
 

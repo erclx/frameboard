@@ -25,12 +25,7 @@ import {
   removeFrameFile,
   removeFrameFileAll,
 } from '@/server/edit/frame-file'
-import {
-  elementMarkup,
-  type InsertKind,
-  shapePaint,
-  textFont,
-} from '@/server/edit/insert'
+import { elementMarkup, type InsertKind, textFont } from '@/server/edit/insert'
 import { placeElement } from '@/server/edit/place'
 import type { History } from '@/server/history/stack'
 import { styleValue } from '@/server/look/colors'
@@ -45,6 +40,7 @@ import {
   type RecolorResult,
   type RemoveResult,
 } from '@/shared/records/edit'
+import { shapePaint } from '@/shared/shape-paint'
 
 import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal, parseBody } from './envelope'

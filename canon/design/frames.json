@@ -16,6 +16,7 @@
     "canvas/empty": "design/12-canvas/page-empty",
     "canvas/empty-hidden": "design/12-canvas/page-empty-hidden",
     "canvas/marquee": "design/11-selection/marquee",
+    "canvas/shape-draft": "drive-32/34-place-shape/place-shape-live-720",
     "canvas/snap": "design/11-selection/picked-snap-magenta",
     "canvas/labels": "design/11-selection/frame-labels",
     "canvas/labels-low-zoom": "design/11-selection/frame-labels-low",

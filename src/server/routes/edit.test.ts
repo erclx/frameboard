@@ -414,7 +414,35 @@ describe('editRoutes', () => {
       expect(history.counts().undo).toBe(0)
     })
 
-    it('refuses one element named twice', async () => {
+    it('writes a text and a style change on one element as one undo step', async () => {
+      const original = read()
+
+      const response = await post({
+        ref: HERO,
+        hash: hash(),
+        edits: [
+          { index: HEADLINE, change: { kind: 'text', value: 'One\nTwo' } },
+          {
+            index: HEADLINE,
+            change: {
+              kind: 'style',
+              property: 'white-space',
+              value: 'pre-line',
+            },
+          },
+        ],
+      })
+
+      expect(response.status).toBe(200)
+      expect(read()).toContain(
+        '<h1 data-name="Headline" style="white-space: pre-line">One\nTwo</h1>',
+      )
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(read()).toBe(original)
+    })
+
+    it('refuses one element named twice by two style changes', async () => {
       const original = read()
       const body = fades()
       const [first] = body.edits

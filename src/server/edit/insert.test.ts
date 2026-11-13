@@ -10,7 +10,6 @@ import {
   removeElement,
   removeInserted,
   restoreInserted,
-  shapePaint,
   textFont,
 } from './insert'
 
@@ -108,31 +107,6 @@ describe('elementMarkup for an asset', () => {
   it('should keep a name holding a quote, an ampersand, and a bracket inside its attributes', () => {
     expect(elementMarkup(asset('a"b&c<d.png'), PAINT, FONT)).toBe(
       '<img data-name="a&quot;b&amp;c&lt;d.png" src="../assets/a%22b%26c%3Cd.png" alt="" style="width: 320px; height: 180px; object-fit: cover">',
-    )
-  })
-})
-
-describe('shapePaint', () => {
-  it('should fill with the first of muted, secondary, and accent present', () => {
-    expect(
-      shapePaint([token('--accent'), token('--secondary'), token('--muted')])
-        .fill,
-    ).toBe('var(--muted)')
-  })
-
-  it('should fill with the first color token when none of the three is set', () => {
-    expect(
-      shapePaint([token('--radius', 'radius'), token('--brand')]).fill,
-    ).toBe('var(--brand)')
-  })
-
-  it('should fill with a raw grey when the project sets no color token', () => {
-    expect(shapePaint([token('--radius', 'radius')]).fill).toBe('#d9d9d9')
-  })
-
-  it('should draw the line in the border token first', () => {
-    expect(shapePaint([token('--brand'), token('--border')]).line).toBe(
-      'var(--border)',
     )
   })
 })

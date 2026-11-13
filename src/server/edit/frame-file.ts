@@ -158,8 +158,11 @@ export type FrameFileEdits =
  * Edits several elements of a frame file as one write, each found again and
  * verified as `editFrameFile` does one, in the order sent through the bytes
  * the one before it left. Any refusal writes nothing, so a batch never lands
- * in part, and naming one element twice is refused since one undo could not
- * put both spans back.
+ * in part. Naming one element twice is refused, since one undo could not
+ * put both spans back, except for a text change beside one style change.
+ * That pair answers one span over the whole element, both changes in it,
+ * since an undo checks every span against the bytes as they stand and the
+ * text's own span no longer reads once the style wrote its start tag.
  */
 export function editFrameFileAll(
   path: string,
@@ -182,7 +185,7 @@ export function editFrameFileAll(
     if (!found) return collided(path, was, index, source)
     indexes.push(found.index)
   }
-  if (new Set(indexes).size !== indexes.length) {
+  if (!namedOnceEach(indexes, edits)) {
     return refuse('invalid-edit', 'a batch names one element twice')
   }
   let html = source
@@ -199,9 +202,67 @@ export function editFrameFileAll(
     hash: contentHash(html),
     from: read.hash,
     indexes,
-    spans,
+    spans: mergedTwice(source, html, indexes, spans),
     remap: identity,
   }
+}
+
+/**
+ * The spans of a batch with the two of an element named twice put together
+ * as one over the whole element, from its bytes in `source` to its bytes in
+ * `html`, at the place the first of the two held.
+ */
+function mergedTwice(
+  source: string,
+  html: string,
+  indexes: readonly number[],
+  spans: readonly ElementSpan[],
+): ElementSpan[] {
+  const twice = indexes.filter((index, at) => indexes.indexOf(index) !== at)
+  if (twice.length === 0) return [...spans]
+  const was = parseFrame(source).elements
+  const now = parseFrame(html).elements
+  return spans.flatMap((span, at) => {
+    const index = indexes[at] ?? -1
+    if (!twice.includes(index)) return [span]
+    if (indexes.indexOf(index) !== at) return []
+    const before = was[index]
+    const after = now[index]
+    if (!before || !after) return [span]
+    return [
+      {
+        scope: 'element' as const,
+        index,
+        count: now.length,
+        before: spanText(source, before, 'element'),
+        after: spanText(html, after, 'element'),
+      },
+    ]
+  })
+}
+
+/**
+ * Whether each element a batch names is named once, or twice only as one
+ * `text` change and one `style` or `styles` change.
+ */
+function namedOnceEach(
+  indexes: readonly number[],
+  edits: readonly ElementEdit[],
+): boolean {
+  const kinds = new Map<number, string[]>()
+  for (const [at, index] of indexes.entries()) {
+    kinds.set(index, [
+      ...(kinds.get(index) ?? []),
+      edits[at]?.change.kind ?? '',
+    ])
+  }
+  return [...kinds.values()].every(
+    (named) =>
+      named.length === 1 ||
+      (named.length === 2 &&
+        named.filter((kind) => kind === 'text').length === 1 &&
+        named.some((kind) => kind === 'style' || kind === 'styles')),
+  )
 }
 
 export type FrameFileInsert =

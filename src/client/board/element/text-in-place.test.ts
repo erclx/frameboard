@@ -46,14 +46,32 @@ async function mount(body = '<h1>Old</h1>') {
   return { container, iframe, shown, heading }
 }
 
-/** A writer recording each change it is handed, answering `written`. */
+/** A writer recording each batch of changes it is handed, answering `written`. */
 function recorder(written = true) {
-  const changes: ElementChange[] = []
-  const write = async (change: ElementChange) => {
-    changes.push(change)
+  const changes: (readonly ElementChange[])[] = []
+  const write = async (batch: readonly ElementChange[]) => {
+    changes.push(batch)
     return written
   }
   return { changes, write }
+}
+
+/** Pastes `text` as plain text into the element, at the caret. */
+function paste(target: HTMLElement, text: string) {
+  const data = new DataTransfer()
+  data.setData('text/plain', text)
+  target.dispatchEvent(
+    new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
+  )
+}
+
+/** Puts the caret at the end of the element's text, as a click past it would. */
+function caretAtEnd(shown: Document, element: HTMLElement) {
+  const range = shown.createRange()
+  range.selectNodeContents(element)
+  range.collapse(false)
+  shown.getSelection()?.removeAllRanges()
+  shown.getSelection()?.addRange(range)
 }
 
 function press(target: HTMLElement, key: string, shiftKey = false) {
@@ -73,16 +91,65 @@ describe('editTextInPlace', () => {
     expect(shown.getSelection()?.toString()).toBe('Old')
   })
 
-  it('writes the typed text on Enter and leaves the element', async () => {
+  it('adds a line on Enter and keeps the edit open', async () => {
+    const { shown, heading } = await mount()
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    caretAtEnd(shown, heading)
+    press(heading, 'Enter')
+
+    expect(heading.textContent).toMatch(/^Old\n/)
+    expect(heading.getAttribute('contenteditable')).toBe('plaintext-only')
+    expect(changes).toEqual([])
+  })
+
+  it('adds a line on Shift+Enter too', async () => {
+    const { shown, heading } = await mount()
+    editTextInPlace(shown, KEY, recorder().write)
+
+    caretAtEnd(shown, heading)
+    press(heading, 'Enter', true)
+
+    expect(heading.textContent).toMatch(/^Old\n/)
+  })
+
+  it('writes nothing for a line added at the end and left empty', async () => {
+    const { shown, heading } = await mount()
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    caretAtEnd(shown, heading)
+    press(heading, 'Enter')
+    press(heading, 'Escape')
+
+    expect(changes).toEqual([])
+    expect(heading.textContent).toBe('Old')
+  })
+
+  it('writes the typed text on Esc and leaves the element', async () => {
     const { shown, heading } = await mount()
     const { changes, write } = recorder()
     editTextInPlace(shown, KEY, write)
 
     heading.textContent = 'New'
-    press(heading, 'Enter')
+    press(heading, 'Escape')
 
-    expect(changes).toEqual([{ kind: 'text', value: 'New' }])
+    expect(changes).toEqual([[{ kind: 'text', value: 'New' }]])
     expect(heading.hasAttribute('contenteditable')).toBe(false)
+  })
+
+  it('keeps Esc from reaching the frame past the edit', async () => {
+    const { shown, heading } = await mount()
+    editTextInPlace(shown, KEY, recorder().write)
+    let reached = false
+    shown.addEventListener('keydown', () => {
+      reached = true
+    })
+
+    press(heading, 'Escape')
+
+    expect(reached).toBe(false)
   })
 
   it('writes the typed text once focus leaves it', async () => {
@@ -93,45 +160,91 @@ describe('editTextInPlace', () => {
     heading.textContent = 'New'
     heading.blur()
 
-    expect(changes).toEqual([{ kind: 'text', value: 'New' }])
+    expect(changes).toEqual([[{ kind: 'text', value: 'New' }]])
   })
 
-  it('puts the old text back on Esc and writes nothing', async () => {
+  it('writes nothing when the text is unchanged', async () => {
     const { shown, heading } = await mount()
     const { changes, write } = recorder()
     editTextInPlace(shown, KEY, write)
 
-    heading.textContent = 'New'
     press(heading, 'Escape')
 
-    expect(heading.textContent).toBe('Old')
     expect(changes).toEqual([])
   })
 
-  it('writes a newline as a space', async () => {
+  it('writes a typed line with pre-line beside it, as one write', async () => {
     const { shown, heading } = await mount()
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    caretAtEnd(shown, heading)
+    press(heading, 'Enter')
+    paste(heading, 'Two')
+    press(heading, 'Escape')
+
+    expect(changes).toEqual([
+      [
+        { kind: 'text', value: 'Old\nTwo' },
+        { kind: 'style', property: 'white-space', value: 'pre-line' },
+      ],
+    ])
+  })
+
+  it('writes no white-space on an element that already keeps its breaks', async () => {
+    const { shown, heading } = await mount(
+      '<h1 style="white-space: pre-wrap">Old</h1>',
+    )
     const { changes, write } = recorder()
     editTextInPlace(shown, KEY, write)
 
     heading.textContent = 'One\nTwo'
-    press(heading, 'Enter')
+    press(heading, 'Escape')
 
-    expect(changes).toEqual([{ kind: 'text', value: 'One Two' }])
+    expect(changes).toEqual([[{ kind: 'text', value: 'One\nTwo' }]])
   })
 
-  it('takes a pasted line break as a space', async () => {
+  it('writes nothing for a kept-breaks text left as it was, whose source ends on a break', async () => {
+    const { shown, heading } = await mount(
+      '<h1 style="white-space: pre-wrap">Old\n</h1>',
+    )
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    press(heading, 'Escape')
+
+    expect(changes).toEqual([])
+    expect(heading.textContent).toBe('Old\n')
+  })
+
+  it('opens on the text as shown, so the newlines wrapping its source stay spaces', async () => {
+    const { shown, heading } = await mount(
+      '<h1>\n      Old\n      text\n    </h1>',
+    )
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    expect(heading.textContent).toBe('Old text')
+    heading.textContent = 'New text'
+    press(heading, 'Escape')
+
+    expect(changes).toEqual([[{ kind: 'text', value: 'New text' }]])
+  })
+
+  it('keeps a pasted line break as one newline', async () => {
     const { shown, heading } = await mount()
     const { changes, write } = recorder()
     editTextInPlace(shown, KEY, write)
 
-    const data = new DataTransfer()
-    data.setData('text/plain', 'One\r\nTwo')
-    heading.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
-    )
-    press(heading, 'Enter')
+    paste(heading, 'One\r\nTwo')
+    press(heading, 'Escape')
 
-    expect(changes).toEqual([{ kind: 'text', value: 'One Two' }])
+    expect(changes).toEqual([
+      [
+        { kind: 'text', value: 'One\nTwo' },
+        { kind: 'style', property: 'white-space', value: 'pre-line' },
+      ],
+    ])
   })
 
   it('puts the old text back when the write is refused', async () => {
@@ -139,7 +252,7 @@ describe('editTextInPlace', () => {
     editTextInPlace(shown, KEY, recorder(false).write)
 
     heading.textContent = 'New'
-    press(heading, 'Enter')
+    press(heading, 'Escape')
     await Promise.resolve()
 
     expect(heading.textContent).toBe('Old')
