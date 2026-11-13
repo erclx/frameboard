@@ -1,7 +1,7 @@
 // Lays the states a drive films into the drive copy's `basic` board, being a
 // 40-frame `marketing/crowd` page, an animated `marketing/motion` frame, a
-// `webapp/raw` frame stating raw colors, and a
-// live reservation on `webapp/settings`,
+// `webapp/raw` frame stating raw colors, a `webapp/feed` phone frame that
+// scrolls, and a live reservation on `webapp/settings`,
 // which the committed fixture lacks so the evidence baselines never move. Run
 // by the `launch` line in `canon/config/app-drive.toml` before `preview`.
 //
@@ -23,5 +23,5 @@ if (!copy) {
 const board = join(copy, 'test', 'fixtures', 'boards', 'basic')
 const seeded = await seedDrive(board, new Date())
 console.log(
-  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, reserved ${seeded.reserved.join(', ')}`,
+  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, feed page ${seeded.feed}, reserved ${seeded.reserved.join(', ')}`,
 )
