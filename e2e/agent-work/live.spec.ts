@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
 
+import { checkResultSchema } from '@/shared/records/check'
+
 import { cli } from '../../test/support/cli'
 import {
   copyFixtureBoard,
@@ -174,6 +176,51 @@ test.describe('the live board', () => {
     await expect(
       hero.getByRole('button', { name: '1 check finding' }),
     ).toBeVisible()
+  })
+
+  test('turns a rule off for the project from a finding card, and check agrees', async ({
+    page,
+  }) => {
+    const hero = page.locator('[data-frame="studio/home/hero"]')
+    const checked = async () => {
+      const run = await cli(['check', 'studio/home/hero', '--json'], {
+        cwd: board.root,
+      })
+      const { data, error } = run.json()
+      return checkResultSchema
+        .parse(data ?? error?.details)
+        .findings.map((finding) => finding.rule)
+    }
+    const before = await checked()
+    expect(before).toHaveLength(2)
+    const [rule] = before
+    // A reading tab draws no button, so the tab redeems a write ticket first.
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}${HOME}`)
+
+    // The hit layer above the badge takes the press and opens its list.
+    await hero
+      .getByRole('button', { name: '2 check findings' })
+      .click({ force: true })
+    const list = page.getByRole('dialog', { name: /findings? on hero/ })
+    await list
+      .getByRole('button', { name: `Turn off in studio, ${rule}` })
+      .click()
+
+    await expect(
+      hero.getByRole('button', { name: '1 check finding' }),
+    ).toBeVisible()
+    expect(await checked()).toEqual(before.slice(1))
+
+    // Undo is a board key, which waits until the list has let go of focus.
+    await page.keyboard.press('Escape')
+    await expect(list).toBeHidden()
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect(
+      hero.getByRole('button', { name: '2 check findings' }),
+    ).toBeVisible()
+    expect(await checked()).toEqual(before)
   })
 
   test('marks a frame resized so its content clips, and clears it on a fit', async ({
