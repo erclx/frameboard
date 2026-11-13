@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.35.0](https://github.com/erclx/frameboard/compare/v0.34.0...v0.35.0) (2026-11-13)
+
+
+### Features
+
+* **canvas:** frame a dropped tile, add video controls, inset the bar ([#325](https://github.com/erclx/frameboard/issues/325)) ([d1500a9](https://github.com/erclx/frameboard/commit/d1500a9ee879d1d21388e0d51325daad3d0d3320))
+* **checks:** add quiet warning marks and a per-project rule off switch ([#323](https://github.com/erclx/frameboard/issues/323)) ([ae9a388](https://github.com/erclx/frameboard/commit/ae9a388ee93a4128e8bac5a09e956724f973918b))
+* **cli:** close four agent gaps in check, remove, and capture ([#322](https://github.com/erclx/frameboard/issues/322)) ([ea15f5e](https://github.com/erclx/frameboard/commit/ea15f5ea2be02c0310f956f7c0d8a986854a2b41))
+
 ## [0.34.0](https://github.com/erclx/frameboard/compare/v0.33.0...v0.34.0) (2026-11-13)
 
 
