@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { parseFrame } from './address'
 import type { PlaceFacts } from './place'
 import { wrapElements } from './wrap'
+
+const FIXTURES = new URL('../../../test/fixtures/wrap/', import.meta.url)
+const fixture = (name: string) => readFileSync(new URL(name, FIXTURES), 'utf8')
 
 const NONE: PlaceFacts = { position: null, width: false, height: false }
 const ROW = { direction: 'row', gap: 16 } as const
@@ -20,15 +25,14 @@ function factsFor(
 
 describe('wrapElements', () => {
   // html 0, head 1, body 2, main 3, h1 4, p 5, footer 6
-  const SOURCE =
-    '<html><head></head><body>\n  <main>\n    <h1>Hi</h1>\n    <p>x</p>\n  </main>\n  <footer>f</footer>\n</body></html>'
+  const SOURCE = fixture('siblings.html')
 
   it('lands one container at the first element’s place holding them in order', () => {
     const wrapped = wrapElements(SOURCE, [3, 6], ROW, null, factsFor(SOURCE))
 
     expect(wrapped).toMatchObject({
       ok: true,
-      html: '<html><head></head><body>\n  <div style="display: flex; flex-direction: row; gap: 16px">\n    <main>\n    <h1>Hi</h1>\n    <p>x</p>\n  </main>\n    <footer>f</footer>\n  </div>\n</body></html>',
+      html: fixture('siblings-wrapped.html'),
       index: 3,
       members: [4, 7],
     })
