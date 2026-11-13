@@ -49,6 +49,7 @@
     "inspector/layout": "design/10-inspector/inspector-layout",
     "inspector/height-mode": "design/10-inspector/height-mode",
     "inspector/motion": "design/10-inspector/motion-held",
+    "inspector/phone-link": "design/10-inspector/frame-phone-link",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",
