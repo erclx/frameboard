@@ -69,6 +69,33 @@ describe('MotionSection', () => {
     expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
   })
 
+  describe('for a frame that has run to its end', () => {
+    /** Shows the slide finished on its own clock, as a page left to run ends. */
+    async function showFinished(): Promise<void> {
+      await showFrame(SLIDE)
+      const page = hosts[0]?.querySelector('iframe')?.contentDocument
+      for (const animation of page?.getAnimations() ?? []) animation.finish()
+    }
+
+    it('reads Play at its end time', async () => {
+      await showFinished()
+
+      render(<MotionSection frame={HERO} />)
+
+      expect(await screen.findByRole('button', { name: 'Play' })).toBeVisible()
+      expect(screen.getByText('2.00 / 2.00 s')).toBeVisible()
+    })
+
+    it('plays it again from the start on a press of Play', async () => {
+      await showFinished()
+      render(<MotionSection frame={HERO} />)
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+
+      expect(motionHoldOf(HERO.ref)).toEqual({ at: 0, playing: true })
+    })
+  })
+
   it('disables the filmstrip of a frame that repeats forever, saying why', async () => {
     await showFrame(SPIN)
 

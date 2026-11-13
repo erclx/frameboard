@@ -7,7 +7,12 @@ import type { FrameRecord } from '@/shared/records/list'
 
 import { PlayButton, SeekTrack } from '../element/media-bar'
 import { reportRefusal } from '../left-panel/page-actions'
-import { type FrameMotion, liveMomentOf, useFrameMotion } from '../motion/seek'
+import {
+  type FrameMotion,
+  liveMomentOf,
+  useFrameMotion,
+  useMotionEnded,
+} from '../motion/seek'
 import {
   formatMoment,
   holdMotion,
@@ -47,9 +52,11 @@ interface MotionControlsProps {
 
 function MotionControls({ frame, found, hold }: MotionControlsProps) {
   const { span } = found
-  // A frame the board does not drive runs on its own clock, so it reads as playing.
-  const playing = hold?.playing ?? true
-  const at = hold ? Math.min(hold.at, span) : null
+  const ended = useMotionEnded(frame.ref, found, hold !== undefined)
+  // A frame the board does not drive runs on its own clock, so it reads as
+  // playing until that clock reaches the timeline's end.
+  const playing = hold?.playing ?? !ended
+  const at = hold ? Math.min(hold.at, span) : ended ? span : null
   const control = {
     reading: { paused: !playing, time: (at ?? 0) / 1000, length: span / 1000 },
     togglePlay: () => {

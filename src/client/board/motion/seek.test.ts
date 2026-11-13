@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createSeeker, readFrameMotion, useMotionDriver } from './seek'
-import { holdMotion, releaseMotion } from './store'
+import { holdMotion, motionHoldOf, playMotion, releaseMotion } from './store'
 
 // A box sliding 200 px right over 2 s, so its left edge names the moment.
 // canon-allow-embedded: the page whose slide the hold assertions read, kept beside them
@@ -163,6 +163,40 @@ describe('a held frame an agent rewrites while its timeline is read', () => {
       const animation = view.document.getAnimations()[0]
       expect(animation?.playState).toBe('paused')
       expect(animation?.currentTime).toBe(1000)
+    })
+  })
+})
+
+describe('playing a live frame', () => {
+  const REF = 'studio/home/slide'
+
+  afterEach(() => {
+    releaseMotion(REF)
+  })
+
+  async function playFrom(html: string, from: number): Promise<void> {
+    await frameWith(html)
+    const iframe = mounted[0]
+    if (!iframe) throw new Error('No frame mounted.')
+    renderHook(() => useMotionDriver({ current: iframe }, REF, true, false))
+    playMotion(REF, from)
+  }
+
+  it('holds a timeline that ends at its end once the clock reaches it', async () => {
+    await playFrom(SLIDE, 1900)
+
+    await waitFor(() =>
+      expect(motionHoldOf(REF)).toEqual({ at: 2000, playing: false }),
+    )
+  })
+
+  it('wraps a timeline that repeats forever back over its iteration', async () => {
+    await playFrom(SPIN, 1900)
+
+    await waitFor(() => {
+      const hold = motionHoldOf(REF)
+      expect(hold?.playing).toBe(true)
+      expect(hold?.at).toBeLessThan(1900)
     })
   })
 })

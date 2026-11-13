@@ -102,6 +102,10 @@ const frameHeightSchema = z.object({
       }),
     )
     .refine((boxes) => Object.keys(boxes).length <= 1000),
+  heights: z
+    .record(ref, z.int().min(1))
+    .refine((heights) => Object.keys(heights).length <= 1000)
+    .optional(),
 })
 const pasteSchema = z.object({
   ref,
@@ -411,12 +415,20 @@ export function structureRoutes(
    * Sets how each frame holds its height, `fixed`, `fit`, or `scroll`, in one
    * step. `expected` holds each frame's box as the caller saw it, keyed by the
    * ref the body names, and a frame changed since refuses `stale-layout`
-   * before any frame is written. A locked or claimed frame refuses the whole
+   * before any frame is written. `heights` gives a `scroll` write the screen
+   * height each named frame takes, and refuses `usage` with any other mode. A
+   * locked or claimed frame refuses the whole
    * write, and `fit` measures each frame and its linked widths on the warm
    * browser first, refusing `browser-not-found` where none runs.
    */
   app.post('/api/frame/height', async (c) => {
     const body = await parseBody(c.req.raw, frameHeightSchema)
+    if (body.heights && body.mode !== 'scroll') {
+      throw new FrameboardError(
+        'usage',
+        `The body gives heights to a ${body.mode} write, which takes them only with scroll.`,
+      )
+    }
     const targets: HeightTarget[] = body.refs.map((ref) => {
       const expected = body.expected[ref]
       if (!expected) {
@@ -426,7 +438,10 @@ export function structureRoutes(
           { ref },
         )
       }
-      return { ref, expected }
+      const height = body.heights?.[ref]
+      return height === undefined
+        ? { ref, expected }
+        : { ref, expected, height }
     })
     await refuseLocked(body.refs)
     await refuseHeldFrames(body.refs)

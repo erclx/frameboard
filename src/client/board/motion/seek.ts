@@ -4,6 +4,7 @@ import { holdMotionIn, type Motion, readMotionIn } from '@/shared/motion'
 
 import {
   advanceMotion,
+  holdMotion,
   type MotionHold,
   motionHoldOf,
   onMotionHoldChange,
@@ -140,9 +141,10 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
 
 /**
  * Drives one frame's live page from the motion store: seeks it to the held
- * moment, runs the play clock looping at the track's end, re-seeks after an
- * agent's write reloads it, and hands it back to its own clock once its hold
- * ends. Entering Play and leaving the page both end the hold.
+ * moment, runs the play clock, re-seeks after an agent's write reloads it,
+ * and hands it back to its own clock once its hold ends. A timeline that ends stops held at its end, and one that repeats
+ * forever loops over one iteration. Entering Play and leaving the page both
+ * end the hold.
  */
 export function useMotionDriver(
   iframe: RefObject<HTMLIFrameElement | null>,
@@ -182,8 +184,15 @@ export function useMotionDriver(
 
     const tick = (now: number) => {
       if (!clock || !bound) return
-      const { span } = bound.found
+      const { span, motion } = bound.found
       const elapsed = clock.from + (now - clock.started)
+      // A timeline that ends stops held at its end rather than released,
+      // since a release plays a finished CSS animation over from 0. The hold
+      // stops the clock through `apply`, so no frame is asked for after it.
+      if (motion.duration !== null && elapsed >= span) {
+        holdMotion(ref, span)
+        return
+      }
       advanceMotion(ref, span > 0 ? elapsed % span : elapsed)
       clock.frame = bound.view.requestAnimationFrame(tick)
     }
@@ -253,6 +262,37 @@ export function useMotionDriver(
       element.removeEventListener('load', reload)
     }
   }, [iframe, ref, live])
+}
+
+/**
+ * Whether a frame the board does not drive has run its timeline to the end,
+ * read once now and again by one timer set for the time left, cheaper than a
+ * read every animation frame. Always false for a held frame, one that
+ * repeats forever, and a `__hf` page, which gives no live reading. A new
+ * `found`, as a reload reads, starts the reading over.
+ */
+export function useMotionEnded(
+  ref: string,
+  found: FrameMotion,
+  held: boolean,
+): boolean {
+  const [read, setRead] = useState<{
+    found: FrameMotion
+    ended: boolean
+  } | null>(null)
+  const timed = found.motion.duration !== null && found.motion.source !== 'hf'
+  useEffect(() => {
+    if (held || !timed) return
+    let timer = 0
+    const check = () => {
+      const left = found.span - liveMomentOf(ref, found)
+      setRead({ found, ended: left <= 0 })
+      if (left > 0) timer = window.setTimeout(check, left)
+    }
+    check()
+    return () => window.clearTimeout(timer)
+  }, [ref, found, held, timed])
+  return !held && timed && read?.found === found && read.ended
 }
 
 /**

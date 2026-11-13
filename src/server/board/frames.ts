@@ -485,13 +485,16 @@ export interface HeightTarget {
   expected: Box
   /** The content height `fit` takes, with each linked width's own. */
   measured?: { height: number; widths?: readonly LinkedWidth[] }
+  /** The screen height `scroll` takes, over the drop a hugging height takes without it. */
+  height?: number
 }
 
 /**
  * Sets how each frame holds its height in one write under one lock, all of
  * them or none. `fixed` keeps the box and clears hugging and scroll. `fit`
  * takes the measured height and hugs it, clearing scroll. `scroll` fixes both
- * axes as `frame resize --scroll` does. Every frame is checked before any is
+ * axes as `frame resize --scroll` does, at the target's `height` when it
+ * gives one. Every frame is checked before any is
  * set: one moved or sized since its `expected` refuses `stale-layout`, leaving
  * out an axis the frame hugs, since the server measures that one, and a `fit`
  * without `measured` refuses `usage`.
@@ -519,12 +522,7 @@ export async function setHeightModes(
         return {
           layout,
           name: frame.name,
-          placement: heightPlacement(
-            placement,
-            frameRef,
-            mode,
-            target.measured,
-          ),
+          placement: heightPlacement(placement, frameRef, mode, target),
         }
       })
       for (const { layout, name, placement } of next) {
@@ -544,10 +542,11 @@ function heightPlacement(
   placement: Placement,
   frameRef: string,
   mode: HeightMode,
-  measured: HeightTarget['measured'],
+  { measured, height }: HeightTarget,
 ): Placement {
   if (mode === 'scroll') {
-    return resizedPlacement(placement, frameRef, {}, { scroll: true })
+    const size = height === undefined ? {} : { height }
+    return resizedPlacement(placement, frameRef, size, { scroll: true })
   }
   if (mode === 'fixed') {
     return { ...placement, hugHeight: false, scroll: false }

@@ -292,7 +292,11 @@ interface HeightRowProps {
   calls: Structure
 }
 
-/** How the frames hold their height, Fixed, Fit, or Scroll. */
+/**
+ * How the frames hold their height, Fixed, Fit, or Scroll. A frame picked
+ * back to Scroll takes the screen height it left Scroll at in this tab, while
+ * it still hugs or still holds the height Fit gave it.
+ */
 function HeightRow({ frames, disabled, calls }: HeightRowProps) {
   return (
     <ChoiceRow
@@ -303,15 +307,48 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
       valueOf={heightModeOf}
       disabled={disabled}
       refusal="Couldn’t set the height"
-      write={(refs, mode) =>
-        calls.setHeightMode(
+      write={async (refs, mode) => {
+        const heights = mode === 'scroll' ? screenHeightsOf(frames) : {}
+        if (mode !== 'scroll') rememberScreens(frames)
+        const result = await calls.setHeightMode(
           refs,
           mode,
           Object.fromEntries(frames.map(({ ref, box }) => [ref, box])),
+          Object.keys(heights).length > 0 ? heights : undefined,
         )
-      }
+        if (mode === 'scroll') for (const ref of refs) screens.delete(ref)
+        return result
+      }}
     />
   )
+}
+
+/**
+ * The screen height each frame left Scroll at, with the height it held when
+ * it last left Fit, by ref. It lasts the tab rather than the file, so a reload
+ * falls back to the server's own scroll height.
+ */
+const screens = new Map<string, { screen: number; fitted?: number }>()
+
+function rememberScreens(frames: readonly FrameRecord[]): void {
+  for (const { ref, box, scroll, hugHeight } of frames) {
+    if (scroll) screens.set(ref, { screen: box.height })
+    const held = screens.get(ref)
+    if (held && hugHeight) held.fitted = box.height
+  }
+}
+
+function screenHeightsOf(
+  frames: readonly FrameRecord[],
+): Record<string, number> {
+  const heights: Record<string, number> = {}
+  for (const { ref, box, hugHeight } of frames) {
+    const held = screens.get(ref)
+    if (held && (hugHeight || held.fitted === box.height)) {
+      heights[ref] = held.screen
+    }
+  }
+  return heights
 }
 
 const DEVICE_CHOICES = [

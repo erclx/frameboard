@@ -187,7 +187,7 @@ describe('the raw colors page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw'],
+      pages: ['settings', 'home', 'raw', 'feed'],
     })
   })
 
@@ -199,6 +199,39 @@ describe('the raw colors page', () => {
     const seeded = await seedDrive(root, new Date())
 
     expect(seeded.raw).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the scroll feed page', () => {
+  it('lays one phone frame that scrolls a page longer than its screen', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.feed).toBe('laid')
+    expect(readJson('webapp/feed/layout.json')).toMatchObject({
+      frames: { 'feed-scroll': { width: 390, height: 844, scroll: true } },
+    })
+    expect(
+      readFileSync(join(root, 'webapp/feed/feed-scroll.html'), 'utf8'),
+    ).toContain('data-name="Section 12"')
+  })
+
+  it('lists the page after the raw colors page', async () => {
+    await seedDrive(root, new Date())
+
+    expect(readJson('webapp/project.json')).toMatchObject({
+      pages: ['settings', 'home', 'raw', 'feed'],
+    })
+  })
+
+  it('leaves a hand-edited feed page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/feed/feed-scroll.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.feed).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })

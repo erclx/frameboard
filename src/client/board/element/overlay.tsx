@@ -60,7 +60,8 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
 
 /**
  * A faint dashed box over the part of each element past its frame's edge,
- * for every selected frame, where the iframe cannot paint it. It is the
+ * for every selected frame but one that scrolls, where the iframe cannot
+ * paint it. It is the
  * element's measured box rather than its pixels, and draws in Edit with the
  * Move tool alone, the one place a press on it is taken.
  */
@@ -70,7 +71,14 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
     (state) => state.mode === 'edit' && state.tool === 'move',
   )
   const drawn = usePendingFrames(frames)
-  const ghosts = useGhosts(container, moving ? selected : [])
+  // A scroll frame shows its overflow by scrolling, so a ghost past its edge
+  // would mark content the frame already reaches.
+  const walked = moving
+    ? selected.filter(
+        (ref) => !frames.some((frame) => frame.ref === ref && frame.scroll),
+      )
+    : []
+  const ghosts = useGhosts(container, walked)
   return ghosts.map(({ key, box }) => {
     const frame = drawn.find(({ ref }) => ref === key.frame)
     if (!frame) return null
