@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { checkFrame, readProjectContext } from './frame'
 import { checkPage, checkProject, RULES } from './run'
 
@@ -141,6 +142,81 @@ describe('readProjectContext', () => {
     writeChecks({ minContrast })
 
     expect(readProjectContext(root, 'app').config).toEqual({})
+  })
+})
+
+describe('a rule turned off', () => {
+  const UNSTYLED = '<p>Hello</p>'
+  let board: TempBoard
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  function writeProject(name: string, checks: unknown): Record<string, string> {
+    return {
+      [`${name}/project.json`]: JSON.stringify({
+        version: 1,
+        pages: ['home'],
+        checks,
+      }),
+      [`${name}/home/hero.html`]: UNSTYLED,
+      [`${name}/.drafts/keep.txt`]: '',
+    }
+  }
+
+  it('reports none of that rule from one frame', () => {
+    board = writeBoard(writeProject('site', { off: ['default-font'] }))
+
+    expect(
+      checkFrame({
+        root: board.root,
+        project: 'site',
+        page: 'home',
+        name: 'hero',
+      }).findings,
+    ).toEqual([])
+  })
+
+  it('reports none of that rule from a page or a project, folder rules among them', async () => {
+    board = writeBoard(
+      writeProject('site', { off: ['default-font', 'dot-folder'] }),
+    )
+
+    expect((await checkPage(board.root, 'site', 'home')).findings).toEqual([])
+    expect((await checkProject(board.root, 'site')).findings).toEqual([])
+  })
+
+  it('still reports the rule in a project that left it on', async () => {
+    board = writeBoard({
+      ...writeProject('site', { off: ['default-font', 'dot-folder'] }),
+      ...writeProject('docs', {}),
+    })
+
+    const { findings } = await checkProject(board.root, 'docs')
+
+    expect(findings.map((finding) => finding.rule)).toEqual([
+      'dot-folder',
+      'default-font',
+    ])
+  })
+
+  it.each([
+    ['a string', 'default-font'],
+    ['a number', 3],
+    ['a list holding a number', ['default-font', 3]],
+    ['an id no rule declares', ['unlisted']],
+  ])('turns nothing off for %s', (_, off) => {
+    board = writeBoard(writeProject('site', { off }))
+
+    const { findings } = checkFrame({
+      root: board.root,
+      project: 'site',
+      page: 'home',
+      name: 'hero',
+    })
+
+    expect(findings.map((finding) => finding.rule)).toEqual(['default-font'])
   })
 })
 

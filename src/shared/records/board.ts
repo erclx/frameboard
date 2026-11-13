@@ -15,6 +15,8 @@ export const projectChecksSchema = z.looseObject({
   minFontSize: z.number().positive().optional(),
   /** The lowest text contrast ratio the `min-contrast` rule allows, 4.5 being WCAG's. */
   minContrast: z.number().min(1).optional(),
+  /** The ids of the rules the project turns off, on the board, in `check`, and in the hook. */
+  off: z.array(z.string()).optional(),
 })
 
 export type ProjectChecks = z.infer<typeof projectChecksSchema>

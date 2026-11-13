@@ -15,6 +15,7 @@ import {
   type Sheet,
 } from './frame-source'
 import { checkLinks } from './links'
+import { withoutOff } from './rule'
 import {
   checkMalformedTags,
   checkMarkup,
@@ -47,17 +48,20 @@ export function checkFrameIn(
 ): Finding[] {
   const source = readFrame(target)
   const cascade = buildCascade(source, tokens)
-  return [
-    ...checkNaming(target, boardPath(target.root, source.path)),
-    ...checkMarkup(source),
-    ...checkMalformedTags(source),
-    ...checkNesting(source),
-    ...checkLinks(source),
-    ...checkFonts(source, cascade, config),
-    ...checkTheme(source),
-    ...checkUnknownTokens(source, tokens),
-    ...(config.noUppercase ? checkUppercase(source, cascade) : []),
-  ]
+  return withoutOff(
+    [
+      ...checkNaming(target, boardPath(target.root, source.path)),
+      ...checkMarkup(source),
+      ...checkMalformedTags(source),
+      ...checkNesting(source),
+      ...checkLinks(source),
+      ...checkFonts(source, cascade, config),
+      ...checkTheme(source),
+      ...checkUnknownTokens(source, tokens),
+      ...(config.noUppercase ? checkUppercase(source, cascade) : []),
+    ],
+    config.off,
+  )
 }
 
 /**
@@ -79,8 +83,9 @@ export function readProjectContext(
 /**
  * The project's `checks` config, read by hand rather than through the
  * project record's schema, which the hook cannot afford to load. A file that
- * does not read, or a key of the wrong type, leaves that rule off. The
- * server's browser checker reads it too, for `minFontSize` and `minContrast`.
+ * does not read, or a key of the wrong type, leaves that rule off, and an
+ * `off` that is not a list of ids turns nothing off. The server's browser
+ * checker reads it too, for `minFontSize`, `minContrast`, and `off`.
  */
 export function readConfig(root: string, project: string): ProjectChecks {
   let parsed: unknown
@@ -106,6 +111,12 @@ export function readConfig(root: string, project: string): ProjectChecks {
   }
   if (typeof checks.minContrast === 'number' && checks.minContrast >= 1) {
     config.minContrast = checks.minContrast
+  }
+  if (
+    Array.isArray(checks.off) &&
+    checks.off.every((rule) => typeof rule === 'string')
+  ) {
+    config.off = checks.off
   }
   return config
 }

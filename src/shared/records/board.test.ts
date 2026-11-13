@@ -83,6 +83,26 @@ describe('projectFileSchema', () => {
     })
   })
 
+  it('reads the rules a project turned off', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: [],
+      checks: { off: ['generic-font'] },
+    })
+
+    expect(project.checks).toEqual({ off: ['generic-font'] })
+  })
+
+  it('keeps an off value that is not a list of ids as written', () => {
+    const project = projectFileSchema.parse({
+      version: 1,
+      pages: [],
+      checks: { off: 3 },
+    })
+
+    expect(project.checks).toEqual({ off: 3 })
+  })
+
   it('keeps a checks value the rules cannot read as written', () => {
     const project = projectFileSchema.parse({
       version: 1,
