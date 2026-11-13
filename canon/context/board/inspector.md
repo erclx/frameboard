@@ -29,7 +29,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
 - **Phone link:** one frame ends the Frame section with Open on a phone, a card that starts the link through `POST /api/preview` and shows it as a code and text, ending it by token on close
-- **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone, then Muted in the file, which sets `muted` or drops it
+- **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone, then Controls, Autoplay, Loop, and Muted in the file, each a switch that sets one attribute or drops it. An audio shows no Controls switch, since one without `controls` draws nothing.
 - **Motion:** a frame whose live page runs a timeline adds play, the time in seconds, and a scrub track between Fill and Export, moving the page in this tab and writing nothing
 - **Filmstrip:** offers 2 to 12 moments, only the counts whose strip fits the screenshot limit at the Export scale, and disables for a frame that repeats forever
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
