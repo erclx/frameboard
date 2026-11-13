@@ -23,7 +23,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **This slide:** a menu under Device reading Same as page or a named transition, writing every frame through `POST /api/frame/transition` as one undo step
 - **Page:** `page-section.tsx` shows with nothing selected, holding Slide transition, Direction, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
 - **Step:** `element/step.tsx` adds a Present section to one element with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
-- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step. Several Free elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow.
+- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
+- **Arrange for elements:** several Free elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.

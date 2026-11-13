@@ -26,10 +26,8 @@ Several elements in one frame select together, all at one hash, with `element` h
 
 - With an element selected, Shift-click on the canvas or in Layers adds an element or takes it out, and Cmd+A selects its siblings. An element in another frame starts over there.
 - A drag from a selected frame's bare `body` marquees the elements it touches, outermost first, and a drag from an element it holds still moves the frame
-- Several draw one box with four corner handles and the group's size chip, each member keeping a thin outline, through `group.ts`. Delete, from its key or the menu, takes all as one step, and restack and the menu's other items act on the last picked.
-- A drag or an arrow key moves every Free member and a corner drag scales each box, never a font size, as one write and one undo step. A member in the flow stays put.
-- The frames' align and distribute keys write each Free member's `left` and `top`, and stand disabled while one sits in the flow
-- Shift+A wraps selected siblings in one flow `div` through `POST /api/frames/wrap`, its direction and gap read by `place/flow-guess.ts` from where they sit
+- Several draw one box with corner handles and a size chip through `group.ts`, each member outlined thin. Delete takes all as one step, and restack and the menu's other items act on the last picked.
+- A drag, an arrow key, the align keys, and a corner drag act on every Free member as one write, and Shift+A wraps siblings in one flow `div` through `POST /api/frames/wrap`
 - One selected `<video>` or `<audio>` in Edit draws `media-bar.tsx` under it in the notes layer, above the hit layer. `media.ts` drives the live node, so a listen writes nothing.
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
