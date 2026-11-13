@@ -80,7 +80,8 @@ Owns the phone link, a second read-only listener for one project, apart from `ac
   - A `?at=` query never reaches the frame route, so the phone reads only the file as it stands
 - The board holds one listener at a time. A start ends the last and mints a new 96-bit token, a stop naming a token ends only the listener holding it, and the board ends it as it closes.
 - `address.ts` picks the machine's private IPv4 address, preferring 192.168, then 10, then 172.16 to 172.31, where container bridges sit
-- `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`, and a machine with no such address refuses `no-network-address`
+- `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`
+  - A start on a machine with no such address refuses `no-network-address` and opens nothing
 
 ### `src/server/clipboard/`
 
