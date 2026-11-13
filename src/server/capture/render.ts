@@ -268,7 +268,7 @@ async function drawBezel(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${border}px;top:${border}px;width:${box.width}px;height:${box.height}px">` +
         `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%">` +
-        `<div style="position:absolute;inset:0;border-radius:${screenRadius}px;box-shadow:${bezelShadow(device, { drop: false })}">${marks}</div>` +
+        `<div style="position:absolute;inset:0;border-radius:${screenRadius}px;box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
     )
