@@ -1,6 +1,12 @@
 import '../../styles.css'
 
-import { act, render, renderHook, screen } from '@testing-library/react'
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -386,6 +392,24 @@ describe('ChangesToast', () => {
 
       expect(next).toHaveTextContent(/^›$/)
       expect(await screen.findByText('Next change ]')).toBeInTheDocument()
+    })
+
+    it('lays the tooltip over the toast it names', async () => {
+      render(<Harness />)
+      act(() => receiveChanges(store, pile()))
+      const next = await screen.findByRole('button', { name: 'Next' })
+
+      await userEvent.hover(next)
+      const tip = await screen.findByText('Next change ]')
+
+      await waitFor(() => {
+        const box = tip.getBoundingClientRect()
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.bottom - 2,
+        )
+        expect(tip.contains(hit)).toBe(true)
+      })
     })
 
     it('opens the tooltip on keyboard focus as on hover', async () => {
