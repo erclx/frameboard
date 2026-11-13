@@ -22,8 +22,8 @@ export default defineConfig({
   workers: process.env.CI ? undefined : '25%',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // CI uploads playwright-report/, so the html reporter is what keeps a
-  // retry's trace there.
+  // CI uploads playwright-report/ from a failed job alone, so the html
+  // reporter keeps a retry's trace only when every attempt of a test failed.
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `http://localhost:${port}`,
