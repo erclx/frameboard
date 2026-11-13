@@ -39,7 +39,7 @@ export function PresentBar({
         disabled={at <= 1}
         onClick={onPrevious}
       />
-      <span className="px-2 text-[#ddd] tabular-nums select-none">
+      <span className="px-2 whitespace-nowrap text-[#ddd] tabular-nums select-none">
         {at} / {count}
       </span>
       <BarButton
