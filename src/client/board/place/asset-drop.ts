@@ -44,7 +44,7 @@ interface AssetDropOptions {
   /** The canvas layer holding the frames' iframes. */
   container: HTMLElement | null
   page: string
-  /** The page's frames where they draw. */
+  /** Every frame of the page where it draws, the hidden ones included. */
   frames: () => readonly FrameRecord[]
   toBoard: (point: ClientPoint) => BoardPoint
   /** Lands the dropped file, `placeFile` in the app. */

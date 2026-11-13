@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { AssetFile } from '@/shared/records/assets'
+import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import type { PlaceableFile } from '../assets/drag'
@@ -28,9 +29,11 @@ const FRAMES = [HERO]
 function HitLayer({
   placed,
   framed = [],
+  frames = FRAMES,
 }: {
   placed: Placed[]
   framed?: Placed[]
+  frames?: FrameRecord[]
 }) {
   const hit = useRef<HTMLDivElement>(null)
   const [container] = useState(() => document.createElement('div'))
@@ -38,7 +41,7 @@ function HitLayer({
     enabled: true,
     container,
     page: 'studio/home',
-    frames: () => FRAMES,
+    frames: () => frames,
     toBoard: ({ clientX, clientY }) => ({ x: clientX, y: clientY }),
     place: async (_container, _page, _frames, at, file) => {
       placed.push({ at, file })
@@ -63,10 +66,11 @@ function renderBoard(
   files: AssetFile[],
   placed: Placed[],
   framed: Placed[] = [],
+  frames?: FrameRecord[],
 ) {
   return render(
     <div>
-      <HitLayer placed={placed} framed={framed} />
+      <HitLayer placed={placed} framed={framed} frames={frames} />
       <ul style={{ position: 'fixed', left: 300, top: 0, width: 200 }}>
         {files.map((file) => (
           <Tile key={file.path} project="studio" file={file} />
@@ -185,6 +189,34 @@ describe('useAssetDrop', () => {
     )
     stop()
 
+    expect(ghosts.filter((ghost) => ghost !== null)).toEqual([])
+  })
+
+  it('makes no frame and holds no ghost over a hidden frame', async () => {
+    const hidden = frameOf('clip', {
+      box: { x: 100, y: 0, width: 100, height: 200 },
+      hidden: true,
+    })
+    const placed: Placed[] = []
+    const framed: Placed[] = []
+    renderBoard(
+      [{ path: 'clip.webm', kind: 'video', size: 10 }],
+      placed,
+      framed,
+      [HERO, hidden],
+    )
+    const ghosts: unknown[] = []
+    const stop = tileDragStore.subscribe(({ ghost }) => ghosts.push(ghost))
+
+    await dragTo(
+      screen.getByRole('button', { name: /^Copy path of clip.webm,/ }),
+      screen.getByTestId('hit'),
+      { clientX: 150, clientY: 60 },
+    )
+    stop()
+
+    expect(framed).toEqual([])
+    expect(placed).toHaveLength(1)
     expect(ghosts.filter((ghost) => ghost !== null)).toEqual([])
   })
 

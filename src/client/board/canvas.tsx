@@ -635,11 +635,13 @@ export function Canvas({
     return { x, y }
   }, [])
   const drawnFrames = useCallback(() => withDrawn(framesRef.current), [])
+  // Hidden frames too, since a drop over one makes no frame and its name is taken.
+  const dropFrames = useCallback(() => withDrawn(pageFramesRef.current), [])
   useAssetDrop(hitRef, {
     enabled: !playing,
     container: layer,
     page: page.ref,
-    frames: drawnFrames,
+    frames: dropFrames,
     toBoard,
   })
 
