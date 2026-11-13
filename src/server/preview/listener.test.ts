@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { join } from 'node:path'
 
@@ -111,6 +111,35 @@ describe('previewApp', () => {
       const response = await request(path)
 
       expect(response.status).toBe(404)
+    })
+
+    it.each([
+      ["a page's layout record", 'lay.json', '../home/layout.json'],
+      ['the project record', 'proj.json', '../project.json'],
+      ['a dot-named file', 'secret.txt', '../.secret'],
+      ['a file in a dot-named folder', 'git-config', '../.git/config'],
+    ])(
+      'answers 404 for an asset symlink reaching %s',
+      async (_case, link, target) => {
+        mkdirSync(join(board.root, 'studio/.git'), { recursive: true })
+        writeFileSync(join(board.root, 'studio/.git/config'), '[core]')
+        writeFileSync(join(board.root, 'studio/.secret'), 'secret')
+        symlinkSync(target, join(board.root, 'studio/assets', link))
+
+        const response = await request(
+          `/v/${TOKEN}/frames/studio/assets/${link}`,
+        )
+
+        expect(response.status).toBe(404)
+      },
+    )
+
+    it('serves an asset symlink reaching a frame of the same project', async () => {
+      symlinkSync('../home/hero.html', join(board.root, 'studio/assets/hero'))
+
+      const response = await request(`/v/${TOKEN}/frames/studio/assets/hero`)
+
+      expect(response.status).toBe(200)
     })
 
     it.each(['POST', 'PUT', 'DELETE', 'PATCH'])(
