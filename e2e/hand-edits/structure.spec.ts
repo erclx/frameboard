@@ -8,8 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
-
-const UNDO = 'ControlOrMeta+KeyZ'
+import { undo } from '../support/history'
 
 test.describe('page structure by hand, and its undo', () => {
   let board: FixtureBoard
@@ -46,14 +45,6 @@ test.describe('page structure by hand, and its undo', () => {
     return page
       .getByRole('navigation', { name: 'Pages' })
       .getByRole('link', { name, exact: true })
-  }
-
-  /** Waits for Undo to light, which the server's history message does once a step is recorded. */
-  async function undo(page: Page): Promise<void> {
-    await expect(
-      page.getByRole('button', { name: 'Undo' }),
-    ).not.toHaveAttribute('aria-disabled')
-    await page.keyboard.press(UNDO)
   }
 
   test('adds a page after the current one, and undo takes it away', async ({

@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const CLI = resolve('dist/cli.js')
 const HERO = 'webapp/home/hero'
@@ -172,7 +173,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).not.toContain('data-name="Headline"')
     expect(read()).toContain('data-name="Caption"')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toContain('<h1 data-name="Headline">hero</h1>')
   })
@@ -211,7 +212,7 @@ test.describe('selecting an element inside a frame', () => {
       'Caption',
     )
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(order).toEqual(['Headline', 'Caption'])
   })
@@ -229,7 +230,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(order).toEqual(['Caption', 'Headline'])
     await expect(page.getByRole('button', { name: /^Undo/ })).toBeEnabled()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(order).toEqual(['Headline', 'Caption'])
   })
@@ -260,7 +261,7 @@ test.describe('selecting an element inside a frame', () => {
       page.getByRole('textbox', { name: 'X position in its parent' }),
     ).toBeVisible()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -301,7 +302,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(() => read().match(/position: absolute/g)).toHaveLength(2)
     await expect(outlines).toHaveCount(2)
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -340,7 +341,7 @@ test.describe('selecting an element inside a frame', () => {
 
     await expect.poll(read).not.toContain('data-name="Headline"')
     expect(read()).not.toContain('data-name="Caption"')
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
     await expect.poll(read).toContain('data-name="Headline"')
     expect(read()).toContain('data-name="Caption"')
   })
@@ -375,11 +376,11 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toContain('data-name="Rectangle"')
     await expect(pin).toHaveAttribute('data-note-element', '6')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
     await expect.poll(read).not.toContain('data-name="Rectangle"')
     await expect(pin).toHaveAttribute('data-note-element', '5')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
     await expect.poll(read).not.toContain('color: var(--accent)')
     await expect(pin).toHaveAttribute('data-note-element', '5')
   })

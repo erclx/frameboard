@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const HERO = '[data-frame="studio/home/hero"]'
 const MOBILE = '[data-frame="studio/home/mobile"]'
@@ -100,7 +101,7 @@ test.describe('page sections by hand', () => {
       1520 + dx,
     ])
 
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
 
     await expect
       .poll(() => [

@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const HERO = '[data-frame="webapp/home/hero"] iframe'
 const LANDING = '[data-frame="marketing/launch/landing"] iframe'
@@ -130,7 +131,7 @@ test.describe('replacing a raw color with a token from Selection colors', () => 
     )
     await expect(headline).toHaveCSS('color', 'rgb(79, 70, 229)')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(RAW)
   })

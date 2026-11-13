@@ -10,6 +10,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const MOBILE = '[data-frame="studio/home/mobile"]'
 const CLI = resolve('dist/cli.js')
@@ -256,7 +257,7 @@ test.describe('frame geometry by hand', () => {
       page.getByRole('button', { name: 'Undo' }),
     ).not.toHaveAttribute('aria-disabled')
 
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
 
     await expect
       .poll(() => layout().frames.mobile)
@@ -293,7 +294,7 @@ test.describe('frame geometry by hand', () => {
     await expect(
       page.getByRole('button', { name: 'Undo' }),
     ).not.toHaveAttribute('aria-disabled')
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
 
     await expect(page.getByText('Undo skipped')).toBeVisible()
     expect(layout().frames.mobile).toMatchObject({ x: 3000 })

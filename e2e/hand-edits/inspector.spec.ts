@@ -14,6 +14,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const HERO = 'webapp/home/hero'
 
@@ -87,7 +88,7 @@ test.describe('editing a selected element by hand', () => {
 
     // Cmd+Z in a field undoes its typing, so the board's undo takes focus off it.
     await opacity.blur()
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).toBe(original)
     await expect(
       page.getByRole('heading', { name: 'Appearance' }),
@@ -111,11 +112,11 @@ test.describe('editing a selected element by hand', () => {
     expect(changedLines(original, read())).toHaveLength(1)
 
     await text.blur()
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).not.toContain('>Welcome</h1>')
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).not.toContain('box-shadow')
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).toBe(original)
   })
 
@@ -140,9 +141,9 @@ test.describe('editing a selected element by hand', () => {
       ),
     ])
 
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).not.toContain('scale')
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).toBe(original)
   })
 
@@ -183,7 +184,7 @@ test.describe('editing a selected element by hand', () => {
     // Base UI pauses a toast's timer on hover, so it outlasts the press.
     await toast.hover()
     await toast.focus()
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).toBe(original)
 
     // A blur commit sends its request in the blur handler itself, so the
@@ -577,7 +578,7 @@ test.describe('setting the flow of one row a shared rule styles', () => {
     ])
 
     await gap.blur()
-    await page.keyboard.press('ControlOrMeta+KeyZ')
+    await undo(page)
     await expect.poll(read).toBe(ROWS)
   })
 })

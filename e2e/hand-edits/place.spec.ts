@@ -9,6 +9,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const HERO = 'webapp/home/hero'
 const ROW =
@@ -79,7 +80,7 @@ test.describe('placing text and shapes into a frame', () => {
     ).toHaveAttribute('aria-pressed', 'false')
     await expect(page.locator('[data-element-selection]')).toBeVisible()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
     await expect(page.locator('[data-element-selection]')).toBeHidden()
@@ -258,7 +259,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(placed.height).toBeCloseTo(60, -0.5)
     expect(read()).not.toContain('position: relative')
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -289,7 +290,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(placed.x + placed.width / 2).toBeCloseTo(point.x, -0.5)
     expect(placed.y + placed.height / 2).toBeCloseTo(point.y, -0.5)
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -331,7 +332,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(Number(width)).toBeCloseTo(100 + 80 / zoom, -0.5)
     expect(Number(height)).toBeCloseTo(100 + 40 / zoom, -0.5)
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(placed)
   })
@@ -368,7 +369,7 @@ test.describe('placing text and shapes into a frame', () => {
     expect(readFileSync(layout, 'utf8')).toBe(placed)
     await expect(page.locator('[data-element-selection]')).toBeVisible()
 
-    await page.keyboard.press('ControlOrMeta+z')
+    await undo(page)
 
     await expect.poll(read).toBe(original)
   })
@@ -548,7 +549,7 @@ test.describe('placing text and shapes into a frame', () => {
           ),
         )
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -584,7 +585,7 @@ test.describe('placing text and shapes into a frame', () => {
           ),
         )
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -673,7 +674,7 @@ test.describe('placing text and shapes into a frame', () => {
         page.locator('[data-element-selection] [data-chip]'),
       ).toHaveText(`${width} × Hug`)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -689,7 +690,7 @@ test.describe('placing text and shapes into a frame', () => {
       expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
       expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })
@@ -706,7 +707,7 @@ test.describe('placing text and shapes into a frame', () => {
       expect(Number(width)).toBeCloseTo(160 + 80 / zoom, -0.5)
       expect(Number(height)).toBeCloseTo(120 + 40 / zoom, -0.5)
 
-      await page.keyboard.press('ControlOrMeta+z')
+      await undo(page)
 
       await expect.poll(read).toBe(original)
     })

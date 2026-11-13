@@ -14,8 +14,7 @@ import { STARTER_ACCENTS } from '@/shared/starter-tokens'
 
 import { cli } from '../../test/support/cli'
 import { type BoardServer, serveBoard } from '../support/board-server'
-
-const UNDO = 'ControlOrMeta+KeyZ'
+import { undo } from '../support/history'
 
 /** Picks a guide option through the card that wraps its radio, the way a pointer reaches it. */
 async function choose(radio: Locator): Promise<void> {
@@ -95,15 +94,15 @@ test.describe('a new board guided to its first frame', () => {
       .toBe(true)
 
     await page.keyboard.press('Escape')
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect
       .poll(() => existsSync(at('acme-mobile/page-1/desktop.html')))
       .toBe(false)
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect
       .poll(() => existsSync(at('acme-mobile/tokens.css')))
       .toBe(false)
-    await page.keyboard.press(UNDO)
+    await undo(page)
     await expect.poll(() => existsSync(at('untitled/page-1'))).toBe(true)
   })
 
