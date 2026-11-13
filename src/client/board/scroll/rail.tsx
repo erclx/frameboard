@@ -51,16 +51,23 @@ interface ScrollRailProps {
   live: boolean
   /** When the rail shows, as classes on the rail, since the frame's label hover and selection decide it. */
   className?: string
+  /** Board units the rail stands further out, past a device body drawn around the frame. */
+  inset?: number
 }
 
 /**
  * A scroll frame's rail on the canvas, 6px wide and 8px right of the box at
- * any zoom, its thumb the share of the page in view, as
+ * any zoom, past any device body, its thumb the share of the page in view, as
  * `canon/design/canvas/scroll-rail` draws it. It draws nothing while the page
  * fits its box or cannot be read. The hit layer covers it, so a press reaches
  * it through `pressRail`, and the wheel over it pans the board.
  */
-export function ScrollRail({ iframe, live, className }: ScrollRailProps) {
+export function ScrollRail({
+  iframe,
+  live,
+  className,
+  inset = 0,
+}: ScrollRailProps) {
   const view = useScrollView(iframe, live)
   if (!view) return null
   return (
@@ -72,7 +79,7 @@ export function ScrollRail({ iframe, live, className }: ScrollRailProps) {
         className,
       )}
       style={{
-        left: 'calc(100% + 8px / var(--zoom, 1))',
+        left: `calc(100% + ${inset}px + 8px / var(--zoom, 1))`,
         width: 'calc(6px / var(--zoom, 1))',
       }}
     >

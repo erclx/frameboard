@@ -1,3 +1,4 @@
+import { bezelBox, type Device } from './frame-device'
 import { FRAME_GAP } from './frame-sizes'
 
 interface Box {
@@ -51,15 +52,19 @@ export function linkedBoxes(box: Box, widths: readonly LinkedWidth[]): Box[] {
   return boxes
 }
 
-/** The box holding a frame and every linked width it draws, the frame's own with none. */
-export function drawnExtent(box: Box, widths: readonly LinkedWidth[]): Box {
-  const boxes = linkedBoxes(box, widths)
-  const last = boxes.at(-1)
-  if (!last) return { ...box }
-  return {
-    x: box.x,
-    y: box.y,
-    width: last.x + last.width - box.x,
-    height: Math.max(box.height, ...boxes.map(({ height }) => height)),
-  }
+/**
+ * The box holding a frame, the device body drawn around it, and every linked
+ * width it draws, the frame's own with neither. Linked widths draw no device.
+ */
+export function drawnExtent(
+  box: Box,
+  widths: readonly LinkedWidth[],
+  device?: Device | null,
+): Box {
+  const boxes = [bezelBox(box, device), ...linkedBoxes(box, widths)]
+  const left = Math.min(...boxes.map(({ x }) => x))
+  const top = Math.min(...boxes.map(({ y }) => y))
+  const right = Math.max(...boxes.map(({ x, width }) => x + width))
+  const bottom = Math.max(...boxes.map(({ y, height }) => y + height))
+  return { x: left, y: top, width: right - left, height: bottom - top }
 }

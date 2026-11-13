@@ -11,6 +11,10 @@ import { ExportSection } from './export-section'
 import { exportStore } from './export-store'
 
 const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 400, height: 300 } })
+const PHONE = frameOf('phone', {
+  box: { x: 0, y: 0, width: 402, height: 874 },
+  device: 'phone',
+})
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
 
 /** Records each PNG request the section sends, answering each with `answer`. */
@@ -43,7 +47,7 @@ function png() {
 
 describe('ExportSection', () => {
   beforeEach(() => {
-    exportStore.setState({ scale: 2, theme: 'both' })
+    exportStore.setState({ scale: 2, theme: 'both', device: false })
   })
 
   afterEach(() => {
@@ -167,5 +171,44 @@ describe('ExportSection', () => {
       await screen.findByText('hero uses Brand, which is not installed.'),
     ).toBeVisible()
     expect(downloads).toEqual([])
+  })
+
+  describe('Include device', () => {
+    it('shows no switch for a frame holding no device', () => {
+      render(<ExportSection frame={HERO} />)
+
+      expect(
+        screen.queryByRole('switch', { name: 'Include device' }),
+      ).toBeNull()
+    })
+
+    it('asks for the device once the switch is on', async () => {
+      const user = userEvent.setup()
+      const asked = stubFetch(png)
+      const downloads = recordDownloads()
+      exportStore.setState({ theme: 'light' })
+      render(<ExportSection frame={PHONE} />)
+
+      await user.click(screen.getByRole('switch', { name: 'Include device' }))
+      await user.click(screen.getByRole('button', { name: 'Export phone' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(asked.map((url) => url.searchParams.get('device'))).toEqual(['1'])
+    })
+
+    it('leaves the device out while the switch is off', async () => {
+      const user = userEvent.setup()
+      const asked = stubFetch(png)
+      const downloads = recordDownloads()
+      exportStore.setState({ theme: 'light' })
+      render(<ExportSection frame={PHONE} />)
+
+      await user.click(screen.getByRole('button', { name: 'Export phone' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(asked.map((url) => url.searchParams.has('device'))).toEqual([
+        false,
+      ])
+    })
   })
 })

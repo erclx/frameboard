@@ -34,6 +34,16 @@ describe('mountedRefs', () => {
     expect([...refs]).toEqual(['row'])
   })
 
+  it('keeps a frame whose device bezel alone meets the band', () => {
+    const refs = mountedRefs(
+      [{ ...frameAt('tablet', -1110, 0), device: 'tablet' as const }],
+      { x: 0, y: 0, k: 1 },
+      VIEWPORT,
+    )
+
+    expect([...refs]).toEqual(['tablet'])
+  })
+
   it('keeps a frame within one viewport past the right edge', () => {
     const refs = mountedRefs(
       [frameAt('near', 1950, 0)],

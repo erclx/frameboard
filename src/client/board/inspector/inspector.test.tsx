@@ -149,7 +149,7 @@ describe('InspectorPanel', () => {
 
       renderPanel()
 
-      expect(screen.getAllByRole('radio')).toHaveLength(17)
+      expect(screen.getAllByRole('radio')).toHaveLength(18)
       expect(screen.queryByRole('textbox', { name: 'Width' })).toBeNull()
     })
   })
@@ -536,6 +536,86 @@ describe('InspectorPanel', () => {
       )
 
       expect(screen.getByRole('radio', { name: 'Scroll' })).toBeDisabled()
+    })
+  })
+
+  describe('Device row', () => {
+    /** A structure whose device write answers `answer`, recording each body sent. */
+    function deviceCalls(answer: () => Response) {
+      const sent: unknown[] = []
+      const calls = createStructure(async (_path, init) => {
+        sent.push(JSON.parse(String(init?.body)))
+        return answer()
+      })
+      return { sent, calls }
+    }
+    const device = () => screen.getByRole('radiogroup', { name: 'Device' })
+    const checked = () =>
+      within(device())
+        .queryAllByRole('radio', { checked: true })
+        .map((radio) => radio.textContent)
+
+    it.each([
+      ['None', {}],
+      ['Phone', { device: 'phone' as const }],
+      ['Tablet', { device: 'tablet' as const }],
+    ])('reads %s off the frame', (label, fields) => {
+      render(<FrameSection page={PAGE} frames={[{ ...SWATCHES, ...fields }]} />)
+
+      expect(checked()).toEqual([label])
+    })
+
+    it('sets a device on every frame in one write', async () => {
+      const { sent, calls } = deviceCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(
+        <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
+      )
+
+      await userEvent.click(
+        within(device()).getByRole('radio', { name: 'Phone' }),
+      )
+
+      expect(sent).toEqual([
+        { refs: [SWATCHES.ref, SUNSET.ref], device: 'phone' },
+      ])
+      expect(checked()).toEqual(['Phone'])
+    })
+
+    it('clears the device with None, sending null', async () => {
+      const { sent, calls } = deviceCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...SWATCHES, device: 'tablet' }]}
+          calls={calls}
+        />,
+      )
+
+      await userEvent.click(
+        within(device()).getByRole('radio', { name: 'None' }),
+      )
+
+      expect(sent).toEqual([{ refs: [SWATCHES.ref], device: null }])
+    })
+
+    it('rolls back to the stored device when the write is refused', async () => {
+      const { calls } = deviceCalls(() =>
+        Response.json(
+          { ok: false, error: { code: 'frame-locked', message: 'Locked.' } },
+          { status: 423 },
+        ),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(
+        within(device()).getByRole('radio', { name: 'Tablet' }),
+      )
+
+      await waitFor(() => expect(checked()).toEqual(['None']))
     })
   })
 
@@ -1032,7 +1112,7 @@ describe('FrameSection', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Frame' }))
 
-      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(17)
+      expect(await screen.findAllByRole('menuitemradio')).toHaveLength(18)
       expect(
         within(screen.getByRole('group', { name: 'Social' })).getAllByRole(
           'menuitemradio',

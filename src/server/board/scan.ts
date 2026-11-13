@@ -10,6 +10,7 @@ import {
   PROJECT_FILE,
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { type Device, deviceOf } from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_GAP,
@@ -61,6 +62,8 @@ export interface Placement {
   hugHeight: boolean
   scroll: boolean
   widths: LinkedWidth[]
+  /** Absent for a frame with no device or one holding a value no reader knows. */
+  device?: Device
   placed: boolean
 }
 
@@ -168,6 +171,7 @@ export function placeFrames(
     // A scroll frame fixes both axes, so a hug flag an older `frame fit` left
     // beside the key reads as off and the hug step never measures it.
     const scroll = entry.scroll ?? false
+    const device = deviceOf(entry.device)
     placements.set(name, {
       box: { x: entry.x, y: entry.y, width: entry.width, height: entry.height },
       order: entry.order,
@@ -177,6 +181,7 @@ export function placeFrames(
       hugHeight: !scroll && (entry.hugHeight ?? false),
       scroll,
       widths: widthsOf(entry.widths),
+      ...(device ? { device } : {}),
       placed: true,
     })
   }
@@ -198,8 +203,8 @@ export function placeFrames(
  */
 export function placeNext(placed: Placement[]): Placement {
   const right = Math.max(
-    ...placed.map(({ box, widths }) => {
-      const extent = drawnExtent(box, widths)
+    ...placed.map(({ box, widths, device }) => {
+      const extent = drawnExtent(box, widths, device)
       return extent.x + extent.width + FRAME_GAP
     }),
     0,

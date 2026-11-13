@@ -19,6 +19,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Height:** a Fixed, Fit, and Scroll radio row under the size fields, read off `scroll` and `hugHeight`, checking none and reading `Mixed` where frames differ.
 - **Height write:** a pick writes every frame through `POST /api/frame/height` as one undo step, and a refusal puts the stored mode back. The menu's and palette's Fit height run that route too.
+- **Device:** a None, Phone, and Tablet radio row under Height, drawn through the same `ChoiceRow`, writing every frame through `POST /api/frame/device` as one undo step
 - **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
@@ -58,6 +59,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Export:** one frame alone carries scale and theme menus, a button, and a caption naming each `<frame>.<theme>@<n>x.png`. Every theme renders before any file downloads.
+- **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
 - **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
 - **Select:** a row's end shows it on hover and keyboard focus, selecting every element the read's `uses` names, under `<n> elements · using <color>`. Several frames offer none.

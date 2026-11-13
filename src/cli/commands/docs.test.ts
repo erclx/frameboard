@@ -69,6 +69,7 @@ describe('docs', () => {
       'frame order',
       'frame rename',
       'frame delete',
+      'frame device',
       'frame hide',
       'frame lock',
       'edit',
