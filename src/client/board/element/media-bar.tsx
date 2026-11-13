@@ -66,9 +66,21 @@ export function SoundButton({
 }
 
 /** The position and length as `0:03 / 0:08`. */
-export function MediaTime({ reading }: { reading: MediaReading }) {
+export function MediaTime({
+  reading,
+  className,
+}: {
+  reading: MediaReading
+  className?: string
+}) {
   return (
-    <span className="shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
+    <span
+      data-media-time
+      className={cn(
+        'shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums',
+        className,
+      )}
+    >
       {formatLength(reading.time)} / {formatLength(reading.length)}
     </span>
   )
@@ -78,6 +90,8 @@ export function MediaTime({ reading }: { reading: MediaReading }) {
  * The scrub track, a native range so the arrow keys step it, moving the live
  * page's position as it is dragged and writing nothing. `format` reads a
  * position aloud in the unit the track counts, m:ss of seconds by default.
+ * Its focus ring draws on the thumb alone, through `seek-track` in the
+ * stylesheet, which fills the track up to `--seek`.
  */
 export function SeekTrack({
   media,
@@ -102,9 +116,12 @@ export function SeekTrack({
       disabled={!known}
       onChange={(event) => media.seek(Number(event.currentTarget.value))}
       className={cn(
-        'h-1 min-w-0 flex-1 cursor-pointer accent-primary disabled:cursor-default',
+        'seek-track min-w-0 flex-1 cursor-pointer disabled:cursor-default',
         className,
       )}
+      style={{
+        ['--seek' as string]: `${known ? (time / length) * 100 : 0}%`,
+      }}
     />
   )
 }
@@ -118,25 +135,50 @@ export function Unplayable() {
   )
 }
 
+/** The bar's look over a video's picture: a dark scrim whatever the theme, so it reads on any frame. */
+const OVER_VIDEO = {
+  bar: 'border-transparent bg-[rgba(20,20,20,0.72)] text-white shadow-none backdrop-blur-[6px]',
+  button: 'text-white hover:bg-white/15',
+  time: 'text-white/70',
+}
+
 /**
- * The slim bar under a selected `<video>` or `<audio>` on the canvas in Edit:
+ * The slim bar of a selected `<video>` or `<audio>` on the canvas in Edit:
  * play and pause, the scrub track, the time, and the speaker, each acting on
- * the live page alone.
+ * the live page alone. A video's sits over its picture, so it takes the dark
+ * scrim. As the bar narrows the time gives way first, then the track, then
+ * the speaker, each before it would overflow, so no control is left in the
+ * tab order with nothing drawn. The inspector's section holds all four at
+ * any zoom.
  */
 export function MediaBar({ media }: { media: LiveMedia }) {
+  const over = media.reading.tag === 'video'
+  const button = cn('size-[18px]', over && OVER_VIDEO.button)
   return (
     <div
       data-media-bar
       role="group"
-      aria-label={media.reading.tag === 'video' ? 'Video' : 'Audio'}
-      className="flex h-6 items-center gap-1.5 rounded-md border border-border bg-card px-1.5 text-foreground shadow-sm"
+      aria-label={over ? 'Video' : 'Audio'}
+      className={cn(
+        '@container flex h-6 items-center gap-1.5 overflow-hidden rounded-md border border-border bg-card px-1.5 text-foreground shadow-sm',
+        over && OVER_VIDEO.bar,
+      )}
     >
       {media.reading.playable ? (
         <>
-          <PlayButton media={media} className="size-[18px]" />
-          <SeekTrack media={media} />
-          <MediaTime reading={media.reading} />
-          <SoundButton media={media} className="size-[18px]" />
+          <PlayButton media={media} className={button} />
+          <SeekTrack media={media} className="hidden @min-[68px]:block" />
+          <MediaTime
+            reading={media.reading}
+            className={cn(
+              'hidden @min-[146px]:inline',
+              over && OVER_VIDEO.time,
+            )}
+          />
+          <SoundButton
+            media={media}
+            className={cn(button, 'hidden @min-[42px]:grid')}
+          />
         </>
       ) : (
         <Unplayable />

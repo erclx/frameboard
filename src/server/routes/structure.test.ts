@@ -516,6 +516,122 @@ describe('structureRoutes', () => {
       })
     })
 
+    describe('add with an asset', () => {
+      const writeAsset = (name: string) => {
+        const assets = join(board.root, 'studio', 'assets')
+        mkdirSync(assets, { recursive: true })
+        writeFileSync(join(assets, name), 'x')
+      }
+
+      it('writes one file holding the media at the frame size', async () => {
+        writeAsset('demo.mp4')
+
+        const response = await post('/api/frame/add', {
+          ref: 'studio/home/demo',
+          asset: 'demo.mp4',
+          width: 320,
+          height: 180,
+          x: 40,
+          y: 60,
+        })
+
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          data: {
+            ref: 'studio/home/demo',
+            box: { x: 40, y: 60, width: 320, height: 180 },
+          },
+        })
+        expect(readFileSync(frameFile('demo'), 'utf8')).toContain(
+          '<video data-name="demo.mp4" src="../assets/demo.mp4"',
+        )
+        expect(layout().demo).toMatchObject({
+          hugWidth: false,
+          hugHeight: false,
+        })
+      })
+
+      it('undoes the frame and its media as one step', async () => {
+        writeAsset('hero.png')
+        await post('/api/frame/add', {
+          ref: 'studio/home/hero-shot',
+          asset: 'hero.png',
+          width: 320,
+          height: 180,
+        })
+
+        const recorded = history.counts().undo
+
+        await history.undo()
+
+        expect(recorded).toBe(1)
+        expect(existsSync(frameFile('hero-shot'))).toBe(false)
+        expect(layout()['hero-shot']).toBeUndefined()
+      })
+
+      it('gives an audio the width alone and hugs its height', async () => {
+        writeAsset('voice.ogg')
+
+        await post('/api/frame/add', {
+          ref: 'studio/home/voice',
+          asset: 'voice.ogg',
+          width: 300,
+        })
+
+        expect(readFileSync(frameFile('voice'), 'utf8')).toContain(
+          '<audio data-name="voice.ogg" src="../assets/voice.ogg" controls style="width: 300px"></audio>',
+        )
+        expect(layout().voice).toMatchObject({
+          width: 300,
+          hugWidth: false,
+          hugHeight: true,
+        })
+      })
+
+      it.each([
+        ['an unknown asset', 'gone.png', 'asset-missing'],
+        [
+          'a path out of the assets folder',
+          '../home/hero.html',
+          'asset-missing',
+        ],
+        ['a font', 'Inter.woff2', 'asset-not-placeable'],
+      ])('refuses %s and writes nothing', async (_case, asset, code) => {
+        writeAsset('Inter.woff2')
+
+        const response = await post('/api/frame/add', {
+          ref: 'studio/home/card',
+          asset,
+          width: 320,
+          height: 180,
+        })
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code },
+        })
+        expect(existsSync(frameFile('card'))).toBe(false)
+        expect(layout().card).toBeUndefined()
+      })
+
+      it('refuses an image with no height as usage and writes nothing', async () => {
+        writeAsset('hero.png')
+
+        const response = await post('/api/frame/add', {
+          ref: 'studio/home/card',
+          asset: 'hero.png',
+          width: 320,
+        })
+
+        expect(await response.json()).toMatchObject({
+          ok: false,
+          error: { code: 'usage' },
+        })
+        expect(existsSync(frameFile('card'))).toBe(false)
+      })
+    })
+
     it('duplicates several frames as one step', async () => {
       const response = await post('/api/frame/duplicate', {
         refs: ['studio/home/hero', 'studio/home/mobile'],

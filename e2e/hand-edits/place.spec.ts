@@ -585,7 +585,7 @@ test.describe('placing text and shapes into a frame', () => {
         .toBe(
           original.replace(
             '<div data-name="Two"',
-            '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline style="width: 240px; height: 135px; object-fit: cover"></video><div data-name="Two"',
+            '<video data-name="demo.mp4" src="../assets/demo.mp4" controls autoplay muted loop playsinline style="width: 240px; height: 135px; object-fit: cover"></video><div data-name="Two"',
           ),
         )
 

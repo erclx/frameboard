@@ -82,9 +82,19 @@ export function createStructure(send: typeof fetch = fetch) {
       post<PageRecord>('/api/page/transition', { ref, transition }),
     deletePage: (ref: string) =>
       held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
-    /** Sends a width and height rather than a preset, since a preset hugs its height and a hand-placed frame keeps its size. */
-    addFrame: (ref: string, size: FrameSize, x: number, y: number) =>
-      post<FrameRecord>('/api/frame/add', { ref, ...size, x, y }),
+    /**
+     * Sends a width and height rather than a preset, since a preset hugs its
+     * height and a hand-placed frame keeps its size. An `asset` path under the
+     * project's `assets/` lands the file in the new frame in the same undo
+     * step, an audio taking a width alone.
+     */
+    addFrame: (
+      ref: string,
+      size: FrameSize | Pick<FrameSize, 'width'>,
+      x: number,
+      y: number,
+      asset?: string,
+    ) => post<FrameRecord>('/api/frame/add', { ref, ...size, x, y, asset }),
     /** Copies beside each source, or `offset` away from it when given, as an Alt-drag drops them. */
     duplicateFrames: (
       refs: readonly string[],

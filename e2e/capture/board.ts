@@ -1156,6 +1156,80 @@ async function holdDragOverWebapp(page: Page): Promise<void> {
   }, ROW_FRAMES)
 }
 
+/**
+ * Waits for the Assets tab to draw the `clip.webm` tile, then picks it up and
+ * holds it over bare canvas, never dropped, until the ghost of the frame a
+ * drop would make draws. The point is the first on a grid across the hit
+ * layer that no frame's box holds, since the fixture's frames can move.
+ */
+async function holdTileOverCanvas(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const dataTransfer = new DataTransfer()
+    const at = (clientX: number, clientY: number) => ({
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer,
+    })
+    const barePoint = (layer: Element) => {
+      const area = layer.getBoundingClientRect()
+      const taken = [...document.querySelectorAll('[data-frame]')].map(
+        (frame) => frame.getBoundingClientRect(),
+      )
+      for (let row = 1; row < 8; row++) {
+        for (let column = 1; column < 8; column++) {
+          const x = area.left + (area.width * column) / 8
+          const y = area.top + (area.height * row) / 8
+          // Clear of every frame by the ghost's own reach, so it overlaps none.
+          const clear = taken.every(
+            (box) =>
+              x < box.left - 120 ||
+              x > box.right + 120 ||
+              y < box.top - 80 ||
+              y > box.bottom + 80,
+          )
+          if (clear) return { x, y }
+        }
+      }
+      return null
+    }
+    const hold = (layer: Element, point: { x: number; y: number }) => {
+      layer.dispatchEvent(new DragEvent('dragover', at(point.x, point.y)))
+      if (document.querySelector('[data-drop-ghost]')) return
+      if (--left > 0) requestAnimationFrame(() => hold(layer, point))
+      else console.error('The canvas never drew the drop ghost')
+    }
+    const run = () => {
+      const tile = document.querySelector(
+        'button[aria-label^="Copy path of clip.webm,"]',
+      )
+      const layer = document.querySelector('[data-hit-layer]')
+      const point =
+        layer && document.querySelector('[data-frame] iframe')
+          ? barePoint(layer)
+          : null
+      if (!tile || !layer || !point) {
+        if (--left > 0) requestAnimationFrame(run)
+        else console.error('The board never drew a tile and bare canvas')
+        return
+      }
+      const from = tile.getBoundingClientRect()
+      tile.dispatchEvent(
+        new DragEvent('dragstart', at(from.left + 4, from.top + 4)),
+      )
+      requestAnimationFrame(() => {
+        layer.dispatchEvent(new DragEvent('dragenter', at(point.x, point.y)))
+        hold(layer, point)
+      })
+    }
+    document.addEventListener('DOMContentLoaded', () =>
+      requestAnimationFrame(run),
+    )
+  }, ROW_FRAMES)
+}
+
 type ProjectRecord = ListResult['projects'][number]
 
 /** A copy of `source` under `name`, every page and frame ref moved with it. */
@@ -3243,6 +3317,23 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        // A video tile held over bare canvas, wearing the ghost of the frame a drop would make.
+        section: 'drop-ghost',
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            leftTab('Assets'),
+            holdTileOverCanvas,
+            readyWhen('[data-drop-ghost]'),
+          ),
+        ),
+      },
+      {
         section: 'shape-menu',
         theme,
         route: '/p/webapp/home',
@@ -3940,9 +4031,9 @@ const CASES: CaptureCase[] = [
       })),
       ...(
         [
-          // A video wearing the media bar under it, the Video section in the inspector.
+          // A video wearing the media bar inside its bottom edge, the Video section and its four switches in the inspector.
           ['media-video', '[data-name="Free video"]'],
-          // An audio player wearing the same bar, the section named Audio.
+          // An audio player wearing the bar under it, the section named Audio with no Controls switch.
           ['media-audio', '[data-name="Free audio"]'],
         ] as const
       ).map(([section, target]) => ({

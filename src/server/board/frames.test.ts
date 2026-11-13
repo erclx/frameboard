@@ -186,6 +186,43 @@ describe('frames', () => {
       })
     })
 
+    it('add with a body writes it into the new file edge to edge', async () => {
+      const root = open()
+      const { journal, calls } = recordingJournal(root)
+
+      await addFrame(root, 'webapp/home/clip', {
+        cwd: root,
+        width: 320,
+        height: 180,
+        body: '<img src="../assets/clip.png" alt="">',
+        journal,
+      })
+
+      expect(file('webapp/home/clip.html')).toContain(
+        '<body style="margin: 0; display: flex; flex-direction: column; align-items: flex-start"><img src="../assets/clip.png" alt=""></body>',
+      )
+      expect(calls.filter(({ kind }) => kind === 'created')).toEqual([
+        { kind: 'created', path: 'webapp/home/clip.html' },
+      ])
+    })
+
+    it('add with a body refuses a file that already stands and keeps its bytes', async () => {
+      const root = open()
+      writeFileSync(join(root, 'webapp/home/clip.html'), '<p>mine</p>')
+
+      const adding = addFrame(root, 'webapp/home/clip', {
+        cwd: root,
+        body: '<img src="../assets/clip.png" alt="">',
+      })
+
+      await expect(adding).rejects.toMatchObject({ code: 'name-taken' })
+      expect(file('webapp/home/clip.html')).toBe('<p>mine</p>')
+    })
+
+    it('a skeleton given no body states an empty one', () => {
+      expect(skeleton('pricing')).toContain('<body></body>')
+    })
+
     it('add with no position takes the box a live reservation holds', async () => {
       const root = open()
       await reserve(

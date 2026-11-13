@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
+import { LOOK_MARKER } from '@/shared/theme'
 
 import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
@@ -377,9 +378,34 @@ interface CanvasMediaBarProps {
   container: HTMLElement | null
 }
 
+/** How far inside a video's left, right, and bottom edges its bar sits, in screen pixels. */
+const BAR_INSET = 4
+
+const STRIP_ID = 'frameboard-media-strip'
+
 /**
- * The media bar under a selected `<video>` or `<audio>` in Edit, at the
- * element's width and a constant screen size. It draws in the notes layer,
+ * Hides the strip the browser draws for `controls` on every video in `doc`,
+ * by one injected style, and answers its undo. The strip grows with the
+ * frame's zoom and the bar never does, so the bar cannot cover it.
+ */
+function hideVideoStrips(doc: Document): () => void {
+  if (doc.getElementById(STRIP_ID)) return () => {}
+  const style = doc.createElement('style')
+  style.id = STRIP_ID
+  // Marked as the board's own, so no element's file index moves.
+  style.setAttribute(LOOK_MARKER, '')
+  style.textContent =
+    'video::-webkit-media-controls { display: none !important }'
+  doc.head?.append(style)
+  return () => style.remove()
+}
+
+/**
+ * The media bar of a selected `<video>` or `<audio>` in Edit, at a constant
+ * screen size. A video's draws inside its bottom edge at its width less the
+ * inset on each side, in place of the strip the browser draws for `controls`,
+ * which is hidden while the bar is up. An audio's draws under it at its
+ * width, since inside would cover the player. It draws in the notes layer,
  * the board-space layer over the hit layer, since a press on the frames'
  * layer never reaches it, and goes when the frame is culled or reloads other
  * bytes, as the live element does.
@@ -387,18 +413,34 @@ interface CanvasMediaBarProps {
 function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
   const editing = useMode((state) => state.mode === 'edit')
   const media = useLiveMedia(editing ? element : null)
+  const page = media?.reading.tag === 'video' ? media.page : null
+  useEffect(() => (page ? hideVideoStrips(page) : undefined), [page])
   const layer = container?.parentElement?.querySelector(
     ':scope > [data-notes-layer]',
   )
   if (!media || !layer) return null
+  const width = `calc(${box.width}px * var(--zoom, 1))`
   return createPortal(
     <div className="absolute" style={{ left: box.x, top: box.y + box.height }}>
-      <div
-        className="pointer-events-auto mt-1.5 origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
-        style={{ width: `max(200px, calc(${box.width}px * var(--zoom, 1)))` }}
-      >
-        <MediaBar media={media} />
-      </div>
+      {media.reading.tag === 'video' ? (
+        <div
+          className="pointer-events-auto absolute origin-bottom-left [transform:scale(calc(1/var(--zoom,1)))]"
+          style={{
+            left: screen(BAR_INSET),
+            bottom: screen(BAR_INSET),
+            width: `max(0px, calc(${width} - ${BAR_INSET * 2}px))`,
+          }}
+        >
+          <MediaBar media={media} />
+        </div>
+      ) : (
+        <div
+          className="pointer-events-auto mt-1.5 origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
+          style={{ width }}
+        >
+          <MediaBar media={media} />
+        </div>
+      )}
     </div>,
     layer,
   )

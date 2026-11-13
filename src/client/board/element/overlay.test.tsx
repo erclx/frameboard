@@ -1,8 +1,12 @@
-import { act, render } from '@testing-library/react'
+import '../../styles.css'
+
+import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
+import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
+import { elementIndex } from '../frame-dom'
 import { modeStore } from '../mode'
 import {
   clear,
@@ -335,6 +339,131 @@ describe('ElementOverlay', () => {
     )
 
     expect(outline(drawn)).toBeNull()
+  })
+
+  describe('the media bar', () => {
+    let notes: HTMLDivElement | undefined
+
+    afterEach(() => {
+      notes?.remove()
+      notes = undefined
+    })
+
+    /** Draws the overlay over a frame holding `media` selected, and answers its bar and the media's box. */
+    async function drawBar(media: string) {
+      const container = await mountFrame(
+        `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}</style></head><body>${media}</body></html>`,
+      )
+      // The bar draws in the notes layer beside the frames' layer, both at the page's origin.
+      container.style.cssText = 'position:absolute;left:0;top:0'
+      notes = document.createElement('div')
+      notes.dataset.notesLayer = ''
+      notes.style.cssText = 'position:absolute;left:0;top:0'
+      document.body.append(notes)
+      const frame = { ...HERO, box: { ...HERO.box, x: 0, y: 0 } }
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO.ref,
+          index: 3,
+          hash: HASH,
+        }),
+      )
+      render(<ElementOverlay frames={[frame]} container={container} />)
+      const bar = await waitFor(() => {
+        const found = notes?.querySelector<HTMLElement>('[data-media-bar]')
+        if (!found) throw new Error('no media bar drawn yet')
+        return found
+      })
+      const element = container
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('video, audio')
+      if (!element) throw new Error('the frame holds no media')
+      return {
+        element,
+        bar: bar.getBoundingClientRect(),
+        media: element.getBoundingClientRect(),
+        time: bar.querySelector('[data-media-time]'),
+        track: bar.querySelector('input[type="range"]'),
+      }
+    }
+
+    /** The rules in the media's page that hide a video's own strip. */
+    function stripRules(media: Element): string[] {
+      return [...media.ownerDocument.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .map((rule) => rule.cssText)
+        .filter(
+          (text) =>
+            text.includes('::-webkit-media-controls') &&
+            text.includes('display: none'),
+        )
+    }
+
+    it("draws a video's bar inside its bottom edge, 4px in on three sides", async () => {
+      const { bar, media } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      expect(bar.left).toBeCloseTo(media.left + 4, 0)
+      expect(bar.right).toBeCloseTo(media.right - 4, 0)
+      expect(bar.bottom).toBeCloseTo(media.bottom - 4, 0)
+      expect(bar.top).toBeGreaterThan(media.top)
+    })
+
+    it('keeps the bar inside a video 80px wide, dropping the time and the track', async () => {
+      const { bar, media, time, track } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:80px;height:45px"></video>`,
+      )
+
+      expect(bar.left).toBeGreaterThanOrEqual(media.left)
+      expect(bar.right).toBeLessThanOrEqual(media.right)
+      expect(time).not.toBeVisible()
+      expect(track).not.toBeVisible()
+    })
+
+    it('holds the track and the time in a bar wide enough for them', async () => {
+      const { time, track } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      expect(time).toBeVisible()
+      expect(track).toBeVisible()
+    })
+
+    it("hides the browser's own strip under a video's bar", async () => {
+      const { element } = await drawBar(
+        `<video src="${CLIP}" controls style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      // A computed style never reads the strip's pseudo-element, so the rule is read off the page's sheets.
+      await waitFor(() => expect(stripRules(element)).toHaveLength(1))
+    })
+
+    it('keeps the video at its file index while its strip is hidden', async () => {
+      const { element } = await drawBar(
+        `<video src="${CLIP}" controls style="display:block;width:320px;height:180px"></video>`,
+      )
+      await waitFor(() => expect(stripRules(element)).toHaveLength(1))
+
+      expect(elementIndex(element.ownerDocument, element)).toBe(3)
+    })
+
+    it("leaves an audio's own player drawn above its bar", async () => {
+      const { element } = await drawBar(
+        `<audio src="${CLIP}" controls style="display:block;width:120px"></audio>`,
+      )
+
+      expect(stripRules(element)).toHaveLength(0)
+    })
+
+    it("draws an audio's bar under it at the audio's width", async () => {
+      const { bar, media } = await drawBar(
+        `<audio src="${CLIP}" controls style="display:block;width:120px"></audio>`,
+      )
+
+      expect(bar.top).toBeGreaterThanOrEqual(media.bottom)
+      expect(bar.width).toBeCloseTo(media.width, 0)
+    })
   })
 
   describe('holding a dropped outline', () => {

@@ -10,10 +10,12 @@ import { createSelectionStore, selectElement } from '../selection'
 import { placementStore } from './tool'
 import {
   deleteElement,
+  fileFrameName,
   moveElement,
   moveElementTo,
   placeElement,
   placeFile,
+  placeFileFrame,
   placeFree,
   wrapSelection,
 } from './write'
@@ -1202,5 +1204,136 @@ describe('wrapSelection', () => {
     expect(told).toEqual([
       'A wrap takes stated sibling elements of one parent, each named once.',
     ])
+  })
+})
+
+describe('fileFrameName', () => {
+  it.each([
+    ['showcase.mp4', 'showcase'],
+    ['clips/My Clip (1).mp4', 'My-Clip-1'],
+    ['intro.final.png', 'intro.final'],
+    ['_draft.png', 'draft'],
+    ['(1).png', '1'],
+    ['日本.png', 'frame'],
+    [`${'a'.repeat(80)}.png`, 'a'.repeat(56)],
+  ])('names a frame for %s as %s', (path, name) => {
+    expect(fileFrameName(path)).toBe(name)
+  })
+})
+
+describe('placeFileFrame', () => {
+  const VIDEO = {
+    project: 'studio',
+    path: 'showcase.mp4',
+    kind: 'video',
+  } as const
+  const added = (name: string) => frameOf(name)
+
+  function calls() {
+    const sent: unknown[][] = []
+    return {
+      sent,
+      addFrame: async (...args: unknown[]) => {
+        sent.push(args)
+        return added(String(args[0]).split('/').at(-1) ?? '')
+      },
+    }
+  }
+
+  it('adds a frame the media size centered on the point, holding the file', async () => {
+    const structure = calls()
+    const selection = createSelectionStore()
+
+    await placeFileFrame('studio/home', [], { x: 1000, y: 500 }, VIDEO, {
+      measure: async () => ({ width: 640, height: 360 }),
+      selection,
+      calls: structure,
+    })
+
+    expect(structure.sent).toEqual([
+      [
+        'studio/home/showcase',
+        { width: 640, height: 360 },
+        680,
+        320,
+        'showcase.mp4',
+      ],
+    ])
+    expect(selection.getState().frames).toEqual([added('showcase').ref])
+  })
+
+  it('takes the next free name on a second drop of the same file', async () => {
+    const structure = calls()
+
+    await placeFileFrame(
+      'studio/home',
+      [frameOf('showcase')],
+      { x: 0, y: 0 },
+      VIDEO,
+      {
+        measure: async () => ({ width: 640, height: 360 }),
+        selection: createSelectionStore(),
+        calls: structure,
+      },
+    )
+
+    expect(structure.sent[0]?.[0]).toBe('studio/home/showcase-2')
+  })
+
+  it('lands a file whose size never came at the fallback size', async () => {
+    const structure = calls()
+
+    await placeFileFrame('studio/home', [], { x: 120, y: 67.5 }, VIDEO, {
+      measure: async () => null,
+      selection: createSelectionStore(),
+      calls: structure,
+    })
+
+    expect(structure.sent[0]?.slice(1, 4)).toEqual([
+      { width: 240, height: 135 },
+      0,
+      0,
+    ])
+  })
+
+  it('gives an audio the width alone, so its frame hugs the player', async () => {
+    const structure = calls()
+
+    await placeFileFrame(
+      'studio/home',
+      [],
+      { x: 150, y: 27 },
+      { project: 'studio', path: 'voice.ogg', kind: 'audio' },
+      {
+        measure: async () => ({ width: 300, height: 54 }),
+        selection: createSelectionStore(),
+        calls: structure,
+      },
+    )
+
+    expect(structure.sent[0]?.[1]).toEqual({ width: 300 })
+  })
+
+  it('selects nothing and answers null once the add is refused', async () => {
+    const selection = createSelectionStore()
+
+    const placed = await placeFileFrame(
+      'studio/home',
+      [],
+      { x: 0, y: 0 },
+      VIDEO,
+      {
+        measure: async () => ({ width: 640, height: 360 }),
+        selection,
+        calls: {
+          addFrame: async () => {
+            throw new Error('assets/showcase.mp4 is not a file')
+          },
+        },
+      },
+    )
+
+    expect(placed).toBeNull()
+    expect(selection.getState().frames).toEqual([])
   })
 })

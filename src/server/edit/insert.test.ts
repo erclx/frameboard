@@ -92,9 +92,9 @@ describe('elementMarkup for an asset', () => {
     )
   })
 
-  it('should write a video that plays muted on a loop with no controls', () => {
+  it('should write a video that plays muted on a loop with its own controls', () => {
     expect(elementMarkup(asset('demo.mp4', 'video'), PAINT, FONT)).toBe(
-      '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline style="width: 320px; height: 180px; object-fit: cover"></video>',
+      '<video data-name="demo.mp4" src="../assets/demo.mp4" controls autoplay muted loop playsinline style="width: 320px; height: 180px; object-fit: cover"></video>',
     )
   })
 

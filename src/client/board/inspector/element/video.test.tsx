@@ -136,6 +136,69 @@ describe('VideoSection', () => {
     })
   })
 
+  it.each([
+    ['Controls', 'controls'],
+    ['Autoplay', 'autoplay'],
+    ['Loop', 'loop'],
+  ])(
+    'writes %s into the file when its switch turns on',
+    async (label, name) => {
+      await mountFrame(`<video src="${CLIP}"></video>`)
+      const write = vi.fn()
+      render(<Section write={write} />)
+
+      await userEvent.click(await screen.findByRole('switch', { name: label }))
+
+      expect(write.mock.calls).toEqual([
+        [{ kind: 'attribute', name, value: '' }],
+      ])
+    },
+  )
+
+  it.each([
+    ['Controls', 'controls'],
+    ['Autoplay', 'autoplay'],
+    ['Loop', 'loop'],
+  ])(
+    'drops %s from the file when its switch turns off',
+    async (label, name) => {
+      await mountFrame(
+        `<video src="${CLIP}" controls autoplay muted loop></video>`,
+      )
+      const write = vi.fn()
+      render(<Section write={write} />)
+
+      await userEvent.click(await screen.findByRole('switch', { name: label }))
+
+      expect(write.mock.calls).toEqual([
+        [{ kind: 'attribute', name, remove: true }],
+      ])
+    },
+  )
+
+  it('shows each switch as the file states its attribute', async () => {
+    await mountFrame(`<video src="${CLIP}" controls loop></video>`)
+    render(<Section write={vi.fn()} />)
+
+    expect(
+      await screen.findByRole('switch', { name: 'Controls' }),
+    ).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Loop' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Autoplay' })).not.toBeChecked()
+    expect(
+      screen.getByRole('switch', { name: 'Muted in the file' }),
+    ).not.toBeChecked()
+  })
+
+  it('shows an audio no Controls switch', async () => {
+    await mountFrame(`<audio src="${CLIP}" controls></audio>`)
+    render(<Section write={vi.fn()} />)
+
+    await screen.findByRole('switch', { name: 'Loop' })
+
+    expect(screen.queryByRole('switch', { name: 'Controls' })).toBeNull()
+  })
+
   it('says the codec cannot play in place of a dead track', async () => {
     await mountFrame('<video src="data:video/mp4,not-a-video"></video>')
     render(<Section write={vi.fn()} />)

@@ -1,6 +1,8 @@
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
+import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
+import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type {
   InsertResult,
   MoveResult,
@@ -16,7 +18,9 @@ import type { PlaceableFile } from '../assets/drag'
 import { WaitDropped, whenFree } from '../claims/waiting'
 import { catchUpTree, fetchTree, treeOf } from '../element/tree'
 import { siblingGap } from '../element/walk'
+import type { Box } from '../geometry/box'
 import { inFrameTurn, type Landed, sentence } from '../inspector/element/write'
+import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import {
@@ -186,6 +190,87 @@ export async function placeFile(
     ...deps,
     asset: { path: file.path, natural },
   })
+}
+
+/** A new frame's name stem when a file's own gives none. */
+const FILE_FRAME_NAME = 'frame'
+
+/** Leaves room under the name limit for the suffix a taken name grows. */
+const FILE_FRAME_STEM = NAME_MAX_LENGTH - 8
+
+/**
+ * The name a frame made for the file at `path` asks for: the file's stem
+ * with each run of characters a name cannot hold turned to one dash, opening
+ * on a letter or digit, else `frame`.
+ */
+export function fileFrameName(path: string): string {
+  const file = path.split('/').at(-1) ?? path
+  const stem = file.includes('.') ? file.slice(0, file.lastIndexOf('.')) : file
+  const name = stem
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^[^A-Za-z0-9]+/, '')
+    .slice(0, FILE_FRAME_STEM)
+    .replace(/-+$/, '')
+  return name === '' ? FILE_FRAME_NAME : name
+}
+
+/**
+ * The box a frame made for a file takes around a board point: the file's
+ * size as `placedSize` reads it with no container to cap it, centered on the
+ * point, so a wide video does not land almost wholly off screen.
+ */
+export function fileFrameBox(natural: AssetSize | null, at: BoardPoint): Box {
+  const size = placedSize(natural, 0)
+  return {
+    x: Math.round(at.x - size.width / 2),
+    y: Math.round(at.y - size.height / 2),
+    ...size,
+  }
+}
+
+/**
+ * Adds a frame the size of `file` centered on a board point, holding the
+ * file edge to edge, in one write the developer undoes as one step, then
+ * selects it, as a tile dropped on bare canvas. The frame is named for the
+ * file, taking the next free name, and an audio's hugs the height its player
+ * takes. Resolves to the added frame, or null once a refusal is reported.
+ */
+export async function placeFileFrame(
+  page: string,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+  file: PlaceableFile,
+  {
+    measure = naturalSize,
+    selection = selectionStore,
+    calls = structure,
+  }: {
+    /** Reads a file's natural size, from the server in the app. */
+    measure?: typeof naturalSize
+    selection?: SelectionStore
+    calls?: Pick<Structure, 'addFrame'>
+  } = {},
+): Promise<FrameRecord | null> {
+  const natural = await measure(assetUrl(file.project, file.path), file.kind)
+  const { x, y, width, height } = fileFrameBox(natural, at)
+  const name = nextFreeName(
+    fileFrameName(file.path),
+    frames.map((frame) => frame.name),
+  )
+  try {
+    const added = await calls.addFrame(
+      `${page}/${name}`,
+      file.kind === 'audio' ? { width } : { width, height },
+      x,
+      y,
+      file.path,
+    )
+    select(selection, page, [added.ref])
+    return added
+  } catch (error) {
+    reportRefusal("Couldn't add a frame")(error)
+    return null
+  }
 }
 
 /**
