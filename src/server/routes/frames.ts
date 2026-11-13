@@ -75,12 +75,15 @@ const CONTENT_TYPES: Record<string, string> = {
  * each use, so an edit shows on the next load and an unchanged file answers
  * 304 with no body. A frame path carrying `?at=<hash>` serves the
  * version `version` holds under that hash in its place, with the same head,
- * and any other path carrying it answers 404.
+ * and any other path carrying it answers 404. `base` prefixes the sheet URLs
+ * the head imports, for a listener serving these routes under a path of its
+ * own, since the head names them from the server's root.
  */
 export function frameRoutes(
   root: string,
   look: FrameLook,
   version?: FrameVersion,
+  base = '',
 ): Hono {
   const app = new Hono()
 
@@ -160,7 +163,10 @@ export function frameRoutes(
     }
     const body = injectHead(
       bytes,
-      frameHead(sheetUrls(project, look.sheets(project)), contentHash(bytes)),
+      frameHead(
+        sheetUrls(project, look.sheets(project)).map((url) => `${base}${url}`),
+        contentHash(bytes),
+      ),
     )
 
     return c.body(body, 200, {

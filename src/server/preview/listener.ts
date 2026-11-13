@@ -1,0 +1,160 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto'
+import type { Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
+
+import { serve } from '@hono/node-server'
+import { Hono } from 'hono'
+
+import { BOARD_SHEET_URL } from '@/server/routes/frames'
+import { servedFrames } from '@/server/routes/look'
+import { FACES_URL } from '@/shared/faces'
+
+/** Where every phone link starts, ahead of its token. */
+const LINK_PREFIX = '/v/'
+
+/** Every interface, so a phone on the local network reaches the listener. */
+const ALL_INTERFACES = '0.0.0.0'
+
+/** The bytes of a link's token, 96 bits, which keeps the code small. */
+const TOKEN_BYTES = 12
+
+export interface PreviewOptions {
+  /** The absolute realpath of the board folder. */
+  root: string
+  /** The one project the link opens. */
+  project: string
+  /** The folder holding the faces every frame imports. */
+  facesDir: string
+  /** The `--tokens` sheet standing in for the board's `tokens.css`, when given. */
+  tokens?: string | null
+}
+
+/**
+ * The phone link's read-only app: GET and HEAD under `/v/<token>/` for one
+ * project's frames and assets at `frames/<project>/...` and the faces and
+ * board sheet at `frameboard/...`, each answered by the board's own frame and
+ * look routes, so their refusals of board records, dot-named paths, and
+ * escaping paths hold here unrestated. Anything else answers 404, so nothing
+ * tells a caller what exists. It carries no Host check, since a phone names
+ * the machine's address, and the token is what keeps other pages out.
+ */
+export function previewApp(token: string, options: PreviewOptions): Hono {
+  const base = `${LINK_PREFIX}${token}`
+  const served = servedFrames(options.root, {
+    facesDir: options.facesDir,
+    tokens: options.tokens ?? null,
+    base,
+  }).routes
+  const app = new Hono()
+
+  app.all('*', async (c) => {
+    const method = c.req.method
+    if (method !== 'GET' && method !== 'HEAD') return c.notFound()
+    // The URL parser has already resolved `..` and `%2e%2e` segments.
+    const url = new URL(c.req.url)
+    const inner = innerPath(url.pathname, token, options.project)
+    if (inner === null) return c.notFound()
+
+    const headers = new Headers()
+    for (const name of ['range', 'if-none-match']) {
+      const value = c.req.header(name)
+      if (value !== undefined) headers.set(name, value)
+    }
+    // A query is the theme a frame opens in, never `?at=`, which names a
+    // replaced version the phone has no business reading.
+    const theme = url.searchParams.get('theme')
+    const query = theme === null ? '' : `?${new URLSearchParams({ theme })}`
+    return served.fetch(
+      new Request(`http://preview${inner}${query}`, { method, headers }),
+    )
+  })
+
+  return app
+}
+
+/**
+ * The board path a phone path stands for, or null when it names another
+ * token, another project, or anything outside the frames and the look.
+ */
+function innerPath(
+  pathname: string,
+  token: string,
+  project: string,
+): string | null {
+  if (!pathname.startsWith(LINK_PREFIX)) return null
+  const [given = '', ...rest] = pathname.slice(LINK_PREFIX.length).split('/')
+  if (!sameToken(given, token)) return null
+  const inner = `/${rest.join('/')}`
+
+  if (inner === BOARD_SHEET_URL || inner.startsWith(`${FACES_URL}/`)) {
+    return inner
+  }
+  const [area, named, ...within] = rest
+  if (area !== 'frames' || within.length === 0) return null
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(named ?? '')
+  } catch {
+    return null
+  }
+  return decoded === project ? inner : null
+}
+
+function sameToken(given: string, token: string): boolean {
+  const a = Buffer.from(given)
+  const b = Buffer.from(token)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+export interface PreviewListener {
+  /** The secret in every link this listener answers, new on each start. */
+  token: string
+  /** The port the listener bound on every interface. */
+  port: number
+  /** The project the link opens. */
+  project: string
+  /** Stops the listener and drops every open connection, so no link answers after. */
+  close: () => Promise<void>
+}
+
+/**
+ * Starts the phone listener on every interface at `port`, or on a free port
+ * when that one is taken, with a fresh token. The board's own listener is
+ * untouched, staying on loopback behind its Host check.
+ */
+export async function startPreviewListener(
+  options: PreviewOptions & { port: number },
+): Promise<PreviewListener> {
+  const token = randomBytes(TOKEN_BYTES).toString('base64url')
+  const app = previewApp(token, options)
+  let server: Server
+  try {
+    server = await bind(app, options.port)
+  } catch (error) {
+    const taken = (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
+    if (!taken || options.port === 0) throw error
+    server = await bind(app, 0)
+  }
+  const { port } = server.address() as AddressInfo
+  return {
+    token,
+    port,
+    project: options.project,
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.close(() => resolve())
+        // A phone's keep-alive connection would hold close open indefinitely.
+        server.closeAllConnections()
+      }),
+  }
+}
+
+function bind(app: Hono, port: number): Promise<Server> {
+  return new Promise<Server>((resolve, reject) => {
+    const created = serve(
+      { fetch: app.fetch, hostname: ALL_INTERFACES, port },
+      () => resolve(created as Server),
+    )
+    created.once('error', reject)
+  })
+}

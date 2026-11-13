@@ -46,6 +46,8 @@ export interface ServedFrames {
  * `--tokens` sheet, null for none, or absent to read the one a running
  * server recorded in the address file on each request. `version` serves the
  * frame versions an agent write replaced, absent where nothing holds them.
+ * `base` prefixes the sheet URLs a served frame imports, for a listener that
+ * serves these routes under a path of its own.
  */
 export function servedFrames(
   root: string,
@@ -53,7 +55,13 @@ export function servedFrames(
     facesDir,
     tokens,
     version,
-  }: { facesDir: string; tokens?: string | null; version?: FrameVersion },
+    base,
+  }: {
+    facesDir: string
+    tokens?: string | null
+    version?: FrameVersion
+    base?: string
+  },
 ): ServedFrames {
   const look: FrameLook = {
     sheets: (project) => tokenSheetPaths(root, project, tokens),
@@ -63,7 +71,7 @@ export function servedFrames(
     '/',
     lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, tokens) }),
   )
-  routes.route('/', frameRoutes(root, look, version))
+  routes.route('/', frameRoutes(root, look, version, base))
   return { look, routes }
 }
 
