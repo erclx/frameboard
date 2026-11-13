@@ -375,7 +375,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
-  test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
+  test('a placed Text opens for typing, and one double-click on a text element edits it the same way', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
@@ -401,10 +401,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect
       .poll(() => shownHash(page))
       .toBe(createHash('sha256').update(read()).digest('hex'))
-    await page.keyboard.down('Meta')
-    await page.mouse.click(headline.x, headline.y)
-    await page.keyboard.up('Meta')
-    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    // One double-click with nothing selected opens the text.
     await page.mouse.dblclick(headline.x, headline.y)
     await expect(hero(page).locator('h1')).toBeFocused()
     await page.keyboard.type('Welcome')

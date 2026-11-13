@@ -13,6 +13,8 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
+import { EDITING } from './element/text-in-place'
+import { trees } from './element/tree'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { leaveFrame } from './play/entered'
@@ -1577,6 +1579,142 @@ describe('double-clicking on the canvas', () => {
     doubleClick(hit, drawn.left + 8, drawn.top - 8)
 
     expect(renamingFrame().ref).toBeNull()
+  })
+})
+
+describe('double-clicking an element in a frame', () => {
+  const CARD = frame('card', { x: 0, y: 0, width: 400, height: 300 })
+  const HASH = 'e'.repeat(64)
+  // Indices: html 0, head 1, the injected style is skipped, body 2, div 3, h1 4.
+  const BODY = '<div style="padding:40px"><h1 style="margin:0">Hello</h1></div>'
+
+  /** The card frame drawn on the canvas, showing BODY at HASH with its tree held. */
+  async function renderCard() {
+    trees.store.setState({
+      byRef: {
+        [CARD.ref]: {
+          status: 'ready',
+          version: 0,
+          tree: {
+            ref: CARD.ref,
+            hash: HASH,
+            elements: [
+              {
+                index: 3,
+                parent: null,
+                tag: 'div',
+                name: 'Card',
+                textOnly: false,
+                layout: 'block',
+                round: false,
+                placed: false,
+              },
+              {
+                index: 4,
+                parent: 3,
+                tag: 'h1',
+                name: 'Hello',
+                textOnly: true,
+                layout: 'block',
+                round: false,
+                placed: false,
+              },
+            ],
+          },
+        },
+      },
+    })
+    const { container } = renderCanvas(page('studio/home', [CARD]))
+    const drawn = container.querySelector(`[data-frame="${CARD.ref}"]`)
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!drawn || !hit) throw new Error('no drawn frame')
+    // The frame comes live a moment after it draws, and shows BODY in place of its file.
+    await expect.poll(() => drawn.querySelector('iframe')).not.toBeNull()
+    const iframe = drawn.querySelector('iframe')
+    if (!iframe) throw new Error('no live frame')
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body style="margin:0">${BODY}</body></html>`
+    await expect
+      .poll(() => iframe.contentDocument?.querySelector('h1'))
+      .toBeTruthy()
+    const heading = iframe.contentDocument?.querySelector('h1')
+    if (!heading) throw new Error('the frame shows no heading')
+    return { drawn: drawn.getBoundingClientRect(), hit, heading }
+  }
+
+  /** A press and a release at the point, `detail` counting the clicks, as a mouse sends them. */
+  function click(
+    hit: HTMLElement,
+    at: { clientX: number; clientY: number },
+    detail: number,
+    metaKey = false,
+  ) {
+    const event = (type: string) =>
+      new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        detail,
+        metaKey,
+        ...at,
+      })
+    act(() => {
+      hit.dispatchEvent(event('mousedown'))
+      window.dispatchEvent(event('mouseup'))
+      hit.dispatchEvent(event('click'))
+      if (detail === 2) hit.dispatchEvent(event('dblclick'))
+    })
+  }
+
+  afterEach(() => {
+    act(() => {
+      clear(selectionStore)
+      trees.store.setState({ byRef: {} })
+    })
+  })
+
+  it('opens an unselected text for typing on one double-click', async () => {
+    const { drawn, hit, heading } = await renderCard()
+    const scale = drawn.width / CARD.box.width
+    const at = {
+      clientX: drawn.left + 60 * scale,
+      clientY: drawn.top + 50 * scale,
+    }
+
+    click(hit, at, 1)
+    click(hit, at, 2)
+
+    await expect.poll(() => heading.hasAttribute(EDITING)).toBe(true)
+    expect(selectionStore.getState().element?.index).toBe(4)
+  })
+
+  it('only selects a container on a double-click', async () => {
+    const { drawn, hit, heading } = await renderCard()
+    const scale = drawn.width / CARD.box.width
+    const at = {
+      clientX: drawn.left + 20 * scale,
+      clientY: drawn.top + 20 * scale,
+    }
+
+    click(hit, at, 1)
+    click(hit, at, 2)
+
+    await expect.poll(() => selectionStore.getState().element?.index).toBe(3)
+    expect(heading.parentElement?.hasAttribute(EDITING)).toBe(false)
+  })
+
+  it('only selects a text on a Cmd-click', async () => {
+    const { drawn, hit, heading } = await renderCard()
+    const scale = drawn.width / CARD.box.width
+    const at = {
+      clientX: drawn.left + 60 * scale,
+      clientY: drawn.top + 50 * scale,
+    }
+
+    click(hit, at, 1)
+    click(hit, at, 1, true)
+
+    await expect.poll(() => selectionStore.getState().element?.index).toBe(4)
+    expect(heading.hasAttribute(EDITING)).toBe(false)
   })
 })
 

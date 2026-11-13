@@ -661,7 +661,7 @@ export function Canvas({
   }
 
   // A double-click on the text element selected before it edits that
-  // text, and anywhere else picks inside the frame.
+  // text, and anywhere else picks inside the frame, editing a text it picks.
   const doubleClick = (event: MouseEvent) => {
     const viewport = viewportRef.current
     const held = pressedOn.current
@@ -677,10 +677,11 @@ export function Canvas({
         return
       }
     }
-    pickInside(event)
+    pickInside(event, true)
   }
 
-  const pickInside = (event: MouseEvent) => {
+  /** Selects the element under `event`, and opens it for typing when `edit` and it holds only text. */
+  const pickInside = (event: MouseEvent, edit = false) => {
     const viewport = viewportRef.current
     // Only the Move tool selects, so every other tool picks nothing.
     if (
@@ -698,9 +699,10 @@ export function Canvas({
     const turn = ++picks.current
     void pickElementRead(layer, withDrawn(frames), { x, y }, readTree).then(
       (element) => {
-        if (element && turn === picks.current) {
-          selectElement(selectionStore, page.ref, element)
-        }
+        if (!element || turn !== picks.current) return
+        // Opening an edit selects the element first, text or not.
+        if (edit) editText(element, false)
+        else selectElement(selectionStore, page.ref, element)
       },
     )
   }
