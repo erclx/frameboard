@@ -31,6 +31,7 @@ import {
   useRenamingFrame,
 } from '../structure/actions'
 import { type NumberChange, NumberField } from './number-field'
+import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
 
@@ -64,7 +65,8 @@ interface FrameSectionProps {
  * The heading opens the Frame tool's sizes, a pick setting W and H on every
  * frame in one write. The Height row under the fields sets how every frame
  * holds its height, and the Preview row under it shows the frames at another
- * width and writes nothing.
+ * width and writes nothing. One frame ends the section with a button opening
+ * it on a phone.
  */
 export function FrameSection({
   frames,
@@ -175,6 +177,7 @@ export function FrameSection({
         calls={calls ?? structure}
       />
       <PreviewRow frames={frames} />
+      {several ? null : <PhoneLink frame={frame} disabled={!canWrite} />}
     </section>
   )
 }
