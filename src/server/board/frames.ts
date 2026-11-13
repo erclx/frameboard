@@ -65,6 +65,15 @@ export interface WidthsOptions {
   widths?: readonly number[] | false
 }
 
+export interface BodyOptions {
+  /**
+   * Markup the new file's body holds edge to edge, with no margin around it.
+   * A file already standing under the name refuses `name-taken`, since its
+   * bytes are kept and the markup would be dropped.
+   */
+  body?: string
+}
+
 export interface DeviceOptions {
   /** The device the board draws around the frame, absent for none. */
   device?: Device
@@ -90,6 +99,7 @@ export async function addFrame(
     ScrollOptions &
     WidthsOptions &
     DeviceOptions &
+    BodyOptions &
     JournalOptions,
 ): Promise<FrameRecord> {
   const { journal } = options
@@ -132,6 +142,13 @@ export async function addFrame(
           { ref: refOf(frame) },
         )
       }
+      if (exists && options.body !== undefined) {
+        throw new FrameboardError(
+          'name-taken',
+          `${frame.project}/${frame.page}/${frame.name} already has a file, so nothing was written into it.`,
+          { ref: refOf(frame) },
+        )
+      }
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
       // Another unplaced file would take a slot ahead of this one, so the
       // frame lands past the placed frames alone.
@@ -148,7 +165,9 @@ export async function addFrame(
         held: [],
       })
       if (!exists) {
-        await writeFile(frame.path, skeleton(frame.name), { flag: 'wx' })
+        await writeFile(frame.path, skeleton(frame.name, options.body), {
+          flag: 'wx',
+        })
         await journal?.created(frame.path)
       }
       layout.names = names
@@ -931,9 +950,15 @@ export function sizeOf({ size, width, height }: SizeOptions): {
 
 /**
  * The skeleton states `head` with `body`, so the browser builds neither and
- * every element address in the file holds.
+ * every element address in the file holds. A `body` markup is written edge to
+ * edge, in a column with no margin, so no line box adds a gap under a media
+ * element and the content is exactly the markup's size.
  */
-export function skeleton(name: string): string {
+export function skeleton(name: string, body?: string): string {
+  const content =
+    body === undefined
+      ? '<body></body>'
+      : `<body style="margin: 0; display: flex; flex-direction: column; align-items: flex-start">${body}</body>`
   // canon-allow-embedded: interpolates the frame title, and the bundled CLI has no substitution step for a file on disk
   return `<!doctype html>
 <html lang="en">
@@ -941,7 +966,7 @@ export function skeleton(name: string): string {
     <meta charset="utf-8" />
     <title>${name}</title>
   </head>
-  <body></body>
+  ${content}
 </html>
 `
 }
