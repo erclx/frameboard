@@ -307,6 +307,72 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a drag on one of two free elements moves both by as far in the file, and one undo puts both back', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    /** The `left` and `top` the first `<tag>` in the file states, in pixels. */
+    const offsets = (tag: string) => {
+      const style = new RegExp(`<${tag}\\b[^>]*style="([^"]*)"`).exec(
+        read(),
+      )?.[1]
+      const px = (side: string) =>
+        Number(
+          new RegExp(`(?:^|;)\\s*${side}:\\s*(-?[\\d.]+)px`).exec(
+            style ?? '',
+          )?.[1],
+        )
+      return { left: px('left'), top: px('top') }
+    }
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+
+    await cmdClick(page, 'h1')
+    const caption = await settledBox(page, 'p')
+    await page.keyboard.down('Shift')
+    await page.mouse.click(
+      caption.x + caption.width / 2,
+      caption.y + caption.height / 2,
+    )
+    await page.keyboard.up('Shift')
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Free', exact: true })
+      .click()
+    await expect.poll(() => read().match(/position: absolute/g)).toHaveLength(2)
+    const placed = read()
+    const before = { h1: offsets('h1'), p: offsets('p') }
+    expect(
+      Number.isFinite(before.h1.left) && Number.isFinite(before.p.left),
+    ).toBe(true)
+    await expect(page.locator('[data-element-group]')).toBeVisible()
+
+    const headline = await settledBox(page, 'h1')
+    const from = {
+      x: headline.x + headline.width / 2,
+      y: headline.y + headline.height / 2,
+    }
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x + 40, from.y + 30, { steps: 6 })
+    await page.mouse.up()
+
+    await expect.poll(() => offsets('h1').left).not.toBe(before.h1.left)
+    const after = { h1: offsets('h1'), p: offsets('p') }
+    const moved = (tag: 'h1' | 'p') => ({
+      x: after[tag].left - before[tag].left,
+      y: after[tag].top - before[tag].top,
+    })
+    expect(moved('h1').x).toBeGreaterThan(0)
+    expect(moved('p')).toEqual(moved('h1'))
+    await expect(page.locator('[data-element-selection]')).toHaveCount(2)
+
+    await undo(page)
+
+    await expect.poll(read).toBe(placed)
+  })
+
   test('a marquee from the selected frame’s bare body selects what it touches, and Delete takes them out', async ({
     page,
   }) => {

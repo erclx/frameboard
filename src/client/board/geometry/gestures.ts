@@ -7,6 +7,15 @@ import { type Structure, structure } from '@/client/live/structure'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
+import {
+  groupBounds,
+  groupBox,
+  type GroupMember,
+  type MemberEdit,
+  moveMembers,
+  scaleMembers,
+  scalesAsGroup,
+} from '../element/group'
 import { heldOutline, holdOutline } from '../element/held'
 import { elementsIn, onBareFrame, pickElementRead } from '../element/pick'
 import {
@@ -14,12 +23,15 @@ import {
   dragSize,
   type ElementResize,
   type ElementSize,
+  type GroupEdit,
   type PlacedMove,
   type PlacedOffsets,
   placedOffsets,
   type ResizeRead,
+  shownGroup,
   shownResize,
   startElementResize,
+  startGroupEdit,
   startPlacedMove,
 } from '../element/resize'
 import { readTree, treeOf } from '../element/tree'
@@ -57,6 +69,7 @@ import {
   onOutline,
   selectedElementBox,
   selectedElementBoxes,
+  selectedGroupBox,
 } from './hit'
 import { type Corner, resizeBox, scaleBoxes } from './resize'
 import { SNAP_DISTANCE, snapMove, snapResize } from './snap'
@@ -112,6 +125,10 @@ export interface GestureStores {
   placedOffsets: typeof placedOffsets
   /** Starts a drag of the selected placed element, null when its frame is held. */
   movePlaced: typeof startPlacedMove
+  /** Several selected elements as a group drag reads them at the press, null while their frame shows other bytes. */
+  groupOf: typeof shownGroup
+  /** Starts a drag of several selected elements, null when their frame is held. */
+  editGroup: typeof startGroupEdit
   /** The element a Shift-click lands on, read once its frame's tree is held, else null. */
   pickElement: (
     layer: HTMLElement,
@@ -145,6 +162,8 @@ const STORES: GestureStores = {
   resizeElement: startElementResize,
   placedOffsets,
   movePlaced: startPlacedMove,
+  groupOf: shownGroup,
+  editGroup: startGroupEdit,
   pickElement: (layer, frames, at) =>
     pickElementRead(layer, frames, at, readTree),
   onBareFrame: (layer, frames, at) => {
@@ -198,6 +217,26 @@ type Gesture =
     }
   /** A drag carrying the selected element, dropped into the gap under release. */
   | { kind: 'carry'; key: ElementKey }
+  /** A press on a corner of several selected elements' box, which a drag turns into a scale of them. */
+  | { kind: 'group-corner'; corner: Corner }
+  /** A drag of several selected elements, each free one moved as far, written as one step on release. */
+  | {
+      kind: 'group'
+      members: readonly GroupMember[]
+      edit: GroupEdit
+      edits: readonly MemberEdit[]
+      moved: boolean
+    }
+  /** A corner drag of several selected elements' box, scaling each, written as one step on release. */
+  | {
+      kind: 'group-resize'
+      corner: Corner
+      members: readonly GroupMember[]
+      bounds: Box
+      edit: GroupEdit
+      edits: readonly MemberEdit[]
+      moved: boolean
+    }
   /** A press on a corner of an element that takes a resize, which a drag turns into one. */
   | {
       kind: 'corner'
@@ -243,6 +282,7 @@ type Mark =
       read: ResizeRead
     }
   | { kind: 'section'; section: SectionRecord; corner: Corner }
+  | { kind: 'group'; corner: Corner }
   | { kind: 'frame'; corner: Corner }
 
 /**
@@ -390,7 +430,16 @@ export function attachGestures(
   ): Mark | null => {
     const state = selection.getState()
     const element = state.element
-    // Several draw no marks, so neither a press nor a hover finds one.
+    // Several draw their marks on the box around them, while a corner drag scales them.
+    const group =
+      selectedElements(state).length > 1 ? selectedGroupBox(target.layer) : null
+    if (group) {
+      const corner = group.scales ? cornerAt(group.box, point, zoom()) : null
+      if (corner) return { kind: 'group', corner }
+      if (onOutline(group.box, point, zoom()) || inBox(group.box, point)) {
+        return null
+      }
+    }
     const outline =
       element && selectedElements(state).length <= 1
         ? selectedElementBox(target.layer)
@@ -477,12 +526,16 @@ export function attachGestures(
       gesture = { ...mark, kind: 'corner' }
       return
     }
+    if (mark?.kind === 'group') {
+      gesture = { kind: 'group-corner', corner: mark.corner }
+      return
+    }
     const state = selection.getState()
     const element = state.element
     const members = selectedElements(state)
     const several = members.length > 1
-    // Several draw bare outlines, so a press on one reads as a press on that
-    // element, its corners included, and a drag carries that one alone.
+    // A press on one of several reads as a press on that element, and a drag
+    // moves every free one with it. One with none free carries that one alone.
     const member = several
       ? selectedElementBoxes(target.layer)
           .reverse()
@@ -500,6 +553,18 @@ export function attachGestures(
           : frameAt(drawn, point, zoom()),
         shift: event.shiftKey,
         placed: stores.placedOffsets(target.layer, memberKey),
+      }
+      return
+    }
+    // The bare space inside several's box is theirs too, as a design tool's selection is.
+    const group = several ? selectedGroupBox(target.layer) : null
+    if (element && group && inBox(group.box, point)) {
+      gesture = {
+        kind: 'element',
+        key: element,
+        frame: frameAt(drawn, point, zoom()),
+        shift: event.shiftKey,
+        placed: null,
       }
       return
     }
@@ -596,11 +661,44 @@ export function attachGestures(
         : { kind: 'none' }
       return
     }
-    // A drag of one of several takes that element alone from here.
+    if (gesture.kind === 'group-corner') {
+      const keys = selectedElements(selection.getState())
+      const members = stores.groupOf(target.layer, keys)
+      const bounds = members ? groupBounds(members) : null
+      const edit =
+        members && bounds && scalesAsGroup(members) && stores.canWrite()
+          ? stores.editGroup(target.page, keys)
+          : null
+      gesture =
+        members && bounds && edit
+          ? {
+              kind: 'group-resize',
+              corner: gesture.corner,
+              members,
+              bounds,
+              edit,
+              edits: [],
+              moved: false,
+            }
+          : { kind: 'none' }
+      return
+    }
     if (
       gesture.kind === 'element' &&
       selectedElements(selection.getState()).length > 1
     ) {
+      const keys = selectedElements(selection.getState())
+      const members = stores.groupOf(target.layer, keys)
+      if (members?.some(({ placed }) => placed !== null)) {
+        const edit = stores.canWrite()
+          ? stores.editGroup(target.page, keys)
+          : null
+        gesture = edit
+          ? { kind: 'group', members, edit, edits: [], moved: false }
+          : { kind: 'none' }
+        return
+      }
+      // With none free there is no group move, so the drag carries the one pressed.
       selectElement(selection, target.page, gesture.key)
     }
     if (gesture.kind === 'element' && gesture.placed) {
@@ -802,6 +900,35 @@ export function attachGestures(
         shiftElementPins(gesture.key, ox, oy)
         return
       }
+      case 'group': {
+        gesture.edits = moveMembers(gesture.members, dx, dy)
+        gesture.moved = Math.round(dx) !== 0 || Math.round(dy) !== 0
+        gesture.edit.preview(gesture.edits)
+        const [first] = selectedElements(selection.getState())
+        if (first) {
+          for (const { index } of gesture.edits) {
+            shiftElementPins(
+              { ...first, index },
+              Math.round(dx),
+              Math.round(dy),
+            )
+          }
+        }
+        return
+      }
+      case 'group-resize': {
+        const to = groupBox(
+          gesture.bounds,
+          gesture.corner,
+          dx,
+          dy,
+          event.shiftKey,
+        )
+        gesture.edits = scaleMembers(gesture.members, gesture.bounds, to)
+        gesture.moved = !sameBox(to, gesture.bounds)
+        gesture.edit.preview(gesture.edits)
+        return
+      }
       case 'element-resize': {
         gesture.size = dragSize(
           gesture.read,
@@ -984,6 +1111,12 @@ export function attachGestures(
       } else {
         resize.cancel()
       }
+    } else if (gesture.kind === 'group' || gesture.kind === 'group-resize') {
+      if (gesture.moved && gesture.edits.length > 0) {
+        void gesture.edit.commit(gesture.edits)
+      } else {
+        gesture.edit.cancel()
+      }
     } else if (gesture.kind === 'placed') {
       const { from: start, to, move, key } = gesture
       if (to && (to.left !== start.left || to.top !== start.top)) {
@@ -1107,6 +1240,9 @@ export function attachGestures(
       shiftElementPins(gesture.key, 0, 0)
     } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()
+    } else if (gesture.kind === 'group' || gesture.kind === 'group-resize') {
+      gesture.edit.cancel()
+      shiftPins([], 0, 0)
     } else if (gesture.kind === 'section-resize') {
       placeSection(gesture.section.name, gesture.section.box)
     } else if (gesture.kind === 'carry') {
