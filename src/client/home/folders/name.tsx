@@ -1,4 +1,4 @@
-import { Pin } from 'lucide-react'
+import { Pencil, Pin } from 'lucide-react'
 
 import { RenameField } from '@/client/components/rename-field'
 import { UnseenCount } from '@/client/components/unseen-count'
@@ -57,8 +57,7 @@ export function FolderName({
             if (!canWrite) return
             event.preventDefault()
             event.stopPropagation()
-            focusFolder(folder.key)
-            startFolderRename(folder.key, folder.name)
+            startRename(folder)
           }}
         >
           {folder.name}
@@ -96,5 +95,33 @@ export function FolderName({
         </span>
       ) : null}
     </span>
+  )
+}
+
+function startRename(folder: HomeFolder) {
+  focusFolder(folder.key)
+  startFolderRename(folder.key, folder.name)
+}
+
+/**
+ * The pen beside an open folder's name, per `folder-rename-pen-720`, opening
+ * the rename field in one click. It shows while the nearest `group` is hovered
+ * or holds focus, or always where nothing hovers, and leaves while the field
+ * is open or the tab may not write.
+ */
+export function FolderPen({ folder }: { folder: HomeFolder }) {
+  const renaming = useRenamingFolder(folder.key)
+  const canWrite = useLive((state) => state.canWrite)
+  if (renaming || !canWrite) return null
+  return (
+    <button
+      type="button"
+      aria-label="Rename folder"
+      title="Rename folder"
+      onClick={() => startRename(folder)}
+      className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground outline-none group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 [@media(hover:hover)]:opacity-0"
+    >
+      <Pencil aria-hidden className="size-3.5" />
+    </button>
   )
 }

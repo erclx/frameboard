@@ -14,7 +14,7 @@ import { type Captures, ProjectCard } from '../project-card'
 import { roveFocus } from '../rove'
 import { countOf, type HomeFolder } from './entries'
 import { FolderMore } from './menu'
-import { FolderName } from './name'
+import { FolderName, FolderPen } from './name'
 
 export interface PanelProps {
   folder: HomeFolder
@@ -31,7 +31,8 @@ export interface PanelProps {
  * that open, rename, and carry the card menu as they do on home. Its parent
  * `Dialog` holds it open. The ⋯ focuses this folder as it opens, so Rename,
  * Ungroup, and Pin act on it even when focus had moved onto a member, and a
- * double click on the name renames it in place.
+ * double click on the name or one click on the pen beside it renames it in
+ * place.
  */
 export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
   const unseen = useUnseen((state) => state.unseen)
@@ -45,10 +46,11 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
       showCloseButton={false}
       className="gap-3 p-4 sm:max-w-[560px]"
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="group flex min-w-0 items-center gap-3">
+        {/* The title hugs the name so the pen sits beside it, and fills the header while the field is open. */}
         <DialogTitle
           render={<div />}
-          className="min-w-0 flex-1 text-title font-semibold"
+          className="min-w-0 text-title font-semibold has-[input]:flex-1"
         >
           <FolderName
             folder={folder}
@@ -57,10 +59,13 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
             unseen={0}
           />
         </DialogTitle>
+        <FolderPen folder={folder} />
         <DialogDescription className="sr-only">
           {countOf(folder)}
         </DialogDescription>
-        <FolderMore folder={folder} open={false} />
+        <span className="ml-auto flex">
+          <FolderMore folder={folder} open={false} />
+        </span>
       </div>
       <ul
         onKeyDown={(event) => roveFocus(event, 'grid')}

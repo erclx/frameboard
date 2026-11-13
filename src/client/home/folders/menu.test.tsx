@@ -248,6 +248,74 @@ describe('renaming in place', () => {
     ])
   })
 
+  describe('the pen in the open folder', () => {
+    it('opens the rename field from one click', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      expect(
+        screen.getByRole('textbox', { name: 'Rename folder Client A' }),
+      ).toHaveFocus()
+    })
+
+    it('leaves the header while the field is open', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      expect(
+        within(panel).queryByRole('button', { name: 'Rename folder' }),
+      ).toBeNull()
+    })
+
+    it('comes back once Esc cancels the rename', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBe(panel)
+    })
+
+    it('keeps the pen out of the panel name', async () => {
+      renderHome()
+      await userEvent.click(folder())
+
+      const panel = await screen.findByRole('dialog')
+
+      expect(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      ).toBeInTheDocument()
+      expect(panel).toHaveAccessibleName('Client A')
+    })
+
+    it('shows no pen in a tab that cannot write', async () => {
+      renderHome({ canWrite: false })
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+
+      expect(
+        within(panel).queryByRole('button', { name: 'Rename folder' }),
+      ).toBeNull()
+    })
+  })
+
   it('renames from a double click on a row title, leaving it closed', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     renderHome({ layout: 'list' })
