@@ -334,9 +334,12 @@ describe('registerHistoryActions', () => {
       act(() => undo())
       refuse(new BoardWriteError('undo-overtaken', 'Hero changed since.'))
       await vi.waitFor(() => expect(notify).toHaveBeenCalledTimes(1))
+      // A press after the refusal answers, which would also run a slot left full.
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(2))
       await new Promise((resolve) => setTimeout(resolve, 0))
 
-      expect(call).toHaveBeenCalledTimes(1)
+      expect(call).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -427,12 +430,16 @@ describe('registerHistoryActions', () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
       receiveClaims(store, [CLAIM])
       act(() => undo())
-
       receiveHistory(store, { undo: 2, redo: 0 })
       receiveClaims(store, [])
-
       await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(undoCall).toHaveBeenCalledTimes(1)
+
+      // A press after the drop answers, which would also run a slot left full.
+      act(() => undo())
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(2))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(undoCall).toHaveBeenCalledTimes(2)
     })
 
     it('drops a waiting undo on Esc without sending it again or raising a toast', async () => {
