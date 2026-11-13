@@ -31,6 +31,8 @@ export interface MediaReading {
  */
 export interface LiveMedia {
   reading: MediaReading
+  /** The live page the element sits in, for a style the board lays over it. */
+  page: Document
   togglePlay: () => void
   seek: (seconds: number) => void
   toggleSound: () => void
@@ -139,6 +141,7 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
   const { media } = held
   return {
     reading: held.reading,
+    page: media.ownerDocument,
     togglePlay: () => togglePlay(media),
     seek: (seconds) => seek(media, seconds),
     toggleSound: () => toggleSound(media),

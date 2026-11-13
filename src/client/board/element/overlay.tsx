@@ -380,11 +380,28 @@ interface CanvasMediaBarProps {
 /** How far inside a video's left, right, and bottom edges its bar sits, in screen pixels. */
 const BAR_INSET = 4
 
+const STRIP_ID = 'frameboard-media-strip'
+
+/**
+ * Hides the strip the browser draws for `controls` on every video in `doc`,
+ * by one injected style, and answers its undo. The strip grows with the
+ * frame's zoom and the bar never does, so the bar cannot cover it.
+ */
+function hideVideoStrips(doc: Document): () => void {
+  if (doc.getElementById(STRIP_ID)) return () => {}
+  const style = doc.createElement('style')
+  style.id = STRIP_ID
+  style.textContent =
+    'video::-webkit-media-controls { display: none !important }'
+  doc.head?.append(style)
+  return () => style.remove()
+}
+
 /**
  * The media bar of a selected `<video>` or `<audio>` in Edit, at a constant
  * screen size. A video's draws inside its bottom edge at its width less the
- * inset on each side, over the strip the browser draws for `controls`, which
- * the hit layer keeps out of reach in Edit. An audio's draws under it at its
+ * inset on each side, in place of the strip the browser draws for `controls`,
+ * which is hidden while the bar is up. An audio's draws under it at its
  * width, since inside would cover the player. It draws in the notes layer,
  * the board-space layer over the hit layer, since a press on the frames'
  * layer never reaches it, and goes when the frame is culled or reloads other
@@ -393,6 +410,8 @@ const BAR_INSET = 4
 function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
   const editing = useMode((state) => state.mode === 'edit')
   const media = useLiveMedia(editing ? element : null)
+  const page = media?.reading.tag === 'video' ? media.page : null
+  useEffect(() => (page ? hideVideoStrips(page) : undefined), [page])
   const layer = container?.parentElement?.querySelector(
     ':scope > [data-notes-layer]',
   )

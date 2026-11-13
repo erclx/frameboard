@@ -378,11 +378,24 @@ describe('ElementOverlay', () => {
         ?.contentDocument?.querySelector('video, audio')
       if (!element) throw new Error('the frame holds no media')
       return {
+        element,
         bar: bar.getBoundingClientRect(),
         media: element.getBoundingClientRect(),
         time: bar.querySelector('[data-media-time]'),
         track: bar.querySelector('input[type="range"]'),
       }
+    }
+
+    /** The rules in the media's page that hide a video's own strip. */
+    function stripRules(media: Element): string[] {
+      return [...media.ownerDocument.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .map((rule) => rule.cssText)
+        .filter(
+          (text) =>
+            text.includes('::-webkit-media-controls') &&
+            text.includes('display: none'),
+        )
     }
 
     it("draws a video's bar inside its bottom edge, 4px in on three sides", async () => {
@@ -414,6 +427,23 @@ describe('ElementOverlay', () => {
 
       expect(time).toBeVisible()
       expect(track).toBeVisible()
+    })
+
+    it("hides the browser's own strip under a video's bar", async () => {
+      const { element } = await drawBar(
+        `<video src="${CLIP}" controls style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      // A computed style never reads the strip's pseudo-element, so the rule is read off the page's sheets.
+      await waitFor(() => expect(stripRules(element)).toHaveLength(1))
+    })
+
+    it("leaves an audio's own player drawn above its bar", async () => {
+      const { element } = await drawBar(
+        `<audio src="${CLIP}" controls style="display:block;width:120px"></audio>`,
+      )
+
+      expect(stripRules(element)).toHaveLength(0)
     })
 
     it("draws an audio's bar under it at the audio's width", async () => {

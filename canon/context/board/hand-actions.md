@@ -29,7 +29,8 @@ Several elements in one frame select together, all at one hash, with `element` h
 - Several draw one box with corner handles and a size chip through `group.ts`, each member outlined thin. Delete takes all as one step, and restack and the menu's other items act on the last picked.
 - A drag, an arrow key, the align keys, and a corner drag act on every Free member as one write, and Shift+A wraps siblings in one flow `div` through `POST /api/frames/wrap`
 - One selected `<video>` or `<audio>` in Edit draws `media-bar.tsx` in the notes layer, above the hit layer. `media.ts` drives the live node, so a listen writes nothing.
-  - A video's bar sits inside its bottom edge, 4 screen pixels in on three sides, over the strip the browser draws for `controls`, and an audio's sits under it at its width
+  - A video's bar sits inside its bottom edge, 4 screen pixels in on three sides, and an audio's sits under it at its width
+  - While a video's bar is up, one injected style hides the strip the browser draws for `controls` on every video in that page, since the strip grows with zoom
   - As the bar narrows the time goes first, then the track, then the speaker, and the scrub track's focus ring draws on its thumb alone through `seek-track` in `styles.css`
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
