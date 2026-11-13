@@ -29,6 +29,7 @@ const STYLE_ID = 'frameboard-present-steps'
  * is. It keeps the hidden step's room, so revealing one moves nothing else,
  * and under reduced motion every step appears with no movement.
  */
+// canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
 const STEP_STYLE = `
 [${SHOWN}='hidden'] { visibility: hidden !important }
 @keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
