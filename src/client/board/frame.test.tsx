@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
+import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
@@ -363,6 +364,7 @@ describe('Frame', () => {
 
     afterEach(() => {
       act(() => openFindings(null))
+      act(() => liveStore.setState({ canWrite: false }))
     })
 
     function renderMarked() {
@@ -399,6 +401,20 @@ describe('Frame', () => {
       await userEvent.keyboard('{Enter}')
 
       expect(await findByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('opens with focus on the list, not on a card’s Turn off button', async () => {
+      act(() => liveStore.setState({ canWrite: true }))
+      const { getByRole, findByRole } = renderMarked()
+
+      getByRole('button', { name: '2 check findings' }).focus()
+      await userEvent.keyboard('{Enter}')
+
+      const list = await findByRole('dialog')
+      await expect.poll(() => document.activeElement).toBe(list)
+      expect(
+        getByRole('button', { name: 'Turn off in studio, theme' }),
+      ).toBeInTheDocument()
     })
 
     it('closes on Esc before the board clears the selection', async () => {

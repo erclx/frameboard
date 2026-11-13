@@ -582,6 +582,7 @@ interface FindingsMarkProps {
  */
 function FindingsMark({ frame, findings }: FindingsMarkProps) {
   const open = useFindingsOpen(frame.ref)
+  const popup = useRef<HTMLDivElement>(null)
   const count = findings.length
   const severity = severityOf(findings)
   const counted = `${count} finding${count === 1 ? '' : 's'}`
@@ -606,7 +607,10 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         side="bottom"
         align="start"
         sideOffset={6}
-        initialFocus
+        ref={popup}
+        // The list opens with focus on itself rather than on its first Turn
+        // off button, so a second Enter on the badge switches no rule off.
+        initialFocus={popup}
         className="w-[330px] gap-1.5 p-2.5 text-body"
       >
         <PopoverTitle className="text-[11px] font-semibold text-muted-foreground">
