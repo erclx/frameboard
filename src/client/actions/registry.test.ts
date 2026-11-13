@@ -261,6 +261,23 @@ describe('bindKeys', () => {
       expect(nudge.runs).toBe(4)
     })
 
+    it('tells a repeat action whether each press is an auto-repeat', () => {
+      const triggers: unknown[] = []
+      register(
+        action('edit.undo', {
+          keys: ['ArrowLeft'],
+          repeat: true,
+          run: (trigger) => triggers.push(trigger),
+        }),
+      )
+      bind(window)
+
+      pressBody('ArrowLeft', 'ArrowLeft')
+      pressBody('ArrowLeft', 'ArrowLeft', held)
+
+      expect(triggers).toEqual([{ repeat: false }, { repeat: true }])
+    })
+
     it('runs the far nudge rather than the plain one with Shift held', () => {
       const near = action('frame.nudgeRight', {
         keys: ['ArrowRight'],

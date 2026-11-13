@@ -86,7 +86,7 @@ function ArrangeButton({
         type="button"
         aria-label={action.label}
         disabled={!isEnabled(action)}
-        onClick={action.run}
+        onClick={() => action.run()}
         className="grid h-[22px] w-7 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40"
       >
         <Icon aria-hidden className="size-[13px]" strokeWidth={1.6} />

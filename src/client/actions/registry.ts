@@ -46,7 +46,11 @@ interface ActionBase {
    * `Shift+Digit1`, since its key reads as the symbol.
    */
   keys?: readonly string[]
-  run: () => void
+  /**
+   * A key hands `trigger`, whose `repeat` marks an auto-repeat of a held key.
+   * A button or the palette passes none, which reads as a discrete press.
+   */
+  run: (trigger?: { repeat: boolean }) => void
   /** Gates its button and its key alike, absent meaning always. */
   enabled?: () => boolean
   /** Marks a toggle or a radio row on, absent meaning it is neither. */
@@ -193,7 +197,7 @@ function press(key: string, event: KeyboardEvent): void {
   if (!action) return
   event.preventDefault()
   if (event.repeat && !action.repeat) return
-  action.run()
+  action.run({ repeat: event.repeat })
 }
 
 /**

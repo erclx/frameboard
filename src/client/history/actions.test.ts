@@ -83,7 +83,10 @@ describe('registerHistoryActions', () => {
   function register(
     store: LiveStore,
     deps: Partial<HistoryDeps> = {},
-  ): { undo: () => void; redo: () => void } {
+  ): {
+    undo: (trigger?: { repeat: boolean }) => void
+    redo: (trigger?: { repeat: boolean }) => void
+  } {
     unregister = registerHistoryActions({
       store,
       navigate: () => {},
@@ -97,8 +100,8 @@ describe('registerHistoryActions', () => {
     })
     const { result } = renderHook(() => useActions(['edit.undo', 'edit.redo']))
     return {
-      undo: () => result.current[0]?.run(),
-      redo: () => result.current[1]?.run(),
+      undo: (trigger) => result.current[0]?.run(trigger),
+      redo: (trigger) => result.current[1]?.run(trigger),
     }
   }
 
@@ -243,36 +246,101 @@ describe('registerHistoryActions', () => {
     })
   })
 
-  it('drops an undo or redo pressed while a step is out, then takes the next', async () => {
-    const store = writableWith(3, 1)
-    let answer = (_: StepAnswer) => {}
-    const undoCall = vi
-      .fn<() => Promise<StepAnswer>>()
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            answer = resolve
-          }),
-      )
-      .mockResolvedValue({ page: null, frames: [] })
-    const redoCall = vi
-      .fn<() => Promise<StepAnswer>>()
-      .mockResolvedValue({ page: null, frames: [] })
-    const { undo, redo } = register(store, {
-      calls: { undo: undoCall, redo: redoCall },
+  describe('a press while a step is out', () => {
+    /** An undo call whose first step stays out until `answer` is called. */
+    function heldUndo() {
+      const held = { answer: (_: StepAnswer) => {} }
+      const call = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              held.answer = resolve
+            }),
+        )
+        .mockResolvedValue({ page: null, frames: [] })
+      return { call, held }
+    }
+
+    it('runs a discrete undo once the step out answers', async () => {
+      const { call, held } = heldUndo()
+      const { undo } = register(writableWith(3, 0), {
+        calls: { undo: call, redo: async () => ({ page: null, frames: [] }) },
+      })
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1))
+
+      act(() => undo())
+      expect(call).toHaveBeenCalledTimes(1)
+      held.answer({ page: null, frames: [] })
+
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(2))
     })
-    act(undo)
-    await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
 
-    act(undo)
-    act(redo)
-    answer({ page: null, frames: [] })
-    // Lets the answered step settle and free the next press.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    act(undo)
+    it('drops an auto-repeat of a held key', async () => {
+      const { call, held } = heldUndo()
+      const { undo } = register(writableWith(3, 0), {
+        calls: { undo: call, redo: async () => ({ page: null, frames: [] }) },
+      })
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1))
 
-    await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(2))
-    expect(redoCall).not.toHaveBeenCalled()
+      act(() => undo({ repeat: true }))
+      act(() => undo({ repeat: true }))
+      held.answer({ page: null, frames: [] })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(call).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps only the last of several presses, of either kind', async () => {
+      const { call, held } = heldUndo()
+      const redoCall = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockResolvedValue({ page: null, frames: [] })
+      const { undo, redo } = register(writableWith(3, 1), {
+        calls: { undo: call, redo: redoCall },
+      })
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1))
+
+      act(() => undo())
+      act(() => redo())
+      held.answer({ page: null, frames: [] })
+
+      await vi.waitFor(() => expect(redoCall).toHaveBeenCalledTimes(1))
+      expect(call).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops a queued press once the step out is refused with a toast', async () => {
+      const notify = vi.fn()
+      let refuse = (_: Error) => {}
+      const call = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_, reject) => {
+              refuse = reject
+            }),
+        )
+        .mockResolvedValue({ page: null, frames: [] })
+      const { undo } = register(writableWith(3, 0), {
+        notify,
+        calls: { undo: call, redo: async () => ({ page: null, frames: [] }) },
+      })
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1))
+
+      act(() => undo())
+      refuse(new BoardWriteError('undo-overtaken', 'Hero changed since.'))
+      await vi.waitFor(() => expect(notify).toHaveBeenCalledTimes(1))
+      // A press after the refusal answers, which would also run a slot left full.
+      act(() => undo())
+      await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(2))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(call).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('a step naming a frame another session holds', () => {
@@ -342,6 +410,36 @@ describe('registerHistoryActions', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(undoCall).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops a press queued behind a waiting undo once a newer step lands', async () => {
+      const store = writableWith(1, 0)
+      store.setState({ connected: true })
+      const undoCall = vi
+        .fn<() => Promise<StepAnswer>>()
+        .mockRejectedValueOnce(refusal())
+        .mockResolvedValue({ page: null, frames: [] })
+      const { undo } = register(store, {
+        calls: {
+          undo: undoCall,
+          redo: async () => ({ page: null, frames: [] }),
+        },
+      })
+      act(() => undo())
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(1))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      receiveClaims(store, [CLAIM])
+      act(() => undo())
+      receiveHistory(store, { undo: 2, redo: 0 })
+      receiveClaims(store, [])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // A press after the drop answers, which would also run a slot left full.
+      act(() => undo())
+      await vi.waitFor(() => expect(undoCall).toHaveBeenCalledTimes(2))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(undoCall).toHaveBeenCalledTimes(2)
     })
 
     it('drops a waiting undo on Esc without sending it again or raising a toast', async () => {

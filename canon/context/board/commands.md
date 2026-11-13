@@ -52,3 +52,4 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac,
 - `bindKeys` skips a press inside a field or an open dialog, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
 - A toast is a dialog to base-ui but takes board keys, undo among them, by its `data-slot="toast"` marker, while Enter there stays with the toast, which runs Show, or the button holding focus
 - A held key runs its action once and prevents the auto-repeats, unless the action sets `repeat`, as the nudges, resizes, pans, zoom steps, undo, and redo do
+- While a step is out, undo and redo drop a key's auto-repeat but hold the last discrete press, a click too, until the step answers
