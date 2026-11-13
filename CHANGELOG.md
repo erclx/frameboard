@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.33.0](https://github.com/erclx/frameboard/compare/v0.32.0...v0.33.0) (2026-11-13)
+
+
+### Features
+
+* **canvas:** draw a phone or tablet bezel around a frame ([#311](https://github.com/erclx/frameboard/issues/311)) ([11221f0](https://github.com/erclx/frameboard/commit/11221f09ca3338682e4b3630dba06f639d6bfa9b))
+* **canvas:** edit text in one double-click and preview dragged shapes ([#314](https://github.com/erclx/frameboard/issues/314)) ([b572c83](https://github.com/erclx/frameboard/commit/b572c836ec4c7a551b645ca10ec0c638e45e8f74))
+* **inspector:** add a tokenless stroke and swap raw colors for tokens ([#315](https://github.com/erclx/frameboard/issues/315)) ([3271820](https://github.com/erclx/frameboard/commit/3271820b4ed44218303f2aec38de6266333dea8c))
+* **present:** present in reading order with a scale cap and fixed bar ([#313](https://github.com/erclx/frameboard/issues/313)) ([9e54d07](https://github.com/erclx/frameboard/commit/9e54d07f19350fac641943f565181a8df6d123e1))
+* **preview:** open a project's frames on a phone over the local network ([#312](https://github.com/erclx/frameboard/issues/312)) ([42adb6b](https://github.com/erclx/frameboard/commit/42adb6b702f76a1e205320f58e17fe8b26d4ae40))
+
+
+### Bug Fixes
+
+* **history:** queue a discrete undo or redo pressed while a step is out ([#307](https://github.com/erclx/frameboard/issues/307)) ([80cc6da](https://github.com/erclx/frameboard/commit/80cc6dac0b902c73489f699c0b41a5a7621efde0))
+* **inspector:** keep a picked color when a Layers drag follows ([#310](https://github.com/erclx/frameboard/issues/310)) ([e16e630](https://github.com/erclx/frameboard/commit/e16e6300ce36e69344bf3e44f89b99878c9f9909))
+
 ## [0.32.0](https://github.com/erclx/frameboard/compare/v0.31.0...v0.32.0) (2026-11-12)
 
 
