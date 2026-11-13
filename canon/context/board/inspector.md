@@ -23,7 +23,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **This slide:** a menu under Device reading Same as page or a named transition, writing every frame through `POST /api/frame/transition` as one undo step
 - **Page:** `page-section.tsx` shows with nothing selected, holding Slide transition, Direction, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
 - **Step:** `element/step.tsx` adds a Present section to one element with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
-- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
+- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step. Several Free elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
@@ -33,6 +33,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Filmstrip:** offers 2 to 12 moments, only the counts whose strip fits the screenshot limit at the Export scale, and disables for a frame that repeats forever
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
+- **Use auto layout:** the Layout header's icon button runs the wrap action behind Shift+A on one element or several siblings, and stays focusable while disabled so its tooltip gives the reason
 - **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
 - **Rule caption:** names the selector of a flow rule several elements share, with its count from the static cascade. An unread sheet names no rule.
 - **Gap:** writes `gap` in px. Auto gap writes `justify-content: space-between`, and off drops the element's own value or writes `flex-start`.

@@ -26,7 +26,10 @@ Several elements in one frame select together, all at one hash, with `element` h
 
 - With an element selected, Shift-click on the canvas or in Layers adds an element or takes it out, and Cmd+A selects its siblings. An element in another frame starts over there.
 - A drag from a selected frame's bare `body` marquees the elements it touches, outermost first, and a drag from an element it holds still moves the frame
-- Several draw bare outlines, with marks and the chip on one alone. Delete, from its key or the menu, takes all as one step, and restack and the menu's other items act on the last picked.
+- Several draw one box with four corner handles and the group's size chip, each member keeping a thin outline, through `group.ts`. Delete, from its key or the menu, takes all as one step, and restack and the menu's other items act on the last picked.
+- A drag or an arrow key moves every Free member and a corner drag scales each box, never a font size, as one write and one undo step. A member in the flow stays put.
+- The frames' align and distribute keys write each Free member's `left` and `top`, and stand disabled while one sits in the flow
+- Shift+A wraps selected siblings in one flow `div` through `POST /api/frames/wrap`, its direction and gap read by `place/flow-guess.ts` from where they sit
 - One selected `<video>` or `<audio>` in Edit draws `media-bar.tsx` under it in the notes layer, above the hit layer. `media.ts` drives the live node, so a listen writes nothing.
 
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
@@ -78,7 +81,7 @@ The Frame tool, New frame here, and the guide send the picked size's width and h
 Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom. The corner marks take no pointer, so `gestures.ts` reads their resize cursor off the pointer's position through the read a press takes, and a mark the press would not resize shows none.
 
 - `gestures.ts` binds `d3-drag` to the hit layer beside the viewport's `d3-zoom`, and `draw.ts` writes the overlay's DOM from the drag handler
-- `snap.ts`, `arrange.ts`, `resize.ts`, and `hit.ts` are pure, and `actions.ts` registers the selection, nudge, and arrange keys
+- `snap.ts`, `resize.ts`, and `hit.ts` are pure, as is `src/shared/arrange.ts`, which frames and elements both align through, and `actions.ts` registers the selection, nudge, and arrange keys
 - `write.ts` holds a released box as pending until the server's next board carries it, and sends every hand move or resize through `POST /api/frames/boxes`
 - A dragged or resized frame snaps to other frames' edges and centers unless Ctrl is held, and its note pins follow the snapped box, a resize placing each by `board/pin-corner.ts`
 - A box edit on a held frame stays pending until the claim drops, then goes with the first `expected` it started from, even after a newer edit replaced it
@@ -99,7 +102,7 @@ A move released with Alt held puts the frames back and sends one duplicate carry
 
 Esc during a frame move or resize, a section move or corner resize, an element carry, or a marquee puts everything back at the press and writes nothing, an Alt copy included, and the next Esc reaches the registry.
 
-A section move restores boxes and not a frame's width preview, since the drag start already ended it. A drag on one of several selected elements stays narrowed to that element after Esc. A cancelled resize redraws the overlay from its start boxes, since `drawRest` clears only a move's transform and no write lands for React to redraw from.
+A section move restores boxes and not a frame's width preview, since the drag start already ended it. Esc during a drag on several selected elements puts every member back at its press. A cancelled resize redraws the overlay from its start boxes, since `drawRest` clears only a move's transform and no write lands for React to redraw from.
 
 ### `src/client/board/preview/`
 
