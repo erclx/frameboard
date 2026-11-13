@@ -208,7 +208,11 @@ export async function settleResize(page: Page): Promise<void> {
 
 // The functions below run in the page, so each carries everything it reads.
 
-function finishAnimations(): void {
+/**
+ * Jumps every animation with a finite end to that end, leaving a repeating
+ * one and a scroll timeline running, since neither has an end to reach.
+ */
+export function finishAnimations(): void {
   for (const animation of document.getAnimations()) {
     const end = animation.effect?.getComputedTiming().endTime
     if (typeof end === 'number' && Number.isFinite(end)) animation.finish()

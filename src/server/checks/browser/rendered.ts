@@ -1,5 +1,6 @@
 import type { Browser } from 'playwright-core'
 
+import { finishAnimations, settleResize } from '@/server/capture/fit'
 import { openFrame } from '@/server/capture/render'
 import type { ProjectChecks } from '@/shared/records/board'
 import type { Finding } from '@/shared/records/check'
@@ -38,7 +39,8 @@ export interface CheckRenderedOptions {
  * Runs every browser rule on one frame at its layout size, in light and in
  * dark, and merges the two. A rule tripping in one theme alone names that
  * theme in its message. A missing face is measured in the fallback the board
- * shows rather than refused, since the board shows it too. The declaration
+ * shows rather than refused, since the board shows it too. Finite animations
+ * finish before any rule reads, so an entrance is measured at rest. The declaration
  * and scroll-effect rules read no theme, so they run on the first theme's
  * page alone. A rule the project turned off lands no finding.
  */
@@ -59,6 +61,10 @@ export async function checkRendered(
       fonts: 'wait',
     })
     try {
+      // A `wait` open leaves an entrance wherever the load ended, so the
+      // rules would read a frame mid-slide rather than where the board rests.
+      await settleResize(opened.page)
+      await opened.page.evaluate(finishAnimations)
       byTheme.set(theme, [
         ...(await checkLayout(opened.page, frame)),
         ...(config.minFontSize === undefined
