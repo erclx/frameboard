@@ -278,7 +278,8 @@ test.describe('page structure by hand, and its undo', () => {
     await page.keyboard.press('Delete')
 
     await expect.poll(() => existsSync(at('studio/pricing'))).toBe(false)
-    expect(pageOrder()).toEqual(['home'])
+    // The folder goes ahead of the order rewrite dropping it.
+    await expect.poll(pageOrder).toEqual(['home'])
 
     await undo(page)
 
