@@ -15,7 +15,8 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 Owns picking, walking, and outlining an element, and with the board folder's `selection.ts` the selection keys and menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
 
-- A click selects the frame, Cmd-click or a double-click the element under the cursor, and a double-click on a selected text element edits it in place. Enter, Esc, and Tab walk down, up, and across.
+- A click selects the frame, and Cmd-click or a double-click the element under the cursor. Enter, Esc, and Tab walk down, up, and across.
+  - One double-click on a text element also opens it for typing in place, and a Cmd-click only selects it
 - Shift-click or a marquee drag selects several frames, and move, nudge, align, duplicate, copy, cut, hide, lock, and delete act on all of them
 - Arrow keys nudge a frame, Cmd with an arrow resizes it, and Cmd+C, Cmd+X, and Cmd+V copy, cut, and paste frames into any project's current page
 - Alt+A, D, W, S align, Alt+H and Alt+V center, and Ctrl+Alt+H and Ctrl+Alt+V distribute, each writing the page's layout alone
