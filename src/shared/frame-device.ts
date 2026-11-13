@@ -32,11 +32,37 @@ export const BEZELS = {
 } as const satisfies Record<Device, Bezel>
 
 /**
+ * The body's colors, fixed in both themes, since the board draws hardware
+ * rather than chrome: the body, the hairline around it, and the island.
+ */
+export const BEZEL_COLORS = {
+  body: '#17181b',
+  edge: '#45484f',
+  island: '#050506',
+  homeBar: 'rgba(128, 128, 128, 0.6)',
+} as const
+
+/**
  * The phone's island, a generic pill standing in for a size no source gives,
  * and the home bar, each centered on the screen and drawn over the frame.
  */
-export const PHONE_ISLAND = { width: 81, height: 24, top: 11 } as const
-export const HOME_BAR = { width: 134, height: 5, bottom: 8 } as const
+export const PHONE_ISLAND = { width: 81, height: 30, top: 14 } as const
+export const HOME_BAR = { width: 140, height: 5, bottom: 8 } as const
+
+/**
+ * The CSS `box-shadow` drawing a device's body: a spread the border wide
+ * around a box rounded to the screen radius, which also covers the frame's
+ * corners past that radius, so the body's outer radius is the screen's plus
+ * the border. Shared with the capture, which draws the same body into a PNG.
+ */
+export function bezelShadow(device: Device): string {
+  const { border } = BEZELS[device]
+  return [
+    `0 0 0 ${border}px ${BEZEL_COLORS.body}`,
+    `0 0 0 ${border + 1}px ${BEZEL_COLORS.edge}`,
+    `0 ${border}px ${border * 3}px rgba(0, 0, 0, 0.3)`,
+  ].join(', ')
+}
 
 /**
  * A layout entry's `device` value, or null for anything but a known device,

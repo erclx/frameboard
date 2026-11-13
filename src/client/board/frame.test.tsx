@@ -189,6 +189,32 @@ describe('Frame', () => {
     })
   })
 
+  describe('in a device', () => {
+    it('draws the bezel and stands its label above the body', () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+      )
+
+      const box = container
+        .querySelector('[data-frame]')
+        ?.getBoundingClientRect()
+      const label = container.querySelector('[title="a"]')
+
+      expect(container.querySelector('[data-bezel="phone"]')).not.toBeNull()
+      expect(label?.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        (box?.top ?? 0) - 16,
+      )
+    })
+
+    it('draws no bezel with no device', () => {
+      const { container } = render(
+        <Frame frame={frame('a')} live version={0} />,
+      )
+
+      expect(container.querySelector('[data-bezel]')).toBeNull()
+    })
+  })
+
   it('loads its frame url with its reload counter', () => {
     const { container } = render(<Pair a={2} b={0} />)
 
