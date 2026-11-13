@@ -1554,6 +1554,145 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Holds an Ellipse drag mid-way across empty space in the frame `ref`'s
+ * body, once the Ellipse tool is on, so the preview draws in the frame's
+ * fill with its corners and size. The press is never released, so nothing
+ * is placed.
+ */
+function ellipseHeld(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, frames }) => {
+        let left = frames
+        const run = () => {
+          const iframe = document.querySelector<HTMLIFrameElement>(
+            `[data-frame="${owner}"] iframe`,
+          )
+          const hit = document.querySelector('[data-hit-layer]')
+          const armed = document.querySelector(
+            '[aria-label="Tools"] button[aria-label="Ellipse"][aria-pressed="true"]',
+          )
+          // The Shapes menu lists each shape as a radio row.
+          ;[...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+            .find((row) => row.textContent?.trim().startsWith('Ellipse'))
+            ?.click()
+          if (!iframe?.dataset.renderedAt || !hit || !armed) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error(`No Ellipse tool over ${owner} to drag`)
+            return
+          }
+          const box = iframe.getBoundingClientRect()
+          const at = (x: number, y: number) => ({
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            button: 0,
+            clientX: box.left + box.width * x,
+            clientY: box.top + box.height * y,
+          })
+          hit.dispatchEvent(new PointerEvent('pointerdown', at(0.4, 0.45)))
+          window.dispatchEvent(new PointerEvent('pointermove', at(0.5, 0.55)))
+          window.dispatchEvent(new PointerEvent('pointermove', at(0.62, 0.7)))
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
+ * Opens the frame `ref`'s headline for typing with one double-click, then
+ * adds a line with Enter and a second line after it, so the shot shows a
+ * text open with two lines. A write is held back rather than sent, so the
+ * served board keeps its bytes whatever ends the edit.
+ */
+function textLinesHeld(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, frames }) => {
+        let left = frames
+        const sent = window.fetch.bind(window)
+        window.fetch = (...args) =>
+          String(args[0]).includes('/api/frames/edit')
+            ? new Promise<Response>(() => {})
+            : sent(...args)
+        const iframe = () =>
+          document.querySelector<HTMLIFrameElement>(
+            `[data-frame="${owner}"] iframe`,
+          )
+        const doubleClick = (heading: HTMLElement) => {
+          const frame = iframe()
+          const hit = document.querySelector('[data-hit-layer]')
+          if (!frame || !hit) return
+          const box = frame.getBoundingClientRect()
+          const k = box.width / (frame.contentWindow?.innerWidth || box.width)
+          const own = heading.getBoundingClientRect()
+          const clientX = box.left + (own.left + own.width / 2) * k
+          const clientY = box.top + (own.top + own.height / 2) * k
+          const send = (type: string, detail: number) =>
+            (type === 'mouseup' ? window : hit).dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX,
+                clientY,
+                detail,
+              }),
+            )
+          for (const detail of [1, 2]) {
+            send('mousedown', detail)
+            send('mouseup', detail)
+            send('click', detail)
+          }
+          send('dblclick', 2)
+        }
+        const type = (heading: HTMLElement) => {
+          const shown = heading.ownerDocument
+          const end = shown.createRange()
+          end.selectNodeContents(heading)
+          end.collapse(false)
+          shown.getSelection()?.removeAllRanges()
+          shown.getSelection()?.addRange(end)
+          heading.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+          )
+          const data = new DataTransfer()
+          data.setData('text/plain', 'Ship it')
+          heading.dispatchEvent(
+            new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
+          )
+          document.documentElement.setAttribute('data-text-lines-held', '')
+        }
+        let asked = 0
+        const run = () => {
+          const frame = iframe()
+          const heading = frame?.contentDocument?.querySelector('h1')
+          if (frame?.dataset.renderedAt && heading) {
+            if (heading.hasAttribute('data-frameboard-editing')) {
+              type(heading)
+              return
+            }
+            // The pick waits on the frame's tree, so a press is sent again
+            // only after it had time to land.
+            if (asked++ % 60 === 0) doubleClick(heading)
+          }
+          if (--left > 0) requestAnimationFrame(run)
+          else console.error(`No headline in ${owner} opened for typing`)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Serves the hero with its headline placed Free at 100, 300, added to the
  * bytes on the way to the tab. The headline stays the element the file's
  * tree names at that index, so a pick selects it, which an element the
@@ -3178,6 +3317,39 @@ const CASES: CaptureCase[] = [
             hold: { from: [-60, -80], to: [1700, 400] },
             cancel: true,
           }),
+        ),
+      },
+      {
+        // An Ellipse held mid-drag in the hero, drawn in the fill it lands in.
+        section: 'shape-draft',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            pressOnLoad('^Shapes$'),
+            ellipseHeld('webapp/home/hero'),
+            readyWhen('[data-shape-draft]'),
+          ),
+        ),
+      },
+      {
+        // The hero's headline opened by one double-click, a line added with Enter.
+        section: 'text-edit-lines',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            textLinesHeld('webapp/home/hero'),
+            readyWhen('[data-text-lines-held]'),
+          ),
         ),
       },
       {
