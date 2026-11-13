@@ -4,6 +4,9 @@ interface PresentBarProps {
   /** One-based, as the count reads. */
   at: number
   count: number
+  /** How many of the frame's steps show, and how many it holds, 0 for a frame with none. */
+  step: number
+  steps: number
   name: string
   onPrevious: () => void
   onNext: () => void
@@ -21,6 +24,8 @@ export function PresentBar({
   shown,
   at,
   count,
+  step,
+  steps,
   name,
   onPrevious,
   onNext,
@@ -36,7 +41,7 @@ export function PresentBar({
       <BarButton
         label="Previous frame"
         icon={ChevronLeft}
-        disabled={at <= 1}
+        disabled={at <= 1 && step <= 0}
         onClick={onPrevious}
       />
       <span className="px-2 whitespace-nowrap text-[#ddd] tabular-nums select-none">
@@ -45,9 +50,10 @@ export function PresentBar({
       <BarButton
         label="Next frame"
         icon={ChevronRight}
-        disabled={at >= count}
+        disabled={at >= count && step >= steps}
         onClick={onNext}
       />
+      {steps > 0 ? <StepDots step={step} steps={steps} /> : null}
       <Separator />
       <span className="w-[150px] truncate px-2 text-[#aaa]">{name}</span>
       <Separator />
@@ -80,6 +86,26 @@ function BarButton({
     >
       <Icon aria-hidden className="size-4" strokeWidth={1.6} />
     </button>
+  )
+}
+
+/** One dot per step, filled up to the step shown, read as a count by a screen reader. */
+function StepDots({ step, steps }: { step: number; steps: number }) {
+  return (
+    <span
+      role="img"
+      aria-label={`Step ${step} of ${steps}`}
+      className="flex items-center gap-[3px] px-1.5"
+    >
+      {Array.from({ length: steps }, (_, index) => index + 1).map((number) => (
+        <span
+          key={number}
+          aria-hidden
+          data-filled={number <= step || undefined}
+          className="size-[5px] rounded-full bg-[#5a5a5a] data-filled:bg-[#ddd]"
+        />
+      ))}
+    </span>
   )
 }
 

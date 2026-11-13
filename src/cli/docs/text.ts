@@ -81,6 +81,8 @@ function formatLines(format: ReturnType<typeof contentFormat>): string[] {
     `${INDENT}${sizes.join(', ')}, defaulting to ${format.defaultFrameSize}`,
     'Layout',
     ...format.layout.map((line) => `${INDENT}${line}`),
+    'Present',
+    ...format.present.map((line) => `${INDENT}${line}`),
     'Assets',
     `${INDENT}${format.assets}`,
     'Look',

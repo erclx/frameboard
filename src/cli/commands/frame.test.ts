@@ -259,6 +259,55 @@ describe('frame', () => {
     expect(result.json().data).toMatchObject({ box: { width, height } })
   })
 
+  describe('transition', () => {
+    it('answers the frame with the override it set', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'transition',
+        'webapp/home/about',
+        'push',
+        '--direction',
+        'down',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toHaveProperty('transition', {
+        name: 'push',
+        direction: 'down',
+      })
+    })
+
+    it('answers the frame with no override after page', async () => {
+      const run = on('basic')
+      await run('frame', 'transition', 'webapp/home/about', 'zoom')
+
+      const result = await run(
+        'frame',
+        'transition',
+        'webapp/home/about',
+        'page',
+      )
+
+      expect(result.json().data).not.toHaveProperty('transition')
+    })
+
+    it('refuses an unknown transition with usage, exit 2', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'transition',
+        'webapp/home/about',
+        'cube',
+      )
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+    })
+  })
+
   describe('device', () => {
     it('answers the frame with the device it set', async () => {
       const run = on('basic')

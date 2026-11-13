@@ -29,6 +29,13 @@ A responsive page is one frame file shown at several widths, so every fix to the
 
 `frame device <frame-ref> phone`, or `--device phone` on `frame add`, has the board draw a generic phone around the frame, and `tablet` a tablet. The frame file and its size stay as they are, and `none` clears it.
 
+`page transition <page-ref> fade` sets what the board draws between a page's slides while presenting, one of `none`, `fade`, `slide`, `push`, `zoom`, `flip`, and `dissolve`. `frame transition <frame-ref> zoom` sets one slide's own, and `page` in place of a name returns it to its page's.
+
+- `--ms` sets the length from 100 to 5000, and `--direction left`, `right`, `up`, or `down` applies to `slide` and `push` alone
+- Both write `layout.json` and never a frame's file
+- An element marked `data-step="2"` appears on the second press while presenting, with `data-step-effect` of `appear`, `fade`, `fly`, `wipe`, or `zoom`, and `frameboard edit --attr` writes each
+- `data-step-start` of `with` shows a step alongside the one before it and `after` right behind it, and everywhere but present mode every step shows
+
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
 
 ## Content checks

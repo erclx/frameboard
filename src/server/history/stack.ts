@@ -207,11 +207,12 @@ export class History {
   }
 }
 
-/** What a refusal names as overtaken, being a frame, a section, a page, the page order, or a filed project. */
+/** What a refusal names as overtaken, being a frame, a section, a page, the slide transition, the page order, or a filed project. */
 function nameOf(change: Change): string {
   if (change.kind === 'entry') return change.frame
   if (change.kind === 'section') return `section ${change.section}`
   if (change.kind === 'pages') return 'the page order'
+  if (change.kind === 'present') return 'the slide transition'
   if (change.kind === 'project') return basename(dirname(change.file))
   if (change.kind === 'token') return change.name
   const path = change.kind === 'moved' ? change.to : change.path

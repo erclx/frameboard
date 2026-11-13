@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 
+import { STEP_ATTRIBUTES } from '@/shared/present-transition'
 import type { FrameStyles, UsedColor } from '@/shared/records/elements'
 
 import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
 import type { FreeSpot } from '../../place/write'
 import type { ElementKey } from '../../selection'
+import type { LiveStep } from './step'
 
 /** What the inspector reads off the live element, as the browser computed it. */
 export interface LiveElement {
@@ -53,6 +55,8 @@ export interface LiveElement {
     background: boolean
     border: boolean
   }
+  /** The step attributes present mode reads, as the file writes them. */
+  step: LiveStep
 }
 
 /**
@@ -382,6 +386,11 @@ function readLive(element: Element, view: Window): LiveElement {
     placement: placementOf(element, style, view),
     layout: readLayout(element, style, view),
     inline: inlinePaints(element),
+    step: {
+      step: element.getAttribute(STEP_ATTRIBUTES.step),
+      effect: element.getAttribute(STEP_ATTRIBUTES.effect),
+      start: element.getAttribute(STEP_ATTRIBUTES.start),
+    },
   }
 }
 

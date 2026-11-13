@@ -190,7 +190,7 @@ describe('the raw colors page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck'],
     })
   })
 
@@ -223,7 +223,7 @@ describe('the scroll feed page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed'],
+      pages: ['settings', 'home', 'raw', 'feed', 'deck'],
     })
   })
 
@@ -239,6 +239,42 @@ describe('the scroll feed page', () => {
   })
 })
 
+describe('the deck page', () => {
+  it('lays three slides in a row with a page transition', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.deck).toBe('laid')
+    expect(readJson('webapp/deck/layout.json')).toMatchObject({
+      present: { transition: { name: 'push', ms: 500 } },
+      frames: {
+        '01-intro': { x: 0, order: 0 },
+        '02-build': { x: 1360, order: 1 },
+        '03-closing': { x: 2720, order: 2 },
+      },
+    })
+  })
+
+  it('marks three steps on the middle slide, the last after the one before', async () => {
+    await seedDrive(root, new Date())
+
+    const build = readFileSync(join(root, 'webapp/deck/02-build.html'), 'utf8')
+    expect(build).toContain('data-step="1"')
+    expect(build).toMatch(/data-step="2"\s+data-step-effect="fly"/)
+    expect(build).toMatch(/data-step="3"\s+data-step-effect="fade"/)
+  })
+
+  it('leaves a hand-edited deck page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/deck/02-build.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.deck).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
 describe('a kept page whose project listing was reset', () => {
   it.each<{
     project: string
@@ -249,6 +285,7 @@ describe('a kept page whose project listing was reset', () => {
     { project: 'marketing', page: 'motion', own: ['launch', 'states'] },
     { project: 'webapp', page: 'raw', own: ['settings', 'home'] },
     { project: 'webapp', page: 'feed', own: ['settings', 'home'] },
+    { project: 'webapp', page: 'deck', own: ['settings', 'home'] },
   ])('lists $project/$page again', async ({ project, page, own }) => {
     await seedDrive(root, new Date())
     writeFileSync(

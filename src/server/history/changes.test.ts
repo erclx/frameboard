@@ -8,7 +8,13 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { moveFrame, resizeFrame, setMeasured } from '../board/frames'
-import { addPage, deletePage, movePage, renamePage } from '../board/pages'
+import {
+  addPage,
+  deletePage,
+  movePage,
+  renamePage,
+  setPageTransition,
+} from '../board/pages'
 import { fileProjects } from '../board/projects'
 import { addSection, renameSection } from '../board/sections'
 import { contentHash } from '../edit/address'
@@ -190,6 +196,47 @@ describe('changes', () => {
       await restore(first(), 'after')
 
       expect(sections().flow).toEqual({ ...box, order: 0 })
+    })
+  })
+
+  describe('present', () => {
+    const layout = () => JSON.parse(read('webapp/home/layout.json'))
+
+    it('undoes a page transition and keeps a frame moved since', async () => {
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'fade' },
+        options(),
+      )
+      await moveFrame(board.root, 'webapp/home/hero', {
+        cwd: board.root,
+        x: 40,
+      })
+
+      await restore(first(), 'before')
+
+      expect(layout()).not.toHaveProperty('present')
+      expect(layout().frames.hero.x).toBe(40)
+    })
+
+    it('fails once an agent set another transition', async () => {
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'fade' },
+        options(),
+      )
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'zoom' },
+        {
+          cwd: board.root,
+        },
+      )
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
     })
   })
 

@@ -188,6 +188,28 @@ describe('InspectorPanel', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the open page’s Page section while nothing is selected', () => {
+    render(
+      <TooltipProvider>
+        <InspectorPanel open={PAGE} />
+      </TooltipProvider>,
+    )
+
+    expect(screen.getByRole('region', { name: 'Page' })).toBeInTheDocument()
+  })
+
+  it('drops the Page section once a frame is selected', () => {
+    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+    render(
+      <TooltipProvider>
+        <InspectorPanel open={PAGE} />
+      </TooltipProvider>,
+    )
+
+    expect(screen.queryByRole('region', { name: 'Page' })).toBeNull()
+  })
+
   it('shows one frame’s name and box', () => {
     act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
 
@@ -671,6 +693,69 @@ describe('InspectorPanel', () => {
       )
 
       await waitFor(() => expect(checked()).toEqual(['None']))
+    })
+  })
+
+  describe('This slide row', () => {
+    function transitionCalls() {
+      const sent: unknown[] = []
+      const calls = createStructure(async (_path, init) => {
+        sent.push(JSON.parse(String(init?.body)))
+        return Response.json({ ok: true, data: [] })
+      })
+      return { sent, calls }
+    }
+    const slide = () => screen.getByRole('button', { name: 'This slide' })
+    const pick = async (item: string) => {
+      await userEvent.click(slide())
+      await userEvent.click(
+        await screen.findByRole('menuitemradio', { name: item }),
+      )
+    }
+
+    it('reads Same as page on a frame holding no transition', () => {
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
+
+      expect(slide()).toHaveTextContent('Same as page')
+    })
+
+    it('reads Mixed where the frames differ', () => {
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...SWATCHES, transition: { name: 'zoom' } }, SUNSET]}
+        />,
+      )
+
+      expect(slide()).toHaveTextContent('Mixed')
+    })
+
+    it('sets a named transition on every frame in one write', async () => {
+      const { sent, calls } = transitionCalls()
+      render(
+        <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
+      )
+
+      await pick('Flip')
+
+      expect(sent).toEqual([
+        { refs: [SWATCHES.ref, SUNSET.ref], transition: { name: 'flip' } },
+      ])
+    })
+
+    it('clears the override with Same as page, sending null', async () => {
+      const { sent, calls } = transitionCalls()
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...SWATCHES, transition: { name: 'zoom' } }]}
+          calls={calls}
+        />,
+      )
+
+      await pick('Same as page')
+
+      expect(sent).toEqual([{ refs: [SWATCHES.ref], transition: null }])
     })
   })
 

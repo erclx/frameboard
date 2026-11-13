@@ -14,6 +14,7 @@ import {
   duplicatePage,
   movePage,
   renamePage,
+  setPageTransition,
 } from './pages'
 
 describe('pages', () => {
@@ -129,7 +130,105 @@ describe('pages', () => {
     })
   })
 
+  describe('setPageTransition', () => {
+    const layout = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+      )
+    const frameFiles = () =>
+      ['hero.html', 'about.html'].map((name) =>
+        readFileSync(join(board.root, 'webapp/home', name), 'utf8'),
+      )
+
+    it('writes the present key and leaves every frame file alone', async () => {
+      const before = frameFiles()
+
+      const page = await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'slide', ms: 300 },
+        { cwd },
+      )
+
+      expect(page.transition).toEqual({ name: 'slide', ms: 300 })
+      expect(layout().present).toEqual({
+        transition: { name: 'slide', ms: 300 },
+      })
+      expect(frameFiles()).toEqual(before)
+    })
+
+    it('clears the transition and drops an emptied present key', async () => {
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'fade' },
+        { cwd },
+      )
+
+      const page = await setPageTransition(board.root, 'webapp/home', null, {
+        cwd,
+      })
+
+      expect(page).not.toHaveProperty('transition')
+      expect(layout()).not.toHaveProperty('present')
+    })
+
+    it('keeps a present key it does not know beside the transition', async () => {
+      const file = layout()
+      writeFileSync(
+        join(board.root, 'webapp/home/layout.json'),
+        JSON.stringify({ ...file, present: { timer: 5 } }),
+      )
+
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'zoom' },
+        { cwd },
+      )
+
+      expect(layout().present).toEqual({
+        timer: 5,
+        transition: { name: 'zoom' },
+      })
+    })
+
+    it('reads a transition this build does not know as none', async () => {
+      const file = layout()
+      writeFileSync(
+        join(board.root, 'webapp/home/layout.json'),
+        JSON.stringify({ ...file, present: { transition: { name: 'cube' } } }),
+      )
+
+      const page = await setPageTransition(board.root, 'webapp/home', null, {
+        cwd,
+      })
+
+      expect(page).not.toHaveProperty('transition')
+    })
+  })
+
   describe('with a journal', () => {
+    it('transition reports the present key on each side', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'fade' },
+        { cwd, journal },
+      )
+
+      expect(calls).toEqual([
+        {
+          kind: 'present',
+          page: 'webapp/home',
+          before: undefined,
+          after: { transition: { name: 'fade' } },
+        },
+      ])
+    })
+
     it('add reports the folder it created and the new order', async () => {
       const { journal, calls } = recordingJournal(board.root)
 

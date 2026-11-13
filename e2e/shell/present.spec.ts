@@ -134,3 +134,70 @@ test.describe('presenting a page', () => {
     ).toHaveCount(0)
   })
 })
+
+test.describe('a deck with a transition and a stepped slide', () => {
+  /**
+   * The page fades between slides, `about` holds two steps, and a third
+   * frame `closing` sits past it on the row, so the deck reads hero, about,
+   * closing.
+   */
+  test.beforeEach(() => {
+    const page = join(board.root, 'webapp/home')
+    const layout = JSON.parse(readFileSync(join(page, 'layout.json'), 'utf8'))
+    layout.present = { transition: { name: 'fade', ms: 200 } }
+    layout.frames.closing = {
+      x: 3000,
+      y: 0,
+      width: 390,
+      height: 844,
+      order: 3,
+    }
+    writeFileSync(join(page, 'layout.json'), JSON.stringify(layout))
+    writeFileSync(
+      join(page, 'about.html'),
+      '<!doctype html><title>about</title><h1>about</h1>' +
+        '<p id="one" data-step="1">One</p>' +
+        '<p id="two" data-step="2" data-step-effect="fade">Two</p>',
+    )
+    writeFileSync(
+      join(page, 'closing.html'),
+      '<!doctype html><title>closing</title><p>closing</p>',
+    )
+  })
+
+  const arriving = (page: Page) =>
+    presenting(page).locator('[data-present-layer="enter"] iframe')
+  const step = (page: Page, id: string) =>
+    arriving(page).contentFrame().locator(`#${id}`)
+
+  test('reveals the stepped slide one press at a time and shows every step in Edit', async ({
+    page,
+  }) => {
+    await open(page)
+    const onCanvas = page
+      .locator('[data-frame="webapp/home/about"] iframe')
+      .contentFrame()
+    await expect(onCanvas.locator('#two')).toBeVisible()
+    await page.keyboard.press('Shift+P')
+    await expect(arriving(page)).toHaveAttribute('title', 'hero')
+
+    await page.keyboard.press('ArrowRight')
+    await expect(arriving(page)).toHaveAttribute('title', 'about')
+    await expect(
+      bar(page).getByRole('img', { name: 'Step 0 of 2' }),
+    ).toBeAttached()
+    await expect(step(page, 'one')).toBeHidden()
+
+    await page.keyboard.press('ArrowRight')
+    await expect(step(page, 'one')).toBeVisible()
+    await expect(step(page, 'two')).toBeHidden()
+    await page.keyboard.press('ArrowRight')
+    await expect(step(page, 'two')).toBeVisible()
+    await expect(arriving(page)).toHaveAttribute('title', 'about')
+
+    await page.keyboard.press('ArrowRight')
+
+    await expect(arriving(page)).toHaveAttribute('title', 'closing')
+    await expect(bar(page)).toContainText('3 / 3')
+  })
+})

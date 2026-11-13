@@ -5,8 +5,10 @@ import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import { nextFreeName } from '@/shared/names'
+import type { Transition } from '@/shared/present-transition'
 import type { PageRecord } from '@/shared/records/list'
 
+import { layoutAt, withLayouts } from './frames'
 import type { Journal, JournalOptions } from './journal'
 import {
   LOCK_SUFFIX,
@@ -28,6 +30,7 @@ import {
   orderPages,
   PROJECT_FILE,
   projectSpec,
+  readPageOrder,
   scanPage,
 } from './scan'
 
@@ -131,6 +134,27 @@ export async function movePage(
     options.journal,
   )
   return recordOf(root, page, result)
+}
+
+/**
+ * Sets the transition present mode draws between the page's slides, or
+ * clears it with null, writing only the `present` key of its `layout.json`
+ * and leaving every frame file as it stands.
+ */
+export async function setPageTransition(
+  root: string,
+  ref: string,
+  transition: Transition | null,
+  { journal, ...options }: RefOptions & JournalOptions,
+): Promise<PageRecord> {
+  const page = await resolvePageRef(root, ref, options)
+  await withLayouts(
+    [page.path],
+    async (layouts) => layoutAt(layouts, page.path).setTransition(transition),
+    journal,
+  )
+  const { pages } = await readPageOrder(join(root, page.project))
+  return scanPage(root, page.project, page.name, pages.indexOf(page.name))
 }
 
 export async function deletePage(

@@ -77,6 +77,8 @@ export type Change =
       before: SectionEntry | undefined
       after: SectionEntry | undefined
     }
+  /** The `present` key one `layout.json` holds, undefined when it has none. */
+  | { kind: 'present'; layout: string; before: unknown; after: unknown }
   /** The page order one `project.json` holds. */
   | { kind: 'pages'; file: string; before: string[]; after: string[] }
   /** The folder and archive keys one `project.json` holds, with the others left as they stand. */
@@ -147,7 +149,11 @@ export type Change =
 
 /** The records a change writes, whose locks are held while it is checked and written. */
 export function lockPaths(change: Change): string[] {
-  if (change.kind === 'entry' || change.kind === 'section') {
+  if (
+    change.kind === 'entry' ||
+    change.kind === 'section' ||
+    change.kind === 'present'
+  ) {
     return [change.layout]
   }
   if (change.kind === 'pages' || change.kind === 'project') {
@@ -188,6 +194,10 @@ async function reads(change: Change, side: Side): Promise<boolean> {
     case 'section': {
       const file = await readRecord(change.layout, layoutSpec)
       return isDeepStrictEqual(file.sections?.[change.section], change[side])
+    }
+    case 'present': {
+      const file = await readRecord(change.layout, layoutSpec)
+      return isDeepStrictEqual(file.present, change[side])
     }
     case 'pages': {
       const file = await readRecord(change.file, {
@@ -294,6 +304,18 @@ export async function restore(
       if (entry) sections[change.section] = entry
       else delete sections[change.section]
       await writeRecord(change.layout, { ...file, sections })
+      return
+    }
+    case 'present': {
+      const { present: _held, ...file } = await readRecord(
+        change.layout,
+        layoutSpec,
+      )
+      const present = change[side]
+      await writeRecord(
+        change.layout,
+        present === undefined ? file : { ...file, present },
+      )
       return
     }
     case 'pages': {
@@ -508,6 +530,11 @@ export class StepJournal implements Journal {
   ): void {
     const layout = join(page, LAYOUT_FILE)
     this.changes.push({ kind: 'section', layout, section, before, after })
+  }
+
+  present(page: string, before: unknown, after: unknown): void {
+    const layout = join(page, LAYOUT_FILE)
+    this.changes.push({ kind: 'present', layout, before, after })
   }
 
   pages(project: string, before: string[], after: string[]): void {

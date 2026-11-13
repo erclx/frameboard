@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
+import type { Transition } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { emulateReducedMotion } from '@/test/motion'
@@ -13,7 +14,7 @@ import { useBoardActions } from '../board-actions'
 import { selectionStore } from '../selection'
 import { fitScale } from './fit'
 import { PresentOverlay } from './overlay'
-import { presentStore, startPresenting } from './store'
+import { presentStore, startPresenting, stepPresenting } from './store'
 
 /** One row on the canvas, laid left to right in the order named, so reading order follows it. */
 function framesOf(...names: string[]): FrameRecord[] {
@@ -25,13 +26,28 @@ function framesOf(...names: string[]): FrameRecord[] {
   )
 }
 
+/** `frames` with the one named `name` holding its own transition. */
+function withTransition(
+  frames: FrameRecord[],
+  name: string,
+  transition: Transition,
+): FrameRecord[] {
+  return frames.map((frame) =>
+    frame.name === name ? { ...frame, transition } : frame,
+  )
+}
+
 function Board() {
   useBoardActions()
   return <PresentOverlay />
 }
 
-function present(frames: FrameRecord[], selected: string[] = []) {
-  const page = pageOf(frames)
+function present(
+  frames: FrameRecord[],
+  selected: string[] = [],
+  transition?: Transition,
+) {
+  const page = { ...pageOf(frames), ...(transition ? { transition } : {}) }
   liveStore.setState({ board: boardOf(page) })
   selectionStore.setState({
     page: selected.length > 0 ? page.ref : null,
@@ -46,7 +62,7 @@ const count = () =>
   screen.getByRole('toolbar', { name: 'Presenting' }).textContent
 
 afterEach(() => {
-  presentStore.setState({ page: null, frame: null })
+  presentStore.setState({ page: null, frame: null, leaving: null })
   selectionStore.setState({ page: null, frames: [] })
   liveStore.setState({ board: null })
 })
@@ -213,7 +229,7 @@ describe('presenting a page', () => {
 
     expect(behind.inert).toBe(true)
 
-    act(() => presentStore.setState({ page: null, frame: null }))
+    act(() => presentStore.setState({ page: null, frame: null, leaving: null }))
 
     expect(behind.inert).toBe(false)
     behind.remove()
@@ -227,6 +243,230 @@ describe('presenting a page', () => {
     )
 
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('a transition between slides', () => {
+  const titled = (name: string) =>
+    screen.getByRole('dialog').querySelector(`iframe[title="${name}"]`)
+  /** The animation the layer holding a frame plays, which draws its side of the transition. */
+  const animationOf = (name: string) => {
+    const layer = titled(name)?.closest('[data-present-layer]')
+    return layer ? getComputedStyle(layer).animationName : null
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('draws the page transition with the leaving slide under the arriving one', () => {
+    present(framesOf('first', 'second'), [], { name: 'fade', ms: 400 })
+
+    act(() => stepPresenting(1))
+
+    expect(animationOf('second')).toBe('fb-present-fade-enter')
+    expect(animationOf('first')).toBe('fb-present-fade-leave')
+  })
+
+  it('takes the leaving slide away once the transition ends', () => {
+    present(framesOf('first', 'second'), [], { name: 'fade', ms: 400 })
+    act(() => stepPresenting(1))
+
+    act(() => vi.advanceTimersByTime(400))
+
+    expect(titled('first')).toBeNull()
+    expect(titled('second')).not.toBeNull()
+  })
+
+  it('lets a frame override win over its page', () => {
+    present(
+      withTransition(framesOf('first', 'second'), 'second', {
+        name: 'push',
+        direction: 'up',
+      }),
+      [],
+      { name: 'fade' },
+    )
+
+    act(() => stepPresenting(1))
+
+    expect(animationOf('second')).toBe('fb-present-push-enter')
+  })
+
+  it('plays the leaving slide its own transition back on a step back', () => {
+    present(
+      withTransition(framesOf('first', 'second'), 'second', { name: 'zoom' }),
+      ['second'],
+    )
+
+    act(() => stepPresenting(-1))
+
+    expect(animationOf('first')).toBe('fb-present-zoom-enter')
+  })
+
+  it('cuts with no page transition, drawing one slide', () => {
+    present(framesOf('first', 'second'))
+
+    act(() => stepPresenting(1))
+
+    expect(titled('first')).toBeNull()
+  })
+
+  it('turns the arriving slide into the leaving one on a press mid-transition', () => {
+    present(framesOf('first', 'second', 'third'), [], { name: 'fade' })
+    act(() => stepPresenting(1))
+
+    act(() => stepPresenting(1))
+
+    expect(titled('first')).toBeNull()
+    expect(animationOf('second')).toBe('fb-present-fade-leave')
+    expect(animationOf('third')).toBe('fb-present-fade-enter')
+  })
+
+  describe('under reduced motion', () => {
+    beforeEach(async () => {
+      await emulateReducedMotion(true)
+    })
+
+    afterEach(async () => {
+      await emulateReducedMotion(false)
+    })
+
+    it('cuts, drawing one slide', () => {
+      present(framesOf('first', 'second'), [], { name: 'slide' })
+
+      act(() => stepPresenting(1))
+
+      expect(titled('first')).toBeNull()
+      expect(animationOf('second')).toBe('none')
+    })
+  })
+})
+
+/** The loaded document of the presented frame named `name`, once it is the frame's own. */
+async function documentOf(name: string): Promise<Document> {
+  return vi.waitFor(() => {
+    const doc = screen
+      .getByRole('dialog')
+      .querySelector<HTMLIFrameElement>(
+        `iframe[title="${name}"]`,
+      )?.contentDocument
+    if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
+      throw new Error(`${name} is still loading`)
+    }
+    return doc
+  })
+}
+
+describe('a press back during a transition', () => {
+  it('keeps the document of the slide it returns to', async () => {
+    present(framesOf('first', 'second'), [], { name: 'fade' })
+    const doc = await documentOf('first')
+    doc.body.dataset.kept = 'yes'
+    act(() => stepPresenting(1))
+
+    act(() => stepPresenting(-1))
+
+    const returned = screen
+      .getByRole('dialog')
+      .querySelector<HTMLIFrameElement>('iframe[title="first"]')
+    expect(returned?.contentDocument?.body.dataset.kept).toBe('yes')
+  })
+})
+
+describe('steps inside a slide', () => {
+  const STEPPED =
+    '<p id="a" data-step="1">One</p><p id="b" data-step="2">Two</p>'
+
+  /** Writes `body` into a presented frame, as an agent's file would hold it. */
+  async function fill(name: string, body: string): Promise<Document> {
+    const doc = await documentOf(name)
+    doc.body.innerHTML = body
+    return doc
+  }
+
+  const dots = (name: string) => screen.findByRole('img', { name })
+  const shows = (doc: Document, id: string) =>
+    getComputedStyle(doc.getElementById(id) as Element).visibility
+
+  it('reveals each step on a press before moving to the next frame', async () => {
+    present(framesOf('first', 'second'))
+    const doc = await fill('first', STEPPED)
+    await dots('Step 0 of 2')
+    expect(shows(doc, 'a')).toBe('hidden')
+
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 1 of 2')
+    expect(shownFrame()?.title).toBe('first')
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 2 of 2')
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(shownFrame()?.title).toBe('second')
+  })
+
+  it('keeps a step entering while the slide changes something else', async () => {
+    present(framesOf('first'))
+    const doc = await fill(
+      'first',
+      '<p id="a" data-step="1" data-step-effect="fade">One</p>',
+    )
+    await dots('Step 0 of 1')
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 1 of 1')
+
+    doc.body.append(doc.createElement('span'))
+    await act(async () => {})
+
+    expect(
+      getComputedStyle(doc.getElementById('a') as Element).animationName,
+    ).toBe('frameboard-step-fade')
+  })
+
+  it('hides the last revealed step on a press back', async () => {
+    present(framesOf('first'))
+    const doc = await fill('first', STEPPED)
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+    await dots('Step 2 of 2')
+
+    await userEvent.keyboard('{ArrowLeft}')
+
+    await dots('Step 1 of 2')
+    expect(shows(doc, 'b')).toBe('hidden')
+    expect(shows(doc, 'a')).toBe('visible')
+  })
+
+  it('opens a stepped frame stepped back onto on its last step', async () => {
+    present(framesOf('first', 'second'), ['second'])
+    await documentOf('second')
+
+    await userEvent.keyboard('{ArrowLeft}')
+    const doc = await fill('first', STEPPED)
+
+    await dots('Step 2 of 2')
+    expect(shows(doc, 'b')).toBe('visible')
+  })
+
+  it('keeps Next live on the last frame while it holds a step', async () => {
+    present(framesOf('only'))
+    await fill('only', STEPPED)
+    await dots('Step 0 of 2')
+
+    expect(
+      screen.getByRole('button', { name: 'Next frame' }),
+    ).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('draws no dots for a frame with no steps', async () => {
+    present(framesOf('first'))
+    await fill('first', '<p>Plain</p>')
+
+    expect(screen.queryByRole('img', { name: /^Step / })).toBeNull()
   })
 })
 

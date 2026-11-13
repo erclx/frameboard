@@ -100,6 +100,14 @@ The overlay and its bar carry the stepping, the keys, and the way back.
 - Leaving returns focus to what opened presenting, or to the Present button once that is gone
 - `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
 
+A transition between slides and the steps inside one are the board's own drawing, and neither writes a frame's file.
+
+- `transition.tsx` keeps the leaving slide mounted under the arriving one for the transition's length, each a `data-present-layer`, and the leaving layer takes no pointer
+- `travel.ts` resolves a frame's own transition over its page's. Going back, the leaving slide takes back the one it arrived with, and reduced motion makes every one a cut.
+- `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
+- `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
+- `bar.tsx` draws one dot per step, filled up to the step shown. Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
+
 ### `src/client/board/sections/`
 
 Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which is the panel's section heading and shares only the word.

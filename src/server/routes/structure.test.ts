@@ -471,10 +471,11 @@ describe('structureRoutes', () => {
   })
 
   describe('frame routes', () => {
-    const layout = () =>
+    const pageLayout = () =>
       JSON.parse(
         readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
-      ).frames
+      )
+    const layout = () => pageLayout().frames
     const frameFile = (name: string) =>
       join(board.root, `studio/home/${name}.html`)
 
@@ -663,6 +664,49 @@ describe('structureRoutes', () => {
 
       expect(response.status).toBe(400)
       expect(layout().hero).not.toHaveProperty('device')
+    })
+
+    it('sets a transition on several frames as one step and undoes it', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/frame/transition', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        transition: { name: 'push', direction: 'up' },
+      })
+      expect(layout()).toMatchObject({
+        hero: { transition: { name: 'push', direction: 'up' } },
+        mobile: { transition: { name: 'push', direction: 'up' } },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('transition')
+      expect(layout().mobile).not.toHaveProperty('transition')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('refuses an unknown transition and writes nothing', async () => {
+      const response = await post('/api/frame/transition', {
+        refs: ['studio/home/hero'],
+        transition: { name: 'cube' },
+      })
+
+      expect(response.status).toBe(400)
+      expect(layout().hero).not.toHaveProperty('transition')
+    })
+
+    it('sets a page transition as one step and undoes it', async () => {
+      await post('/api/page/transition', {
+        ref: 'studio/home',
+        transition: { name: 'fade', ms: 800 },
+      })
+      expect(pageLayout().present).toEqual({
+        transition: { name: 'fade', ms: 800 },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(pageLayout()).not.toHaveProperty('present')
     })
 
     it('deletes frames and undoes them back byte for byte', async () => {

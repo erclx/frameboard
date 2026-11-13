@@ -3605,6 +3605,7 @@ describe('InspectorPanel with an element selected', () => {
       'Text',
       'Stroke',
       'Shadow',
+      'Present',
     ])
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
   })

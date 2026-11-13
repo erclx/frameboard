@@ -824,6 +824,34 @@ async function aboutInPhone(page: Page): Promise<void> {
 }
 
 /**
+ * Sets a Push transition on the home page, so the Page section shows its
+ * Direction and Duration rows, putting the layout back when the page closes.
+ */
+async function homePushes(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.present = { transition: { name: 'push', ms: 500 } }
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(layoutPath, originalLayout))
+}
+
+/**
+ * Marks three steps on `about`, so presenting it draws the bar's step dots
+ * with none revealed yet, putting the file back when the page closes.
+ */
+async function aboutStepped(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/about.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    '<!doctype html><title>about</title><h1>about</h1>' +
+      '<p data-step="1">One</p><p data-step="2">Two</p><p data-step="3">Three</p>',
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
  * Shrinks `about` to a 390 by 264 card, under half the window each way, so
  * presenting it shows the scale stopping at twice the frame's size.
  */
@@ -3502,6 +3530,40 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'present-steps',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            aboutStepped,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/about'] }),
+            presentOnLoad,
+            readyWhen('[data-presenting] [aria-label="Step 0 of 3"]'),
+          ),
+        ),
+      },
+      {
+        section: 'page-transition',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            homePushes,
+            noAgentChanges,
+            asWriter,
+            readyWhen(
+              '[aria-labelledby="inspector-page"] button[aria-label="Direction"]',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'frame-size-menu',
         theme,
         route: '/p/webapp/home',
@@ -4915,6 +4977,8 @@ const WRITING_SECTIONS = [
   'device-bezel',
   'motion-held',
   'motion-ended',
+  'page-transition',
+  'present-steps',
 ]
 
 export const BOARD_CASES: CaptureCase[] = [

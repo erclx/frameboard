@@ -1,6 +1,7 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import type { Device } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
+import type { Transition } from '@/shared/present-transition'
 import type {
   FrameRecord,
   PageRecord,
@@ -69,6 +70,9 @@ export function createStructure(send: typeof fetch = fetch) {
       held<PageRecord>([ref], 'rename', '/api/page/rename', { ref, name }),
     movePage: (ref: string, index: number) =>
       post<PageRecord>('/api/page/move', { ref, index }),
+    /** Sets the transition present mode draws between the page's slides in one undo step, null clearing it. */
+    setPageTransition: (ref: string, transition: Transition | null) =>
+      post<PageRecord>('/api/page/transition', { ref, transition }),
     deletePage: (ref: string) =>
       held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
     /** Sends a width and height rather than a preset, since a preset hugs its height and a hand-placed frame keeps its size. */
@@ -103,6 +107,11 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Sets the device drawn around each frame in one undo step, null clearing it. */
     setDevice: (refs: readonly string[], device: Device | null) =>
       post<FrameRecord[]>('/api/frame/device', { refs, device }),
+    /** Sets each frame's own transition in one undo step, null so it takes its page's. */
+    setFrameTransition: (
+      refs: readonly string[],
+      transition: Transition | null,
+    ) => post<FrameRecord[]>('/api/frame/transition', { refs, transition }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
       post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
     deleteFrames: (refs: readonly string[]) =>

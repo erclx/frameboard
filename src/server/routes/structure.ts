@@ -13,6 +13,7 @@ import {
   renameFrame,
   setFrameDevice,
   setFrameFlag,
+  setFrameTransition,
   setHeightModes,
 } from '@/server/board/frames'
 import {
@@ -21,6 +22,7 @@ import {
   duplicatePage,
   movePage,
   renamePage,
+  setPageTransition,
 } from '@/server/board/pages'
 import { type HeldFrame, holdFrames, pasteFrames } from '@/server/board/paste'
 import {
@@ -51,6 +53,11 @@ import { DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
+import {
+  DIRECTIONS,
+  TRANSITION_MS,
+  TRANSITIONS,
+} from '@/shared/present-transition'
 import {
   DEFAULT_LOOK,
   STARTER_ACCENTS,
@@ -114,6 +121,21 @@ const pasteSchema = z.object({
 const frameDeviceSchema = z.object({
   refs,
   device: z.enum(DEVICES).nullable(),
+})
+const transition = z.object({
+  name: z.enum(TRANSITIONS),
+  direction: z.enum(DIRECTIONS).optional(),
+  ms: z.int().min(TRANSITION_MS.min).max(TRANSITION_MS.max).optional(),
+})
+/** Null clears the page's transition, so its slides cut. */
+const pageTransitionSchema = z.object({
+  ref,
+  transition: transition.nullable(),
+})
+/** Null clears each frame's override, so it takes its page's. */
+const frameTransitionSchema = z.object({
+  refs,
+  transition: transition.nullable(),
 })
 const frameFlagSchema = z.object({
   refs,
@@ -279,6 +301,17 @@ export function structureRoutes(
     return c.json({ ok: true, data: page })
   })
 
+  /** Sets or clears a page's slide transition as one step, leaving every frame file alone. */
+  app.post('/api/page/transition', async (c) => {
+    const body = await parseBody(c.req.raw, pageTransitionSchema)
+    const page = await recorded(
+      (journal) =>
+        setPageTransition(root, body.ref, body.transition, { cwd, journal }),
+      async () => ({ page: null, frames: [] }),
+    )
+    return c.json({ ok: true, data: page })
+  })
+
   app.post('/api/page/delete', async (c) => {
     const body = await parseBody(c.req.raw, deleteSchema)
     const source = await resolvePageRef(root, body.ref, { cwd })
@@ -406,6 +439,18 @@ export function structureRoutes(
       body.refs,
       (frame, journal) =>
         setFrameDevice(root, frame, body.device, { cwd, journal }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frames })
+  })
+
+  /** Sets or clears each frame's transition override, in one step, leaving every frame file alone. */
+  app.post('/api/frame/transition', async (c) => {
+    const body = await parseBody(c.req.raw, frameTransitionSchema)
+    const frames = await eachFrame(
+      body.refs,
+      (frame, journal) =>
+        setFrameTransition(root, frame, body.transition, { cwd, journal }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })

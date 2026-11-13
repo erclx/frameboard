@@ -27,6 +27,7 @@ import { LayoutSection } from './element/layout'
 import { PositionSection } from './element/position'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
+import { StepSection } from './element/step'
 import { StrokeSection } from './element/stroke'
 import {
   fetchStyles,
@@ -43,6 +44,7 @@ import { type ElementChange, shownHash, writeElement } from './element/write'
 import { ExportSection } from './export-section'
 import { FrameSection } from './frame-section'
 import { MotionSection } from './motion-section'
+import { PageSection } from './page-section'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
@@ -57,7 +59,12 @@ import { SelectionColors } from './selection-colors'
  * the frame take the panel with their shared sections. A tab that reads opens the
  * panel on one View only line, since every field under it reads greyed.
  */
-export function InspectorPanel() {
+export function InspectorPanel({
+  open,
+}: {
+  /** The ref of the page the canvas shows, whose Page section shows with nothing selected. */
+  open?: string
+} = {}) {
   const name = useAuthor()
   const source = useAuthorSource()
   const playing = useMode((state) => state.mode === 'play')
@@ -75,6 +82,11 @@ export function InspectorPanel() {
     state.board?.projects
       .flatMap((project) => project.pages)
       .find((candidate) => candidate.ref === page),
+  )
+  const openPage = useLive((state) =>
+    state.board?.projects
+      .flatMap((project) => project.pages)
+      .find((candidate) => candidate.ref === open),
   )
   const frames = usePendingFrames(
     shown?.frames.filter((frame) => refs.includes(frame.ref)) ?? [],
@@ -124,18 +136,21 @@ export function InspectorPanel() {
           )}
         </>
       ) : (
-        <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
-          {playing ? (
-            <p>Playing. Nothing selects in Play.</p>
-          ) : (
-            <>
-              <p>Select a frame to see its details.</p>
-              <p className="mt-4">
-                Click a frame, or drag on the canvas to select several.
-              </p>
-            </>
-          )}
-        </div>
+        <>
+          {openPage && !playing ? <PageSection page={openPage} /> : null}
+          <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
+            {playing ? (
+              <p>Playing. Nothing selects in Play.</p>
+            ) : (
+              <>
+                <p>Select a frame to see its details.</p>
+                <p className="mt-4">
+                  Click a frame, or drag on the canvas to select several.
+                </p>
+              </>
+            )}
+          </div>
+        </>
       )}
     </aside>
   )
@@ -280,6 +295,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         disabled={disabled}
         write={write}
       />
+      <StepSection step={live.step} disabled={disabled} write={write} />
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}

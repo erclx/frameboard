@@ -1,4 +1,4 @@
-import type { Command } from 'commander'
+import { Argument, type Command } from 'commander'
 
 import {
   addPage,
@@ -6,7 +6,13 @@ import {
   duplicatePage,
   movePage,
   renamePage,
+  setPageTransition,
 } from '@/server/board/pages'
+import {
+  TRANSITION_LABELS,
+  transitionNameOf,
+  TRANSITIONS,
+} from '@/shared/present-transition'
 
 import {
   act,
@@ -16,6 +22,11 @@ import {
   parseInteger,
   type ProgramContext,
 } from '../program'
+import {
+  type TransitionFlags,
+  transitionFrom,
+  withTransitionFlags,
+} from './transition-flags'
 
 const PAGE_REF = 'a page ref, <page> or <project>/<page>'
 const INDEX = 'position in the page order, 0 first, clamped'
@@ -90,6 +101,36 @@ export function registerPage(program: Command, context: ProgramContext): void {
         cwd: io.cwd,
       })
       return { data: record, human: `Moved ${record.ref} to ${record.index}` }
+    },
+  )
+
+  act<CommonOptions & TransitionFlags>(
+    withTransitionFlags(
+      verb(
+        'transition',
+        'Set the transition present mode draws between the page’s slides, or clear it with none so they cut, writing only layout.json',
+      ).addArgument(
+        new Argument(
+          '<transition>',
+          'the transition, none to clear it',
+        ).choices(TRANSITIONS),
+      ),
+    ),
+    context,
+    async ([ref = '', name = ''], options) => {
+      const chosen = transitionNameOf(name) ?? 'none'
+      const record = await setPageTransition(
+        await boardOf(options, io),
+        ref,
+        chosen === 'none' ? null : transitionFrom(chosen, options),
+        { ...options, cwd: io.cwd },
+      )
+      return {
+        data: record,
+        human: record.transition
+          ? `Set ${TRANSITION_LABELS[record.transition.name]} on ${record.ref}`
+          : `Cleared the transition on ${record.ref}`,
+      }
     },
   )
 

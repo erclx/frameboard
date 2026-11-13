@@ -51,6 +51,7 @@
     "inspector/layout": "design/10-inspector/inspector-layout",
     "inspector/height-mode": "design/10-inspector/height-mode",
     "inspector/device": "drive-32/22-device-mockup/device-mock-phone-720",
+    "inspector/page-transition": "drive-32/28-present-steps/present-transition-list-720",
     "inspector/motion": "design/10-inspector/motion-held",
     "inspector/phone-link": "design/10-inspector/frame-phone-link",
     "agents/claim-full": "design/13-agents/picked-claim-full",
@@ -92,6 +93,7 @@
     "canvas/scroll-rail": "design/12-canvas/scroll-rail",
     "canvas/open-alone": "design/12-canvas/open-alone",
     "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
-    "present/bar": "drive-30/05-present-step/present-step-hover-bar-960"
+    "present/bar": "drive-30/05-present-step/present-step-hover-bar-960",
+    "present/steps": "drive-32/28-present-steps/present-steps-marked-720"
   }
 }
