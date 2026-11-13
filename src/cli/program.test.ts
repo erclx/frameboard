@@ -70,7 +70,7 @@ describe('runCli', () => {
     const run = await cli(['--json'], { cwd })
 
     expect(run.json().error?.message).toMatch(
-      /^frameboard needs a command, one of serve, show, open, selection, list,/,
+      /^frameboard needs a command, one of serve, show, open, preview, selection, list,/,
     )
   })
 })

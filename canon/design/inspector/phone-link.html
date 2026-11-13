@@ -1,0 +1,2236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #ffffff;
+        --raised: #f2f2f2;
+        --hover: #f5f5f5;
+        --sel: #e8e8e8;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --accentfill: #1f6fe5;
+        --accentfg: #ffffff;
+        --claim: #7f2db5;
+        --note: #c77a00;
+        --destructive: #d92d2d;
+        --good: #1a7f45;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --hover: #323232;
+        --sel: #3d3d3d;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --accentfill: #2068dc;
+        --accentfg: #ffffff;
+        --claim: #e8b4ff;
+        --note: #f5b84a;
+        --destructive: #ff6b6b;
+        --good: #5fc48a;
+      }
+      [data-theme='dark'] [data-theme-only='light'],
+      :root:not([data-theme='dark']) [data-theme-only='dark'] {
+        display: none !important;
+      }
+      .caret {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 32px;
+        margin-left: -2px;
+        color: var(--muted);
+      }
+    </style>
+    <meta charset="utf-8" />
+    <title>frame-phone-link</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: default;
+      }
+      .ic {
+        flex: none;
+        display: block;
+      }
+      .app {
+        display: grid;
+        height: 100%;
+        grid-template-columns: 240px auto 1fr 240px;
+      }
+      .app.floating {
+        grid-template-columns: 240px 1fr 240px;
+      }
+      .app.bare {
+        grid-template-columns: 1fr;
+      }
+      .left,
+      .right {
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .right {
+        border-right: 0;
+        border-left: 1px solid var(--border);
+      }
+      .phead {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 44px;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .pname {
+        flex: 1;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .ib {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        color: var(--muted);
+      }
+      .ib.sm {
+        width: 20px;
+        height: 20px;
+      }
+      .tabs {
+        display: flex;
+        margin: 8px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 7px;
+      }
+      .tabs button {
+        flex: 1;
+        height: 24px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .tabs .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .sec {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px 4px;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .hr {
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding-right: 8px;
+        margin: 0 6px;
+        border-radius: 6px;
+        color: var(--text);
+      }
+      .row .tw {
+        width: 10px;
+        color: var(--muted);
+      }
+      .row .ic {
+        color: var(--muted);
+      }
+      .row .nm {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row.sel {
+        background: var(--sel);
+      }
+      .selband {
+        margin: 0 6px;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .selband .row {
+        margin: 0;
+        border-radius: 0;
+      }
+      .row.inband {
+        background: color-mix(in srgb, var(--accent) 7%, transparent);
+      }
+      .row.selrow {
+        background: color-mix(in srgb, var(--accent) 26%, transparent);
+      }
+      .row.child {
+        background: color-mix(in srgb, var(--accent) 13%, transparent);
+      }
+      .row.selrow .ic {
+        color: var(--accent);
+      }
+      .eyebtn {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        margin: -3px -3px;
+        border-radius: 5px;
+        background: var(--sel);
+        color: var(--text);
+      }
+      .tip {
+        position: absolute;
+        left: 50%;
+        top: 26px;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+        z-index: 9;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      }
+      .row.hov {
+        background: var(--hover);
+      }
+      .row.hidden .nm {
+        color: color-mix(in srgb, var(--muted) 70%, var(--text));
+      }
+      .row.hidden .ic {
+        color: color-mix(in srgb, var(--muted) 70%, var(--text));
+      }
+      .acts {
+        display: flex;
+        gap: 6px;
+        color: var(--muted);
+      }
+      .acts.on {
+        color: var(--muted);
+      }
+      .dock {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 8px 4px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        width: 44px;
+      }
+      .dock .sep {
+        width: 20px;
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+      }
+      .tb {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        color: var(--text);
+      }
+      .tb.on {
+        background: var(--accentfill);
+        color: var(--accentfg);
+      }
+      .pill {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 5px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow:
+          0 6px 24px rgba(0, 0, 0, 0.18),
+          0 1px 3px rgba(0, 0, 0, 0.12);
+        z-index: 5;
+      }
+      .pill .sep {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        margin: 0 5px;
+      }
+      .seg {
+        display: flex;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 8px;
+      }
+      .seg button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .seg .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .canvas {
+        position: relative;
+        background: var(--canvas);
+        overflow: hidden;
+      }
+      .flabel {
+        position: absolute;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .flabel.claim {
+        color: var(--claim);
+      }
+      .sess {
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--claim) 18%, transparent);
+        font-weight: 500;
+      }
+      .frame {
+        position: absolute;
+        background: #fff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .frame.selected {
+        outline: 1.5px solid var(--accent);
+      }
+      .framesel {
+        position: absolute;
+        outline: 1.5px solid var(--accent);
+        pointer-events: none;
+        z-index: 3;
+      }
+      .marquee {
+        position: absolute;
+        border: 1px solid var(--accent);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        z-index: 3;
+      }
+      .frame.parentsel {
+        outline: 1px dashed var(--accent);
+        outline-offset: 1px;
+      }
+      .elsel {
+        position: relative;
+        outline: 1.5px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .frame.claimed {
+        outline: 1.5px dashed var(--claim);
+        outline-offset: 3px;
+      }
+      .h {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        background: #fff;
+        border: 1.5px solid var(--accent);
+      }
+      .tl {
+        left: -4px;
+        top: -4px;
+      }
+      .tr {
+        right: -4px;
+        top: -4px;
+      }
+      .bl {
+        left: -4px;
+        bottom: -4px;
+      }
+      .br {
+        right: -4px;
+        bottom: -4px;
+      }
+      .dim {
+        position: absolute;
+        left: 50%;
+        bottom: -24px;
+        transform: translateX(-50%);
+        background: var(--accentfill);
+        color: var(--accentfg);
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .pin {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px 11px 11px 2px;
+        background: var(--note);
+        color: #1a1a1a;
+        font-size: 11px;
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      }
+      .zoomctl {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+      }
+      .zoomctl span {
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+      .mock-hw {
+        padding: 28px;
+      }
+      .mock-hw i {
+        display: block;
+        width: 28px;
+        height: 4px;
+        background: #f97316;
+        margin-bottom: 14px;
+      }
+      .mock-hw b {
+        font:
+          700 30px/1 Geist,
+          sans-serif;
+        color: #111827;
+        letter-spacing: -0.02em;
+      }
+      .mock-hw > span {
+        display: block;
+        margin-top: 14px;
+        height: 6px;
+        width: 70%;
+        background: #e5e7eb;
+        border-radius: 3px;
+      }
+      .mock-sw {
+        padding: 12px;
+      }
+      .mock-sw em {
+        font-style: normal;
+        font-size: 10px;
+        color: #111827;
+        font-weight: 600;
+      }
+      .mock-sw .elsel,
+      .mock-sw .row-sw {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .tsel {
+        display: inline-block;
+      }
+      .mock-sw i {
+        flex: 1;
+        height: 52px;
+        border-radius: 6px;
+      }
+      .mock-pr {
+        padding: 20px;
+      }
+      .mock-pr b {
+        font:
+          700 20px/1 Geist,
+          sans-serif;
+        color: #111827;
+      }
+      .mock-pr div {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .mock-pr i {
+        flex: 1;
+        height: 120px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+      .mock-sun {
+        height: 100%;
+        background: linear-gradient(#3b2a5c, #e07a5f 55%, #1d2a4a 56%, #0f1730);
+      }
+      .rtop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .who {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: var(--text);
+        color: var(--panel);
+        font-weight: 700;
+        font-size: 10px;
+      }
+      .zoom {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--muted);
+      }
+      .isec {
+        padding: 10px 12px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .ihead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
+      }
+      .ihead .ic {
+        color: var(--muted);
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .fld {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        padding: 0 8px;
+        background: var(--raised);
+        border-radius: 6px;
+      }
+      .fld.wide {
+        margin-bottom: 6px;
+      }
+      .fld .k {
+        color: var(--muted);
+        min-width: 10px;
+      }
+      .fld .v {
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+      .txtarea {
+        min-height: 44px;
+        padding: 6px 8px;
+        background: var(--raised);
+        border-radius: 6px;
+        line-height: 1.4;
+      }
+      .alrow {
+        display: flex;
+        gap: 6px;
+      }
+      .align {
+        display: flex;
+        gap: 2px;
+        margin-top: 6px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+        width: max-content;
+      }
+      .align button {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 22px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .align .on {
+        background: var(--panel);
+        color: var(--text);
+      }
+      .crow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        padding: 0 8px;
+        background: var(--raised);
+        border-radius: 6px;
+        margin-top: 6px;
+      }
+      .crow .sw {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.3);
+      }
+      .crow .tok {
+        flex: 1;
+        padding: 1px 6px;
+        margin-left: -4px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--text) 9%, transparent);
+        max-width: max-content;
+      }
+      .crow .hex {
+        flex: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .crow .tok + .pct,
+      .crow .hex + .pct {
+        margin-left: auto;
+      }
+      .crow .pct {
+        color: var(--muted);
+      }
+      .crow .ic {
+        color: var(--muted);
+      }
+      .crow .flag {
+        color: var(--note);
+      }
+      .floatname {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px 4px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        z-index: 5;
+      }
+      .floatname .ib {
+        width: 24px;
+        height: 24px;
+      }
+      .floatzoom {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 10px 0 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        z-index: 5;
+      }
+
+      .home {
+        display: grid;
+        grid-template-rows: 56px 1fr;
+        height: 100%;
+        background: var(--canvas);
+      }
+      .htop {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+      .brand {
+        font-weight: 600;
+        font-size: 14px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mark {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: var(--accent);
+      }
+      .btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-weight: 500;
+      }
+      .btn.primary {
+        background: var(--accentfill);
+        color: var(--accentfg);
+      }
+      .btn.ghost {
+        background: var(--raised);
+      }
+      .btn.danger {
+        background: var(--destructive);
+        color: #fff;
+      }
+      .vt {
+        display: flex;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 8px;
+      }
+      .vt button {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 26px;
+        border-radius: 6px;
+        color: var(--muted);
+      }
+      .vt .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .hbody {
+        padding: 32px 48px;
+        overflow: hidden;
+      }
+      .hbody h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .card.hov {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .thumb {
+        height: 150px;
+        background: var(--canvas);
+        margin: 6px;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      .thumb i {
+        position: absolute;
+        background: #fff;
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .cmeta {
+        padding: 6px 12px 12px;
+      }
+      .cmeta b {
+        display: block;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .cmeta span {
+        color: var(--muted);
+      }
+      .list {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .lrow {
+        display: grid;
+        grid-template-columns: 48px 1fr 160px 160px;
+        align-items: center;
+        height: 48px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .lrow:last-child {
+        border-bottom: 0;
+      }
+      .lrow.head {
+        height: 36px;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .lrow.hov {
+        background: var(--hover);
+      }
+      .lrow .mini {
+        width: 32px;
+        height: 22px;
+        border-radius: 4px;
+        background: var(--canvas);
+        position: relative;
+      }
+      .lrow .mini i {
+        position: absolute;
+        left: 5px;
+        top: 5px;
+        width: 9px;
+        height: 12px;
+        background: #fff;
+      }
+      .lrow .mini i + i {
+        left: 17px;
+      }
+      .lrow span {
+        color: var(--muted);
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 10;
+      }
+      .light-scrim {
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .dialog {
+        position: absolute;
+        left: 50%;
+        top: 120px;
+        transform: translateX(-50%);
+        width: 560px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+        z-index: 11;
+        overflow: hidden;
+      }
+      .dsearch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 48px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .dsearch .ph {
+        color: var(--text);
+      }
+      .dsearch .caret {
+        width: 1px;
+        height: 18px;
+        background: var(--accent);
+        margin-left: -8px;
+      }
+      .grp {
+        padding: 8px;
+      }
+      .glabel {
+        padding: 6px 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 34px;
+        padding: 0 8px;
+        border-radius: 7px;
+      }
+      .item .ic {
+        color: var(--muted);
+      }
+      .item.on {
+        background: var(--sel);
+      }
+      .item .nm {
+        flex: 1;
+      }
+      .kbd {
+        display: flex;
+        gap: 3px;
+      }
+      .kbd span {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 5px;
+        background: var(--raised);
+        color: var(--muted);
+        font-size: 11px;
+        display: grid;
+        place-items: center;
+      }
+      .item .where {
+        color: var(--muted);
+      }
+      .ttab .tokgrp {
+        padding: 4px 0 8px;
+      }
+      .trow {
+        display: grid;
+        grid-template-columns: 1fr 18px 18px;
+        gap: 6px;
+        align-items: center;
+        height: 28px;
+        margin: 0 6px;
+        padding: 0 6px;
+        border-radius: 6px;
+      }
+      .trow:hover {
+        background: var(--hover);
+      }
+      .trow .tn {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .trow .tn em {
+        font-style: normal;
+        color: var(--faint);
+      }
+      .tsw {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35);
+      }
+      .thead {
+        display: grid;
+        grid-template-columns: 1fr 18px 18px;
+        gap: 6px;
+        padding: 4px 12px 4px 12px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .tsrc {
+        margin: 4px 12px 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--raised);
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .tsrc code {
+        font-family: 'DejaVu Sans Mono', monospace;
+        font-size: 11px;
+        color: var(--text);
+      }
+      .empty {
+        margin: 12px;
+        padding: 16px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .empty b {
+        display: block;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+      .empty code {
+        font-family: 'DejaVu Sans Mono', monospace;
+        font-size: 11px;
+        color: var(--text);
+      }
+      .thread {
+        position: absolute;
+        width: 320px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        z-index: 6;
+        overflow: hidden;
+      }
+      .thtop {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+      }
+      .thtop .on {
+        margin-left: auto;
+        color: var(--muted);
+        font-weight: 400;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .msg {
+        padding: 10px 12px;
+        display: flex;
+        gap: 10px;
+      }
+      .av {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .av.me {
+        background: var(--text);
+        color: var(--panel);
+      }
+      .av.ag {
+        background: color-mix(in srgb, var(--claim) 25%, transparent);
+        color: var(--claim);
+      }
+      .msg b {
+        font-weight: 600;
+      }
+      .msg time {
+        color: var(--muted);
+        margin-left: 6px;
+      }
+      .msg p {
+        margin-top: 2px;
+        line-height: 1.45;
+      }
+      .compose {
+        margin: 6px 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .compose .ph {
+        color: var(--muted);
+        height: 28px;
+      }
+      .cbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chip {
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--text);
+      }
+      .dotl {
+        width: 7px;
+        height: 7px;
+        border-radius: 4px;
+        background: var(--claim);
+      }
+      .cbar .btn {
+        margin-left: auto;
+        height: 26px;
+      }
+      .listen {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+      }
+      .tswitch {
+        display: inline-flex;
+        margin-left: 6px;
+        vertical-align: -3px;
+        color: var(--muted);
+      }
+      .menu {
+        position: absolute;
+        width: 220px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        z-index: 6;
+      }
+      .mi {
+        display: flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+      }
+      .mi .kbd {
+        margin-left: auto;
+      }
+      .mi.on {
+        background: var(--hover);
+      }
+      .rsz {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--accent);
+        z-index: 8;
+      }
+      .rsztip {
+        position: fixed;
+        top: 412px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+        z-index: 8;
+        white-space: nowrap;
+      }
+      .cur {
+        position: fixed;
+        z-index: 9;
+      }
+      .mhead {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+      }
+      .mhead b {
+        display: block;
+        font-weight: 600;
+      }
+      .mhead span:not(.av) {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .mval {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--muted);
+      }
+      .mi.danger {
+        color: var(--destructive);
+      }
+      .msep {
+        height: 1px;
+        background: var(--border);
+        margin: 4px 0;
+      }
+      .toast {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        width: 340px;
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        z-index: 6;
+      }
+      .toast .ic {
+        color: var(--note);
+        margin-top: 1px;
+      }
+      .toast b {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      .toast span {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .toast2 {
+        bottom: 96px;
+      }
+      .toast2 .ic {
+        color: var(--good);
+      }
+      .pill {
+        left: calc(240px + (100% - 480px)/2);
+      }
+      .fb-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 18px;
+        margin-left: 6px;
+        padding: 0 6px 0 5px;
+        border-radius: 9px;
+        font-weight: 500;
+        vertical-align: middle;
+        --h: var(--note);
+        color: color-mix(in srgb, var(--h) 55%, var(--text));
+        background: color-mix(in srgb, var(--h) 34%, transparent);
+        box-shadow: inset 0 0 0 1px
+          color-mix(in srgb, var(--h) 75%, transparent);
+      }
+      .fb-pill svg {
+        color: var(--h);
+      }
+      .fld .fit {
+        margin-left: auto;
+        margin-right: -6px;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .fb-fx {
+        display: grid;
+        grid-template-columns: 14px 1fr;
+        gap: 6px;
+        padding: 6px;
+        margin: 0 -6px;
+        border-radius: 6px;
+        --h: var(--note);
+      }
+      .fb-fx svg {
+        margin-top: 1px;
+        color: var(--h);
+      }
+      .fb-fx b {
+        font-weight: 600;
+      }
+      .fb-fx small {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .atag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px 2px 3px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--claim) 18%, transparent);
+        color: color-mix(in srgb, var(--claim) 70%, var(--text));
+        font-weight: 500;
+      }
+      .ain {
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        background: var(--claim);
+        color: var(--panel);
+        display: grid;
+        place-items: center;
+        font-size: 9px;
+        font-weight: 700;
+      }
+      .ast {
+        color: color-mix(in srgb, var(--muted) 60%, var(--text));
+        font-weight: 400;
+      }
+    </style>
+    <style>
+      .pvhead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 16px;
+        margin: 10px 0 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .pvseg {
+        display: flex;
+        gap: 2px;
+        height: 26px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+      }
+      .pvseg button {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .pvseg button.on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      .fld .pvend {
+        margin-left: auto;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        margin-right: -6px;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .flabel {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .pvchip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1px 5px;
+        border-radius: 5px;
+        background: color-mix(in srgb, var(--text) 14%, transparent);
+        color: var(--text);
+      }
+      .frame.pv {
+        overflow: hidden;
+      }
+      .frame.pv .mock-hw {
+        padding: 10px 8px;
+      }
+      .frame.pv .mock-hw i {
+        width: 12px;
+        height: 2px;
+        margin-bottom: 8px;
+      }
+      .frame.pv .mock-hw b {
+        display: block;
+        font-size: 13px;
+      }
+      .frame.pv .mock-hw > span {
+        margin-top: 8px;
+        height: 3px;
+      }
+    </style>
+    <style>
+      .phbtn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        height: 26px;
+        margin-top: 10px;
+        padding: 0 8px;
+        background: var(--raised);
+        border-radius: 6px;
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .phbtn .ic {
+        color: var(--muted);
+      }
+      .phcard {
+        position: absolute;
+        right: 252px;
+        top: 236px;
+        width: 248px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px;
+        background: var(--panel);
+        border-radius: 12px;
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent),
+          0 14px 40px rgba(0, 0, 0, 0.28);
+        z-index: 6;
+      }
+      .phcard b {
+        font-weight: 600;
+      }
+      .phcode {
+        align-self: center;
+        padding: 6px;
+        background: #fff;
+        border-radius: 8px;
+      }
+      .phurl {
+        padding: 6px 8px;
+        background: var(--raised);
+        border-radius: 6px;
+        font:
+          11px/1.375 'Geist Mono',
+          'DejaVu Sans Mono',
+          monospace;
+        word-break: break-all;
+      }
+      .phnote {
+        color: var(--muted);
+        line-height: 1.625;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app floating">
+      <aside class="left">
+        <div class="phead">
+          <button class="ib" title="Home">
+            <svg
+              class="ic"
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 11l9-7 9 7" />
+              <path d="M5 10v10h14V10" />
+            </svg></button
+          ><span class="pname">Diligent kite</span
+          ><button class="ib" title="Hide UI ⌘\">
+            <svg
+              class="ic"
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        </div>
+        <div class="tabs">
+          <button class="on">Design</button><button>Theme</button
+          ><button>Assets</button>
+        </div>
+        <div class="sec">
+          <span>Pages</span
+          ><button class="ib sm">
+            <svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
+        <div class="row sel" style="padding-left: 8px">
+          <span class="tw"></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 3h8l4 4v14H6z" />
+            <path d="M14 3v4h4" /></svg
+          ><span class="nm">Playground</span>
+        </div>
+        <div class="row" style="padding-left: 8px">
+          <span class="tw"></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 3h8l4 4v14H6z" />
+            <path d="M14 3v4h4" /></svg
+          ><span class="nm">Canon</span>
+        </div>
+        <div class="hr"></div>
+        <div class="sec">
+          <span>Layers</span
+          ><button class="ib sm" title="Collapse all layers">
+            <svg
+              class="ic"
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4 6h10M4 12h10M4 18h7M17 9l2.5-3L22 9M17 15l2.5 3 2.5-3"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="row kids" style="padding-left: 8px">
+          <span class="tw"
+            ><svg
+              class="ic"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 6l6 6-6 6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="1" /></svg
+          ><span class="nm">Hello world</span>
+        </div>
+        <div class="selband">
+          <div class="row open selrow" style="padding-left: 8px">
+            <span class="tw"
+              ><svg
+                class="ic"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="1" /></svg
+            ><span class="nm">Color swatches</span>
+          </div>
+          <div class="row child" style="padding-left: 22px">
+            <span class="tw"></span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
+            ><span class="nm">Title</span>
+          </div>
+          <div class="row kids child" style="padding-left: 22px">
+            <span class="tw"
+              ><svg
+                class="ic"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 6l6 6-6 6" /></svg></span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="5" y="7" width="14" height="10" rx="1" /></svg
+            ><span class="nm">Swatch row</span>
+          </div>
+        </div>
+        <div class="row kids hidden" style="padding-left: 8px">
+          <span class="tw"
+            ><svg
+              class="ic"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 6l6 6-6 6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="1" /></svg
+          ><span class="nm">Sunset</span
+          ><span class="acts on"
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" /></svg
+          ></span>
+        </div>
+        <div class="row kids hov" style="padding-left: 8px">
+          <span class="tw"
+            ><svg
+              class="ic"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 6l6 6-6 6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="1" /></svg
+          ><span class="nm">Pricing</span
+          ><span class="acts"
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 018 0v3" /></svg
+            ><span class="eyebtn"
+              ><svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" /></svg
+              ><span class="tip">Hide frame ⇧⌘H</span></span
+            ></span
+          >
+        </div>
+      </aside>
+      <main class="canvas">
+        <div class="flabel" style="left: 120px; top: 96px">Hello world</div>
+        <div
+          class="frame"
+          style="left: 120px; top: 116px; width: 300px; height: 190px"
+        >
+          <div class="mock-hw"><i></i><b>Hello, world</b><span></span></div>
+        </div>
+        <div class="flabel" style="left: 460px; top: 96px">
+          Color swatches<span class="fb-pill"
+            ><svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 3l10 18H2z" />
+              <path d="M12 10v5M12 18v.5" /></svg
+            >1</span
+          >
+        </div>
+        <div
+          class="frame selected"
+          style="left: 460px; top: 116px; width: 260px; height: 110px"
+        >
+          <div class="mock-sw">
+            <em>Color tokens</em>
+            <div class="row-sw">
+              <i style="background: #4f46e5"></i
+              ><i style="background: #0ea5e9"></i
+              ><i style="background: #f59e0b"></i>
+            </div>
+          </div>
+        </div>
+        <div class="pin" style="left: 700px; top: 104px">2</div>
+        <div class="flabel claim" style="left: 120px; top: 336px">
+          Pricing
+          <span class="atag"
+            ><span class="ain">C</span>Claude · visual-style
+            <span class="ast">editing · 40s</span></span
+          >
+        </div>
+        <div
+          class="frame claimed"
+          style="left: 120px; top: 356px; width: 300px; height: 200px"
+        >
+          <div class="mock-pr">
+            <b>Pricing</b>
+            <div><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="flabel" style="left: 460px; top: 256px">Sunset</div>
+        <div
+          class="frame"
+          style="left: 460px; top: 276px; width: 260px; height: 180px"
+        >
+          <div class="mock-sun"></div>
+        </div>
+        <div
+          class="framesel"
+          style="left: 460px; top: 116px; width: 260px; height: 110px"
+        >
+          <span class="h tl"></span><span class="h tr"></span
+          ><span class="h bl"></span><span class="h br"></span
+          ><span class="dim">640 × 188</span>
+        </div>
+      </main>
+      <aside class="right">
+        <div class="rtop">
+          <span class="who" title="Eric Le, from git user.name">EL</span
+          ><span class="zoom"
+            >35%
+            <svg
+              class="ic"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" /></svg
+          ></span>
+        </div>
+        <div class="isec">
+          <div class="ihead"><span>Frame</span></div>
+          <label class="fld wide"><span class="v">Color swatches</span></label>
+          <div class="grid2">
+            <label class="fld"
+              ><span class="k">X</span><span class="v">460</span></label
+            ><label class="fld"
+              ><span class="k">Y</span><span class="v">116</span></label
+            ><label class="fld"
+              ><span class="k">W</span><span class="v">640</span></label
+            ><label class="fld"
+              ><span class="k">H</span><span class="v">188</span
+              ><span class="fit" title="Fit height"
+                ><svg
+                  class="ic"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M12 22v-6M12 8V2M4 12H2M10 12H8M16 12h-2M22 12h-2M15 19l-3-3-3 3M15 5l-3 3-3-3"
+                  /></svg></span
+            ></label>
+          </div>
+          <div class="pvhead"><span>Preview</span></div>
+          <div class="grid2">
+            <div class="pvseg">
+              <button title="Preview at phone width, 390">
+                <svg
+                  class="ic"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="7" y="2" width="10" height="20" rx="2" />
+                  <path d="M11 18h2" />
+                </svg></button
+              ><button title="Preview at tablet width, 834">
+                <svg
+                  class="ic"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="4" y="2" width="16" height="20" rx="2" />
+                  <path d="M11 18h2" />
+                </svg></button
+              ><button title="Preview at desktop width, 1440">
+                <svg
+                  class="ic"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8M12 17v4" />
+                </svg>
+              </button>
+            </div>
+            <label class="fld"
+              ><span class="k"
+                ><svg
+                  class="ic"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M18 8l4 4-4 4M6 8l-4 4 4 4M2 12h20" /></svg></span
+              ><span class="v">640</span></label
+            >
+          </div>
+          <button class="phbtn">
+            <svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="5" y="2" width="14" height="20" rx="2" />
+              <path d="M12 18h.01" /></svg
+            >Open on a phone
+          </button>
+        </div>
+        <div class="isec">
+          <div class="ihead"><span>Selection colors · 2</span></div>
+          <div class="crow">
+            <span class="sw" style="background: #111827"></span
+            ><span class="hex">111827</span><span class="pct">100%</span
+            ><span class="flag"
+              ><svg
+                class="ic"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 8v5M12 16v.5" />
+                <circle cx="12" cy="12" r="9" /></svg
+            ></span>
+          </div>
+          <div class="crow">
+            <span class="sw" style="background: #4f46e5"></span
+            ><span class="tok">primary</span><span class="pct">100%</span
+            ><svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"
+              />
+            </svg>
+          </div>
+        </div>
+      </aside>
+      <div class="phcard">
+        <b>Open Color swatches on a phone</b>
+        <div class="phcode">
+          <svg
+            viewBox="0 0 49 49"
+            shape-rendering="crispEdges"
+            width="176"
+            height="176"
+            style="display: block"
+          >
+            <rect width="49" height="49" fill="#fff" />
+            <path
+              d="M4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM24 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM27 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM35 4h1v1h-1zM36 4h1v1h-1zM38 4h1v1h-1zM39 4h1v1h-1zM40 4h1v1h-1zM41 4h1v1h-1zM42 4h1v1h-1zM43 4h1v1h-1zM44 4h1v1h-1zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM27 5h1v1h-1zM28 5h1v1h-1zM33 5h1v1h-1zM34 5h1v1h-1zM38 5h1v1h-1zM44 5h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM29 6h1v1h-1zM30 6h1v1h-1zM34 6h1v1h-1zM35 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM41 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM16 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM20 7h1v1h-1zM25 7h1v1h-1zM27 7h1v1h-1zM29 7h1v1h-1zM30 7h1v1h-1zM33 7h1v1h-1zM35 7h1v1h-1zM36 7h1v1h-1zM38 7h1v1h-1zM40 7h1v1h-1zM41 7h1v1h-1zM42 7h1v1h-1zM44 7h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM21 8h1v1h-1zM23 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM31 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM38 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM44 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM29 9h1v1h-1zM32 9h1v1h-1zM35 9h1v1h-1zM38 9h1v1h-1zM44 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM32 10h1v1h-1zM34 10h1v1h-1zM36 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM41 10h1v1h-1zM42 10h1v1h-1zM43 10h1v1h-1zM44 10h1v1h-1zM12 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM28 11h1v1h-1zM30 11h1v1h-1zM32 11h1v1h-1zM33 11h1v1h-1zM34 11h1v1h-1zM35 11h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM14 12h1v1h-1zM16 12h1v1h-1zM20 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM25 12h1v1h-1zM26 12h1v1h-1zM28 12h1v1h-1zM33 12h1v1h-1zM36 12h1v1h-1zM38 12h1v1h-1zM41 12h1v1h-1zM43 12h1v1h-1zM44 12h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM15 13h1v1h-1zM17 13h1v1h-1zM21 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM25 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM35 13h1v1h-1zM38 13h1v1h-1zM39 13h1v1h-1zM40 13h1v1h-1zM42 13h1v1h-1zM43 13h1v1h-1zM44 13h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM15 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM22 14h1v1h-1zM24 14h1v1h-1zM25 14h1v1h-1zM27 14h1v1h-1zM30 14h1v1h-1zM34 14h1v1h-1zM39 14h1v1h-1zM40 14h1v1h-1zM42 14h1v1h-1zM4 15h1v1h-1zM7 15h1v1h-1zM12 15h1v1h-1zM16 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM26 15h1v1h-1zM27 15h1v1h-1zM29 15h1v1h-1zM31 15h1v1h-1zM35 15h1v1h-1zM37 15h1v1h-1zM38 15h1v1h-1zM39 15h1v1h-1zM40 15h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM15 16h1v1h-1zM17 16h1v1h-1zM21 16h1v1h-1zM24 16h1v1h-1zM26 16h1v1h-1zM28 16h1v1h-1zM30 16h1v1h-1zM31 16h1v1h-1zM33 16h1v1h-1zM34 16h1v1h-1zM39 16h1v1h-1zM41 16h1v1h-1zM42 16h1v1h-1zM43 16h1v1h-1zM5 17h1v1h-1zM7 17h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM24 17h1v1h-1zM27 17h1v1h-1zM28 17h1v1h-1zM31 17h1v1h-1zM32 17h1v1h-1zM33 17h1v1h-1zM34 17h1v1h-1zM35 17h1v1h-1zM37 17h1v1h-1zM38 17h1v1h-1zM39 17h1v1h-1zM44 17h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM20 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM23 18h1v1h-1zM24 18h1v1h-1zM27 18h1v1h-1zM29 18h1v1h-1zM32 18h1v1h-1zM34 18h1v1h-1zM35 18h1v1h-1zM39 18h1v1h-1zM40 18h1v1h-1zM41 18h1v1h-1zM42 18h1v1h-1zM43 18h1v1h-1zM44 18h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM20 19h1v1h-1zM25 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM30 19h1v1h-1zM31 19h1v1h-1zM32 19h1v1h-1zM34 19h1v1h-1zM37 19h1v1h-1zM38 19h1v1h-1zM40 19h1v1h-1zM41 19h1v1h-1zM43 19h1v1h-1zM6 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM22 20h1v1h-1zM24 20h1v1h-1zM25 20h1v1h-1zM26 20h1v1h-1zM29 20h1v1h-1zM34 20h1v1h-1zM35 20h1v1h-1zM36 20h1v1h-1zM40 20h1v1h-1zM41 20h1v1h-1zM43 20h1v1h-1zM44 20h1v1h-1zM4 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM16 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM24 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM27 21h1v1h-1zM28 21h1v1h-1zM30 21h1v1h-1zM31 21h1v1h-1zM36 21h1v1h-1zM41 21h1v1h-1zM42 21h1v1h-1zM44 21h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM16 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h1v1h-1zM28 22h1v1h-1zM30 22h1v1h-1zM31 22h1v1h-1zM33 22h1v1h-1zM34 22h1v1h-1zM36 22h1v1h-1zM37 22h1v1h-1zM40 22h1v1h-1zM41 22h1v1h-1zM4 23h1v1h-1zM6 23h1v1h-1zM7 23h1v1h-1zM9 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM19 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM23 23h1v1h-1zM25 23h1v1h-1zM30 23h1v1h-1zM33 23h1v1h-1zM34 23h1v1h-1zM35 23h1v1h-1zM36 23h1v1h-1zM38 23h1v1h-1zM39 23h1v1h-1zM41 23h1v1h-1zM42 23h1v1h-1zM43 23h1v1h-1zM44 23h1v1h-1zM4 24h1v1h-1zM7 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM24 24h1v1h-1zM29 24h1v1h-1zM33 24h1v1h-1zM37 24h1v1h-1zM38 24h1v1h-1zM40 24h1v1h-1zM41 24h1v1h-1zM42 24h1v1h-1zM43 24h1v1h-1zM5 25h1v1h-1zM8 25h1v1h-1zM11 25h1v1h-1zM18 25h1v1h-1zM21 25h1v1h-1zM23 25h1v1h-1zM24 25h1v1h-1zM27 25h1v1h-1zM29 25h1v1h-1zM34 25h1v1h-1zM35 25h1v1h-1zM36 25h1v1h-1zM38 25h1v1h-1zM39 25h1v1h-1zM40 25h1v1h-1zM41 25h1v1h-1zM42 25h1v1h-1zM43 25h1v1h-1zM44 25h1v1h-1zM5 26h1v1h-1zM6 26h1v1h-1zM7 26h1v1h-1zM10 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM18 26h1v1h-1zM22 26h1v1h-1zM25 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM29 26h1v1h-1zM36 26h1v1h-1zM37 26h1v1h-1zM40 26h1v1h-1zM41 26h1v1h-1zM42 26h1v1h-1zM43 26h1v1h-1zM5 27h1v1h-1zM7 27h1v1h-1zM8 27h1v1h-1zM9 27h1v1h-1zM12 27h1v1h-1zM15 27h1v1h-1zM17 27h1v1h-1zM18 27h1v1h-1zM19 27h1v1h-1zM20 27h1v1h-1zM22 27h1v1h-1zM23 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1zM27 27h1v1h-1zM28 27h1v1h-1zM29 27h1v1h-1zM35 27h1v1h-1zM36 27h1v1h-1zM38 27h1v1h-1zM39 27h1v1h-1zM43 27h1v1h-1zM4 28h1v1h-1zM6 28h1v1h-1zM7 28h1v1h-1zM9 28h1v1h-1zM10 28h1v1h-1zM11 28h1v1h-1zM12 28h1v1h-1zM13 28h1v1h-1zM14 28h1v1h-1zM15 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM21 28h1v1h-1zM24 28h1v1h-1zM27 28h1v1h-1zM29 28h1v1h-1zM32 28h1v1h-1zM33 28h1v1h-1zM34 28h1v1h-1zM36 28h1v1h-1zM37 28h1v1h-1zM41 28h1v1h-1zM42 28h1v1h-1zM44 28h1v1h-1zM5 29h1v1h-1zM6 29h1v1h-1zM8 29h1v1h-1zM9 29h1v1h-1zM11 29h1v1h-1zM12 29h1v1h-1zM16 29h1v1h-1zM21 29h1v1h-1zM22 29h1v1h-1zM23 29h1v1h-1zM24 29h1v1h-1zM26 29h1v1h-1zM29 29h1v1h-1zM31 29h1v1h-1zM33 29h1v1h-1zM35 29h1v1h-1zM36 29h1v1h-1zM38 29h1v1h-1zM41 29h1v1h-1zM42 29h1v1h-1zM43 29h1v1h-1zM44 29h1v1h-1zM4 30h1v1h-1zM10 30h1v1h-1zM11 30h1v1h-1zM12 30h1v1h-1zM14 30h1v1h-1zM15 30h1v1h-1zM16 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM22 30h1v1h-1zM23 30h1v1h-1zM26 30h1v1h-1zM29 30h1v1h-1zM35 30h1v1h-1zM36 30h1v1h-1zM37 30h1v1h-1zM38 30h1v1h-1zM39 30h1v1h-1zM41 30h1v1h-1zM43 30h1v1h-1zM44 30h1v1h-1zM5 31h1v1h-1zM7 31h1v1h-1zM12 31h1v1h-1zM13 31h1v1h-1zM14 31h1v1h-1zM15 31h1v1h-1zM17 31h1v1h-1zM22 31h1v1h-1zM24 31h1v1h-1zM25 31h1v1h-1zM26 31h1v1h-1zM27 31h1v1h-1zM30 31h1v1h-1zM31 31h1v1h-1zM34 31h1v1h-1zM35 31h1v1h-1zM36 31h1v1h-1zM37 31h1v1h-1zM39 31h1v1h-1zM40 31h1v1h-1zM41 31h1v1h-1zM44 31h1v1h-1zM10 32h1v1h-1zM13 32h1v1h-1zM15 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM20 32h1v1h-1zM22 32h1v1h-1zM24 32h1v1h-1zM25 32h1v1h-1zM26 32h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM32 32h1v1h-1zM34 32h1v1h-1zM35 32h1v1h-1zM36 32h1v1h-1zM37 32h1v1h-1zM39 32h1v1h-1zM40 32h1v1h-1zM41 32h1v1h-1zM43 32h1v1h-1zM44 32h1v1h-1zM5 33h1v1h-1zM9 33h1v1h-1zM11 33h1v1h-1zM12 33h1v1h-1zM13 33h1v1h-1zM14 33h1v1h-1zM16 33h1v1h-1zM18 33h1v1h-1zM20 33h1v1h-1zM21 33h1v1h-1zM23 33h1v1h-1zM24 33h1v1h-1zM25 33h1v1h-1zM26 33h1v1h-1zM31 33h1v1h-1zM34 33h1v1h-1zM36 33h1v1h-1zM39 33h1v1h-1zM41 33h1v1h-1zM4 34h1v1h-1zM6 34h1v1h-1zM8 34h1v1h-1zM10 34h1v1h-1zM11 34h1v1h-1zM16 34h1v1h-1zM17 34h1v1h-1zM18 34h1v1h-1zM20 34h1v1h-1zM23 34h1v1h-1zM26 34h1v1h-1zM31 34h1v1h-1zM36 34h1v1h-1zM38 34h1v1h-1zM39 34h1v1h-1zM41 34h1v1h-1zM7 35h1v1h-1zM8 35h1v1h-1zM13 35h1v1h-1zM17 35h1v1h-1zM19 35h1v1h-1zM21 35h1v1h-1zM23 35h1v1h-1zM27 35h1v1h-1zM33 35h1v1h-1zM34 35h1v1h-1zM35 35h1v1h-1zM36 35h1v1h-1zM37 35h1v1h-1zM38 35h1v1h-1zM42 35h1v1h-1zM43 35h1v1h-1zM5 36h1v1h-1zM7 36h1v1h-1zM8 36h1v1h-1zM9 36h1v1h-1zM10 36h1v1h-1zM11 36h1v1h-1zM12 36h1v1h-1zM13 36h1v1h-1zM14 36h1v1h-1zM19 36h1v1h-1zM20 36h1v1h-1zM21 36h1v1h-1zM22 36h1v1h-1zM25 36h1v1h-1zM28 36h1v1h-1zM30 36h1v1h-1zM31 36h1v1h-1zM33 36h1v1h-1zM35 36h1v1h-1zM36 36h1v1h-1zM37 36h1v1h-1zM38 36h1v1h-1zM39 36h1v1h-1zM40 36h1v1h-1zM42 36h1v1h-1zM12 37h1v1h-1zM13 37h1v1h-1zM14 37h1v1h-1zM16 37h1v1h-1zM17 37h1v1h-1zM21 37h1v1h-1zM22 37h1v1h-1zM23 37h1v1h-1zM25 37h1v1h-1zM27 37h1v1h-1zM29 37h1v1h-1zM32 37h1v1h-1zM33 37h1v1h-1zM34 37h1v1h-1zM36 37h1v1h-1zM40 37h1v1h-1zM41 37h1v1h-1zM43 37h1v1h-1zM44 37h1v1h-1zM4 38h1v1h-1zM5 38h1v1h-1zM6 38h1v1h-1zM7 38h1v1h-1zM8 38h1v1h-1zM9 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM14 38h1v1h-1zM16 38h1v1h-1zM22 38h1v1h-1zM24 38h1v1h-1zM27 38h1v1h-1zM28 38h1v1h-1zM29 38h1v1h-1zM32 38h1v1h-1zM34 38h1v1h-1zM35 38h1v1h-1zM36 38h1v1h-1zM38 38h1v1h-1zM40 38h1v1h-1zM41 38h1v1h-1zM4 39h1v1h-1zM10 39h1v1h-1zM12 39h1v1h-1zM13 39h1v1h-1zM15 39h1v1h-1zM16 39h1v1h-1zM17 39h1v1h-1zM18 39h1v1h-1zM21 39h1v1h-1zM23 39h1v1h-1zM24 39h1v1h-1zM27 39h1v1h-1zM28 39h1v1h-1zM31 39h1v1h-1zM36 39h1v1h-1zM40 39h1v1h-1zM4 40h1v1h-1zM6 40h1v1h-1zM7 40h1v1h-1zM8 40h1v1h-1zM10 40h1v1h-1zM16 40h1v1h-1zM18 40h1v1h-1zM25 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM33 40h1v1h-1zM36 40h1v1h-1zM37 40h1v1h-1zM38 40h1v1h-1zM39 40h1v1h-1zM40 40h1v1h-1zM42 40h1v1h-1zM4 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM10 41h1v1h-1zM12 41h1v1h-1zM14 41h1v1h-1zM15 41h1v1h-1zM17 41h1v1h-1zM19 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM23 41h1v1h-1zM26 41h1v1h-1zM30 41h1v1h-1zM32 41h1v1h-1zM35 41h1v1h-1zM36 41h1v1h-1zM40 41h1v1h-1zM42 41h1v1h-1zM43 41h1v1h-1zM4 42h1v1h-1zM6 42h1v1h-1zM7 42h1v1h-1zM8 42h1v1h-1zM10 42h1v1h-1zM12 42h1v1h-1zM13 42h1v1h-1zM17 42h1v1h-1zM18 42h1v1h-1zM19 42h1v1h-1zM20 42h1v1h-1zM21 42h1v1h-1zM22 42h1v1h-1zM23 42h1v1h-1zM24 42h1v1h-1zM29 42h1v1h-1zM32 42h1v1h-1zM33 42h1v1h-1zM34 42h1v1h-1zM36 42h1v1h-1zM39 42h1v1h-1zM42 42h1v1h-1zM43 42h1v1h-1zM44 42h1v1h-1zM4 43h1v1h-1zM10 43h1v1h-1zM13 43h1v1h-1zM15 43h1v1h-1zM16 43h1v1h-1zM17 43h1v1h-1zM19 43h1v1h-1zM20 43h1v1h-1zM21 43h1v1h-1zM24 43h1v1h-1zM25 43h1v1h-1zM30 43h1v1h-1zM31 43h1v1h-1zM34 43h1v1h-1zM35 43h1v1h-1zM37 43h1v1h-1zM38 43h1v1h-1zM40 43h1v1h-1zM41 43h1v1h-1zM43 43h1v1h-1zM4 44h1v1h-1zM5 44h1v1h-1zM6 44h1v1h-1zM7 44h1v1h-1zM8 44h1v1h-1zM9 44h1v1h-1zM10 44h1v1h-1zM12 44h1v1h-1zM13 44h1v1h-1zM14 44h1v1h-1zM15 44h1v1h-1zM16 44h1v1h-1zM18 44h1v1h-1zM19 44h1v1h-1zM23 44h1v1h-1zM25 44h1v1h-1zM27 44h1v1h-1zM29 44h1v1h-1zM30 44h1v1h-1zM32 44h1v1h-1zM35 44h1v1h-1zM36 44h1v1h-1zM41 44h1v1h-1zM43 44h1v1h-1z"
+              fill="#000"
+            />
+          </svg>
+        </div>
+        <p class="phurl">
+          http://192.168.1.24:4400/v/Jq7c2xTnV0pL4hYd/frames/diligent-kite/playground/color-swatches.html
+        </p>
+        <p class="phnote">
+          Same network only. The link opens diligent-kite read only and ends
+          when this card closes.
+        </p>
+      </div>
+    </div>
+    <div class="pill">
+      <button class="tb on" title="Move V">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 3l14 8-6 2-3 6z" />
+        </svg></button
+      ><button class="tb" title="Hand H">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M8 13V5.5a1.5 1.5 0 013 0V12M11 11V4a1.5 1.5 0 013 0v7M14 11V5.5a1.5 1.5 0 013 0V14a7 7 0 01-7 7 6 6 0 01-5-3l-2.5-4.5a1.5 1.5 0 012.5-1.5L8 15"
+          />
+        </svg></button
+      ><button class="tb" title="Frame F">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
+        </svg></button
+      ><button class="tb" title="Text T">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+        </svg></button
+      ><button class="tb" title="Rectangle R">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="4" y="5" width="16" height="14" rx="1.5" />
+        </svg></button
+      ><span class="caret"
+        ><svg
+          class="ic"
+          width="9"
+          height="9"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 9l6 6 6-6" /></svg></span
+      ><button class="tb" title="Note N">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 5h16v11H9l-5 4z" />
+        </svg></button
+      ><span class="sep"></span
+      ><button class="tb" title="Undo">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M9 14L4 9l5-5" />
+          <path d="M4 9h11a5 5 0 010 10h-3" />
+        </svg></button
+      ><button class="tb" title="Redo">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 14l5-5-5-5" />
+          <path d="M20 9H9a5 5 0 000 10h3" />
+        </svg></button
+      ><span class="sep"></span
+      ><button class="tb" title="Zoom to fit">
+        <svg
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg></button
+      ><button class="tb" title="Theme">
+        <svg
+          data-theme-only="dark"
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" /></svg
+        ><svg
+          data-theme-only="light"
+          class="ic"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path
+            d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"
+          />
+        </svg></button
+      ><span class="sep"></span
+      ><span class="seg"
+        ><button class="on">
+          <svg
+            class="ic"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 20l4-1 11-11-3-3L5 16z" /></svg
+          >Edit</button
+        ><button>
+          <svg
+            class="ic"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M7 5l12 7-12 7z" /></svg
+          >Play
+        </button></span
+      >
+    </div>
+  </body>
+</html>

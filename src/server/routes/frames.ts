@@ -1,6 +1,6 @@
 import { type BigIntStats, createReadStream } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
-import { extname, join, sep } from 'node:path'
+import { extname, join, relative, sep } from 'node:path'
 import { Readable } from 'node:stream'
 
 import { Hono } from 'hono'
@@ -75,12 +75,15 @@ const CONTENT_TYPES: Record<string, string> = {
  * each use, so an edit shows on the next load and an unchanged file answers
  * 304 with no body. A frame path carrying `?at=<hash>` serves the
  * version `version` holds under that hash in its place, with the same head,
- * and any other path carrying it answers 404.
+ * and any other path carrying it answers 404. `base` prefixes the sheet URLs
+ * the head imports, for a listener serving these routes under a path of its
+ * own, since the head names them from the server's root.
  */
 export function frameRoutes(
   root: string,
   look: FrameLook,
   version?: FrameVersion,
+  base = '',
 ): Hono {
   const app = new Hono()
 
@@ -160,7 +163,10 @@ export function frameRoutes(
     }
     const body = injectHead(
       bytes,
-      frameHead(sheetUrls(project, look.sheets(project)), contentHash(bytes)),
+      frameHead(
+        sheetUrls(project, look.sheets(project)).map((url) => `${base}${url}`),
+        contentHash(bytes),
+      ),
     )
 
     return c.body(body, 200, {
@@ -269,10 +275,24 @@ async function resolveFile(
     if (!projectDir.startsWith(root + sep)) return null
     const file = await realpath(join(projectDir, page, ...rest))
     if (!file.startsWith(projectDir + sep)) return null
+    if (!servableInProject(relative(projectDir, file).split(sep))) return null
     return (await stat(file)).isFile() ? file : null
   } catch {
     return null
   }
+}
+
+/**
+ * Whether a file the request reached is one the route may serve, read off
+ * where it really sits in its project rather than the name asked for, so a
+ * symlink in `assets/` naming a record or a dot-named path is refused as the
+ * name itself would be.
+ */
+function servableInProject(segments: string[]): boolean {
+  if (segments.some((segment) => segment.startsWith('.'))) return false
+  const [first = '', name = ''] = segments
+  if (segments.length === 1) return first === TOKEN_FILE
+  return first === ASSETS_FOLDER || !isRecord(name)
 }
 
 function isRecord(name: string): boolean {

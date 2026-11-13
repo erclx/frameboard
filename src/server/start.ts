@@ -73,6 +73,7 @@ import {
   pageView,
   queuedFor,
 } from './notes/store'
+import { createPreviewSlot } from './preview/listener'
 
 // Loopback only: the board serves the operator's own files, so it stays off the LAN.
 const HOSTNAME = '127.0.0.1'
@@ -387,6 +388,7 @@ async function listen({
     })
   const hug = createHug({ root, measure })
   const assetUsage = createAssetUsage(root)
+  const preview = createPreviewSlot({ root, facesDir, tokens })
   const app = createApp({
     clientDir,
     facesDir,
@@ -402,6 +404,7 @@ async function listen({
     renderFrame,
     renderFilmstrip,
     clipboard: clipboardFiles(),
+    preview,
     thumbnails,
     measure,
     frameVersion: tracker.version,
@@ -553,6 +556,8 @@ async function listen({
           hub.close(),
           browser.close(),
           emptyTrash(root),
+          // No phone link outlives the board that opened it.
+          preview.stop(),
         ])
         await new Promise<void>((done, fail) => {
           server.close((error) => (error ? fail(error) : done()))

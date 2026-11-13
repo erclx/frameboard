@@ -17,6 +17,7 @@ import {
   projectRecordSchema,
 } from './list'
 import { listenerSchema, notesFileSchema } from './notes'
+import { previewStartSchema, previewStopSchema } from './preview'
 import { referencesCheckSchema, referencesSyncSchema } from './references'
 import { selectionResultSchema } from './selection'
 import { tokenTableSchema } from './tokens'
@@ -47,4 +48,6 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   find: findResultSchema,
   referencesSync: referencesSyncSchema,
   referencesCheck: referencesCheckSchema,
+  previewStart: previewStartSchema,
+  previewStop: previewStopSchema,
 }
