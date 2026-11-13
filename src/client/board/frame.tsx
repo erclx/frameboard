@@ -621,7 +621,7 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         <PopoverTitle className="text-[11px] font-semibold text-muted-foreground">
           {counted} on {frame.name}
         </PopoverTitle>
-        <FindingsList findings={findings} />
+        <FindingsList findings={findings} project={frame.project} />
       </PopoverContent>
     </Popover>
   )
