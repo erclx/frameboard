@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
+import { type Device, deviceOf } from '@/shared/frame-device'
 import {
   FRAME_GAP,
   type FrameSizeName,
@@ -63,6 +64,11 @@ export interface WidthsOptions {
   widths?: readonly number[] | false
 }
 
+export interface DeviceOptions {
+  /** The device the board draws around the frame, absent for none. */
+  device?: Device
+}
+
 export type FrameFlag = 'hidden' | 'locked'
 
 /**
@@ -82,6 +88,7 @@ export async function addFrame(
     PositionOptions &
     ScrollOptions &
     WidthsOptions &
+    DeviceOptions &
     JournalOptions,
 ): Promise<FrameRecord> {
   const { journal } = options
@@ -158,6 +165,7 @@ export async function addFrame(
         ...hugs,
         scroll,
         widths,
+        ...(options.device ? { device: options.device } : {}),
       })
       layout.renumber()
     },
@@ -425,9 +433,9 @@ export function linkedWidths(
   }))
 }
 
-/** The x a copy placed beside a frame takes, past the row of linked widths it draws. */
-export function pastExtent({ box, widths }: Placement): number {
-  const extent = drawnExtent(box, widths)
+/** The x a copy placed beside a frame takes, past its device and the row of linked widths it draws. */
+export function pastExtent({ box, widths, device }: Placement): number {
+  const extent = drawnExtent(box, widths, device)
   return extent.x + extent.width + FRAME_GAP
 }
 
@@ -816,6 +824,23 @@ export async function setFrameFlag(
   }))
 }
 
+/**
+ * Sets the device the board draws around a frame, or clears it with null.
+ * The frame's file and box are left as they stand, since the bezel wraps
+ * whatever size the frame is.
+ */
+export async function setFrameDevice(
+  root: string,
+  ref: string,
+  device: Device | null,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  return updatePlacement(root, ref, options, (placement) => {
+    const { device: _held, ...rest } = placement
+    return device ? { ...rest, device } : rest
+  })
+}
+
 export async function deleteFrame(
   root: string,
   ref: string,
@@ -948,7 +973,9 @@ class PageLayout {
    * written once it is on or when the entry holds it, and a scroll entry
    * writes both hug flags false, since it fixes both axes. `widths` is
    * written while it lists one and removed once it lists none, and a held
-   * value no reader understands is left as it stands.
+   * value no reader understands is left as it stands. `device` is written
+   * while the frame holds one and removed once it is cleared, leaving a held
+   * value no reader understands as `widths` does.
    */
   set(
     name: string,
@@ -959,6 +986,7 @@ class PageLayout {
       locked,
       scroll,
       widths,
+      device,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
     }: Placement,
@@ -983,10 +1011,12 @@ class PageLayout {
       ...(widths.length > 0
         ? { widths: widths.map(({ width, height }) => ({ width, height })) }
         : {}),
+      ...(device ? { device } : {}),
     }
     if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
     }
+    if (!device && deviceOf(held?.device)) delete entry.device
     this.file.frames[name] = entry
     this.changed = true
   }

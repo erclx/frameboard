@@ -256,6 +256,7 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         <TextSection
           key={`${element.frame}\n${element.index}`}
           text={live.text}
+          keepsBreaks={live.keepsBreaks}
           disabled={disabled}
           write={write}
           element={element}

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { keyLabel } from '@/client/actions/keys'
 import { findAction } from '@/client/actions/registry'
+import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { stepOrder } from '../frame-order'
@@ -93,6 +94,15 @@ function Selection({
 }) {
   const [only] = frames
   const several = frames.length > 1
+  // The chips stand past any device body drawn below the selection's box.
+  const below = Math.max(
+    0,
+    ...frames.map(({ box, device }) => {
+      const body = bezelBox(box, device)
+      return body.y + body.height - (bounds.y + bounds.height)
+    }),
+  )
+  const chipAt = below ? { top: `calc(100% + ${below}px)` } : undefined
   return (
     <div
       data-selection
@@ -135,6 +145,7 @@ function Selection({
         data-chip
         hidden={inside}
         className={`${CHIP} flex items-center gap-1`}
+        style={chipAt}
       >
         {only && !several ? (
           <FrameChip frame={only} order={order} />
@@ -142,7 +153,7 @@ function Selection({
           `${frames.length} frames`
         )}
       </span>
-      <span data-move-chip hidden className={CHIP} />
+      <span data-move-chip hidden className={CHIP} style={chipAt} />
     </div>
   )
 }

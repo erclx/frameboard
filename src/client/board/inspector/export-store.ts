@@ -16,13 +16,16 @@ export const THEME_OPTIONS: readonly { value: ExportTheme; label: string }[] = [
 export interface ExportSettings {
   scale: ExportScale
   theme: ExportTheme
+  /** Whether a frame holding a device exports inside it, off unless picked. */
+  device?: boolean
 }
 
-/** The scale and theme the Export section last picked, carried across frames for the session, which the palette's Export as PNG exports at too. */
+/** The scale, theme, and device switch the Export section last picked, carried across frames for the session, which the palette's Export as PNG exports at too. */
 export const exportStore: StoreApi<ExportSettings> =
   createStore<ExportSettings>()(() => ({
     scale: 2,
     theme: 'both',
+    device: false,
   }))
 
 /** The files an export saves, one per theme, in the form `capture` names a scaled image. */
@@ -34,13 +37,14 @@ export function exportFileNames(
 }
 
 /**
- * Downloads one frame's PNG at a scale, in one theme or both. Every theme
+ * Downloads one frame's PNG at a scale, in one theme or both, inside its
+ * device when the settings ask and the frame holds one. Every theme
  * renders through the board's PNG route before any file downloads, so a
  * refusal on one leaves nothing half saved. It writes nothing to the board,
  * so a view-only tab exports too.
  */
 export async function exportFrame(
-  frame: Pick<FrameRecord, 'ref' | 'name'>,
+  frame: Pick<FrameRecord, 'ref' | 'name' | 'device'>,
   settings: ExportSettings,
 ): Promise<void> {
   const files = exportFileNames(frame.name, settings)
@@ -48,6 +52,7 @@ export async function exportFrame(
     frame.ref,
     themesOf(settings.theme),
     settings.scale,
+    settings.device && frame.device ? { device: '1' } : {},
   )
   blobs.forEach((blob, index) => download(blob, files[index] ?? ''))
 }

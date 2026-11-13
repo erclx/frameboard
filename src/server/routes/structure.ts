@@ -11,6 +11,7 @@ import {
   orderFrame,
   readFrame,
   renameFrame,
+  setFrameDevice,
   setFrameFlag,
   setHeightModes,
 } from '@/server/board/frames'
@@ -46,6 +47,7 @@ import type { MeasureFrame } from '@/server/live/hug'
 import { writeStarterSheet } from '@/server/look/starter'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -104,6 +106,10 @@ const frameHeightSchema = z.object({
 const pasteSchema = z.object({
   ref,
   at: z.object({ x: coordinate, y: coordinate }).optional(),
+})
+const frameDeviceSchema = z.object({
+  refs,
+  device: z.enum(DEVICES).nullable(),
 })
 const frameFlagSchema = z.object({
   refs,
@@ -384,6 +390,18 @@ export function structureRoutes(
       body.refs,
       (frame, journal) =>
         setFrameFlag(root, frame, body.flag, { cwd, on: body.on, journal }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frames })
+  })
+
+  /** Sets or clears the device drawn around each frame, in one step, leaving every frame file alone. */
+  app.post('/api/frame/device', async (c) => {
+    const body = await parseBody(c.req.raw, frameDeviceSchema)
+    const frames = await eachFrame(
+      body.refs,
+      (frame, journal) =>
+        setFrameDevice(root, frame, body.device, { cwd, journal }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })

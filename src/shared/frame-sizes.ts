@@ -54,6 +54,13 @@ export const DEVICE_SIZES = [
     height: 852,
   },
   {
+    name: 'iphone-18-pro',
+    label: 'iPhone 18 Pro',
+    group: 'phone',
+    width: 402,
+    height: 874,
+  },
+  {
     name: 'android',
     label: 'Android',
     group: 'phone',

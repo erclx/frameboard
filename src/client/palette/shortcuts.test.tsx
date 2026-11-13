@@ -76,7 +76,50 @@ describe('ShortcutsSheet', () => {
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Tools', 'Selection', 'View', 'Frames', 'Arrange', 'Agents'])
+    ).toEqual([
+      'Tools',
+      'Selection',
+      'View',
+      'Frames',
+      'Arrange',
+      'Agents',
+      'Present',
+    ])
+  })
+
+  it('scrolls its body rather than running past the window', async () => {
+    renderOnBoard(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      window.innerHeight,
+    )
+  })
+
+  it('lists the present keys under Present', async () => {
+    register(
+      action('present.start', { keys: ['Shift+KeyP'] }),
+      action('present.next', { keys: ['ArrowRight', 'ArrowDown', 'Space'] }),
+      action('present.previous', { keys: ['ArrowLeft', 'ArrowUp'] }),
+      action('present.leave', { keys: ['Escape'] }),
+    )
+    renderOnBoard(<ShortcutsSheet />)
+
+    act(() => openOverlay('shortcuts'))
+    await screen.findByRole('dialog')
+
+    const chips = (label: string) =>
+      [
+        ...row(label).querySelectorAll(
+          ':scope > [data-slot="kbd-group"] > kbd',
+        ),
+      ].map((chip) => chip.textContent)
+    expect(chips('Present page')[0]).toMatch(/^(?:Shift\+|⇧ )P$/)
+    expect(chips('Next slide')).toEqual(['→', 'Space'])
+    expect(chips('Previous slide')).toEqual(['←'])
+    expect(chips('Leave')).toEqual(['Esc'])
   })
 
   it('lists the agent change keys under Agents', async () => {

@@ -375,7 +375,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
-  test('a placed Text opens for typing, and a double-click on a selected text element edits it the same way', async ({
+  test('a placed Text opens for typing, and one double-click on a text element edits it the same way', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
@@ -389,7 +389,7 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
     await page.keyboard.type('Hello')
-    await page.keyboard.press('Enter')
+    await page.keyboard.press('Escape')
 
     await expect
       .poll(read)
@@ -401,16 +401,19 @@ test.describe('placing text and shapes into a frame', () => {
     await expect
       .poll(() => shownHash(page))
       .toBe(createHash('sha256').update(read()).digest('hex'))
-    await page.keyboard.down('Meta')
-    await page.mouse.click(headline.x, headline.y)
-    await page.keyboard.up('Meta')
-    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    // One double-click with nothing selected opens the text.
     await page.mouse.dblclick(headline.x, headline.y)
     await expect(hero(page).locator('h1')).toBeFocused()
-    await page.keyboard.type('Welcome')
+    await page.keyboard.type('Wel')
     await page.keyboard.press('Enter')
+    await page.keyboard.type('come')
+    await page.keyboard.press('Escape')
 
-    await expect.poll(read).toContain('<h1 data-name="Headline">Welcome</h1>')
+    await expect
+      .poll(read)
+      .toContain(
+        '<h1 data-name="Headline" style="white-space: pre-line">Wel\ncome</h1>',
+      )
   })
 
   test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
@@ -426,7 +429,7 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
     await page.keyboard.type('Hello')
-    await page.keyboard.press('Enter')
+    await page.keyboard.press('Escape')
     await expect.poll(read).toContain('>Hello</p>')
     await expect
       .poll(() => shownHash(page))

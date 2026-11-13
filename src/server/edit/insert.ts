@@ -6,6 +6,7 @@ import {
 } from 'parse5'
 
 import type { TokenRow } from '@/shared/records/tokens'
+import type { ShapePaint } from '@/shared/shape-paint'
 import { STARTER_FONTS } from '@/shared/starter-tokens'
 
 import { type Element, type FrameTree, hasTag, parseFrame } from './address'
@@ -38,12 +39,6 @@ export interface PlacedAsset {
 export interface ShapeSize {
   readonly width?: number
   readonly height?: number
-}
-
-/** The colors a shape is painted in, each a `var()` of a token or a raw hex. */
-export interface ShapePaint {
-  readonly fill: string
-  readonly line: string
 }
 
 /** The gap a new element goes into, as `querySelectorAll('*')` indices. */
@@ -90,11 +85,7 @@ export type Inserted =
   | EditRefused
 
 const SHAPE_SIZE = 100
-const FILL_TOKENS = ['--muted', '--secondary', '--accent']
-const LINE_TOKEN = '--border'
 const TEXT_FONT_TOKEN = '--font-text'
-/** Raw on purpose, so the check names it once the project sets no color token. */
-const RAW_GREY = '#d9d9d9'
 
 const PAINT_VALUE = /^(?:var\(--[\w-]+\)|#[0-9a-f]{6})$/i
 
@@ -126,23 +117,6 @@ const CLOSED = new Set([
   'html',
   'head',
 ])
-
-/**
- * A shape's fill, being the first of the muted, secondary, and accent tokens
- * the project sets, else its first color token, and its line, being the
- * border token else that first color token. With no color token at all, both
- * are a raw grey.
- */
-export function shapePaint(tokens: readonly TokenRow[]): ShapePaint {
-  const names = new Set(tokens.map((row) => row.name))
-  const firstColor = tokens.find((row) => row.group === 'color')?.name
-  const paint = (name: string | undefined) =>
-    name === undefined ? RAW_GREY : `var(${name})`
-  return {
-    fill: paint(FILL_TOKENS.find((name) => names.has(name)) ?? firstColor),
-    line: paint(names.has(LINE_TOKEN) ? LINE_TOKEN : firstColor),
-  }
-}
 
 /**
  * The family placed text sets, being the project's text font token, else

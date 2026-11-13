@@ -37,7 +37,7 @@ With nothing typed the palette opens on Recent, then the actions fitting the sel
 - A hidden frame's row is marked and shows the frame first, jumping once the board holds it shown, since `pruneSelection` would drop it sooner. A read-only tab greys it.
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
 
-The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text. Its header carries the Single-key shortcuts switch, an off key stays listed but faint, and an Agents group lists `]` and `[`.
+The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text. Its header carries the Single-key shortcuts switch, an off key stays listed but faint, an Agents group lists `]` and `[`, and a Present group last lists Shift+P, the arrows and Space, and Esc.
 
 - On a board the Tools group ends with All projects, `nav.home` on Alt+ArrowUp
 - On home it reads `/` through wouter's `useRoute` and shows Projects, in a wider `1.3fr` column, and General in place of the board's sections, with H J K L faint while the switch is off

@@ -19,6 +19,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Height:** a Fixed, Fit, and Scroll radio row under the size fields, read off `scroll` and `hugHeight`, checking none and reading `Mixed` where frames differ.
 - **Height write:** a pick writes every frame through `POST /api/frame/height` as one undo step, and a refusal puts the stored mode back. The menu's and palette's Fit height run that route too.
+- **Device:** a None, Phone, and Tablet radio row under Height, drawn through the same `ChoiceRow`, writing every frame through `POST /api/frame/device` as one undo step
 - **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
@@ -50,13 +51,15 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
 - **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
 - **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
-- **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. A newline becomes a space, since a `<br>` would end the text-only state that shows the field.
+- **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. The field adds no line.
+- **Text breaks:** a pasted newline becomes a space, unless the element's style shows breaks as lines, as a text given lines on the canvas does.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Export:** one frame alone carries scale and theme menus, a button, and a caption naming each `<frame>.<theme>@<n>x.png`. Every theme renders before any file downloads.
+- **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
 - **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
 - **Use a token:** a raw value whose red, green, and blue equal a token's in the shown theme offers `Use <token>` after its percent, naming the first in sheet order.

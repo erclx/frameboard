@@ -15,8 +15,8 @@ let board: FixtureBoard
 let server: BoardServer
 
 /**
- * Layers lists `about` over `hero`, and a hidden `draft` tops both, so the
- * page presents `about` then `hero`.
+ * `hero` sits at x 0 and `about` at x 1520 on one row, and a hidden `draft`
+ * sits past both, so the page presents `hero` then `about`.
  */
 test.beforeEach(async () => {
   board = copyFixtureBoard('basic')
@@ -63,20 +63,26 @@ test.describe('presenting a page', () => {
     await open(page)
 
     await page.getByRole('button', { name: 'Present page' }).click()
-    await expect(shown(page)).toHaveAttribute('title', 'about')
+    await expect(shown(page)).toHaveAttribute('title', 'hero')
 
     await page.keyboard.press('ArrowRight')
-    await expect(shown(page)).toHaveAttribute('title', 'hero')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
     await page.keyboard.press('Space')
-    await expect(shown(page)).toHaveAttribute('title', 'hero')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
     await expect(bar(page)).toContainText('2 / 2')
 
     await page.keyboard.press('Escape')
 
     await expect(presenting(page)).toHaveCount(0)
     await expect(
-      page.locator('[data-frame="webapp/home/hero"][data-selected]'),
+      page.locator('[data-frame="webapp/home/about"][data-selected]'),
     ).toHaveCount(1)
+    await expect(
+      page.getByRole('button', { name: 'Present page' }),
+    ).toBeFocused()
+    // The board's tooltips open with no delay, so one the returned focus
+    // opened would already show once that focus has landed.
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0)
   })
 
   test('steps and leaves from the bar a pointer move shows', async ({
@@ -84,12 +90,12 @@ test.describe('presenting a page', () => {
   }) => {
     await open(page)
     await page.keyboard.press('Shift+P')
-    await expect(shown(page)).toHaveAttribute('title', 'about')
+    await expect(shown(page)).toHaveAttribute('title', 'hero')
 
     await page.mouse.move(200, 200)
     await page.mouse.move(220, 210)
     await bar(page).getByRole('button', { name: 'Next frame' }).click()
-    await expect(shown(page)).toHaveAttribute('title', 'hero')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
     await bar(page).getByRole('button', { name: 'Leave presenting' }).click()
 
     await expect(presenting(page)).toHaveCount(0)
@@ -100,12 +106,12 @@ test.describe('presenting a page', () => {
   }) => {
     await open(page)
     await page.keyboard.press('Shift+P')
-    await expect(shown(page)).toHaveAttribute('title', 'about')
+    await expect(shown(page)).toHaveAttribute('title', 'hero')
 
     await shown(page).click()
     await page.keyboard.press('ArrowRight')
 
-    await expect(shown(page)).toHaveAttribute('title', 'hero')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
   })
 
   test('keeps the board keys from the board while presenting', async ({
