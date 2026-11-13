@@ -386,7 +386,10 @@ export function elementActions(context: ElementContext): Action[] {
           placed ? [placed] : [],
         )
         context.wrap(found.page, found.keys, {
-          flow: guessFlow(found.members.map(({ box }) => box)),
+          flow: guessFlow(
+            found.members.map(({ box }) => box),
+            found.members.map(({ margin }) => margin),
+          ),
           // A member in the flow keeps the container there too.
           spot:
             placed.length === found.members.length

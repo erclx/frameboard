@@ -1,5 +1,6 @@
 import { boundsOf, type Box } from '../geometry/box'
 import { type Corner, resizeBox, scaleBoxes } from '../geometry/resize'
+import type { Margins } from '../place/flow-guess'
 import {
   type ElementSize,
   type PlacedOffsets,
@@ -16,6 +17,8 @@ export interface GroupMember {
   placed: PlacedOffsets | null
   /** How it takes a corner resize, null for one sized by what it holds. */
   read: Pick<ResizeRead, 'kind' | 'inset'> | null
+  /** The margins the browser computed for it, absent where nothing measured them, which a wrap reads as none. */
+  margin?: Margins
 }
 
 /** The declarations a group drag writes on one member. */

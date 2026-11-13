@@ -47,4 +47,42 @@ describe('guessFlow', () => {
       gap: 0,
     })
   })
+
+  it('takes both neighbors’ margins out of the space between them', () => {
+    const boxes = [
+      { x: 0, y: 0, width: 40, height: 20 },
+      { x: 100, y: 0, width: 40, height: 20 },
+    ]
+    const margins = [
+      { top: 0, right: 12, bottom: 0, left: 5 },
+      { top: 0, right: 7, bottom: 0, left: 8 },
+    ]
+
+    expect(guessFlow(boxes, margins)).toEqual({ direction: 'row', gap: 40 })
+  })
+
+  it('reads margins that collapsed in a column as no gap', () => {
+    // A heading over a paragraph, 21 px apart where their 21 and 16 collapsed.
+    const boxes = [
+      { x: 0, y: 0, width: 200, height: 37 },
+      { x: 0, y: 58, width: 200, height: 18 },
+    ]
+    const margins = [
+      { top: 21, right: 0, bottom: 21, left: 0 },
+      { top: 16, right: 0, bottom: 16, left: 0 },
+    ]
+
+    expect(guessFlow(boxes, margins)).toEqual({ direction: 'column', gap: 0 })
+  })
+
+  it('reads a box with no margins named as having none', () => {
+    const boxes = [
+      { x: 0, y: 0, width: 40, height: 20 },
+      { x: 100, y: 0, width: 40, height: 20 },
+    ]
+
+    expect(
+      guessFlow(boxes, [undefined, { top: 0, right: 0, bottom: 0, left: 10 }]),
+    ).toEqual({ direction: 'row', gap: 50 })
+  })
 })

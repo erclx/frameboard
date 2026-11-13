@@ -396,7 +396,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect
       .poll(read)
       .toMatch(
-        /<div style="display: flex; flex-direction: column; gap: \d+px">\s*<h1 data-name="Headline">hero<\/h1>\s*<p data-name="Caption">/,
+        /<div style="display: flex; flex-direction: column; gap: 0px">\s*<h1 data-name="Headline">hero<\/h1>\s*<p data-name="Caption">/,
       )
     await expect(page.locator('[data-element-selection]')).toHaveCount(1)
 

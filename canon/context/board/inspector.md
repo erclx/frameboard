@@ -35,6 +35,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
 - **Use auto layout:** the Layout header's icon button runs the wrap action behind Shift+A on one element or several siblings, and stays focusable while disabled so its tooltip gives the reason
+- **Wrap order:** a wrap keeps its members in document order, never screen order, so an element placed left of an earlier one lands after it in a row
+- **Wrap gap:** the gap is the space between neighbors less both margins, which flex keeps apart, and margins that collapsed in a block parent leave it at 0
 - **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
 - **Rule caption:** names the selector of a flow rule several elements share, with its count from the static cascade. An unread sheet names no rule.
 - **Gap:** writes `gap` in px. Auto gap writes `justify-content: space-between`, and off drops the element's own value or writes `flex-start`.

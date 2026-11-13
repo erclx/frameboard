@@ -6,6 +6,7 @@ import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
 import { degreesOf, previewStyle } from '../inspector/element/styles'
 import { writeElement, writeElements } from '../inspector/element/write'
+import type { Margins } from '../place/flow-guess'
 import type { ElementKey } from '../selection'
 import type { GroupMember, MemberEdit } from './group'
 
@@ -367,8 +368,21 @@ export function shownGroup(
       },
       placed: placedIn(element, elements),
       read: readResize(element),
+      margin: marginsOf(element),
     }
   })
+}
+
+/** The margins the frame's own window computed for `element`, 0 where it reads none. */
+function marginsOf(element: Element): Margins {
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
+  const px = (value: string | undefined) => Number.parseFloat(value ?? '') || 0
+  return {
+    top: px(style?.marginTop),
+    right: px(style?.marginRight),
+    bottom: px(style?.marginBottom),
+    left: px(style?.marginLeft),
+  }
 }
 
 /** A drag of several elements, previewed on their live nodes and written once on release. */
