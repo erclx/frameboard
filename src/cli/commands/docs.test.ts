@@ -75,6 +75,7 @@ describe('docs', () => {
       'frame hide',
       'frame lock',
       'edit',
+      'remove',
       'check',
       'notes',
       'notes reply',
