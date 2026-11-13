@@ -24,6 +24,7 @@ import {
   type Remap,
   removeFrameFile,
   removeFrameFileAll,
+  wrapFrameFile,
 } from '@/server/edit/frame-file'
 import { elementMarkup, type InsertKind, textFont } from '@/server/edit/insert'
 import { placeElement } from '@/server/edit/place'
@@ -39,6 +40,7 @@ import {
   type PlaceResult,
   type RecolorResult,
   type RemoveResult,
+  type WrapResult,
 } from '@/shared/records/edit'
 import { shapePaint } from '@/shared/shape-paint'
 
@@ -178,6 +180,19 @@ const placeSchema = z.union([
       .max(BATCH),
   }),
 ])
+
+const wrapSchema = z.object({
+  ref: z.string().min(1).max(1024),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The sibling elements to wrap, by their index in the bytes `hash` names. */
+  indexes: z.array(z.int().min(0)).min(1).max(BATCH),
+  flow: z.object({
+    direction: z.enum(['row', 'column']),
+    gap: z.number().min(0).max(10_000),
+  }),
+  /** Where the container sits when every member was placed freely, null to sit in the flow. */
+  spot: z.object({ left: offset, top: offset }).nullable(),
+})
 
 const recolorSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -690,6 +705,56 @@ export function editRoutes(
       index: body.index,
       hash: result.hash,
       sized: [...result.sized],
+    }
+    return c.json({ ok: true, data })
+  })
+
+  app.post('/api/frames/wrap', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, wrapSchema)
+    const frame = await resolveFrameRef(root, body.ref, { cwd: root })
+    const ref = `${frame.project}/${frame.page}/${frame.name}`
+    await refuseClaimed(root, [ref], new Date())
+    const source = readFrame(frame)
+    // Facts read from other bytes than the hash names would pick the wrong tags.
+    const facts =
+      contentHash(source.html) === body.hash
+        ? elementPlaceFacts(source, tokenSheets(frame.project))
+        : []
+    const result = wrapFrameFile(
+      frame.path,
+      body.hash,
+      body.indexes,
+      body.flow,
+      body.spot,
+      facts,
+    )
+    if (!result.ok) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: result.reason,
+            message: result.detail,
+            details: { ref, indexes: body.indexes },
+          },
+        },
+        409,
+      )
+    }
+    const journal = history.journal()
+    journal.element(frame.path, ref, result.span)
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: [ref],
+    })
+    await follow(frame, body.hash, result.hash, result.remap)
+    const data: WrapResult = {
+      ref,
+      index: result.index,
+      members: [...result.members],
+      hash: result.hash,
     }
     return c.json({ ok: true, data })
   })

@@ -153,8 +153,15 @@ export function swapSpan(
   if (!found) return undefined
   const [start, end] = found.range
   const html = source.slice(0, start) + span[OTHER[side]] + source.slice(end)
-  const moved = { ...span, index: found.index, count: tree.elements.length }
   const written = parseFrame(html)
+  // A whole element's two sides may hold different elements, as a wrap's
+  // parent does, so its count is the one the file holds after the swap.
+  const moved = {
+    ...span,
+    index: found.index,
+    count:
+      span.scope === 'element' ? written.elements.length : tree.elements.length,
+  }
   if (
     written.elements.length !== moved.count ||
     !matches(html, written.elements[moved.index], span.scope, span[OTHER[side]])
