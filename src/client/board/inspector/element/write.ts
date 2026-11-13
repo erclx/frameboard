@@ -3,6 +3,7 @@ import { BoardWriteError, writeBoard } from '@/client/live/write'
 import type { EditResult } from '@/shared/records/edit'
 
 import { WaitDropped, whenFree } from '../../claims/waiting'
+import { catchUpTree, trees } from '../../element/tree'
 import { renderedHash } from '../../frame-dom'
 import {
   awaitHash,
@@ -52,6 +53,19 @@ export interface WriteDeps {
   send?: typeof fetch
   /** Shows a refusal, the kit's toast by default. */
   notify?: (refusal: Refusal) => void
+  /** Brings the frame's element tree up to the bytes an edit answered, `catchUpHeldTree` by default. */
+  catchUp?: (ref: string, hash: string) => Promise<void>
+}
+
+/**
+ * Brings a frame's element tree up to `hash` when the board holds one, since
+ * a Layers row keys a write off that tree. A frame whose tree nobody asked
+ * for is left alone.
+ */
+function catchUpHeldTree(ref: string, hash: string): Promise<void> {
+  return trees.store.getState().byRef[ref]
+    ? catchUpTree(ref, hash)
+    : Promise.resolve()
 }
 
 /**
@@ -146,6 +160,12 @@ export function writeElements(
  * already queued on it, handing it what the one before it landed, so a
  * write made from the hash that one started from is sent from the hash it
  * answered, or not at all once it was refused.
+ *
+ * A turn stays the frame's latest until its write settles, and an element
+ * edit settles only once the frame's element tree holds the bytes it
+ * answered. A Layers row keys a move off that tree, so a move pressed from
+ * the tree before then is queued behind the edit and follows it, and one
+ * pressed after reads the answered bytes itself.
  */
 export function inFrameTurn(
   frame: string,
@@ -179,7 +199,12 @@ async function batchInTurn(
   page: string,
   { frame, hash: read }: ElementKey,
   edits: readonly ElementEdit[],
-  { selection = selectionStore, send = fetch, notify = showRefusal }: WriteDeps,
+  {
+    selection = selectionStore,
+    send = fetch,
+    notify = showRefusal,
+    catchUp = catchUpHeldTree,
+  }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
   if (before === null) {
@@ -239,6 +264,8 @@ async function batchInTurn(
     }
     done()
     settleLanded(selection, shownHash)
+    // The edit already landed, so a failed tree read only leaves the Layers keys to the reload.
+    await catchUp(frame, answer.hash).catch(() => {})
     const at = new Map(follows ? before.at : [])
     for (const [from, to] of landedAt) at.set(from, to)
     return {
@@ -268,7 +295,12 @@ async function editInTurn(
   page: string,
   key: ElementKey,
   change: ElementChange,
-  { selection = selectionStore, send = fetch, notify = showRefusal }: WriteDeps,
+  {
+    selection = selectionStore,
+    send = fetch,
+    notify = showRefusal,
+    catchUp = catchUpHeldTree,
+  }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
   // The refused edit's toast speaks for the ones queued behind it.
@@ -324,6 +356,8 @@ async function editInTurn(
     }
     done()
     settleLanded(selection, shownHash)
+    // The edit already landed, so a failed tree read only leaves the Layers keys to the reload.
+    await catchUp(key.frame, answer.hash).catch(() => {})
     const at = new Map(follows ? before.at : [])
     at.set(key.index, answer.index)
     return {
