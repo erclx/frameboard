@@ -63,6 +63,12 @@ describe('the scale a frame presents at', () => {
       fitScale({ width: 390, height: 844 }, { width: 1280, height: 800 }),
     ).toBeCloseTo(800 / 844)
   })
+
+  it('stops at twice the size for a frame under half the room', () => {
+    expect(
+      fitScale({ width: 390, height: 264 }, { width: 1280, height: 800 }),
+    ).toBe(2)
+  })
 })
 
 describe('presenting a page', () => {
@@ -82,6 +88,15 @@ describe('presenting a page', () => {
 
     expect(box?.width).toBeCloseTo(window.innerWidth)
     expect(box?.left).toBeCloseTo(0)
+  })
+
+  it('draws a small frame at twice its size, centered', () => {
+    present([frameOf('card', { box: { x: 0, y: 0, width: 390, height: 264 } })])
+
+    const box = shownFrame()?.parentElement?.getBoundingClientRect()
+
+    expect(box?.width).toBeCloseTo(780)
+    expect(box?.left).toBeCloseTo((window.innerWidth - 780) / 2)
   })
 
   it('steps by arrow in reading order, skipping hidden frames', async () => {
