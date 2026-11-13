@@ -13,6 +13,8 @@ import {
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
+import { elementArrangeId } from '../element/actions'
+import { useSelection } from '../selection'
 
 /** The Arrange buttons in three groups, as the reference draws them. */
 const GROUPS: readonly (readonly { id: string; icon: LucideIcon }[])[] = [
@@ -36,16 +38,25 @@ const GROUPS: readonly (readonly { id: string; icon: LucideIcon }[])[] = [
 ]
 
 const IDS = GROUPS.flat().map(({ id }) => id)
+const ELEMENT_IDS = IDS.map(elementArrangeId)
+
+interface ArrangeSectionProps {
+  /** Why every button stands disabled, shown under the row. */
+  note?: string
+}
 
 /**
- * Align and distribute for several selected frames, each button running its
- * registered action and naming it and its key on hover. Distribute stays
- * disabled until a third frame is selected.
+ * Align and distribute for several selected frames, or several selected
+ * elements, each button running its registered action and naming it and its
+ * key on hover. Distribute stays disabled until a third is selected.
  */
-export function ArrangeSection() {
-  const actions = useActions(IDS)
+export function ArrangeSection({ note }: ArrangeSectionProps) {
+  const elements = useSelection((state) => (state.elements?.length ?? 0) > 1)
+  const actions = useActions(elements ? ELEMENT_IDS : IDS)
   const byId = new Map(
-    actions.flatMap((action) => (action ? [[action.id, action] as const] : [])),
+    actions.flatMap((action, at) =>
+      action ? [[IDS[at] ?? action.id, action] as const] : [],
+    ),
   )
   return (
     <section
@@ -68,6 +79,9 @@ export function ArrangeSection() {
           </div>
         ))}
       </div>
+      {note ? (
+        <p className="mt-2 text-caption text-muted-foreground">{note}</p>
+      ) : null}
     </section>
   )
 }

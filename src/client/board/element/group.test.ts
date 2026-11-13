@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Box } from '../geometry/box'
 import {
+  arrangeMembers,
   groupBounds,
   groupBox,
   type GroupMember,
@@ -191,5 +193,50 @@ describe('scaleMembers', () => {
     const box = { x: 0, y: 0, width: 10, height: 10 }
 
     expect(scaleMembers(members, box, { ...box, width: 20 })).toEqual([])
+  })
+})
+
+describe('arrangeMembers', () => {
+  const toLeft = (boxes: Record<string, Box>) =>
+    Object.fromEntries(
+      Object.entries(boxes).map(([key, box]) => [key, { ...box, x: 0 }]),
+    )
+
+  it('moves each member offsets by as far as its box moved', () => {
+    const members = [
+      member({
+        index: 1,
+        box: { x: 0, y: 0, width: 10, height: 10 },
+        placed: { left: 5, top: 5 },
+      }),
+      member({
+        index: 2,
+        box: { x: 40, y: 30, width: 10, height: 10 },
+        placed: { left: 45, top: 35 },
+      }),
+    ]
+
+    expect(arrangeMembers(members, toLeft)).toEqual([
+      {
+        index: 2,
+        declarations: [
+          { property: 'left', value: '5px' },
+          { property: 'top', value: '35px' },
+        ],
+      },
+    ])
+  })
+
+  it('writes nothing while a member sits in the flow', () => {
+    const members = [
+      member({ index: 1 }),
+      member({
+        index: 2,
+        box: { x: 40, y: 0, width: 10, height: 10 },
+        placed: null,
+      }),
+    ]
+
+    expect(arrangeMembers(members, toLeft)).toEqual([])
   })
 })

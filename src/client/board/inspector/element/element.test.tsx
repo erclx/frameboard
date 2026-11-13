@@ -31,6 +31,7 @@ import { SelectionColors } from '../selection-colors'
 import { AppearanceSection } from './appearance'
 import { FillSection } from './fill'
 import { RotationRow } from './rotation'
+import { ARRANGE_FREE_ONLY } from './several'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
 import { type Rotation, useLiveElement } from './styles'
@@ -3416,9 +3417,10 @@ describe('InspectorPanel with several elements selected', () => {
   it('heads the panel with the count and the frame, over every section any member has', async () => {
     await mountAndSelect([3, 4, 5])
 
-    expect(headings().slice(0, 5)).toEqual([
+    expect(headings().slice(0, 6)).toEqual([
       '3 elements',
       'Position',
+      'Arrange',
       'Layout',
       'Appearance',
       'Typography · 1 of 3',
@@ -3426,6 +3428,16 @@ describe('InspectorPanel with several elements selected', () => {
     expect(screen.getByText('in hero')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Frame' })).toBeNull()
     expect(screen.queryByText(/using/)).toBeNull()
+  })
+
+  it('says why Arrange waits while an element sits in the flow', async () => {
+    await mountAndSelect([4, 5])
+
+    expect(
+      within(screen.getByRole('region', { name: 'Arrange' })).getByText(
+        ARRANGE_FREE_ONLY,
+      ),
+    ).toBeVisible()
   })
 
   it('names the color the elements were selected through', async () => {

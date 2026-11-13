@@ -13,9 +13,11 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
+import { align, distribute } from '@/shared/arrange'
 import type { ElementTree } from '@/shared/records/elements'
 
-import { NUDGE_REST_MS } from '../geometry/actions'
+import { ALIGNMENTS, DISTRIBUTIONS, NUDGE_REST_MS } from '../geometry/actions'
+import type { Box } from '../geometry/box'
 import { type ModeStore, modeStore } from '../mode'
 import { notesUi } from '../notes/tool'
 import { deleteElements, moveElementTo } from '../place/write'
@@ -27,7 +29,7 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
-import { type GroupMember, moveMembers } from './group'
+import { arrangeMembers, type GroupMember, moveMembers } from './group'
 import { type GroupEdit, shownGroup, startGroupEdit } from './resize'
 import { requestTree, treeOf, trees } from './tree'
 import { down, sibling, siblingPlace, up } from './walk'
@@ -252,6 +254,35 @@ export function elementActions(context: ElementContext): Action[] {
       timer = setTimeout(flush, NUDGE_REST_MS)
     },
   })
+  /**
+   * An align or a distribute of the selected elements, which takes `least`
+   * of them, every one placed freely, as one write. A member in the flow
+   * leaves it disabled, since its place is its container's alignment.
+   */
+  const arrange = (
+    least: number,
+    arranged: (boxes: Record<string, Box>) => Record<string, Box>,
+  ) => {
+    const ready = () => {
+      const state = selection.getState()
+      if (!elementSelected() || !context.writable() || !state.page) return null
+      const keys = selectedElements(state)
+      const members = keys.length >= least ? context.group(keys) : null
+      return members?.every(({ placed }) => placed !== null)
+        ? { page: state.page, keys, members }
+        : null
+    }
+    return {
+      enabled: () => ready() !== null,
+      run: () => {
+        const found = ready()
+        if (!found) return
+        const edits = arrangeMembers(found.members, arranged)
+        if (edits.length === 0) return
+        void context.editGroup(found.page, found.keys)?.commit(edits)
+      },
+    }
+  }
   // The walks and the sibling moves take no palette row. Enter, Tab, and the
   // Alt+Shift moves need focus on the board, which the open palette holds,
   // and Esc's walk up is a navigation key. The restack rows cover the moves.
@@ -277,6 +308,24 @@ export function elementActions(context: ElementContext): Action[] {
         ...nudge(dx * 10, dy * 10),
       },
     ]),
+    // Ahead of the frames' aligns, which hold the same keys, and off the
+    // palette, which lists the frames' rows under the same names.
+    ...ALIGNMENTS.map(({ id, label, alignment, key }): Action => ({
+      id: elementArrangeId(id),
+      label,
+      group: 'arrange',
+      palette: false,
+      keys: [key],
+      ...arrange(2, (boxes) => align(boxes, alignment)),
+    })),
+    ...DISTRIBUTIONS.map(({ id, label, axis, key }): Action => ({
+      id: elementArrangeId(id),
+      label,
+      group: 'arrange',
+      palette: false,
+      keys: [key],
+      ...arrange(3, (boxes) => distribute(boxes, axis)),
+    })),
     {
       id: 'element.down',
       label: 'Select child',
@@ -438,6 +487,11 @@ export function useElementActions(page: string): void {
       unregister()
     }
   }, [page])
+}
+
+/** The id an element's align or distribute takes beside the frames' `arrange.<name>`. */
+export function elementArrangeId(frameId: string): string {
+  return `element.${frameId.replace(/^arrange\./, '')}`
 }
 
 function sameKeys(a: readonly ElementKey[], b: readonly ElementKey[]): boolean {

@@ -135,3 +135,32 @@ export function scaleMembers(
     ]
   })
 }
+
+/**
+ * What an align or a distribute writes on each member: its offsets moved by
+ * as far as `arranged` moves its box, and nothing on one it leaves in place.
+ * It takes every member free, since a flow member's place is its container's,
+ * and writes nothing otherwise.
+ */
+export function arrangeMembers(
+  members: readonly GroupMember[],
+  arranged: (boxes: Record<string, Box>) => Record<string, Box>,
+): MemberEdit[] {
+  if (!members.every(({ placed }) => placed !== null)) return []
+  const after = arranged(
+    Object.fromEntries(members.map(({ index, box }) => [index, box])),
+  )
+  return members.flatMap(({ index, box, placed }) => {
+    const next = after[index]
+    if (!next || !placed || (next.x === box.x && next.y === box.y)) return []
+    return [
+      {
+        index,
+        declarations: [
+          { property: 'left', value: `${placed.left + next.x - box.x}px` },
+          { property: 'top', value: `${placed.top + next.y - box.y}px` },
+        ],
+      },
+    ]
+  })
+}

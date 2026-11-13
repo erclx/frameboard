@@ -10,6 +10,7 @@ import { ActionTooltip } from '../../chrome/action-tooltip'
 import { placeFreeAll } from '../../place/write'
 import { type ElementKey, useSelection } from '../../selection'
 import { useTokenTable } from '../../tokens'
+import { ArrangeSection } from '../arrange-section'
 import { type NumberChange, NumberField } from '../number-field'
 import { SelectionColors } from '../selection-colors'
 import { OpacityIcon, RadiusIcon } from './appearance'
@@ -45,6 +46,10 @@ const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
 const MIXED_FIELD = 'placeholder:text-muted-foreground placeholder:italic'
 
 const SECTION = 'border-b border-sidebar-border px-3 pt-2.5 pb-3'
+
+/** Why Arrange stands disabled while a member sits in the flow, whose place its container's alignment sets. */
+export const ARRANGE_FREE_ONLY =
+  'Arrange moves free elements. Set each one to Free to align it here.'
 
 /** Sends a change to each member `change` names one for, as one write. */
 type Fan = (
@@ -169,6 +174,13 @@ export function SeveralElements({
             members={members}
             disabled={disabled}
             fan={fan}
+          />
+          <ArrangeSection
+            note={
+              members.every(({ live }) => live.placement.free)
+                ? undefined
+                : ARRANGE_FREE_ONLY
+            }
           />
           <SizePart members={members} disabled={disabled} fan={fan} />
           <AppearancePart members={members} disabled={disabled} fan={fan} />

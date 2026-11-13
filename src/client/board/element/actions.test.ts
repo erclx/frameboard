@@ -707,3 +707,64 @@ describe('nudging elements', () => {
     expect(edits[0]?.commits).toHaveLength(1)
   })
 })
+
+describe('arranging elements', () => {
+  const BOX = { kind: 'box', inset: { width: 0, height: 0 } } as const
+  const FREE: GroupMember[] = [
+    {
+      index: 7,
+      box: { x: 0, y: 0, width: 10, height: 10 },
+      placed: { left: 0, top: 0 },
+      read: BOX,
+    },
+    {
+      index: 8,
+      box: { x: 40, y: 50, width: 10, height: 10 },
+      placed: { left: 40, top: 50 },
+      read: BOX,
+    },
+  ]
+  const both = (selection: ReturnType<typeof setup>['selection']) =>
+    selectElements(selection, PAGE, [
+      { frame: HERO, index: 7, hash: HASH },
+      { frame: HERO, index: 8, hash: HASH },
+    ])
+
+  it('aligns every free element as one write', () => {
+    const { selection, action, edits } = setup({ members: FREE })
+    both(selection)
+
+    action('element.alignTop').run()
+
+    expect(edits[0]?.commits).toEqual([
+      [
+        {
+          index: 8,
+          declarations: [
+            { property: 'left', value: '40px' },
+            { property: 'top', value: '0px' },
+          ],
+        },
+      ],
+    ])
+  })
+
+  it('stands disabled while one element sits in the flow', () => {
+    const { selection, action } = setup({
+      members: [
+        FREE[0] as GroupMember,
+        { ...(FREE[1] as GroupMember), placed: null },
+      ],
+    })
+    both(selection)
+
+    expect(action('element.alignTop').enabled?.()).toBe(false)
+  })
+
+  it('distributes only from a third element on', () => {
+    const { selection, action } = setup({ members: FREE })
+    both(selection)
+
+    expect(action('element.distributeHorizontal').enabled?.()).toBe(false)
+  })
+})
