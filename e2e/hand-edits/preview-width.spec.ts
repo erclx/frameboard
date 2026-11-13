@@ -44,10 +44,14 @@ test.describe('previewing a frame at another width', () => {
       page.getByRole('textbox', { name: 'X position' }),
     ).toBeEnabled()
     // Every box write goes through this route, so a preview reaching the
-    // layout would show here as the click that sent it.
+    // layout would show here as the click that sent it. A read such as the
+    // frame stylesheet fetch can land late, so only a write method counts.
     const writes: string[] = []
     page.on('request', (request) => {
-      if (new URL(request.url()).pathname.startsWith('/api/frames/')) {
+      if (
+        request.method() !== 'GET' &&
+        new URL(request.url()).pathname.startsWith('/api/frames/')
+      ) {
         writes.push(`${request.method()} ${request.url()}`)
       }
     })
