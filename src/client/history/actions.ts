@@ -133,15 +133,23 @@ export function registerHistoryActions({
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
   }
-  // One undo or redo is out at a time, and a press while one is out is
-  // dropped, so a held key overshoots by one step at most rather than
-  // queueing a step per repeat that runs on after the key is released.
+  // One undo or redo is out at a time. A held key's auto-repeat while one is
+  // out is dropped, so the key overshoots by one step at most rather than
+  // queueing a step per repeat that runs on after it is released. A discrete
+  // press waits in one slot, the last of either kind, and runs once the step
+  // answers, so a fast second press is not lost. Any refusal empties the
+  // slot, since a toast changes what the next press means and a wait dropped
+  // on a newer step would otherwise undo that step.
   let out = false
+  let queued: (() => void) | null = null
   // The board cannot name a step's frames before the server answers, so a
   // step waits only once refused as claimed, until that claim drops.
-  const step =
-    (run: () => Promise<StepAnswer>, title: string, label: EditLabel) => () => {
-      if (out) return
+  const step = (
+    run: () => Promise<StepAnswer>,
+    title: string,
+    label: EditLabel,
+  ) => {
+    const start = () => {
       out = true
       let done = () => {}
       // The tree the selected element was picked from, read before the step
@@ -171,9 +179,13 @@ export function registerHistoryActions({
           done()
           follow(answer, before)
           settleLanded(selection, shownHash)
+          const next = queued
+          queued = null
+          next?.()
         },
         (error: unknown) => {
           out = false
+          queued = null
           done()
           settleRefused(selection, shownHash)
           // An empty stack is the one refusal with nothing to say, since the key is unlit then.
@@ -186,6 +198,11 @@ export function registerHistoryActions({
         },
       )
     }
+    return (trigger?: { repeat: boolean }) => {
+      if (!out) start()
+      else if (!trigger?.repeat) queued = start
+    }
+  }
   const can = (count: 'undo' | 'redo') => () => {
     const { canWrite, history } = store.getState()
     return canWrite && history[count] > 0
