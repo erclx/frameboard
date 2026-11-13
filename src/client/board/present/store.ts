@@ -25,12 +25,22 @@ export interface PresentState {
    * leaving from the next, so a press mid-transition starts a fresh one.
    */
   leaving: { ref: string; travel: Travel; id: number } | null
+  /**
+   * How many of the shown frame's steps a press has revealed, or `last`
+   * on arriving back at a frame whose steps are not read yet, which reads
+   * as all of them once they are.
+   */
+  step: number | 'last'
+  /** How many steps the shown frame holds, 0 until its document is read. */
+  steps: number
 }
 
 export const presentStore = createStore<PresentState>()(() => ({
   page: null,
   frame: null,
   leaving: null,
+  step: 0,
+  steps: 0,
 }))
 
 export function usePresent<T>(selector: (state: PresentState) => T): T {
@@ -102,13 +112,33 @@ export function startPresenting(page: PageRecord): void {
   const { page: selectedPage, frames } = selectionStore.getState()
   const first = startFrame(page.frames, selectedPage === page.ref ? frames : [])
   if (!first) return
-  presentStore.setState({ page: page.ref, frame: first.ref, leaving: null })
+  presentStore.setState({
+    page: page.ref,
+    frame: first.ref,
+    leaving: null,
+    step: 0,
+    steps: 0,
+  })
   document.documentElement.requestFullscreen?.().catch(() => {})
 }
 
-/** Shows the frame a step of `by` lands on, staying on the last or the first. */
+/**
+ * Reveals the shown frame's next step, or hides its last revealed one going
+ * back, and once none is left that way shows the frame a step of `by` lands
+ * on, staying on the last or the first. A frame arrived at going forward
+ * opens on no step and going back on every step, as it was left.
+ */
 export function stepPresenting(by: 1 | -1): void {
-  const { page, frame } = presentStore.getState()
+  const { page, frame, steps } = presentStore.getState()
+  const step = shownStep()
+  if (by > 0 && step < steps) {
+    presentStore.setState({ step: step + 1 })
+    return
+  }
+  if (by < 0 && step > 0) {
+    presentStore.setState({ step: step - 1 })
+    return
+  }
   const shown = pageOf(page)
   if (!shown) return
   const order = presentOrder(shown.frames, frame)
@@ -118,6 +148,27 @@ export function stepPresenting(by: 1 | -1): void {
   presentStore.setState({
     frame: next.ref,
     leaving: from ? leavingOf(shown, from, next, by) : null,
+    step: by > 0 ? 0 : 'last',
+    steps: 0,
+  })
+}
+
+/** The steps the shown frame has revealed, `last` read as all of them. */
+export function shownStep(): number {
+  const { step, steps } = presentStore.getState()
+  return step === 'last' ? steps : Math.min(step, steps)
+}
+
+/**
+ * Records how many steps the shown frame's document holds, read on each
+ * load and each change an agent makes. A frame arrived at going back stays
+ * on its last step until the next press, however many it turns out to hold.
+ */
+export function countSteps(steps: number): void {
+  const { step } = presentStore.getState()
+  presentStore.setState({
+    steps,
+    step: step === 'last' ? 'last' : Math.min(step, steps),
   })
 }
 
@@ -160,7 +211,13 @@ export function endTransition(id: number): void {
 export function leavePresenting(): void {
   const { page, frame } = presentStore.getState()
   if (page === null) return
-  presentStore.setState({ page: null, frame: null, leaving: null })
+  presentStore.setState({
+    page: null,
+    frame: null,
+    leaving: null,
+    step: 0,
+    steps: 0,
+  })
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   const shown = pageOf(page)?.frames.find(
     (candidate) => candidate.ref === frame,

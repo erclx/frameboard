@@ -21,10 +21,14 @@ import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
+import { readSteps, showSteps, type StepGroup } from './steps'
 import {
+  countSteps,
   endTransition,
   leavePresenting,
   presentOrder,
+  presentStore,
+  shownStep,
   stepPresenting,
   usePresent,
 } from './store'
@@ -231,6 +235,10 @@ interface PresentingProps {
 
 function Presenting({ frame, leaving, at, count }: PresentingProps) {
   const layer = useRef<HTMLDivElement>(null)
+  const step = usePresent((state) =>
+    state.step === 'last' ? state.steps : Math.min(state.step, state.steps),
+  )
+  const steps = usePresent((state) => state.steps)
   const room = useRoom(layer)
   const { shown, wake } = useBarWake()
   useLeaveWithFullscreen()
@@ -289,6 +297,8 @@ function Presenting({ frame, leaving, at, count }: PresentingProps) {
         shown={shown}
         at={at}
         count={count}
+        step={step}
+        steps={steps}
         name={frame.name}
         onPrevious={() => stepPresenting(-1)}
         onNext={() => stepPresenting(1)}
@@ -375,6 +385,66 @@ function onEachLoad(
   }
 }
 
+/** The step attributes an agent's write can change, which read the steps again. */
+const STEP_KEYS = ['data-step', 'data-step-effect', 'data-step-start']
+
+/**
+ * Walks the arriving frame's steps: reads them on each load and each change
+ * an agent makes, reports how many it holds, and shows as many as the store
+ * has revealed, playing the entrance of one a press just revealed. A leaving
+ * frame keeps its steps as it was left. Answers whether the frame's own
+ * document has loaded, since the iframe's first document is a blank one.
+ */
+function useStepsWhileLive(
+  iframe: RefObject<HTMLIFrameElement | null>,
+  live: boolean,
+): boolean {
+  const [loaded, setLoaded] = useState(false)
+  const read = useRef<{ doc: Document; groups: StepGroup[] } | null>(null)
+  const revealed = useRef(0)
+
+  useEffect(() => {
+    if (!live) return
+    return onEachLoad(iframe.current, (element) => {
+      const doc = element.contentDocument
+      if (!doc || doc.URL === 'about:blank') return
+      const reread = () => {
+        const groups = readSteps(doc)
+        // Counting can resolve a step back onto this frame, which plays no entrance.
+        read.current = null
+        countSteps(groups.length)
+        read.current = { doc, groups }
+        revealed.current = shownStep()
+        showSteps(doc, groups, revealed.current)
+      }
+      reread()
+      setLoaded(true)
+      const view = doc.defaultView
+      if (!view) return
+      const observer = new view.MutationObserver(reread)
+      observer.observe(doc.documentElement, {
+        subtree: true,
+        childList: true,
+        attributeFilter: STEP_KEYS,
+      })
+      return () => observer.disconnect()
+    })
+  }, [iframe, live])
+
+  useEffect(() => {
+    if (!live) return
+    return presentStore.subscribe(() => {
+      const shown = shownStep()
+      if (!read.current || shown === revealed.current) return
+      const entering = shown > revealed.current ? shown - 1 : null
+      revealed.current = shown
+      showSteps(read.current.doc, read.current.groups, shown, entering)
+    })
+  }, [live])
+
+  return loaded
+}
+
 /**
  * One frame's live page through the same `/frames/` address the canvas
  * loads, in the theme the frame shows on the board, never a capture.
@@ -386,6 +456,7 @@ function PresentedFrame({
   wake,
 }: { frame: { ref: string; name: string } } & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
+  const loaded = useStepsWhileLive(iframe, live)
   const theme = useFrameTheme(frame.ref)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // The theme is read when the page loads or reloads, and a later flip
@@ -431,7 +502,8 @@ function PresentedFrame({
       title={frame.name}
       src={src}
       style={{ colorScheme: theme }}
-      className="block size-full border-0 bg-[color:Canvas]"
+      // Hidden until its steps are hidden, so a stepped slide never flashes whole.
+      className={`block size-full border-0 bg-[color:Canvas] ${loaded ? '' : 'invisible'}`}
     />
   )
 }

@@ -348,6 +348,94 @@ describe('a transition between slides', () => {
   })
 })
 
+describe('steps inside a slide', () => {
+  const STEPPED =
+    '<p id="a" data-step="1">One</p><p id="b" data-step="2">Two</p>'
+
+  /** The loaded document of the presented frame named `name`, once it is the frame's own. */
+  async function documentOf(name: string): Promise<Document> {
+    return vi.waitFor(() => {
+      const doc = screen
+        .getByRole('dialog')
+        .querySelector<HTMLIFrameElement>(
+          `iframe[title="${name}"]`,
+        )?.contentDocument
+      if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
+        throw new Error(`${name} is still loading`)
+      }
+      return doc
+    })
+  }
+
+  /** Writes `body` into a presented frame, as an agent's file would hold it. */
+  async function fill(name: string, body: string): Promise<Document> {
+    const doc = await documentOf(name)
+    doc.body.innerHTML = body
+    return doc
+  }
+
+  const dots = (name: string) => screen.findByRole('img', { name })
+  const shows = (doc: Document, id: string) =>
+    getComputedStyle(doc.getElementById(id) as Element).visibility
+
+  it('reveals each step on a press before moving to the next frame', async () => {
+    present(framesOf('first', 'second'))
+    const doc = await fill('first', STEPPED)
+    await dots('Step 0 of 2')
+    expect(shows(doc, 'a')).toBe('hidden')
+
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 1 of 2')
+    expect(shownFrame()?.title).toBe('first')
+    await userEvent.keyboard('{ArrowRight}')
+    await dots('Step 2 of 2')
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(shownFrame()?.title).toBe('second')
+  })
+
+  it('hides the last revealed step on a press back', async () => {
+    present(framesOf('first'))
+    const doc = await fill('first', STEPPED)
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+    await dots('Step 2 of 2')
+
+    await userEvent.keyboard('{ArrowLeft}')
+
+    await dots('Step 1 of 2')
+    expect(shows(doc, 'b')).toBe('hidden')
+    expect(shows(doc, 'a')).toBe('visible')
+  })
+
+  it('opens a stepped frame stepped back onto on its last step', async () => {
+    present(framesOf('first', 'second'), ['second'])
+    await documentOf('second')
+
+    await userEvent.keyboard('{ArrowLeft}')
+    const doc = await fill('first', STEPPED)
+
+    await dots('Step 2 of 2')
+    expect(shows(doc, 'b')).toBe('visible')
+  })
+
+  it('keeps Next live on the last frame while it holds a step', async () => {
+    present(framesOf('only'))
+    await fill('only', STEPPED)
+    await dots('Step 0 of 2')
+
+    expect(
+      screen.getByRole('button', { name: 'Next frame' }),
+    ).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('draws no dots for a frame with no steps', async () => {
+    present(framesOf('first'))
+    await fill('first', '<p>Plain</p>')
+
+    expect(screen.queryByRole('img', { name: /^Step / })).toBeNull()
+  })
+})
+
 describe('focus on leave', () => {
   /** A button outside the overlay, standing for the toolbar or a palette row. */
   function buttonNamed(name: string): HTMLButtonElement {
