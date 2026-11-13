@@ -149,7 +149,18 @@ export function ShapeDraft({
   const reader = shaping ? (
     <TokenReader project={project} onTokens={keepTokens} />
   ) : null
-  if (!sizing || !drawn) return reader
+  // The reader keeps one place in the tree, so a drag never remounts it and
+  // fetches the tokens again.
+  return (
+    <>
+      {reader}
+      {sizing && drawn ? <DraftPreview drawn={drawn} /> : null}
+    </>
+  )
+}
+
+/** The box or shape a drag draws, as `ShapeDraft` describes it. */
+function DraftPreview({ drawn }: { drawn: Drawn }) {
   const { box } = drawn
   if (drawn.kind === 'box') {
     return (
@@ -169,51 +180,48 @@ export function ShapeDraft({
     )
   }
   return (
-    <>
-      {reader}
+    <div
+      data-shape-draft
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
+        zIndex: OVERLAY_Z,
+      }}
+    >
       <div
-        data-shape-draft
-        aria-hidden
-        className="pointer-events-none absolute"
+        data-shape-fill
+        className="size-full"
         style={{
-          left: box.x,
-          top: box.y,
-          width: box.width,
-          height: box.height,
-          zIndex: OVERLAY_Z,
+          background: drawn.fill,
+          borderRadius: drawn.shape === 'ellipse' ? '50%' : undefined,
         }}
-      >
-        <div
-          data-shape-fill
-          className="size-full"
-          style={{
-            background: drawn.fill,
-            borderRadius: drawn.shape === 'ellipse' ? '50%' : undefined,
-          }}
-        />
-        <div className="absolute inset-0" style={{ outline: OUTLINE }}>
-          {CORNERS.map((corner) => (
-            <span
-              key={`${corner.left}-${corner.top}`}
-              className="absolute -translate-1/2 border-primary bg-white"
-              style={{
-                ...corner,
-                width: screen(7),
-                height: screen(7),
-                borderWidth: screen(1.5),
-              }}
-            />
-          ))}
-          <span data-chip className={CHIP}>
-            {sizeLabel({
-              ...box,
-              width: Math.max(1, Math.round(box.width)),
-              height: Math.max(1, Math.round(box.height)),
-            })}
-          </span>
-        </div>
+      />
+      <div className="absolute inset-0" style={{ outline: OUTLINE }}>
+        {CORNERS.map((corner) => (
+          <span
+            key={`${corner.left}-${corner.top}`}
+            className="absolute -translate-1/2 border-primary bg-white"
+            style={{
+              ...corner,
+              width: screen(7),
+              height: screen(7),
+              borderWidth: screen(1.5),
+            }}
+          />
+        ))}
+        <span data-chip className={CHIP}>
+          {sizeLabel({
+            ...box,
+            width: Math.max(1, Math.round(box.width)),
+            height: Math.max(1, Math.round(box.height)),
+          })}
+        </span>
       </div>
-    </>
+    </div>
   )
 }
 
