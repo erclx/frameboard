@@ -25,7 +25,7 @@ export interface Journal {
   present(page: string, before: unknown, after: unknown): void
   /** The page order `project.json` holds in the project folder `project`. */
   pages(project: string, before: string[], after: string[]): void
-  /** The folder and archive keys the `project.json` at `file` holds on each side of a filing. */
+  /** The folder, archive, and off-rule keys the `project.json` at `file` holds on each side of a hand write. */
   project(file: string, before: ProjectFiling, after: ProjectFiling): void
   /** One token's declarations in the project token sheet at `path`, on each side of a hand edit that already wrote it. */
   token(path: string, name: string, before: TokenSides, after: TokenSides): void
@@ -38,12 +38,16 @@ export interface Journal {
 }
 
 /**
- * The keys a filing writes in `project.json`, each present only where the file
- * holds it, so an absent key and a written one never read as equal.
+ * The keys a hand write sets in `project.json`, being a filing's `group` and
+ * `archived` and the `checks.off` a rule switch writes, each present only
+ * where the file holds it, so an absent key and a written one never read as
+ * equal.
  */
 export interface ProjectFiling {
   group?: unknown
   archived?: unknown
+  /** The file's `checks.off` as written, whatever its type. */
+  off?: unknown
 }
 
 export interface JournalOptions {

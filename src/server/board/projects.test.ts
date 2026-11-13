@@ -22,6 +22,7 @@ import {
   fileProjects,
   keepingTimes,
   renameProject,
+  setProjectRule,
 } from './projects'
 
 describe('projects', () => {
@@ -285,6 +286,128 @@ describe('projects', () => {
       await expect(
         fileProjects(board.root, ['nope'], { group: 'Client' }),
       ).rejects.toMatchObject({ code: 'project-not-found' })
+    })
+  })
+
+  describe('setProjectRule', () => {
+    const projectFile = (name: string) => join(board.root, name, 'project.json')
+    const read = (name: string) =>
+      JSON.parse(readFileSync(projectFile(name), 'utf8'))
+    const write = (name: string, file: unknown) =>
+      writeFileSync(projectFile(name), JSON.stringify(file))
+
+    it('adds the rule to checks.off, keeping every other key', async () => {
+      write('webapp', {
+        version: 1,
+        pages: ['settings', 'home'],
+        checks: { noUppercase: true, later: 1 },
+        group: 'Client',
+        later: { kept: 1 },
+      })
+
+      const result = await setProjectRule(
+        board.root,
+        'webapp',
+        'generic-font',
+        true,
+      )
+
+      expect(result).toEqual({ project: 'webapp', off: ['generic-font'] })
+      expect(read('webapp')).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+        checks: { noUppercase: true, later: 1, off: ['generic-font'] },
+        group: 'Client',
+        later: { kept: 1 },
+      })
+    })
+
+    it('holds the id once when the rule is turned off twice', async () => {
+      await setProjectRule(board.root, 'webapp', 'generic-font', true)
+
+      const result = await setProjectRule(
+        board.root,
+        'webapp',
+        'generic-font',
+        true,
+      )
+
+      expect(result.off).toEqual(['generic-font'])
+      expect(read('webapp').checks.off).toEqual(['generic-font'])
+    })
+
+    it('leaves a rule turned off by hand as written', async () => {
+      write('webapp', {
+        version: 1,
+        pages: ['home'],
+        checks: { off: ['theme', 'generic-font'] },
+      })
+      const before = readFileSync(projectFile('webapp'), 'utf8')
+
+      await setProjectRule(board.root, 'webapp', 'generic-font', true)
+
+      expect(readFileSync(projectFile('webapp'), 'utf8')).toBe(before)
+    })
+
+    it('turns one rule back on and leaves the others off', async () => {
+      write('webapp', {
+        version: 1,
+        pages: ['home'],
+        checks: { off: ['theme', 'generic-font'] },
+      })
+
+      const result = await setProjectRule(board.root, 'webapp', 'theme', false)
+
+      expect(result.off).toEqual(['generic-font'])
+      expect(read('webapp').checks).toEqual({ off: ['generic-font'] })
+    })
+
+    it('leaves no empty checks behind when the last rule comes back on', async () => {
+      const before = read('webapp')
+      await setProjectRule(board.root, 'webapp', 'theme', true)
+
+      await setProjectRule(board.root, 'webapp', 'theme', false)
+
+      expect(read('webapp')).toEqual(before)
+    })
+
+    it('replaces an off value that is not a list of ids', async () => {
+      write('webapp', { version: 1, pages: ['home'], checks: { off: 3 } })
+
+      await setProjectRule(board.root, 'webapp', 'theme', true)
+
+      expect(read('webapp').checks).toEqual({ off: ['theme'] })
+    })
+
+    it('refuses a checks value that is not an object and writes nothing', async () => {
+      write('webapp', { version: 1, pages: ['home'], checks: 'strict' })
+
+      await expect(
+        setProjectRule(board.root, 'webapp', 'theme', true),
+      ).rejects.toMatchObject({ code: 'project-file-invalid' })
+      expect(read('webapp').checks).toBe('strict')
+    })
+
+    it('refuses a project the board does not hold', async () => {
+      await expect(
+        setProjectRule(board.root, 'nope', 'theme', true),
+      ).rejects.toMatchObject({ code: 'project-not-found' })
+    })
+
+    it('reports the off list on each side to the journal, and nothing for a repeat', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await setProjectRule(board.root, 'webapp', 'theme', true, { journal })
+      await setProjectRule(board.root, 'webapp', 'theme', true, { journal })
+
+      expect(calls).toEqual([
+        {
+          kind: 'project',
+          file: 'webapp/project.json',
+          before: {},
+          after: { off: ['theme'] },
+        },
+      ])
     })
   })
 
