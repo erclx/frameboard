@@ -386,6 +386,18 @@ describe('ElementOverlay', () => {
       await expect.poll(() => ghosts(drawn)[0]?.style.left).toBe('480px')
     })
 
+    it('draws none for a selected frame that scrolls past its height', async () => {
+      const container = await mountFrame(PAST)
+      const scrolling = { ...HERO, scroll: true }
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[scrolling]} container={container} />,
+      )
+
+      expect(ghosts(drawn)).toEqual([])
+    })
+
     it('draws none while nothing on the frame is selected', async () => {
       const container = await mountFrame(PAST)
 
