@@ -886,7 +886,7 @@ describe('editRoutes', () => {
         await insert(asset('demo.mp4'))
 
         expect(read()).toContain(
-          '<video data-name="demo.mp4" src="../assets/demo.mp4" autoplay muted loop playsinline',
+          '<video data-name="demo.mp4" src="../assets/demo.mp4" controls autoplay muted loop playsinline',
         )
       })
 

@@ -63,7 +63,7 @@ test.describe('video and audio placed by hand', () => {
     await expect
       .poll(read)
       .toContain(
-        '<video data-name="clip.webm" src="../assets/clip.webm" autoplay muted loop playsinline style="width: 160px; height: 90px; object-fit: cover"></video>',
+        '<video data-name="clip.webm" src="../assets/clip.webm" controls autoplay muted loop playsinline style="width: 160px; height: 90px; object-fit: cover"></video>',
       )
     const bar = page.locator('[data-media-bar]')
     await bar.getByRole('button', { name: 'Pause' }).click()

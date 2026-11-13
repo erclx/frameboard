@@ -168,7 +168,7 @@ export function elementMarkup(
       // A crop rather than a squash once a corner drag changes the ratio.
       const style = `${size(element)}; object-fit: cover`
       return element.tag === 'video'
-        ? `<video data-name="${name}" src="${src}" autoplay muted loop playsinline style="${style}"></video>`
+        ? `<video data-name="${name}" src="${src}" controls autoplay muted loop playsinline style="${style}"></video>`
         : `<img data-name="${name}" src="${src}" alt="" style="${style}">`
     }
   }
