@@ -23,5 +23,5 @@ if (!copy) {
 const board = join(copy, 'test', 'fixtures', 'boards', 'basic')
 const seeded = await seedDrive(board, new Date())
 console.log(
-  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, reserved ${seeded.reserved.join(', ')}`,
+  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, reserved ${seeded.reserved.join(', ')}`,
 )
