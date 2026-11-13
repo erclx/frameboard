@@ -13,7 +13,7 @@ Owns what an agent sees of a frame without a screen, being PNGs of one frame or 
 
 ### `src/server/capture/`
 
-Owns the capture browser, the frame host, the render, the font check, the image and animation waits, the image writer, `fit`, and `inspect`, with the flags and record shapes in `frameboard docs`. The CLI renders through its own loopback host over the frame routes the server mounts, so `capture`, `fit`, and `inspect` need no running server.
+Owns the capture browser, the frame host, the render, the font check, the image, video, and animation waits, the image writer, `fit`, and `inspect`, with the flags and record shapes in `frameboard docs`. The CLI renders through its own loopback host over the frame routes the server mounts, so `capture`, `fit`, and `inspect` need no running server.
 
 - `capture` takes a frame or, with `--page`, every visible frame of a page, since a two-part ref reads as either, and `--composite` places them at their layout positions on the theme's `Canvas`
 - A frame opens at layout size from `frameThemeUrl` under an emulated `prefers-color-scheme`, on a host mounting the look and frame routes through `servedFrames`, so the injected script sets the theme
@@ -58,12 +58,19 @@ These catch a capture out.
 
 ### Waits
 
-`openFrame` spends one 10 s load budget on the load, the faces, and the images, then settles animations on what is left.
+`openFrame` spends one 10 s load budget on the load, the faces, the images, and the videos, then settles animations on what is left.
 
 - Capture refuses `image-missing` for an `<img>` that errored or was still loading when the budget ran out, naming its `src` and element index
 - Each image waits on its `decode()`, since one marked `decoding="async"` can be loaded and still paint as an empty box. A lazy image turns eager in the page, never the file
 - Under `require`, running animations with a finite end are awaited and never refused. An infinite one is skipped, and a scene stepped by a script timer stays out of reach
 - Capture never emulates reduced motion, so a frame meant to capture alike every run shows a still
+
+A video waits under `require` and never refuses.
+
+- Each `<video>` is held paused on its poster, or its first frame without one, with autoplay dropped and `preload="none"` lifted in the page, never the file, so two captures match
+- One with no picture by the end of the budget lands in the image's `videos` with its frame ref, element index, `src`, and `error` or `pending`
+- A hanging request spends what is left of the budget, once per open
+- The PNG route and thumbnails take the same wait and return bytes alone, so they cannot name an unloaded video
 
 A seeked shot skips that settle.
 
@@ -76,4 +83,4 @@ A seeked shot skips that settle.
 These catch an element address out.
 
 - Inspect prints nothing and refuses `invalid-address` for an index with no layout box, `address-mismatch` when the live tag order leaves the file's, and `stale-address` when the file changed mid-load
-- Six readers count elements and cannot share code, being `readTextElements`, `waitForImages`, inspect's, the client pick, and the two browser checks, so `LOOK_MARKER` moves all six
+- Seven readers count elements and cannot share code, being `readTextElements`, `waitForImages`, `waitForVideos`, inspect's, the client pick, and the two browser checks, so `LOOK_MARKER` moves all seven

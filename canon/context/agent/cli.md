@@ -19,12 +19,15 @@ Owns the program and the conventions every verb shares, with `index.ts` bundled 
 - With `--json`, stdout carries one envelope, `{ ok, data }` or `{ ok, error }`, even on a parse error, and each error code keeps one exit in `src/shared/errors.ts`
 - A page ref is `<page>` or `<project>/<page>`, a frame ref adds `/<frame>`, and an argument ending in `.html` is the frame file itself
 - A verb given no project takes the board's only project, else fails `project-required`, since guessing would write to the wrong one
-- Every `edit` refusal exits 7 with its reason as the code, so a script tells a refused edit from a missing frame
+- Every `edit` and `remove` refusal exits 7 with its reason as the code, so a script tells a refused write from a missing frame
+
+A failing verb that still has a result, as `check` does, answers it as `data` beside `error`.
 
 ### `src/cli/commands/`
 
-Owns one module per verb group, with flags and JSON shapes in `frameboard docs`. `selection`, `notes`, `inspect`, `check`, and `capture` report, `edit` sets one property on one element, or drops one attribute with `--drop-attr`, leaving every other byte alone, and `editing` claims frames.
+Owns one module per verb group, with flags and JSON shapes in `frameboard docs`. `selection`, `notes`, `inspect`, `check`, and `capture` report, `edit` sets one property on one element, or drops one attribute with `--drop-attr`, leaving every other byte alone, `remove` takes one element and its subtree out, and `editing` claims frames.
 
+- `remove` needs `--index` and `--hash`, and like `edit` it writes with no server, so it checks no claim and journals nothing for undo. A note pinned on the removed element falls back to the frame
 - `serve` with no `--root` reuses the board the walk finds, else creates `.frameboard/` in the working folder, even in a repository. `--root` names the board folder itself for every verb.
 - `serve` reads `dist/client` from source and the `client` folder beside a built bundle, and exits 3 with `client-not-built` when it holds no `index.html`. A live board's reuse skips the check.
 - `serve` records its address in the board folder, and a second `serve` on a live board prints that address with `reused: true` and binds nothing

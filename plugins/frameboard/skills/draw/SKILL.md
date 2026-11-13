@@ -38,8 +38,8 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
 4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done.
    - A finding at error means the frame renders wrong or cannot load, and a warning is a style call the frame still renders through
-   - An error finding exits 8 with every finding in the error's details, each naming its rule, file, line, and column
-   - Warnings alone exit 0 and sit in the envelope's `data.findings`, so read them there
+   - Read the findings from the envelope's `data.findings` in both answers, each naming its rule, file, line, and column
+   - An error finding exits 8 and warnings alone exit 0, so branch on the exit and read `data.findings` either way
 5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.

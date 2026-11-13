@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
 import type { Browser } from 'playwright-core'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import type { ProjectChecks } from '@/shared/records/board'
 
@@ -15,6 +15,7 @@ import {
   type RenderedBoard,
   serveRendered,
 } from '../../../../test/support/rendered-board'
+import { type TempBoard, writeBoard } from '../../../../test/support/temp-board'
 import { checkRendered } from './rendered'
 
 // The checks only read, so the committed fixture serves every test as is.
@@ -23,6 +24,22 @@ const ROOT = fileURLToPath(
 ).replace(/\/$/, '')
 
 const CONFIG: ProjectChecks = { minFontSize: 12, minContrast: 4.5 }
+
+/** One 400 by 200 frame whose `main` slides in from 48 px right over 30 s, styled by `css`. */
+function entranceBoard(css: string): Record<string, string> {
+  return {
+    'studio/home/hero.html': `<!doctype html><html lang="en"><head><title>hero</title><style>
+      body { margin: 0 }
+      main { animation: slide 30s ease-out }
+      @keyframes slide { from { transform: translateX(48px) } to { transform: none } }
+      ${css}
+    </style></head><body><main>Slides in</main></body></html>`,
+    'studio/home/layout.json': JSON.stringify({
+      version: 1,
+      frames: { hero: { x: 0, y: 0, width: 400, height: 200, order: 0 } },
+    }),
+  }
+}
 
 const shell = await launchShellOrNull()
 
@@ -103,6 +120,53 @@ describe.skipIf(shell === null)(
       expect(findings).toMatchObject([
         { rule: 'min-contrast', message: expect.stringMatching(/^In dark, /) },
       ])
+    })
+
+    describe('on a frame with an entrance animation', () => {
+      let temp: TempBoard
+
+      afterEach(() => {
+        temp.cleanup()
+      })
+
+      async function checkEntrance(css: string) {
+        temp = writeBoard(entranceBoard(css))
+        const served = await serveRendered(temp.root)
+        try {
+          return await checkRendered(browser, {
+            baseUrl: served.url,
+            root: temp.root,
+            frame: served.target('studio/home/hero'),
+            config: {},
+          })
+        } finally {
+          await served.close()
+        }
+      }
+
+      it('lands no clipped for an entrance that settles inside the frame', async () => {
+        expect(await checkEntrance('')).toEqual([])
+      })
+
+      it('lands no clipped for a delayed entrance its fill holds off the edge', async () => {
+        expect(
+          await checkEntrance(
+            'main { animation-delay: 20s; animation-fill-mode: both }',
+          ),
+        ).toEqual([])
+      })
+
+      it('still reports clipped for content past the edge at rest', async () => {
+        const findings = await checkEntrance('main { width: 520px }')
+
+        expect(findings).toMatchObject([{ rule: 'clipped', severity: 'error' }])
+      })
+
+      it('leaves a repeating animation running and reads the frame', async () => {
+        expect(
+          await checkEntrance('main { animation-iteration-count: infinite }'),
+        ).toMatchObject([{ rule: 'clipped' }])
+      })
     })
 
     it('holds text to the minimum the project sets', async () => {

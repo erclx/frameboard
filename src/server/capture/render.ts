@@ -17,6 +17,7 @@ import { settleAnimations } from './animation-settle'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
 import { holdAnimationClock } from './seek'
+import { settleVideos, type UnloadedVideo } from './video-loads'
 
 /** How long a frame has to load, its faces and images included, before its capture fails. */
 export const LOAD_TIMEOUT_MS = 10_000
@@ -49,6 +50,8 @@ export interface OpenFrameOptions {
 
 export interface OpenFrame {
   page: Page
+  /** The videos a `require` open left with no picture, empty under `wait`. */
+  videos: UnloadedVideo[]
   close: () => Promise<void>
 }
 
@@ -58,6 +61,8 @@ export interface OpenFrame {
  * images have decoded, all inside one load budget. Under `fonts: 'require'`,
  * the default, a missing face refuses `font-missing`, an image that failed or
  * outran the budget refuses `image-missing`, and either closes the context.
+ * Each video is then held on its poster or first frame, and one with no
+ * picture by the end of the budget is returned rather than refused.
  * It then waits, on what is left of the budget, for running animations with
  * a finite end to finish, and never refuses for one, unless `motion` is `hold`.
  */
@@ -104,11 +109,14 @@ export async function openFrame(
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (fonts === 'require') await assertFontsPresent(page, ref)
     await settleImages(page, ref, fonts, deadline - Date.now())
+    // The `wait` readers measure layout, which a video's picture never moves.
+    const videos =
+      fonts === 'require' ? await settleVideos(page, deadline - Date.now()) : []
     // The `wait` readers finish finite animations themselves on every write.
     if (fonts === 'require' && motion === 'settle') {
       await settleAnimations(page, deadline - Date.now())
     }
-    return { page, close }
+    return { page, videos, close }
   } catch (error) {
     await close()
     throw error

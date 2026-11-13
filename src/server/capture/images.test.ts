@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -391,6 +391,31 @@ describe.skipIf(shell === null)(
       }
       return -1
     }
+
+    it('holds a moment of a frame showing an autoplaying video', async () => {
+      board = writeBoard({
+        'studio/home/slide.html': `${SLIDE_PAGE}<video src="clip.webm" autoplay muted loop></video>`,
+      })
+      copyFileSync(
+        new URL('../../../test/fixtures/media/clip.webm', import.meta.url),
+        join(board.root, 'studio/home/clip.webm'),
+      )
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+
+      const { images } = await captureMotionImages(browser, {
+        baseUrl: host.url,
+        frame: frameOf('slide', {
+          box: { x: 0, y: 0, width: 300, height: 40 },
+        }),
+        themes: ['light'],
+        out,
+        timing: { at: [500] },
+      }).finally(() => host.close())
+
+      expect(images).toMatchObject([{ at: 500 }])
+      expect(images[0]).not.toHaveProperty('videos')
+    })
 
     it('writes one image per moment, each holding its moment', async () => {
       const { images, motion } = await shoot({ at: [0, 1000, 2000] })

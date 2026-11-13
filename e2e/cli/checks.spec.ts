@@ -281,6 +281,8 @@ test.describe('check levels on a running board', () => {
     expect(
       result.findings.map((finding) => `${finding.severity} ${finding.rule}`),
     ).toContain('error missing-file')
+    const data = checkResultSchema.parse(run.json().data)
+    expect(data.findings).toEqual(result.findings)
   })
 
   test('reports nothing from a linked site sheet the frame barely uses', async () => {

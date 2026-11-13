@@ -19,6 +19,7 @@ import { registerPage } from './commands/page'
 import { registerPreview } from './commands/preview'
 import { registerProject } from './commands/project'
 import { registerReferences } from './commands/references'
+import { registerRemove } from './commands/remove'
 import { registerSelection } from './commands/selection'
 import { registerServe } from './commands/serve'
 import { registerShow } from './commands/show'
@@ -172,6 +173,7 @@ export function createProgram(context: ProgramContext): Command {
   registerPage(program, context)
   registerFrame(program, faced)
   registerEdit(program, context)
+  registerRemove(program, context)
   registerCheck(program, context)
   registerNotes(program, context)
   registerInbox(program, context)

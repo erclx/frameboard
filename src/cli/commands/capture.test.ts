@@ -543,6 +543,36 @@ describe.skipIf(shell === null)('capture from source', () => {
     expect(JSON.parse(run.stdout).ok).toBe(true)
   }, 60_000)
 
+  it('names a video with no picture on its image and under its file', () => {
+    board = writeBoard({
+      ...HERO,
+      'studio/home/hero.html': '<p>Hello</p><video src="gone.webm"></video>',
+    })
+    const args = [
+      fileURLToPath(new URL('../index.ts', import.meta.url)),
+      'capture',
+      'studio/home/hero',
+      '--theme',
+      'light',
+    ]
+    const options = { cwd: board.root, encoding: 'utf8' } as const
+
+    const json = spawnSync('bun', [...args, '--json'], options)
+    const human = spawnSync('bun', args, options)
+
+    const [image] = captureResultSchema.parse(
+      JSON.parse(json.stdout).data,
+    ).images
+    // html, head, body, p, video: the video is element 4.
+    expect(image?.videos).toEqual([
+      { ref: 'studio/home/hero', index: 4, src: 'gone.webm', state: 'error' },
+    ])
+    expect(human.status).toBe(0)
+    expect(human.stdout.split('\n')[1]).toMatch(
+      /^ {2}No picture for the video gone\.webm at element 4 of studio\/home\/hero/,
+    )
+  }, 60_000)
+
   it('writes a 2x image at twice the layout box', () => {
     board = writeBoard(HERO)
 

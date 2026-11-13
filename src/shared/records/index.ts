@@ -6,7 +6,7 @@ import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
 import { captureResultSchema, fitResultSchema } from './capture'
 import { checkResultSchema } from './check'
 import { claimSchema } from './claims'
-import { editResultSchema } from './edit'
+import { editResultSchema, removeResultSchema } from './edit'
 import { elementTreeSchema } from './elements'
 import { findResultSchema } from './find'
 import { inspectResultSchema } from './inspect'
@@ -33,6 +33,7 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   projectRecord: projectRecordSchema,
   list: listResultSchema,
   edit: editResultSchema,
+  remove: removeResultSchema,
   checkResult: checkResultSchema,
   capture: captureResultSchema,
   fit: fitResultSchema,

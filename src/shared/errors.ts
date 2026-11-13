@@ -97,17 +97,20 @@ export type ErrorDetails = Record<string, unknown>
 export class FrameboardError extends Error {
   readonly code: ErrorCode
   readonly details: ErrorDetails
+  /** The result a failing verb still returns, printed as `data` beside the error under `--json`. */
+  readonly data?: unknown
 
   constructor(
     code: ErrorCode,
     message: string,
     details: ErrorDetails = {},
-    options?: ErrorOptions,
+    options?: ErrorOptions & { data?: unknown },
   ) {
     super(message, options)
     this.name = 'FrameboardError'
     this.code = code
     this.details = details
+    if (options?.data !== undefined) this.data = options.data
   }
 
   get exitCode(): number {

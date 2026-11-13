@@ -12,7 +12,9 @@ The commands, checks, claims, and plugin a coding agent works with on the board.
 The `project`, `page`, and `frame` commands manage the board on disk, and `list` shows it. `show` marks several frames, or a page, for the toast to step through and points the open board at the first, or offers Go while you are mid-action or it sits in another project.
 
 - `edit` changes one style, attribute, or text on one element without touching another byte, and `--drop-attr` removes an attribute, such as a boolean `muted`, that `--attr` can only set
+- `remove` takes one element and everything inside it out of a frame, given the `--index` and `--hash` that `inspect` reports, and refuses with exit 7 once the file has changed
 - `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
+- `capture` holds each video on its poster, or on its first frame without one, so two captures match. A video with no picture is listed under its image's `videos` as `error` or `pending` and never refuses the capture.
 - `capture --at 0,500,1000` holds a frame's motion at each moment in ms and writes `<frame>.at-<ms>.<theme>.png` apiece, and `--filmstrip <n>` writes one image of n moments spaced from start to end. Both seek `window.__hf` when the page sets it, then `window.__timelines`, then its CSS animations and transitions, and refuse `motion-missing` for a scene a script steps on a timer.
 - `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
@@ -40,7 +42,7 @@ A responsive page is one frame file shown at several widths, so every fix to the
 
 ## Content checks
 
-`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error.
+`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error. With `--json` the findings sit under `data.findings` whether it passes or fails.
 
 - An error means the frame renders wrong or cannot load, and a warning means it renders and a style call is in question, such as a generic font. `frameboard docs` prints each rule's level.
 - The board runs the same rules on each change, and a frame's findings mark opens the list. Any error draws it as a filled red badge, and warnings alone as a grey dot and a count

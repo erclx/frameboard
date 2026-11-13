@@ -25,7 +25,8 @@ export type EditOptions = CommonOptions & {
   text?: string
 }
 
-function parseHash(value: string): string {
+/** A `--hash` value, refused as a usage error unless it reads as a frame hash. */
+export function parseHash(value: string): string {
   if (!/^[0-9a-f]{64}$/.test(value)) {
     throw new InvalidArgumentError('Expected a SHA-256 hash in lowercase hex.')
   }
