@@ -206,6 +206,37 @@ describe('structureRoutes', () => {
       expect(frames().hero.scroll).toBeUndefined()
     })
 
+    it('lands a scroll write at the screen height its body gives', async () => {
+      setHero({ height: 1992, hugHeight: true })
+
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'scroll',
+        expected: { 'studio/home/hero': HERO },
+        heights: { 'studio/home/hero': 1100 },
+      })
+
+      expect(frames().hero).toMatchObject({ height: 1100, scroll: true })
+      expect(history.counts().undo).toBe(1)
+    })
+
+    it('refuses usage for heights on a mode other than scroll, writing nothing', async () => {
+      app = measuring(2400)
+
+      const response = await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+        heights: { 'studio/home/hero': 1100 },
+      })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'usage' },
+      })
+      expect(history.counts().undo).toBe(0)
+    })
+
     it('fits a scroll frame to its content, clearing scroll, and undoes back to scroll', async () => {
       setHero({ scroll: true })
       app = measuring(2400)

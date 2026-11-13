@@ -27,6 +27,7 @@ import {
   setBoxes,
   setFrameDevice,
   setFrameFlag,
+  setHeightModes,
   setMeasured,
   skeleton,
 } from './frames'
@@ -702,6 +703,41 @@ describe('frames', () => {
           fitHeight(root, 'webapp/home/hero', 3816, { cwd: root }),
         ).rejects.toMatchObject({ code: 'fit-scroll' })
         expect(file('webapp/home/layout.json')).toBe(bytes)
+      })
+
+      it('setHeightModes to scroll with a target height takes that height', async () => {
+        const root = open()
+        hugHero(root, { height: 1992, hugHeight: true })
+
+        const [set] = await setHeightModes(
+          root,
+          [{ ref: 'webapp/home/hero', expected: HERO, height: 1100 }],
+          'scroll',
+          { cwd: root },
+        )
+
+        expect(set).toMatchObject({
+          box: { width: 1440, height: 1100 },
+          hugHeight: false,
+          scroll: true,
+        })
+      })
+
+      it('setHeightModes to scroll with no target height drops a hug to the reference height', async () => {
+        const root = open()
+        hugHero(root, { height: 1992, hugHeight: true })
+
+        const [set] = await setHeightModes(
+          root,
+          [{ ref: 'webapp/home/hero', expected: HERO }],
+          'scroll',
+          { cwd: root },
+        )
+
+        expect(set).toMatchObject({
+          box: { width: 1440, height: 900 },
+          scroll: true,
+        })
       })
     })
 
