@@ -16,6 +16,7 @@ import { registerList } from './commands/list'
 import { registerNotes } from './commands/notes'
 import { registerOpen } from './commands/open'
 import { registerPage } from './commands/page'
+import { registerPreview } from './commands/preview'
 import { registerProject } from './commands/project'
 import { registerReferences } from './commands/references'
 import { registerSelection } from './commands/selection'
@@ -164,6 +165,7 @@ export function createProgram(context: ProgramContext): Command {
   registerServe(program, faced)
   registerShow(program, context)
   registerOpen(program, context)
+  registerPreview(program, context)
   registerSelection(program, context)
   registerList(program, context)
   registerProject(program, context)

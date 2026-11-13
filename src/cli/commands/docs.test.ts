@@ -47,6 +47,7 @@ describe('docs', () => {
       'serve',
       'show',
       'open',
+      'preview',
       'selection',
       'list',
       'project add',
