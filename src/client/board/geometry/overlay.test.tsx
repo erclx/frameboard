@@ -216,6 +216,23 @@ describe('SelectionOverlay', () => {
     expect(container.querySelector('[data-chip]')).not.toBeVisible()
   })
 
+  it('stands the chip past the body of a selected frame in a device', () => {
+    const phone = frameOf('phone', {
+      box: { x: 100, y: 100, width: 390, height: 844 },
+      device: 'phone',
+    })
+    act(() => select(selectionStore, PAGE, [phone.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[phone]} />)
+
+    const selection = container.querySelector('[data-selection]')
+    const chip = container.querySelector('[data-chip]')
+    const bottom = selection?.getBoundingClientRect().bottom ?? 0
+    expect(chip?.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      bottom + 16,
+    )
+  })
+
   it('bounds several frames, outlines each, and counts them', () => {
     act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
 

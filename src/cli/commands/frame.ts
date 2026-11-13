@@ -1,8 +1,9 @@
-import { type Command, Option } from 'commander'
+import { Argument, type Command, Option } from 'commander'
 
 import {
   addFrame,
   deleteFrame,
+  type DeviceOptions,
   duplicateFrame,
   fitScrollError,
   type FrameFlag,
@@ -12,12 +13,14 @@ import {
   renameFrame,
   resizeFrame,
   type ScrollOptions,
+  setFrameDevice,
   setFrameFlag,
   type SizeOptions,
   type WidthsOptions,
 } from '@/server/board/frames'
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
+import { deviceOf, DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -37,7 +40,11 @@ const ANY_INTEGER = parseInteger(Number.MIN_SAFE_INTEGER)
 type FrameOptions = CommonOptions &
   SizeOptions &
   ScrollOptions &
-  WidthsOptions & { x?: number; y?: number }
+  WidthsOptions &
+  DeviceOptions & { x?: number; y?: number }
+
+const DEVICE_HELP =
+  'the device the board draws around the frame, leaving the frame file and its size as they are'
 
 const WIDTHS_HELP =
   'the extra widths the frame also shows at, a comma list such as 834,390, each drawn beside it and hugging or holding its height as the frame does'
@@ -90,7 +97,10 @@ export function registerFrame(
           'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
         )
           .option('--scroll', SCROLL_HELP)
-          .option('--widths <list>', WIDTHS_HELP, parseWidths),
+          .option('--widths <list>', WIDTHS_HELP, parseWidths)
+          .addOption(
+            new Option('--device <device>', DEVICE_HELP).choices(DEVICES),
+          ),
       ),
     ),
     context,
@@ -231,6 +241,31 @@ export function registerFrame(
         cwd: io.cwd,
       })
       return { data: result, human: `Deleted frame ${result.deleted}` }
+    },
+  )
+
+  act<CommonOptions>(
+    verb(
+      'device',
+      'Set the device the board draws around a frame, or clear it with none, leaving the frame file and its size as they are',
+    ).addArgument(
+      new Argument('<device>', 'the device, or none to clear it').choices([
+        ...DEVICES,
+        'none',
+      ]),
+    ),
+    context,
+    async ([ref = '', device = ''], options) => {
+      const record = await setFrameDevice(
+        await boardOf(options, io),
+        ref,
+        deviceOf(device),
+        { ...options, cwd: io.cwd },
+      )
+      return done(
+        record,
+        record.device ? `Set ${record.device} on` : 'Cleared the device on',
+      )
     },
   )
 

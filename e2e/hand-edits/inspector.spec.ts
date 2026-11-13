@@ -261,6 +261,47 @@ test.describe('editing a selected element by hand', () => {
     expect(read()).toBe(agent)
   })
 
+  test('a color picked and then the headline’s Layers row dragged at once keeps both the fill and the new order', async ({
+    page,
+  }) => {
+    const elements = page.getByRole('list', { name: 'Elements of hero' })
+    await expect(elements).toBeVisible()
+    await page.getByRole('button', { name: 'Fill color' }).click()
+    const area = page.getByRole('slider', { name: 'Saturation and brightness' })
+    const field = await area.boundingBox()
+    if (!field) throw new Error('the picker’s area has no box on screen')
+    await page.mouse.move(field.x + field.width - 4, field.y + 4)
+    await page.mouse.down()
+    await page.mouse.move(field.x + field.width - 2, field.y + 2)
+    await page.mouse.up()
+    const caption = elements.getByRole('button', {
+      name: 'Caption',
+      exact: true,
+    })
+    const below = await caption.boundingBox()
+    if (!below) throw new Error('the Caption row has no box on screen')
+
+    await elements
+      .getByRole('button', { name: 'Headline', exact: true })
+      .dragTo(caption, {
+        targetPosition: { x: below.width / 2, y: below.height - 2 },
+      })
+
+    await expect
+      .poll(() => {
+        const html = read()
+        return (
+          html.indexOf('data-name="Caption"') <
+          html.indexOf('data-name="Headline"')
+        )
+      })
+      .toBe(true)
+    expect(read()).toMatch(
+      /<h1 data-name="Headline" style="color: #[0-9a-f]{6}">/,
+    )
+    await expect(page.getByText('Nothing moved')).toHaveCount(0)
+  })
+
   /** Drags the hero by a point clear of the headline, from wherever focus sits. */
   async function dragHero(page: Page): Promise<void> {
     const frame = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
