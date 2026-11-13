@@ -2,7 +2,7 @@
 
 A developer working with coding agents needs a local board where agents draw screens as plain HTML files the developer reviews and edits by hand.
 
-This record holds at most 600 words.
+This record holds at most 650 words.
 
 ## Goals
 
@@ -35,6 +35,7 @@ This record holds at most 600 words.
 - The board shows the frame an agent is editing and warns a second session
 - A frame breaking a content rule is reported at once to its agent and the board, and projects add rules.
 - An agent screenshots a frame or page, and the developer exports a frame as a PNG at 1x to 3x, in either theme or both
+- A developer or an agent opens one project's frames on a phone on the same network, read only, from a link and a code
 
 ### Themes and tokens
 
@@ -58,7 +59,6 @@ This record holds at most 600 words.
 
 ### Deferred
 
-- Opening one frame on a phone over the local network
 - Skill and hook packaging for agents other than Claude Code
 - Blending and filter effects by hand
 
