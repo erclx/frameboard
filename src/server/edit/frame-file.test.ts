@@ -11,8 +11,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { contentHash } from './address'
+import { swapSpan } from './element-span'
 import {
   editFrameFile,
+  editFrameFileAll,
   insertFrameFile,
   moveFrameFile,
   removeFrameFile,
@@ -253,6 +255,72 @@ describe('editFrameFile', () => {
     editFrameFile(frame, { index: 3 }, { kind: 'text', value: 'New' })
 
     expect(readdirSync(dir)).toEqual(['hero.html'])
+  })
+})
+
+describe('editFrameFileAll', () => {
+  const OLD = '<p>Old</p>'
+
+  it('should write a text and a style change on one element as one write', () => {
+    writeFileSync(frame, OLD)
+
+    const result = editFrameFileAll(frame, contentHash(OLD), [
+      { index: 3, change: { kind: 'text', value: 'One\nTwo' } },
+      {
+        index: 3,
+        change: { kind: 'style', property: 'white-space', value: 'pre-line' },
+      },
+    ])
+
+    expect(result).toMatchObject({ ok: true, indexes: [3, 3] })
+    expect(readFileSync(frame, 'utf8')).toBe(
+      '<p style="white-space: pre-line">One\nTwo</p>',
+    )
+  })
+
+  it('should answer the pair as one span that swaps back to the old bytes', () => {
+    writeFileSync(frame, OLD)
+    const result = editFrameFileAll(frame, contentHash(OLD), [
+      { index: 3, change: { kind: 'text', value: 'One\nTwo' } },
+      {
+        index: 3,
+        change: { kind: 'style', property: 'white-space', value: 'pre-line' },
+      },
+    ])
+    if (!result.ok) throw new Error(result.reason)
+    const [span] = result.spans
+
+    expect(result.spans).toHaveLength(1)
+    expect(
+      span && swapSpan(readFileSync(frame, 'utf8'), span, 'after')?.html,
+    ).toBe(OLD)
+  })
+
+  it('should refuse two style changes on one element and write nothing', () => {
+    writeFileSync(frame, OLD)
+
+    const result = editFrameFileAll(frame, contentHash(OLD), [
+      {
+        index: 3,
+        change: { kind: 'style', property: 'opacity', value: '0.5' },
+      },
+      { index: 3, change: { kind: 'style', property: 'color', value: 'red' } },
+    ])
+
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    expect(readFileSync(frame, 'utf8')).toBe(OLD)
+  })
+
+  it('should refuse two text changes on one element and write nothing', () => {
+    writeFileSync(frame, OLD)
+
+    const result = editFrameFileAll(frame, contentHash(OLD), [
+      { index: 3, change: { kind: 'text', value: 'One' } },
+      { index: 3, change: { kind: 'text', value: 'Two' } },
+    ])
+
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-edit' })
+    expect(readFileSync(frame, 'utf8')).toBe(OLD)
   })
 })
 
