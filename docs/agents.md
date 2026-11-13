@@ -16,6 +16,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 - `capture --at 0,500,1000` holds a frame's motion at each moment in ms and writes `<frame>.at-<ms>.<theme>.png` apiece, and `--filmstrip <n>` writes one image of n moments spaced from start to end. Both seek `window.__hf` when the page sets it, then `window.__timelines`, then its CSS animations and transitions, and refuse `motion-missing` for a scene a script steps on a timer.
 - `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
+- `preview <frame>` prints a link and a code that open the frame's project on a phone on the same Wi-Fi, read only, and `preview --stop` ends it
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
 A page meant to scroll, such as one with a sticky section, takes `--scroll` on `frame add` or `frame resize`, which holds it at a screen height rather than its full length. A frame already fixed taller than a screen keeps its height, so pass `--height` with the resize.

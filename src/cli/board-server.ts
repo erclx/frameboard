@@ -1,4 +1,4 @@
-import { FrameboardError } from '@/shared/errors'
+import { type ErrorCode, EXIT_CODES, FrameboardError } from '@/shared/errors'
 import type { AddressFile } from '@/shared/records/address'
 
 /** How long a running server has to answer before the verb gives up on it. */
@@ -28,6 +28,22 @@ export function postToBoard(
     },
     timeoutMs,
   )
+}
+
+/** Deletes through a running board server's write route with the address file's token. */
+export function deleteFromBoard(
+  address: AddressFile,
+  path: string,
+  body: unknown,
+): Promise<unknown> {
+  return requestBoard(address, path, {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${address.token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
 }
 
 /** Reads a running board server's route, resolving the `data` of its envelope. */
@@ -60,7 +76,21 @@ async function requestBoard(
   }
   const envelope = (await response.json().catch(() => null)) as {
     data?: unknown
+    error?: { code?: unknown; message?: unknown; details?: unknown }
   } | null
+  const refusal = envelope?.error
+  // A refusal the CLI knows keeps its code, so the verb exits as the route meant.
+  if (
+    !response.ok &&
+    isErrorCode(refusal?.code) &&
+    typeof refusal?.message === 'string'
+  ) {
+    throw new FrameboardError(
+      refusal.code,
+      refusal.message,
+      isRecord(refusal.details) ? refusal.details : {},
+    )
+  }
   if (!response.ok || !envelope) {
     throw new FrameboardError(
       'internal',
@@ -69,4 +99,12 @@ async function requestBoard(
     )
   }
   return envelope.data
+}
+
+function isErrorCode(code: unknown): code is ErrorCode {
+  return typeof code === 'string' && Object.hasOwn(EXIT_CODES, code)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

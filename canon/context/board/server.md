@@ -69,6 +69,20 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
   - `tokens.ts` answers `POST /api/tokens/edit` behind `requireWriter`, writing one token into the project's `tokens.css` or the board's sheet as one step, and shares those refusals
 - `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
+### `src/server/preview/`
+
+Owns the phone link, a second read-only listener for one project, apart from `access/`, which guards the board's own port.
+
+- `listener.ts` binds the address `address.ts` picked, alone, at port 4400 or the one the start names, and a free port when that is taken. The board's own listener stays on loopback.
+- It answers GET and HEAD under `/v/<token>/` alone, mapping `frames/<project>/...` and `frameboard/...` onto the board's own frame and look routes, so their refusals hold unrestated
+  - Another token, another project, any other path, and any other method answer 404
+  - A served frame imports its sheets under the link, since the frame route's `base` prefixes the URLs its head names
+  - A `?at=` query never reaches the frame route, so the phone reads only the file as it stands
+- The board holds one listener at a time. A start ends the last and mints a new 96-bit token, a stop naming a token ends only the listener holding it, and the board ends it as it closes.
+- `address.ts` picks the machine's private IPv4 address, preferring 192.168, then 10, then 172.16 to 172.31, where container bridges sit
+- `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`
+  - A start on a machine with no such address refuses `no-network-address` and opens nothing
+
 ### `src/server/clipboard/`
 
 Owns putting copied frames on the OS clipboard as one file list. `routes/clipboard.ts` answers `POST /api/frames/clipboard` with `{ refs, theme }` and an optional `themes` map of ref to theme behind `requireWriter`, rendering each frame at 2x in turn in `themes[ref]` or else `theme`, on the renderer `png.ts` uses.

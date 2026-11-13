@@ -91,6 +91,52 @@ async function noAuthor(page: Page): Promise<void> {
   )
 }
 
+/**
+ * Answers the phone link's start with one fixed link and its stop with
+ * nothing to end, so the card's code reads the same on every machine and no
+ * listener opens on the capture host's network.
+ */
+async function fixedPhoneLink(page: Page): Promise<void> {
+  const token = 'Jq7c2xTnV0pL4hYd'
+  await page.route('**/api/preview', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          json: {
+            ok: true,
+            data: {
+              url: `http://192.168.1.24:4400/v/${token}/frames/webapp/home/hero.html`,
+              address: '192.168.1.24',
+              port: 4400,
+              token,
+              project: 'webapp',
+              ref: 'webapp/home/hero',
+            },
+          },
+        })
+      : route.fulfill({ json: { ok: true, data: { stopped: false } } }),
+  )
+}
+
+/** Clicks the Frame section's Open on a phone button once a writing tab enables it. */
+async function openPhoneLink(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const open = () => {
+      const button = [
+        ...document.querySelectorAll<HTMLButtonElement>('button'),
+      ].find(
+        (candidate) =>
+          candidate.textContent?.trim() === 'Open on a phone' &&
+          !candidate.disabled,
+      )
+      if (button) button.click()
+      else if (--left > 0) requestAnimationFrame(open)
+      else console.error('Open on a phone never lit')
+    }
+    document.addEventListener('DOMContentLoaded', open)
+  }, ROW_FRAMES)
+}
+
 /** How many frames a left panel tab waits for its trigger, about ten seconds. */
 const TAB_FRAMES = 600
 
@@ -3408,6 +3454,25 @@ const CASES: CaptureCase[] = [
               'click',
             ),
             readyWhen('[data-preview-chip]'),
+          ),
+        ),
+      },
+      {
+        section: 'phone-link',
+        theme,
+        route: '/p/webapp/home',
+        excludeViewports: STATE_ONLY,
+        // Carries the Open on a phone button and its open card into the
+        // evidence comparison.
+        evidence: true,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            fixedPhoneLink,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            openPhoneLink,
+            readyWhen('[data-slot="popover-content"] svg[role="img"]'),
           ),
         ),
       },

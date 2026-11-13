@@ -86,6 +86,8 @@ export const EXIT_CODES = {
   'motion-missing': 10,
   // A filmstrip of a frame whose every animation repeats forever, so no end spaces its moments.
   'motion-unbounded': 10,
+  // A phone link asked of a machine with no address on a local network, starting nothing.
+  'no-network-address': 3,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES
