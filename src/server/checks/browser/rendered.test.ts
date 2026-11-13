@@ -148,8 +148,12 @@ describe.skipIf(shell === null)(
         expect(await checkEntrance('')).toEqual([])
       })
 
-      it('lands no clipped for a delayed entrance with no fill mode', async () => {
-        expect(await checkEntrance('main { animation-delay: 20s }')).toEqual([])
+      it('lands no clipped for a delayed entrance its fill holds off the edge', async () => {
+        expect(
+          await checkEntrance(
+            'main { animation-delay: 20s; animation-fill-mode: both }',
+          ),
+        ).toEqual([])
       })
 
       it('still reports clipped for content past the edge at rest', async () => {
