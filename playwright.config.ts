@@ -22,7 +22,9 @@ export default defineConfig({
   workers: process.env.CI ? undefined : '25%',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  // CI uploads playwright-report/, so the html reporter is what keeps a
+  // retry's trace there.
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `http://localhost:${port}`,
     contextOptions: { reducedMotion: 'reduce' },
