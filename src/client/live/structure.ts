@@ -83,17 +83,20 @@ export function createStructure(send: typeof fetch = fetch) {
       held<FrameRecord>([ref], 'rename', '/api/frame/rename', { ref, name }),
     /**
      * Sets how each frame holds its height in one undo step, `expected`
-     * holding each frame's box as the board drew it, by ref.
+     * holding each frame's box as the board drew it, by ref. `heights` gives a
+     * `scroll` write the screen height each named frame takes.
      */
     setHeightMode: (
       refs: readonly string[],
       mode: HeightMode,
       expected: Readonly<Record<string, FrameRecord['box']>>,
+      heights?: Readonly<Record<string, number>>,
     ) =>
       held<FrameRecord[]>(refs, 'resize', '/api/frame/height', {
         refs,
         mode,
         expected,
+        heights,
       }),
     orderFrame: (ref: string, index: number) =>
       post<FrameRecord>('/api/frame/order', { ref, index }),

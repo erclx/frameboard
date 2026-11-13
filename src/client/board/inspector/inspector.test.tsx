@@ -517,6 +517,61 @@ describe('InspectorPanel', () => {
       expect(checked()).toEqual(['Scroll'])
     })
 
+    describe('back to Scroll', () => {
+      // Its own ref, since the height a pick leaving Scroll remembers lasts the tab.
+      const SCREEN = frameOf('screen', {
+        box: { x: 0, y: 0, width: 390, height: 844 },
+        scroll: true,
+      })
+      const FITTED = {
+        ...SCREEN,
+        box: { ...SCREEN.box, height: 1992 },
+        scroll: false,
+        hugHeight: true,
+      }
+      const FIXED = { ...FITTED, hugHeight: false }
+
+      it('sends the screen height the frame left Scroll at, through Fit and Fixed', async () => {
+        const { sent, calls } = heightCalls(() =>
+          Response.json({ ok: true, data: [] }),
+        )
+        const { rerender } = render(
+          <FrameSection page={PAGE} frames={[SCREEN]} calls={calls} />,
+        )
+        await userEvent.click(screen.getByRole('radio', { name: 'Fit' }))
+        rerender(<FrameSection page={PAGE} frames={[FITTED]} calls={calls} />)
+        await userEvent.click(screen.getByRole('radio', { name: 'Fixed' }))
+        rerender(<FrameSection page={PAGE} frames={[FIXED]} calls={calls} />)
+
+        await userEvent.click(screen.getByRole('radio', { name: 'Scroll' }))
+
+        expect(sent.at(-1)).toEqual({
+          refs: [SCREEN.ref],
+          mode: 'scroll',
+          expected: { [SCREEN.ref]: FIXED.box },
+          heights: { [SCREEN.ref]: 844 },
+        })
+      })
+
+      it('sends no height once a height is typed while Fixed', async () => {
+        const { sent, calls } = heightCalls(() =>
+          Response.json({ ok: true, data: [] }),
+        )
+        const typed = { ...FIXED, box: { ...FIXED.box, height: 1500 } }
+        const { rerender } = render(
+          <FrameSection page={PAGE} frames={[SCREEN]} calls={calls} />,
+        )
+        await userEvent.click(screen.getByRole('radio', { name: 'Fit' }))
+        rerender(<FrameSection page={PAGE} frames={[FITTED]} calls={calls} />)
+        await userEvent.click(screen.getByRole('radio', { name: 'Fixed' }))
+        rerender(<FrameSection page={PAGE} frames={[typed]} calls={calls} />)
+
+        await userEvent.click(screen.getByRole('radio', { name: 'Scroll' }))
+
+        expect(sent.at(-1)).not.toHaveProperty('heights')
+      })
+    })
+
     it('moves between modes by arrow key, picking each', async () => {
       const { sent, calls } = heightCalls(() =>
         Response.json({ ok: true, data: [] }),
