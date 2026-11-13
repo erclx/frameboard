@@ -32,11 +32,12 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 
 ### `src/cli/commands/open.ts`
 
-Owns handing a tab write access, beside `show.ts` and `selection.ts`, the other verbs that need a live server. A tab gets write access only through a single-use redeem URL.
+Owns handing a tab write access, beside `show.ts`, `selection.ts`, and `preview.ts`, the other verbs that need a live server. A tab gets write access only through a single-use redeem URL.
 
 - The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
 - `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token
-- `open` and `show` exit 3 with `server-not-running` rather than start a server
+- `open`, `show`, and `preview` exit 3 with `server-not-running` rather than start a server
+  - `preview <frame-ref>` starts the board's phone link and prints it with a terminal code, and `preview --stop` ends it, per `canon/context/board/server.md`
 - `show` takes several frame refs or page refs and logs a shown mark on each, which the change toast steps through, then sends every open board tab the first frame to jump to or offer by its own state
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
 
