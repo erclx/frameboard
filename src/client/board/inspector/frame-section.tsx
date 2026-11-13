@@ -267,10 +267,10 @@ function SizeMenu({ frames, disabled, onPick }: SizeMenuProps) {
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
 const HEIGHT_MODES = [
-  { mode: 'fixed', label: 'Fixed' },
-  { mode: 'fit', label: 'Fit' },
-  { mode: 'scroll', label: 'Scroll' },
-] as const satisfies readonly { mode: HeightMode; label: string }[]
+  { value: 'fixed', label: 'Fixed' },
+  { value: 'fit', label: 'Fit' },
+  { value: 'scroll', label: 'Scroll' },
+] as const satisfies readonly { value: HeightMode; label: string }[]
 
 function heightModeOf({ scroll, hugHeight }: FrameRecord): HeightMode {
   if (scroll) return 'scroll'
@@ -283,25 +283,68 @@ interface HeightRowProps {
   calls: Structure
 }
 
-/**
- * How the frames hold their height, Fixed, Fit, or Scroll, as one radio
- * group read off the records, checking nothing and reading `Mixed` where
- * they differ. A pick writes every frame in one step and shows at once,
- * until the board answers with the frames' new mode or the write is
- * refused, which puts the stored mode back.
- */
+/** How the frames hold their height, Fixed, Fit, or Scroll. */
 function HeightRow({ frames, disabled, calls }: HeightRowProps) {
+  return (
+    <ChoiceRow
+      id="inspector-height"
+      title="Height"
+      choices={HEIGHT_MODES}
+      frames={frames}
+      valueOf={heightModeOf}
+      disabled={disabled}
+      refusal="Couldn’t set the height"
+      write={(refs, mode) =>
+        calls.setHeightMode(
+          refs,
+          mode,
+          Object.fromEntries(frames.map(({ ref, box }) => [ref, box])),
+        )
+      }
+    />
+  )
+}
+
+interface ChoiceRowProps<T extends string> {
+  id: string
+  title: string
+  choices: readonly { value: T; label: string }[]
+  frames: readonly FrameRecord[]
+  valueOf: (frame: FrameRecord) => T
+  disabled: boolean
+  /** The toast a refused write raises. */
+  refusal: string
+  write: (refs: string[], value: T) => Promise<unknown>
+}
+
+/**
+ * One setting of the frames as one radio group read off the records,
+ * checking nothing and reading `Mixed` where they differ. A pick writes
+ * every frame in one step and shows at once, until the board answers with
+ * the frames' new value or the write is refused, which puts the stored
+ * value back.
+ */
+function ChoiceRow<T extends string>({
+  id,
+  title,
+  choices,
+  frames,
+  valueOf,
+  disabled,
+  refusal,
+  write,
+}: ChoiceRowProps<T>) {
   const refs = frames.map((frame) => frame.ref)
-  const modes = frames.map(heightModeOf)
-  const stored = modes.every((mode) => mode === modes[0])
-    ? (modes[0] ?? null)
+  const values = frames.map(valueOf)
+  const stored = values.every((value) => value === values[0])
+    ? (values[0] ?? null)
     : null
-  // A pick stands until the frames read another mode than the one it was made
-  // from, and is then forgotten, so an undo back to that mode reads as stored.
+  // A pick stands until the frames read another value than the one it was
+  // made from, and is then forgotten, so an undo back to it reads as stored.
   const [pending, setPending] = useState<{
     key: string
-    from: HeightMode | null
-    mode: HeightMode
+    from: T | null
+    value: T
   } | null>(null)
   const key = refs.join('\n')
   if (pending && (pending.key !== key || pending.from !== stored)) {
@@ -309,19 +352,16 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
   }
   const shown =
     pending && pending.key === key && pending.from === stored
-      ? pending.mode
+      ? pending.value
       : stored
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
 
-  const pick = (mode: HeightMode) => {
-    if (mode === shown) return
-    setPending({ key, from: stored, mode })
-    const expected = Object.fromEntries(
-      frames.map(({ ref, box }) => [ref, box]),
-    )
-    calls.setHeightMode(refs, mode, expected).catch((error: unknown) => {
+  const pick = (value: T) => {
+    if (value === shown) return
+    setPending({ key, from: stored, value })
+    write(refs, value).catch((error: unknown) => {
       setPending(null)
-      reportRefusal('Couldn’t set the height')(error)
+      reportRefusal(refusal)(error)
     })
   }
 
@@ -329,27 +369,24 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
     const by = ARROW_STEPS[event.key]
     if (by === undefined) return
     event.preventDefault()
-    const next = (index + by + HEIGHT_MODES.length) % HEIGHT_MODES.length
-    const target = HEIGHT_MODES[next]
+    const next = (index + by + choices.length) % choices.length
+    const target = choices[next]
     if (!target) return
     buttons.current[next]?.focus()
-    pick(target.mode)
+    pick(target.value)
   }
 
   // The checked radio takes the tab stop, or the first where none is.
   const focusable = Math.max(
     0,
-    HEIGHT_MODES.findIndex(({ mode }) => mode === shown),
+    choices.findIndex(({ value }) => value === shown),
   )
 
   return (
     <div className="mt-2.5">
       <div className="mb-1.5 flex h-4 items-center justify-between">
-        <span
-          id="inspector-height"
-          className="text-caption text-muted-foreground"
-        >
-          Height
+        <span id={id} className="text-caption text-muted-foreground">
+          {title}
         </span>
         {shown === null ? (
           <span className="text-caption text-muted-foreground">Mixed</span>
@@ -357,25 +394,25 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
       </div>
       <div
         role="radiogroup"
-        aria-labelledby="inspector-height"
+        aria-labelledby={id}
         className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5"
       >
-        {HEIGHT_MODES.map(({ mode, label }, index) => (
+        {choices.map(({ value, label }, index) => (
           <button
-            key={mode}
+            key={value}
             ref={(button) => {
               buttons.current[index] = button
             }}
             type="button"
             role="radio"
-            aria-checked={mode === shown}
+            aria-checked={value === shown}
             tabIndex={index === focusable ? 0 : -1}
             disabled={disabled}
-            onClick={() => pick(mode)}
+            onClick={() => pick(value)}
             onKeyDown={(event) => step(event, index)}
             className={cn(
               'grid flex-1 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40',
-              mode === shown && 'bg-sidebar text-foreground shadow-xs',
+              value === shown && 'bg-sidebar text-foreground shadow-xs',
             )}
           >
             {label}
