@@ -25,9 +25,9 @@ type Result =
 /**
  * Opens the frame's project on a phone on the same network. The button opens
  * a card that starts the board's phone listener and shows the link as a code
- * and as text, with what it covers. Closing the card ends the link, and so
- * does anything that unmounts it, so no listener outlives the card that
- * started it. A link a second card started since is left running, since the
+ * and as text, with what it covers. Closing the card ends the link, and so do
+ * anything that unmounts it and the tab closing or reloading, so no listener
+ * outlives the card that started it. A link a second card started since is left running, since the
  * stop names the token this card holds.
  */
 export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
@@ -40,6 +40,11 @@ export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
     if (!open) return
     let token: string | null = null
     let ended = false
+    // A tab closing or reloading runs no effect cleanup, so the stop rides a
+    // keepalive request the browser finishes after the page is gone.
+    const endOnLeave = () => {
+      if (token !== null) void leaveLink(token, send)
+    }
     startLink(frame.ref, send).then(
       (link) => {
         // A card closed while the start was out ends the link it started.
@@ -48,6 +53,7 @@ export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
           return
         }
         token = link.token
+        window.addEventListener('pagehide', endOnLeave)
         setResult({ attempt, link })
       },
       (error: unknown) => {
@@ -56,6 +62,7 @@ export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
     )
     return () => {
       ended = true
+      window.removeEventListener('pagehide', endOnLeave)
       if (token !== null) void stopLink(token, send)
     }
   }, [open, attempt, frame.ref, send])
@@ -172,6 +179,19 @@ function startLink(ref: string, send: typeof fetch): Promise<PreviewStart> {
 /** Ends the link `token` names, quietly, since a card closing has nowhere to report it. */
 function stopLink(token: string, send: typeof fetch): Promise<void> {
   return writeBoard('/api/preview', { token }, 'DELETE', send).then(
+    () => undefined,
+    () => undefined,
+  )
+}
+
+/** Ends the link `token` names as the tab leaves, on a request that outlives the page. */
+function leaveLink(token: string, send: typeof fetch): Promise<void> {
+  return send('/api/preview', {
+    method: 'DELETE',
+    keepalive: true,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token }),
+  }).then(
     () => undefined,
     () => undefined,
   )

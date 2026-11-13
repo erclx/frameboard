@@ -79,6 +79,26 @@ describe('PhoneLink', () => {
     )
   })
 
+  it('ends the link on a keepalive request when the tab leaves with the card open', async () => {
+    const leaving: RequestInit[] = []
+    const { send: board } = fakeBoard()
+    const send: typeof fetch = (input, init) => {
+      if (init?.keepalive) leaving.push(init)
+      return board(input, init)
+    }
+    render(<PhoneLink frame={HERO} disabled={false} send={send} />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Open on a phone' }),
+    )
+    await screen.findByRole('img', { name: /^Code for/ })
+
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+
+    expect(leaving).toHaveLength(1)
+    expect(leaving[0]?.method).toBe('DELETE')
+    expect(JSON.parse(String(leaving[0]?.body))).toEqual({ token: 'token-1' })
+  })
+
   it('ends a link whose start answers after the card closed', async () => {
     let answer: (response: Response) => void = () => undefined
     const { send, requests } = fakeBoard(
