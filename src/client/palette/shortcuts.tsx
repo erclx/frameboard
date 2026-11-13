@@ -129,6 +129,16 @@ const SECTIONS: readonly Section[] = [
       },
     ],
   },
+  {
+    title: 'Present',
+    rows: [
+      { label: 'Present page', actions: ['present.start'] },
+      // A row prints an action's first key alone, so Space rides as a gesture.
+      { label: 'Next slide', actions: ['present.next'], gestures: ['Space'] },
+      { label: 'Previous slide', actions: ['present.previous'] },
+      { label: 'Leave', actions: ['present.leave'] },
+    ],
+  },
 ]
 
 /** The home view's sheet, its project keys beside the keys every screen shares. */
