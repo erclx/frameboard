@@ -141,9 +141,8 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
 
 /**
  * Drives one frame's live page from the motion store: seeks it to the held
- * moment, runs the play clock looping at the track's end, re-seeks after an
- * agent's write reloads it, and hands it back to its own clock once its hold
- * ends. A timeline that ends stops held at its end, and one that repeats
+ * moment, runs the play clock, re-seeks after an agent's write reloads it,
+ * and hands it back to its own clock once its hold ends. A timeline that ends stops held at its end, and one that repeats
  * forever loops over one iteration. Entering Play and leaving the page both
  * end the hold.
  */
