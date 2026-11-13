@@ -38,6 +38,8 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 `layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
 
+`layout.json` may hold a `present` key whose `transition` names what present mode draws between the page's slides, and a frame entry may hold its own `transition` over it. Each holds a `name` with an optional `ms` and `direction`, and a name `src/shared/present-transition.ts` does not list reads as none.
+
 An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
 
 - A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size
