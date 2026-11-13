@@ -53,7 +53,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - The Motion section's Filmstrip exports up to 12 moments in one row at the Export section's scale and theme, offering only the counts that fit, named like `hero.filmstrip-5.light@2x.png`
 - Copy as PNG with several frames selected puts each on the clipboard as its own file under WSL, so one paste lands them all, and elsewhere copies one image laid out as on the canvas
 
-The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag. Drag any element to move it, press Delete to take it out, or double-click text to retype it. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
+The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
 
 Drag a corner of selected upright text, a shape, an image, or a video to resize it. Text wraps to the new width with its height following, and Shift keeps a shape's or media's ratio. Inline text, a container, and a divider draw no corner marks.
 
