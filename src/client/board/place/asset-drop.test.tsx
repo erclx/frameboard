@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import type { AssetFile } from '@/shared/records/assets'
+import { frameOf } from '@/test/board'
 
 import type { PlaceableFile } from '../assets/drag'
 import { Tile } from '../assets/tile'
@@ -19,20 +20,35 @@ interface Placed {
   file: PlaceableFile
 }
 
+/** A frame over the hit layer's left half, so a point at x under 100 is over it and one past it is bare canvas. */
+const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 100, height: 200 } })
+const FRAMES = [HERO]
+
 /** A 200 by 200 hit layer at the page's top left, its board points the client's own. */
-function HitLayer({ placed }: { placed: Placed[] }) {
+function HitLayer({
+  placed,
+  framed = [],
+}: {
+  placed: Placed[]
+  framed?: Placed[]
+}) {
   const hit = useRef<HTMLDivElement>(null)
   const [container] = useState(() => document.createElement('div'))
   useAssetDrop(hit, {
     enabled: true,
     container,
     page: 'studio/home',
-    frames: () => [],
+    frames: () => FRAMES,
     toBoard: ({ clientX, clientY }) => ({ x: clientX, y: clientY }),
     place: async (_container, _page, _frames, at, file) => {
       placed.push({ at, file })
       return null
     },
+    placeFrame: async (_page, _frames, at, file) => {
+      framed.push({ at, file })
+      return null
+    },
+    measure: async () => ({ width: 64, height: 36 }),
   })
   return (
     <div
@@ -43,10 +59,14 @@ function HitLayer({ placed }: { placed: Placed[] }) {
   )
 }
 
-function renderBoard(files: AssetFile[], placed: Placed[]) {
+function renderBoard(
+  files: AssetFile[],
+  placed: Placed[],
+  framed: Placed[] = [],
+) {
   return render(
     <div>
-      <HitLayer placed={placed} />
+      <HitLayer placed={placed} framed={framed} />
       <ul style={{ position: 'fixed', left: 300, top: 0, width: 200 }}>
         {files.map((file) => (
           <Tile key={file.path} project="studio" file={file} />
@@ -110,6 +130,62 @@ describe('useAssetDrop', () => {
         file: { project: 'studio', path: 'hero.png', kind: 'image' },
       },
     ])
+  })
+
+  it('adds a frame for a tile dropped on bare canvas and places nothing', async () => {
+    const placed: Placed[] = []
+    const framed: Placed[] = []
+    renderBoard([{ path: 'demo.mp4', kind: 'video', size: 10 }], placed, framed)
+
+    await dragTo(
+      screen.getByRole('button', { name: /^Copy path of demo.mp4,/ }),
+      screen.getByTestId('hit'),
+      { clientX: 150, clientY: 60 },
+    )
+
+    expect(framed).toEqual([
+      {
+        at: { x: 150, y: 60 },
+        file: { project: 'studio', path: 'demo.mp4', kind: 'video' },
+      },
+    ])
+    expect(placed).toEqual([])
+  })
+
+  it('holds the ghost of the frame a drop on bare canvas would make', async () => {
+    renderBoard([{ path: 'hero.png', kind: 'image', size: 10 }], [])
+    const ghosts: unknown[] = []
+    const stop = tileDragStore.subscribe(({ ghost }) => ghosts.push(ghost))
+
+    await dragTo(
+      screen.getByRole('button', { name: /^Copy path of hero.png,/ }),
+      screen.getByTestId('hit'),
+      { clientX: 150, clientY: 60 },
+    )
+    stop()
+
+    // The page holds a frame named hero, so the new one takes the next name.
+    expect(ghosts).toContainEqual({
+      box: { x: 118, y: 42, width: 64, height: 36 },
+      name: 'hero-2',
+      hugsHeight: false,
+    })
+    expect(tileDragStore.getState().ghost).toBeNull()
+  })
+
+  it('holds no ghost while the tile is over a frame', async () => {
+    renderBoard([{ path: 'hero.png', kind: 'image', size: 10 }], [])
+    const ghosts: unknown[] = []
+    const stop = tileDragStore.subscribe(({ ghost }) => ghosts.push(ghost))
+
+    await dragTo(
+      screen.getByRole('button', { name: /^Copy path of hero.png,/ }),
+      screen.getByTestId('hit'),
+      { clientX: 40, clientY: 60 },
+    )
+    stop()
+
+    expect(ghosts.filter((ghost) => ghost !== null)).toEqual([])
   })
 
   it('follows the dragged tile and lets go once it drops', async () => {

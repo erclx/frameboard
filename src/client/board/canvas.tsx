@@ -65,6 +65,7 @@ import { NotesLayer } from './notes/markers'
 import { pickAt } from './notes/pick'
 import { closeNote, notesUi, useNoteTool } from './notes/tool'
 import { type ClientPoint, useAssetDrop } from './place/asset-drop'
+import { DropGhost } from './place/drop-ghost'
 import { DropLine } from './place/drop-line'
 import { ShapeDraft } from './place/shape-draft'
 import {
@@ -868,6 +869,7 @@ export function Canvas({
               frames={drawnFrames}
               toBoard={toBoard}
             />
+            <DropGhost />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>
