@@ -110,10 +110,14 @@ test.describe('the live board', () => {
     const dot = page.frameLocator('iframe[title="hero"]').getByRole('img')
     // A fetch in the default mode reads the HTTP cache the image load filled,
     // so a freshness lifetime on the asset would answer the old bytes here.
+    // The write reloads the frame, which can tear down a read in flight, so a
+    // torn read answers null and the poll asks again.
     const served = () =>
-      dot.evaluate(async (img: HTMLImageElement) =>
-        (await fetch(img.src)).text(),
-      )
+      dot
+        .evaluate(async (img: HTMLImageElement) =>
+          (await fetch(img.src)).text(),
+        )
+        .catch(() => null)
     const asset = join(board.root, 'studio/assets/dot.svg')
     await expect.poll(served).toBe(readFileSync(asset, 'utf8'))
     const edited =
