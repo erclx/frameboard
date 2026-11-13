@@ -51,7 +51,13 @@ An entry's `widths` lists the extra widths one frame file shows at, each a `{ wi
 - Each width follows the frame's height mode, hugging while `hugHeight` is on and otherwise holding its height, its preset height when set or when scroll turns on over a hugging height
 - A hand resize onto a listed width drops that width from the list, and a batch measures a hugging frame whose list changed, through `relistedRefs`
 - `PageLayout.set` writes `widths` while it lists one, removes it once a valid list empties, and leaves a value no reader understands as written
-- Every writer placing a frame beside another, `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts`, reads `drawnExtent` rather than the box, so nothing lands under a linked width
+- Every writer placing a frame beside another, `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts`, reads `drawnExtent` rather than the box, so nothing lands under a linked width or a device
+
+An entry's `device` names the device the board draws around the frame, `phone` or `tablet`, and the frame file never changes for it.
+
+- `deviceOf` in `src/shared/frame-device.ts` reads any other value as none
+- `PageLayout.set` writes the key while a frame holds one, removes it once cleared, and leaves an unknown value as written
+- The body is a fixed border in points, 16 for the phone and 44 for the tablet, around whatever box the frame holds, and `drawnExtent` grows by it
 
 ### `src/server/edit/`
 
