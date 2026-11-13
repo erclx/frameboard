@@ -196,6 +196,8 @@ describe('startPreviewListener', () => {
 
     const elsewhere = fetch(
       `http://127.0.0.2:${listener.port}/v/${listener.token}/frames/studio/home/hero.html`,
+      // macOS holds no 127.0.0.2, so the connect hangs rather than refusing.
+      { signal: AbortSignal.timeout(1000) },
     )
 
     expect(listener.host).toBe('127.0.0.1')
@@ -226,7 +228,7 @@ describe('startPreviewListener', () => {
 
   it('takes a free port when the one asked for is taken', async () => {
     const holder = createServer()
-    await new Promise<void>((resolve) => holder.listen(0, '0.0.0.0', resolve))
+    await new Promise<void>((resolve) => holder.listen(0, '127.0.0.1', resolve))
     closers.push(() => new Promise((resolve) => holder.close(() => resolve())))
     const taken = (holder.address() as { port: number }).port
 
