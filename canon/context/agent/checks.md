@@ -17,7 +17,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 
 - The `check` verb, the server on every watched batch, and the plugin hook all run `checkFrameIn`, so no path drifts from another
 - A project turns a rule off by listing its id in `checks.off` of `project.json`, an error rule included, and every path returns through `withoutOff` in `rule.ts`, so none reports it
-- `check` exits 8 with `check-findings` and the result in the error's details when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
+- `check` exits 8 with `check-findings` when any finding is an error, so a script branches on the exit alone. The result sits under `data` in both answers and again in the error's details, which older scripts read. A result holding warnings alone exits 0
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, and `unknown-token`
 
 Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.
@@ -79,7 +79,7 @@ The hook's entry is `src/cli/hook.ts`, bundled to `dist/hook.js` beside the CLI,
 
 Owns the browser tier, the rules that read a rendered page. It sits in its own folder so the hook bundle, which imports `checks/frame.ts` alone, never reaches it or `playwright-core`. Only `clipped` reports an error, and `viewport` warns since a full-height screen sizes off the viewport on purpose.
 
-- `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'` so a missing face is measured in the fallback the board shows
+- `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'` so a missing face is measured in the fallback the board shows. It finishes every finite animation before a rule reads, so an entrance is measured at rest, and leaves a repeating one running
 - Each rule reports at most one finding per frame, naming the first offending element by its edit index and how many more, and opens with the theme when only one theme trips it
 - `clipped` measures uncropped boxes grown to their text's line box, against the frame's box and not the block's, so a `nowrap` heading counts past the frame only. `scrollbar` takes 1 px of slack
 - `viewport` rereads at twice the viewport height through `fit`'s `readContentSize`, two frames after the resize so a `resize` script counts, leaving out what a cropping ancestor hides
