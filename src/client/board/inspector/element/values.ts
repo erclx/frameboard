@@ -2,6 +2,8 @@ import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
+import { parseComputed, parseHex, type Rgba } from './color-picker/space'
+
 export const HEX = /^#[0-9a-f]{6}$/i
 
 /** The row's shell, as the reference's `.crow`. */
@@ -47,6 +49,34 @@ export function tokenValue(
   theme: Theme,
 ): string | null {
   return tokens.find((row) => row.name === name)?.[theme] ?? null
+}
+
+function rgbOf(css: string): Rgba | null {
+  return parseHex(css) ?? parseComputed(css)
+}
+
+/**
+ * The first color token, in sheet order, whose value in the theme shows the
+ * same red, green, and blue as the raw `value`, or null. Equal rather than
+ * near, since a swap is meant to keep the color it replaces. Alpha is left
+ * out, as the row's percent carries it.
+ */
+export function matchingToken(
+  value: string,
+  tokens: readonly TokenRow[],
+  theme: Theme,
+): TokenRow | null {
+  const from = rgbOf(value)
+  if (!from) return null
+  return (
+    tokens.find((token) => {
+      const shown = token[theme]
+      const to = shown === null ? null : rgbOf(shown)
+      return (
+        to !== null && to.r === from.r && to.g === from.g && to.b === from.b
+      )
+    }) ?? null
+  )
 }
 
 /** The color a swatch paints for a stated value, null for a token with no value. */

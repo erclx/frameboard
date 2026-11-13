@@ -1894,7 +1894,7 @@ describe('FillSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('flags a raw value and names a token with its chip', () => {
+  it('names a raw value no token matches by its hex alone, and a token by its chip', () => {
     render(
       <>
         <FillSection
@@ -1920,14 +1920,102 @@ describe('FillSection', () => {
     )
 
     expect(
-      screen.getByRole('img', { name: 'Raw value, not a token' }),
-    ).toBeInTheDocument()
-    expect(
       screen.getByRole('button', { name: 'Fill token' }),
     ).toHaveTextContent('111827')
+    expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    expect(screen.queryByRole('img')).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Stroke token' }),
     ).toHaveTextContent('border')
+  })
+
+  describe('a raw value equal to a token', () => {
+    function renderFill(
+      value: string,
+      {
+        percent = 100,
+        tokens = [PRIMARY],
+        theme = 'light',
+        disabled = false,
+      }: {
+        percent?: number
+        tokens?: TokenRow[]
+        theme?: 'light' | 'dark'
+        disabled?: boolean
+      } = {},
+    ) {
+      const { changes, write } = recorder()
+      render(
+        <FillSection
+          textOnly
+          color={{ value, token: null, percent }}
+          backgroundColor={null}
+          tokens={tokens}
+          theme={theme}
+          inline={false}
+          disabled={disabled}
+          write={write}
+        />,
+      )
+      return changes
+    }
+
+    it('swaps to the token at the row’s percent', async () => {
+      const changes = renderFill('#4f46e5', { percent: 28 })
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      )
+
+      expect(changes).toEqual([
+        {
+          kind: 'style',
+          property: 'color',
+          value: 'color-mix(in srgb, var(--primary) 28%, transparent)',
+        },
+      ])
+    })
+
+    it('matches across hex case and an rgb() value', () => {
+      renderFill('rgb(79, 70, 229)', {
+        tokens: [tokenOf('--primary', '#4F46E5')],
+      })
+
+      expect(
+        screen.getByRole('button', { name: /^Use primary for / }),
+      ).toHaveTextContent('Use primary')
+    })
+
+    it('names the first of two equal tokens in sheet order', () => {
+      renderFill('#4f46e5', {
+        tokens: [tokenOf('--brand', '#4f46e5'), PRIMARY],
+      })
+
+      expect(
+        screen.getByRole('button', { name: 'Use brand for 4f46e5' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Use primary/ })).toBeNull()
+    })
+
+    it('matches the token’s value in the theme the frame shows', () => {
+      renderFill('#4f46e5', { theme: 'dark' })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('offers nothing for a raw value no hex or rgb() states', () => {
+      renderFill('indigo', { tokens: [tokenOf('--primary', 'indigo')] })
+
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+    })
+
+    it('disables the swap where the inspector is disabled', () => {
+      renderFill('#4f46e5', { disabled: true })
+
+      expect(
+        screen.getByRole('button', { name: 'Use primary for 4f46e5' }),
+      ).toBeDisabled()
+    })
   })
 })
 
