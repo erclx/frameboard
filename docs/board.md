@@ -77,7 +77,10 @@ Images, videos, and audio come from the project's `assets/` folder and land the 
 
 - Image, video, or audio in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width, and audio lands as a player 300px wide
 - Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
-- A selected video or audio element in Edit draws a bar under it, and the inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
-- Muted in the file is the one media control that writes, setting or dropping the element's `muted` attribute
+  - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
+- A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
+- A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
+  - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
+- Controls, Autoplay, Loop, and Muted in the file are the switches that write, each setting or dropping one attribute, and audio has no Controls switch
 
 Undo any of it with Cmd+Z. An undo of something an agent has changed since is refused and named on the board, so it never reverts the agent's work. Releases before 1.0 ship the board in stages, and the rest of editing by hand arrives in later 0.x releases.
