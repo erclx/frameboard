@@ -8,6 +8,8 @@ import {
   TooltipTrigger,
 } from '@/client/components/ui/tooltip'
 
+import { hasQuietFocus } from './quiet-focus'
+
 interface ActionTooltipProps {
   label: string
   keys?: readonly string[]
@@ -25,7 +27,17 @@ export function ActionTooltip({
 }: ActionTooltipProps) {
   const key = liveKey(keys, useCharacterKeysOn())
   return (
-    <Tooltip>
+    <Tooltip
+      onOpenChange={(open, details) => {
+        if (
+          open &&
+          details.reason === 'trigger-focus' &&
+          hasQuietFocus(details.trigger)
+        ) {
+          details.cancel()
+        }
+      }}
+    >
       <TooltipTrigger render={children} />
       <TooltipContent
         side={side}
