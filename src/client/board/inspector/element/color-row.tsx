@@ -1,5 +1,5 @@
 import { CircleAlert, Link2, Minus } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
 import { cn } from '@/client/lib/cn'
@@ -136,6 +136,10 @@ export function ColorRow({
 }: ColorRowProps) {
   const row = useRef<HTMLDivElement>(null)
   const [picking, setPicking] = useState<Picking | null>(null)
+  /** The session a close already ended, which a second close before the render ignores. */
+  const ended = useRef<Picking | null>(null)
+  /** Set while a press goes down inside the row or the picker, including a menu the picker opened. */
+  const pressedInside = useRef(false)
   const source: ColorSource = value.token
     ? { token: value.token }
     : { raw: value.value }
@@ -155,7 +159,8 @@ export function ColorRow({
   }
 
   const close = (write: boolean) => {
-    if (!picking) return
+    if (!picking || ended.current === picking) return
+    ended.current = picking
     setPicking(null)
     const css = pickedCss(picking.color)
     // A Mixed row opens on one member's color, which picking writes on them all.
@@ -172,6 +177,27 @@ export function ColorRow({
     })
   }
 
+  const pressedOutside = useEffectEvent(() => close(true))
+  const shown = picking !== null
+  // The popover closes on the click a press ends in, which a press that
+  // becomes a drag never fires, so the drag's write would land first and
+  // the pick be lost. A press elsewhere closes it as it goes down instead.
+  useEffect(() => {
+    if (!shown) return
+    const start = () => {
+      pressedInside.current = false
+    }
+    const settle = () => {
+      if (!pressedInside.current) pressedOutside()
+    }
+    window.addEventListener('pointerdown', start, true)
+    document.addEventListener('pointerdown', settle)
+    return () => {
+      window.removeEventListener('pointerdown', start, true)
+      document.removeEventListener('pointerdown', settle)
+    }
+  }, [shown])
+
   const pickToken = (name: string) => {
     const percent = picking?.color.percent ?? value.percent
     setPicking(null)
@@ -180,7 +206,14 @@ export function ColorRow({
   }
 
   return (
-    <div ref={row} className={COLOR_ROW}>
+    <div
+      ref={row}
+      className={COLOR_ROW}
+      // The picker portals out of the row, and React still bubbles its presses here.
+      onPointerDownCapture={() => {
+        pressedInside.current = true
+      }}
+    >
       <button
         type="button"
         aria-label={`${label} color`}
@@ -211,7 +244,7 @@ export function ColorRow({
             : value.value.replace(/^#/, '')}
       </button>
       <Popover
-        open={picking !== null}
+        open={shown}
         onOpenChange={(next, details) => {
           if (!next) close(details.reason !== 'escape-key')
         }}
