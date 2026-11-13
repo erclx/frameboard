@@ -259,6 +259,58 @@ describe('frame', () => {
     expect(result.json().data).toMatchObject({ box: { width, height } })
   })
 
+  describe('device', () => {
+    it('answers the frame with the device it set', async () => {
+      const run = on('basic')
+
+      const result = await run('frame', 'device', 'webapp/home/about', 'phone')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({
+        ref: 'webapp/home/about',
+        device: 'phone',
+      })
+    })
+
+    it('answers the frame with no device after none', async () => {
+      const run = on('basic')
+      await run('frame', 'device', 'webapp/home/about', 'tablet')
+
+      const result = await run('frame', 'device', 'webapp/home/about', 'none')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).not.toHaveProperty('device')
+    })
+
+    it('refuses an unknown device with usage, exit 2, writing nothing', async () => {
+      const run = on('basic')
+      const layout = join(board.root, 'webapp/home/layout.json')
+      const bytes = readFileSync(layout, 'utf8')
+
+      const result = await run('frame', 'device', 'webapp/home/about', 'watch')
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+      expect(readFileSync(layout, 'utf8')).toBe(bytes)
+    })
+
+    it('add --device places the frame in that device', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing',
+        '--size',
+        'phone',
+        '--device',
+        'phone',
+      )
+
+      expect(result.json().data).toMatchObject({ device: 'phone' })
+    })
+  })
+
   it('fails usage, exit 2, on an unknown size preset', async () => {
     const run = on('basic')
 

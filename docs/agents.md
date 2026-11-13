@@ -26,6 +26,8 @@ A responsive page is one frame file shown at several widths, so every fix to the
 - Each width hugs its content when the frame does and holds its device height otherwise
 - `capture` names each width's image `<frame>@<width>.<theme>.png`, and a browser finding at a width prints as `<path>@<width>`
 
+`frame device <frame-ref> phone`, or `--device phone` on `frame add`, has the board draw a generic phone around the frame, and `tablet` a tablet. The frame file and its size stay as they are, and `none` clears it.
+
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
 
 ## Content checks

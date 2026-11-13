@@ -23,16 +23,21 @@ import {
   THEME_OPTIONS,
 } from './export-store'
 
-/** One frame's PNG export, picking the scale and theme `exportFrame` renders at, in one theme or both. */
+/**
+ * One frame's PNG export, picking the scale and theme `exportFrame` renders
+ * at, in one theme or both, and for a frame holding a device whether the PNG
+ * draws it.
+ */
 export function ExportSection({ frame }: { frame: FrameRecord }) {
   const scale = useStore(exportStore, (state) => state.scale)
   const theme = useStore(exportStore, (state) => state.theme)
+  const device = useStore(exportStore, (state) => state.device ?? false)
   const [exporting, setExporting] = useState(false)
   const files = exportFileNames(frame.name, { scale, theme })
 
   const run = () => {
     setExporting(true)
-    void exportFrame(frame, { scale, theme })
+    void exportFrame(frame, { scale, theme, device })
       .catch(reportRefusal(`Couldn't export ${frame.name}`))
       .finally(() => setExporting(false))
   }
@@ -74,6 +79,12 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
           }}
         />
       </div>
+      {frame.device ? (
+        <IncludeDevice
+          on={device}
+          onChange={(on) => exportStore.setState({ device: on })}
+        />
+      ) : null}
       <Button
         variant="outline"
         size="sm"
@@ -87,6 +98,39 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
         PNG, {files.join(' and ')}
       </p>
     </section>
+  )
+}
+
+/** Whether the PNG draws the frame inside its device, carried across frames as the scale is. */
+function IncludeDevice({
+  on,
+  onChange,
+}: {
+  on: boolean
+  onChange: (on: boolean) => void
+}) {
+  return (
+    <label className="mb-2 flex items-center justify-between gap-2 text-xs">
+      <span>Include device</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => onChange(!on)}
+        className={cn(
+          'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          on ? 'bg-primary' : 'bg-input',
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
+            on ? 'left-[14px]' : 'left-0.5',
+          )}
+        />
+      </button>
+    </label>
   )
 }
 

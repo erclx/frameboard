@@ -22,6 +22,27 @@ import {
 
 const FRAME = { ref: 'studio/home/hero', box: { width: 10, height: 10 } }
 
+/** The alpha of a PNG's top left pixel, read by decoding it in a page. */
+async function cornerAlpha(browser: Browser, png: Buffer): Promise<number> {
+  const context = await browser.newContext()
+  try {
+    const page = await context.newPage()
+    return await page.evaluate(async (data) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${data}`
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      const drawn = canvas.getContext('2d')
+      drawn?.drawImage(image, 0, 0)
+      return drawn?.getImageData(0, 0, 1, 1).data[3] ?? -1
+    }, png.toString('base64'))
+  } finally {
+    await context.close()
+  }
+}
+
 /** A browser whose every context fails to open, recording whether it was closed. */
 function stubBrowser() {
   const state = { closed: false }
@@ -241,6 +262,29 @@ describe.skipIf(shell === null)(
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
         600, 300,
       ])
+    })
+
+    it('grows a PNG by the device body and leaves its corners clear', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 200, height: 400 },
+          device: 'phone',
+        },
+        'light',
+      )
+      const corner = await cornerAlpha(requireShell(shell), bytes)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        232, 432,
+      ])
+      expect(corner).toBe(0)
     })
 
     it('refuses a render past the screenshot limit before opening a tab', async () => {

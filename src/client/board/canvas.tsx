@@ -1149,13 +1149,15 @@ function sizeOf(element: HTMLElement): Size {
 /** The view that shows every frame and the linked widths it draws, never zoomed past 100 percent. */
 function fitView(
   frames: readonly (Pick<FrameRecord, 'box'> &
-    Partial<Pick<FrameRecord, 'widths'>>)[],
+    Partial<Pick<FrameRecord, 'widths' | 'device'>>)[],
   size: Size,
 ): View {
   if (frames.length === 0 || size.width === 0 || size.height === 0) {
     return { x: FIT_PADDING, y: FIT_PADDING, k: 1 }
   }
-  const boxes = frames.map(({ box, widths }) => drawnExtent(box, widths ?? []))
+  const boxes = frames.map(({ box, widths, device }) =>
+    drawnExtent(box, widths ?? [], device),
+  )
   const left = Math.min(...boxes.map((box) => box.x))
   const top = Math.min(...boxes.map((box) => box.y))
   const right = Math.max(...boxes.map((box) => box.x + box.width))

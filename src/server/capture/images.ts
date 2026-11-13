@@ -118,11 +118,12 @@ export function compositeImagePath(
  */
 export function compositeBounds(
   page: CompositePage,
-  frames: (Pick<FrameRecord, 'box'> & Partial<Pick<FrameRecord, 'widths'>>)[],
+  frames: (Pick<FrameRecord, 'box'> &
+    Partial<Pick<FrameRecord, 'widths' | 'device'>>)[],
   scale = 1,
 ): { width: number; height: number; dx: number; dy: number } {
-  const extents = frames.map(({ box, widths }) =>
-    drawnExtent(box, widths ?? []),
+  const extents = frames.map(({ box, widths, device }) =>
+    drawnExtent(box, widths ?? [], device),
   )
   const left = Math.min(...extents.map((box) => box.x))
   const top = Math.min(...extents.map((box) => box.y))

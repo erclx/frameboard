@@ -81,6 +81,27 @@ describe('presenting a page', () => {
     expect(box?.left).toBeCloseTo(0)
   })
 
+  it('fits a frame in a device with its body inside the window', () => {
+    present([
+      frameOf('phone', {
+        box: { x: 0, y: 0, width: 390, height: 844 },
+        device: 'phone',
+      }),
+    ])
+
+    const body = document.querySelector('[data-bezel]')?.getBoundingClientRect()
+    const scale = Math.min(
+      window.innerWidth / (390 + 32),
+      window.innerHeight / (844 + 32),
+    )
+    const top = (body?.top ?? 0) - 16 * scale
+    const bottom = (body?.bottom ?? 0) + 16 * scale
+
+    expect(body?.height).toBeCloseTo(844 * scale)
+    expect(top).toBeGreaterThanOrEqual(-0.5)
+    expect(bottom).toBeLessThanOrEqual(window.innerHeight + 0.5)
+  })
+
   it('steps by arrow in Layers order, skipping hidden frames', async () => {
     present(framesOf('third', 'hidden', 'second', 'first'))
 
