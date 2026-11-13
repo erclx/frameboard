@@ -854,13 +854,20 @@ export function Canvas({
             })}
             <SelectionOverlay frames={frames} sections={page.sections} />
             <ElementOverlay frames={frames} container={layer} />
+            {/* Under the drop line, which a shape placed in the flow lands at. */}
+            <ShapeDraft
+              viewport={viewportRef}
+              toBoard={toBoard}
+              container={layer}
+              frames={drawnFrames}
+              project={page.project}
+            />
             <DropLine
               viewport={viewportRef}
               container={layer}
               frames={drawnFrames}
               toBoard={toBoard}
             />
-            <ShapeDraft viewport={viewportRef} toBoard={toBoard} />
             <ChangeGlow frames={frames} container={layer} />
             <WaitingCards page={page.ref} frames={frames} />
           </>
