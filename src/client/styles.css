@@ -201,3 +201,62 @@
     @apply font-sans;
   }
 }
+
+/* The scrub track, whose thumb no utility reaches. Its focus ring draws on
+   the thumb alone, so a focused track never rings the whole bar. */
+@layer components {
+  .seek-track {
+    appearance: none;
+    height: 10px;
+    background: transparent;
+    outline: none;
+    --seek-rail: color-mix(in srgb, currentColor 25%, transparent);
+    --seek-ring: 0 0 0 2px var(--card), 0 0 0 3.5px var(--primary);
+  }
+  .seek-track::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(
+      to right,
+      var(--primary) var(--seek, 0%),
+      var(--seek-rail) var(--seek, 0%)
+    );
+  }
+  .seek-track::-webkit-slider-thumb {
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-top: -3.5px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  .seek-track:focus-visible::-webkit-slider-thumb {
+    box-shadow: var(--seek-ring);
+  }
+  .seek-track::-moz-range-track {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--seek-rail);
+  }
+  .seek-track::-moz-range-progress {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--primary);
+  }
+  .seek-track::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  .seek-track:focus-visible::-moz-range-thumb {
+    box-shadow: var(--seek-ring);
+  }
+  .seek-track:disabled::-webkit-slider-thumb {
+    background: var(--faint);
+  }
+  .seek-track:disabled::-moz-range-thumb {
+    background: var(--faint);
+  }
+}

@@ -1,8 +1,11 @@
-import { act, render } from '@testing-library/react'
+import '../../styles.css'
+
+import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
+import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
 import { modeStore } from '../mode'
 import {
   clear,
@@ -335,6 +338,81 @@ describe('ElementOverlay', () => {
     )
 
     expect(outline(drawn)).toBeNull()
+  })
+
+  describe('the media bar', () => {
+    let notes: HTMLDivElement | undefined
+
+    afterEach(() => {
+      notes?.remove()
+      notes = undefined
+    })
+
+    /** Draws the overlay over a frame holding `media` selected, and answers its bar and the media's box. */
+    async function drawBar(media: string) {
+      const container = await mountFrame(
+        `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}</style></head><body>${media}</body></html>`,
+      )
+      // The bar draws in the notes layer beside the frames' layer, both at the page's origin.
+      container.style.cssText = 'position:absolute;left:0;top:0'
+      notes = document.createElement('div')
+      notes.dataset.notesLayer = ''
+      notes.style.cssText = 'position:absolute;left:0;top:0'
+      document.body.append(notes)
+      const frame = { ...HERO, box: { ...HERO.box, x: 0, y: 0 } }
+      act(() =>
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO.ref,
+          index: 3,
+          hash: HASH,
+        }),
+      )
+      render(<ElementOverlay frames={[frame]} container={container} />)
+      const bar = await waitFor(() => {
+        const found = notes?.querySelector<HTMLElement>('[data-media-bar]')
+        if (!found) throw new Error('no media bar drawn yet')
+        return found
+      })
+      const element = container
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('video, audio')
+      if (!element) throw new Error('the frame holds no media')
+      return {
+        bar: bar.getBoundingClientRect(),
+        media: element.getBoundingClientRect(),
+        time: bar.querySelector('[data-media-time]'),
+      }
+    }
+
+    it("draws a video's bar inside its bottom edge, 4px in on three sides", async () => {
+      const { bar, media } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:320px;height:180px"></video>`,
+      )
+
+      expect(bar.left).toBeCloseTo(media.left + 4, 0)
+      expect(bar.right).toBeCloseTo(media.right - 4, 0)
+      expect(bar.bottom).toBeCloseTo(media.bottom - 4, 0)
+      expect(bar.top).toBeGreaterThan(media.top)
+    })
+
+    it('keeps the bar inside a video 80px wide and drops the time', async () => {
+      const { bar, media, time } = await drawBar(
+        `<video src="${CLIP}" style="display:block;width:80px;height:45px"></video>`,
+      )
+
+      expect(bar.left).toBeGreaterThanOrEqual(media.left)
+      expect(bar.right).toBeLessThanOrEqual(media.right)
+      expect(time).not.toBeVisible()
+    })
+
+    it("draws an audio's bar under it at the audio's width", async () => {
+      const { bar, media } = await drawBar(
+        `<audio src="${CLIP}" controls style="display:block;width:120px"></audio>`,
+      )
+
+      expect(bar.top).toBeGreaterThanOrEqual(media.bottom)
+      expect(bar.width).toBeCloseTo(media.width, 0)
+    })
   })
 
   describe('holding a dropped outline', () => {

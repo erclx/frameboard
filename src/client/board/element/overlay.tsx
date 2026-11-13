@@ -377,9 +377,15 @@ interface CanvasMediaBarProps {
   container: HTMLElement | null
 }
 
+/** How far inside a video's left, right, and bottom edges its bar sits, in screen pixels. */
+const BAR_INSET = 4
+
 /**
- * The media bar under a selected `<video>` or `<audio>` in Edit, at the
- * element's width and a constant screen size. It draws in the notes layer,
+ * The media bar of a selected `<video>` or `<audio>` in Edit, at a constant
+ * screen size. A video's draws inside its bottom edge at its width less the
+ * inset on each side, over the strip the browser draws for `controls`, which
+ * the hit layer keeps out of reach in Edit. An audio's draws under it at its
+ * width, since inside would cover the player. It draws in the notes layer,
  * the board-space layer over the hit layer, since a press on the frames'
  * layer never reaches it, and goes when the frame is culled or reloads other
  * bytes, as the live element does.
@@ -391,14 +397,28 @@ function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
     ':scope > [data-notes-layer]',
   )
   if (!media || !layer) return null
+  const width = `calc(${box.width}px * var(--zoom, 1))`
   return createPortal(
     <div className="absolute" style={{ left: box.x, top: box.y + box.height }}>
-      <div
-        className="pointer-events-auto mt-1.5 origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
-        style={{ width: `max(200px, calc(${box.width}px * var(--zoom, 1)))` }}
-      >
-        <MediaBar media={media} />
-      </div>
+      {media.reading.tag === 'video' ? (
+        <div
+          className="pointer-events-auto absolute origin-bottom-left [transform:scale(calc(1/var(--zoom,1)))]"
+          style={{
+            left: screen(BAR_INSET),
+            bottom: screen(BAR_INSET),
+            width: `max(0px, calc(${width} - ${BAR_INSET * 2}px))`,
+          }}
+        >
+          <MediaBar media={media} />
+        </div>
+      ) : (
+        <div
+          className="pointer-events-auto mt-1.5 origin-top-left [transform:scale(calc(1/var(--zoom,1)))]"
+          style={{ width }}
+        >
+          <MediaBar media={media} />
+        </div>
+      )}
     </div>,
     layer,
   )
