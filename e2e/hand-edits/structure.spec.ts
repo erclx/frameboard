@@ -284,7 +284,8 @@ test.describe('page structure by hand, and its undo', () => {
 
     await expect.poll(() => existsSync(at('studio/pricing'))).toBe(true)
     expect(readFileSync(at('studio/pricing/notes.json'), 'utf8')).toBe(notes)
-    expect(pageOrder()).toEqual(['home', 'pricing'])
+    // The folder comes back ahead of the order rewrite naming it.
+    await expect.poll(pageOrder).toEqual(['home', 'pricing'])
   })
 
   test('refuses an undo an agent overtook and says so', async ({ page }) => {
