@@ -204,6 +204,19 @@ describe('editTextInPlace', () => {
     expect(changes).toEqual([[{ kind: 'text', value: 'One\nTwo' }]])
   })
 
+  it('writes nothing for a kept-breaks text left as it was, whose source ends on a break', async () => {
+    const { shown, heading } = await mount(
+      '<h1 style="white-space: pre-wrap">Old\n</h1>',
+    )
+    const { changes, write } = recorder()
+    editTextInPlace(shown, KEY, write)
+
+    press(heading, 'Escape')
+
+    expect(changes).toEqual([])
+    expect(heading.textContent).toBe('Old\n')
+  })
+
   it('opens on the text as shown, so the newlines wrapping its source stay spaces', async () => {
     const { shown, heading } = await mount(
       '<h1>\n      Old\n      text\n    </h1>',

@@ -96,7 +96,8 @@ export function editTextInPlace(
     const value = (element.textContent ?? '')
       .replace(BREAKS, '\n')
       .replace(TRAILING_BREAKS, '')
-    if (value === before) {
+    // A source ending on a break reads unchanged once trimmed, so it writes nothing.
+    if (value === before.replace(TRAILING_BREAKS, '')) {
       restore()
       return
     }
