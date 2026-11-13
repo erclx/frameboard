@@ -17,6 +17,15 @@ const MOTION = { project: 'marketing', page: 'motion', frame: 'slide' }
 /** A box sliding 1000 px right over four seconds and holding there, in the board's tokens. */
 const SLIDE_PAGE = join(import.meta.dirname, 'drive-slide.html')
 
+/**
+ * The page holding one frame whose text states raw colors, one equal to
+ * primary's light value and one equal to no token, so the inspector's
+ * `Use <token>` swap has a row to offer it on and a row to leave plain.
+ */
+const RAW = { project: 'marketing', page: 'raw', frame: 'swatches' }
+
+const RAW_PAGE = join(import.meta.dirname, 'drive-raw.html')
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -38,6 +47,8 @@ export interface Seeded {
   crowd: 'laid' | 'kept'
   /** Whether the motion page was laid now or was already there and kept. */
   motion: 'laid' | 'kept'
+  /** Whether the raw colors page was laid now or was already there and kept. */
+  raw: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -45,16 +56,17 @@ export interface Seeded {
 /**
  * Lays the states a drive films that the committed `basic` board lacks: a
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
- * animates, and a live reservation of three boxes on `webapp/settings`. A
+ * animates, a `marketing/raw` page stating raw colors, and a live reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
  */
 export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   // In turn, since both pages append to one project.json.
   const crowd = await layCrowd(root)
-  const motion = await layMotion(root)
+  const motion = await layOne(root, MOTION, SLIDE_PAGE)
+  const raw = await layOne(root, RAW, RAW_PAGE)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, reserved }
+  return { crowd, motion, raw, reserved }
 }
 
 async function layCrowd(root: string): Promise<'laid' | 'kept'> {
@@ -89,14 +101,19 @@ async function layCrowd(root: string): Promise<'laid' | 'kept'> {
   return 'laid'
 }
 
-async function layMotion(root: string): Promise<'laid' | 'kept'> {
-  const folder = join(root, MOTION.project, MOTION.page)
+/** Lays a page holding one desktop frame copied from `source`, unless the page is there. */
+async function layOne(
+  root: string,
+  { project, page, frame }: { project: string; page: string; frame: string },
+  source: string,
+): Promise<'laid' | 'kept'> {
+  const folder = join(root, project, page)
   if (existsSync(folder)) return 'kept'
   await mkdir(folder)
 
   const { width, height } = FRAME_SIZES.desktop
   const frames = {
-    [MOTION.frame]: {
+    [frame]: {
       x: 0,
       y: 0,
       width,
@@ -107,13 +124,13 @@ async function layMotion(root: string): Promise<'laid' | 'kept'> {
     },
   }
   await Promise.all([
-    copyFile(SLIDE_PAGE, join(folder, `${MOTION.frame}.html`)),
+    copyFile(source, join(folder, `${frame}.html`)),
     writeFile(
       join(folder, 'layout.json'),
       `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
     ),
   ])
-  await listPage(root, MOTION.page)
+  await listPage(root, page)
   return 'laid'
 }
 
