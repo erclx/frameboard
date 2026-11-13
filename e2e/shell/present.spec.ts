@@ -77,6 +77,9 @@ test.describe('presenting a page', () => {
     await expect(
       page.locator('[data-frame="webapp/home/about"][data-selected]'),
     ).toHaveCount(1)
+    await expect(
+      page.getByRole('button', { name: 'Present page' }),
+    ).toBeFocused()
   })
 
   test('steps and leaves from the bar a pointer move shows', async ({

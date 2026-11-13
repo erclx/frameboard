@@ -209,6 +209,57 @@ describe('presenting a page', () => {
   })
 })
 
+describe('focus on leave', () => {
+  /** A button outside the overlay, standing for the toolbar or a palette row. */
+  function buttonNamed(name: string): HTMLButtonElement {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.setAttribute('aria-label', name)
+    document.body.append(button)
+    return button
+  }
+
+  afterEach(() => {
+    for (const button of document.body.querySelectorAll(':scope > button')) {
+      button.remove()
+    }
+  })
+
+  it('returns to the opener after Esc', async () => {
+    const opener = buttonNamed('Present page')
+    opener.focus()
+    present(framesOf('first'))
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('returns to the opener after leaving from the bar', async () => {
+    const opener = buttonNamed('Present page')
+    opener.focus()
+    present(framesOf('first'))
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Leave presenting' }),
+    )
+
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('falls back to the Present page button once the opener is gone', async () => {
+    const toolbar = buttonNamed('Present page')
+    const row = buttonNamed('Present page row')
+    row.focus()
+    present(framesOf('first'))
+    row.remove()
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(document.activeElement).toBe(toolbar)
+  })
+})
+
 describe('the bar', () => {
   const bar = () => screen.getByRole('toolbar', { name: 'Presenting' })
   const opacity = () => getComputedStyle(bar()).opacity
