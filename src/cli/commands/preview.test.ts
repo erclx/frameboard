@@ -73,8 +73,7 @@ describe('preview', { timeout: 15_000 }, () => {
     expect(linkPath(data.url)).toBe(
       `/v/${data.token}/frames/studio/home/hero.html`,
     )
-    const local = `http://127.0.0.1:${data.port}${linkPath(data.url)}`
-    expect((await fetch(local)).status).toBe(200)
+    expect((await fetch(data.url)).status).toBe(200)
   })
 
   it('ends the link with --stop', async () => {
@@ -86,8 +85,7 @@ describe('preview', { timeout: 15_000 }, () => {
     const run = await preview('--stop', '--json')
 
     expect(run.json().data).toEqual({ stopped: true })
-    const local = `http://127.0.0.1:${started.port}${linkPath(started.url)}`
-    await expect(fetch(local)).rejects.toThrow()
+    await expect(fetch(started.url)).rejects.toThrow()
   })
 })
 

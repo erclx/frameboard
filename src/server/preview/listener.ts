@@ -12,9 +12,6 @@ import { FACES_URL } from '@/shared/faces'
 /** Where every phone link starts, ahead of its token. */
 const LINK_PREFIX = '/v/'
 
-/** Every interface, so a phone on the local network reaches the listener. */
-const ALL_INTERFACES = '0.0.0.0'
-
 /** The bytes of a link's token, 96 bits, which keeps the code small. */
 const TOKEN_BYTES = 12
 
@@ -109,7 +106,9 @@ function sameToken(given: string, token: string): boolean {
 export interface PreviewListener {
   /** The secret in every link this listener answers, new on each start. */
   token: string
-  /** The port the listener bound on every interface. */
+  /** The local network address the listener bound, the one the link names. */
+  host: string
+  /** The port the listener bound, the one asked for unless it was taken. */
   port: number
   /** The project the link opens. */
   project: string
@@ -118,26 +117,29 @@ export interface PreviewListener {
 }
 
 /**
- * Starts the phone listener on every interface at `port`, or on a free port
- * when that one is taken, with a fresh token. The board's own listener is
+ * Starts the phone listener on `host`, the machine's local network address,
+ * at `port`, or on a free port when that one is taken, with a fresh token.
+ * Binding the one address rather than every interface keeps the listener off
+ * any other network the machine sits on. The board's own listener is
  * untouched, staying on loopback behind its Host check.
  */
 export async function startPreviewListener(
-  options: PreviewOptions & { port: number },
+  options: PreviewOptions & { host: string; port: number },
 ): Promise<PreviewListener> {
   const token = randomBytes(TOKEN_BYTES).toString('base64url')
   const app = previewApp(token, options)
   let server: Server
   try {
-    server = await bind(app, options.port)
+    server = await bind(app, options.host, options.port)
   } catch (error) {
     const taken = (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
     if (!taken || options.port === 0) throw error
-    server = await bind(app, 0)
+    server = await bind(app, options.host, 0)
   }
   const { port } = server.address() as AddressInfo
   return {
     token,
+    host: options.host,
     port,
     project: options.project,
     close: () =>
@@ -149,11 +151,10 @@ export async function startPreviewListener(
   }
 }
 
-function bind(app: Hono, port: number): Promise<Server> {
+function bind(app: Hono, hostname: string, port: number): Promise<Server> {
   return new Promise<Server>((resolve, reject) => {
-    const created = serve(
-      { fetch: app.fetch, hostname: ALL_INTERFACES, port },
-      () => resolve(created as Server),
+    const created = serve({ fetch: app.fetch, hostname, port }, () =>
+      resolve(created as Server),
     )
     created.once('error', reject)
   })
@@ -161,8 +162,12 @@ function bind(app: Hono, port: number): Promise<Server> {
 
 /** The one phone listener a board holds at a time, so a new link ends the last. */
 export interface PreviewSlot {
-  /** Ends any listener running, then starts one for `project`, with a new token. */
-  start: (project: string, port: number) => Promise<PreviewListener>
+  /** Ends any listener running, then starts one for `project` on `host`, with a new token. */
+  start: (
+    project: string,
+    host: string,
+    port: number,
+  ) => Promise<PreviewListener>
   /**
    * Ends the running listener, or only the one holding `token` when given, so
    * a card closing in one tab leaves a link another tab opened since. True
@@ -196,10 +201,15 @@ export function createPreviewSlot(
   }
 
   return {
-    start: (project, port) =>
+    start: (project, host, port) =>
       inTurn(async () => {
         await end()
-        running = await startPreviewListener({ ...options, project, port })
+        running = await startPreviewListener({
+          ...options,
+          project,
+          host,
+          port,
+        })
         return running
       }),
     stop: (token) => inTurn(() => end(token)),

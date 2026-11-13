@@ -61,7 +61,7 @@ export function previewRoutes(
         'This machine has no address on a local network, so a phone cannot reach it. Join the Wi-Fi the phone is on and try again.',
       )
     }
-    const listener = await slot.start(frame.project, port)
+    const listener = await slot.start(frame.project, host, port)
     return c.json({
       ok: true,
       data: {

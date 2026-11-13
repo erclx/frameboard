@@ -174,11 +174,23 @@ describe('startPreviewListener', () => {
       root: board.root,
       project: 'studio',
       facesDir: join(board.root, '..', 'faces'),
+      host: '127.0.0.1',
       port,
     })
     closers.push(listener.close)
     return listener
   }
+
+  it('binds the address it is given alone, so another local address is refused', async () => {
+    const listener = await start()
+
+    const elsewhere = fetch(
+      `http://127.0.0.2:${listener.port}/v/${listener.token}/frames/studio/home/hero.html`,
+    )
+
+    expect(listener.host).toBe('127.0.0.1')
+    await expect(elsewhere).rejects.toThrow()
+  })
 
   function frameUrl(port: number, token: string) {
     return `http://127.0.0.1:${port}/v/${token}/frames/studio/home/hero.html`

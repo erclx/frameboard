@@ -73,7 +73,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
 
 Owns the phone link, a second read-only listener for one project, apart from `access/`, which guards the board's own port.
 
-- `listener.ts` binds every interface at the asked port, 4400 unless the start names one, and takes a free port when that one is taken. The board's own listener stays on loopback behind its Host check.
+- `listener.ts` binds the address `address.ts` picked, alone, at port 4400 or the one the start names, and a free port when that is taken. The board's own listener stays on loopback.
 - It answers GET and HEAD under `/v/<token>/` alone, mapping `frames/<project>/...` and `frameboard/...` onto the board's own frame and look routes, so their refusals hold unrestated
   - Another token, another project, any other path, and any other method answer 404
   - A served frame imports its sheets under the link, since the frame route's `base` prefixes the URLs its head names
