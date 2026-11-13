@@ -63,7 +63,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
 - **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
-- **Use a token:** a raw value whose red, green, and blue equal a token's in the shown theme offers `Use <token>` after its percent, naming the first in sheet order.
+- **Use a token:** an opaque raw value whose red, green, and blue equal an opaque token's in the shown theme offers `Use <token>` after its percent, naming the first in sheet order.
 - **Select:** over a row's percent, short of any `Use <token>`, it shows on hover and keyboard focus, selecting every element the read's `uses` names, under `<n> elements · using <color>`.
 - **Where Select is absent:** a selection spanning several frames offers none.
 - **What `uses` names:** an element inheriting the color as well as one stating it, and never `body`, which selects as the frame, or one drawing no box, such as `br` or `script`.
