@@ -17,6 +17,7 @@ import {
   type WarmBrowser,
 } from './render'
 import { filmstripMoments, findMotion, type Motion, seekMotion } from './seek'
+import type { UnloadedVideo } from './video-loads'
 
 export interface CapturedImage {
   ref: string
@@ -32,6 +33,22 @@ export interface CapturedImage {
   at?: number
   /** The moment in ms each filmstrip frame holds, left to right. */
   moments?: number[]
+  /** Each video the image shows with no picture, absent when every one loaded. */
+  videos?: CapturedVideo[]
+}
+
+/** A video with no picture, named by the frame it sits in. */
+export interface CapturedVideo extends UnloadedVideo {
+  ref: string
+}
+
+/** The `videos` key of an image, left off when every video loaded. */
+function videosKey(videos: CapturedVideo[]): { videos?: CapturedVideo[] } {
+  return videos.length === 0 ? {} : { videos }
+}
+
+function inFrame(ref: string, videos: UnloadedVideo[]): CapturedVideo[] {
+  return videos.map((video) => ({ ref, ...video }))
 }
 
 /** A timed shot's moment, or a filmstrip's frame count, as its file name marks it. */
@@ -227,6 +244,7 @@ export async function captureFrameImages(
           height: view.height,
           scale,
           ...(shot.scrollY === undefined ? {} : { scrollY: shot.scrollY }),
+          ...videosKey(inFrame(frame.ref, shot.videos)),
           bytes: shot.bytes,
         })
       }
@@ -274,9 +292,11 @@ export async function captureComposite(
   const rendered: Rendered[] = []
   for (const theme of themes) {
     const tiles: string[] = []
+    // A frame's linked widths each open it again, so its videos count once.
+    const videos = new Map<string, CapturedVideo>()
     for (const frame of frames) {
       for (const box of [frame.box, ...linkedBoxes(frame.box, frame.widths)]) {
-        const { bytes } = await renderFrame(
+        const { bytes, videos: unloaded } = await renderFrame(
           browser,
           baseUrl,
           frame,
@@ -284,6 +304,9 @@ export async function captureComposite(
           theme,
           scale,
         )
+        for (const video of inFrame(frame.ref, unloaded)) {
+          videos.set(`${video.ref} ${video.index}`, video)
+        }
         tiles.push(
           `<img src="data:image/png;base64,${bytes.toString('base64')}" style="position:absolute;left:${box.x + bounds.dx}px;top:${box.y + bounds.dy}px;width:${box.width}px;height:${box.height}px">`,
         )
@@ -296,6 +319,7 @@ export async function captureComposite(
       width: bounds.width,
       height: bounds.height,
       scale,
+      ...videosKey([...videos.values()]),
       bytes: await renderComposite(browser, bounds, theme, tiles, scale),
     })
   }
@@ -358,6 +382,7 @@ export async function captureMotionImages(
           height: strip.height,
           scale,
           moments: strip.moments,
+          ...videosKey(inFrame(frame.ref, strip.videos)),
           bytes: strip.bytes,
         })
         continue
@@ -383,6 +408,7 @@ export async function captureMotionImages(
           height: view.height,
           scale,
           at: held,
+          ...videosKey(inFrame(frame.ref, shots.videos)),
           bytes,
         })
       })
@@ -399,6 +425,8 @@ export interface RenderedFilmstrip {
   /** The moment in ms each frame of the strip holds, left to right. */
   moments: number[]
   motion: Motion
+  /** The videos the strip shows with no picture. */
+  videos: UnloadedVideo[]
 }
 
 /**
@@ -428,7 +456,7 @@ export async function renderFilmstrip(
 ): Promise<RenderedFilmstrip> {
   const view = { width: frame.box.width, height: frame.box.height }
   const strip = filmstripBounds(frame.ref, view, count, scale)
-  const { motion, held } = await holdShots(browser, {
+  const { motion, held, videos } = await holdShots(browser, {
     baseUrl,
     ref: frame.ref,
     view,
@@ -447,6 +475,7 @@ export async function renderFilmstrip(
     height: strip.height,
     moments: held.map((shot) => shot.held),
     motion,
+    videos,
   }
 }
 
@@ -473,7 +502,11 @@ async function holdShots(
     motionTimeoutMs: number
     moments: (motion: Motion) => number[]
   },
-): Promise<{ motion: Motion; held: { held: number; bytes: Buffer }[] }> {
+): Promise<{
+  motion: Motion
+  held: { held: number; bytes: Buffer }[]
+  videos: UnloadedVideo[]
+}> {
   assertScreenshotFits(ref, view, scale)
   const opened = await openFrame(browser, {
     baseUrl,
@@ -494,7 +527,7 @@ async function holdShots(
         bytes: await opened.page.screenshot(HELD_SCREENSHOT),
       })
     }
-    return { motion, held }
+    return { motion, held, videos: opened.videos }
   } finally {
     await opened.close()
   }
@@ -509,7 +542,7 @@ async function renderFrame(
   theme: Theme,
   scale: number,
   scroll?: number,
-): Promise<{ bytes: Buffer; scrollY?: number }> {
+): Promise<{ bytes: Buffer; scrollY?: number; videos: UnloadedVideo[] }> {
   const box = { width: view.width, height: view.height }
   assertScreenshotFits(frame.ref, box, scale)
   const opened = await openFrame(browser, {
@@ -524,7 +557,11 @@ async function renderFrame(
       scroll === undefined
         ? undefined
         : await opened.page.evaluate(scrollAndSettle, scroll)
-    return { bytes: await opened.page.screenshot(SCREENSHOT), scrollY }
+    return {
+      bytes: await opened.page.screenshot(SCREENSHOT),
+      scrollY,
+      videos: opened.videos,
+    }
   } finally {
     await opened.close()
   }

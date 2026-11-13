@@ -267,6 +267,19 @@ async function pageOf(
   )
 }
 
+/** One line per image written, and under it one per video it shows with no picture. */
 function describe(images: CapturedImage[]): string {
-  return images.map((image) => `Wrote ${image.path}`).join('\n')
+  return images
+    .flatMap((image) => [
+      `Wrote ${image.path}`,
+      ...(image.videos ?? []).map(
+        (video) =>
+          `  No picture for the video ${video.src} at element ${video.index} of ${video.ref}, which ${
+            video.state === 'error'
+              ? 'failed to load'
+              : 'was still loading when the load budget ran out'
+          }`,
+      ),
+    ])
+    .join('\n')
 }

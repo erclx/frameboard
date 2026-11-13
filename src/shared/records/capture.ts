@@ -22,6 +22,20 @@ export const captureResultSchema = z.object({
       at: z.int().min(0).optional(),
       /** The moment in ms each `--filmstrip` frame holds, left to right. */
       moments: z.array(z.int().min(0)).optional(),
+      /** Each video the image shows with no picture, absent when every video loaded. */
+      videos: z
+        .array(
+          z.object({
+            /** The frame holding the video, which a composite needs to tell its frames apart. */
+            ref: z.string(),
+            /** The element's index in document order, as `edit --index` takes it. */
+            index: z.int().min(0),
+            src: z.string(),
+            /** `error` for a file that failed to load or decode, `pending` for one still loading when the load budget ran out. */
+            state: z.enum(['error', 'pending']),
+          }),
+        )
+        .optional(),
     }),
   ),
   /** The timeline an `--at` or `--filmstrip` capture seeked, absent on any other. */
