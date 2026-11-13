@@ -44,6 +44,7 @@ import {
   editTextInPlace,
   editTextWhenShown,
   overElement,
+  type WriteText,
 } from './element/text-in-place'
 import { readTree } from './element/tree'
 import { Frame, LabelRename } from './frame'
@@ -54,7 +55,7 @@ import { SelectionOverlay } from './geometry/overlay'
 import { followPending, withDrawn } from './geometry/write'
 import { GuideCard } from './guide/card'
 import { useShowsGuide } from './guide/state'
-import { writeElement } from './inspector/element/write'
+import { writeElement, writeElements } from './inspector/element/write'
 import { labelRoom, markCrowded, markHovered } from './label-room'
 import { reportRefusal } from './left-panel/page-actions'
 import { useMenuActions } from './menus/actions'
@@ -644,8 +645,16 @@ export function Canvas({
   /** Opens a text element's text for typing, a double-click's or a placed Text's. */
   const editText = (key: ElementKey, waits: boolean): boolean => {
     if (!layer) return false
-    const write = (change: Parameters<typeof writeElement>[2]) =>
-      writeElement(page.ref, key, change)
+    // A text with a break carries its white-space beside it, as one undo step.
+    const write: WriteText = ([change, ...rest]) =>
+      !change
+        ? Promise.resolve(false)
+        : rest.length === 0
+          ? writeElement(page.ref, key, change)
+          : writeElements(
+              page.ref,
+              [change, ...rest].map((each) => ({ key, change: each })),
+            )
     stopEditing.current?.()
     stopEditing.current = null
     if (waits) {

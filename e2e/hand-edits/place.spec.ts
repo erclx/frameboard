@@ -389,7 +389,7 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
     await page.keyboard.type('Hello')
-    await page.keyboard.press('Enter')
+    await page.keyboard.press('Escape')
 
     await expect
       .poll(read)
@@ -404,10 +404,16 @@ test.describe('placing text and shapes into a frame', () => {
     // One double-click with nothing selected opens the text.
     await page.mouse.dblclick(headline.x, headline.y)
     await expect(hero(page).locator('h1')).toBeFocused()
-    await page.keyboard.type('Welcome')
+    await page.keyboard.type('Wel')
     await page.keyboard.press('Enter')
+    await page.keyboard.type('come')
+    await page.keyboard.press('Escape')
 
-    await expect.poll(read).toContain('<h1 data-name="Headline">Welcome</h1>')
+    await expect
+      .poll(read)
+      .toContain(
+        '<h1 data-name="Headline" style="white-space: pre-line">Wel\ncome</h1>',
+      )
   })
 
   test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
@@ -423,7 +429,7 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
     await page.keyboard.type('Hello')
-    await page.keyboard.press('Enter')
+    await page.keyboard.press('Escape')
     await expect.poll(read).toContain('>Hello</p>')
     await expect
       .poll(() => shownHash(page))

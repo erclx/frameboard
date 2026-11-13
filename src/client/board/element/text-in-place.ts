@@ -1,20 +1,46 @@
 import type { FrameRecord } from '@/shared/records/list'
 
 import { elementAt, renderedHash } from '../frame-dom'
-import { NEWLINES } from '../inspector/element/text'
-import type { WriteElement } from '../inspector/element/write'
+import type { ElementChange } from '../inspector/element/write'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey, SelectionStore } from '../selection'
 
 /** Marks the live element an in-place edit has open, for the overlay and the tests. */
 export const EDITING = 'data-frameboard-editing'
 
+/** A line break in a platform's two-character or old Mac form. */
+const BREAKS = /\r\n|\r/g
+
+/** The newlines a text ends on. */
+const TRAILING_BREAKS = /\n+$/
+
+/** Runs of white space a collapsing element shows as one space. */
+const SPACES = /[\t\n\f\r ]+/g
+
+/**
+ * Sends the changes one edit makes to its element as one write and one undo
+ * step, answering whether they were written.
+ */
+export type WriteText = (changes: readonly ElementChange[]) => Promise<boolean>
+
+/** Whether an element's computed style shows a newline in its text as a space. */
+function collapsesBreaks(element: HTMLElement, view: Window): boolean {
+  const { whiteSpace } = view.getComputedStyle(element)
+  return whiteSpace === 'normal' || whiteSpace === 'nowrap'
+}
+
 /**
  * Opens the text of the element `key` names for typing on the canvas, in its
- * live frame, with its text selected, so typing replaces it. Enter or a blur
- * writes the new text through `write` and Esc puts the old text back.
- * Text is one line, as the Text field keeps it, so a newline, typed with
- * Shift or pasted, becomes a space, and a paste is taken as plain text.
+ * live frame, with its text selected, so typing replaces it. Enter and
+ * Shift+Enter add a line, and Esc or a blur writes the new text through
+ * `write`. A paste is taken as plain text, its breaks kept.
+ *
+ * A break is a newline in the element's one text node, never a `<br>`, which
+ * would end its text-only state. On an element whose style collapses
+ * newlines, the edit opens on the text as the browser shows it, so the
+ * newlines a file wraps its source with never become lines, and a text
+ * holding a break goes out with `white-space: pre-line` beside it.
+ *
  * A reload of the frame ends the edit with nothing sent, since its hash names
  * bytes the file no longer holds. Answers the function that cancels the
  * edit, or null when the frame does not show those bytes or the element
@@ -24,7 +50,7 @@ export const EDITING = 'data-frameboard-editing'
 export function editTextInPlace(
   document: Document,
   key: ElementKey,
-  write: WriteElement,
+  write: WriteText,
 ): (() => void) | null {
   const view = document.defaultView
   const found = elementAt(document, key.index)
@@ -38,7 +64,11 @@ export function editTextInPlace(
     return null
   }
   const element: HTMLElement = found
-  const before = element.textContent ?? ''
+  const source = element.textContent ?? ''
+  const collapses = collapsesBreaks(element, view)
+  const before = collapses ? source.replace(SPACES, ' ').trim() : source
+  const whiteSpace = element.style.whiteSpace
+  if (before !== source) element.textContent = before
   let open = true
 
   const close = () => {
@@ -50,48 +80,83 @@ export function editTextInPlace(
     element.removeEventListener('blur', commit)
     view.removeEventListener('pagehide', close)
   }
+  const restore = () => {
+    element.textContent = source
+    element.style.whiteSpace = whiteSpace
+  }
   const cancel = () => {
     if (!open) return
     close()
-    element.textContent = before
+    restore()
   }
   function commit() {
     if (!open) return
     close()
-    const value = (element.textContent ?? '').replace(NEWLINES, ' ')
+    // A break at the end draws nothing, so none is written.
+    const value = (element.textContent ?? '')
+      .replace(BREAKS, '\n')
+      .replace(TRAILING_BREAKS, '')
+    if (value === before) {
+      restore()
+      return
+    }
     element.textContent = value
-    if (value === before) return
-    void write({ kind: 'text', value }).then((written) => {
+    const changes: ElementChange[] = [{ kind: 'text', value }]
+    if (collapses && value.includes('\n')) {
+      changes.push({
+        kind: 'style',
+        property: 'white-space',
+        value: 'pre-line',
+      })
+    }
+    void write(changes).then((written) => {
       // The frame reloads with a landed write, so only a refusal shows the old text.
-      if (!written && element.isConnected) element.textContent = before
+      if (!written && element.isConnected) restore()
     })
   }
   function keydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       event.preventDefault()
-      if (!event.shiftKey) commit()
-      else insert(' ')
+      insert('\n')
     }
     if (event.key === 'Escape') {
       event.preventDefault()
-      cancel()
+      event.stopPropagation()
+      commit()
     }
   }
   function paste(event: ClipboardEvent) {
     event.preventDefault()
     insert(
-      (event.clipboardData?.getData('text/plain') ?? '').replace(NEWLINES, ' '),
+      (event.clipboardData?.getData('text/plain') ?? '').replace(BREAKS, '\n'),
     )
   }
   const insert = (text: string) => {
     const range = view.getSelection()?.getRangeAt(0)
     if (!range || !element.contains(range.commonAncestorContainer)) return
-    range.deleteContents()
-    const node = document.createTextNode(text)
-    range.insertNode(node)
-    range.setStartAfter(node)
-    range.collapse(true)
-    element.normalize()
+    // The break shows while typing, as the written style will show it.
+    if (collapses && text.includes('\n')) element.style.whiteSpace = 'pre-line'
+    // Written as the one text node, so the caret lands past the insert
+    // rather than wherever merging split nodes would leave it.
+    const offset = (node: Node, at: number) => {
+      const before = document.createRange()
+      before.selectNodeContents(element)
+      before.setEnd(node, at)
+      return before.toString().length
+    }
+    const start = offset(range.startContainer, range.startOffset)
+    const end = offset(range.endContainer, range.endOffset)
+    const value = element.textContent ?? ''
+    const after = value.slice(end)
+    // A last newline draws no line, so the caret would sit before it. One
+    // more gives it a line to sit on, and the commit trims it.
+    const placeholder = after === '' && text.endsWith('\n') ? '\n' : ''
+    element.textContent = value.slice(0, start) + text + (after || placeholder)
+    const caret = document.createRange()
+    caret.setStart(element.firstChild ?? element, start + text.length)
+    caret.collapse(true)
+    view.getSelection()?.removeAllRanges()
+    view.getSelection()?.addRange(caret)
   }
 
   element.setAttribute('contenteditable', 'plaintext-only')
@@ -148,7 +213,7 @@ export function overElement(
 export function editTextWhenShown(
   container: HTMLElement,
   key: ElementKey,
-  write: WriteElement,
+  write: WriteText,
   selection: SelectionStore,
 ): () => void {
   let cancel: (() => void) | null = null
