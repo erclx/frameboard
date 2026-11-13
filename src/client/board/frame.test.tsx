@@ -464,38 +464,54 @@ describe('Frame', () => {
     )
   })
 
-  it('tints an error pill in the destructive hue and a warning pill in the note hue', () => {
-    const { getAllByRole } = render(
-      <>
+  describe('the mark’s form', () => {
+    const CLEAR = 'rgba(0, 0, 0, 0)'
+    const markOf = (findings: Finding[]) => {
+      const { getByRole } = render(
         <Frame
-          frame={frame('a')}
+          frame={frame('checkout')}
           live={false}
           version={0}
-          findings={[finding('Cut off.')]}
-        />
-        <Frame
-          frame={frame('b')}
-          live={false}
-          version={0}
-          findings={[finding('Sized off the viewport.', 'warning')]}
-        />
-      </>,
-    )
-    const hue = (element: HTMLElement) =>
-      getComputedStyle(element).getPropertyValue('--h').trim()
+          findings={findings}
+        />,
+      )
+      const mark = getByRole('button', { name: /check finding/ })
+      return { mark, style: getComputedStyle(mark) }
+    }
 
-    const [error, warning] = getAllByRole('button', { name: /check finding/ })
+    it('draws warnings alone as a dot and a count with no fill or ring', () => {
+      const { mark, style } = markOf([
+        finding('Sized off the viewport.', 'warning'),
+        finding('Generic font.', 'warning'),
+      ])
 
-    expect(error && hue(error)).toBe(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--destructive')
-        .trim(),
-    )
-    expect(warning && hue(warning)).toBe(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--note')
-        .trim(),
-    )
+      expect(mark).toHaveTextContent('2')
+      expect(mark.querySelector('[data-findings-quiet]')).toBeVisible()
+      expect(mark.querySelector('svg')).toBeNull()
+      expect(style.backgroundColor).toBe(CLEAR)
+      expect(style.boxShadow).toBe('none')
+    })
+
+    it('keeps the filled, ringed pill and its triangle for an error alone', () => {
+      const { mark, style } = markOf([finding('Cut off.')])
+
+      expect(mark.querySelector('svg')).toBeVisible()
+      expect(mark.querySelector('[data-findings-quiet]')).toBeNull()
+      expect(style.backgroundColor).not.toBe(CLEAR)
+      expect(style.boxShadow).not.toBe('none')
+    })
+
+    it('keeps the filled pill for one error among warnings and counts every finding', () => {
+      const { mark, style } = markOf([
+        finding('Sized off the viewport.', 'warning'),
+        finding('Generic font.', 'warning'),
+        finding('Cut off.'),
+      ])
+
+      expect(mark).toHaveTextContent('3')
+      expect(mark.querySelector('svg')).toBeVisible()
+      expect(style.backgroundColor).not.toBe(CLEAR)
+    })
   })
 
   it('marks nothing for a frame with no findings', () => {
@@ -922,6 +938,30 @@ describe('Frame label at low zoom', () => {
     const corner = root.getBoundingClientRect()
     expect(box && box.left + box.width / 2).toBeCloseTo(corner.left, 0)
     expect(box && box.top + box.height / 2).toBeCloseTo(corner.top, 0)
+  })
+
+  it.each([
+    [
+      'grey for warnings alone',
+      [finding('Generic font.', 'warning')],
+      '--muted-foreground',
+    ],
+    [
+      'red for one error among warnings',
+      [finding('Generic font.', 'warning'), finding('Cut off.')],
+      '--destructive',
+    ],
+  ])('fills the crowded frame’s dot %s', (_, findings, token) => {
+    const { container } = renderCrowded(findings)
+    const probe = document.createElement('i')
+    probe.style.backgroundColor = `var(${token})`
+    container.append(probe)
+
+    const dot = container.querySelector<HTMLElement>('[data-findings-dot]')
+
+    expect(dot && getComputedStyle(dot).backgroundColor).toBe(
+      getComputedStyle(probe).backgroundColor,
+    )
   })
 
   it('draws no findings dot while the label shows', () => {
