@@ -4,7 +4,6 @@ import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import { type Action, useActions } from '@/client/actions/registry'
 import { ActionTooltip } from '@/client/board/chrome/action-tooltip'
-import { Kbd } from '@/client/components/ui/kbd'
 import {
   Toast,
   toast as kitToasts,
@@ -226,22 +225,36 @@ export function ChangeToastBody({
           <ToastDescription>{copy.detail}</ToastDescription>
         </div>
         {copy.show ? (
-          <KeyedButton
-            action={show}
-            label="Show"
-            keys={SHOW_KEYS}
-            className="bg-[color-mix(in_srgb,var(--claim)_22%,transparent)] text-claim"
-          />
+          <ActionTooltip label="Show" keys={show?.keys ?? SHOW_KEYS}>
+            <KeyedButton
+              action={show}
+              label="Show"
+              keys={SHOW_KEYS}
+              className="bg-[color-mix(in_srgb,var(--claim)_22%,transparent)] text-claim"
+            />
+          </ActionTooltip>
         ) : null}
         {copy.next ? (
           <>
-            <KeyedButton
-              action={previous}
-              label="Previous"
-              face="‹"
-              keys={PREVIOUS_KEYS}
-            />
-            <KeyedButton action={next} label="Next" face="›" keys={NEXT_KEYS} />
+            <ActionTooltip
+              label="Previous change"
+              keys={previous?.keys ?? PREVIOUS_KEYS}
+            >
+              <KeyedButton
+                action={previous}
+                label="Previous"
+                face="‹"
+                keys={PREVIOUS_KEYS}
+              />
+            </ActionTooltip>
+            <ActionTooltip label="Next change" keys={next?.keys ?? NEXT_KEYS}>
+              <KeyedButton
+                action={next}
+                label="Next"
+                face="›"
+                keys={NEXT_KEYS}
+              />
+            </ActionTooltip>
           </>
         ) : null}
         {copy.markAll ? (
@@ -253,8 +266,7 @@ export function ChangeToastBody({
               action={markAll}
               label="Mark all seen"
               keys={MARK_ALL_KEYS}
-              keycap={false}
-              onClick={runFromButton(markAll)}
+              onPress={runFromButton(markAll)}
             />
           </ActionTooltip>
         ) : null}
@@ -273,17 +285,17 @@ export function ChangeToastBody({
 }
 
 /**
- * A toast button drawing its word or arrow with its key in a muted keycap
- * beside it while that key is live, per toast-keycaps-720. The keycap is
- * hidden from the accessible name, which `aria-keyshortcuts` carries instead.
+ * A toast button drawing its word or arrow alone, per toast-keys-tooltip-720,
+ * with the key it answers to in its tooltip and in `aria-keyshortcuts` while
+ * that key is live.
  */
 function KeyedButton({
   action,
   label,
   face = label,
   keys,
-  keycap = true,
   className = 'bg-secondary text-foreground',
+  onPress,
   onClick,
   ...trigger
 }: {
@@ -293,12 +305,10 @@ function KeyedButton({
   face?: string
   /** The key shown before the action registers, matching what it registers. */
   keys: readonly string[]
-  /** Whether the key draws beside the label, off where a tooltip carries it. */
-  keycap?: boolean
   className?: string
   /** Runs in place of the action, for a press that needs its event. */
-  onClick?: (event: MouseEvent<HTMLButtonElement>) => void
-} & Omit<ComponentProps<'button'>, 'onClick'>) {
+  onPress?: (event: MouseEvent<HTMLButtonElement>) => void
+} & ComponentProps<'button'>) {
   const key = liveKey(action?.keys ?? keys, useCharacterKeysOn())
   return (
     <button
@@ -306,18 +316,15 @@ function KeyedButton({
       {...trigger}
       aria-label={face === label ? undefined : label}
       aria-keyshortcuts={key ? keyLabel(key) : undefined}
-      onClick={onClick ?? (() => action?.run())}
-      className={cn(TOAST_BUTTON, 'inline-flex items-center gap-1', className)}
+      // The tooltip trigger hands its own click in through `onClick`.
+      onClick={(event) => {
+        onClick?.(event)
+        if (onPress) onPress(event)
+        else action?.run()
+      }}
+      className={cn(TOAST_BUTTON, className)}
     >
       {face}
-      {key && keycap ? (
-        <Kbd
-          aria-hidden
-          className="h-4 min-w-4 bg-background/60 px-[3px] text-[10px]"
-        >
-          {keyLabel(key)}
-        </Kbd>
-      ) : null}
     </button>
   )
 }

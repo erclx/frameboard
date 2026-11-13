@@ -1087,6 +1087,48 @@ describe('Home order and pins', () => {
     expect(document.querySelector('[data-pin-divider]')).toBeNull()
   })
 
+  describe('the Pinned label', () => {
+    it('labels the pinned group over its first card', async () => {
+      renderLive(THREE, server().calls)
+
+      await pin(/atlas/)
+
+      const label = document.querySelector('[data-pin-label]')
+      expect(label).toHaveTextContent('Pinned')
+      expect(label?.nextElementSibling).toContainElement(
+        screen.getByRole('link', { name: /^atlas/ }),
+      )
+    })
+
+    it('labels the pinned group over its first row in the list', async () => {
+      renderLive(THREE, server().calls, 'list')
+
+      await pin(/webapp/)
+
+      const label = document.querySelector('[data-pin-label]')
+      expect(label).toHaveTextContent('Pinned')
+      expect(label?.nextElementSibling).toContainElement(
+        screen.getByRole('link', { name: /^webapp/ }),
+      )
+    })
+
+    it('draws no label while nothing is pinned', () => {
+      renderLive(THREE, server().calls)
+
+      expect(document.querySelector('[data-pin-label]')).toBeNull()
+    })
+
+    it('draws no label while everything is pinned', async () => {
+      renderLive(THREE, server().calls)
+
+      await pin(/atlas/)
+      await pin(/studio/)
+      await pin(/webapp/)
+
+      expect(document.querySelector('[data-pin-label]')).toBeNull()
+    })
+  })
+
   it('holds a pinned row first in the list too', async () => {
     renderLive(THREE, server().calls, 'list')
 

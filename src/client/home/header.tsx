@@ -25,7 +25,7 @@ export function HomeHeader({ hasProjects }: HomeHeaderProps) {
   const [grid, list, newProject, theme] = useActions(IDS)
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
-      <span className="flex flex-1 items-center gap-2 text-base font-semibold">
+      <span className="flex flex-1 cursor-default items-center gap-2 text-base font-semibold select-none">
         <Mark />
         Frameboard
       </span>

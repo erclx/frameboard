@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { contrastOnPage } from '@/test/contrast'
 
-import { NewProjectButton } from './header'
+import { HomeHeader, NewProjectButton } from './header'
 
 describe('NewProjectButton', () => {
   afterEach(() => {
@@ -24,4 +24,18 @@ describe('NewProjectButton', () => {
       ).toBeGreaterThanOrEqual(4.5)
     },
   )
+})
+
+describe('HomeHeader', () => {
+  afterEach(() => cleanup())
+
+  it('keeps the logo label from selecting, with the arrow cursor', () => {
+    render(<HomeHeader hasProjects />)
+
+    const label = screen.getByText('Frameboard')
+
+    expect(getComputedStyle(label).userSelect).toBe('none')
+    expect(getComputedStyle(label).cursor).toBe('default')
+    expect(label.closest('a')).toBeNull()
+  })
 })
