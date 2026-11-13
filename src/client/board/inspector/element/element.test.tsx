@@ -2199,6 +2199,22 @@ describe('StrokeSection', () => {
 })
 
 describe('ShadowSection', () => {
+  it('shows a raw shadow by its value with no mark', () => {
+    render(
+      <ShadowSection
+        boxShadow={{ value: '0 2px 4px #0003', token: null, percent: 100 }}
+        shadows={[SHADOW]}
+        theme="light"
+        disabled={false}
+        write={recorder().write}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Shadow' })
+    expect(trigger).toHaveTextContent('0 2px 4px #0003')
+    expect(within(trigger).queryByRole('img')).toBeNull()
+  })
+
   it('writes a shadow token', async () => {
     const { changes, write } = recorder()
     render(

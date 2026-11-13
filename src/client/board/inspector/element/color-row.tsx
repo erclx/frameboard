@@ -1,4 +1,4 @@
-import { CircleAlert, Link2, Minus } from 'lucide-react'
+import { Link2, Minus } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
@@ -59,15 +59,6 @@ function MixedSwatch() {
           'repeating-linear-gradient(45deg, var(--faint) 0 3px, transparent 3px 6px)',
       }}
     />
-  )
-}
-
-/** The mark on a raw value, which no token names. */
-export function RawFlag() {
-  return (
-    <span role="img" aria-label="Raw value, not a token" title="Raw value">
-      <CircleAlert aria-hidden className="size-[13px] text-note" />
-    </span>
   )
 }
 
@@ -147,8 +138,9 @@ const PERCENT: Intl.NumberFormatOptions = {
  * The token-first color row of `inspector/text`. The swatch opens the
  * picker on Custom and the chip or hex on Tokens, the percent writes the
  * paint's opacity, stepping and scrubbing from a drag on the number with a
- * preview, and the link detaches a token to its value in the frame's theme. A raw value carries the raw flag in place of the link, and
- * the minus after either removes the paint.
+ * preview, and the link detaches a token to its value in the frame's theme.
+ * A raw value equal to a token offers `Use <token>` in place of the link,
+ * and the minus after either removes the paint.
  *
  * The picker previews a custom color while open and writes it once as it
  * closes, or on Enter in its hex field, and Esc puts the stored color back

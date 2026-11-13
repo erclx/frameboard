@@ -13,7 +13,6 @@ import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
-import { RawFlag } from './color-row'
 import {
   chipName,
   COLOR_ROW,
@@ -84,7 +83,6 @@ export function ShadowSection({
           ) : (
             <span className="flex-1 truncate">{boxShadow.value}</span>
           )}
-          {!mixed && !none && !boxShadow.token ? <RawFlag /> : null}
           <ChevronDown
             aria-hidden
             className="ml-auto size-2.5 shrink-0 text-muted-foreground"
