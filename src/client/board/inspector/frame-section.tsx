@@ -17,6 +17,7 @@ import {
   type Structure,
   structure,
 } from '@/client/live/structure'
+import type { Device } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -63,7 +64,8 @@ interface FrameSectionProps {
  * the step, and a step or scrub draws each frame at its pending box first.
  * The heading opens the Frame tool's sizes, a pick setting W and H on every
  * frame in one write. The Height row under the fields sets how every frame
- * holds its height, and the Preview row under it shows the frames at another
+ * holds its height, the Device row which device the board draws around each,
+ * and the Preview row under it shows the frames at another
  * width and writes nothing.
  */
 export function FrameSection({
@@ -170,6 +172,11 @@ export function FrameSection({
         ))}
       </div>
       <HeightRow
+        frames={frames}
+        disabled={!canWrite || locked}
+        calls={calls ?? structure}
+      />
+      <DeviceRow
         frames={frames}
         disabled={!canWrite || locked}
         calls={calls ?? structure}
@@ -300,6 +307,33 @@ function HeightRow({ frames, disabled, calls }: HeightRowProps) {
           mode,
           Object.fromEntries(frames.map(({ ref, box }) => [ref, box])),
         )
+      }
+    />
+  )
+}
+
+const DEVICE_CHOICES = [
+  { value: 'none', label: 'None' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'tablet', label: 'Tablet' },
+] as const satisfies readonly { value: Device | 'none'; label: string }[]
+
+/**
+ * The device the board draws around the frames, None, Phone, or Tablet,
+ * which leaves each frame file and its size as they are.
+ */
+function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
+  return (
+    <ChoiceRow
+      id="inspector-device"
+      title="Device"
+      choices={DEVICE_CHOICES}
+      frames={frames}
+      valueOf={(frame) => frame.device ?? 'none'}
+      disabled={disabled}
+      refusal="Couldn’t set the device"
+      write={(refs, device) =>
+        calls.setDevice(refs, device === 'none' ? null : device)
       }
     />
   )
