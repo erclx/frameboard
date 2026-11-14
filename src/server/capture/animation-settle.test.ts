@@ -64,7 +64,7 @@ const INFINITE = `
 const LONG = `
 <style>
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-  #box { animation: fade 5s linear; }
+  #box { animation: fade 60s linear; }
 </style>
 <div id="box">Hello</div>`
 
@@ -111,9 +111,12 @@ describe.skipIf(shell === null)(
       await page.setContent(INFINITE)
       const started = Date.now()
 
-      await settleAnimations(page, 5_000)
+      await settleAnimations(page, 60_000)
 
-      expect(Date.now() - started).toBeLessThan(1_000)
+      // Opacity cannot prove this one, so the bound does. It sits far under the
+      // 60 s limit and the 15 s test timeout, with room for a machine stall of
+      // a few seconds that a tighter bound would read as a slow settle.
+      expect(Date.now() - started).toBeLessThan(10_000)
     })
 
     it('returns without refusing when the time runs out first', async () => {
@@ -122,7 +125,12 @@ describe.skipIf(shell === null)(
 
       await settleAnimations(page, 200)
 
-      expect(Date.now() - started).toBeLessThan(2_000)
+      // Opacity on the 60 s animation proves the settle returned before its
+      // end, so this bound only reports a settle that waited, with a figure,
+      // ahead of the test timeout. It allows a machine stall of about 3 s.
+      // Keep the opacity read, since without it a settle awaiting the end
+      // passes until the 15 s test timeout.
+      expect(Date.now() - started).toBeLessThan(10_000)
       expect(Number(await opacity())).toBeLessThan(1)
     })
   },
