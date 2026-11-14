@@ -188,7 +188,7 @@ The wrapper's settings, and the bound on a run that hangs, so a stuck run no lon
 - `FRAMEBOARD_TEST_SLOTS` sets how many runs go at once, default 2, and `1` restores one at a time
 - `FRAMEBOARD_TEST_LIMIT` bounds a run in seconds from when its command starts, default 900, 0 for none, and off when `CI` is set unless given
 - At the limit the wrapper prints `killing '<command>' after the <n> s limit`, sends TERM to the command and every process it started, KILL to any left after 3 seconds, frees the slot, and exits 124
-- The kill walks parent pids from `ps` and remembers each process it saw once a second, so a child whose parent exited before any poll saw it survives
+- The kill remembers each descendant it saw once a second by its start, read from `/proc` on Linux since a clock step moves `ps` lstart. A child whose parent exited before any poll survives.
 - The browser project's 15 second test and 30 second hook timeouts run in the page, so a page that stops running never trips them, and the limit is the bound that holds then
 
 ### Preview servers
