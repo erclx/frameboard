@@ -47,6 +47,7 @@ function project(
     group: null,
     archived: false,
     projectFileError: null,
+    transitions: [],
     pages: pages.map((page, index) => ({
       ref: `${name}/${page}`,
       project: name,

@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -240,6 +240,76 @@ describe('scanBoard', () => {
       const { projects } = await scanBoard(board.root, { project: 'webapp' })
 
       expect(projects[0]?.pages[1]?.sections).toEqual([])
+    })
+  })
+
+  describe("with transitions of the project's own", () => {
+    const ENTER = '@keyframes enter { from { opacity: 0 } }'
+
+    function writeTransition(name: string, css = ENTER): string {
+      const folder = join(board.root, 'webapp/assets/transitions')
+      mkdirSync(folder, { recursive: true })
+      const path = join(folder, `${name}.css`)
+      writeFileSync(path, css)
+      return path
+    }
+
+    function nameHomeTransitions(page: string, frame: string): void {
+      const path = join(board.root, 'webapp/home/layout.json')
+      const file = JSON.parse(readFileSync(path, 'utf8'))
+      file.present = { transition: { name: page } }
+      file.frames.hero.transition = { name: frame, ms: 300 }
+      writeFileSync(path, JSON.stringify(file))
+    }
+
+    const home = async () =>
+      (
+        await scanBoard(board.root, { project: 'webapp' })
+      ).projects[0]?.pages.find((page) => page.name === 'home')
+
+    it('lists the valid ones by name on the project, none on a project holding none', async () => {
+      board = copyFixtureBoard('basic')
+      writeTransition('wipe')
+      writeTransition('curtain')
+      writeTransition('broken', 'body { display: none }')
+
+      const { projects } = await scanBoard(board.root)
+
+      expect(
+        projects.map((project) => [project.name, project.transitions]),
+      ).toEqual([
+        ['marketing', []],
+        ['webapp', ['curtain', 'wipe']],
+      ])
+    })
+
+    it('reads a page and a frame naming one as written', async () => {
+      board = copyFixtureBoard('basic')
+      writeTransition('wipe')
+      nameHomeTransitions('wipe', 'wipe')
+
+      const page = await home()
+
+      expect(page?.transition).toEqual({ name: 'wipe' })
+      expect(
+        page?.frames.find((frame) => frame.name === 'hero')?.transition,
+      ).toEqual({ name: 'wipe', ms: 300 })
+    })
+
+    it('reads a name whose file is gone or now refused as none', async () => {
+      board = copyFixtureBoard('basic')
+      const gone = writeTransition('wipe')
+      writeTransition('curtain')
+      nameHomeTransitions('wipe', 'curtain')
+      rmSync(gone)
+      writeTransition('curtain', 'body { display: none }')
+
+      const page = await home()
+
+      expect(page).not.toHaveProperty('transition')
+      expect(
+        page?.frames.find((frame) => frame.name === 'hero'),
+      ).not.toHaveProperty('transition')
     })
   })
 

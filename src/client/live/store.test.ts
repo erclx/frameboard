@@ -36,6 +36,7 @@ function boardWith(...names: string[]): ListResult {
         group: null,
         archived: false,
         projectFileError: null,
+        transitions: [],
         pages: [
           {
             ref: 'studio/home',

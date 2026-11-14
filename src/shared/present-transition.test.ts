@@ -4,6 +4,7 @@ import {
   isOwnTransitionName,
   ownKeyframesName,
   resolveTransition,
+  storedTransitionOf,
   takesDirection,
   transitionLabel,
   transitionOf,
@@ -52,6 +53,14 @@ describe("a project's own transition", () => {
     expect(
       transitionOf({ name: 'wipe-up', direction: 'up' }, ['wipe-up']),
     ).toEqual({ name: 'wipe-up' })
+  })
+
+  it('keeps a name shaped like an own one for a writer, file or no file', () => {
+    expect(storedTransitionOf({ name: 'wipe-up', ms: 300 })).toEqual({
+      name: 'wipe-up',
+      ms: 300,
+    })
+    expect(storedTransitionOf({ name: 'Wipe Up' })).toBeNull()
   })
 
   it('resolves with no direction and the default duration', () => {

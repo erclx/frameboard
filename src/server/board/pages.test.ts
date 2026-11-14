@@ -1,4 +1,10 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -191,6 +197,40 @@ describe('pages', () => {
         timer: 5,
         transition: { name: 'zoom' },
       })
+    })
+
+    it('sets a transition the project holds by its name', async () => {
+      mkdirSync(join(board.root, 'webapp/assets/transitions'), {
+        recursive: true,
+      })
+      writeFileSync(
+        join(board.root, 'webapp/assets/transitions/wipe.css'),
+        '@keyframes enter { from { opacity: 0 } }',
+      )
+
+      const page = await setPageTransition(
+        board.root,
+        'webapp/home',
+        { name: 'wipe', ms: 300 },
+        { cwd },
+      )
+
+      expect(page.transition).toEqual({ name: 'wipe', ms: 300 })
+      expect(layout().present).toEqual({
+        transition: { name: 'wipe', ms: 300 },
+      })
+    })
+
+    it('refuses a name the project does not hold and writes nothing', async () => {
+      const before = layout()
+
+      await expect(
+        setPageTransition(board.root, 'webapp/home', { name: 'wipe' }, { cwd }),
+      ).rejects.toMatchObject({
+        code: 'usage',
+        details: { transition: 'wipe' },
+      })
+      expect(layout()).toEqual(before)
     })
 
     it('reads a transition this build does not know as none', async () => {

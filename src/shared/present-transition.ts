@@ -136,14 +136,33 @@ export function transitionOf(
   value: unknown,
   own: readonly string[] = [],
 ): Transition | null {
+  return readTransition(value, (name) => own.includes(name))
+}
+
+/**
+ * A stored transition as a writer keeps it: `transitionOf`, counting any
+ * name shaped like a project's own whether or not its file is there. A
+ * layout write never drops an entry's transition because its file is
+ * missing or refused for now.
+ */
+export function storedTransitionOf(value: unknown): Transition | null {
+  return readTransition(value, isOwnTransitionName)
+}
+
+function readTransition(
+  value: unknown,
+  isOwn: (name: string) => boolean,
+): Transition | null {
   if (typeof value !== 'object' || value === null) return null
   const held = value as Record<string, unknown>
+  const builtIn = transitionNameOf(held.name)
   const name =
-    transitionNameOf(held.name) ?? own.find((owned) => owned === held.name)
+    builtIn ??
+    (typeof held.name === 'string' && isOwn(held.name) ? held.name : null)
   if (!name) return null
-  const direction = own.includes(name)
-    ? undefined
-    : DIRECTIONS.find((candidate) => candidate === held.direction)
+  const direction = builtIn
+    ? DIRECTIONS.find((candidate) => candidate === held.direction)
+    : undefined
   const ms = msOf(held.ms)
   return {
     name,

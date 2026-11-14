@@ -106,6 +106,7 @@ function boardWith(...refs: string[]): ListResult {
       group: null,
       archived: false,
       projectFileError: null,
+      transitions: [],
       pages: list,
     })),
   }

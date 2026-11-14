@@ -33,6 +33,7 @@ import {
   readPageOrder,
   scanPage,
 } from './scan'
+import { assertKnownTransition } from './transitions'
 
 /** Notes and their images belong to the page they were pinned on, so a copy starts without them. */
 const NOT_COPIED = new Set(['notes.json', '.notes'])
@@ -139,7 +140,8 @@ export async function movePage(
 /**
  * Sets the transition present mode draws between the page's slides, or
  * clears it with null, writing only the `present` key of its `layout.json`
- * and leaving every frame file as it stands.
+ * and leaving every frame file as it stands. A name that is neither built
+ * in nor the project's own refuses `usage` and writes nothing.
  */
 export async function setPageTransition(
   root: string,
@@ -148,6 +150,7 @@ export async function setPageTransition(
   { journal, ...options }: RefOptions & JournalOptions,
 ): Promise<PageRecord> {
   const page = await resolvePageRef(root, ref, options)
+  await assertKnownTransition(join(root, page.project), transition)
   await withLayouts(
     [page.path],
     async (layouts) => layoutAt(layouts, page.path).setTransition(transition),

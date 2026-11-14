@@ -80,6 +80,7 @@ function project(pages: PageRecord[]): ProjectRecord {
     group: null,
     archived: false,
     projectFileError: null,
+    transitions: [],
     pages,
   }
 }

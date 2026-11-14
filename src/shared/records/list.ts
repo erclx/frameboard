@@ -89,6 +89,8 @@ export const projectRecordSchema = z.object({
   /** Whether home holds the project out of the main list, in its Archived section. */
   archived: z.boolean(),
   projectFileError: recordErrorSchema,
+  /** The project's own transitions by name, sorted, empty when it holds none. */
+  transitions: z.array(z.string()),
   pages: z.array(pageRecordSchema),
 })
 
