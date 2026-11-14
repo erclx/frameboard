@@ -32,6 +32,7 @@ function project(name: string, pages: PageRecord[]): ProjectRecord {
     archived: false,
     projectFileError: null,
     transitions: [],
+    checksOff: [],
     pages,
   }
 }

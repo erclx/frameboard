@@ -52,6 +52,7 @@ function untouchedBoard(): ListResult {
         archived: false,
         projectFileError: null,
         transitions: [],
+        checksOff: [],
         pages: [
           {
             ref: 'untitled/page-1',

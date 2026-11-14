@@ -123,6 +123,41 @@ describe('scanBoard', () => {
       },
     )
 
+    it("reads a project's turned-off rules in the file's order, each once", async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({
+          version: 1,
+          pages: ['home'],
+          checks: { off: ['no-script', 'hand-written', 'no-script'] },
+        }),
+      )
+
+      const [marketing, webapp] = (await scanBoard(board.root)).projects
+
+      expect([marketing?.checksOff, webapp?.checksOff]).toEqual([
+        [],
+        ['no-script', 'hand-written'],
+      ])
+    })
+
+    it.each([
+      ['a checks that is a list', ['no-script']],
+      ['an off that is a number', { off: 7 }],
+      ['an off holding a number', { off: ['no-script', 3] }],
+    ])('reads %s as no rule turned off', async (_, checks) => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({ version: 1, pages: ['home'], checks }),
+      )
+
+      const [, webapp] = (await scanBoard(board.root)).projects
+
+      expect([webapp?.checksOff, webapp?.projectFileError]).toEqual([[], null])
+    })
+
     it('reads a placed frame from its layout entry', async () => {
       board = copyFixtureBoard('basic')
 

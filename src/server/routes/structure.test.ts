@@ -1241,11 +1241,34 @@ describe('structureRoutes', () => {
         expect(history.counts().undo).toBe(undo)
       })
 
+      it('turns on a rule no check declares, written by hand', async () => {
+        writeFileSync(
+          join(board.root, 'studio/project.json'),
+          JSON.stringify({
+            ...projectFile(),
+            checks: { off: ['retired-rule', 'theme'] },
+          }),
+        )
+
+        const response = await post('/api/project/rule', {
+          project: 'studio',
+          rule: 'retired-rule',
+          off: false,
+        })
+
+        expect(await response.json()).toEqual({
+          ok: true,
+          data: { project: 'studio', off: ['theme'] },
+        })
+        expect(projectFile().checks).toEqual({ off: ['theme'] })
+      })
+
       it.each([
         [
           'a rule no check declares',
           { project: 'studio', rule: 'nope', off: true },
         ],
+        ['an empty rule', { project: 'studio', rule: '', off: false }],
         ['no off flag', { project: 'studio', rule: 'theme' }],
       ])('answers usage for %s and writes nothing', async (_, body) => {
         const before = projectFile()

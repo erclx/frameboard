@@ -41,7 +41,8 @@ The board writes the key through `POST /api/project/rule` with `{ project, rule,
 - `setProjectRule` in `src/server/board/projects.ts` adds or removes one id under the file's lock and keeps every other key
 - It writes nothing for a rule already as asked, and puts the file's times back as a filing does
 - The journal's project entry carries `checks.off` beside the filing keys, so undo restores the list as it stood
-- A `checks` value that is not an object refuses as `project-file-invalid`, and a rule id no check declares answers `usage`
+- A `checks` value that is not an object refuses as `project-file-invalid`. Turning off an id no check declares answers `usage`, and turning one on takes any id.
+- The scan reads the same list onto the project record as `checksOff`, deduplicated and empty for anything but a list of strings, for display alone, so what is silenced stays with `withoutOff`
 
 The markup rules read what parse5 recovered from, since a browser recovers from the same bytes without a word.
 

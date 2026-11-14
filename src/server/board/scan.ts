@@ -104,14 +104,16 @@ export async function listFrames(pageDir: string): Promise<string[]> {
 /**
  * The page order a reader shows: listed pages that exist in that order, then
  * unlisted ones by name. A file that fails to read orders every page by name.
- * The creation time, folder, and archive flag come from the same read, each
- * read as absent when the file holds none or holds one of another type.
+ * The creation time, folder, archive flag, and turned-off rules come from the
+ * same read, each read as absent when the file holds none or holds one of
+ * another type.
  */
 export async function readPageOrder(projectDir: string): Promise<{
   pages: string[]
   createdAt: string | null
   group: string | null
   archived: boolean
+  checksOff: string[]
   error: { path: string; message: string } | null
 }> {
   const folders = await listPageFolders(projectDir)
@@ -126,6 +128,7 @@ export async function readPageOrder(projectDir: string): Promise<{
       createdAt: null,
       group: null,
       archived: false,
+      checksOff: [],
       error: { path, message: error.message },
     }
   }
@@ -134,8 +137,24 @@ export async function readPageOrder(projectDir: string): Promise<{
     createdAt: isTime(file.createdAt) ? file.createdAt : null,
     group: groupOf(file.group),
     archived: file.archived === true,
+    checksOff: checksOffOf(file.checks),
     error: null,
   }
+}
+
+/**
+ * The rule ids a `checks` value turns off, each once, for display alone: an
+ * `off` that is not a list of strings reads as none, as the checks read it.
+ */
+export function checksOffOf(checks: unknown): string[] {
+  if (typeof checks !== 'object' || checks === null || !('off' in checks)) {
+    return []
+  }
+  const { off } = checks
+  if (!Array.isArray(off) || !off.every((each) => typeof each === 'string')) {
+    return []
+  }
+  return [...new Set(off)]
 }
 
 /** A folder name as home shows it, trimmed, null for a blank or a non-string. */
@@ -265,6 +284,7 @@ export async function scanProject(
     createdAt,
     group,
     archived,
+    checksOff,
     error,
   } = await readPageOrder(path)
   const transitions = await listTransitionNames(path)
@@ -288,6 +308,7 @@ export async function scanProject(
     archived,
     projectFileError: error,
     transitions,
+    checksOff,
     pages,
   }
 }

@@ -25,6 +25,7 @@ import type { ProjectRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW } from '../chrome/menu'
+import { RulesOff } from './rules-off'
 
 const HEADER_IDS = ['view.hideUi'] as const
 const TITLE_IDS = ['project.rename', 'project.duplicate', 'nav.home'] as const
@@ -71,7 +72,7 @@ export function ProjectHeader({ project, page, calls }: ProjectHeaderProps) {
  * The project name and its menu, which the header and the Hide UI pill
  * share so the two never drift. A click on the name renames the project in
  * place, and the chevron opens Rename, Duplicate, a Switch project submenu,
- * and All projects, built from the chrome menu of `canon/design/menus/avatar`.
+ * a Rules turned off submenu, and All projects, built from the chrome menu of `canon/design/menus/avatar`.
  */
 export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
   const [rename, duplicate, home] = useActions(TITLE_IDS)
@@ -137,6 +138,7 @@ export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <RulesOff project={project} calls={calls} />
           <DropdownMenuSeparator />
           <ActionMenuItem action={home} label="All projects" />
         </ChromeMenuContent>

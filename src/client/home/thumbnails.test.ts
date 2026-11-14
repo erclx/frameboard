@@ -49,6 +49,7 @@ function boardOf(...frames: FrameRecord[]): ListResult {
         archived: false,
         projectFileError: null,
         transitions: [],
+        checksOff: [],
         pages: [
           {
             ref: 'studio/home',

@@ -2162,6 +2162,34 @@ async function hiddenSketch(page: Page): Promise<void> {
 }
 
 /**
+ * Lists two rules as turned off on `webapp` through the socket's board
+ * message, so the project menu's Rules turned off submenu has rows with no
+ * rule leaving the fixture's `project.json`.
+ */
+async function rulesOff(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        data?: ListResult
+      }
+      if (parsed.type !== 'board' || !parsed.data) {
+        socket.send(message)
+        return
+      }
+      for (const project of parsed.data.projects) {
+        if (project.name === 'webapp') {
+          project.checksOff = ['generic-font', 'unknown-token']
+        }
+      }
+      socket.send(JSON.stringify(parsed))
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
+
+/**
  * Answers the socket's board message with the board `serve` starts in an
  * empty folder, being `untitled` alone with an empty `page-1`, so the guide a
  * new board shows draws over the preview fixture.
@@ -3505,6 +3533,22 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         setup: themed(pressOnLoad('from git user.name$|^Account$')),
+      },
+      {
+        section: 'rules-off',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        setup: themed(
+          both(
+            asWriter,
+            rulesOff,
+            pressOnLoad('^Project menu$'),
+            chooseOnLoad('^Rules turned off$'),
+            readyWhen('[role="menuitem"][aria-label="unknown-token, Turn on"]'),
+          ),
+        ),
       },
       {
         section: 'avatar-name-edit',

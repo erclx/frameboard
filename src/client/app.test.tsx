@@ -40,6 +40,7 @@ const BOARD: ListResult = {
       archived: false,
       projectFileError: null,
       transitions: [],
+      checksOff: [],
       pages: [
         page('home', 0),
         page('pricing', 1, {

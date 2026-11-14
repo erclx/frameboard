@@ -178,7 +178,7 @@ test.describe('the live board', () => {
     ).toBeVisible()
   })
 
-  test('turns a rule off for the project from a finding card, and check agrees', async ({
+  test('turns a rule off from a finding card and on from the project menu, and check agrees', async ({
     page,
   }) => {
     const hero = page.locator('[data-frame="studio/home/hero"]')
@@ -212,15 +212,25 @@ test.describe('the live board', () => {
     ).toBeVisible()
     expect(await checked()).toEqual(before.slice(1))
 
-    // Undo is a board key, which waits until the list has let go of focus.
     await page.keyboard.press('Escape')
     await expect(list).toBeHidden()
-    await page.keyboard.press('ControlOrMeta+z')
+    await page.getByRole('button', { name: 'Project menu' }).click()
+    await page.getByRole('menuitem', { name: 'Rules turned off' }).click()
+    await page.getByRole('menuitem', { name: `${rule}, Turn on` }).click()
 
     await expect(
       hero.getByRole('button', { name: '2 check findings' }),
     ).toBeVisible()
     expect(await checked()).toEqual(before)
+
+    // Undo is a board key, which waits until the menu has let go of focus.
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await page.keyboard.press('ControlOrMeta+z')
+
+    await expect(
+      hero.getByRole('button', { name: '1 check finding' }),
+    ).toBeVisible()
+    expect(await checked()).toEqual(before.slice(1))
   })
 
   test('marks a frame resized so its content clips, and clears it on a fit', async ({

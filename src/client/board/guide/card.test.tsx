@@ -44,6 +44,7 @@ function startBoard() {
         archived: false,
         projectFileError: null,
         transitions: [],
+        checksOff: [],
         pages: [startPage()],
       },
     ],

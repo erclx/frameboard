@@ -18,6 +18,7 @@ function project(
     archived: false,
     projectFileError: null,
     transitions: [],
+    checksOff: [],
     pages: [],
   }
 }
