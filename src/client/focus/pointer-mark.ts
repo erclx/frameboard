@@ -32,18 +32,24 @@ function takesTyping(element: Element): boolean {
  * before a Shift-click. The mark is taken at focus and kept until blur, so a
  * key pressed after the click leaves it ringless. A field that takes typing is
  * never marked. A press inside a frame never reaches this window, so the
- * window losing focus to a frame counts as a pointer press. Returns the
- * function that stops it.
+ * window losing focus to a frame counts as a pointer press, unless a key
+ * pressed here moved it there in the same task, as Tab into a frame does, so
+ * Tab back out still rings. Returns the function that stops it.
  */
 export function markPointerFocus(target: Window): () => void {
   const document = target.document
   let pointer = false
+  // True from a keydown here until the task it ran in ends, which is when a
+  // key's own focus move, such as Tab into a frame, has already blurred.
+  let keying = false
 
   const onPointer = () => {
     pointer = true
   }
   const onKey = () => {
     pointer = false
+    keying = true
+    target.setTimeout(() => (keying = false))
   }
   const onFocusIn = (event: FocusEvent) => {
     const element = event.target
@@ -55,7 +61,9 @@ export function markPointerFocus(target: Window): () => void {
     if (event.target instanceof Element) event.target.removeAttribute(MARK)
   }
   const onBlur = () => {
-    if (document.activeElement instanceof HTMLIFrameElement) pointer = true
+    if (!keying && document.activeElement instanceof HTMLIFrameElement) {
+      pointer = true
+    }
   }
 
   target.addEventListener('pointerdown', onPointer, true)
