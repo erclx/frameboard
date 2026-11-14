@@ -635,7 +635,11 @@ describe('LeftPanel', () => {
         'link',
       )
 
-    /** Renders the panel over `storage`, returning a re-render that keeps the same mount, as a live store change does. */
+    /**
+     * Renders the panel over `storage`, returning a re-render that keeps the
+     * same mount, as a live store change does. The re-render settles the
+     * frame the page-count check waits, so a drag after it is not undone.
+     */
     function splitPanel(storage: Map<string, string>) {
       const location = memoryLocation({ path: '/', record: true })
       const kept = {
@@ -657,8 +661,10 @@ describe('LeftPanel', () => {
         </Router>
       )
       const { rerender } = render(panel(pages(1), 'page-1'))
-      return (record: ProjectRecord, current: string) =>
+      return async (record: ProjectRecord, current: string) => {
         rerender(panel(record, current))
+        await new Promise((settled) => requestAnimationFrame(settled))
+      }
     }
 
     it('opens a one-page project at four rows', () => {
@@ -693,15 +699,89 @@ describe('LeftPanel', () => {
       await expect.poll(listHeight).toBeCloseTo(152, 0)
     })
 
-    it('grows a dragged split to fit a page added, and keeps it on the next load', async () => {
+    /** The layers panel's height in pixels, the panel holding the Layers section. */
+    const layersHeight = () =>
+      screen
+        .getByRole('region', { name: 'Layers' })
+        .closest('[data-panel]')
+        ?.getBoundingClientRect().height
+
+    it('fits ten pages on a double-click', async () => {
+      renderPanel(pages(10), 'page-1')
+      await expect.poll(listHeight).toBeCloseTo(256, 0)
+
+      await userEvent.dblClick(divider())
+
+      await expect.poll(listHeight).toBeCloseTo(308, 0)
+    })
+
+    it('stops a double-click fit with three Layers rows left', async () => {
+      renderPanel(pages(30), 'page-1')
+
+      await userEvent.dblClick(divider())
+
+      await expect.poll(layersHeight).toBeCloseTo(107, 0)
+    })
+
+    it('saves nothing for a double-click at the fit of every page', async () => {
       const storage = new Map<string, string>()
-      const show = splitPanel(storage)
-      show(pages(4), 'page-4')
+      renderPanel(pages(30), 'page-1', undefined, { storage })
+      await userEvent.dblClick(divider())
+      await expect.poll(layersHeight).toBeCloseTo(107, 0)
+      await expect.poll(() => storage.size).toBe(1)
+      storage.clear()
+
+      await userEvent.dblClick(divider())
+
+      await expect.poll(layersHeight).toBeCloseTo(107, 0)
+      expect(storage.size).toBe(0)
+    })
+
+    it('still fits four rows on a double-click with three pages', async () => {
+      renderPanel(pages(3), 'page-1')
       act(() => divider().focus())
       await userEvent.keyboard('{Home}')
       await expect.poll(listHeight).toBeCloseTo(64, 0)
 
-      show(pages(5), 'page-5')
+      await userEvent.dblClick(divider())
+
+      await expect.poll(listHeight).toBeCloseTo(152, 0)
+    })
+
+    it('grows a list fit to every page when a page is added', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      await show(pages(10), 'page-1')
+      await userEvent.dblClick(divider())
+      await expect.poll(listHeight).toBeCloseTo(308, 0)
+
+      await show(pages(11), 'page-11')
+
+      await expect.poll(listHeight).toBeCloseTo(334, 0)
+    })
+
+    it('grows a list short of every page only to the eight-row fit', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      await show(pages(10), 'page-1')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+
+      await show(pages(11), 'page-11')
+
+      await expect.poll(listHeight).toBeCloseTo(256, 0)
+    })
+
+    it('grows a dragged split to fit a page added, and keeps it on the next load', async () => {
+      const storage = new Map<string, string>()
+      const show = splitPanel(storage)
+      await show(pages(4), 'page-4')
+      act(() => divider().focus())
+      await userEvent.keyboard('{Home}')
+      await expect.poll(listHeight).toBeCloseTo(64, 0)
+
+      await show(pages(5), 'page-5')
 
       await expect.poll(listHeight).toBeCloseTo(178, 0)
       cleanup()
@@ -712,13 +792,13 @@ describe('LeftPanel', () => {
     it('grows a dragged split for a page added while another tab was open', async () => {
       const storage = new Map<string, string>()
       const show = splitPanel(storage)
-      show(pages(4), 'page-4')
+      await show(pages(4), 'page-4')
       act(() => divider().focus())
       await userEvent.keyboard('{Home}')
       await expect.poll(listHeight).toBeCloseTo(64, 0)
       await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
 
-      show(pages(5), 'page-5')
+      await show(pages(5), 'page-5')
       await userEvent.click(screen.getByRole('tab', { name: 'Design' }))
 
       await expect.poll(listHeight).toBeCloseTo(178, 0)
@@ -727,13 +807,13 @@ describe('LeftPanel', () => {
     it('keeps a split dragged taller than the fit when a page is added', async () => {
       const storage = new Map<string, string>()
       const show = splitPanel(storage)
-      show(pages(4), 'page-4')
+      await show(pages(4), 'page-4')
       act(() => divider().focus())
       await userEvent.keyboard('{ArrowDown>3/}')
       await expect.poll(listHeight).toBeGreaterThan(204)
       const dragged = listHeight()
 
-      show(pages(5), 'page-5')
+      await show(pages(5), 'page-5')
 
       await expect.poll(() => pageRows().length).toBe(5)
       expect(listHeight()).toBeCloseTo(dragged, 0)
@@ -742,13 +822,13 @@ describe('LeftPanel', () => {
     it('never shrinks the split when a page is deleted', async () => {
       const storage = new Map<string, string>()
       const show = splitPanel(storage)
-      show(pages(8), 'page-8')
+      await show(pages(8), 'page-8')
       act(() => divider().focus())
       await userEvent.keyboard('{ArrowDown}')
       await expect.poll(() => storage.size).toBe(1)
       const dragged = listHeight()
 
-      show(pages(7), 'page-7')
+      await show(pages(7), 'page-7')
 
       await expect.poll(() => pageRows().length).toBe(7)
       expect(listHeight()).toBeCloseTo(dragged, 0)
