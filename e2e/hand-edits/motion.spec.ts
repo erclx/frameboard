@@ -60,6 +60,8 @@ test.describe("scrubbing a frame's motion", () => {
     }).toPass({ timeout: 10_000 })
 
     const track = page.getByRole('slider', { name: 'Position' })
+    // The inspector scrolls, and the Frame section above can push Motion past its foot.
+    await track.scrollIntoViewIfNeeded()
     const bounds = await track.boundingBox()
     if (!bounds) throw new Error('The track has no box on screen')
     await page.mouse.click(

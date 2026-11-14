@@ -124,6 +124,16 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Sets the device drawn around each frame in one undo step, null clearing it. */
     setDevice: (refs: readonly string[], device: Device | null) =>
       post<FrameRecord[]>('/api/frame/device', { refs, device }),
+    /**
+     * Sets the whole list of widths each frame also shows at, in one undo
+     * step, an empty list clearing it. `expected` holds each frame's list as
+     * the board drew it, by ref, and a list changed since refuses `stale-layout`.
+     */
+    setWidths: (
+      refs: readonly string[],
+      widths: readonly number[],
+      expected: Readonly<Record<string, readonly number[]>>,
+    ) => post<FrameRecord[]>('/api/frame/widths', { refs, widths, expected }),
     /** Sets each frame's own transition in one undo step, null so it takes its page's. */
     setFrameTransition: (
       refs: readonly string[],

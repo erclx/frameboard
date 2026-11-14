@@ -29,6 +29,7 @@ import {
   setFrameFlag,
   setFrameTransition,
   setHeightModes,
+  setLinkedWidths,
   setMeasured,
   skeleton,
 } from './frames'
@@ -53,6 +54,52 @@ describe('frames', () => {
       board = copyFixtureBoard('basic')
       return board.root
     }
+
+    describe('setLinkedWidths', () => {
+      const HERO = 'webapp/home/hero'
+      const ABOUT = 'webapp/home/about'
+
+      it('writes each frame whose stored list matches its expected one', async () => {
+        const root = open()
+
+        const records = await setLinkedWidths(
+          root,
+          [
+            { ref: HERO, expected: [] },
+            { ref: ABOUT, expected: [] },
+          ],
+          [834],
+          { cwd: root },
+        )
+
+        expect(records.map((record) => record.widths)).toEqual([
+          [{ width: 834, height: 1194 }],
+          [{ width: 834, height: 1194 }],
+        ])
+        expect(layout('webapp/home').frames.hero.widths).toEqual([
+          { width: 834, height: 1194 },
+        ])
+      })
+
+      it('refuses stale-layout under the lock when a later frame changed, writing no frame', async () => {
+        const root = open()
+        await resizeFrame(root, ABOUT, { widths: [834], cwd: root })
+        const before = file('webapp/home/layout.json')
+
+        await expect(
+          setLinkedWidths(
+            root,
+            [
+              { ref: HERO, expected: [] },
+              { ref: ABOUT, expected: [] },
+            ],
+            [1280],
+            { cwd: root },
+          ),
+        ).rejects.toMatchObject({ code: 'stale-layout' })
+        expect(file('webapp/home/layout.json')).toBe(before)
+      })
+    })
 
     describe('layout-only verbs', () => {
       const frame = 'webapp/home/hero.html'

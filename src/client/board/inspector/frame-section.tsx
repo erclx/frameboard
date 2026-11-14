@@ -39,6 +39,7 @@ import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
 import { useTransitionNames } from './transition-names'
+import { WidthsRow } from './widths-row'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -71,7 +72,8 @@ interface FrameSectionProps {
  * frame in one write. The Height row under the fields sets how every frame
  * holds its height, the Device row which device the board draws around each,
  * and the Preview row under it shows the frames at another width and writes
- * nothing. One frame ends the section with a button opening it on a phone.
+ * nothing. One frame also lists the widths it shows at beside itself, and
+ * ends the section with a button opening it on a phone.
  */
 export function FrameSection({
   frames,
@@ -192,6 +194,13 @@ export function FrameSection({
         calls={calls ?? structure}
       />
       <PreviewRow frames={frames} />
+      {several ? null : (
+        <WidthsRow
+          frame={frame}
+          disabled={!canWrite || locked}
+          calls={calls ?? structure}
+        />
+      )}
       {several ? null : <PhoneLink frame={frame} disabled={!canWrite} />}
     </section>
   )

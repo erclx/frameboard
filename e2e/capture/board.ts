@@ -825,6 +825,63 @@ async function aboutInPhone(page: Page): Promise<void> {
 }
 
 /**
+ * Presses `selector` with a whole pointer sequence once it renders, since a
+ * menu trigger opens on the press, which a bare `click()` never sends.
+ */
+function pointerPressOnLoad(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ selector, frames }) => {
+        let left = frames
+        const press = () => {
+          const target = document.querySelector<HTMLElement>(selector)
+          if (!target || (target as HTMLButtonElement).disabled) {
+            if (--left > 0) requestAnimationFrame(press)
+            return
+          }
+          const init = { bubbles: true, cancelable: true, button: 0 }
+          const pointer = { ...init, pointerType: 'mouse', isPrimary: true }
+          target.dispatchEvent(new PointerEvent('pointerdown', pointer))
+          target.dispatchEvent(new MouseEvent('mousedown', init))
+          target.dispatchEvent(new PointerEvent('pointerup', pointer))
+          target.dispatchEvent(new MouseEvent('mouseup', init))
+          target.dispatchEvent(new MouseEvent('click', { ...init, detail: 1 }))
+        }
+        document.addEventListener('DOMContentLoaded', press)
+      },
+      { selector, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/** Sets the hero hugging its width, putting its layout back when the page closes. */
+async function heroHugsWidth(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.hugWidth = true
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/** Lists two linked widths on the hero, putting its layout back when the page closes. */
+async function heroAtTwoWidths(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.widths = [
+    { width: 834, height: 1194 },
+    { width: 390, height: 844 },
+  ]
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
  * Sets a Push transition on the home page, so the Page section shows its
  * Direction and Duration rows, putting the layout back when the page closes.
  */
@@ -3715,6 +3772,68 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'inspector-widths',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // One frame selected holding two linked widths: the Also shows at
+        // row lists a chip per width beside its plus, and the canvas draws both.
+        setup: themed(
+          both(
+            asWriter,
+            heroAtTwoWidths,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen(
+              'body:has([data-linked-width="390"]):has([aria-labelledby="inspector-widths"] button[aria-label="Remove 390"])',
+            ),
+          ),
+        ),
+      },
+      {
+        section: 'inspector-widths-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The plus pressed on a frame holding two widths: the menu offers the
+        // Phone, Tablet, and Desktop sizes it neither holds nor lists.
+        setup: themed(
+          both(
+            asWriter,
+            heroAtTwoWidths,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            pointerPressOnLoad('button[aria-label="Add a width"]'),
+            readyWhen('[role="menu"] [role="menuitem"]'),
+          ),
+        ),
+      },
+      {
+        section: 'inspector-widths-hug',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // A frame hugging its width holds the plus, and the caption says to
+        // set a width first.
+        setup: themed(
+          both(
+            asWriter,
+            heroHugsWidth,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen(
+              '[aria-labelledby="inspector-widths"] button[aria-disabled="true"]',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'present',
         theme,
         route: '/p/webapp/home',
@@ -5254,6 +5373,9 @@ const WRITING_SECTIONS = [
   'scroll-rail',
   'scroll-no-ghost',
   'device-bezel',
+  'inspector-widths',
+  'inspector-widths-menu',
+  'inspector-widths-hug',
   'motion-held',
   'motion-ended',
   'page-transition',

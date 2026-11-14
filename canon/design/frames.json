@@ -53,6 +53,7 @@
     "inspector/layout": "design/10-inspector/inspector-layout",
     "inspector/height-mode": "design/10-inspector/height-mode",
     "inspector/device": "drive-32/22-device-mockup/device-mock-phone-720",
+    "inspector/widths": "drive-32/promoted-rows/widths-control-chips-720",
     "inspector/page-transition": "drive-32/28-present-steps/present-transition-list-720",
     "inspector/motion": "design/10-inspector/motion-held",
     "inspector/media": "drive-32/12-media/media-play-native-720",

@@ -402,6 +402,63 @@ test.describe('filling a selected frame by hand', () => {
   })
 })
 
+test.describe('showing a selected frame at another width by hand', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const heroWidths = () =>
+    JSON.parse(
+      readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+    ).frames.hero.widths
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('a width added from the inspector lands in layout.json and draws its box, and one undo removes both', async ({
+    page,
+  }) => {
+    const headline = page
+      .frameLocator(`[data-frame="${HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toBeVisible()
+    // As for the headline above, a click before the canvas fits lands beside the frame.
+    await expect(async () => {
+      await headline.click()
+      await expect(
+        page.getByRole('button', { name: 'Rename frame hero' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+    const linked = page.locator(
+      `[data-linked-frame="${HERO}"][data-linked-width="834"]`,
+    )
+    await expect(linked).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Add a width' }).click()
+    await page.getByRole('menuitem', { name: /^Tablet/ }).click()
+
+    await expect.poll(heroWidths).toEqual([{ width: 834, height: 1194 }])
+    await expect(linked).toBeVisible()
+    await expect(
+      page
+        .getByRole('group', { name: 'Also shows at' })
+        .getByRole('button', { name: 'Remove 834' }),
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.poll(heroWidths).toBeUndefined()
+    await expect(linked).toHaveCount(0)
+  })
+})
+
 test.describe('exporting a selected frame', () => {
   let board: FixtureBoard
   let server: BoardServer
