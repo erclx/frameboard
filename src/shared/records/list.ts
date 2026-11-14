@@ -91,6 +91,8 @@ export const projectRecordSchema = z.object({
   projectFileError: recordErrorSchema,
   /** The project's own transitions by name, sorted, empty when it holds none. */
   transitions: z.array(z.string()),
+  /** The rule ids `checks.off` in `project.json` turns off, in the file's order and each once, empty when it holds none. */
+  checksOff: z.array(z.string()),
   pages: z.array(pageRecordSchema),
 })
 

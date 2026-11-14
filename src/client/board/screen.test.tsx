@@ -27,6 +27,7 @@ const BOARD: ListResult = {
       archived: false,
       projectFileError: null,
       transitions: [],
+      checksOff: [],
       pages: [
         {
           ref: 'studio/home',

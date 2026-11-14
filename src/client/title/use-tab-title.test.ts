@@ -77,6 +77,7 @@ const BOARD: ListResult = {
       archived: false,
       projectFileError: null,
       transitions: [],
+      checksOff: [],
       pages: [pageOf([frameOf('hero')])],
     },
   ],

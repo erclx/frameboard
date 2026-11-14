@@ -14,6 +14,7 @@ function project(name: string, group: string | null = null): ProjectRecord {
     archived: false,
     projectFileError: null,
     transitions: [],
+    checksOff: [],
     pages: [],
   }
 }
