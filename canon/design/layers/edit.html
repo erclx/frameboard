@@ -239,23 +239,8 @@
         transform: translate(30px, 6px) rotate(-1.5deg);
         width: 190px;
       }
-      .selband {
-        margin: 0 6px;
-        border-radius: 6px;
-        overflow: hidden;
-      }
-      .selband .row {
-        margin: 0;
-        border-radius: 0;
-      }
-      .row.inband {
-        background: color-mix(in srgb, var(--accent) 7%, transparent);
-      }
       .row.selrow {
         background: color-mix(in srgb, var(--accent) 26%, transparent);
-      }
-      .row.child {
-        background: color-mix(in srgb, var(--accent) 13%, transparent);
       }
       .row.selrow .ic {
         color: var(--accent);
@@ -1495,25 +1480,12 @@
             </svg>
           </button>
         </div>
-        <div class="selband">
-          <div class="row selrow" style="padding-left: 8px">
-            <span class="tw"
-              ><svg
-                class="ic"
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" /></svg></span
+        <div class="row selrow" style="padding-left: 8px">
+          <span class="tw"
             ><svg
               class="ic"
-              width="13"
-              height="13"
+              width="10"
+              height="10"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1521,15 +1493,43 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M2 6h20M2 18h20M6 2v20M18 2v20" /></svg
-            ><span class="renbox"><span class="selt">Hello world</span></span>
-          </div>
-          <div class="row child" style="padding-left: 22px">
-            <span class="tw"></span
+              <path d="M6 9l6 6 6-6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M2 6h20M2 18h20M6 2v20M18 2v20" /></svg
+          ><span class="renbox"><span class="selt">Hello world</span></span>
+        </div>
+        <div class="row child" style="padding-left: 22px">
+          <span class="tw"></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="5" y="7" width="14" height="10" rx="1" /></svg
+          ><span class="nm">Accent bar</span>
+        </div>
+        <div class="row kids child" style="padding-left: 22px">
+          <span class="tw"
             ><svg
               class="ic"
-              width="13"
-              height="13"
+              width="10"
+              height="10"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1537,27 +1537,27 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <rect x="5" y="7" width="14" height="10" rx="1" /></svg
-            ><span class="nm">Accent bar</span>
-          </div>
-          <div class="row kids child" style="padding-left: 22px">
-            <span class="tw"
-              ><svg
-                class="ic"
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M9 6l6 6-6 6" /></svg></span
+              <path d="M9 6l6 6-6 6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
+          ><span class="nm">Headline</span>
+        </div>
+        <div class="row kids child" style="padding-left: 22px">
+          <span class="tw"
             ><svg
               class="ic"
-              width="13"
-              height="13"
+              width="10"
+              height="10"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1565,37 +1565,20 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
-            ><span class="nm">Headline</span>
-          </div>
-          <div class="row kids child" style="padding-left: 22px">
-            <span class="tw"
-              ><svg
-                class="ic"
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M9 6l6 6-6 6" /></svg></span
-            ><svg
-              class="ic"
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
-            ><span class="nm">Caption</span>
-          </div>
+              <path d="M9 6l6 6-6 6" /></svg></span
+          ><svg
+            class="ic"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 6V4h14v2M12 4v16M9 20h6" /></svg
+          ><span class="nm">Caption</span>
         </div>
         <div class="row kids" style="padding-left: 8px">
           <span class="tw"
