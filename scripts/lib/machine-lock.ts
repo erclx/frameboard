@@ -164,3 +164,32 @@ function unlinkQuietly(path: string): void {
 function isCode(error: unknown, code: string): boolean {
   return error instanceof Error && 'code' in error && error.code === code
 }
+
+export type SlotAttempt =
+  | { acquired: true; path: string }
+  // One entry per slot, in slot order, each as `tryAcquire` named it.
+  | { acquired: false; holders: (Holder | null)[] }
+
+/**
+ * Slot `n` of the lock whose first slot sits at `first`. Slot one is `first`
+ * itself, so a wrapper that knows one slot still excludes a run holding it.
+ */
+export function slotPath(first: string, n: number): string {
+  return n === 1 ? first : first.replace(/\.lock$/, `.${n}.lock`)
+}
+
+/** Takes the first free slot of `slots` for `me`, or names every holder. */
+export function tryAcquireSlot(
+  first: string,
+  slots: number,
+  me: Holder,
+): SlotAttempt {
+  const holders: (Holder | null)[] = []
+  for (let n = 1; n <= slots; n++) {
+    const path = slotPath(first, n)
+    const attempt = tryAcquire(path, me)
+    if (attempt.acquired) return { acquired: true, path }
+    holders.push(attempt.holder)
+  }
+  return { acquired: false, holders }
+}
