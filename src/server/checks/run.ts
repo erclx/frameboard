@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { listFrames, listPageFolders } from '@/server/board/scan'
@@ -17,6 +17,11 @@ import { OUTRANKED_RULES } from './outranked'
 import { type RuleDoc, withoutOff } from './rule'
 import { checkDotFolders, STRUCTURE_RULES } from './structure'
 import { THEME_RULES } from './theme'
+import {
+  checkTransitionSheet,
+  TRANSITION_FILE_RULES,
+  transitionFiles,
+} from './transition-file'
 import { UPPERCASE_RULES } from './uppercase'
 
 /** Every rule `check` runs, in the order `docs` lists them. */
@@ -28,6 +33,7 @@ export const RULES: RuleDoc[] = [
   ...CUSTOM_PROPERTY_RULES,
   ...UPPERCASE_RULES,
   ...OUTRANKED_RULES,
+  ...TRANSITION_FILE_RULES,
   ...LAYOUT_RULES,
   ...FONT_SIZE_RULES,
   ...CONTRAST_RULES,
@@ -44,15 +50,16 @@ export async function checkPage(
   return checkPages(root, project, [page], readProjectContext(root, project))
 }
 
-/** Checks every frame in a project, and its folder names. */
+/** Checks every frame in a project, its folder names, and its transition files. */
 export async function checkProject(
   root: string,
   project: string,
 ): Promise<CheckResult> {
   const projectDir = join(root, project)
-  const [pages, entries] = await Promise.all([
+  const [pages, entries, transitions] = await Promise.all([
     listPageFolders(projectDir),
     readdir(projectDir, { withFileTypes: true }),
+    checkTransitions(project, projectDir),
   ])
   const context = readProjectContext(root, project)
   const result = await checkPages(root, project, pages, context)
@@ -63,12 +70,25 @@ export async function checkProject(
     checked: result.checked,
     findings: [
       ...withoutOff(
-        checkDotFolders(root, projectDir, folders),
+        [...checkDotFolders(root, projectDir, folders), ...transitions],
         context.config.off,
       ),
       ...result.findings,
     ],
   }
+}
+
+async function checkTransitions(
+  project: string,
+  projectDir: string,
+): Promise<Finding[]> {
+  const files = await transitionFiles(projectDir)
+  const findings = await Promise.all(
+    files.map(async ({ name, path }) =>
+      checkTransitionSheet({ project, name }, await readFile(path, 'utf8')),
+    ),
+  )
+  return findings.flat()
 }
 
 async function checkPages(

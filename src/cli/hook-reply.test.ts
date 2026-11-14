@@ -97,4 +97,69 @@ describe('hookReply', () => {
   ])('prints nothing for %s', (_label, stdin) => {
     expect(hookReply(stdin)).toBeNull()
   })
+
+  it('blocks on a transition file holding a stray', () => {
+    board = writeBoard({
+      'site/assets/transitions/wipe.css':
+        '@keyframes enter { from { opacity: 0 } }\nbody { display: none }',
+    })
+
+    const reply = JSON.parse(
+      hookReply(
+        payload(join(board.root, 'site/assets/transitions/wipe.css')),
+      ) ?? 'null',
+    )
+
+    expect(reply.decision).toBe('block')
+    expect(reply.reason).toContain(
+      'site/assets/transitions/wipe.css:2:1  transition-file  ',
+    )
+  })
+
+  it('prints nothing for a clean transition file', () => {
+    board = writeBoard({
+      'site/assets/transitions/wipe.css':
+        '@keyframes enter { from { opacity: 0 } }',
+    })
+
+    expect(
+      hookReply(payload(join(board.root, 'site/assets/transitions/wipe.css'))),
+    ).toBeNull()
+  })
+
+  it('prints nothing for a refused transition file with the rule off', () => {
+    board = writeBoard({
+      'site/assets/transitions/wipe.css': 'body { display: none }',
+      'site/project.json': JSON.stringify({
+        version: 1,
+        pages: [],
+        checks: { off: ['transition-file'] },
+      }),
+    })
+
+    expect(
+      hookReply(payload(join(board.root, 'site/assets/transitions/wipe.css'))),
+    ).toBeNull()
+  })
+
+  it.each([
+    ['elsewhere in assets', 'site/assets/shared.css'],
+    ['in a folder under transitions', 'site/assets/transitions/deep/wipe.css'],
+    ['in a page named transitions', 'site/transitions/wipe.css'],
+  ])('prints nothing for a stylesheet %s', (_, path) => {
+    board = writeBoard({ [path]: 'body { display: none }' })
+
+    expect(hookReply(payload(join(board.root, path)))).toBeNull()
+  })
+
+  it('prints nothing for a transition file outside any board', () => {
+    board = writeBoard({
+      'site/assets/transitions/wipe.css': 'body { display: none }',
+    })
+    rmSync(join(board.root, 'board.json'))
+
+    expect(
+      hookReply(payload(join(board.root, 'site/assets/transitions/wipe.css'))),
+    ).toBeNull()
+  })
 })
