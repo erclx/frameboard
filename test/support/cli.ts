@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { runCli } from '../../src/cli/run'
+import { EXIT_CODES } from '../../src/shared/errors'
 
 export interface CliRun {
   exitCode: number
@@ -45,5 +46,12 @@ export async function cli(
     },
     { clientDir },
   )
+  // No test expects an internal exit, and a failing assertion on the exit
+  // code alone hides its cause, so the run's own output goes to the log.
+  if (exitCode === EXIT_CODES.internal) {
+    process.stderr.write(
+      `frameboard ${argv.join(' ')} exited internal:\n${stdout}${stderr}`,
+    )
+  }
   return { exitCode, stdout, stderr, json: () => JSON.parse(stdout), opened }
 }
