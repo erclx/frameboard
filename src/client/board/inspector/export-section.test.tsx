@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -39,6 +39,13 @@ function recordDownloads() {
   return names
 }
 
+/** The file names the section lists under its button, one per line. */
+function fileLines() {
+  return within(screen.getByRole('list', { name: 'Exported files' }))
+    .getAllByRole('listitem')
+    .map((line) => line.textContent)
+}
+
 function png() {
   return Promise.resolve(
     new Response(PNG, { headers: { 'Content-Type': 'image/png' } }),
@@ -64,9 +71,7 @@ describe('ExportSection', () => {
     expect(
       screen.getByRole('button', { name: 'Export theme' }),
     ).toHaveTextContent('Both themes')
-    expect(
-      screen.getByText('PNG, hero.light@2x.png and hero.dark@2x.png'),
-    ).toBeVisible()
+    expect(fileLines()).toEqual(['hero.light@2x.png', 'hero.dark@2x.png'])
   })
 
   it('names the 1x file once 1x is picked', async () => {
@@ -78,9 +83,7 @@ describe('ExportSection', () => {
 
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
 
-    expect(
-      screen.getByText('PNG, hero.light@1x.png and hero.dark@1x.png'),
-    ).toBeVisible()
+    expect(fileLines()).toEqual(['hero.light@1x.png', 'hero.dark@1x.png'])
   })
 
   it('names one file once one theme is picked', async () => {
@@ -90,7 +93,8 @@ describe('ExportSection', () => {
     await user.click(screen.getByRole('button', { name: 'Export theme' }))
     await user.click(await screen.findByRole('menuitemradio', { name: 'Dark' }))
 
-    expect(screen.getByText('PNG, hero.dark@2x.png')).toBeVisible()
+    expect(fileLines()).toEqual(['hero.dark@2x.png'])
+    expect(screen.getByRole('button', { name: 'Export 1 file' })).toBeVisible()
   })
 
   it('fetches each theme at the scale picked, then downloads each file', async () => {
@@ -100,7 +104,7 @@ describe('ExportSection', () => {
     exportStore.setState({ scale: 3 })
     render(<ExportSection frame={HERO} />)
 
-    await user.click(screen.getByRole('button', { name: 'Export hero' }))
+    await user.click(screen.getByRole('button', { name: 'Export 2 files' }))
 
     await waitFor(() => expect(downloads).toHaveLength(2))
     expect(asked.map((url) => url.pathname)).toEqual([
@@ -127,7 +131,7 @@ describe('ExportSection', () => {
     exportStore.setState({ theme: 'light' })
     render(<ExportSection frame={HERO} />)
 
-    await user.click(screen.getByRole('button', { name: 'Export hero' }))
+    await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
 
     const pending = await screen.findByRole('button', { name: 'Exporting' })
     expect(pending).toBeDisabled()
@@ -135,7 +139,7 @@ describe('ExportSection', () => {
       finish(await png())
     })
     expect(
-      await screen.findByRole('button', { name: 'Export hero' }),
+      await screen.findByRole('button', { name: 'Export 1 file' }),
     ).toBeEnabled()
   })
 
@@ -165,12 +169,154 @@ describe('ExportSection', () => {
       </>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Export hero' }))
+    await user.click(screen.getByRole('button', { name: 'Export 2 files' }))
 
     expect(
       await screen.findByText('hero uses Brand, which is not installed.'),
     ).toBeVisible()
     expect(downloads).toEqual([])
+  })
+
+  describe('Name', () => {
+    it('starts as the frame’s name beside the first file’s suffix', () => {
+      render(<ExportSection frame={HERO} />)
+
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('hero')
+      expect(screen.getByText('.light@2x.png')).toBeVisible()
+    })
+
+    it('names every line and every download after what is typed', async () => {
+      const user = userEvent.setup()
+      stubFetch(png)
+      const downloads = recordDownloads()
+      render(<ExportSection frame={HERO} />)
+
+      const field = screen.getByRole('textbox', { name: 'Name' })
+      await user.clear(field)
+      await user.type(field, 'landing')
+      await user.click(screen.getByRole('button', { name: 'Export 2 files' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(2))
+      expect(fileLines()).toEqual([
+        'landing.light@2x.png',
+        'landing.dark@2x.png',
+      ])
+      expect(downloads).toEqual(['landing.light@2x.png', 'landing.dark@2x.png'])
+    })
+
+    it('exports under the frame’s name once the field is emptied', async () => {
+      const user = userEvent.setup()
+      stubFetch(png)
+      const downloads = recordDownloads()
+      exportStore.setState({ theme: 'light' })
+      render(<ExportSection frame={HERO} />)
+
+      await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+      await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(downloads).toEqual(['hero.light@2x.png'])
+    })
+
+    it('keeps a path separator out of the download’s name', async () => {
+      const user = userEvent.setup()
+      stubFetch(png)
+      const downloads = recordDownloads()
+      exportStore.setState({ theme: 'dark' })
+      render(<ExportSection frame={HERO} />)
+
+      const field = screen.getByRole('textbox', { name: 'Name' })
+      await user.clear(field)
+      await user.type(field, '../site/landing')
+      await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(downloads).toEqual(['site-landing.dark@2x.png'])
+    })
+
+    it('follows a rename while the field is untouched', () => {
+      const { rerender } = render(<ExportSection frame={HERO} />)
+
+      rerender(<ExportSection frame={{ ...HERO, name: 'cover' }} />)
+
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('cover')
+    })
+
+    it('starts again from the next frame’s name under a new key', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(<ExportSection key="hero" frame={HERO} />)
+      await user.type(screen.getByRole('textbox', { name: 'Name' }), '-draft')
+
+      rerender(<ExportSection key="phone" frame={PHONE} />)
+
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('phone')
+    })
+  })
+
+  describe('on an element', () => {
+    const TITLE = { index: 4, hash: 'a'.repeat(64), name: 'Page title' }
+
+    it('starts the name from the frame and the element', () => {
+      render(<ExportSection frame={HERO} element={TITLE} />)
+
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue(
+        'hero-page-title',
+      )
+    })
+
+    it('asks for the element by its address in every theme', async () => {
+      const user = userEvent.setup()
+      const asked = stubFetch(png)
+      const downloads = recordDownloads()
+      render(<ExportSection frame={HERO} element={TITLE} />)
+
+      await user.click(screen.getByRole('button', { name: 'Export 2 files' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(2))
+      expect(asked.map((url) => Object.fromEntries(url.searchParams))).toEqual([
+        {
+          ref: 'studio/home/hero',
+          theme: 'light',
+          scale: '2',
+          element: '4',
+          hash: TITLE.hash,
+        },
+        {
+          ref: 'studio/home/hero',
+          theme: 'dark',
+          scale: '2',
+          element: '4',
+          hash: TITLE.hash,
+        },
+      ])
+      expect(downloads).toEqual([
+        'hero-page-title.light@2x.png',
+        'hero-page-title.dark@2x.png',
+      ])
+    })
+
+    it('shows no device switch on a frame holding a device', () => {
+      render(<ExportSection frame={PHONE} element={TITLE} />)
+
+      expect(
+        screen.queryByRole('switch', { name: 'Include device' }),
+      ).toBeNull()
+    })
+
+    it('never asks for the device, whatever the switch was left on', async () => {
+      const user = userEvent.setup()
+      const asked = stubFetch(png)
+      const downloads = recordDownloads()
+      exportStore.setState({ theme: 'light', device: true })
+      render(<ExportSection frame={PHONE} element={TITLE} />)
+
+      await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
+
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(asked.map((url) => url.searchParams.has('device'))).toEqual([
+        false,
+      ])
+    })
   })
 
   describe('Include device', () => {
@@ -190,7 +336,7 @@ describe('ExportSection', () => {
       render(<ExportSection frame={PHONE} />)
 
       await user.click(screen.getByRole('switch', { name: 'Include device' }))
-      await user.click(screen.getByRole('button', { name: 'Export phone' }))
+      await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
 
       await waitFor(() => expect(downloads).toHaveLength(1))
       expect(asked.map((url) => url.searchParams.get('device'))).toEqual(['1'])
@@ -203,7 +349,7 @@ describe('ExportSection', () => {
       exportStore.setState({ theme: 'light' })
       render(<ExportSection frame={PHONE} />)
 
-      await user.click(screen.getByRole('button', { name: 'Export phone' }))
+      await user.click(screen.getByRole('button', { name: 'Export 1 file' }))
 
       await waitFor(() => expect(downloads).toHaveLength(1))
       expect(asked.map((url) => url.searchParams.has('device'))).toEqual([

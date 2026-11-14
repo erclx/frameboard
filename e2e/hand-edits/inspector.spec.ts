@@ -429,7 +429,7 @@ test.describe('exporting a selected frame', () => {
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export hero' }),
+        page.getByRole('button', { name: 'Export 2 files' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
 
@@ -438,7 +438,7 @@ test.describe('exporting a selected frame', () => {
     await page.getByRole('button', { name: 'Export theme' }).click()
     await page.getByRole('menuitemradio', { name: 'Light' }).click()
     const downloading = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Export hero' }).click()
+    await page.getByRole('button', { name: 'Export 1 file' }).click()
     const download = await downloading
 
     expect(download.suggestedFilename()).toBe('hero.light@1x.png')
@@ -481,7 +481,7 @@ test.describe('the colors a selected frame uses', () => {
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export hero' }),
+        page.getByRole('button', { name: 'Export 2 files' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
     const colors = page.getByRole('region', { name: /^Selection colors/ })
@@ -533,7 +533,7 @@ test.describe('the colors a selected frame uses', () => {
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export hero' }),
+        page.getByRole('button', { name: 'Export 2 files' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
 
