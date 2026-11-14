@@ -164,4 +164,66 @@ describe('assetsRoutes', () => {
       expect(existsSync(join(board.root, 'webapp/assets'))).toBe(false)
     })
   })
+
+  describe('GET transitions', () => {
+    function writeTransition(name: string, css: string): void {
+      mkdirSync(join(board.root, 'webapp/assets/transitions'), {
+        recursive: true,
+      })
+      writeFileSync(
+        join(board.root, `webapp/assets/transitions/${name}.css`),
+        css,
+      )
+    }
+
+    it('answers each transition by name with its keyframes renamed for the project', async () => {
+      writeTransition(
+        'wipe',
+        '/* mine */ @keyframes enter { from { opacity: 0 } }\n@keyframes leave { to { opacity: 0 } }',
+      )
+
+      const response = await routes().request(
+        '/api/projects/webapp/transitions',
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: {
+          transitions: [
+            {
+              name: 'wipe',
+              css: '@keyframes fb-own-webapp--wipe-enter { from { opacity: 0 } }\n@keyframes fb-own-webapp--wipe-leave { to { opacity: 0 } }',
+            },
+          ],
+        },
+      })
+    })
+
+    it('leaves a refused file out and answers none of its bytes', async () => {
+      writeTransition(
+        'wipe',
+        '@keyframes enter { from { opacity: 0 } } body { display: none }',
+      )
+
+      const response = await routes().request(
+        '/api/projects/webapp/transitions',
+      )
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { transitions: [] },
+      })
+    })
+
+    it('answers 404 for a project that does not exist', async () => {
+      const response = await routes().request('/api/projects/nope/transitions')
+
+      expect(response.status).toBe(404)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'project-not-found' },
+      })
+    })
+  })
 })

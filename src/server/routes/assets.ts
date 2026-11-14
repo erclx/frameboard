@@ -6,7 +6,9 @@ import { bodyLimit } from 'hono/body-limit'
 
 import type { AssetUsage } from '@/server/board/asset-usage'
 import { addAssets, listAssets } from '@/server/board/assets'
+import { listTransitions, ownKeyframes } from '@/server/board/transitions'
 import { isValidName } from '@/shared/names'
+import type { TransitionKeyframesList } from '@/shared/records/assets'
 
 import { type Access, requireWriter } from '../access/guard'
 
@@ -22,8 +24,9 @@ export interface AssetsRoutesOptions {
 
 /**
  * A project's `assets/` folder over the board's JSON envelope: the listing the
- * Assets tab draws, and the drop that writes into it. The drop needs a writer
- * and is held in memory, so the body limit is its only bound.
+ * Assets tab draws, the drop that writes into it, and the keyframes of the
+ * project's own transitions. The drop needs a writer and is held in memory,
+ * so the body limit is its only bound. Both reads answer any caller.
  */
 export function assetsRoutes(
   root: string,
@@ -53,6 +56,23 @@ export function assetsRoutes(
           : files,
       },
     })
+  })
+
+  /**
+   * The keyframes present mode may play for the project's own transitions.
+   * It answers what the reader kept, renamed, and never a file's own bytes.
+   */
+  app.get('/api/projects/:project/transitions', async (c) => {
+    const project = c.req.param('project')
+    const projectDir = projectFolder(root, project)
+    if (projectDir === null) return c.json(notFound(project), 404)
+    const data: TransitionKeyframesList = {
+      transitions: (await listTransitions(projectDir)).map((transition) => ({
+        name: transition.name,
+        css: ownKeyframes(project, transition),
+      })),
+    }
+    return c.json({ ok: true, data })
   })
 
   app.post(
