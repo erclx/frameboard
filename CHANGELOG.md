@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.36.0](https://github.com/erclx/frameboard/compare/v0.35.0...v0.36.0) (2026-11-14)
+
+
+### Features
+
+* **checks:** list a project's turned-off rules and turn one back on ([#330](https://github.com/erclx/frameboard/issues/330)) ([ba80835](https://github.com/erclx/frameboard/commit/ba808351abf834fa4474290a6285c35d3e43447a))
+* **inspector:** name exported files and export one element ([#326](https://github.com/erclx/frameboard/issues/326)) ([977a660](https://github.com/erclx/frameboard/commit/977a660bdbd10b397dd685aff2ce3b82e3ceba99))
+* **inspector:** set a frame's linked widths by hand ([#329](https://github.com/erclx/frameboard/issues/329)) ([83a0613](https://github.com/erclx/frameboard/commit/83a06139d19e884dc9de74568dc94d30d111ff64))
+* **present:** let a project add its own slide transition ([#327](https://github.com/erclx/frameboard/issues/327)) ([198a2ce](https://github.com/erclx/frameboard/commit/198a2cef2f3077b016020cfb3a00e36e7b4ef0f9))
+* **test-lock:** kill a run past its time limit and admit two at once ([#334](https://github.com/erclx/frameboard/issues/334)) ([3d40b99](https://github.com/erclx/frameboard/commit/3d40b99cca2fe9ea81a84e4feae0f60b0b02a6d9))
+
+
+### Bug Fixes
+
+* **faces:** let parallel runs fill a cold faces folder at once ([#333](https://github.com/erclx/frameboard/issues/333)) ([5db1566](https://github.com/erclx/frameboard/commit/5db1566b5ffc0df4e4c078f18790f0ee374099a2))
+* **home:** fit the open folder's rename field to its name ([#336](https://github.com/erclx/frameboard/issues/336)) ([c645b5b](https://github.com/erclx/frameboard/commit/c645b5b75f5bff2a43f99a65bd88346e33c3fc07))
+* **inspector:** keep the video section mounted across its own write ([#332](https://github.com/erclx/frameboard/issues/332)) ([d4ea5f1](https://github.com/erclx/frameboard/commit/d4ea5f12a61ff70e97439ae7d8c0544f119b7dd2))
+* **layers:** tint selected rows, ring on keyboard focus, fit every page ([#331](https://github.com/erclx/frameboard/issues/331)) ([2ad3073](https://github.com/erclx/frameboard/commit/2ad30734adca3c961a9a37b0dd78f82f8c4ecbde))
+
 ## [0.35.0](https://github.com/erclx/frameboard/compare/v0.34.0...v0.35.0) (2026-11-13)
 
 
