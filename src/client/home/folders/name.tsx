@@ -26,6 +26,8 @@ interface FolderNameProps {
   editing?: boolean
   /** Whether this browser pinned the folder, marked after its name. */
   pinned?: boolean
+  /** Whether the rename field ends where the name does rather than filling its line. */
+  hug?: boolean
   className?: string
 }
 
@@ -42,6 +44,7 @@ export function FolderName({
   unseen,
   editing = true,
   pinned = false,
+  hug = false,
   className,
 }: FolderNameProps) {
   const renaming = useRenamingFolder(folder.key)
@@ -82,6 +85,7 @@ export function FolderName({
           key={renaming.attempt}
           name={renaming.draft}
           label={`Rename folder ${folder.name}`}
+          hug={hug}
           onCommit={(name) => void renameFolder(folder.key, name, calls)}
           onCancel={stopFolderRename}
         />
