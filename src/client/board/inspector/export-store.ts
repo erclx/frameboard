@@ -37,22 +37,60 @@ export function exportFileNames(
 }
 
 /**
+ * The name the exported files open with, being what was typed with its
+ * path separators turned to dashes and its leading dots dropped, so a
+ * download never names a folder or a hidden file. A typed name with
+ * nothing left takes `fallback`.
+ */
+export function exportBaseName(typed: string, fallback: string): string {
+  const cleaned = typed
+    .replace(/[/\\]+/g, '-')
+    .replace(/^[\s.-]+/, '')
+    .trim()
+  return cleaned === '' ? fallback : cleaned
+}
+
+/** The name an element's files start as, `<frame>-<element>` in kebab case, so two elements of one frame differ. */
+export function elementExportName(frame: string, element: string): string {
+  const kebab = element
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${frame}-${kebab === '' ? 'element' : kebab}`
+}
+
+/** One element of a frame, as the address `edit` takes. */
+export interface ExportElement {
+  index: number
+  /** The content hash of the frame file the index was read against. */
+  hash: string
+}
+
+/**
  * Downloads one frame's PNG at a scale, in one theme or both, inside its
- * device when the settings ask and the frame holds one. Every theme
- * renders through the board's PNG route before any file downloads, so a
- * refusal on one leaves nothing half saved. It writes nothing to the board,
- * so a view-only tab exports too.
+ * device when the settings ask and the frame holds one. The files take
+ * `name` once cleaned, or the frame's name without one. Given `element`,
+ * it downloads that element alone on a transparent ground instead, with no
+ * device. Every theme renders through the board's PNG route before any
+ * file downloads, so a refusal on one leaves nothing half saved. It writes
+ * nothing to the board, so a view-only tab exports too.
  */
 export async function exportFrame(
   frame: Pick<FrameRecord, 'ref' | 'name' | 'device'>,
   settings: ExportSettings,
+  name = '',
+  element?: ExportElement,
 ): Promise<void> {
-  const files = exportFileNames(frame.name, settings)
+  const files = exportFileNames(exportBaseName(name, frame.name), settings)
   const blobs = await renderThemes(
     frame.ref,
     themesOf(settings.theme),
     settings.scale,
-    settings.device && frame.device ? { device: '1' } : {},
+    element
+      ? { element: String(element.index), hash: element.hash }
+      : settings.device && frame.device
+        ? { device: '1' }
+        : {},
   )
   blobs.forEach((blob, index) => download(blob, files[index] ?? ''))
 }
