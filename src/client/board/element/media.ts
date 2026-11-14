@@ -90,8 +90,11 @@ export function readMedia(media: HTMLMediaElement): MediaReading {
 /**
  * The selected element as a live media element, read again on every play,
  * pause, seek, time, and sound change, and found again when its frame loads
- * or swaps its page for a placeholder, which releases it. Null for anything
- * but a `<video>` or an `<audio>` the frame shows at the key's hash.
+ * or swaps its page for a placeholder, which releases it. While the frame
+ * still shows bytes older than the key's hash, as between a hand edit and its
+ * reload, the last reading of the same element is kept and still follows the
+ * element on screen, so the Video section holds its place. Null for anything
+ * but a `<video>` or an `<audio>` the frame has shown under the key.
  */
 export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
   const [held, setHeld] = useState<{
@@ -102,23 +105,44 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
   const frame = key?.frame
   const index = key?.index
   const hash = key?.hash
-  const at = key ? `${frame}:${index}:${hash}` : null
+  const at = key ? `${frame}:${index}` : null
   useEffect(() => {
     if (at === null || frame === undefined || index === undefined) return
     if (hash === undefined) return
     const host = document.querySelector(`[data-frame="${CSS.escape(frame)}"]`)
     if (!host) return
     let media: HTMLMediaElement | null = null
+    // Whether the frame shows older bytes than the key's hash, when a read
+    // only refreshes a reading already held of this same node.
+    let stale = false
     const read = () => {
-      if (media) setHeld({ at, media, reading: readMedia(media) })
+      if (!media) return
+      const next = { at, media, reading: readMedia(media) }
+      if (stale) {
+        setHeld((last) =>
+          last?.at === at && last.media === next.media ? next : last,
+        )
+      } else {
+        setHeld(next)
+      }
     }
     const resolve = () => {
-      const found = mediaAt(host, index, hash)
+      const page =
+        host.querySelector<HTMLIFrameElement>(
+          ':scope > iframe',
+        )?.contentDocument
+      const shown = page ? renderedHash(page) : null
+      // A placeholder has no page, so it falls through to the release below.
+      stale = page !== null && page !== undefined && shown !== hash
+      // A stale page's own hash finds the node still on screen, and a page
+      // mid-navigation, stamped with none, finds nothing yet.
+      const showing = stale ? shown : hash
+      const found = showing === null ? null : mediaAt(host, index, showing)
       if (found === media) return
       for (const name of EVENTS) media?.removeEventListener(name, read)
       media = found
       if (!media) {
-        setHeld(null)
+        if (!stale) setHeld(null)
         return
       }
       for (const name of EVENTS) media.addEventListener(name, read)

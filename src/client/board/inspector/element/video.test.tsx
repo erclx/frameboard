@@ -15,6 +15,8 @@ import type { ElementChange } from './write'
 
 const FRAME = 'studio/home/hero'
 const HASH = 'a'.repeat(64)
+/** The hash a write hands the selection before the frame reloads its bytes. */
+const WRITTEN = 'b'.repeat(64)
 /** The video's index, after html, head, and body, the injected style skipped. */
 const VIDEO: ElementKey = { frame: FRAME, index: 3, hash: HASH }
 
@@ -32,11 +34,20 @@ async function mountFrame(media: string): Promise<HTMLIFrameElement> {
   const iframe = document.createElement('iframe')
   root.append(iframe)
   document.body.append(root)
+  await loadPage(iframe, media, HASH)
+  return iframe
+}
+
+/** Loads `media` into the frame's page as the bytes at `hash`, as a reload after a write does. */
+async function loadPage(
+  iframe: HTMLIFrameElement,
+  media: string,
+  hash: string,
+): Promise<void> {
   await new Promise<void>((resolve) => {
     iframe.addEventListener('load', () => resolve(), { once: true })
-    iframe.srcdoc = `<!doctype html><html><head><style ${LOOK_MARKER} ${RENDERED_HASH}="${HASH}"></style></head><body>${media}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}"></style></head><body>${media}</body></html>`
   })
-  return iframe
 }
 
 function liveVideo(iframe: HTMLIFrameElement): HTMLVideoElement {
@@ -45,8 +56,14 @@ function liveVideo(iframe: HTMLIFrameElement): HTMLVideoElement {
   return video
 }
 
-function Section({ write }: { write: (change: ElementChange) => void }) {
-  const media = useLiveMedia(VIDEO)
+function Section({
+  write,
+  element = VIDEO,
+}: {
+  write: (change: ElementChange) => void
+  element?: ElementKey
+}) {
+  const media = useLiveMedia(element)
   return media ? (
     <VideoSection
       media={media}
@@ -211,6 +228,56 @@ describe('VideoSection', () => {
     await mountFrame(`<audio src="${CLIP}" controls></audio>`)
     render(<Section write={vi.fn()} />)
 
+    expect(
+      await screen.findByRole('heading', { name: 'Audio' }),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Controls', 'controls'],
+    ['Autoplay', 'autoplay'],
+    ['Loop', 'loop'],
+    ['Muted in the file', 'muted'],
+  ])(
+    'keeps focus on %s through its write and the reload',
+    async (label, name) => {
+      const iframe = await mountFrame(`<video src="${CLIP}"></video>`)
+      const { rerender } = render(<Section write={vi.fn()} />)
+      const toggle = await screen.findByRole('switch', { name: label })
+      toggle.focus()
+
+      await userEvent.keyboard(' ')
+      rerender(
+        <Section write={vi.fn()} element={{ ...VIDEO, hash: WRITTEN }} />,
+      )
+
+      expect(toggle).toHaveFocus()
+      await loadPage(iframe, `<video src="${CLIP}" ${name}></video>`, WRITTEN)
+      await waitFor(() => expect(toggle).toBeChecked())
+      expect(toggle).toHaveFocus()
+    },
+  )
+
+  it('shows a newly selected element only once the frame shows it', async () => {
+    const iframe = await mountFrame(
+      `<video src="${CLIP}"></video><audio src="${CLIP}" controls></audio>`,
+    )
+    const { rerender } = render(<Section write={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Video' })
+
+    rerender(
+      <Section
+        write={vi.fn()}
+        element={{ frame: FRAME, index: 4, hash: WRITTEN }}
+      />,
+    )
+
+    expect(screen.queryByRole('heading', { name: 'Video' })).toBeNull()
+    await loadPage(
+      iframe,
+      `<video src="${CLIP}"></video><audio src="${CLIP}" controls></audio>`,
+      WRITTEN,
+    )
     expect(
       await screen.findByRole('heading', { name: 'Audio' }),
     ).toBeInTheDocument()
