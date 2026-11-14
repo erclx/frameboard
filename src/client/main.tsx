@@ -11,6 +11,7 @@ import {
   startBusyWatch,
 } from './board/changes/show'
 import { armGuideLanding } from './board/guide/state'
+import { markPointerFocus } from './focus/pointer-mark'
 import { registerHistoryActions } from './history/actions'
 import { connectLive } from './live/socket'
 import { liveStore } from './live/store'
@@ -23,6 +24,7 @@ if (!root) throw new Error('Missing #root element')
 
 armGuideLanding(window.location.pathname)
 startBusyWatch()
+markPointerFocus(window)
 connectLive(liveStore, {
   onShow: receiveShow,
   onDisconnect: cancelPendingShow,

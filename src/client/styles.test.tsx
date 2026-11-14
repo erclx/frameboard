@@ -1,6 +1,7 @@
 import './styles.css'
 
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { contrastOnPage } from '@/test/contrast'
@@ -76,6 +77,52 @@ describe('styles.css', () => {
     expect(getComputedStyle(screen.getByText('claimed')).color).toBe(
       'rgb(232, 180, 255)',
     )
+  })
+
+  describe('the focus-visible variant', () => {
+    it('should ring a control focused by keyboard', async () => {
+      render(
+        <button type="button" className="focus-visible:ring-3">
+          Next
+        </button>,
+      )
+
+      await userEvent.tab()
+
+      expect(getComputedStyle(screen.getByRole('button')).boxShadow).not.toBe(
+        'none',
+      )
+    })
+
+    it('should draw no ring on a control carrying the pointer mark', async () => {
+      render(
+        <button
+          type="button"
+          data-pointer-focus=""
+          className="focus-visible:ring-3"
+        >
+          Next
+        </button>,
+      )
+
+      await userEvent.tab()
+
+      expect(getComputedStyle(screen.getByRole('button')).boxShadow).toBe(
+        'none',
+      )
+    })
+
+    it('should draw no group ring under a group carrying the pointer mark', async () => {
+      render(
+        <button type="button" data-pointer-focus="" className="group">
+          <span className="group-focus-visible:ring-3">Next</span>
+        </button>,
+      )
+
+      await userEvent.tab()
+
+      expect(getComputedStyle(screen.getByText('Next')).boxShadow).toBe('none')
+    })
   })
 
   it('should render a size step at its size beside a color through cn', () => {
