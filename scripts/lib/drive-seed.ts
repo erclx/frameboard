@@ -53,6 +53,15 @@ const DECK = {
 const DECK_PAGES = join(import.meta.dirname, 'drive-deck')
 
 /**
+ * The transition of webapp's own the deck's closing slide arrives with, so
+ * present mode has a project's keyframes to play and the inspector's two
+ * lists a name to show after the built-ins.
+ */
+const WIPE = { project: 'webapp', name: 'wipe', ms: 700 }
+
+const WIPE_SHEET = join(import.meta.dirname, 'drive-transition.css')
+
+/**
  * The page holding one frame of two free shapes, two free texts side by
  * side, and one text in the flow, so a group has members to box, move,
  * scale, align, and wrap, and Arrange has a selection it refuses.
@@ -113,6 +122,8 @@ export interface Seeded {
   feed: 'laid' | 'kept'
   /** Whether the deck page was laid now or was already there and kept. */
   deck: 'laid' | 'kept'
+  /** Whether webapp's own transition was laid now or was already there and kept. */
+  transition: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
   shapes: 'laid' | 'kept'
   /** Whether the stacked findings page was laid now or was already there and kept. */
@@ -128,7 +139,7 @@ export interface Seeded {
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
  * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two projects, and a live
+ * transition with one stepped and one arriving with webapp's own `wipe`, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two projects, and a live
  * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
@@ -144,12 +155,24 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height,
     scroll: true,
   })
+  const transition = await layTransition(root)
   const deck = await layDeck(root)
   const shapes = await layOne(root, GROUP, GROUP_PAGE)
   const stacked = await layStacked(root)
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
-  return { crowd, motion, raw, feed, deck, shapes, stacked, folder, reserved }
+  return {
+    crowd,
+    motion,
+    raw,
+    feed,
+    deck,
+    transition,
+    shapes,
+    stacked,
+    folder,
+    reserved,
+  }
 }
 
 /**
@@ -274,6 +297,9 @@ async function layDeck(root: string): Promise<'laid' | 'kept'> {
         order: index,
         hidden: false,
         locked: false,
+        ...(index === DECK.slides.length - 1
+          ? { transition: { name: WIPE.name, ms: WIPE.ms } }
+          : {}),
       },
     ]),
   )
@@ -292,6 +318,15 @@ async function layDeck(root: string): Promise<'laid' | 'kept'> {
     ),
   ])
   await listPage(root, DECK.project, DECK.page)
+  return 'laid'
+}
+
+async function layTransition(root: string): Promise<'laid' | 'kept'> {
+  const folder = join(root, WIPE.project, 'assets', 'transitions')
+  const sheet = join(folder, `${WIPE.name}.css`)
+  if (existsSync(sheet)) return 'kept'
+  await mkdir(folder, { recursive: true })
+  await copyFile(WIPE_SHEET, sheet)
   return 'laid'
 }
 

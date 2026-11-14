@@ -1,7 +1,8 @@
 // Lays the states a drive films into the drive copy's `basic` board, being a
 // 40-frame `marketing/crowd` page, an animated `marketing/motion` frame, a
 // `webapp/raw` frame stating raw colors, a `webapp/feed` phone frame that
-// scrolls, a `webapp/deck` page of three slides, a `webapp/shapes` frame of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two
+// scrolls, a `webapp/deck` page of three slides, the last arriving with webapp's own
+// `wipe` transition, a `webapp/shapes` frame of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two
 // projects, and a live reservation on
 // `webapp/settings`,
 // which the committed fixture lacks so the evidence baselines never move. Run
@@ -25,5 +26,5 @@ if (!copy) {
 const board = join(copy, 'test', 'fixtures', 'boards', 'basic')
 const seeded = await seedDrive(board, new Date())
 console.log(
-  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, feed page ${seeded.feed}, deck page ${seeded.deck}, shapes page ${seeded.shapes}, stacked page ${seeded.stacked}, Drives folder ${seeded.folder}, reserved ${seeded.reserved.join(', ')}`,
+  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, feed page ${seeded.feed}, deck page ${seeded.deck}, webapp transition ${seeded.transition}, shapes page ${seeded.shapes}, stacked page ${seeded.stacked}, Drives folder ${seeded.folder}, reserved ${seeded.reserved.join(', ')}`,
 )
