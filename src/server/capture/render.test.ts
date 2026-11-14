@@ -218,7 +218,13 @@ describe.skipIf(shell === null)(
 
     beforeAll(async () => {
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
-      board = writeBoard({ 'studio/home/hero.html': '<p>Hello</p>' })
+      board = writeBoard({
+        'studio/home/hero.html': '<p>Hello</p>',
+        // The body's red fill would show in the corner of a shot not isolated.
+        'studio/home/badge.html':
+          '<style>body{margin:0;background:red}</style>' +
+          '<span style="display:block;width:60px;height:40px;border-radius:20px;background:blue"></span>',
+      })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
 
@@ -285,6 +291,69 @@ describe.skipIf(shell === null)(
         232, 432,
       ])
       expect(corner).toBe(0)
+    })
+
+    it('answers one element alone at its own size times the scale, on a clear ground', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 2,
+      })
+
+      // Element 4 of the badge frame is its span, past html, head, style, and body.
+      const bytes = await render(
+        {
+          ref: 'studio/home/badge',
+          box: { width: 200, height: 100 },
+          element: 4,
+        },
+        'light',
+      )
+      const corner = await cornerAlpha(requireShell(shell), bytes)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        120, 80,
+      ])
+      expect(corner).toBe(0)
+    })
+
+    it('draws no device around an element', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/badge',
+          box: { width: 200, height: 100 },
+          device: 'phone',
+          element: 4,
+        },
+        'light',
+      )
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([60, 40])
+    })
+
+    it('refuses an element index naming none as invalid-address', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      await expect(
+        render(
+          {
+            ref: 'studio/home/badge',
+            box: { width: 200, height: 100 },
+            element: 40,
+          },
+          'light',
+        ),
+      ).rejects.toMatchObject({ code: 'invalid-address' })
     })
 
     it('refuses a render past the screenshot limit before opening a tab', async () => {

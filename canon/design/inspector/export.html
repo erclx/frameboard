@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>export-names-field-720</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --accentfill: #1f6fe5;
+        --accentfg: #fff;
+        --frame: #fff;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #3a3a3a;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --accentfill: #2068dc;
+        --accentfg: #fff;
+        --frame: #262626;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'Noto Sans', 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        -webkit-font-smoothing: antialiased;
+      }
+      .stage {
+        position: relative;
+        overflow: hidden;
+        width: 720px;
+        height: 400px;
+        background: var(--canvas);
+      }
+      .cap {
+        position: absolute;
+        left: 16px;
+        top: 12px;
+        right: 16px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+      .cap b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .abs {
+        position: absolute;
+      }
+      .flabel {
+        position: absolute;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .frame {
+        position: absolute;
+        background: var(--frame);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .sel {
+        outline: 1.5px solid var(--accent);
+      }
+      .dash {
+        outline: 1px dashed var(--accent);
+      }
+      .vid {
+        position: absolute;
+        background: linear-gradient(
+          160deg,
+          #0f172a 0%,
+          #1e3a5f 35%,
+          #0d9488 70%,
+          #334155 100%
+        );
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 15px;
+        letter-spacing: 0.01em;
+      }
+      .vid small {
+        display: block;
+        font-size: 8px;
+        opacity: 0.6;
+        text-align: center;
+        margin-top: 2px;
+      }
+      .aud {
+        position: absolute;
+        height: 26px;
+        border-radius: 13px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 9px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .tile {
+        position: absolute;
+        width: 92px;
+        height: 82px;
+        border-radius: 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 5px;
+        font-size: 10px;
+        color: var(--text);
+      }
+      .tile i {
+        display: block;
+        height: 48px;
+        border-radius: 5px;
+        background: linear-gradient(160deg, #0f172a, #1e3a5f 40%, #0d9488);
+        margin-bottom: 4px;
+      }
+      .tile.drag {
+        opacity: 0.85;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+        transform: rotate(-3deg);
+      }
+      .ghost {
+        position: absolute;
+        border: 1.5px dashed var(--accent);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        border-radius: 2px;
+        color: var(--accent);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .chip {
+        position: absolute;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: var(--accentfill);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .hint {
+        position: absolute;
+        padding: 5px 10px;
+        border-radius: 7px;
+        background: rgba(30, 30, 30, 0.86);
+        color: #eee;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .toast {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        padding: 9px 12px;
+        border-radius: 9px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .toast b {
+        display: block;
+        font-weight: 600;
+      }
+      .toast span {
+        color: var(--muted);
+      }
+      .cur {
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-bottom: 13px solid var(--text);
+        transform: rotate(-30deg);
+      }
+      .nodrop {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        border: 2px solid #d92d2d;
+        background: var(--panel);
+      }
+      .nodrop:after {
+        content: '';
+        position: absolute;
+        left: 1px;
+        right: 1px;
+        top: 5px;
+        height: 2px;
+        background: #d92d2d;
+        transform: rotate(45deg);
+      }
+      .bar {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        padding: 0 6px;
+        border-radius: 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        color: var(--text);
+      }
+      .bar.onvid {
+        background: rgba(20, 20, 20, 0.72);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: none;
+        backdrop-filter: blur(6px);
+      }
+      .bar .b {
+        width: 18px;
+        height: 18px;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .bar .t {
+        flex: 1;
+        height: 3px;
+        border-radius: 2px;
+        background: color-mix(in srgb, currentColor 25%, transparent);
+        position: relative;
+        min-width: 20px;
+      }
+      .bar .t u {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 28%;
+        background: var(--accent);
+        border-radius: 2px;
+      }
+      .bar .t s {
+        position: absolute;
+        left: 28%;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 5px;
+        background: var(--accent);
+      }
+      .bar .t.ringall {
+        outline: 2px solid #fff;
+        outline-offset: 5px;
+        border-radius: 3px;
+      }
+      .bar .t.ringthumb s {
+        box-shadow:
+          0 0 0 2px var(--panel),
+          0 0 0 3.5px var(--accent);
+      }
+      .bar .tm {
+        font:
+          10px ui-monospace,
+          'DejaVu Sans Mono',
+          monospace;
+        color: inherit;
+        opacity: 0.7;
+        white-space: nowrap;
+      }
+      .play {
+        width: 0;
+        height: 0;
+        border-left: 7px solid currentColor;
+        border-top: 4.5px solid transparent;
+        border-bottom: 4.5px solid transparent;
+      }
+      .pause {
+        width: 7px;
+        height: 9px;
+        border-left: 2.5px solid currentColor;
+        border-right: 2.5px solid currentColor;
+      }
+      .spk {
+        width: 9px;
+        height: 8px;
+        background: currentColor;
+        clip-path: polygon(0 30%, 40% 30%, 100% 0, 100% 100%, 40% 70%, 0 70%);
+      }
+      .insp {
+        position: absolute;
+        right: 0;
+        top: 40px;
+        bottom: 0;
+        width: 190px;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+        padding: 12px;
+        font-size: 11px;
+      }
+      .insp h4 {
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .insp .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 24px;
+        color: var(--text);
+      }
+      .sw {
+        width: 22px;
+        height: 13px;
+        border-radius: 7px;
+        background: var(--faint);
+        position: relative;
+      }
+      .sw:after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 9px;
+        height: 9px;
+        border-radius: 5px;
+        background: #fff;
+      }
+      .sw.on {
+        background: var(--accentfill);
+      }
+      .sw.on:after {
+        left: 11px;
+      }
+      .new {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 9px;
+        margin-left: 5px;
+      }
+      .native {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 26px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 8px;
+        color: #fff;
+        font-size: 9px;
+      }
+      .native .t {
+        flex: 1;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.35);
+        position: relative;
+      }
+      .native .t u {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 28%;
+        background: #fff;
+        border-radius: 2px;
+      }
+      .pill {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        background: var(--raised);
+        border-radius: 8px;
+        font-size: 11px;
+      }
+      .pill span {
+        padding: 4px 9px;
+        border-radius: 6px;
+        color: var(--muted);
+      }
+      .pill .on {
+        background: var(--accentfill);
+        color: #fff;
+      }
+
+      .stage {
+        height: 440px;
+      }
+      .side {
+        position: absolute;
+        top: 60px;
+        width: 240px;
+        bottom: 20px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        font-size: 11.5px;
+      }
+      .side h4 {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 10px 12px 6px;
+        color: var(--text);
+      }
+      .pg {
+        height: 26px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: var(--text);
+      }
+      .pg.on {
+        background: var(--raised);
+        border-radius: 6px;
+        margin: 0 6px;
+        padding: 0 6px;
+      }
+      .grip {
+        height: 9px;
+        border-top: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+      }
+      .grip:after {
+        content: '';
+        width: 26px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--faint);
+      }
+      .grip.hot {
+        border-top: 2px solid var(--accent);
+      }
+      .sb {
+        position: absolute;
+        right: 3px;
+        width: 4px;
+        border-radius: 2px;
+        background: var(--faint);
+      }
+      .cut {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 14px;
+        background: linear-gradient(transparent, var(--panel));
+      }
+      .ex {
+        position: absolute;
+        top: 70px;
+        width: 230px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 11px;
+      }
+      .ex h4 {
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .sel2 {
+        display: grid;
+        grid-template-columns: 70px 1fr;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .sel2 span,
+      .fld {
+        height: 26px;
+        border-radius: 6px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+      }
+      .xb {
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+        font-weight: 500;
+      }
+      .cap2 {
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 10.5px;
+        line-height: 1.45;
+      }
+      .mono {
+        font-family: ui-monospace, 'DejaVu Sans Mono', monospace;
+        font-size: 10px;
+      }
+      .fl {
+        color: var(--muted);
+        margin-bottom: 3px;
+        font-size: 10px;
+      }
+      .suf {
+        color: var(--muted);
+        margin-left: auto;
+      }
+      .note {
+        position: absolute;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="cap">
+        <b>export-names-field-720</b> · a Name field starts as the frame's name
+        and can be typed over, with the theme and scale suffix shown beside it
+      </div>
+      <div class="ex" style="left: 245px">
+        <h4>Export</h4>
+        <div class="sel2"><span>2x</span><span>Both themes</span></div>
+        <div class="fl">Name</div>
+        <div
+          class="fld"
+          style="margin-bottom: 8px; outline: 1.5px solid var(--accent)"
+        >
+          frameboard-start<span class="suf mono">.light@2x.png</span>
+        </div>
+        <div class="xb">Export 2 files</div>
+        <div class="cap2 mono">
+          frameboard-start.light@2x.png<br />frameboard-start.dark@2x.png
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

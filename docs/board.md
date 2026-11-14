@@ -56,7 +56,9 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
-- The inspector's Export section saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, named like `hero.light@2x.png`, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
+- The inspector's Export section saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
+- Its Name field starts as the frame's name and takes any name you type, and each file is listed under the button, as `hero.light@2x.png`
+- With one element selected the same section exports that element alone on a transparent background, named `<frame>-<element>` until you type over it
 - A selected frame that animates gets a Motion section, whose track holds it at any moment and whose play runs it on to its end, in your tab alone. A Held chip on its label resumes it.
 - The Motion section's Filmstrip exports up to 12 moments in one row at the Export section's scale and theme, offering only the counts that fit, named like `hero.filmstrip-5.light@2x.png`
 - Open on a phone, under the Preview row, shows a code a phone on the same Wi-Fi scans to open the frame's project, read only, until the card closes

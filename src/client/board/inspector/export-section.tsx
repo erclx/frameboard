@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { Button } from '@/client/components/ui/button'
@@ -16,6 +16,9 @@ import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import { reportRefusal } from '../left-panel/page-actions'
 import { COLOR_ROW } from './element/values'
 import {
+  elementExportName,
+  exportBaseName,
+  type ExportElement,
   exportFileNames,
   exportFrame,
   exportStore,
@@ -23,22 +26,39 @@ import {
   THEME_OPTIONS,
 } from './export-store'
 
+interface ExportSectionProps {
+  frame: FrameRecord
+  /** The one selected element to export in the frame's place, under the name its Layers row shows. */
+  element?: ExportElement & { name: string }
+}
+
 /**
- * One frame's PNG export, picking the scale and theme `exportFrame` renders
- * at, in one theme or both, and for a frame holding a device whether the PNG
- * draws it.
+ * One frame's PNG export, or one element's, picking the scale and theme
+ * `exportFrame` renders at, in one theme or both, and for a frame holding a
+ * device whether the PNG draws it. The Name field starts as the frame's
+ * name, or `<frame>-<element>` for an element, and names every file once
+ * typed over. It lives in the section, so the caller keys the section by
+ * what is selected and a new selection starts from its own name.
  */
-export function ExportSection({ frame }: { frame: FrameRecord }) {
+export function ExportSection({ frame, element }: ExportSectionProps) {
   const scale = useStore(exportStore, (state) => state.scale)
   const theme = useStore(exportStore, (state) => state.theme)
   const device = useStore(exportStore, (state) => state.device ?? false)
   const [exporting, setExporting] = useState(false)
-  const files = exportFileNames(frame.name, { scale, theme })
+  // Null until typed in, so an untouched field follows a rename.
+  const [typed, setTyped] = useState<string | null>(null)
+  const nameId = useId()
+  const start = element
+    ? elementExportName(frame.name, element.name)
+    : frame.name
+  const base = exportBaseName(typed ?? '', start)
+  const suffixes = exportFileNames('', { scale, theme })
+  const files = suffixes.map((suffix) => `${base}${suffix}`)
 
   const run = () => {
     setExporting(true)
-    void exportFrame(frame, { scale, theme, device })
-      .catch(reportRefusal(`Couldn't export ${frame.name}`))
+    void exportFrame(frame, { scale, theme, device }, base, element)
+      .catch(reportRefusal(`Couldn't export ${base}`))
       .finally(() => setExporting(false))
   }
 
@@ -79,7 +99,31 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
           }}
         />
       </div>
-      {frame.device ? (
+      <label
+        htmlFor={nameId}
+        className="mb-[3px] block text-caption text-muted-foreground"
+      >
+        Name
+      </label>
+      <div
+        className={cn(
+          COLOR_ROW,
+          'mb-2 focus-within:ring-2 focus-within:ring-ring/50',
+        )}
+      >
+        <input
+          id={nameId}
+          value={typed ?? start}
+          onChange={(event) => setTyped(event.target.value)}
+          spellCheck={false}
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-transparent outline-none"
+        />
+        <span className="shrink-0 font-mono text-caption text-muted-foreground">
+          {suffixes[0]}
+        </span>
+      </div>
+      {frame.device && !element ? (
         <IncludeDevice
           on={device}
           onChange={(on) => exportStore.setState({ device: on })}
@@ -92,11 +136,22 @@ export function ExportSection({ frame }: { frame: FrameRecord }) {
         onClick={run}
         className="w-full bg-transparent text-xs dark:bg-transparent"
       >
-        {exporting ? 'Exporting' : `Export ${frame.name}`}
+        {exporting
+          ? 'Exporting'
+          : files.length === 1
+            ? 'Export 1 file'
+            : `Export ${files.length} files`}
       </Button>
-      <p className="mt-1.5 text-caption text-muted-foreground">
-        PNG, {files.join(' and ')}
-      </p>
+      <ul
+        aria-label="Exported files"
+        className="mt-[7px] font-mono text-caption text-muted-foreground"
+      >
+        {files.map((file) => (
+          <li key={file} title={file} className="truncate">
+            {file}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

@@ -14,6 +14,7 @@ import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
 import { useLiveMedia } from '../element/media'
+import { type TreeEntry, useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { placeFree } from '../place/write'
@@ -55,7 +56,7 @@ import { SelectionColors } from './selection-colors'
  * selected frame with its Fill and Export, or the `N frames` section and
  * Arrange for several, each ending on the colors they use, and a hint while
  * nothing is selected. An element selected inside the frame adds its
- * sections under Frame, whose name row it hides, and several selected inside
+ * sections under Frame, whose name row it hides, with its own Export, and several selected inside
  * the frame take the panel with their shared sections. A tab that reads opens the
  * panel on one View only line, since every field under it reads greyed.
  */
@@ -130,7 +131,7 @@ export function InspectorPanel({
             </>
           ) : null}
           {inFrame ? (
-            <ElementSections page={page} element={inFrame} />
+            <ElementSections page={page} frame={frames[0]} element={inFrame} />
           ) : (
             <FramesColors page={page} frames={frames} />
           )}
@@ -178,6 +179,8 @@ function useProjectTokens(frame: string): {
 
 interface ElementSectionsProps {
   page: string
+  /** The one selected frame the element sits in, absent while its record is not held. */
+  frame: FrameRecord | undefined
   element: ElementKey
 }
 
@@ -187,8 +190,9 @@ interface ElementSectionsProps {
  * control disabled while the tab may not write. Nothing draws until the
  * frame's live page shows the element, which a placeholder never does.
  */
-function ElementSections({ page, element }: ElementSectionsProps) {
+function ElementSections({ page, frame, element }: ElementSectionsProps) {
   const canWrite = useLive((state) => state.canWrite)
+  const tree = useElementTree(element.frame)
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const media = useLiveMedia(element)
@@ -296,6 +300,17 @@ function ElementSections({ page, element }: ElementSectionsProps) {
         write={write}
       />
       <StepSection step={live.step} disabled={disabled} write={write} />
+      {frame ? (
+        <ExportSection
+          key={`export:${element.frame}\n${element.index}`}
+          frame={frame}
+          element={{
+            index: element.index,
+            hash: element.hash,
+            name: layerName(tree, element.index),
+          }}
+        />
+      ) : null}
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}
@@ -312,6 +327,15 @@ function ElementSections({ page, element }: ElementSectionsProps) {
       />
     </>
   )
+}
+
+/** The name an element's Layers row shows, or `element` until the frame's tree holds it. */
+function layerName(tree: TreeEntry | null, index: number): string {
+  const held =
+    tree?.status === 'ready'
+      ? tree.tree.elements.find((element) => element.index === index)
+      : undefined
+  return held?.name ?? 'element'
 }
 
 /**

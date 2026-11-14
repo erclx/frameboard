@@ -57,6 +57,7 @@
     "inspector/motion": "design/10-inspector/motion-held",
     "inspector/media": "drive-32/12-media/media-play-native-720",
     "inspector/phone-link": "design/10-inspector/frame-phone-link",
+    "inspector/export": "drive-32/26-export/export-names-field-720",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",

@@ -1480,6 +1480,37 @@ function readyWhen(
   }
 }
 
+/** Set on the root once `exportInView` has scrolled the inspector, for `readyWhen` to wait on. */
+const EXPORT_IN_VIEW = 'data-capture-export-in-view'
+
+/**
+ * Scrolls the inspector until its Export section's foot sits at the panel's
+ * foot, since an element's sections run past the panel and Export is the
+ * second last. It scrolls again on every frame, so a section above that
+ * grows once its styles answer cannot push Export back out of view.
+ */
+async function exportInView(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ marker, frames }) => {
+      let left = frames
+      const scroll = () => {
+        const section = document
+          .getElementById('inspector-export')
+          ?.closest('section')
+        if (section) {
+          section.scrollIntoView({ block: 'end' })
+          document.documentElement.setAttribute(marker, '')
+        } else if (left === 1) console.error('No Export section to scroll to')
+        if (--left > 0) requestAnimationFrame(scroll)
+      }
+      document.addEventListener('DOMContentLoaded', () =>
+        requestAnimationFrame(scroll),
+      )
+    },
+    { marker: EXPORT_IN_VIEW, frames: ROW_FRAMES },
+  )
+}
+
 /** A card well drawing a capture, which the home case waits on beside `CARD_UNCAPTURED`. */
 const CARD_CAPTURED = '[data-skeleton] image'
 /** A frame in a card's well still showing its box alone. */
@@ -4794,12 +4825,27 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        // The one-frame inspector ending on Export at its 2x and Both themes default.
+        // The one-frame inspector scrolled to Export at its 2x and Both themes
+        // default, the Name field on the frame's name over one line per file.
         setup: themed(
           both(
             onCanvas({ select: ['webapp/home/hero'] }),
-            readyWhen('#inspector-export'),
+            exportInView,
+            readyWhen(`[${EXPORT_IN_VIEW}]`),
           ),
+        ),
+      },
+      {
+        section: 'export-element',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The hero's headline selected, its inspector scrolled to the Export
+        // section named for the frame and the element.
+        setup: themed(
+          both(headlineOnHero, exportInView, readyWhen(`[${EXPORT_IN_VIEW}]`)),
         ),
       },
       {
