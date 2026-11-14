@@ -1,4 +1,5 @@
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -10,11 +11,28 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Face, FACES } from '@/shared/faces'
 
 import { referencedFiles, writeFaces } from './write-faces'
+
+// Lets a test fill the target in the window between the staging write and the
+// rename, which is where a second process filling a cold cache lands.
+const race = vi.hoisted(() => ({
+  beforeRename: undefined as ((to: string) => void) | undefined,
+}))
+
+vi.mock('node:fs', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...fs,
+    renameSync: (...args: Parameters<typeof fs.renameSync>) => {
+      if (typeof args[1] === 'string') race.beforeRename?.(args[1])
+      fs.renameSync(...args)
+    },
+  }
+})
 
 const CASES = FACES.map((face) => [face.family, face] as const)
 
@@ -46,6 +64,7 @@ describe('writeFaces', () => {
   })
 
   afterEach(() => {
+    race.beforeRename = undefined
     rmSync(out, { recursive: true, force: true })
   })
 
@@ -146,5 +165,62 @@ describe('writeFaces', () => {
     writeFaces(out, { keepComplete: true })
 
     expect(existsSync(join(out, 'caveat', 'index.css'))).toBe(true)
+  })
+
+  describe('with a rival filling the folder before the rename', () => {
+    it('keeps a complete rival folder and throws nothing', () => {
+      const rival = join(out, 'rival')
+      writeFaces(rival)
+      writeFileSync(join(rival, 'marker'), 'x')
+      const target = join(out, 'faces')
+      race.beforeRename = (to) => {
+        race.beforeRename = undefined
+        cpSync(rival, to, { recursive: true })
+      }
+
+      writeFaces(target, { keepComplete: true })
+
+      expect(existsSync(join(target, 'marker'))).toBe(true)
+    })
+
+    it('leaves no staging folder when the rival wins', () => {
+      const rival = join(out, 'rival')
+      writeFaces(rival)
+      const target = join(out, 'faces')
+      race.beforeRename = (to) => {
+        race.beforeRename = undefined
+        cpSync(rival, to, { recursive: true })
+      }
+
+      writeFaces(target, { keepComplete: true })
+
+      expect(readdirSync(out).sort()).toEqual(['faces', 'rival'])
+    })
+
+    it('replaces an incomplete rival folder with a complete one', () => {
+      const target = join(out, 'faces')
+      race.beforeRename = (to) => {
+        race.beforeRename = undefined
+        mkdirSync(join(to, 'geist'), { recursive: true })
+        writeFileSync(join(to, 'geist', 'index.css'), '')
+      }
+
+      writeFaces(target, { keepComplete: true })
+
+      expect(existsSync(join(target, 'caveat', 'index.css'))).toBe(true)
+    })
+
+    it('stops retrying when an incomplete folder keeps coming back', () => {
+      const target = join(out, 'faces')
+      race.beforeRename = (to) => {
+        mkdirSync(join(to, 'geist'), { recursive: true })
+        writeFileSync(join(to, 'geist', 'index.css'), '')
+      }
+
+      expect(() => writeFaces(target, { keepComplete: true })).toThrow(target)
+      expect(readdirSync(out).filter((name) => name.endsWith('.tmp'))).toEqual(
+        [],
+      )
+    })
   })
 })
