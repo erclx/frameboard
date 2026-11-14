@@ -28,6 +28,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
+- **Linked widths:** one frame adds Also shows at under Preview, a chip per width with a remove button and a plus offering the Phone, Tablet, and Desktop sizes the frame neither holds nor lists. Each change writes the whole list through `POST /api/frame/widths` as one undo step, which refuses `stale-layout` when the stored list differs from the one the board drew.
 - **Phone link:** one frame ends the Frame section with Open on a phone, a card that starts the link through `POST /api/preview` and shows it as a code and text, ending it by token on close
 - **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone
   - Controls, Autoplay, Loop, and Muted in the file follow, each a switch that sets one attribute or drops it
