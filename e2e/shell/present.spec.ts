@@ -1,5 +1,7 @@
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
 
@@ -10,6 +12,8 @@ import {
 import { type BoardServer, serveBoard } from '../support/board-server'
 
 const BOARD = '/p/webapp/home'
+const CLI = resolve('dist/cli.js')
+const run = promisify(execFile)
 
 let board: FixtureBoard
 let server: BoardServer
@@ -199,5 +203,48 @@ test.describe('a deck with a transition and a stepped slide', () => {
 
     await expect(arriving(page)).toHaveAttribute('title', 'closing')
     await expect(bar(page)).toContainText('3 / 3')
+  })
+})
+
+test.describe("a transition of the project's own", () => {
+  // The suite runs with motion reduced, which cuts every transition.
+  test.use({ contextOptions: { reducedMotion: 'no-preference' } })
+
+  test('plays the keyframes of a file an agent wrote and set by name', async ({
+    page,
+  }) => {
+    const folder = join(board.root, 'webapp/assets/transitions')
+    mkdirSync(folder, { recursive: true })
+    writeFileSync(
+      join(folder, 'wipe.css'),
+      '@keyframes enter { from { clip-path: inset(0 0 0 100%) } to { clip-path: inset(0) } }',
+    )
+    await run('node', [
+      CLI,
+      'page',
+      'transition',
+      'webapp/home',
+      'wipe',
+      '--ms',
+      '4000',
+      '--root',
+      board.root,
+      '--json',
+    ])
+    await open(page)
+    await page.keyboard.press('Shift+P')
+    await expect(page.locator('style[data-own-transitions]')).toBeAttached()
+
+    await page.keyboard.press('ArrowRight')
+
+    const arriving = presenting(page).locator('[data-present-layer="enter"]')
+    await expect(arriving).toHaveAttribute('data-transition', 'wipe')
+    await expect(arriving).toHaveCSS(
+      'animation-name',
+      'fb-own-webapp--wipe-enter',
+    )
+    expect(
+      await arriving.evaluate((layer) => layer.getAnimations().length),
+    ).toBe(1)
   })
 })
