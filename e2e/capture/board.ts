@@ -2293,6 +2293,37 @@ async function twoLayersSelected(page: Page): Promise<void> {
 }
 
 /**
+ * Focuses hero's Layers row once it draws, after a pointer press when
+ * `pointer` is set and with no press otherwise, so the shot shows the ring a
+ * keyboard reaches and the ringless row a click leaves.
+ */
+function focusHeroRow(pointer: boolean): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ pointer, frames }) => {
+        let left = frames
+        const run = () => {
+          const row = document.querySelector<HTMLButtonElement>(
+            'button[aria-label="Select hero"]',
+          )
+          if (!row) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error("hero's Layers row never drew")
+            return
+          }
+          if (pointer) {
+            window.dispatchEvent(new PointerEvent('pointerdown'))
+          }
+          row.focus()
+        }
+        document.addEventListener('DOMContentLoaded', run)
+      },
+      { pointer, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/**
  * Lists eight more empty pages in `webapp` through the socket's board
  * message, ten in all, then double-clicks the Pages divider once they draw,
  * so the list fits every page, marking the body `data-pages-fit` a frame on.
@@ -4526,6 +4557,36 @@ const CASES: CaptureCase[] = [
             readyWhen(
               'ul[aria-label="Elements of hero"] li:has([aria-current="true"]) ~ li:has([aria-current="true"])',
             ),
+          ),
+        ),
+      },
+      {
+        // Hero's row focused with no pointer press, so it draws the keyboard ring.
+        section: 'focus-ring-keyboard',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            focusHeroRow(false),
+            readyWhen('button[aria-label="Select hero"]:focus-visible'),
+          ),
+        ),
+      },
+      {
+        // Hero's row focused after a pointer press, so it carries the mark and draws no ring.
+        section: 'focus-ring-clicked',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            focusHeroRow(true),
+            readyWhen('button[aria-label="Select hero"][data-pointer-focus]'),
           ),
         ),
       },
