@@ -171,7 +171,7 @@ Shapes and files land at the gap the drag started in, and a frame on a box of at
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, and All projects.
+Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, Rules turned off from `rules-off.tsx`, and All projects.
 
 - Design holds a searchable pages list and a layers tree under a per-project divider fit to 4 to 8 rows, grown on a page add, and reset on a double-click
   - Theme, in `theme/`, tags each token Board or Project and edits it in place into the sheet its tag names, per `canon/context/content/themes-and-tokens.md`
