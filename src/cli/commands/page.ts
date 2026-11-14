@@ -9,7 +9,7 @@ import {
   setPageTransition,
 } from '@/server/board/pages'
 import {
-  TRANSITION_LABELS,
+  transitionLabel,
   transitionNameOf,
   TRANSITIONS,
 } from '@/shared/present-transition'
@@ -128,7 +128,7 @@ export function registerPage(program: Command, context: ProgramContext): void {
       return {
         data: record,
         human: record.transition
-          ? `Set ${TRANSITION_LABELS[record.transition.name]} on ${record.ref}`
+          ? `Set ${transitionLabel(record.transition.name)} on ${record.ref}`
           : `Cleared the transition on ${record.ref}`,
       }
     },

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { DEVICES } from '../frame-device'
-import { DIRECTIONS, TRANSITIONS } from '../present-transition'
+import { DIRECTIONS } from '../present-transition'
 
 const recordErrorSchema = z
   .object({ path: z.string(), message: z.string() })
@@ -9,7 +9,8 @@ const recordErrorSchema = z
 
 /** A transition as present mode reads it, `direction` and `ms` absent at their default. */
 export const transitionRecordSchema = z.object({
-  name: z.enum(TRANSITIONS),
+  /** A built-in name or one of the project's `transitions`. */
+  name: z.string(),
   direction: z.enum(DIRECTIONS).optional(),
   ms: z.int().optional(),
 })

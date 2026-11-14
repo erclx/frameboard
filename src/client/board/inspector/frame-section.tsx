@@ -20,8 +20,8 @@ import {
 import type { Device } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import {
-  TRANSITION_LABELS,
-  type TransitionName,
+  SAME_AS_PAGE_WORD,
+  transitionLabel,
   TRANSITIONS,
 } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
@@ -396,7 +396,7 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   )
 }
 
-const SAME_AS_PAGE = 'page'
+const SAME_AS_PAGE = SAME_AS_PAGE_WORD
 
 /**
  * The transition each frame arrives with while presenting, Same as page or
@@ -404,15 +404,12 @@ const SAME_AS_PAGE = 'page'
  * pick writes every frame's `layout.json` entry in one undo step.
  */
 function SlideRow({ frames, disabled, calls }: HeightRowProps) {
-  const values = frames.map(
-    (frame): TransitionName | typeof SAME_AS_PAGE =>
-      frame.transition?.name ?? SAME_AS_PAGE,
-  )
+  const values = frames.map((frame) => frame.transition?.name ?? SAME_AS_PAGE)
   const current = values.every((value) => value === values[0])
     ? (values[0] ?? null)
     : null
-  const label = (value: TransitionName | typeof SAME_AS_PAGE) =>
-    value === SAME_AS_PAGE ? 'Same as page' : TRANSITION_LABELS[value]
+  const label = (value: string) =>
+    value === SAME_AS_PAGE ? 'Same as page' : transitionLabel(value)
   return (
     <div className="mt-2.5">
       <span

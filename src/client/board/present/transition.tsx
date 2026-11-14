@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-import type { Direction, TransitionName } from '@/shared/present-transition'
+import type { Direction } from '@/shared/present-transition'
 
 import type { Travel } from './travel'
 
@@ -89,7 +89,7 @@ function layerStyle(role: LayerRole, { transition, back }: Travel) {
   } as CSSProperties
 }
 
-function animationName(name: TransitionName, role: LayerRole): string {
+function animationName(name: string, role: LayerRole): string {
   return `fb-present-${name}-${role}`
 }
 

@@ -24,7 +24,7 @@ import { withFrameHost } from '@/server/capture/host'
 import { deviceOf, DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import {
-  TRANSITION_LABELS,
+  transitionLabel,
   transitionNameOf,
   TRANSITIONS,
 } from '@/shared/present-transition'
@@ -309,7 +309,7 @@ export function registerFrame(
       return done(
         record,
         record.transition
-          ? `Set ${TRANSITION_LABELS[record.transition.name]} on`
+          ? `Set ${transitionLabel(record.transition.name)} on`
           : 'Cleared the transition on',
       )
     },
