@@ -14,6 +14,7 @@ import {
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { settleAnimations } from './animation-settle'
+import { isolateElement } from './element-shot'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
 import { holdAnimationClock } from './seek'
@@ -148,13 +149,17 @@ export function assertScreenshotFits(
  * Renders a frame to PNG bytes in a theme, as the server's PNG route asks,
  * at `scale` device pixels per CSS pixel or the renderer's own default. A
  * `device` draws the frame inside that device's body, the PNG growing by
- * the body on every side, its corners past the body transparent.
+ * the body on every side, its corners past the body transparent. An
+ * `element`, the `edit` index of one element, renders that element alone on
+ * a transparent ground at its own box, refusing `invalid-address` for an
+ * index naming none or one with no layout box, and draws no device.
  */
 export type RenderFrame = (
   frame: {
     ref: string
     box: { width: number; height: number }
     device?: Device
+    element?: number
   },
   theme: Theme,
   scale?: number,
@@ -217,11 +222,16 @@ export function createWarmRenderer({
 
   return (frame, theme, scale = defaultScale) => {
     const run = queue.then(async () => {
-      assertScreenshotFits(
-        frame.ref,
-        bezelBox({ x: 0, y: 0, ...frame.box }, frame.device),
-        scale,
-      )
+      const { element } = frame
+      const device = element === undefined ? frame.device : undefined
+      // An element's own box is checked once the page reports it.
+      if (element === undefined) {
+        assertScreenshotFits(
+          frame.ref,
+          bezelBox({ x: 0, y: 0, ...frame.box }, device),
+          scale,
+        )
+      }
       const open = await browser.get()
       const opened = await openFrame(open, {
         baseUrl: baseUrl(),
@@ -232,20 +242,40 @@ export function createWarmRenderer({
       })
       let shot: Buffer
       try {
-        shot = await opened.page.screenshot({
-          animations: 'disabled',
-          caret: 'hide',
-        })
+        shot =
+          element === undefined
+            ? await opened.page.screenshot({
+                animations: 'disabled',
+                caret: 'hide',
+              })
+            : await shootElement(opened.page, frame.ref, element, scale)
       } finally {
         await opened.close()
       }
-      return frame.device
-        ? drawBezel(open, shot, frame.box, frame.device, scale)
-        : shot
+      return device ? drawBezel(open, shot, frame.box, device, scale) : shot
     })
     queue = run.catch(() => {})
     return run
   }
+}
+
+/** One element's shot alone on a transparent ground, at its whole box. */
+async function shootElement(
+  page: Page,
+  ref: string,
+  index: number,
+  scale: number,
+): Promise<Buffer> {
+  const box = await isolateElement(page, ref, index)
+  assertScreenshotFits(ref, box, scale)
+  return page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    // The clip reads against the whole page, so a box past the viewport holds.
+    fullPage: true,
+    clip: box,
+    omitBackground: true,
+  })
 }
 
 /**
