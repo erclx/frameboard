@@ -1,7 +1,11 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { RenderFilmstrip } from '@/server/capture/images'
 import type { RenderFrame } from '@/server/capture/render'
+import { contentHash } from '@/server/edit/address'
 import { FrameboardError } from '@/shared/errors'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
@@ -227,6 +231,118 @@ describe('GET /api/frames/png', () => {
     expect(response.status).toBe(422)
     expect(await response.json()).toMatchObject({
       error: { code: 'capture-too-large' },
+    })
+  })
+
+  describe('with an element', () => {
+    // The SHA-256 of `<p>Hello</p>`, the hero frame `get` writes.
+    const HASH = contentHash('<p>Hello</p>')
+
+    it('renders the element the index names when the hash matches the file', async () => {
+      const asked: unknown[] = []
+      const response = await get(
+        `ref=home/hero&theme=light&element=3&hash=${HASH}`,
+        async (frame) => {
+          asked.push(frame.element)
+          return PNG
+        },
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('image/png')
+      expect(asked).toEqual([3])
+    })
+
+    it('passes no element when none is asked for', async () => {
+      const asked: unknown[] = []
+
+      await get('ref=home/hero&theme=light', async (frame) => {
+        asked.push('element' in frame)
+        return PNG
+      })
+
+      expect(asked).toEqual([false])
+    })
+
+    it('answers 409 stale-address for a hash the file no longer has, rendering nothing', async () => {
+      let rendered = false
+      const response = await get(
+        `ref=home/hero&theme=light&element=3&hash=${contentHash('<p>Old</p>')}`,
+        async () => {
+          rendered = true
+          return PNG
+        },
+      )
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'stale-address' },
+      })
+      expect(rendered).toBe(false)
+    })
+
+    it('answers 409 stale-address for a file that changed during the render', async () => {
+      const response = await get(
+        `ref=home/hero&theme=light&element=3&hash=${HASH}`,
+        async () => {
+          writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>New</p>')
+          return PNG
+        },
+      )
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'stale-address' },
+      })
+    })
+
+    it('answers 422 invalid-address for an element the render cannot shoot', async () => {
+      const response = await get(
+        `ref=home/hero&theme=light&element=9&hash=${HASH}`,
+        async () => {
+          throw new FrameboardError('invalid-address', 'No element 9.', {
+            index: 9,
+          })
+        },
+      )
+
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'invalid-address', details: { index: 9 } },
+      })
+    })
+
+    it.each([
+      ['an element with no hash', 'element=3'],
+      ['a hash with no element', `hash=${HASH}`],
+      ['an element beside a filmstrip', `element=3&hash=${HASH}&filmstrip=3`],
+      ['an element beside a device', `element=3&hash=${HASH}&device=1`],
+      ['a negative index', `element=-1&hash=${HASH}`],
+      ['a fractional index', `element=1.5&hash=${HASH}`],
+      ['an empty index', `element=&hash=${HASH}`],
+      ['an empty hash', 'element=3&hash='],
+    ])('answers 400 usage for %s', async (_case, query) => {
+      const response = await get(
+        `ref=home/hero&theme=light&${query}`,
+        async () => PNG,
+        async () => PNG,
+      )
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    })
+
+    it('names the three forms in the usage message', async () => {
+      const response = await get(
+        `ref=home/hero&theme=light&element=3&hash=${HASH}&device=1`,
+        async () => PNG,
+      )
+
+      const { error } = await response.json()
+      expect(error.message).toContain('&filmstrip=<n>')
+      expect(error.message).toContain('&device=1')
+      expect(error.message).toContain('&element=<index>&hash=<hash>')
     })
   })
 

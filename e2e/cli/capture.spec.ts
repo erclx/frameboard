@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { expect, type Page, test } from '@playwright/test'
 
 import { checkResultSchema } from '@/shared/records/check'
+import { inspectResultSchema } from '@/shared/records/inspect'
 
 import {
   copyFixtureBoard,
@@ -536,6 +537,29 @@ test.describe('the PNG route', () => {
       ])
       expect(refused.status).toBe(422)
       expect((await refused.json()).error.code).toBe('font-missing')
+    } finally {
+      await server.stop()
+    }
+  })
+
+  test('route: answers one element alone at its inspected size times the scale', async () => {
+    const { envelope } = await frameboard(['inspect', 'home/hero'], board.root)
+    const inspected = inspectResultSchema.parse(envelope.data)
+    const heading = inspected.elements.find((element) => element.tag === 'h1')
+    if (!heading) throw new Error('The hero frame holds no h1.')
+    const server = await serveBoard(board.root)
+    try {
+      const image = await fetch(
+        `${server.url}/api/frames/png?ref=home/hero&theme=light&scale=3&element=${heading.index}&hash=${inspected.hash}`,
+      )
+      const bytes = Buffer.from(await image.arrayBuffer())
+
+      expect(image.status).toBe(200)
+      // The heading is narrower and shorter than the 400 by 300 frame's 1200 by 900.
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        Math.round(heading.box.width * 3),
+        Math.round(heading.box.height * 3),
+      ])
     } finally {
       await server.stop()
     }
