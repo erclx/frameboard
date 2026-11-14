@@ -173,7 +173,9 @@ Shapes and files land at the gap the drag started in, and a frame on a box of at
 
 Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, Rules turned off from `rules-off.tsx`, and All projects.
 
-- Design holds a searchable pages list and a layers tree under a per-project divider fit to 4 to 8 rows, grown on a page add, and reset on a double-click
+- Design holds a searchable pages list and a layers tree under a per-project divider that opens fit to 4 to 8 rows
+  - A double-click on the divider fits every page, stopping before Layers keeps fewer than three rows
+  - A page add grows the list to the 4 to 8 fit, or to every page when it already showed them all
   - Theme, in `theme/`, tags each token Board or Project and edits it in place into the sheet its tag names, per `canon/context/content/themes-and-tokens.md`
 - A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
 
@@ -185,7 +187,7 @@ The Assets tab, in `src/client/board/assets/`, lists the project's `assets/` fil
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
 
-The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select.
+The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select. Only a selected row is tinted, never its frame's other rows or the frame holding it.
 
 Each section's row in `section-rows.tsx` holds its frames' rows indented under it, and the frames in no section follow. A row restacks within its own group and never into or out of a section, landing at the page-wide index beside the frame it drops by, so the canvas draws it over or under that frame.
 
@@ -247,6 +249,8 @@ Owns the app shell and the controls around the canvas.
 - The inspector header shows the zoom level and zoom menu, beside an avatar with the initials of the name that signs notes, which a writing tab edits in place from the avatar menu's name row
 - Both side panels resize by dragging from 200 to 400px, default 240, remember their width, and reset on a double-click
 - Hide UI, through Cmd+\ or a button, hides both panels and keeps the way home, the project name with its menu, the toolbar, the avatar, and the zoom level
+- `focus/pointer-mark.ts` marks a control focused after a pointer press with `data-pointer-focus`, cleared on blur, and a field that takes typing is never marked
+- `styles.css` redefines the `focus-visible` variant to skip a marked control, so a ring shows for keyboard focus alone
 
 ### `src/client/lib/`
 
