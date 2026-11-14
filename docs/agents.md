@@ -21,6 +21,8 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 - `preview <frame>` prints a link and a code that open the frame's project on a phone on the same Wi-Fi, read only, and `preview --stop` ends it
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
+### Sizes, widths, and devices
+
 A page meant to scroll, such as one with a sticky section, takes `--scroll` on `frame add` or `frame resize`, which holds it at a screen height rather than its full length. A frame already fixed taller than a screen keeps its height, so pass `--height` with the resize.
 
 A responsive page is one frame file shown at several widths, so every fix to the file lands at all of them.
@@ -31,12 +33,22 @@ A responsive page is one frame file shown at several widths, so every fix to the
 
 `frame device <frame-ref> phone`, or `--device phone` on `frame add`, has the board draw a generic phone around the frame, and `tablet` a tablet. The frame file and its size stay as they are, and `none` clears it.
 
-`page transition <page-ref> fade` sets what the board draws between a page's slides while presenting, one of `none`, `fade`, `slide`, `push`, `zoom`, `flip`, and `dissolve`. `frame transition <frame-ref> zoom` sets one slide's own, and `page` in place of a name returns it to its page's.
+### Presenting
+
+`page transition <page-ref> fade` sets what the board draws between a page's slides while presenting, one of `none`, `fade`, `slide`, `push`, `zoom`, `flip`, and `dissolve`, or one of the project's own. `frame transition <frame-ref> zoom` sets one slide's own, and `page` in place of a name returns it to its page's.
 
 - `--ms` sets the length from 100 to 5000, and `--direction left`, `right`, `up`, or `down` applies to `slide` and `push` alone
 - Both write `layout.json` and never a frame's file
 - An element marked `data-step="2"` appears on the second press while presenting, with `data-step-effect` of `appear`, `fade`, `fly`, `wipe`, or `zoom`, and `frameboard edit --attr` writes each
 - `data-step-start` of `with` shows a step alongside the one before it and `after` right behind it, and everywhere but present mode every step shows
+
+A project adds a transition of its own as `assets/transitions/<name>.css`, named in lowercase kebab case, and `page transition <page-ref> <name>` sets it with `--ms` and no direction.
+
+- The file holds `@keyframes enter`, optionally `@keyframes leave`, and nothing else
+- The board plays those two keyframes and never loads the file itself
+- A file holding anything else is refused whole and reported as `transition-file`
+
+### Design references
 
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
 
