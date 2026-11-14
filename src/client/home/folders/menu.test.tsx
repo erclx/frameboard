@@ -19,7 +19,7 @@ import { createStructure } from '@/client/live/structure'
 import { projectStore } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 import { keyboardFocus } from '@/test/focus-ring'
-import { realClick } from '@/test/real-pointer'
+import { pointerOff, realClick } from '@/test/real-pointer'
 
 import { Home } from '../home'
 import { dropPin, folderPin, pinnedProjects } from '../pins'
@@ -264,6 +264,24 @@ describe('renaming in place', () => {
       expect(
         screen.getByRole('textbox', { name: 'Rename folder Client A' }),
       ).toHaveFocus()
+    })
+
+    it('closes the field on a click in the header beside it, keeping the name', async () => {
+      renderHome()
+      await userEvent.click(folder())
+      const panel = await screen.findByRole('dialog')
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'Rename folder' }),
+      )
+      const title = document.getElementById(
+        panel.getAttribute('aria-labelledby') ?? '',
+      ) as HTMLElement
+
+      await realClick(title)
+      await pointerOff(title)
+
+      expect(screen.queryByRole('textbox')).toBeNull()
+      expect(panel).toHaveAccessibleName('Client A')
     })
 
     it('leaves the header while the field is open', async () => {

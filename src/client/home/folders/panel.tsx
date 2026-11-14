@@ -57,6 +57,7 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
             calls={calls}
             type="text-title"
             unseen={0}
+            hug
           />
         </DialogTitle>
         <FolderPen folder={folder} />
