@@ -39,7 +39,7 @@ Two flags hold a frame's motion still at moments its timeline names.
 The PNG route's `device=1` draws a frame holding a device inside its body on a second page, its corners past the body transparent, and leaves a frame holding none bare. Beside `filmstrip=<n>` it refuses as `usage`, since a filmstrip draws no device.
 
 - The route's `element=<index>&hash=<hash>` renders one element alone at its own box, which can run past the frame's, on a transparent ground
-- It answers 409 `stale-address` when the file's hash moved before or during the render, and 422 `invalid-address` for an index naming none or one with no layout box
+- It answers 409 `stale-address` when the file's hash moved before or during the render, and 422 `invalid-address` for an index naming none or one whose box is missing or empty
 - Beside `filmstrip` or `device`, or with one of the pair alone, it refuses as `usage`
 
 The server side shares one browser and renders only on demand.

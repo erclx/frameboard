@@ -54,6 +54,7 @@ describe.skipIf(shell === null)(
           '<style>body{margin:0}</style><div id="long" style="width:50px;height:400px"></div>',
         'studio/home/unboxed.html':
           '<p>Shown</p><p id="gone" style="display:none">Gone</p>',
+        'studio/home/empty.html': '<p>Shown</p><div id="flat"></div>',
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -158,6 +159,18 @@ describe.skipIf(shell === null)(
       try {
         await expect(
           isolateElement(opened.page, 'studio/home/card', 99),
+        ).rejects.toMatchObject({ code: 'invalid-address' })
+      } finally {
+        await opened.close()
+      }
+    })
+
+    it('refuses an element whose box has no height as invalid-address', async () => {
+      const index = await inspectedIndex('empty', 'flat')
+      const opened = await open('empty')
+      try {
+        await expect(
+          isolateElement(opened.page, 'studio/home/empty', index),
         ).rejects.toMatchObject({ code: 'invalid-address' })
       } finally {
         await opened.close()

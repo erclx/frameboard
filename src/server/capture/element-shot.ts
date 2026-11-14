@@ -18,8 +18,8 @@ type Isolated =
  * Leaves one element of a loaded frame showing alone on a transparent
  * ground, and answers its box in page coordinates, which can run past the
  * frame's. `index` is the element's `edit` index, the one `inspect` reports.
- * An index naming no element, or one with no layout box, refuses
- * `invalid-address`. The page stays that way, so it is shot once and closed.
+ * An index naming no element, or one with no layout box or a box of no
+ * width or height, refuses `invalid-address`. The page stays that way, so it is shot once and closed.
  */
 export async function isolateElement(
   page: Page,
@@ -37,7 +37,7 @@ export async function isolateElement(
   if (isolated.kind === 'unboxed') {
     throw new FrameboardError(
       'invalid-address',
-      `${ref} element ${index} is <${isolated.tag}> and has no layout box, so there is nothing to export`,
+      `${ref} element ${index} is <${isolated.tag}> and has no layout box or an empty one, so there is nothing to export`,
       { ref, index },
     )
   }
@@ -57,7 +57,13 @@ function hideAllBut(index: number): Isolated {
     count += 1
   }
   if (!target) return { kind: 'missing', count }
-  if (target.getClientRects().length === 0) {
+  const rect = target.getBoundingClientRect()
+  // An empty element keeps a rect of no height, which a screenshot cannot clip.
+  if (
+    target.getClientRects().length === 0 ||
+    rect.width === 0 ||
+    rect.height === 0
+  ) {
     return { kind: 'unboxed', tag: target.tagName.toLowerCase() }
   }
   target.setAttribute('data-frameboard-shot', '')
@@ -68,7 +74,6 @@ function hideAllBut(index: number): Isolated {
     ':not([data-frameboard-shot],[data-frameboard-shot] *){visibility:hidden!important}' +
     '[data-frameboard-shot]{visibility:visible!important}'
   document.head.append(style)
-  const rect = target.getBoundingClientRect()
   return {
     kind: 'shown',
     box: {
