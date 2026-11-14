@@ -42,6 +42,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - Drag one project onto another, or pick Move to folder from its menu, to file it in a folder. A folder's menu opens, renames, ungroups, or pins it.
 - A double click on a folder's name renames it, as does the pen beside the name in an open folder
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section
+- The project menu beside the project's name lists the content rules it turned off under Rules turned off, and a press on one turns it back on, which Undo reverses
 - A frame an agent gave several widths draws each beside it under its width, and a click or drag on one acts on the frame
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
 - Its Device row draws a generic phone or tablet around the frame, leaving the file unchanged, and Export's Include device puts it in the PNG

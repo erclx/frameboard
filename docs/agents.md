@@ -67,7 +67,8 @@ A project turns off a rule that does not fit it, an error rule included.
 - List the rule's id in `checks.off` of the project's `project.json`, such as `"off": ["generic-font"]`
 - A rule turned off is silent on the board, in `check`, and in the plugin hook
 - Each finding's card on the board carries a Turn off button that writes that key for the frame's project
-- Undo, or a hand edit of the file, turns the rule back on
+- The project menu's Rules turned off list turns one back on with a press, as Undo or a hand edit of the file does
+- `list --json` carries the ids as `checksOff` on each project, an id no rule declares included
 
 ## Claims
 
