@@ -10,6 +10,9 @@ import { lockPath, release, slotPath, tryAcquire } from './lib/machine-lock.ts'
 const WRAPPER = join(import.meta.dirname, 'test-locked.ts')
 // Resolved once, so a case can hand the wrapper a PATH that finds nothing.
 const BUN = execFileSync('which', ['bun'], { encoding: 'utf8' }).trim()
+// Under the time limit cases' own 20 s. A process the wrapper leaves alive
+// holds the pipe `spawnSync` reads, and a blocked worker trips no test timeout.
+const WRAP_TIMEOUT_MS = 15_000
 
 interface Run {
   code: number | null
@@ -18,15 +21,19 @@ interface Run {
 
 let home: string
 let lock: string
+let stubs: string[]
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'test-locked-run-'))
   // HOME and XDG_CACHE_HOME both move, so the lock sits in `home` on macOS
   // and Linux alike and never queues behind the machine's real runs.
   lock = lockPath(process.platform, { XDG_CACHE_HOME: home }, home)
+  stubs = []
 })
 
 afterEach(() => {
+  // A stub a case leaked would hold the next case's pipe, and outlive the run.
+  for (const stub of stubs) spawnSync('pkill', ['-KILL', '-f', stub])
   rmSync(home, { recursive: true, force: true })
 })
 
@@ -34,7 +41,14 @@ function wrap(settings: Record<string, string>, command: string[]): Run {
   const run = spawnSync(BUN, [WRAPPER, ...command], {
     encoding: 'utf8',
     env: wrapperEnv(settings),
+    timeout: WRAP_TIMEOUT_MS,
+    killSignal: 'SIGKILL',
   })
+  if (run.error) {
+    throw new Error(
+      `the wrapper run did not end within ${WRAP_TIMEOUT_MS} ms (${run.error.message}), so a process it started still holds its output`,
+    )
+  }
   return { code: run.status, stderr: run.stderr }
 }
 
@@ -65,9 +79,14 @@ function wrapperEnv(settings: Record<string, string>): NodeJS.ProcessEnv {
   }
 }
 
-/** A sleep no other process on the machine runs, so a search finds only it. */
+/**
+ * A sleep no other process on the machine runs, so a search finds only it.
+ * It ends on its own in about two minutes, so a leak cannot outlive the run.
+ */
 function marker(): string {
-  return `${40000 + Math.floor(Math.random() * 9999)}.${process.pid}`
+  const stub = `120.${process.pid}${Math.floor(Math.random() * 1e6)}`
+  stubs.push(`sleep ${stub}`)
+  return stub
 }
 
 function running(pattern: string): boolean {
