@@ -17,6 +17,7 @@ function project(
     group,
     archived: false,
     projectFileError: null,
+    transitions: [],
     pages: [],
   }
 }

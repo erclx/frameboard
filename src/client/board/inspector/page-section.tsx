@@ -9,14 +9,13 @@ import {
   DIRECTIONS,
   takesDirection,
   type Transition,
-  TRANSITION_LABELS,
-  type TransitionName,
-  TRANSITIONS,
+  transitionLabel,
 } from '@/shared/present-transition'
 import type { PageRecord } from '@/shared/records/list'
 
 import { reportRefusal } from '../left-panel/page-actions'
 import { TypePicker } from './element/typography'
+import { useTransitionNames } from './transition-names'
 
 /** The lengths the Duration menu offers, a page holding another adding its own. */
 const DURATIONS = [200, 300, 500, 800, 1000] as const
@@ -52,7 +51,8 @@ export function PageSection({
 }) {
   const canWrite = useLive((state) => state.canWrite)
   const held = page.transition
-  const name: TransitionName = held?.name ?? 'none'
+  const names = useTransitionNames(page.project)
+  const name = held?.name ?? 'none'
   const direction = held?.direction ?? DEFAULT_DIRECTION
   const ms = held?.ms ?? DEFAULT_TRANSITION_MS
   const durations = [...new Set([...DURATIONS, ms])].sort((a, b) => a - b)
@@ -82,15 +82,15 @@ export function PageSection({
       <Setting title="Slide transition">
         <TypePicker
           label="Slide transition"
-          shown={TRANSITION_LABELS[name]}
+          shown={transitionLabel(name)}
           current={name}
-          options={TRANSITIONS.map((value) => ({
+          options={names.map((value) => ({
             value,
-            name: TRANSITION_LABELS[value],
+            name: transitionLabel(value),
           }))}
           disabled={!canWrite}
           onPick={(value) => {
-            const picked = TRANSITIONS.find((candidate) => candidate === value)
+            const picked = names.find((candidate) => candidate === value)
             if (!picked) return
             write(picked === 'none' ? null : withChange({ name: picked }))
           }}

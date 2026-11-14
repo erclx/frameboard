@@ -17,7 +17,11 @@ import {
   FRAME_SIZES,
 } from '@/shared/frame-sizes'
 import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
-import { type Transition, transitionOf } from '@/shared/present-transition'
+import {
+  storedTransitionOf,
+  type Transition,
+  transitionOf,
+} from '@/shared/present-transition'
 import {
   type LayoutEntry,
   type LayoutFile,
@@ -36,6 +40,7 @@ import type {
 import { membersOf } from '@/shared/sections'
 
 import { isCode, readRecord, type RecordSpec } from './json-record'
+import { listTransitionNames } from './transitions'
 
 export const LAYOUT_FILE = 'layout.json'
 export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, PROJECT_FILE }
@@ -158,10 +163,13 @@ export function emptyProject(): ProjectFile {
 /**
  * Every frame's placement, placed ones from their entry and unplaced ones by
  * `placeNext`. Entries with no frame file beside them are left out.
+ * `readTransition` reads an entry's override, a writer keeping any stored
+ * one and the scanner passing only those the project holds.
  */
 export function placeFrames(
   frames: Record<string, LayoutEntry>,
   names: string[],
+  readTransition: (value: unknown) => Transition | null = storedTransitionOf,
 ): Map<string, Placement> {
   const placements = new Map<string, Placement>()
   const unplaced: string[] = []
@@ -175,7 +183,7 @@ export function placeFrames(
     // beside the key reads as off and the hug step never measures it.
     const scroll = entry.scroll ?? false
     const device = deviceOf(entry.device)
-    const transition = transitionOf(entry.transition)
+    const transition = readTransition(entry.transition)
     placements.set(name, {
       box: { x: entry.x, y: entry.y, width: entry.width, height: entry.height },
       order: entry.order,
@@ -259,8 +267,9 @@ export async function scanProject(
     archived,
     error,
   } = await readPageOrder(path)
+  const transitions = await listTransitionNames(path)
   const pages = await Promise.all(
-    order.map((page, index) => scanPage(root, name, page, index)),
+    order.map((page, index) => scanPage(root, name, page, index, transitions)),
   )
   const times = await Promise.all([
     mtimeOf(join(path, PROJECT_FILE)),
@@ -278,17 +287,24 @@ export async function scanProject(
     group,
     archived,
     projectFileError: error,
+    transitions,
     pages,
   }
 }
 
+/**
+ * One page's record. `transitions` is the project's own transition names,
+ * read from its assets when a caller scanning one page passes none.
+ */
 export async function scanPage(
   root: string,
   project: string,
   name: string,
   index: number,
+  transitions?: readonly string[],
 ): Promise<PageRecord> {
   const path = join(root, project, name)
+  const own = transitions ?? (await listTransitionNames(join(root, project)))
   const layoutPath = join(path, LAYOUT_FILE)
   let frames: Record<string, LayoutEntry> = {}
   let sections: Record<string, SectionEntry> = {}
@@ -298,14 +314,16 @@ export async function scanPage(
     const file = await readRecord(layoutPath, layoutSpec)
     frames = file.frames
     sections = file.sections ?? {}
-    transition = pageTransitionOf(file)
+    transition = pageTransitionOf(file, own)
   } catch (error) {
     if (!(error instanceof FrameboardError)) throw error
     layoutError = { path: layoutPath, message: error.message }
   }
 
   const names = await listFrames(path)
-  const placements = placeFrames(frames, names)
+  const placements = placeFrames(frames, names, (value) =>
+    transitionOf(value, own),
+  )
   const records = await Promise.all(
     names.map(async (frame): Promise<FrameRecord> => {
       const framePath = join(path, `${frame}${FRAME_EXTENSION}`)
@@ -336,11 +354,17 @@ export async function scanPage(
   }
 }
 
-/** The transition a layout's `present` key holds, null for none or one no reader knows. */
-export function pageTransitionOf(file: LayoutFile): Transition | null {
+/**
+ * The transition a layout's `present` key holds, null for none, one no
+ * reader knows, or one of the project's own that `own` does not list.
+ */
+export function pageTransitionOf(
+  file: LayoutFile,
+  own: readonly string[] = [],
+): Transition | null {
   const present = file.present
   if (typeof present !== 'object' || present === null) return null
-  return transitionOf((present as { transition?: unknown }).transition)
+  return transitionOf((present as { transition?: unknown }).transition, own)
 }
 
 /** The page's sections bottom first, each naming its members in stacking order. */

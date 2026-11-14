@@ -58,11 +58,7 @@ import { DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
-import {
-  DIRECTIONS,
-  TRANSITION_MS,
-  TRANSITIONS,
-} from '@/shared/present-transition'
+import { DIRECTIONS, TRANSITION_MS } from '@/shared/present-transition'
 import { shapePaint } from '@/shared/shape-paint'
 import {
   DEFAULT_LOOK,
@@ -130,8 +126,9 @@ const frameDeviceSchema = z.object({
   refs,
   device: z.enum(DEVICES).nullable(),
 })
+/** `name` is checked by the setters, which know the project's own transitions. */
 const transition = z.object({
-  name: z.enum(TRANSITIONS),
+  name: z.string().min(1).max(64),
   direction: z.enum(DIRECTIONS).optional(),
   ms: z.int().min(TRANSITION_MS.min).max(TRANSITION_MS.max).optional(),
 })

@@ -1,3 +1,6 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { pageRecordSchema } from '@/shared/records/list'
@@ -91,10 +94,83 @@ describe('page', () => {
       expect(result.json().data).not.toHaveProperty('transition')
     })
 
-    it('refuses an unknown transition with usage, exit 2', async () => {
+    function writeWipe(): void {
+      const folder = join(board.root, 'webapp/assets/transitions')
+      mkdirSync(folder, { recursive: true })
+      writeFileSync(
+        join(folder, 'wipe.css'),
+        '@keyframes enter { from { opacity: 0 } }',
+      )
+    }
+
+    it("sets a transition of the project's own by its name", async () => {
       const run = on('basic')
+      writeWipe()
+
+      const result = await run(
+        'page',
+        'transition',
+        'webapp/home',
+        'wipe',
+        '--ms',
+        '300',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toHaveProperty('transition', {
+        name: 'wipe',
+        ms: 300,
+      })
+    })
+
+    it('says the own name as written in its human line', async () => {
+      board = copyFixtureBoard('basic')
+      writeWipe()
+
+      const result = await cli(['page', 'transition', 'webapp/home', 'wipe'], {
+        cwd: board.root,
+      })
+
+      expect(result.stdout).toContain('Set wipe on webapp/home')
+    })
+
+    it('refuses an unknown transition with usage, exit 2, naming the known ones', async () => {
+      const run = on('basic')
+      writeWipe()
 
       const result = await run('page', 'transition', 'webapp/home', 'cube')
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error).toMatchObject({
+        code: 'usage',
+        details: {
+          transition: 'cube',
+          known: [
+            'none',
+            'fade',
+            'slide',
+            'push',
+            'zoom',
+            'flip',
+            'dissolve',
+            'wipe',
+          ],
+        },
+      })
+    })
+
+    it("refuses a direction on a transition of the project's own with usage, exit 2", async () => {
+      const run = on('basic')
+      writeWipe()
+
+      const result = await run(
+        'page',
+        'transition',
+        'webapp/home',
+        'wipe',
+        '--direction',
+        'up',
+      )
 
       expect(result.exitCode).toBe(2)
       expect(result.json().error?.code).toBe('usage')

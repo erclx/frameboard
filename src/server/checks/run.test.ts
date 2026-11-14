@@ -61,6 +61,55 @@ describe('checkProject', () => {
   })
 })
 
+describe("a project's transition files", () => {
+  let board: TempBoard | undefined
+
+  afterEach(() => {
+    board?.cleanup()
+    board = undefined
+  })
+
+  const FILES = {
+    'site/assets/transitions/wipe.css':
+      '@keyframes enter { from { opacity: 0 } }',
+    'site/assets/transitions/broken.css':
+      '@keyframes enter { from { opacity: 0 } }\nbody { display: none }',
+  }
+
+  it('reports the refused file as an error and leaves the clean one quiet', async () => {
+    board = writeBoard(FILES)
+
+    const { findings } = await checkProject(board.root, 'site')
+
+    expect(findings).toMatchObject([
+      {
+        rule: 'transition-file',
+        severity: 'error',
+        frame: null,
+        path: 'site/assets/transitions/broken.css',
+        location: { line: 2, column: 1 },
+      },
+    ])
+  })
+
+  it('reports nothing with the rule turned off', async () => {
+    board = writeBoard({
+      ...FILES,
+      'site/project.json': JSON.stringify({
+        version: 1,
+        pages: [],
+        checks: { off: ['transition-file'] },
+      }),
+    })
+
+    expect((await checkProject(board.root, 'site')).findings).toEqual([])
+  })
+
+  it('declares the rule, so docs prints it and a project can turn it off', () => {
+    expect(RULES.map((rule) => rule.id)).toContain('transition-file')
+  })
+})
+
 describe('checkPage', () => {
   it('checks the frames of one page alone', async () => {
     const result = await checkPage(ROOT, 'rules', 'theme')

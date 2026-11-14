@@ -31,7 +31,8 @@ Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints besi
 Four places filter through `withoutOff`, which imports the finding type alone so the hook's start stays as it was.
 
 - `checkFrameIn` filters the static rules, which covers `check` on a frame or a page, the hook, and the board's held static findings
-- `checkProject` filters its folder findings, and `checkRendered` the browser tier's
+- `checkProject` filters its folder and transition file findings, and `checkRendered` the browser tier's
+- The hook filters a transition file's findings itself, since that write reaches no frame
 - `createBoardFindings` filters held change and browser findings at read, against the `off` list its last recheck read, so `outranked` leaves and returns with no frame write
 - `readConfig` reads `off` by hand, and an `off` that is not a list of ids, or an id no rule declares, turns nothing off
 
@@ -48,6 +49,13 @@ The markup rules read what parse5 recovered from, since a browser recovers from 
 - `malformed-tag` reports the tokenizer codes for a broken tag or attribute, once per start tag at its first code, since one stray quote raises several
 - `nesting` reports an element with no start tag past the wrappers a valid file may imply, and one a table fostered out ahead of it
 - `nesting` also reports an HTML element whose end tag never matched, past those a valid file may omit, and leaves SVG, MathML, and `<template>` content alone
+
+`transition-file` is the one exact rule reading no frame. It reports each stylesheet under a project's `assets/transitions/` that the reader in `transition-file.ts` refuses, which the board's lister, the keyframes route, and the hook go through too.
+
+- It refuses a sheet whole on any stray, so the finding and what the board lists never disagree
+- A sheet holds `@keyframes enter`, optionally `@keyframes leave`, and comments, each block holding steps of declarations alone
+- A value holding `url()`, a quoted string, or a backslash escape is refused, since each can load a file into the board's own document
+- What the board loads never reads `checks.off`, so turning the rule off silences the finding and the file stays refused
 
 The custom property rule reads declarations rather than the tree.
 
@@ -73,7 +81,8 @@ One rule reads two versions of a frame rather than one.
 The hook's entry is `src/cli/hook.ts`, bundled to `dist/hook.js` beside the CLI, in the folder `canon/context/agent/cli.md` owns.
 
 - The hook prints `decision: "block"` with the findings as `reason`, which Claude Code places beside the tool result as feedback on that write
-- It exits 0 and prints nothing for a non-frame write, a frame outside any board, a file gone since, and stdin that is not JSON, so a write is never reported as failed
+- It answers a frame and a stylesheet directly under a project's `assets/transitions/`, each inside a board
+- It exits 0 and prints nothing for any other write, a file outside any board, a file gone since, and stdin that is not JSON, so a write is never reported as failed
 - The bundle carries no commander, Hono, chokidar, ws, or zod, and a run cost a median 80 ms on Bun against a bare start of 17 ms. Measured at d609955 on 2026-10-17.
 
 ### `src/server/checks/browser/`

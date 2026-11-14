@@ -1,0 +1,18 @@
+/* The arriving slide wipes in from the right while the leaving one dims under it. */
+@keyframes enter {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes leave {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.4;
+  }
+}

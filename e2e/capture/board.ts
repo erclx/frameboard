@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page } from '@playwright/test'
@@ -835,6 +835,51 @@ async function homePushes(page: Page): Promise<void> {
   layout.present = { transition: { name: 'push', ms: 500 } }
   writeFileSync(layoutPath, JSON.stringify(layout))
   page.once('close', () => writeFileSync(layoutPath, originalLayout))
+}
+
+/**
+ * Gives webapp a `wipe` transition of its own and sets it on the home page,
+ * so the Page section's list shows a project's name after the built-ins,
+ * taking the file and the layout back when the page closes.
+ */
+async function homeWipes(page: Page): Promise<void> {
+  const folder = join(SERVED_BOARD, 'webapp/assets/transitions')
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.present = { transition: { name: 'wipe', ms: 500 } }
+  mkdirSync(folder, { recursive: true })
+  writeFileSync(
+    join(folder, 'wipe.css'),
+    '@keyframes enter { from { clip-path: inset(0 0 0 100%) } to { clip-path: inset(0) } }',
+  )
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    rmSync(join(SERVED_BOARD, 'webapp/assets'), { recursive: true })
+  })
+}
+
+/**
+ * Opens the Page section's Slide transition menu once it reads `wipe` and
+ * write access lights it, waiting in an init script as `pressOnLoad` does.
+ */
+async function transitionMenuOnLoad(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames }) => {
+      let left = frames
+      const press = () => {
+        const trigger = document.querySelector<HTMLButtonElement>(
+          '[aria-labelledby="inspector-page"] button[aria-label="Slide transition"]:not(:disabled)',
+        )
+        if (trigger?.textContent?.includes('wipe')) trigger.click()
+        else if (--left > 0) requestAnimationFrame(press)
+        else console.error('The Slide transition menu never read wipe')
+      }
+      document.addEventListener('DOMContentLoaded', press)
+    },
+    { frames: ROW_FRAMES },
+  )
 }
 
 /**
@@ -3704,6 +3749,24 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        // The list a project's own transition joins, open on the one the page holds.
+        section: 'page-transition-own',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            homeWipes,
+            noAgentChanges,
+            asWriter,
+            transitionMenuOnLoad,
+            readyWhen('[data-slot="dropdown-menu-content"]'),
+          ),
+        ),
+      },
+      {
         section: 'frame-size-menu',
         theme,
         route: '/p/webapp/home',
@@ -5150,6 +5213,7 @@ const WRITING_SECTIONS = [
   'motion-held',
   'motion-ended',
   'page-transition',
+  'page-transition-own',
   'present-steps',
 ]
 

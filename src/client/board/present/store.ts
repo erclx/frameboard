@@ -2,12 +2,16 @@ import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { liveStore } from '@/client/live/store'
-import { resolveTransition } from '@/shared/present-transition'
+import {
+  resolveTransition,
+  transitionNameOf,
+} from '@/shared/present-transition'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { select, selectionStore } from '../selection'
 import { canvasView } from '../view'
 import { readingOrder } from './order'
+import { canPlayOwn } from './own-transitions'
 import { CUT, prefersReducedMotion, type Travel, travelOf } from './travel'
 
 /**
@@ -177,7 +181,8 @@ let steps = 0
 /**
  * What a step from `from` to `to` leaves drawn under the arriving frame. Going
  * forward the arriving frame's transition plays, and going back the leaving
- * frame takes back the one it arrived with.
+ * frame takes back the one it arrived with. A project's own transition
+ * whose keyframes have not arrived cuts, so no step plays half of one.
  */
 function leavingOf(
   page: PageRecord,
@@ -186,12 +191,18 @@ function leavingOf(
   by: 1 | -1,
 ): PresentState['leaving'] {
   const back = by < 0
-  const travel = travelOf(
-    resolveTransition(page.transition, (back ? from : to).transition),
-    back,
-    prefersReducedMotion(),
+  const transition = resolveTransition(
+    page.transition,
+    (back ? from : to).transition,
   )
+  const travel = travelOf(transition, back, prefersReducedMotion())
   if (travel === CUT) return null
+  if (
+    !transitionNameOf(transition.name) &&
+    !canPlayOwn(page.project, transition.name)
+  ) {
+    return null
+  }
   steps += 1
   return { ref: from.ref, travel, id: steps }
 }

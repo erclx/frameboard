@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveTransition, transitionOf } from './present-transition'
+import {
+  isOwnTransitionName,
+  ownKeyframesName,
+  resolveTransition,
+  storedTransitionOf,
+  takesDirection,
+  transitionLabel,
+  transitionOf,
+} from './present-transition'
 
 describe('transitionOf', () => {
   it('reads a stored transition as written', () => {
@@ -26,6 +34,77 @@ describe('transitionOf', () => {
     ['a fractional duration', { name: 'slide', ms: 250.5 }],
   ])('drops %s and keeps the name', (_, value) => {
     expect(transitionOf(value)).toEqual({ name: 'slide' })
+  })
+})
+
+describe("a project's own transition", () => {
+  it('reads a name the project holds as written', () => {
+    expect(transitionOf({ name: 'wipe-up', ms: 300 }, ['wipe-up'])).toEqual({
+      name: 'wipe-up',
+      ms: 300,
+    })
+  })
+
+  it('reads a name the project does not hold as none', () => {
+    expect(transitionOf({ name: 'wipe-up' }, ['curtain'])).toBeNull()
+  })
+
+  it('drops a direction, since an own transition takes none', () => {
+    expect(
+      transitionOf({ name: 'wipe-up', direction: 'up' }, ['wipe-up']),
+    ).toEqual({ name: 'wipe-up' })
+  })
+
+  it('keeps a name shaped like an own one for a writer, file or no file', () => {
+    expect(storedTransitionOf({ name: 'wipe-up', ms: 300 })).toEqual({
+      name: 'wipe-up',
+      ms: 300,
+    })
+    expect(storedTransitionOf({ name: 'Wipe Up' })).toBeNull()
+  })
+
+  it('resolves with no direction and the default duration', () => {
+    expect(resolveTransition({ name: 'wipe-up' }, null)).toEqual({
+      name: 'wipe-up',
+      direction: null,
+      ms: 500,
+    })
+    expect(takesDirection('wipe-up')).toBe(false)
+  })
+
+  it.each(['wipe', 'wipe-up', 'curtain2', 'a'])(
+    'accepts the name %s',
+    (name) => {
+      expect(isOwnTransitionName(name)).toBe(true)
+    },
+  )
+
+  it.each([
+    ['a built-in', 'fade'],
+    ['none', 'none'],
+    ['the word that clears an override', 'page'],
+    ['capitals and a space', 'Wipe Up'],
+    ['an underscore', 'wipe_up'],
+    ['a doubled dash', 'wipe--up'],
+    ['a leading dash', '-wipe'],
+    ['nothing', ''],
+    ['a name past the cap', 'a'.repeat(65)],
+  ])('refuses %s', (_, name) => {
+    expect(isOwnTransitionName(name)).toBe(false)
+  })
+
+  it('labels a built-in by its label and an own name as written', () => {
+    expect(transitionLabel('fade')).toBe('Fade')
+    expect(transitionLabel('wipe-up')).toBe('wipe-up')
+  })
+
+  it('names keyframes apart for two projects holding the same name', () => {
+    expect(ownKeyframesName('webapp', 'wipe', 'enter')).toBe(
+      'fb-own-webapp--wipe-enter',
+    )
+    expect(ownKeyframesName('web.app_2', 'wipe', 'leave')).toBe(
+      'fb-own-web_2e_app_5f_2--wipe-leave',
+    )
   })
 })
 

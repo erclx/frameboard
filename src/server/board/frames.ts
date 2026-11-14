@@ -13,7 +13,10 @@ import {
 } from '@/shared/frame-sizes'
 import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
-import { type Transition, transitionOf } from '@/shared/present-transition'
+import {
+  storedTransitionOf,
+  type Transition,
+} from '@/shared/present-transition'
 import type {
   LayoutEntry,
   LayoutFile,
@@ -43,6 +46,7 @@ import {
   readPageOrder,
   scanPage,
 } from './scan'
+import { assertKnownTransition } from './transitions'
 
 export interface SizeOptions {
   size?: FrameSizeName
@@ -863,7 +867,8 @@ export async function setFrameDevice(
 /**
  * Sets the transition a frame arrives with in present mode, over its page's,
  * or clears it with null so the frame takes its page's. The frame's file and
- * box are left as they stand.
+ * box are left as they stand. A name that is neither built in nor the
+ * project's own refuses `usage` and writes nothing.
  */
 export async function setFrameTransition(
   root: string,
@@ -871,6 +876,8 @@ export async function setFrameTransition(
   transition: Transition | null,
   options: RefOptions & JournalOptions,
 ): Promise<FrameRecord> {
+  const frame = await resolveFrameRef(root, ref, options)
+  await assertKnownTransition(join(root, frame.project), transition)
   return updatePlacement(root, ref, options, (placement) => {
     const { transition: _held, ...rest } = placement
     return transition ? { ...rest, transition } : rest
@@ -1062,7 +1069,9 @@ class PageLayout {
       delete entry.widths
     }
     if (!device && deviceOf(held?.device)) delete entry.device
-    if (!transition && transitionOf(held?.transition)) delete entry.transition
+    if (!transition && storedTransitionOf(held?.transition)) {
+      delete entry.transition
+    }
     this.file.frames[name] = entry
     this.changed = true
   }

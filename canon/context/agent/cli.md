@@ -52,7 +52,11 @@ Owns the frame verbs, and `page.ts` reshapes pages the same way.
 - `move` with `--x` and `--y` and no `--to` writes `layout.json` alone, so a move never collides with an agent rewriting the file
 - `frame add` leaves every axis no size names hugging, a preset, a device name from `DEVICE_SIZES`, or `--width` fixing the width, and writes the box it places as a stand-in until `serve` measures
 - `frame resize` fixes each axis it sets, and `frame fit` sets the height to the content and turns `hugHeight` on, the inverse of that resize
-- `page transition` and `frame transition` set what present mode draws, reading `--ms` and `--direction` through `transition-flags.ts`, and `page` as the name clears a frame's own
+
+`page transition` and `frame transition` set what present mode draws.
+
+- Both read `--ms` and `--direction` through `transition-flags.ts`, and `page` as the name clears a frame's own
+- Their `<transition>` is no fixed choice, since a project adds its own, so the setter refuses an unknown name as `usage` with the known names in its details
 
 Two keys shape a frame past its size, and `frame fit` reads both.
 

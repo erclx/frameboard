@@ -752,6 +752,32 @@ describe('InspectorPanel', () => {
       ])
     })
 
+    it("lists the project's own after the built-ins and sets one by its name", async () => {
+      const board = boardOf(pageOf([SWATCHES, SUNSET]))
+      act(() =>
+        receiveBoard(liveStore, {
+          ...board,
+          projects: board.projects.map((project) => ({
+            ...project,
+            transitions: ['wipe-up'],
+          })),
+        }),
+      )
+      const { sent, calls } = transitionCalls()
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(slide())
+      const items = await screen.findAllByRole('menuitemradio')
+      await userEvent.click(
+        screen.getByRole('menuitemradio', { name: 'wipe-up' }),
+      )
+
+      expect(items.at(-1)).toHaveTextContent('wipe-up')
+      expect(sent).toEqual([
+        { refs: [SWATCHES.ref], transition: { name: 'wipe-up' } },
+      ])
+    })
+
     it('clears the override with Same as page, sending null', async () => {
       const { sent, calls } = transitionCalls()
       render(

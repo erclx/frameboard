@@ -31,3 +31,16 @@ export const assetAddResultSchema = z.object({
 })
 
 export type AssetAddResult = z.infer<typeof assetAddResultSchema>
+
+/**
+ * A project's own transitions as present mode plays them, sorted by name.
+ * `css` holds each one's keyframes alone, under the names
+ * `ownKeyframesName` gives them, and a file the board refuses is absent.
+ */
+export const transitionKeyframesListSchema = z.object({
+  transitions: z.array(z.object({ name: z.string(), css: z.string() })),
+})
+
+export type TransitionKeyframesList = z.infer<
+  typeof transitionKeyframesListSchema
+>

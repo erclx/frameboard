@@ -38,7 +38,7 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 `layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
 
-A `present` key holds the page's `transition` and an entry may hold its own over it, each a `name` with an optional `ms` and `direction`, an unlisted name reading as none. An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
+A `present` key holds the page's `transition` and an entry may hold its own over it, each a `name` with an optional `ms` and `direction`. A name is a built-in or one of the project's own, and any other reads as none. An entry's `hugWidth`, `hugHeight`, and `scroll` read as false when absent.
 
 - A running server measures a hugging axis after each write to its frame and writes the size, never a flag, so a frame lands at its content's size
 - `scroll: true` holds a fixed screen height the page scrolls past, and `placeFrames` reads both hug flags beside it as false, so an older `frame fit` never reaches the hug step
@@ -87,6 +87,12 @@ Project files sit beside the pages.
 - A drop into `assets/` accepts images, GIF, SVG, video, audio, fonts, stylesheets, and scripts, and refuses HTML and the rest by name
 - A dropped name is cut to the board's name rule, and one already taken in any letter case takes the first free `-2`, `-3`, so a drop never overwrites a file an agent wrote
 - Lock files, temp files, and dot folders hold generated files, and the watcher and scanner skip them, the watcher reading `.run/claims.json` alone
+
+`assets/transitions/<name>.css` is a project's own slide transition, named by its stem.
+
+- The stem is lowercase kebab case and never a built-in name, `none`, or `page`
+- The board reads its `enter` and `leave` keyframes through `src/server/board/transitions.ts` and never loads the file
+- `list --json` names the valid ones on the project as `transitions`, sorted by name
 
 ### `.run/`
 

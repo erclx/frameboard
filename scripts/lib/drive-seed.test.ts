@@ -11,6 +11,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { listTransitionNames } from '@/server/board/transitions'
 import { checkFrame } from '@/server/checks/frame'
 import { claim, readClaims } from '@/server/claims/store'
 
@@ -253,6 +254,29 @@ describe('the deck page', () => {
         '03-closing': { x: 2720, order: 2 },
       },
     })
+  })
+
+  it("brings the closing slide in with a transition the board lists as webapp's own", async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.transition).toBe('laid')
+    expect(await listTransitionNames(join(root, 'webapp'))).toEqual(['wipe'])
+    expect(readJson('webapp/deck/layout.json')).toMatchObject({
+      frames: { '03-closing': { transition: { name: 'wipe', ms: 700 } } },
+    })
+  })
+
+  it('leaves a hand-edited transition alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/assets/transitions/wipe.css')
+    writeFileSync(edited, '@keyframes enter { from { opacity: 0 } }')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.transition).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe(
+      '@keyframes enter { from { opacity: 0 } }',
+    )
   })
 
   it('marks three steps on the middle slide, the last after the one before', async () => {

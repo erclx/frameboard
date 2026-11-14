@@ -53,6 +53,7 @@ export function boardOf(...pages: PageRecord[]): ListResult {
         group: null,
         archived: false,
         projectFileError: null,
+        transitions: [],
         pages,
       },
     ],

@@ -35,17 +35,27 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Resize an axis only to fix it, since a resize stops that axis hugging
    - Pass `--scroll` for a page meant to scroll at a screen height, such as one with a sticky section, rather than running `frame fit`, which grows it to its full length
    - Place one frame with `--widths 834,390` for a responsive page, rather than copying its file per width, so every fix lands once and the board draws each width beside it
-3. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
-4. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done.
+
+## Check it and hand it back
+
+Run these on each frame once it is placed.
+
+1. Fix every finding the check hands back after the write, then write again. The check runs after each write, and a finding left in place shows on the frame's label on the board.
+2. Run `frameboard check <page>/<frame> --json` to confirm a frame is clean before calling it done.
    - A finding at error means the frame renders wrong or cannot load, and a warning is a style call the frame still renders through
    - Read the findings from the envelope's `data.findings` in both answers, each naming its rule, file, line, and column
    - An error finding exits 8 and warnings alone exit 0, so branch on the exit and read `data.findings` either way
-5. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
+3. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
-6. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
+4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
    - Capture any motion you wrote at a few moments with `--at` or `--filmstrip`, since a plain capture shows only where it comes to rest
-7. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
+5. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
+
+## Add a slide transition of the project's own
+
+- Write `assets/transitions/<name>.css` holding `@keyframes enter` and optionally `@keyframes leave`, as the `present` block of `frameboard docs` allows
+- Set it by name with `frameboard page transition <page> <name>`
 
 ## Keep frames in their sections
 

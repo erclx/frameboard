@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { DEVICES } from '../frame-device'
-import { DIRECTIONS, TRANSITIONS } from '../present-transition'
+import { DIRECTIONS } from '../present-transition'
 
 const recordErrorSchema = z
   .object({ path: z.string(), message: z.string() })
@@ -9,7 +9,8 @@ const recordErrorSchema = z
 
 /** A transition as present mode reads it, `direction` and `ms` absent at their default. */
 export const transitionRecordSchema = z.object({
-  name: z.enum(TRANSITIONS),
+  /** A built-in name or one of the project's `transitions`. */
+  name: z.string(),
   direction: z.enum(DIRECTIONS).optional(),
   ms: z.int().optional(),
 })
@@ -88,6 +89,8 @@ export const projectRecordSchema = z.object({
   /** Whether home holds the project out of the main list, in its Archived section. */
   archived: z.boolean(),
   projectFileError: recordErrorSchema,
+  /** The project's own transitions by name, sorted, empty when it holds none. */
+  transitions: z.array(z.string()),
   pages: z.array(pageRecordSchema),
 })
 

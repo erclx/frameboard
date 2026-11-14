@@ -8,11 +8,7 @@ import {
   renamePage,
   setPageTransition,
 } from '@/server/board/pages'
-import {
-  TRANSITION_LABELS,
-  transitionNameOf,
-  TRANSITIONS,
-} from '@/shared/present-transition'
+import { transitionLabel } from '@/shared/present-transition'
 
 import {
   act,
@@ -25,6 +21,7 @@ import {
 import {
   type TransitionFlags,
   transitionFrom,
+  transitionHelp,
   withTransitionFlags,
 } from './transition-flags'
 
@@ -110,25 +107,21 @@ export function registerPage(program: Command, context: ProgramContext): void {
         'transition',
         'Set the transition present mode draws between the page’s slides, or clear it with none so they cut, writing only layout.json',
       ).addArgument(
-        new Argument(
-          '<transition>',
-          'the transition, none to clear it',
-        ).choices(TRANSITIONS),
+        new Argument('<transition>', transitionHelp('none to clear it')),
       ),
     ),
     context,
     async ([ref = '', name = ''], options) => {
-      const chosen = transitionNameOf(name) ?? 'none'
       const record = await setPageTransition(
         await boardOf(options, io),
         ref,
-        chosen === 'none' ? null : transitionFrom(chosen, options),
+        name === 'none' ? null : transitionFrom(name, options),
         { ...options, cwd: io.cwd },
       )
       return {
         data: record,
         human: record.transition
-          ? `Set ${TRANSITION_LABELS[record.transition.name]} on ${record.ref}`
+          ? `Set ${transitionLabel(record.transition.name)} on ${record.ref}`
           : `Cleared the transition on ${record.ref}`,
       }
     },

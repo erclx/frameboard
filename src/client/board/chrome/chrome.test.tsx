@@ -74,6 +74,7 @@ describe('HiddenPills', () => {
     group: null,
     archived: false,
     projectFileError: null,
+    transitions: [],
     pages: [],
   }
 

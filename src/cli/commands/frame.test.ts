@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -291,6 +291,27 @@ describe('frame', () => {
       )
 
       expect(result.json().data).not.toHaveProperty('transition')
+    })
+
+    it("sets a transition of the project's own by its name", async () => {
+      const run = on('basic')
+      mkdirSync(join(board.root, 'webapp/assets/transitions'), {
+        recursive: true,
+      })
+      writeFileSync(
+        join(board.root, 'webapp/assets/transitions/wipe.css'),
+        '@keyframes enter { from { opacity: 0 } }',
+      )
+
+      const result = await run(
+        'frame',
+        'transition',
+        'webapp/home/about',
+        'wipe',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toHaveProperty('transition', { name: 'wipe' })
     })
 
     it('refuses an unknown transition with usage, exit 2', async () => {

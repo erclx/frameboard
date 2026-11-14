@@ -889,6 +889,32 @@ describe('frames', () => {
         expect(file('webapp/home/hero.html')).toBe(bytes)
       })
 
+      it('refuses a name the project does not hold and writes nothing', async () => {
+        const root = open()
+        const before = layout('webapp/home')
+
+        await expect(
+          setFrameTransition(
+            root,
+            'webapp/home/hero',
+            { name: 'wipe' },
+            { cwd: root },
+          ),
+        ).rejects.toMatchObject({ code: 'usage' })
+        expect(layout('webapp/home')).toEqual(before)
+      })
+
+      it('clears an override naming an own transition whose file is gone', async () => {
+        const root = open()
+        hugHero(root, { transition: { name: 'wipe' } })
+
+        await setFrameTransition(root, 'webapp/home/hero', null, { cwd: root })
+
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty(
+          'transition',
+        )
+      })
+
       it('reads an unknown transition as none and leaves it as written', async () => {
         const root = open()
         hugHero(root, { transition: { name: 'cube' } })
