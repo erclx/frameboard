@@ -46,6 +46,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
 - Its Device row draws a generic phone or tablet around the frame, leaving the file unchanged, and Export's Include device puts it in the PNG
 - With nothing selected the inspector's Page section sets the transition drawn between slides while presenting, with a direction for Slide and Push and a duration, and a frame's This slide row sets its own
+- Both lists show a transition the project added under `assets/transitions/` after the built-in ones, by its file's name
 - An element's Present section sets the step it appears on with an effect and a start, so the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 - The inspector edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text

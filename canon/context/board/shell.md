@@ -104,6 +104,14 @@ A transition between slides and the steps inside one are the board's own drawing
 
 - `transition.tsx` keeps the leaving slide mounted under the arriving one for the transition's length, each a `data-present-layer`, and the leaving layer takes no pointer
 - `travel.ts` resolves a frame's own transition over its page's. Going back, the leaving slide takes back the one it arrived with, and reduced motion makes every one a cut.
+
+A project's own transition plays keyframes the server read out of its file, never the file.
+
+- `own-transitions.ts` fetches them when presenting starts and when the project record's names change, and a step taken before they arrive cuts
+- `ownKeyframesName` names each pair with its project, and a transition holding no `leave` keeps its leaving slide still
+
+Steps sit inside one slide.
+
 - `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
 - `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
 - `bar.tsx` draws one dot per step, filled up to the step shown. Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
