@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { Transition } from '@/shared/present-transition'
-import { pageOf } from '@/test/board'
+import { boardOf, pageOf } from '@/test/board'
 
 import { PageSection } from './page-section'
 
@@ -24,9 +24,20 @@ function recording() {
   return { posted, calls: createStructure(send) }
 }
 
-function mount(transition?: Transition) {
+/** Mounts the section on a page of a project holding `own` transitions of its own. */
+function mount(transition?: Transition, own: string[] = []) {
   const { posted, calls } = recording()
   const page = { ...pageOf([]), ...(transition ? { transition } : {}) }
+  const board = boardOf(page)
+  liveStore.setState({
+    board: {
+      ...board,
+      projects: board.projects.map((project) => ({
+        ...project,
+        transitions: own,
+      })),
+    },
+  })
   render(<PageSection page={page} calls={calls} />)
   return posted
 }
@@ -43,7 +54,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  liveStore.setState({ canWrite: false })
+  liveStore.setState({ canWrite: false, board: null })
 })
 
 describe('the Page section', () => {
@@ -97,6 +108,50 @@ describe('the Page section', () => {
     expect(screen.getByRole('button', { name: 'Direction' })).toHaveTextContent(
       'Left',
     )
+  })
+
+  it("lists the project's own after the built-ins, each as written", async () => {
+    mount(undefined, ['curtain', 'wipe-up'])
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Slide transition' }),
+    )
+    const items = await screen.findAllByRole('menuitemradio')
+
+    expect(items.map((item) => item.textContent)).toEqual([
+      'None',
+      'Fade',
+      'Slide',
+      'Push',
+      'Zoom',
+      'Flip',
+      'Dissolve',
+      'curtain',
+      'wipe-up',
+    ])
+  })
+
+  it('writes a picked own transition by its name, dropping a direction', async () => {
+    const posted = mount({ name: 'push', direction: 'up', ms: 300 }, [
+      'wipe-up',
+    ])
+
+    await pick('Slide transition', 'wipe-up')
+
+    expect(posted[0]?.body).toEqual({
+      ref: 'studio/home',
+      transition: { name: 'wipe-up', ms: 300 },
+    })
+  })
+
+  it('shows an own transition as the current value, with a duration and no direction', () => {
+    mount({ name: 'wipe-up' }, ['wipe-up'])
+
+    expect(
+      screen.getByRole('button', { name: 'Slide transition' }),
+    ).toHaveTextContent('wipe-up')
+    expect(screen.getByRole('button', { name: 'Duration' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Direction' })).toBeNull()
   })
 
   it('clears the transition on None', async () => {

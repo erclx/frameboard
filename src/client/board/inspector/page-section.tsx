@@ -10,12 +10,12 @@ import {
   takesDirection,
   type Transition,
   transitionLabel,
-  TRANSITIONS,
 } from '@/shared/present-transition'
 import type { PageRecord } from '@/shared/records/list'
 
 import { reportRefusal } from '../left-panel/page-actions'
 import { TypePicker } from './element/typography'
+import { useTransitionNames } from './transition-names'
 
 /** The lengths the Duration menu offers, a page holding another adding its own. */
 const DURATIONS = [200, 300, 500, 800, 1000] as const
@@ -51,6 +51,7 @@ export function PageSection({
 }) {
   const canWrite = useLive((state) => state.canWrite)
   const held = page.transition
+  const names = useTransitionNames(page.project)
   const name = held?.name ?? 'none'
   const direction = held?.direction ?? DEFAULT_DIRECTION
   const ms = held?.ms ?? DEFAULT_TRANSITION_MS
@@ -83,13 +84,13 @@ export function PageSection({
           label="Slide transition"
           shown={transitionLabel(name)}
           current={name}
-          options={TRANSITIONS.map((value) => ({
+          options={names.map((value) => ({
             value,
             name: transitionLabel(value),
           }))}
           disabled={!canWrite}
           onPick={(value) => {
-            const picked = TRANSITIONS.find((candidate) => candidate === value)
+            const picked = names.find((candidate) => candidate === value)
             if (!picked) return
             write(picked === 'none' ? null : withChange({ name: picked }))
           }}

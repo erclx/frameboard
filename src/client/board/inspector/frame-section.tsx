@@ -19,11 +19,7 @@ import {
 } from '@/client/live/structure'
 import type { Device } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
-import {
-  SAME_AS_PAGE_WORD,
-  transitionLabel,
-  TRANSITIONS,
-} from '@/shared/present-transition'
+import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
@@ -42,6 +38,7 @@ import { TransitionNote } from './page-section'
 import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
+import { useTransitionNames } from './transition-names'
 
 const FIELDS = [
   { key: 'x', letter: 'X', label: 'X position' },
@@ -404,6 +401,7 @@ const SAME_AS_PAGE = SAME_AS_PAGE_WORD
  * pick writes every frame's `layout.json` entry in one undo step.
  */
 function SlideRow({ frames, disabled, calls }: HeightRowProps) {
+  const names = useTransitionNames(frames[0]?.project)
   const values = frames.map((frame) => frame.transition?.name ?? SAME_AS_PAGE)
   const current = values.every((value) => value === values[0])
     ? (values[0] ?? null)
@@ -424,11 +422,11 @@ function SlideRow({ frames, disabled, calls }: HeightRowProps) {
         current={current}
         options={[
           { value: SAME_AS_PAGE, name: label(SAME_AS_PAGE) },
-          ...TRANSITIONS.map((value) => ({ value, name: label(value) })),
+          ...names.map((value) => ({ value, name: label(value) })),
         ]}
         disabled={disabled}
         onPick={(value) => {
-          const name = TRANSITIONS.find((candidate) => candidate === value)
+          const name = names.find((candidate) => candidate === value)
           calls
             .setFrameTransition(
               frames.map((frame) => frame.ref),
