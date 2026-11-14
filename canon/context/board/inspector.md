@@ -68,7 +68,9 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
-- **Export:** one frame alone carries scale and theme menus, a button, and a caption naming each `<frame>.<theme>@<n>x.png`. Every theme renders before any file downloads.
+- **Export:** one frame alone, or one element above its Selection colors, carries scale and theme menus, a Name field, a button, and one line per `<name>.<theme>@<n>x.png`. Every theme renders before any file downloads.
+- **Export name:** the field starts as the frame's name, or `<frame>-<element>` from the Layers row in kebab case, lives in the section, and falls back to that start when emptied. Slashes become dashes and leading dots drop.
+- **Element export:** asks the PNG route for `element` and `hash`, the selection's address, and shows no Include device switch
 - **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
 - **Selection colors:** last, the colors the selection uses, raw first, five rows until `Show all`, which a new selection closes. A row copies its hex or its token's `var()`.
 - **Replace:** a raw row's swatch lists the color tokens nearest first, and a pick posts `POST /api/frames/recolor`, swapping that value inline across the selection as one undo step.
