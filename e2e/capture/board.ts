@@ -1447,6 +1447,25 @@ async function openClientFolder(page: Page): Promise<void> {
   }, ROW_FRAMES)
 }
 
+/** Opens the Client A folder, then its pen, so the panel header holds the open rename field. */
+async function renameClientFolder(page: Page): Promise<void> {
+  await openClientFolder(page)
+  await page.addInitScript((frames) => {
+    let left = frames
+    const run = () => {
+      const pen = document.querySelector<HTMLButtonElement>(
+        '[role="dialog"] button[aria-label="Rename folder"]',
+      )
+      if (pen) pen.click()
+      else if (--left > 0) requestAnimationFrame(run)
+      else console.error('The folder pen never drew')
+    }
+    document.addEventListener('DOMContentLoaded', () =>
+      requestAnimationFrame(run),
+    )
+  }, ROW_FRAMES)
+}
+
 /**
  * Tells the board `serve` holds a dispatch command, so a note can start a
  * session. Faked on the access message, since the capture server runs with
@@ -3259,6 +3278,22 @@ const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
         readyWhen(
           '[role="dialog"] button[aria-label="Rename folder"]:focus-visible',
         ),
+      ),
+    },
+    {
+      section: 'home-folder-rename',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[role="dialog"] [data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard(),
+        hiddenBehind('main [data-edited]'),
+        renameClientFolder,
+        readyWhen('[role="dialog"] input[aria-label="Rename folder Client A"]'),
       ),
     },
     {
