@@ -625,6 +625,21 @@ describe('InspectorPanel', () => {
     })
   })
 
+  it('draws the Also shows at row for one frame and not for several', () => {
+    const { rerender } = render(
+      <FrameSection page={PAGE} frames={[SWATCHES]} />,
+    )
+    expect(
+      screen.getByRole('group', { name: 'Also shows at' }),
+    ).toBeInTheDocument()
+
+    rerender(<FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} />)
+
+    expect(
+      screen.queryByRole('group', { name: 'Also shows at' }),
+    ).not.toBeInTheDocument()
+  })
+
   describe('Device row', () => {
     /** A structure whose device write answers `answer`, recording each body sent. */
     function deviceCalls(answer: () => Response) {
