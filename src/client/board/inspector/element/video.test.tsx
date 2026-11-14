@@ -273,6 +273,9 @@ describe('VideoSection', () => {
     )
 
     expect(screen.queryByRole('heading', { name: 'Video' })).toBeNull()
+    // The older page holds the same audio at that index, so showing it here
+    // would mean the hold adopted a node it never read under this key.
+    expect(screen.queryByRole('heading', { name: 'Audio' })).toBeNull()
     await loadPage(
       iframe,
       `<video src="${CLIP}"></video><audio src="${CLIP}" controls></audio>`,
@@ -280,6 +283,19 @@ describe('VideoSection', () => {
     )
     expect(
       await screen.findByRole('heading', { name: 'Audio' }),
+    ).toBeInTheDocument()
+  })
+
+  it('follows the video still on screen while its write reloads', async () => {
+    const iframe = await mountFrame(`<video src="${CLIP}" muted loop></video>`)
+    const { rerender } = render(<Section write={vi.fn()} />)
+    await screen.findByRole('button', { name: 'Play' })
+    rerender(<Section write={vi.fn()} element={{ ...VIDEO, hash: WRITTEN }} />)
+
+    await liveVideo(iframe).play()
+
+    expect(
+      await screen.findByRole('button', { name: 'Pause' }),
     ).toBeInTheDocument()
   })
 
