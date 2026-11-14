@@ -782,6 +782,110 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('device')
     })
 
+    describe('widths', () => {
+      const HERO = 'studio/home/hero'
+      const setHero = (fields: Record<string, unknown>) => {
+        const page = pageLayout()
+        Object.assign(page.frames.hero, fields)
+        writeFileSync(
+          join(board.root, 'studio/home/layout.json'),
+          JSON.stringify(page),
+        )
+      }
+      const setWidths = (widths: number[], expected: number[] = []) =>
+        post('/api/frame/widths', {
+          refs: [HERO],
+          widths,
+          expected: { [HERO]: expected },
+        })
+
+      it('writes a list with a reference height per new width, keeping a held height, as one step', async () => {
+        setHero({ widths: [{ width: 390, height: 1200 }] })
+        const bytes = readFileSync(frameFile('hero'))
+
+        const response = await setWidths([390, 834], [390])
+
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          data: [
+            {
+              ref: HERO,
+              widths: [
+                { width: 390, height: 1200 },
+                { width: 834, height: 1194 },
+              ],
+            },
+          ],
+        })
+        expect(layout().hero.widths).toEqual([
+          { width: 390, height: 1200 },
+          { width: 834, height: 1194 },
+        ])
+        expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+        expect(history.counts().undo).toBe(1)
+        await history.undo()
+        expect(layout().hero.widths).toEqual([{ width: 390, height: 1200 }])
+      })
+
+      it('drops the widths key when the last width is removed', async () => {
+        setHero({ widths: [{ width: 390, height: 844 }] })
+
+        await setWidths([], [390])
+
+        expect(layout().hero).not.toHaveProperty('widths')
+      })
+
+      it.each([
+        ['a repeated width', [390, 390], {}],
+        ["the frame's own width", [1440], {}],
+        ['a frame hugging its width', [390], { hugWidth: true }],
+      ])('refuses usage for %s, writing nothing', async (_, widths, hero) => {
+        setHero(hero)
+
+        const response = await setWidths(widths)
+
+        expect(response.status).toBe(400)
+        expect(await response.json()).toMatchObject({
+          error: { code: 'usage' },
+        })
+        expect(layout().hero).not.toHaveProperty('widths')
+        expect(history.counts().undo).toBe(0)
+      })
+
+      it('refuses a locked frame with 423, writing nothing', async () => {
+        setHero({ locked: true })
+
+        const response = await setWidths([390])
+
+        expect(response.status).toBe(423)
+        expect(layout().hero).not.toHaveProperty('widths')
+      })
+
+      it('refuses stale-layout when the stored list differs from expected, writing nothing', async () => {
+        setHero({ widths: [{ width: 390, height: 844 }] })
+
+        const response = await setWidths([834], [])
+
+        expect(response.status).toBe(409)
+        expect(await response.json()).toMatchObject({
+          error: { code: 'stale-layout' },
+        })
+        expect(layout().hero.widths).toEqual([{ width: 390, height: 844 }])
+        expect(history.counts().undo).toBe(0)
+      })
+
+      it('refuses usage for a frame the body gives no expected list', async () => {
+        const response = await post('/api/frame/widths', {
+          refs: [HERO],
+          widths: [390],
+          expected: {},
+        })
+
+        expect(response.status).toBe(400)
+        expect(layout().hero).not.toHaveProperty('widths')
+      })
+    })
+
     it('sets a transition on several frames as one step and undoes it', async () => {
       const bytes = readFileSync(frameFile('hero'))
 

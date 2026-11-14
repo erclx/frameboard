@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -12,6 +13,7 @@ import {
   orderFrame,
   readFrame,
   renameFrame,
+  resizeFrame,
   setFrameDevice,
   setFrameFlag,
   setFrameTransition,
@@ -125,6 +127,21 @@ const pasteSchema = z.object({
 const frameDeviceSchema = z.object({
   refs,
   device: z.enum(DEVICES).nullable(),
+})
+const linkedWidth = z.int().min(1)
+/** More widths than any device list offers, so a body cannot grow without bound. */
+const widthList = z.array(linkedWidth).max(64)
+/**
+ * The whole list of widths each frame also shows at, in draw order, an empty
+ * list clearing it. `expected` holds each frame's list as the caller drew it,
+ * keyed by the ref the body names.
+ */
+const frameWidthsSchema = z.object({
+  refs,
+  widths: widthList,
+  expected: z
+    .record(ref, widthList)
+    .refine((lists) => Object.keys(lists).length <= 1000),
 })
 /** `name` is checked by the setters, which know the project's own transitions. */
 const transition = z.object({
@@ -510,6 +527,49 @@ export function structureRoutes(
       (frame, journal) =>
         setFrameDevice(root, frame, body.device, { cwd, journal }),
       (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frames })
+  })
+
+  /**
+   * Sets the widths each frame also shows at, in one step, leaving every
+   * frame file alone. A frame whose stored list differs from its `expected`
+   * refuses `stale-layout` before any frame is written, so a hand write never
+   * drops a width an agent added since the board drew it. A locked frame
+   * refuses the whole write, and `resizeFrame` refuses the list itself.
+   */
+  app.post('/api/frame/widths', async (c) => {
+    const body = await parseBody(c.req.raw, frameWidthsSchema)
+    const expected = body.refs.map((ref) => {
+      const list = body.expected[ref]
+      if (!list) {
+        throw new FrameboardError(
+          'usage',
+          `The body gives ${ref} no expected widths.`,
+          { ref },
+        )
+      }
+      return list
+    })
+    await refuseLocked(body.refs)
+    const records = await Promise.all(
+      body.refs.map((frame) => readFrame(root, frame, { cwd })),
+    )
+    records.forEach((record, at) => {
+      const stored = record.widths.map((linked) => linked.width)
+      if (!isDeepStrictEqual(stored, expected[at])) {
+        throw new FrameboardError(
+          'stale-layout',
+          `${record.ref}'s widths changed since this edit began, so nothing was written.`,
+          { ref: record.ref, stored, expected: expected[at] },
+        )
+      }
+    })
+    const frames = await eachFrame(
+      body.refs,
+      (frame, journal) =>
+        resizeFrame(root, frame, { widths: body.widths, cwd, journal }),
+      (written) => written.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })
   })
