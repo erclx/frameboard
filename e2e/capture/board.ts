@@ -824,6 +824,21 @@ async function aboutInPhone(page: Page): Promise<void> {
   })
 }
 
+/** Lists two linked widths on the hero, putting its layout back when the page closes. */
+async function heroAtTwoWidths(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.widths = [
+    { width: 834, height: 1194 },
+    { width: 390, height: 844 },
+  ]
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
 /**
  * Sets a Push transition on the home page, so the Page section shows its
  * Direction and Duration rows, putting the layout back when the page closes.
@@ -3715,6 +3730,26 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        section: 'inspector-widths',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // One frame selected holding two linked widths: the Also shows at
+        // row lists a chip per width beside its plus, and the canvas draws both.
+        setup: themed(
+          both(
+            heroAtTwoWidths,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            readyWhen(
+              'body:has([data-linked-width="390"]):has([aria-labelledby="inspector-widths"] button[aria-label="Remove 390"])',
+            ),
+          ),
+        ),
+      },
+      {
         section: 'present',
         theme,
         route: '/p/webapp/home',
@@ -5254,6 +5289,7 @@ const WRITING_SECTIONS = [
   'scroll-rail',
   'scroll-no-ghost',
   'device-bezel',
+  'inspector-widths',
   'motion-held',
   'motion-ended',
   'page-transition',
