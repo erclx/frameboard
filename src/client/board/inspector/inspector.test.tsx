@@ -11,10 +11,17 @@ import { createStructure } from '@/client/live/structure'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
 
+import { trees } from '../element/tree'
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
 import { endPreview, previewOf, setPreview } from '../preview/store'
-import { clear, select, selectElement, selectionStore } from '../selection'
+import {
+  clear,
+  select,
+  selectElement,
+  selectElements,
+  selectionStore,
+} from '../selection'
 import { startFrameRename, stopFrameRename } from '../structure/actions'
 import { presetStore } from '../structure/tool'
 import { FrameSection } from './frame-section'
@@ -52,6 +59,8 @@ describe('InspectorPanel', () => {
   afterEach(() => {
     act(() => {
       clear(selectionStore)
+      // A tree is held per reload of its frame, so one test's stub would name the next test's elements.
+      trees.store.setState({ byRef: {} })
       modeStore.setState({ tool: 'move', mode: 'edit' })
       presetStore.setState({ preset: 'desktop' })
       stopFrameRename()
@@ -793,8 +802,11 @@ describe('InspectorPanel', () => {
 
       expect(screen.getByRole('region', { name: 'Export' })).toBeVisible()
       expect(
-        screen.getByRole('button', { name: `Export ${SWATCHES.name}` }),
+        screen.getByRole('button', { name: 'Export 2 files' }),
       ).toBeEnabled()
+      expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue(
+        SWATCHES.name,
+      )
     })
 
     it('draws no section for several frames', () => {
@@ -805,18 +817,97 @@ describe('InspectorPanel', () => {
       expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
     })
 
-    it('draws no section while an element inside the frame is selected', () => {
-      act(() =>
-        selectElement(selectionStore, PAGE, {
-          frame: SWATCHES.ref,
-          index: 1,
-          hash: 'a'.repeat(64),
-        }),
-      )
+    describe('on an element', () => {
+      const HASH = 'd'.repeat(64)
+      let layer: HTMLElement | undefined
 
-      renderPanel()
+      /** Mounts the swatches frame's live iframe, whose `h1` sits at index 3 and `p` at 4. */
+      async function mountSwatches(): Promise<void> {
+        layer = document.createElement('div')
+        const frame = document.createElement('div')
+        frame.dataset.frame = SWATCHES.ref
+        const iframe = document.createElement('iframe')
+        const loaded = new Promise((resolve) =>
+          iframe.addEventListener('load', resolve, { once: true }),
+        )
+        iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1><p>Six colors</p></body></html>`
+        frame.append(iframe)
+        layer.append(frame)
+        document.body.append(layer)
+        await loaded
+      }
 
-      expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
+      const row = (index: number, tag: string, name: string) => ({
+        index,
+        parent: null,
+        tag,
+        name,
+        textOnly: true,
+        layout: 'block',
+        round: false,
+        placed: false,
+      })
+
+      beforeEach(() => {
+        vi.stubGlobal('fetch', async (input: RequestInfo | URL) =>
+          String(input).includes('/elements')
+            ? Response.json({
+                ok: true,
+                data: {
+                  ref: SWATCHES.ref,
+                  hash: HASH,
+                  elements: [
+                    row(3, 'h1', 'Swatches'),
+                    row(4, 'p', 'Six colors'),
+                  ],
+                },
+              })
+            : Response.json({ ok: false, error: { message: 'Not stubbed.' } }),
+        )
+      })
+
+      afterEach(() => {
+        vi.unstubAllGlobals()
+        layer?.remove()
+        layer = undefined
+      })
+
+      it('draws for one selected element, named for its frame and Layers row', async () => {
+        await mountSwatches()
+        act(() =>
+          selectElement(selectionStore, PAGE, {
+            frame: SWATCHES.ref,
+            index: 3,
+            hash: HASH,
+          }),
+        )
+
+        renderPanel()
+
+        expect(
+          await screen.findByRole('region', { name: 'Export' }),
+        ).toBeVisible()
+        await waitFor(() =>
+          expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue(
+            'Color swatches-swatches',
+          ),
+        )
+      })
+
+      it('draws no section for several selected elements', async () => {
+        await mountSwatches()
+        act(() =>
+          selectElements(selectionStore, PAGE, [
+            { frame: SWATCHES.ref, index: 3, hash: HASH },
+            { frame: SWATCHES.ref, index: 4, hash: HASH },
+          ]),
+        )
+
+        renderPanel()
+
+        await screen.findByRole('region', { name: 'Position' })
+        expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
+      })
     })
 
     it('draws no section under the Frame tool', () => {
@@ -835,7 +926,7 @@ describe('InspectorPanel', () => {
       renderPanel()
 
       expect(
-        screen.getByRole('button', { name: `Export ${SWATCHES.name}` }),
+        screen.getByRole('button', { name: 'Export 2 files' }),
       ).toBeEnabled()
     })
   })
