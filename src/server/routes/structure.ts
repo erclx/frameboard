@@ -172,11 +172,22 @@ const projectArchiveSchema = z.object({
   refs: projectRefs,
   archived: z.boolean(),
 })
-const projectRuleSchema = z.object({
-  project: ref,
-  rule: z.enum(RULES.map((rule) => rule.id) as [string, ...string[]]),
-  off: z.boolean(),
-})
+/**
+ * A rule turned off is one a check declares. One turned on takes any id, so
+ * one written by hand, or left by a rule since retired, can still come out.
+ */
+const projectRuleSchema = z.discriminatedUnion('off', [
+  z.object({
+    project: ref,
+    rule: z.enum(RULES.map((rule) => rule.id) as [string, ...string[]]),
+    off: z.literal(true),
+  }),
+  z.object({
+    project: ref,
+    rule: z.string().min(1).max(200),
+    off: z.literal(false),
+  }),
+])
 const projectTokensSchema = z.object({
   ref,
   accent: z
@@ -743,7 +754,7 @@ export function structureRoutes(
   /**
    * Turns one check rule off for the project, or back on, as one undo step.
    * It waits on no claim, since it writes `project.json` alone and under its
-   * lock. A rule no check declares answers `usage`.
+   * lock. Turning off a rule no check declares answers `usage`.
    */
   app.post('/api/project/rule', async (c) => {
     const body = await parseBody(c.req.raw, projectRuleSchema)
