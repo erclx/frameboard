@@ -161,6 +161,10 @@ One catches the landing page out.
 
 - `web/` has no Preflight, so a rule outside `@layer base` beats every utility, and `[hidden]` hides only through `global.css`
 
+One covers parallel source runs.
+
+- A cold faces cache under `node_modules/.cache/frameboard/` is safe to fill from parallel source runs, since `writeFaces` keeps a complete folder another run placed first
+
 ### Test lock
 
 `scripts/test-locked.ts` holds one lock across every checkout on the machine, so a heavy run waits for another worktree's rather than starving it.
