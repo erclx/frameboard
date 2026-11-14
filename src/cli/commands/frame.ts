@@ -23,11 +23,7 @@ import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
 import { deviceOf, DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
-import {
-  transitionLabel,
-  transitionNameOf,
-  TRANSITIONS,
-} from '@/shared/present-transition'
+import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 
 import {
@@ -41,6 +37,7 @@ import {
 import {
   type TransitionFlags,
   transitionFrom,
+  transitionHelp,
   withTransitionFlags,
 } from './transition-flags'
 
@@ -70,8 +67,7 @@ const SCROLL_HELP =
   'hold a fixed screen height and scroll past it, fixing both axes, at the reference height of the width when no height is given'
 /** The override `frame transition` stores, null for `page`, which clears it. */
 function transitionOrPage(name: string, flags: TransitionFlags) {
-  const chosen = transitionNameOf(name)
-  return chosen ? transitionFrom(chosen, flags) : null
+  return name === SAME_AS_PAGE_WORD ? null : transitionFrom(name, flags)
 }
 
 const RESIZE_SCROLL_HELP =
@@ -294,8 +290,8 @@ export function registerFrame(
       ).addArgument(
         new Argument(
           '<transition>',
-          'the transition, page to take the page’s',
-        ).choices([...TRANSITIONS, 'page']),
+          transitionHelp(`${SAME_AS_PAGE_WORD} to take the page’s`),
+        ),
       ),
     ),
     context,

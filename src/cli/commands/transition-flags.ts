@@ -8,7 +8,8 @@ import {
   takesDirection,
   type Transition,
   TRANSITION_MS,
-  type TransitionName,
+  TRANSITIONS,
+  TRANSITIONS_FOLDER,
 } from '@/shared/present-transition'
 
 import { parseInteger } from '../program'
@@ -35,11 +36,20 @@ export function withTransitionFlags(command: Command): Command {
 }
 
 /**
+ * What `<transition>` takes, closing on the word that clears it. The names
+ * are no fixed choice, since a project adds its own.
+ */
+export function transitionHelp(clearing: string): string {
+  return `the transition, one of ${TRANSITIONS.filter((name) => name !== 'none').join(', ')}, or the name of a stylesheet in the project’s assets/${TRANSITIONS_FOLDER} folder, ${clearing}`
+}
+
+/**
  * The transition a verb stores, refusing `usage` before anything is written
- * on a duration past the ceiling or a direction on a transition taking none.
+ * on a duration past the ceiling or a direction on a transition taking none,
+ * a project's own included. The setter refuses a name it does not know.
  */
 export function transitionFrom(
-  name: TransitionName,
+  name: string,
   { ms, direction }: TransitionFlags,
 ): Transition {
   if (ms !== undefined && ms > TRANSITION_MS.max) {

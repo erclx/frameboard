@@ -35,8 +35,10 @@ import {
   STEP_ATTRIBUTES,
   STEP_EFFECTS,
   STEP_STARTS,
+  TRANSITION_FILE_EXTENSION,
   TRANSITION_MS,
   TRANSITIONS,
+  TRANSITIONS_FOLDER,
 } from '@/shared/present-transition'
 import { LOOK_MARKER } from '@/shared/theme'
 
@@ -79,8 +81,9 @@ export function contentFormat() {
       "sections, when present, maps a section name to its x, y, width, height, and order. A frame belongs to the topmost section holding its center, left and top edges inside, and is never listed in it, so list --json names each section's frames and an agent moving a frame out of the box takes it out of the section. The developer writes sections by hand on the board.",
     ],
     present: [
-      `A page's slide transition sits on the present key of its ${LAYOUT_FILE} as { transition: { name, direction, ms } }, and a frame's entry may hold its own transition, which wins as that slide arrives. name is one of ${TRANSITIONS.join(', ')}. direction is one of ${DIRECTIONS.join(', ')}, taken by ${DIRECTED.join(' and ')} alone and defaulting to left. ms runs ${TRANSITION_MS.min} to ${TRANSITION_MS.max}, a frame's taking its page's when absent and the page's defaulting to ${DEFAULT_TRANSITION_MS}. Any other value reads as none and is kept on write. The board draws a transition itself and never writes it into a frame file.`,
-      "page transition <page-ref> <name> sets the page's, and none clears it so slides cut. frame transition <frame-ref> <name> sets a frame's, and page clears it so the frame takes its page's. Both take --ms and --direction and write only layout.json.",
+      `A page's slide transition sits on the present key of its ${LAYOUT_FILE} as { transition: { name, direction, ms } }, and a frame's entry may hold its own transition, which wins as that slide arrives. name is one of ${TRANSITIONS.join(', ')}, or one of the project's own. direction is one of ${DIRECTIONS.join(', ')}, taken by ${DIRECTED.join(' and ')} alone and defaulting to left. ms runs ${TRANSITION_MS.min} to ${TRANSITION_MS.max}, a frame's taking its page's when absent and the page's defaulting to ${DEFAULT_TRANSITION_MS}. Any other value reads as none and is kept on write. The board draws a transition itself and never writes it into a frame file.`,
+      `A project adds its own transition as a stylesheet at ${ASSETS_FOLDER}/${TRANSITIONS_FOLDER}/<name>${TRANSITION_FILE_EXTENSION}, set by <name> as a built-in is. The name is lowercase kebab case and never a built-in name, none, or page. The file holds @keyframes enter, which the arriving slide plays, optionally @keyframes leave, which the leaving slide plays or else holds still, and nothing else: no other rule or at-rule, and no url(), quoted string, or backslash escape in a value. The board plays those two keyframes over the transition's ms and never loads the file itself. It takes --ms and no direction, so a second file covers a second direction. A file breaking any of this is refused whole, reported by check and the write hook as transition-file, left out of list --json's transitions on its project, and a page or frame naming it cuts. Turning transition-file off silences the finding and the file stays refused.`,
+      "page transition <page-ref> <name> sets the page's, and none clears it so slides cut. frame transition <frame-ref> <name> sets a frame's, and page clears it so the frame takes its page's. Both take --ms and --direction, refuse usage on a name that is neither built in nor the project's own with the known names in the error's details, and write only layout.json.",
       `A step is an element present mode holds back until a press reveals it, marked by three attributes on that element and nothing else. ${STEP_ATTRIBUTES.step}="<n>" is a positive integer, and steps show in number order with equal numbers together and gaps closed. ${STEP_ATTRIBUTES.effect} is one of ${STEP_EFFECTS.join(', ')}, defaulting to appear. ${STEP_ATTRIBUTES.start} is one of ${STEP_STARTS.join(', ')}, defaulting to click, where with shows the step beside the one before it and after shows it once that one finishes. Set them with edit --attr. Edit, Play, capture, and an exported PNG show every step.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
