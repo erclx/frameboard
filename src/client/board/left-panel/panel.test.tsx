@@ -888,6 +888,41 @@ describe('LeftPanel', () => {
       )
     })
 
+    it('tints no unselected sibling of a selected element, nor its frame', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const user = userEvent.setup()
+      await user.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'footer' }))
+
+      const row = (name: string) =>
+        screen.getByRole('button', { name }).closest('li')
+      expect(row('footer')?.className).toContain('bg-primary')
+      expect(row('Card')?.className).not.toContain('bg-primary')
+      expect(
+        screen.getByRole('button', { name: 'Select hero' }).parentElement
+          ?.className,
+      ).not.toContain('bg-primary')
+    })
+
+    it('tints no element row under a selected frame', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const user = userEvent.setup()
+      await user.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Select hero' }))
+
+      expect(
+        screen.getByRole('button', { name: 'Card' }).closest('li')?.className,
+      ).not.toContain('bg-primary')
+    })
+
     it('opens the frame and the rows above an element selected elsewhere', () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))
