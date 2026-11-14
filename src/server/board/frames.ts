@@ -370,6 +370,65 @@ export async function resizeFrame(
   )
 }
 
+/** A frame a widths write names, with the list of widths the caller drew it showing. */
+export interface WidthsTarget {
+  ref: string
+  expected: readonly number[]
+}
+
+/**
+ * Sets the whole list of widths each frame also shows at, every frame in one
+ * write under one lock. A frame whose stored list differs from its `expected`
+ * refuses `stale-layout` before any frame is written, so a list an agent
+ * changed since the caller drew it is never overwritten. The list itself is
+ * refused as `resizeFrame --widths` refuses it.
+ */
+export async function setLinkedWidths(
+  root: string,
+  targets: readonly WidthsTarget[],
+  widths: readonly number[],
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord[]> {
+  const frames = await Promise.all(
+    targets.map(async (target) => ({
+      target,
+      frame: await resolveFrameRef(root, target.ref, options),
+    })),
+  )
+  await withLayouts(
+    frames.map(({ frame }) => pageDir(frame)),
+    async (layouts) => {
+      const next = frames.map(({ target, frame }) => {
+        const layout = layoutAt(layouts, pageDir(frame))
+        const placement = layout.placement(frame.name)
+        const frameRef = refOf(frame)
+        const stored = placement.widths.map((linked) => linked.width)
+        if (!isDeepStrictEqual(stored, target.expected)) {
+          throw new FrameboardError(
+            'stale-layout',
+            `${frameRef}'s widths changed since this edit began, so nothing was written.`,
+            { ref: frameRef, stored, expected: target.expected },
+          )
+        }
+        return {
+          layout,
+          name: frame.name,
+          placement: resizedPlacement(placement, frameRef, {}, { widths }),
+        }
+      })
+      for (const { layout, name, placement } of next) {
+        layout.set(name, placement)
+      }
+    },
+    options.journal,
+  )
+  return Promise.all(
+    frames.map(({ frame }) =>
+      frameRecord(root, frame.project, frame.page, frame.name),
+    ),
+  )
+}
+
 /** The placement `resizeFrame` writes, for the size it read off its options. */
 function resizedPlacement(
   placement: Placement,

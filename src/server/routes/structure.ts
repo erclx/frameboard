@@ -1,5 +1,4 @@
 import { join } from 'node:path'
-import { isDeepStrictEqual } from 'node:util'
 
 import { Hono } from 'hono'
 import { z } from 'zod'
@@ -13,11 +12,12 @@ import {
   orderFrame,
   readFrame,
   renameFrame,
-  resizeFrame,
   setFrameDevice,
   setFrameFlag,
   setFrameTransition,
   setHeightModes,
+  setLinkedWidths,
+  type WidthsTarget,
 } from '@/server/board/frames'
 import {
   addPage,
@@ -535,41 +535,27 @@ export function structureRoutes(
    * Sets the widths each frame also shows at, in one step, leaving every
    * frame file alone. A frame whose stored list differs from its `expected`
    * refuses `stale-layout` before any frame is written, so a hand write never
-   * drops a width an agent added since the board drew it. A locked frame
-   * refuses the whole write, and `resizeFrame` refuses the list itself.
+   * drops a width an agent added since the board drew it. The compare and
+   * the write share one layout lock. A locked frame refuses the whole write.
    */
   app.post('/api/frame/widths', async (c) => {
     const body = await parseBody(c.req.raw, frameWidthsSchema)
-    const expected = body.refs.map((ref) => {
-      const list = body.expected[ref]
-      if (!list) {
+    const targets: WidthsTarget[] = body.refs.map((ref) => {
+      const expected = body.expected[ref]
+      if (!expected) {
         throw new FrameboardError(
           'usage',
           `The body gives ${ref} no expected widths.`,
           { ref },
         )
       }
-      return list
+      return { ref, expected }
     })
     await refuseLocked(body.refs)
-    const records = await Promise.all(
-      body.refs.map((frame) => readFrame(root, frame, { cwd })),
-    )
-    records.forEach((record, at) => {
-      const stored = record.widths.map((linked) => linked.width)
-      if (!isDeepStrictEqual(stored, expected[at])) {
-        throw new FrameboardError(
-          'stale-layout',
-          `${record.ref}'s widths changed since this edit began, so nothing was written.`,
-          { ref: record.ref, stored, expected: expected[at] },
-        )
-      }
-    })
-    const frames = await eachFrame(
-      body.refs,
-      (frame, journal) =>
-        resizeFrame(root, frame, { widths: body.widths, cwd, journal }),
-      (written) => written.map((record) => record.ref),
+    const frames = await recorded(
+      (journal) =>
+        setLinkedWidths(root, targets, body.widths, { cwd, journal }),
+      (records) => onFrames(records.map((record) => record.ref)),
     )
     return c.json({ ok: true, data: frames })
   })
