@@ -15,7 +15,9 @@ import {
   type Holder,
   lockPath,
   release,
+  slotPath,
   tryAcquire,
+  tryAcquireSlot,
 } from './lib/machine-lock.ts'
 
 function holder(pid: number, cwd = '/repo/a'): Holder {
@@ -130,6 +132,84 @@ describe('release', () => {
 
   it('should do nothing when no lock exists', () => {
     expect(() => release(path, process.pid)).not.toThrow()
+  })
+})
+
+describe('tryAcquireSlot', () => {
+  it('should take slot one at the lock path itself when every slot is free', () => {
+    const me = holder(process.pid)
+
+    const result = tryAcquireSlot(path, 2, me)
+
+    expect(result).toEqual({ acquired: true, path })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(me)
+  })
+
+  it('should take slot two while a live run holds slot one', () => {
+    tryAcquireSlot(path, 2, holder(process.pid, '/repo/a'))
+    const me = holder(process.pid, '/repo/b')
+
+    const result = tryAcquireSlot(path, 2, me)
+
+    expect(result).toEqual({ acquired: true, path: slotPath(path, 2) })
+    expect(JSON.parse(readFileSync(slotPath(path, 2), 'utf8'))).toEqual(me)
+  })
+
+  it('should make a third run wait on two holders, naming both', () => {
+    const first = holder(process.pid, '/repo/a')
+    const second = holder(process.pid, '/repo/b')
+    tryAcquireSlot(path, 2, first)
+    tryAcquireSlot(path, 2, second)
+
+    const result = tryAcquireSlot(path, 2, holder(process.pid, '/repo/c'))
+
+    expect(result).toEqual({ acquired: false, holders: [first, second] })
+  })
+
+  it('should take slot two beside an old wrapper holding the lock file', () => {
+    // An older checkout's wrapper calls tryAcquire on the lock path alone.
+    const old = holder(process.pid, '/repo/old')
+    tryAcquire(path, old)
+
+    const result = tryAcquireSlot(path, 2, holder(process.pid, '/repo/new'))
+
+    expect(result).toEqual({ acquired: true, path: slotPath(path, 2) })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(old)
+  })
+
+  it('should wait on one holder when one slot is configured', () => {
+    const live = holder(process.pid, '/repo/a')
+    tryAcquireSlot(path, 1, live)
+
+    const result = tryAcquireSlot(path, 1, holder(process.pid, '/repo/b'))
+
+    expect(result).toEqual({ acquired: false, holders: [live] })
+    expect(existsSync(slotPath(path, 2))).toBe(false)
+  })
+
+  it('should take over exactly one stale slot', () => {
+    tryAcquireSlot(path, 2, holder(deadPid(), '/repo/a'))
+    writeFileSync(slotPath(path, 2), JSON.stringify(holder(deadPid())))
+    const me = holder(process.pid, '/repo/b')
+
+    const result = tryAcquireSlot(path, 2, me)
+
+    expect(result).toEqual({ acquired: true, path })
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(me)
+    expect(JSON.parse(readFileSync(slotPath(path, 2), 'utf8')).pid).not.toBe(
+      process.pid,
+    )
+  })
+})
+
+describe('slotPath', () => {
+  it('should keep slot one at the lock path and number the rest', () => {
+    expect(slotPath('/c/frameboard/test.lock', 1)).toBe(
+      '/c/frameboard/test.lock',
+    )
+    expect(slotPath('/c/frameboard/test.lock', 2)).toBe(
+      '/c/frameboard/test.2.lock',
+    )
   })
 })
 

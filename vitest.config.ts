@@ -35,6 +35,11 @@ export default mergeConfig(
             name: 'browser',
             include: ['src/client/**/*.test.{ts,tsx}'],
             setupFiles: ['src/test/setup.ts'],
+            // Vitest's own browser defaults, pinned so a change to them shows
+            // here. They run in the page, so a page that stops running stops
+            // them too, and scripts/test-locked.ts bounds the whole run.
+            testTimeout: 15_000,
+            hookTimeout: 30_000,
             browser: {
               enabled: true,
               provider: playwright(),

@@ -167,12 +167,23 @@ One covers parallel source runs.
 
 ### Test lock
 
-`scripts/test-locked.ts` holds one lock across every checkout on the machine, so a heavy run waits for another worktree's rather than starving it.
+`scripts/test-locked.ts` holds a lock of numbered slots across every checkout on the machine, so a heavy run waits while two others hold it rather than starving them.
 
-- `test:run`, `test:e2e`, and `test:e2e:changed` take it, at `~/Library/Caches/frameboard/test.lock` on macOS and under `${XDG_CACHE_HOME:-~/.cache}/frameboard/` on Linux
-- A lock whose holder exited is taken over on the next poll, so delete the file by hand only when the waiting line names a live pid that runs no test
+- `test:run`, `test:e2e`, and `test:e2e:changed` take it, at `~/Library/Caches/frameboard/` on macOS and under `${XDG_CACHE_HOME:-~/.cache}/frameboard/` on Linux
+- Slot one is `test.lock` and slot two `test.2.lock`. A wrapper from before slots takes `test.lock` alone, so a worktree on an older commit can overlap two newer runs until it rebases.
+- A slot whose holder exited, even a wrapper ended by KILL, is taken over on the next poll, so delete a file by hand only when the waiting line names a live pid that runs no test
 - `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` or `pre-push` waiting on the lock looks hung until its run ends
 - `canon tooling diff web .` marks seven scripts with `!`, being the project's forms to keep, and `--write` rewrites `lint`, `lint:fix`, and `screenshot`, so restore them after one
+
+### Test time limit
+
+The wrapper's settings, and the bound on a run that hangs, so a stuck run no longer holds a slot for good.
+
+- `FRAMEBOARD_TEST_SLOTS` sets how many runs go at once, default 2, and `1` restores one at a time
+- `FRAMEBOARD_TEST_LIMIT` bounds a run in seconds from when its command starts, default 900, 0 for none, and off when `CI` is set unless given
+- At the limit the wrapper prints `killing '<command>' after the <n> s limit`, sends TERM to the command and every process it started, KILL to any left after 3 seconds, frees the slot, and exits 124
+- The kill walks parent pids from `ps` and remembers each process it saw once a second, so a child whose parent exited before any poll saw it survives
+- The browser project's 15 second test and 30 second hook timeouts run in the page, so a page that stops running never trips them, and the limit is the bound that holds then
 
 ### Preview servers
 
