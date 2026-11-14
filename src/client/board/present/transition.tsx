@@ -1,6 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-import type { Direction } from '@/shared/present-transition'
+import {
+  type Direction,
+  ownKeyframesName,
+  transitionNameOf,
+} from '@/shared/present-transition'
 
 import type { Travel } from './travel'
 
@@ -68,12 +72,25 @@ const KEYFRAMES = `
 }
 `
 
-/** The keyframes every layer plays, mounted once inside the overlay. */
-export function TransitionKeyframes() {
-  return <style>{KEYFRAMES}</style>
+/**
+ * The keyframes every layer plays, mounted once inside the overlay. `own`
+ * holds those of the presented project's own transitions, which the server
+ * read out of its files and renamed, so nothing else a file held is here.
+ */
+export function TransitionKeyframes({ own }: { own: string }) {
+  return (
+    <>
+      <style>{KEYFRAMES}</style>
+      {own === '' ? null : <style data-own-transitions>{own}</style>}
+    </>
+  )
 }
 
-function layerStyle(role: LayerRole, { transition, back }: Travel) {
+function layerStyle(
+  role: LayerRole,
+  { transition, back }: Travel,
+  project: string,
+) {
   const { name, ms } = transition
   const direction =
     transition.direction && back
@@ -85,12 +102,19 @@ function layerStyle(role: LayerRole, { transition, back }: Travel) {
     '--from-y': from.y,
     '--to-x': from.x.startsWith('-') ? from.x.slice(1) : `-${from.x}`,
     '--to-y': from.y.startsWith('-') ? from.y.slice(1) : `-${from.y}`,
-    animation: `${animationName(name, role)} ${ms}ms cubic-bezier(0.4, 0, 0.2, 1) both`,
+    animation: `${animationName(name, role, project)} ${ms}ms cubic-bezier(0.4, 0, 0.2, 1) both`,
   } as CSSProperties
 }
 
-function animationName(name: string, role: LayerRole): string {
-  return `fb-present-${name}-${role}`
+/**
+ * The keyframes a layer plays. A project's own transition holding no
+ * `leave` names keyframes that do not exist, so its leaving slide holds
+ * still under the arriving one.
+ */
+function animationName(name: string, role: LayerRole, project: string): string {
+  return transitionNameOf(name)
+    ? `fb-present-${name}-${role}`
+    : ownKeyframesName(project, name, role)
 }
 
 /**
@@ -102,10 +126,13 @@ function animationName(name: string, role: LayerRole): string {
 export function TransitionLayer({
   role,
   travel,
+  project,
   children,
 }: {
   role: LayerRole
   travel: Travel
+  /** The presented page's project, which names its own transitions' keyframes. */
+  project: string
   children: ReactNode
 }) {
   const playing = travel.transition.name !== 'none'
@@ -115,7 +142,7 @@ export function TransitionLayer({
       data-transition={playing ? travel.transition.name : undefined}
       inert={role === 'leave' || undefined}
       className="absolute inset-0 overflow-hidden data-[present-layer=leave]:pointer-events-none data-[present-layer=leave]:-z-10"
-      style={playing ? layerStyle(role, travel) : undefined}
+      style={playing ? layerStyle(role, travel, project) : undefined}
     >
       {children}
     </div>

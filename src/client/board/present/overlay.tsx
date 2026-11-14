@@ -21,6 +21,11 @@ import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
+import {
+  fetchOwnTransitions,
+  type LoadTransitions,
+  useOwnKeyframes,
+} from './own-transitions'
 import { readSteps, showSteps, type StepGroup, touchesSteps } from './steps'
 import {
   countSteps,
@@ -192,9 +197,14 @@ function useRoom(element: RefObject<HTMLElement | null>) {
 /**
  * The presented page, one frame at a time over the whole window, drawn on
  * black and scaled to fit. Mounted by the board screen and rendering nothing
- * until a page presents.
+ * until a page presents. `loadTransitions` reads the presented project's
+ * own transitions, from the board server unless given.
  */
-export function PresentOverlay() {
+export function PresentOverlay({
+  loadTransitions = fetchOwnTransitions,
+}: {
+  loadTransitions?: LoadTransitions
+}) {
   const pageRef = usePresent((state) => state.page)
   const frameRef = usePresent((state) => state.frame)
   const leaving = usePresent((state) => state.leaving)
@@ -219,6 +229,7 @@ export function PresentOverlay() {
       leaving={left && leaving ? { ...leaving, frame: left } : null}
       at={at + 1}
       count={order.length}
+      loadTransitions={loadTransitions}
     />,
     document.body,
   )
@@ -231,10 +242,25 @@ interface PresentingProps {
   leaving: { frame: FrameRecord; travel: Travel; id: number } | null
   at: number
   count: number
+  loadTransitions: LoadTransitions
 }
 
-function Presenting({ frame, leaving, at, count }: PresentingProps) {
+function Presenting({
+  frame,
+  leaving,
+  at,
+  count,
+  loadTransitions,
+}: PresentingProps) {
   const layer = useRef<HTMLDivElement>(null)
+  const project = frame?.project
+  const ownNames = useLive(
+    (state) =>
+      state.board?.projects
+        .find((candidate) => candidate.name === project)
+        ?.transitions.join(',') ?? '',
+  )
+  const ownKeyframes = useOwnKeyframes(project, ownNames, loadTransitions)
   const step = usePresent((state) =>
     state.step === 'last' ? state.steps : Math.min(state.step, state.steps),
   )
@@ -283,9 +309,14 @@ function Presenting({ frame, leaving, at, count }: PresentingProps) {
       onPointerMove={wake}
       className="fixed inset-0 z-50 overflow-hidden bg-black outline-none perspective-[2000px]"
     >
-      <TransitionKeyframes />
+      <TransitionKeyframes own={ownKeyframes} />
       {layers.map(({ frame: drawn, role }) => (
-        <TransitionLayer key={drawn.ref} role={role} travel={travel}>
+        <TransitionLayer
+          key={drawn.ref}
+          role={role}
+          travel={travel}
+          project={frame.project}
+        >
           <ScaledFrame
             frame={drawn}
             room={room}

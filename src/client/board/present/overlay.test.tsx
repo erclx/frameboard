@@ -14,6 +14,7 @@ import { useBoardActions } from '../board-actions'
 import { selectionStore } from '../selection'
 import { fitScale } from './fit'
 import { PresentOverlay } from './overlay'
+import type { LoadTransitions } from './own-transitions'
 import { presentStore, startPresenting, stepPresenting } from './store'
 
 /** One row on the canvas, laid left to right in the order named, so reading order follows it. */
@@ -37,23 +38,39 @@ function withTransition(
   )
 }
 
-function Board() {
+function Board({ loadTransitions }: { loadTransitions?: LoadTransitions }) {
   useBoardActions()
-  return <PresentOverlay />
+  return <PresentOverlay loadTransitions={loadTransitions} />
+}
+
+/** What the project holds of its own: the names its record lists, and the read that answers their keyframes. */
+interface Own {
+  names: string[]
+  load: LoadTransitions
 }
 
 function present(
   frames: FrameRecord[],
   selected: string[] = [],
   transition?: Transition,
+  own?: Own,
 ) {
   const page = { ...pageOf(frames), ...(transition ? { transition } : {}) }
-  liveStore.setState({ board: boardOf(page) })
+  const board = boardOf(page)
+  liveStore.setState({
+    board: {
+      ...board,
+      projects: board.projects.map((project) => ({
+        ...project,
+        transitions: own?.names ?? [],
+      })),
+    },
+  })
   selectionStore.setState({
     page: selected.length > 0 ? page.ref : null,
     frames: selected.map((name) => `studio/home/${name}`),
   })
-  render(<Board />)
+  render(<Board loadTransitions={own?.load} />)
   act(() => startPresenting(page))
 }
 
@@ -326,6 +343,119 @@ describe('a transition between slides', () => {
     expect(titled('first')).toBeNull()
     expect(animationOf('second')).toBe('fb-present-fade-leave')
     expect(animationOf('third')).toBe('fb-present-fade-enter')
+  })
+
+  describe("of the project's own", () => {
+    const WIPE = {
+      name: 'wipe',
+      css: '@keyframes fb-own-studio--wipe-enter { from { opacity: 0 } to { opacity: 1 } }\n@keyframes fb-own-studio--wipe-leave { to { opacity: 0 } }',
+    }
+    const arrived: Own = {
+      names: ['wipe'],
+      load: async () => ({ transitions: [WIPE] }),
+    }
+    /** Lets the read the overlay started answer. */
+    const settle = () => act(async () => {})
+    const playing = (name: string) =>
+      titled(name)?.closest('[data-present-layer]')?.getAnimations().length
+
+    it('plays its renamed keyframes on both layers', async () => {
+      present(framesOf('first', 'second'), [], { name: 'wipe' }, arrived)
+      await settle()
+
+      act(() => stepPresenting(1))
+
+      expect(animationOf('second')).toBe('fb-own-studio--wipe-enter')
+      expect(animationOf('first')).toBe('fb-own-studio--wipe-leave')
+      expect(playing('second')).toBe(1)
+      expect(playing('first')).toBe(1)
+    })
+
+    it('holds the leaving slide still for one with no leave keyframes', async () => {
+      present(
+        framesOf('first', 'second'),
+        [],
+        { name: 'wipe' },
+        {
+          names: ['wipe'],
+          load: async () => ({
+            transitions: [
+              {
+                name: 'wipe',
+                css: '@keyframes fb-own-studio--wipe-enter { from { opacity: 0 } }',
+              },
+            ],
+          }),
+        },
+      )
+      await settle()
+
+      act(() => stepPresenting(1))
+
+      expect(playing('second')).toBe(1)
+      expect(playing('first')).toBe(0)
+    })
+
+    it('takes the leaving slide away once it ends', async () => {
+      present(
+        framesOf('first', 'second'),
+        [],
+        { name: 'wipe', ms: 400 },
+        arrived,
+      )
+      await settle()
+      act(() => stepPresenting(1))
+
+      act(() => vi.advanceTimersByTime(400))
+
+      expect(titled('first')).toBeNull()
+    })
+
+    it('cuts on a step taken before its keyframes arrive', () => {
+      present(
+        framesOf('first', 'second'),
+        [],
+        { name: 'wipe' },
+        {
+          names: ['wipe'],
+          load: () => new Promise(() => {}),
+        },
+      )
+
+      act(() => stepPresenting(1))
+
+      expect(titled('first')).toBeNull()
+      expect(animationOf('second')).toBe('none')
+    })
+
+    it('cuts when the read is refused', async () => {
+      present(
+        framesOf('first', 'second'),
+        [],
+        { name: 'wipe' },
+        {
+          names: ['wipe'],
+          load: async () => null,
+        },
+      )
+      await settle()
+
+      act(() => stepPresenting(1))
+
+      expect(titled('first')).toBeNull()
+    })
+
+    it('cuts under reduced motion', async () => {
+      await emulateReducedMotion(true)
+      present(framesOf('first', 'second'), [], { name: 'wipe' }, arrived)
+      await settle()
+
+      act(() => stepPresenting(1))
+
+      expect(titled('first')).toBeNull()
+      expect(animationOf('second')).toBe('none')
+      await emulateReducedMotion(false)
+    })
   })
 
   describe('under reduced motion', () => {
