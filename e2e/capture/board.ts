@@ -3566,6 +3566,7 @@ const CASES: CaptureCase[] = [
       mask: [AVATAR],
       setup: both(
         aboutAtTabletWidth,
+        noAgentChanges,
         browserSwept,
         chosenTheme(theme),
         readyWhen('[data-linked-width="834"] iframe'),
