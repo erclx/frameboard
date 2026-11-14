@@ -156,6 +156,7 @@ These catch the toolchain out.
 - `canon sync` writes `canon/config/config.json` in a shape oxfmt rejects, so run `bun run format` before the commit
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
 - `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 6173
+- A cold faces cache under `node_modules/.cache/frameboard/` is safe to fill from parallel source runs, since `writeFaces` keeps a complete folder another run placed first
 
 One catches the landing page out.
 
