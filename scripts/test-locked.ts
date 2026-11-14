@@ -8,7 +8,7 @@
 // FRAMEBOARD_TEST_SLOTS: runs admitted at once across the machine, default 2.
 // FRAMEBOARD_TEST_LIMIT: seconds a command may run, default 900, 0 for none,
 // and off by default when CI is set, since a CI job carries its own timeout.
-import { execFileSync, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { constants, homedir } from 'node:os'
 
 import {
@@ -17,6 +17,7 @@ import {
   release,
   tryAcquireSlot,
 } from './lib/machine-lock.ts'
+import { processTable } from './lib/process-table.ts'
 
 const POLL_MS = 1000
 // How long a process has to exit on TERM before it is sent KILL.
@@ -128,7 +129,7 @@ if (limitMs > 0) {
 }
 
 async function killRun(seen: Map<number, string>): Promise<void> {
-  const table = processes()
+  const table = processTable(process.platform)
   for (const [pid, started] of descendants(table)) seen.set(pid, started)
   // Deepest first, so a parent is not left to restart a child it lost.
   const tree = [...seen.keys()]
@@ -136,7 +137,7 @@ async function killRun(seen: Map<number, string>): Promise<void> {
     .filter((pid) => table.get(pid)?.started === seen.get(pid))
     .reverse()
   // The command itself is signalled and watched through its handle, so a
-  // `ps` that fails can never free the slot while the command still runs.
+  // table read that fails can never free the slot while the command still runs.
   const command = childRuns() && child.pid !== undefined ? [child.pid] : []
   const count = tree.length + command.length
   say(
@@ -163,34 +164,10 @@ function childRuns(): boolean {
   return child.exitCode === null && child.signalCode === null
 }
 
-interface Row {
-  ppid: number
-  started: string
-}
-
-// `ps -eo pid=,ppid=,lstart=` reads alike on macOS and Linux.
-function processes(): Map<number, Row> {
-  const table = new Map<number, Row>()
-  let out: string
-  try {
-    out = execFileSync('ps', ['-eo', 'pid=,ppid=,lstart='], {
-      encoding: 'utf8',
-    })
-  } catch {
-    return table
-  }
-  for (const line of out.split('\n')) {
-    const [, pid, ppid, started] =
-      /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line) ?? []
-    if (pid && ppid && started) {
-      table.set(Number(pid), { ppid: Number(ppid), started })
-    }
-  }
-  return table
-}
-
 /** The command and its descendants, parents ahead of their children. */
-function descendants(table = processes()): Map<number, string> {
+function descendants(
+  table = processTable(process.platform),
+): Map<number, string> {
   const children = new Map<number, number[]>()
   for (const [pid, row] of table) {
     children.set(row.ppid, [...(children.get(row.ppid) ?? []), pid])
@@ -210,7 +187,7 @@ function descendants(table = processes()): Map<number, string> {
 }
 
 function stillRuns(pid: number, seen: Map<number, string>): boolean {
-  return processes().get(pid)?.started === seen.get(pid)
+  return processTable(process.platform).get(pid)?.started === seen.get(pid)
 }
 
 function signalAll(pids: number[], signal: NodeJS.Signals): void {
