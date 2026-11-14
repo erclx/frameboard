@@ -38,7 +38,9 @@ Two flags hold a frame's motion still at moments its timeline names.
 
 The PNG route's `device=1` draws a frame holding a device inside its body on a second page, its corners past the body transparent, and leaves a frame holding none bare. Beside `filmstrip=<n>` it refuses as `usage`, since a filmstrip draws no device.
 
-The PNG route's `element=<index>&hash=<hash>` renders one element alone at its own box, which can run past the frame's, with everything else hidden by `visibility` and the ground transparent. It answers 409 `stale-address` when the file's hash moved before or during the render and 422 `invalid-address` for an index naming no element or one with no layout box. Beside `filmstrip` or `device`, or with only one of the pair, it refuses as `usage`.
+- The route's `element=<index>&hash=<hash>` renders one element alone at its own box, which can run past the frame's, on a transparent ground
+- It answers 409 `stale-address` when the file's hash moved before or during the render, and 422 `invalid-address` for an index naming none or one with no layout box
+- Beside `filmstrip` or `device`, or with one of the pair alone, it refuses as `usage`
 
 The server side shares one browser and renders only on demand.
 
@@ -85,4 +87,4 @@ A seeked shot skips that settle.
 These catch an element address out.
 
 - Inspect prints nothing and refuses `invalid-address` for an index with no layout box, `address-mismatch` when the live tag order leaves the file's, and `stale-address` when the file changed mid-load
-- Eight readers count elements and cannot share code, being `readTextElements`, `waitForImages`, `waitForVideos`, inspect's, the element shot's, the client pick, and the two browser checks, so `LOOK_MARKER` moves all eight
+- Eight readers count elements and share no code: `readTextElements`, `waitForImages`, `waitForVideos`, inspect, the element shot, the client pick, and two browser checks. `LOOK_MARKER` moves all eight.
