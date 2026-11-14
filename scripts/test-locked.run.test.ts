@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { lockPath, release, slotPath, tryAcquire } from './lib/machine-lock.ts'
 
 const WRAPPER = join(import.meta.dirname, 'test-locked.ts')
+// Resolved once, so a case can hand the wrapper a PATH that finds nothing.
+const BUN = execFileSync('which', ['bun'], { encoding: 'utf8' }).trim()
 
 interface Run {
   code: number | null
@@ -29,7 +31,7 @@ afterEach(() => {
 })
 
 function wrap(settings: Record<string, string>, command: string[]): Run {
-  const run = spawnSync('bun', [WRAPPER, ...command], {
+  const run = spawnSync(BUN, [WRAPPER, ...command], {
     encoding: 'utf8',
     env: wrapperEnv(settings),
   })
@@ -40,7 +42,7 @@ function wrapAsync(
   settings: Record<string, string>,
   command: string[],
 ): Promise<Run> {
-  const child = spawn('bun', [WRAPPER, ...command], {
+  const child = spawn(BUN, [WRAPPER, ...command], {
     env: wrapperEnv(settings),
   })
   let stderr = ''
@@ -105,14 +107,27 @@ describe('the time limit', { timeout: 20_000 }, () => {
   it('should kill a process whose parent exited before the limit', () => {
     const orphan = marker()
 
-    const run = wrap({ FRAMEBOARD_TEST_LIMIT: '3' }, [
+    // The intermediate lives 6 s, so a poll a few seconds late still sees it.
+    const run = wrap({ FRAMEBOARD_TEST_LIMIT: '8' }, [
       'bash',
       '-c',
-      `(sleep ${orphan} & sleep 1.5) & exec sleep ${marker()}`,
+      `(sleep ${orphan} & sleep 6) & exec sleep ${marker()}`,
     ])
 
     expect(run.code).toBe(124)
     expect(running(`sleep ${orphan}`)).toBe(false)
+  })
+
+  it('should kill the command itself when ps cannot run', () => {
+    const stub = marker()
+
+    const run = wrap({ FRAMEBOARD_TEST_LIMIT: '1', PATH: home }, [
+      '/bin/sleep',
+      stub,
+    ])
+
+    expect(run.code).toBe(124)
+    expect(running(`sleep ${stub}`)).toBe(false)
   })
 
   it("should exit with the command's own code when a limit of 0 turns it off", () => {
@@ -134,11 +149,13 @@ describe('the time limit', { timeout: 20_000 }, () => {
       startedAt: '2026-11-14T10:00:00.000Z',
     }
     tryAcquire(lock, other)
-    setTimeout(() => release(lock, process.pid), 2000)
+    // Counting the 4 s queue trips the 3 s limit, and the 0.5 s command
+    // leaves room for a stall when the clock starts where it should.
+    setTimeout(() => release(lock, process.pid), 4000)
 
     const run = await wrapAsync(
-      { FRAMEBOARD_TEST_SLOTS: '1', FRAMEBOARD_TEST_LIMIT: '2.5' },
-      ['bash', '-c', 'sleep 1.5; exit 3'],
+      { FRAMEBOARD_TEST_SLOTS: '1', FRAMEBOARD_TEST_LIMIT: '3' },
+      ['bash', '-c', 'sleep 0.5; exit 3'],
     )
 
     expect(run.stderr).toContain('waiting on pid')

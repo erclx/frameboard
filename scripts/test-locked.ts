@@ -131,24 +131,36 @@ async function killRun(seen: Map<number, string>): Promise<void> {
   const table = processes()
   for (const [pid, started] of descendants(table)) seen.set(pid, started)
   // Deepest first, so a parent is not left to restart a child it lost.
-  const targets = [...seen.keys()]
+  const tree = [...seen.keys()]
+    .filter((pid) => pid !== child.pid)
     .filter((pid) => table.get(pid)?.started === seen.get(pid))
     .reverse()
-  const seconds = limitMs / 1000
+  // The command itself is signalled and watched through its handle, so a
+  // `ps` that fails can never free the slot while the command still runs.
+  const command = childRuns() && child.pid !== undefined ? [child.pid] : []
+  const count = tree.length + command.length
   say(
-    `killing '${me.command}' after the ${seconds} s limit, with ${targets.length} process${targets.length === 1 ? '' : 'es'}. FRAMEBOARD_TEST_LIMIT sets it`,
+    `killing '${me.command}' after the ${limitMs / 1000} s limit, with ${count} process${count === 1 ? '' : 'es'}. FRAMEBOARD_TEST_LIMIT sets it`,
   )
-  signalAll(targets, 'SIGTERM')
+  signalAll([...tree, ...command], 'SIGTERM')
+  const left = () => [
+    ...tree.filter((pid) => stillRuns(pid, seen)),
+    ...command.filter(() => childRuns()),
+  ]
   const deadline = Date.now() + GRACE_MS
-  while (Date.now() < deadline && targets.some((pid) => stillRuns(pid, seen))) {
+  while (Date.now() < deadline && left().length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  signalAll(
-    targets.filter((pid) => stillRuns(pid, seen)),
-    'SIGKILL',
-  )
+  signalAll(left(), 'SIGKILL')
+  if (childRuns()) {
+    await new Promise((resolve) => child.once('exit', resolve))
+  }
   release(slot, process.pid)
   process.exit(124)
+}
+
+function childRuns(): boolean {
+  return child.exitCode === null && child.signalCode === null
 }
 
 interface Row {
