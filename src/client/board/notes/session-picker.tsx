@@ -48,7 +48,7 @@ export function SessionPicker({
   const none = listeners.length === 0 && !dispatch
   const unsent = listeners.length === 0 && (none || optional)
   return (
-    <label className="relative flex h-[26px] min-w-0 items-center gap-1.5 rounded-md bg-muted pr-6 pl-2 text-foreground has-[select:disabled]:opacity-60 has-[select:focus-visible]:ring-3 has-[select:focus-visible]:ring-ring/50">
+    <label className="relative flex h-[26px] min-w-0 items-center gap-1.5 rounded-md bg-muted pr-6 pl-2 text-foreground has-[select:disabled]:opacity-60 has-focus-visible:ring-3 has-focus-visible:ring-ring/50">
       <span aria-hidden className="size-[7px] shrink-0 rounded-full bg-claim" />
       <span className="sr-only">Send to</span>
       <select

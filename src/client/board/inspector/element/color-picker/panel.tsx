@@ -311,7 +311,7 @@ function Bar({ label, value, max, onChange, background }: BarProps) {
         >
           <Slider.Thumb
             aria-label={label}
-            className="size-3.5 rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,.35)] select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/50"
+            className="size-3.5 rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,.35)] select-none has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
           />
         </Slider.Track>
       </Slider.Control>

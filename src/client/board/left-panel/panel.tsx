@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   type LayoutStorage,
+  type PanelImperativeHandle,
   useDefaultLayout,
   usePanelRef,
 } from 'react-resizable-panels'
@@ -46,16 +47,39 @@ function splitId(project: string): string {
 
 /**
  * Pixels. A row is 26 tall under a 29 heading and a 7 gap, with 12 of room
- * under the last row so the divider never crowds it. The fit holds four to
- * eight rows, while a drag may take the list down to `PAGES_MIN`.
+ * under the last row so the divider never crowds it. A new split opens at
+ * four to eight rows, while a drag may take the list down to `PAGES_MIN`. A
+ * double-click fits every page, stopping where Layers would show fewer than
+ * three rows under its heading, `LAYERS_FLOOR`.
  */
 const ROW_HEIGHT = 26
 const PAGES_GAP = 7
 const PAGES_ROOM = 12
 const PAGES_MIN = 64
+const LAYERS_FLOOR = 29 + 3 * ROW_HEIGHT
 
 function rowsHeight(rows: number): number {
   return 29 + PAGES_GAP + rows * ROW_HEIGHT + PAGES_ROOM
+}
+
+/**
+ * Every page's rows, capped by the height the two panels share as read at
+ * the call, so a resized window caps it afresh.
+ */
+function everyPageHeight(
+  pages: number,
+  split: {
+    pages: PanelImperativeHandle | null
+    layers: PanelImperativeHandle | null
+  },
+): number {
+  const shared =
+    (split.pages?.getSize().inPixels ?? 0) +
+    (split.layers?.getSize().inPixels ?? 0)
+  return Math.max(
+    Math.min(rowsHeight(Math.max(pages, 4)), shared - LAYERS_FLOOR),
+    PAGES_MIN,
+  )
 }
 
 const TAB =
@@ -83,13 +107,16 @@ export function LeftPanel({
     storage,
   })
   const pagesPanel = usePanelRef()
+  const layersPanel = usePanelRef()
   // The reset is the panel's own resize rather than a drag, which the
   // layout hook would skip saving, so the change it causes is marked as the
   // developer's.
   const resetting = useRef(false)
   const pagesHeight = rowsHeight(Math.min(Math.max(project.pages.length, 4), 8))
   // A page added grows a split shorter than the new fit, so the new page
-  // shows, and leaves one already taller. Counts compare within one project,
+  // shows, and leaves one already taller. A list that showed every page
+  // before the add grows to show every page after it, so a list fit by
+  // double-click keeps fitting. Counts compare within one project,
   // since another project's list is a different split. A hidden Design tab
   // unmounts the split, so the count holds until it shows again, and the
   // check waits a frame for a remounted group to measure its height.
@@ -108,12 +135,27 @@ export function LeftPanel({
         project.pages.length <= before.pages
       )
         return
-      if (panel.getSize().inPixels > pagesHeight - 1) return
+      const size = panel.getSize().inPixels
+      const showedEvery = size > rowsHeight(before.pages) - 1
+      const target = showedEvery
+        ? everyPageHeight(project.pages.length, {
+            pages: panel,
+            layers: layersPanel.current,
+          })
+        : pagesHeight
+      if (size > target - 1) return
       resetting.current = true
-      panel.resize(pagesHeight)
+      panel.resize(target)
     })
     return () => cancelAnimationFrame(frame)
-  }, [splitShown, project.name, project.pages.length, pagesHeight, pagesPanel])
+  }, [
+    splitShown,
+    project.name,
+    project.pages.length,
+    pagesHeight,
+    pagesPanel,
+    layersPanel,
+  ])
   const shown = project.pages.find((candidate) => candidate.name === page)
   const frames = shown?.frames ?? []
   return (
@@ -170,16 +212,16 @@ export function LeftPanel({
                 disableDoubleClick
                 onDoubleClick={() => {
                   const panel = pagesPanel.current
+                  if (!panel) return
+                  const target = everyPageHeight(project.pages.length, {
+                    pages: panel,
+                    layers: layersPanel.current,
+                  })
                   // A split already at its fit changes no layout, so no
                   // change would arrive to clear the mark.
-                  if (
-                    !panel ||
-                    Math.abs(panel.getSize().inPixels - pagesHeight) < 1
-                  ) {
-                    return
-                  }
+                  if (Math.abs(panel.getSize().inPixels - target) < 1) return
                   resetting.current = true
-                  panel.resize(pagesHeight)
+                  panel.resize(target)
                 }}
                 className="group cursor-row-resize aria-[orientation=horizontal]:h-[9px] border-t border-sidebar-border bg-transparent after:hidden focus-visible:ring-0 data-[separator=active]:border-t-2 data-[separator=active]:border-faint focus-visible:border-t-2 focus-visible:border-primary"
               >
@@ -188,7 +230,11 @@ export function LeftPanel({
                   className="h-[3px] w-7 rounded-[2px] bg-faint group-data-[separator=active]:bg-muted-foreground group-focus-visible:bg-primary"
                 />
               </ResizableHandle>
-              <ResizablePanel id="layers" minSize={PAGES_MIN}>
+              <ResizablePanel
+                id="layers"
+                panelRef={layersPanel}
+                minSize={PAGES_MIN}
+              >
                 <LayersList
                   frames={frames}
                   sections={shown?.sections}

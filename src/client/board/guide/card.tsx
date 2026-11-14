@@ -404,7 +404,7 @@ function Choice({
   return (
     <label
       className={cn(
-        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-[input:focus-visible]:ring-3 has-[input:focus-visible]:ring-ring/50 has-disabled:opacity-60',
+        'relative has-checked:border-primary has-checked:shadow-[0_0_0_1px_var(--primary)] has-[input:focus-visible:not([data-pointer-focus])]:ring-3 has-[input:focus-visible:not([data-pointer-focus])]:ring-ring/50 has-disabled:opacity-60',
         className,
       )}
     >

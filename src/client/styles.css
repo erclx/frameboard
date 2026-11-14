@@ -4,6 +4,8 @@
 @import '@fontsource-variable/geist';
 
 @custom-variant dark (&:is(.dark *));
+/* A control focused by a pointer carries data-pointer-focus, set in focus/pointer-mark.ts, so its ring shows for keyboard focus alone. */
+@custom-variant focus-visible (&:focus-visible:where(:not([data-pointer-focus])));
 
 @theme {
   --text-title: 20px;

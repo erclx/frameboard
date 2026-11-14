@@ -139,6 +139,33 @@ test.describe('the board', () => {
     await expect(chip).toContainText('plans')
   })
 
+  test('rings a Layers row for keyboard focus alone, never after its click', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/home`)
+    const layers = page.getByRole('region', { name: 'Layers' })
+    const select = layers.getByRole('button', { name: 'Select hero' })
+    const chevron = layers.getByRole('button', {
+      name: 'Show the elements of hero',
+    })
+    const ring = (target: typeof select) =>
+      target.evaluate((element) => getComputedStyle(element).boxShadow)
+
+    await select.click()
+    await page.keyboard.down('Shift')
+    await expect(select).toBeFocused()
+    await expect.poll(() => ring(select), { timeout: 5000 }).toBe('none')
+    await page.keyboard.up('Shift')
+
+    await page.keyboard.press('Shift+Tab')
+    await expect(chevron).toBeFocused()
+    await expect.poll(() => ring(chevron), { timeout: 5000 }).not.toBe('none')
+
+    await page.keyboard.press('Tab')
+    await expect(select).toBeFocused()
+    await expect.poll(() => ring(select), { timeout: 5000 }).not.toBe('none')
+  })
+
   test('holds no live page for a frame far offscreen', async ({ page }) => {
     await page.goto(`${server.url}/p/studio/pricing`)
     const canvas = liveCanvas(page)

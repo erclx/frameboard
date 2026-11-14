@@ -2247,6 +2247,135 @@ async function rulesOff(page: Page): Promise<void> {
 }
 
 /**
+ * Opens hero's rows in Layers down to the Command its Caption holds, selects
+ * the Headline, and Shift-clicks the Command, so two rows are selected with
+ * the Caption between them left unselected. Waits in an init script as
+ * `pressOnLoad` does.
+ */
+async function twoLayersSelected(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const row = (name: string) =>
+      [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          'ul[aria-label="Elements of hero"] button:not([aria-label])',
+        ),
+      ].find((button) => button.textContent?.trim() === name)
+    const run = () => {
+      const open = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Show the elements of hero"]',
+      )
+      const headline = row('Headline')
+      const command = row('Command')
+      if (headline && command) {
+        headline.click()
+        command.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            shiftKey: true,
+          }),
+        )
+        return
+      }
+      const caption = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Show what Caption holds"]',
+      )
+      if (open?.getAttribute('aria-expanded') === 'false') open.click()
+      else if (caption?.getAttribute('aria-expanded') === 'false') {
+        caption.click()
+      }
+      if (--left > 0) requestAnimationFrame(run)
+      else console.error("hero's element rows never drew")
+    }
+    document.addEventListener('DOMContentLoaded', run)
+  }, ROW_FRAMES)
+}
+
+/**
+ * Focuses hero's Layers row once it draws, after a pointer press when
+ * `pointer` is set and with no press otherwise, so the shot shows the ring a
+ * keyboard reaches and the ringless row a click leaves.
+ */
+function focusHeroRow(pointer: boolean): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ pointer, frames }) => {
+        let left = frames
+        const run = () => {
+          const row = document.querySelector<HTMLButtonElement>(
+            'button[aria-label="Select hero"]',
+          )
+          if (!row) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error("hero's Layers row never drew")
+            return
+          }
+          if (pointer) {
+            window.dispatchEvent(new PointerEvent('pointerdown'))
+          }
+          row.focus()
+        }
+        document.addEventListener('DOMContentLoaded', run)
+      },
+      { pointer, frames: ROW_FRAMES },
+    )
+  }
+}
+
+/**
+ * Lists eight more empty pages in `webapp` through the socket's board
+ * message, ten in all, then double-clicks the Pages divider once they draw,
+ * so the list fits every page, marking the body `data-pages-fit` a frame on.
+ */
+async function tenPagesFit(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      const parsed = JSON.parse(String(message)) as {
+        type: string
+        data?: ListResult
+      }
+      const webapp = parsed.data?.projects.find(
+        (project) => project.name === 'webapp',
+      )
+      const last = webapp?.pages.at(-1)
+      if (parsed.type !== 'board' || !webapp || !last) {
+        socket.send(message)
+        return
+      }
+      for (let at = 3; at <= 10; at++) {
+        webapp.pages.push({ ...last, name: `page-${at}`, frames: [] })
+      }
+      socket.send(JSON.stringify(parsed))
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+  await page.addInitScript((frames) => {
+    let left = frames
+    const run = () => {
+      const rows = document.querySelectorAll(
+        'nav[aria-labelledby="pages-heading"] a',
+      )
+      const divider = document.querySelector(
+        '[aria-label="Resize the pages list"]',
+      )
+      if (rows.length === 10 && divider) {
+        divider.dispatchEvent(
+          new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+        )
+        // The panel resizes on its next render, so readiness waits a frame past the press.
+        requestAnimationFrame(() => (document.body.dataset.pagesFit = ''))
+        return
+      }
+      if (--left > 0) requestAnimationFrame(run)
+      else console.error('The ten pages never drew')
+    }
+    document.addEventListener('DOMContentLoaded', run)
+  }, ROW_FRAMES)
+}
+
+/**
  * Answers the socket's board message with the board `serve` starts in an
  * empty folder, being `untitled` alone with an empty `page-1`, so the guide a
  * new board shows draws over the preview fixture.
@@ -4415,6 +4544,53 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        // Two of hero's elements selected, the Caption between them and the frame row untinted.
+        section: 'layers-selected',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            twoLayersSelected,
+            readyWhen(
+              'ul[aria-label="Elements of hero"] li:has([aria-current="true"]) ~ li:has([aria-current="true"])',
+            ),
+          ),
+        ),
+      },
+      {
+        // Hero's row focused with no pointer press, so it draws the keyboard ring.
+        section: 'focus-ring-keyboard',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            focusHeroRow(false),
+            readyWhen('button[aria-label="Select hero"]:focus-visible'),
+          ),
+        ),
+      },
+      {
+        // Hero's row focused after a pointer press, so it carries the mark and draws no ring.
+        section: 'focus-ring-clicked',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            focusHeroRow(true),
+            readyWhen('button[aria-label="Select hero"][data-pointer-focus]'),
+          ),
+        ),
+      },
+      {
         section: 'layers-rename',
         theme,
         route: '/p/webapp/home',
@@ -4790,6 +4966,16 @@ const CASES: CaptureCase[] = [
             readyWhen('input[aria-label="Rename page home"]'),
           ),
         ),
+      },
+      {
+        // Ten pages after a double-click on the divider, every row shown with no scroll.
+        section: 'pages-fit-all',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(both(tenPagesFit, readyWhen('body[data-pages-fit]'))),
       },
       {
         section: 'pages-drag',

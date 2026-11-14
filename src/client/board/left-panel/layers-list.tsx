@@ -81,8 +81,8 @@ const NO_SECTIONS: readonly SectionRecord[] = []
  * and its eye and lock show on hover and stay while on. A hidden frame does
  * not select, since the next board would prune it, and its eye unhides it.
  * A selected element opens its frame and the rows above it, and the
- * header's button closes every row. A frame selected, or one holding the
- * selected element, draws as one tinted band with its rows. A section's row
+ * header's button closes every row. Only a selected row is tinted, a frame
+ * or an element, never the rows around it. A section's row
  * holds its frames' rows under it, then the frames in no section follow, and
  * a row restacks within its own group, never into or out of a section. In
  * Play a row click brings its frame into view and enters it.
@@ -155,13 +155,7 @@ export function LayersList({
         list={list}
         canWrite={canWrite}
         calls={calls}
-        tint={
-          frameSelected
-            ? 'bg-primary/26'
-            : holdsElement
-              ? 'bg-primary/7'
-              : undefined
-        }
+        tint={frameSelected ? 'bg-primary/26' : undefined}
         chevron={
           <button
             type="button"
@@ -183,7 +177,6 @@ export function LayersList({
             frame={frame}
             page={pageOf(frame)}
             selected={holdsElement ? held : []}
-            frameSelected={frameSelected}
             isOpen={(index) => isOpen(rowKey(frame.ref, index))}
             toggle={(index) => toggle(rowKey(frame.ref, index))}
           />
@@ -262,7 +255,7 @@ interface FrameRowProps {
   list: string
   canWrite: boolean
   calls: Structure
-  /** The selected tint, absent when neither the frame nor one of its elements is selected. */
+  /** The selected tint, absent unless the frame itself is selected. */
   tint: string | undefined
   /** The expand toggle, kept apart from the row's own click. */
   chevron: ReactNode
@@ -353,7 +346,7 @@ function FrameRow({
       className="relative mx-1.5"
     >
       <DropLine edge={edge} />
-      {/* Clips the frame's band of rows to one rounded shape, leaving the drop line outside it. */}
+      {/* Clips the frame's rows to one rounded shape, so a tinted first or last row takes its corners, leaving the drop line outside it. */}
       <div className="flex flex-col overflow-hidden rounded-md">
         <FrameRowMenu
           frame={frame}
