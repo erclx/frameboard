@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
@@ -456,6 +456,24 @@ describe('GuideCard', () => {
         .getByText('Draw a phone screen for untitled on frameboard')
         .closest('label'),
     ).toBe(card)
+  })
+
+  it('leaves the My agent card unringed while its Copy button holds keyboard focus', async () => {
+    const user = userEvent.setup()
+    renderCard({ loadTokens: BOARD_SHEET })
+    await screen.findByText('1 of 3')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    const card = (
+      await screen.findByRole('radio', { name: /My agent/ })
+    ).closest('label')
+    if (!card) throw new Error('the My agent card has no label')
+    const resting = getComputedStyle(card).boxShadow
+
+    act(() => screen.getByRole('button', { name: 'Copy' }).focus())
+    await user.keyboard('{Shift}')
+
+    expect(getComputedStyle(card).boxShadow).toBe(resting)
   })
 
   it('offers the agent a prompt naming the size and the project', async () => {
