@@ -112,6 +112,12 @@ Owns the Playwright specs, grouped by role into `cli/`, `agent-work/`, `hand-edi
 - A capture case that writes the served board joins `WRITING_SECTIONS` in `e2e/capture/board.ts`, which runs it after the rest
 - Those cases run last because a fresh browser paints the server's whole change log as unseen in every later case
 
+Two rules keep the capture sweep honest.
+
+- A seeding helper counts as a write, so a case that seeds the board through one joins the list too
+- The sweep fails a case outside the list when the served board already holds a change log, naming the case before it as the likely writer
+- Each case waits about a second after the board's newest write before its page loads, since a watch reload mid-load stalls a case until the navigation times out
+
 Two helpers keep a spec off the board's timing.
 
 - A spec presses undo through `e2e/support/history.ts`, which waits until the board counts the step, since an early press does nothing. Home reads Undo off the command palette.
