@@ -1,6 +1,12 @@
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page } from '@playwright/test'
@@ -5587,6 +5593,10 @@ const CASES: CaptureCase[] = [
 const WRITING_SECTIONS = [
   'rectangle-drawn-free',
   'text-hugs',
+  'linked-widths',
+  'colors-no-tokens',
+  'use-token',
+  'stroke-no-tokens',
   'replace-colors',
   'replace-colors-done',
   'select-color',
@@ -5604,8 +5614,40 @@ const WRITING_SECTIONS = [
   'present-steps',
 ]
 
+const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')
+
+let previousSection = 'the start of the run'
+
+/**
+ * Wraps a case outside `WRITING_SECTIONS` so its setup throws when the served
+ * board already holds a change log, which only a case that wrote the board
+ * before it can have left. The previous case is named as the likely writer,
+ * since the log lands after the write and the next setup is the first to see it.
+ */
+function onPristineServer({
+  section,
+  setup,
+  ...rest
+}: CaptureCase): CaptureCase {
+  return {
+    ...rest,
+    section,
+    setup: async (page) => {
+      if (existsSync(CHANGE_LOG)) {
+        throw new Error(
+          `${section} found a change log on the served board, so a case at or before ${previousSection} wrote it. Add that case to WRITING_SECTIONS in e2e/capture/board.ts.`,
+        )
+      }
+      previousSection = section
+      await setup?.(page)
+    },
+  }
+}
+
 export const BOARD_CASES: CaptureCase[] = [
-  ...CASES.filter(({ section }) => !WRITING_SECTIONS.includes(section)),
+  ...CASES.filter(({ section }) => !WRITING_SECTIONS.includes(section)).map(
+    onPristineServer,
+  ),
   ...WRITING_SECTIONS.flatMap((writing) =>
     CASES.filter(({ section }) => section === writing),
   ),
