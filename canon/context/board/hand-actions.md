@@ -16,6 +16,7 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 Owns picking, walking, and outlining an element, and with the board folder's `selection.ts` the selection keys and menus on the canvas. Selecting writes nothing, so element addresses stay put, the way Figma and Paper both work.
 
 - A click selects the frame, and Cmd-click or a double-click the element under the cursor. Enter, Esc, and Tab walk down, up, and across.
+  - With an element selected, a plain click on another element of its frame selects it, one on the bare `body` or label strip selects the frame, and one inside the selected box keeps it
   - One double-click on a text element also opens it for typing in place, and a Cmd-click only selects it
 - Shift-click or a marquee drag selects several frames, and move, nudge, align, duplicate, copy, cut, hide, lock, and delete act on all of them
 - Arrow keys nudge a frame, Cmd with an arrow resizes it, and Cmd+C, Cmd+X, and Cmd+V copy, cut, and paste frames into any project's current page
@@ -28,6 +29,7 @@ Several elements in one frame select together, all at one hash, with `element` h
 - A drag from a selected frame's bare `body` marquees the elements it touches, outermost first, and a drag from an element it holds still moves the frame
 - Several draw one box with corner handles and a size chip through `group.ts`, each member outlined thin. Delete takes all as one step, and restack and the menu's other items act on the last picked.
 - A drag, an arrow key, the align keys, and a corner drag act on every Free member as one write, and Shift+A wraps siblings in one flow `div` through `POST /api/frames/wrap`
+  - The wrap names it `Container`, or the first free `Container 2` and on when the frame holds one
 - One selected `<video>` or `<audio>` in Edit draws `media-bar.tsx` in the notes layer, above the hit layer. `media.ts` drives the live node, so a listen writes nothing.
   - A video's bar sits inside its bottom edge, 4 screen pixels in on three sides, and an audio's sits under it at its width
   - While a video's bar is up, one injected style hides the strip the browser draws for `controls` on every video in that page, since the strip grows with zoom
