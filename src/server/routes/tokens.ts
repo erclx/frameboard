@@ -53,21 +53,14 @@ interface Target {
 }
 
 /**
- * The Theme tab's token write, behind `requireWriter`. `POST
- * /api/tokens/edit` sets one token the project's sheets list on one theme or
- * both in the sheet `sheet` names. `project`, the default, writes the
- * project's `tokens.css`, creating it when the project has none, and a reset
- * there takes the project's override back to the board's value. `board`
- * writes the board's sheet, which every project without an override follows,
- * for a token that sheet already sets. A `hash` the named sheet no longer
- * has, or a project sheet created since the tab read none, answers 409
- * `stale-tokens` with nothing written, which also lands a retried edit once.
- * A name the sheets do not list, a value that is not one declaration, a
- * reset with no board value, and a sheet that does not parse answer 409
- * `invalid-edit`, as does a board edit that is a reset, names a token the
- * board sheet does not set, or meets a `--tokens` sheet outside the board
- * folder, which belongs to whatever handed it over. A landed edit records
- * one step and answers the token's values after it with the hash written.
+ * The Theme tab's token write, behind `requireWriter`. `POST /api/tokens/edit`
+ * sets one token the project's sheets list on one theme or both in the sheet
+ * `sheet` names. `project`, the default, writes the project's `tokens.css`,
+ * and a reset there takes its override back to the board's value. `board`
+ * writes the board's sheet for a token it already sets. A stale `hash` answers
+ * 409 `stale-tokens` and an invalid edit 409 `invalid-edit`, each writing
+ * nothing. A landed edit records one step and answers the token's values and
+ * the hash written.
  */
 export function tokenRoutes(
   root: string,

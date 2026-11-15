@@ -64,21 +64,14 @@ export interface PlaceDeps {
 const SHAPE_SIDE = 100
 
 /**
- * Places one element of `kind` into the frame under a board point, at the
- * gap between children `gapUnder` reads there, an asset naming the file it
- * shows, then selects it and returns to
- * Move, as one click of a placement tool. Where `placesFree` says so for
- * the gap, the element lands out of the flow in the same write: at the drawn
- * box's corner after a drag, centered on the point for a clicked Rectangle
- * or Ellipse, and at the point otherwise. A Divider always joins the flow,
- * since it spans its container and has no spot of its own. It answers the new element, or
- * null when nothing was written. A frame another session holds is refused
- * with nothing sent, since its indices go stale when that session writes,
- * and so is one whose iframe has not finished a load.
- *
- * The insert goes in the frame's turn behind any element edit still in
- * flight, from the hash that edit answered, and the hash it answers goes to
- * the selection before the frame reloads, as an element edit's does.
+ * Places one element of `kind` into the frame under a board point, at the gap
+ * between children `gapUnder` reads there, then selects it and returns to
+ * Move, as one click of a placement tool. Where `placesFree` says so for the
+ * gap, the element lands out of the flow in the same write, and a Divider
+ * always joins the flow. It answers the new element, or null when nothing was
+ * written. A frame another session holds is refused with nothing sent, since
+ * its indices go stale, and so is one whose iframe has not finished a load.
+ * The insert goes in the frame's turn behind any element edit in flight.
  */
 export async function placeElement(
   container: ParentNode,

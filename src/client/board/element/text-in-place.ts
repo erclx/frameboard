@@ -31,21 +31,14 @@ function collapsesBreaks(element: HTMLElement, view: Window): boolean {
 
 /**
  * Opens the text of the element `key` names for typing on the canvas, in its
- * live frame, with its text selected, so typing replaces it. Enter and
- * Shift+Enter add a line, and Esc or a blur writes the new text through
- * `write`. A paste is taken as plain text, its breaks kept.
- *
- * A break is a newline in the element's one text node, never a `<br>`, which
- * would end its text-only state. On an element whose style collapses
- * newlines, the edit opens on the text as the browser shows it, so the
- * newlines a file wraps its source with never become lines, and a text
- * holding a break goes out with `white-space: pre-line` beside it.
- *
- * A reload of the frame ends the edit with nothing sent, since its hash names
- * bytes the file no longer holds. Answers the function that cancels the
- * edit, or null when the frame does not show those bytes or the element
- * holds more than text or none, as the Text field's `textOnly` reads it, so
- * an empty box such as a placed shape never takes text.
+ * live frame, with its text selected. Enter and Shift+Enter add a line, and
+ * Esc or a blur writes the new text through `write`. A break is a newline in
+ * the element's one text node, never a `<br>`, which would end its text-only
+ * state. Where the style collapses newlines the edit opens on the text as
+ * shown, and a text holding a break goes out with `white-space: pre-line`.
+ * A frame reload ends the edit with nothing sent. Answers the function that
+ * cancels the edit, or null when the frame does not show those bytes or the
+ * element holds more than text or none, so a placed shape never takes text.
  */
 export function editTextInPlace(
   document: Document,

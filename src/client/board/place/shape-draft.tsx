@@ -47,16 +47,11 @@ type Drawn =
  * What a Rectangle, Ellipse, Image, Section, or Frame drag draws, from the
  * press to the pointer, once the press passes the click distance. A Rectangle
  * or Ellipse draws the shape in the fill it lands in, read from the frame
- * under the press, with the selection outline, its corners, and its size
- * under it, and draws nothing over bare canvas, where a release places
- * nothing. The others draw a tinted box as the marquee does.
- *
- * On release it leaves the box for `takeDraft`, so the click placing a shape
- * lands it at the gap the drag started in, at the size drawn, and the click
- * placing a frame lands it on the box. A Divider and Text draw nothing, and
- * their drag stays a click. The board never writes the frame to preview, so
- * the shape draws on the board's overlay and the file holds nothing until
- * release.
+ * under the press, and draws nothing over bare canvas. The others draw a
+ * tinted box as the marquee does. On release it leaves the box for
+ * `takeDraft`, so the click placing the element lands it at the size drawn. A
+ * Divider and Text draw nothing. The file holds nothing until release, since
+ * the shape draws on the board's overlay.
  */
 export function ShapeDraft({
   viewport,

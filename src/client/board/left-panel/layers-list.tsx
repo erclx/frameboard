@@ -79,13 +79,10 @@ const NO_SECTIONS: readonly SectionRecord[] = []
  * with a hidden frame dimmed. A row click selects its frame and Shift-click
  * adds or takes it out, a double-click or F2 renames it, a drag restacks it,
  * and its eye and lock show on hover and stay while on. A hidden frame does
- * not select, since the next board would prune it, and its eye unhides it.
- * A selected element opens its frame and the rows above it, and the
- * header's button closes every row. Only a selected row is tinted, a frame
- * or an element, never the rows around it. A section's row
- * holds its frames' rows under it, then the frames in no section follow, and
- * a row restacks within its own group, never into or out of a section. In
- * Play a row click brings its frame into view and enters it.
+ * not select, since the next board would prune it. A section's row holds its
+ * frames' rows, then the frames in no section follow, and a row restacks
+ * within its own group, never into or out of a section. In Play a row click
+ * brings its frame into view and enters it.
  */
 export function LayersList({
   frames,

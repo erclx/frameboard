@@ -64,16 +64,13 @@ interface FrameSectionProps {
 
 /**
  * The selection's place and size. One frame shows its name, which a click
- * renames in place, and several show `N frames` with `Mixed` where their values
- * differ. A field writes through the same write the gestures use, a typed
- * value setting every selected frame and a step on `Mixed` moving each by
- * the step, and a step or scrub draws each frame at its pending box first.
- * The heading opens the Frame tool's sizes, a pick setting W and H on every
- * frame in one write. The Height row under the fields sets how every frame
- * holds its height, the Device row which device the board draws around each,
- * and the Preview row under it shows the frames at another width and writes
- * nothing. One frame also lists the widths it shows at beside itself, and
- * ends the section with a button opening it on a phone.
+ * renames in place, and several show `N frames` with `Mixed` where their
+ * values differ. A field writes through the same write the gestures use, a
+ * typed value setting every selected frame and a step on `Mixed` moving each
+ * by the step. The heading opens the Frame tool's sizes. The Height row sets
+ * how every frame holds its height, the Device row which device the board
+ * draws around each, and the Preview row shows the frames at another width
+ * and writes nothing. One frame also lists the widths it shows at.
  */
 export function FrameSection({
   frames,

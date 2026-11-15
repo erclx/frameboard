@@ -25,16 +25,13 @@ function takesTyping(element: Element): boolean {
 /**
  * Marks with `data-pointer-focus` a control that takes focus while the last
  * press was a pointer's, and clears it on blur, so the stylesheet's
- * `focus-visible` variant can keep the ring for keyboard focus alone.
- *
- * The browser's own `:focus-visible` turns on for a focused control once any
- * key is pressed, Shift and board shortcuts included, which rang a row clicked
- * before a Shift-click. The mark is taken at focus and kept until blur, so a
- * key pressed after the click leaves it ringless. A field that takes typing is
- * never marked. A press inside a frame never reaches this window, so the
- * window losing focus to a frame counts as a pointer press, unless a key
- * pressed here moved it there in the same task, as Tab into a frame does, so
- * Tab back out still rings. Returns the function that stops it.
+ * `focus-visible` variant keeps the ring for keyboard focus alone. The browser
+ * turns `:focus-visible` on once any key is pressed, Shift included, which
+ * rang a row clicked before a Shift-click, so the mark is taken at focus and
+ * kept until blur. A field that takes typing is never marked. A press inside
+ * a frame never reaches this window, so the window losing focus to a frame
+ * counts as a pointer press, unless a key moved it there, as Tab does.
+ * Returns the function that stops it.
  */
 export function markPointerFocus(target: Window): () => void {
   const document = target.document

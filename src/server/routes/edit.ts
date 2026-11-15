@@ -224,69 +224,13 @@ export type SettledVersion = (
  * A hand edit of one element, a placed element, and a deleted one, each behind
  * `requireWriter` and refused on a frame another session holds.
  *
- * The edit's body mirrors
- * `edit`'s flags with the hash required, since the board always holds the
- * one it rendered, plus a `styles` change the CLI never sends, which writes
- * several declarations as one step. It writes through `editFrameFile`, which finds the element
- * again in a frame an agent wrote since from the source `version` kept, and
- * records the edited element's span as one step. It answers the `edit`
- * record with the index written and the hash written over. Each refusal the
- * writer returns answers 409 with its code, `stale-address` among them.
- * Given `edits` in place of `index` and `change`, it writes each as one
- * write and one step, refused whole on any refusal, and answers `indexes` in
- * the order sent, `index` being the last.
- *
- * The insert takes an element kind, never markup, and writes that kind's one
- * tag into the gap `parent` and `before` name, painted from the project's
- * tokens through `sheets`, and records it as one step. It answers the frame,
- * the new element's index, and the hash written. A hash the file no longer
- * has answers 409 `stale-address` with nothing written, since the gap's
- * indices name nothing past an agent's write, and a retried insert lands once.
- * A rectangle or an ellipse takes an optional width and height a drag drew.
- * Given `at`, the element lands out of the flow there in the same write and
- * step, placed as the place below places one, a text's margin set to zero,
- * and refused as the place refuses, save that `orFlow` joins the flow instead
- * of refusing `reanchors-descendant`. Without `at`, the element joins the flow.
- * An asset names a file under the project's `assets/` and the size it
- * shows at, and the server picks its tag from the file's kind. A file
- * outside that folder or not there answers 409 `asset-missing`, and one that
- * is no image, GIF, SVG, video, or audio `asset-not-placeable`, each writing
- * nothing.
- *
- * The remove takes out the element at `index`, with what it holds, from the
- * bytes `hash` names, and records it as one step whose undo puts it back
- * under its parent. It answers the frame and the hash written, and refuses a
- * moved file as `stale-address` the way the insert does. Given `indexes` in
- * place of `index`, it takes out each as one write and one step, one held
- * inside another named going with that one, refused whole on any refusal.
- *
- * The move takes one element by index and the gap it goes into, both read
- * in the frame as the hash names it, and records it as one step an undo
- * puts back byte for byte. It answers the element's new index and the hash
- * written, and refuses as the insert does, with `invalid-container` for a
- * gap inside the element itself.
- *
- * The place takes one element by index and a spot in CSS pixels against its
- * containing block, or null to put it back in the flow, read in the frame as
- * the hash names it, with `drop` naming the sizes back in flow takes off. It
- * writes the element's start tag, and its static parent's first, and records
- * both as one step, so one undo restores both. It answers the element's
- * index, the hash written, and the sizes a placement wrote, refuses as the move
- * does, and refuses `reanchors-descendant` where a positioned parent would
- * move another element anchored above it. Given `places` in place of
- * `index`, `spot`, and `drop`, it places each as one write and one step,
- * refused whole on any refusal, and answers `placed` in the order sent.
- *
- * The recolor writes the color token `to` in place of the raw color `from`
- * on every element under `index`, or under the frame's body without one,
- * that states it inline, rule-set values left as they are, and records every
- * rewritten start tag as one step. It answers the hash written and how many
- * elements it rewrote, zero writing and recording nothing. A `to` the
- * project's color tokens do not hold answers 409 `unknown-token`, and a
- * moved file `stale-address`, each writing nothing.
- *
- * Each landed write carries the notes pinned on the frame's elements to the
- * bytes it wrote, through the writer's remap, so a pin stays on its element.
+ * Every write names the frame by the `hash` the board rendered and goes through
+ * `editFrameFile`, which finds the element again in a frame an agent wrote
+ * since and records the span as one undoable step. A refusal answers 409 with
+ * its code, such as `stale-address`, and writes nothing. A batch field
+ * (`edits`, `indexes`, `places`) writes each item as one step and is refused
+ * whole on any refusal. An insert takes an element kind, never markup, and a
+ * recolor rewrites inline colors only. Each write remaps pinned notes.
  */
 export function editRoutes(
   root: string,

@@ -21,16 +21,10 @@ interface UnsettledImage {
  * Waits, within `timeoutMs`, until every `<img>` in the frame has loaded and
  * decoded, so an image marked `decoding="async"` never shoots as an empty
  * box. A lazy image is made eager in the loaded page first, never in the
- * file, so one below the box loads too.
- *
- * Under `require` an image that errored or is still loading when the time
- * runs out refuses `image-missing`. Under `wait` the frame opens with it as
- * the board shows it.
- *
- * `stalled` reads a page whose load event never fired, refusing only for an
- * image that failed or whose request is still open. A loaded image still
- * decoding cannot have held the load, so something else, such as a
- * stylesheet or an iframe, did.
+ * file. Under `require` an image that errored or is still loading at the
+ * deadline refuses `image-missing`, and under `wait` the frame opens as the
+ * board shows it. `stalled` reads a page whose load event never fired, and
+ * refuses only for an image that failed or whose request is still open.
  */
 export async function settleImages(
   page: Page,

@@ -35,15 +35,10 @@ export interface ContentSize {
  * both read it, in one page resized between readings. A hugging width takes
  * the content's `fit-content` width up to `HUG_MAX_WIDTH`, and the height is
  * read at that width with a 1 px tall viewport and again at the reference
- * height of the box's width, never the box's own height, so content sized off
- * the window height reads one height however tall the frame already is.
- * Readings that differ mean the content sizes itself off the viewport, which
- * has no height of its own to fit, so that refuses `fit-unbounded`. A fresh
- * page then loads at the width and height it would answer, and content
- * drawing another height there, as a block sized once off the window height,
- * refuses the same way. Finite
- * animations finish before the first reading, so an entrance is read at its
- * settled size.
+ * height, never the box's own, so content sized off the window height reads
+ * one height however tall the frame already is. Readings that differ, or a
+ * fresh page drawing another height, mean the content sizes itself off the
+ * viewport and refuse `fit-unbounded`. Finite animations finish first.
  */
 export async function measureContent(
   browser: Browser,
