@@ -70,7 +70,8 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Text breaks:** a pasted newline becomes a space, unless the element's style shows breaks as lines, as a text given lines on the canvas does.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
-- **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
+- **Stroke:** the border color through the same row, and a `W` field after it writing `border-width` from 1px, `Mixed` over uneven sides
+- **Shadow:** one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
 - **Export:** the Export tab for one frame alone or one element carries scale and theme menus, a Name field, a button, and one line per file. Every theme renders before any file downloads.
@@ -96,18 +97,18 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 - Esc during either puts the stored value back and writes nothing, and a refused write puts back the preview too
 - The picker under `element/color-picker/` previews a color and writes it once on Enter or as it closes, which a press outside does as it goes down, since a drag fires no click
 - Esc in the picker writes nothing, and a token swatch writes at once and closes it
-
-A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
+  A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
 - A hand edit writes the element's inline style, one attribute, or its text, or drops one attribute, through `POST /api/frames/edit`, which records one undo step
 - A token pick writes `var(--token)`, so it keeps following the theme, and a raw value carries no mark
+- A paint longhand over an inline `background` or `border` holding its part rewrites that part through the reader's `shorthandPart`
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value equal to a token is not named as one
 - Only a token sheet's name reads as a token. A frame's own name reads as the first token its chain reaches, else its light value, as the cascade sees no `data-theme`.
 
 ## Gotchas
 
-- Element border width and vertical text alignment have no control. A placement tool sets a new element's place once.
+- Element vertical text alignment has no control. A placement tool sets a new element's place once.
 - A Rectangle or Ellipse drag sets a new shape's size. A drag on the selected element moves it to another gap, or a Free one's offsets.
 - Each hand edit reloads its frame, and the element stays selected through the hash the write answers, since a reload can land before that answer or lag a later one
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board, such as on a toast, undoes the last field edited
