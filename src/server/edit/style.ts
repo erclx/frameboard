@@ -135,6 +135,21 @@ export function declaredValues(style: string, property: string): string[] {
     .map((segment) => segment.slice(segment.indexOf(':') + 1).trim())
 }
 
+/**
+ * The part of a decoded style's last shorthand that a paint longhand reads
+ * from, which `setDeclaration` writes in place of the longhand. Undefined for
+ * a property with no such shorthand, or a shorthand holding no such part.
+ */
+export function shorthandValue(
+  style: string,
+  property: string,
+): string | undefined {
+  const shorthand = PART_SHORTHANDS[property]
+  if (!shorthand) return undefined
+  const value = declaredValues(style, shorthand).at(-1)
+  return value === undefined ? undefined : shorthandPart(value, property)?.text
+}
+
 export type DeclarationResult =
   | { readonly ok: true; readonly style: string }
   | { readonly ok: false }
