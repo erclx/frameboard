@@ -15,14 +15,17 @@ Owns the controls the developer edits a selected frame or element with, the bar 
 
 Owns the right panel, under a header of the avatar and the zoom level, and its controls.
 
+- **Tabs:** `tabs.tsx` splits the panel into Design, Slides, and Export with the left panel's trigger classes, and `panel.tsx` routes each section. The Frame tool and Play draw no strip.
+- **Held tab:** `tab-store.ts` keeps the picked tab across selections for the page's life and saves nothing, so a reload opens Design. Export reads one line where no single frame or element is selected.
+- **Label tips:** `label-tip.tsx` puts a mark beside a label that shows its sentence on hover and keyboard focus, and keeps the sentence in a hidden node the control names in `aria-describedby`
 - **Frame size:** the `Frame ⌄` heading opens the Frame tool's sizes and names the matched row, `Custom`, or `Mixed` on its right. A pick sets W and H in one write.
 - **Frame and several frames:** name, position, and size, and for several the shared position and size with an Arrange button per align and distribute key.
 - **Height:** a Fixed, Fit, and Scroll radio row under the size fields, read off `scroll` and `hugHeight`, checking none and reading `Mixed` where frames differ.
 - **Height write:** a pick writes every frame through `POST /api/frame/height` as one undo step, and a refusal puts the stored mode back. The menu's and palette's Fit height run that route too.
 - **Device:** a None, Phone, and Tablet radio row under Height, drawn through the same `ChoiceRow`, writing every frame through `POST /api/frame/device` as one undo step
-- **This slide:** a menu under Device reading Same as page, a built-in, or one of the project's own from `transition-names.ts`, writing every frame through `POST /api/frame/transition` as one undo step
-- **Page:** `page-section.tsx` shows with nothing selected, holding Slide transition, Direction, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
-- **Step:** `element/step.tsx` adds a Present section to one element with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
+- **This slide:** a Slides menu reading Same as page, a built-in, or a project's own from `transition-names.ts`, writing every frame through `POST /api/frame/transition` as one undo step
+- **Page:** `page-section.tsx` ends Slides with Slide transition, Direction, and Duration, each pick writing `POST /api/page/transition` and keeping the other two
+- **Step:** `element/step.tsx` opens one element's Slides with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
 - **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
 - **Arrange for elements:** several Free elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow
 - **Frame fill:** one frame alone adds the element Fill row, writing its `body`'s `background-color` as an element edit. A file stating no `body` refuses it.
@@ -30,12 +33,12 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
 - **Linked widths:** one frame adds Also shows at under Preview, a chip per width with a remove button and a plus offering the Phone, Tablet, and Desktop sizes it neither holds nor lists
 - **Widths write:** each change writes the whole list through `POST /api/frame/widths` as one undo step, refusing `stale-layout` when the stored list differs from the drawn one
-- **Phone link:** one frame ends the Frame section with Open on a phone, a card that starts the link through `POST /api/preview` and shows it as a code and text, ending it by token on close
+- **Phone link:** one frame's Export tab ends with Open on a phone, a card that starts the link through `POST /api/preview` and shows it as a code and text, ending it by token on close
 - **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone
   - Controls, Autoplay, Loop, and Muted in the file follow, each a switch that sets one attribute or drops it
   - An audio shows no Controls switch, since one without `controls` draws nothing
-- **Motion:** a frame whose live page runs a timeline adds play, the time in seconds, and a scrub track between Fill and Export, moving the page in this tab and writing nothing
-- **Filmstrip:** offers 2 to 12 moments, only the counts whose strip fits the screenshot limit at the Export scale, and disables for a frame that repeats forever
+- **Motion:** a frame whose live page runs a timeline adds play, the time in seconds, and a scrub track under Fill on Design, moving the page in this tab and writing nothing
+- **Filmstrip:** its own Export section, offering 2 to 12 moments whose strip fits the screenshot limit at the Export scale, and disabled for a frame that repeats forever
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
 - **Use auto layout:** the Layout header's icon button runs the wrap action behind Shift+A on one element or several siblings, and stays focusable while disabled so its tooltip gives the reason
@@ -70,7 +73,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Stroke and shadow:** the border color through the same row, and one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
-- **Export:** one frame alone, or one element above its Selection colors, carries scale and theme menus, a Name field, a button, and one line per file. Every theme renders before any file downloads.
+- **Export:** the Export tab for one frame alone or one element carries scale and theme menus, a Name field, a button, and one line per file. Every theme renders before any file downloads.
 - **Export name:** the field starts as the frame's name, or `<frame>-<element>` in kebab case from the Layers row, and an emptied field falls back to it. Slashes become dashes and leading dots drop.
 - **Element export:** asks the PNG route for `element` and `hash`, the selection's address, and shows no Include device switch
 - **Include device:** a frame holding a device adds a switch, off until picked, that asks the PNG route for the frame inside its body
@@ -81,7 +84,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Where Select is absent:** a selection spanning several frames offers none.
 - **What `uses` names:** an element inheriting the color as well as one stating it, and never `body`, which selects as the frame, or one drawing no box, such as `br` or `script`.
 
-The Frame section stays above an element's sections and hides its name row while an element is selected. A frame's findings show only in its label's badge popover. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token, else `#808080` in a project naming no color token.
+An element selected inside a frame shows the frame as one row under the tab strip, its name selecting the frame, in place of the Frame section. A frame's findings show only in its label's badge popover. Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token, else `#808080` in a project naming no color token.
 
 - Under the Frame tool it lists the presets and devices as radio rows under Phone, Tablet, Desktop, Slide, Social, and Video in place of the selection, and the chosen row is what the next click places
 - One selected frame's name renames in place on a click, through the same rename the layers row runs
