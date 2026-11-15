@@ -34,8 +34,7 @@ const DEFAULT_COUNT = 5
 /**
  * The Motion section for one selected frame whose live page runs a timeline,
  * absent for a still one: play, the time, and the scrub track, each moving
- * the live page in this tab and writing nothing, then the Filmstrip row,
- * exporting at the Export section's scale and theme.
+ * the live page in this tab and writing nothing.
  */
 export function MotionSection({ frame }: { frame: FrameRecord }) {
   const found = useFrameMotion(frame.ref)
@@ -85,8 +84,20 @@ function MotionControls({ frame, found, hold }: MotionControlsProps) {
         format={(seconds) => `${formatMoment(seconds * 1000)} s`}
         className="mt-2 w-full"
       />
-      <FilmstripRow frame={frame} unbounded={found.motion.duration === null} />
     </section>
+  )
+}
+
+/**
+ * The Export tab's filmstrip for one selected frame whose live page runs a
+ * timeline, absent for a still one, exporting at the Export section's scale
+ * and theme.
+ */
+export function FilmstripSection({ frame }: { frame: FrameRecord }) {
+  const found = useFrameMotion(frame.ref)
+  if (!found) return null
+  return (
+    <FilmstripRow frame={frame} unbounded={found.motion.duration === null} />
   )
 }
 
@@ -119,15 +130,13 @@ function FilmstripRow({
   }
 
   return (
-    <div role="group" aria-labelledby="inspector-filmstrip" className="mt-2.5">
-      <div className="mb-1.5 flex h-4 items-center">
-        <span
-          id="inspector-filmstrip"
-          className="text-caption text-muted-foreground"
-        >
-          Filmstrip
-        </span>
-      </div>
+    <section
+      aria-labelledby="inspector-filmstrip"
+      className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
+    >
+      <h2 id="inspector-filmstrip" className="mb-2 text-xs font-semibold">
+        Filmstrip
+      </h2>
       <div className="mb-2 grid">
         <ExportMenu
           label="Filmstrip frames"
@@ -156,6 +165,6 @@ function FilmstripRow({
             ? `Too wide for two frames in a row at ${scale}x. Pick a smaller scale under Export.`
             : `PNG, ${files.join(' and ')}`}
       </p>
-    </div>
+    </section>
   )
 }

@@ -3601,7 +3601,7 @@ describe('InspectorPanel with an element selected', () => {
     )
   }
 
-  it('shows every section for an element holding text alone', async () => {
+  it('shows every Design section for an element holding text alone', async () => {
     await mountFrame('<h1>Hello</h1>')
 
     renderWith(3)
@@ -3617,8 +3617,6 @@ describe('InspectorPanel with an element selected', () => {
       'Text',
       'Stroke',
       'Shadow',
-      'Present',
-      'Export',
     ])
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
   })
@@ -3960,13 +3958,19 @@ describe('InspectorPanel with an element selected', () => {
     })
   })
 
-  it('hides the frame’s name row while an element is selected', async () => {
+  it('shows the frame as one crumb row with no name field or box while an element is selected', async () => {
     await mountFrame('<h1>Hello</h1>')
 
     renderWith(3)
 
     await screen.findByRole('heading', { name: 'Appearance' })
-    expect(screen.queryByText('hero')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Frame' })).toHaveTextContent(
+      'hero',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Rename frame hero' }),
+    ).toBeNull()
+    expect(screen.queryByRole('textbox', { name: 'X position' })).toBeNull()
   })
 
   it('leaves the text area out for an element holding text and elements', async () => {

@@ -9,7 +9,7 @@ import { realClick } from '@/test/real-pointer'
 
 import { motionHoldOf, releaseMotion } from '../motion/store'
 import { exportStore } from './export-store'
-import { MotionSection } from './motion-section'
+import { FilmstripSection, MotionSection } from './motion-section'
 
 const HERO = frameOf('hero', { box: { x: 0, y: 0, width: 300, height: 40 } })
 
@@ -44,6 +44,17 @@ async function showFrame(html: string): Promise<void> {
 }
 
 describe('MotionSection', () => {
+  it('leaves the filmstrip to the Export tab', async () => {
+    await showFrame(SLIDE)
+
+    render(<MotionSection frame={HERO} />)
+
+    await screen.findByRole('heading', { name: 'Motion' })
+    expect(
+      screen.queryByRole('button', { name: 'Export filmstrip' }),
+    ).toBeNull()
+  })
+
   it('shows for a frame whose page animates', async () => {
     await showFrame(SLIDE)
 
@@ -95,11 +106,13 @@ describe('MotionSection', () => {
       expect(motionHoldOf(HERO.ref)).toEqual({ at: 0, playing: true })
     })
   })
+})
 
+describe('FilmstripSection', () => {
   it('disables the filmstrip of a frame that repeats forever, saying why', async () => {
     await showFrame(SPIN)
 
-    render(<MotionSection frame={HERO} />)
+    render(<FilmstripSection frame={HERO} />)
 
     expect(
       await screen.findByRole('button', { name: 'Export filmstrip' }),
@@ -110,7 +123,7 @@ describe('MotionSection', () => {
   it('names one filmstrip file per theme at the export scale', async () => {
     await showFrame(SLIDE)
 
-    render(<MotionSection frame={HERO} />)
+    render(<FilmstripSection frame={HERO} />)
 
     expect(
       await screen.findByText(
@@ -129,7 +142,7 @@ describe('MotionSection', () => {
       const desktop = frameOf('hero', {
         box: { x: 0, y: 0, width: 1440, height: 900 },
       })
-      render(<MotionSection frame={desktop} />)
+      render(<FilmstripSection frame={desktop} />)
 
       await userEvent.click(
         await screen.findByRole('button', { name: 'Filmstrip frames' }),
@@ -150,7 +163,7 @@ describe('MotionSection', () => {
       const desktop = frameOf('hero', {
         box: { x: 0, y: 0, width: 1440, height: 900 },
       })
-      render(<MotionSection frame={desktop} />)
+      render(<FilmstripSection frame={desktop} />)
       await screen.findByText(/hero\.filmstrip-5\./)
 
       act(() => exportStore.setState({ scale: 3 }))
@@ -168,7 +181,7 @@ describe('MotionSection', () => {
         box: { x: 0, y: 0, width: 9000, height: 900 },
       })
 
-      render(<MotionSection frame={wide} />)
+      render(<FilmstripSection frame={wide} />)
 
       expect(
         await screen.findByRole('button', { name: 'Export filmstrip' }),
