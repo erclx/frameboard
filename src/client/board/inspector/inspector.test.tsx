@@ -325,6 +325,8 @@ describe('InspectorPanel', () => {
       renderPanel()
       act(() => screen.getByRole('tab', { name: 'Export' }).focus())
       await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
+      // Design's controls sit ahead of Export's until its panel unmounts.
+      await waitFor(() => expect(regions()).toEqual(['inspector-export']))
 
       await userEvent.tab()
 
