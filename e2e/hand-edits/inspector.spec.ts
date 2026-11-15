@@ -392,9 +392,12 @@ test.describe('filling a selected frame by hand', () => {
       .getByRole('button', { name: 'accent' })
       .click()
 
-    await expect.poll(read).toContain('background-color: var(--accent)')
+    // The body states `background`, so the pick rewrites its color part rather
+    // than stating a `background-color` beside the token it overrides.
+    await expect.poll(read).toContain('background: var(--accent)')
     const [, body = ''] = /<body([^>]*)>/.exec(read()) ?? []
-    expect(body).toContain('background-color: var(--accent)')
+    expect(body).toContain('background: var(--accent)')
+    expect(body).not.toContain('background-color')
     expect(read().split('<h1')[1]).toBe(original.split('<h1')[1])
 
     await page.getByRole('button', { name: 'Undo', exact: true }).click()
