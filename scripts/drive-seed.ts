@@ -5,7 +5,7 @@
 // elements, a `webapp/stacked` page of three frames, a Drives folder of two
 // projects, and a live reservation on `webapp/settings`. The committed
 // fixture lacks them so the evidence baselines never move. Run by the
-// `launch` line in `canon/config/app-drive.toml` before `preview`.
+// `seed` key in `canon/config/preview.json` after each drive-copy rebuild.
 // CANON_PREVIEW_ROOT is required, never defaulting to `.`, since a bare run
 // would write into the tracked fixture.
 import { join } from 'node:path'
