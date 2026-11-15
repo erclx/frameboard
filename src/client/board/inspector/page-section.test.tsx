@@ -58,6 +58,16 @@ afterEach(() => {
 })
 
 describe('the Page section', () => {
+  it('describes Slide transition with what the board draws', () => {
+    mount()
+
+    expect(
+      screen.getByRole('button', { name: 'Slide transition' }),
+    ).toHaveAccessibleDescription(
+      'Drawn by the board while presenting. Slide files are unchanged.',
+    )
+  })
+
   it('reads None and offers no duration for a page with no transition', () => {
     mount()
 

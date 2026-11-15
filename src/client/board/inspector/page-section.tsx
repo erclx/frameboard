@@ -15,6 +15,7 @@ import type { PageRecord } from '@/shared/records/list'
 
 import { reportRefusal } from '../left-panel/page-actions'
 import { TypePicker } from './element/typography'
+import { LabelTip } from './label-tip'
 import { useTransitionNames } from './transition-names'
 
 /** The lengths the Duration menu offers, a page holding another adding its own. */
@@ -27,14 +28,9 @@ const DIRECTION_LABELS = {
   down: 'Down',
 } as const satisfies Record<Direction, string>
 
-/** The note under a transition setting, saying the board draws it and never the file. */
-export function TransitionNote() {
-  return (
-    <p className="mt-1.5 text-caption text-muted-foreground">
-      Drawn by the board while presenting. Slide files are unchanged.
-    </p>
-  )
-}
+/** The tip on a transition setting's label, saying the board draws it and never the file. */
+export const TRANSITION_TIP =
+  'Drawn by the board while presenting. Slide files are unchanged.'
 
 /**
  * The open page's settings, shown with nothing selected: the transition
@@ -76,12 +72,20 @@ export function PageSection({
       aria-labelledby="inspector-page"
       className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
     >
-      <h2 id="inspector-page" className="mb-2 text-xs font-semibold">
-        Page
-      </h2>
+      <LabelTip
+        label="Page"
+        tip={TRANSITION_TIP}
+        tipId="inspector-page-tip"
+        className="mb-2"
+      >
+        <h2 id="inspector-page" className="text-xs font-semibold">
+          Page
+        </h2>
+      </LabelTip>
       <Setting title="Slide transition">
         <TypePicker
           label="Slide transition"
+          describedBy="inspector-page-tip"
           shown={transitionLabel(name)}
           current={name}
           options={names.map((value) => ({
@@ -132,7 +136,6 @@ export function PageSection({
           />
         </Setting>
       )}
-      <TransitionNote />
     </section>
   )
 }

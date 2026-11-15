@@ -16,6 +16,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import { reportRefusal } from '../left-panel/page-actions'
+import { LabelTip } from './label-tip'
 import { FRAME_TOOL_GROUPS, PRESETS } from './presets'
 
 interface WidthsRowProps {
@@ -89,13 +90,25 @@ export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
   })).filter(({ rows }) => rows.length > 0)
 
   return (
-    <div role="group" aria-labelledby="inspector-widths" className="mt-2.5">
-      <span
-        id="inspector-widths"
-        className="mb-1.5 flex h-4 items-center text-caption text-muted-foreground"
+    <div
+      role="group"
+      aria-labelledby="inspector-widths"
+      aria-describedby="inspector-widths-tip"
+      className="mt-2.5"
+    >
+      <LabelTip
+        label="Also shows at"
+        tip="Each is drawn beside the frame from the same file."
+        tipId="inspector-widths-tip"
+        className="mb-1.5 h-4"
       >
-        Also shows at
-      </span>
+        <span
+          id="inspector-widths"
+          className="text-caption text-muted-foreground"
+        >
+          Also shows at
+        </span>
+      </LabelTip>
       <ul className="flex flex-wrap gap-1.5">
         {shown.map((width, index) => (
           <li
@@ -182,14 +195,14 @@ export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
           )}
         </li>
       </ul>
-      <p
-        id="inspector-widths-hug"
-        className="mt-1.5 text-caption text-muted-foreground"
-      >
-        {frame.hugWidth
-          ? 'The frame hugs its width, so set one before adding others.'
-          : 'Each is drawn beside the frame from the same file.'}
-      </p>
+      {frame.hugWidth ? (
+        <p
+          id="inspector-widths-hug"
+          className="mt-1.5 text-caption text-muted-foreground"
+        >
+          The frame hugs its width, so set one before adding others.
+        </p>
+      ) : null}
     </div>
   )
 }

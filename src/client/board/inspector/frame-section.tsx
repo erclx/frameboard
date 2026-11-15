@@ -33,8 +33,9 @@ import {
   useRenamingFrame,
 } from '../structure/actions'
 import { TypePicker } from './element/typography'
+import { LabelTip } from './label-tip'
 import { type NumberChange, NumberField } from './number-field'
-import { TransitionNote } from './page-section'
+import { TRANSITION_TIP } from './page-section'
 import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
@@ -378,24 +379,19 @@ const DEVICE_CHOICES = [
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   return (
-    <>
-      <ChoiceRow
-        id="inspector-device"
-        title="Device"
-        choices={DEVICE_CHOICES}
-        frames={frames}
-        valueOf={(frame) => frame.device ?? 'none'}
-        disabled={disabled}
-        refusal="Couldn’t set the device"
-        write={(refs, device) =>
-          calls.setDevice(refs, device === 'none' ? null : device)
-        }
-      />
-      <p className="mt-1.5 text-caption text-muted-foreground">
-        Drawn by the board around the frame. The file is unchanged, and export
-        can include it.
-      </p>
-    </>
+    <ChoiceRow
+      id="inspector-device"
+      title="Device"
+      tip="Drawn by the board around the frame. The file is unchanged, and export can include it."
+      choices={DEVICE_CHOICES}
+      frames={frames}
+      valueOf={(frame) => frame.device ?? 'none'}
+      disabled={disabled}
+      refusal="Couldn’t set the device"
+      write={(refs, device) =>
+        calls.setDevice(refs, device === 'none' ? null : device)
+      }
+    />
   )
 }
 
@@ -416,14 +412,19 @@ function SlideRow({ frames, disabled, calls }: HeightRowProps) {
     value === SAME_AS_PAGE ? 'Same as page' : transitionLabel(value)
   return (
     <div className="mt-2.5">
-      <span
-        aria-hidden
-        className="mb-1.5 block text-caption text-muted-foreground"
+      <LabelTip
+        label="This slide"
+        tip={TRANSITION_TIP}
+        tipId="inspector-slide-tip"
+        className="mb-1.5"
       >
-        This slide
-      </span>
+        <span aria-hidden className="text-caption text-muted-foreground">
+          This slide
+        </span>
+      </LabelTip>
       <TypePicker
         label="This slide"
+        describedBy="inspector-slide-tip"
         shown={current === null ? 'Mixed' : label(current)}
         current={current}
         options={[
@@ -442,7 +443,6 @@ function SlideRow({ frames, disabled, calls }: HeightRowProps) {
         }}
         className="w-full"
       />
-      <TransitionNote />
     </div>
   )
 }
@@ -450,6 +450,8 @@ function SlideRow({ frames, disabled, calls }: HeightRowProps) {
 interface ChoiceRowProps<T extends string> {
   id: string
   title: string
+  /** The sentence the title's mark shows, which describes the radio group. */
+  tip?: string
   choices: readonly { value: T; label: string }[]
   frames: readonly FrameRecord[]
   valueOf: (frame: FrameRecord) => T
@@ -469,6 +471,7 @@ interface ChoiceRowProps<T extends string> {
 function ChoiceRow<T extends string>({
   id,
   title,
+  tip,
   choices,
   frames,
   valueOf,
@@ -527,9 +530,17 @@ function ChoiceRow<T extends string>({
   return (
     <div className="mt-2.5">
       <div className="mb-1.5 flex h-4 items-center justify-between">
-        <span id={id} className="text-caption text-muted-foreground">
-          {title}
-        </span>
+        {tip ? (
+          <LabelTip label={title} tip={tip} tipId={`${id}-tip`}>
+            <span id={id} className="text-caption text-muted-foreground">
+              {title}
+            </span>
+          </LabelTip>
+        ) : (
+          <span id={id} className="text-caption text-muted-foreground">
+            {title}
+          </span>
+        )}
         {shown === null ? (
           <span className="text-caption text-muted-foreground">Mixed</span>
         ) : null}
@@ -537,6 +548,7 @@ function ChoiceRow<T extends string>({
       <div
         role="radiogroup"
         aria-labelledby={id}
+        aria-describedby={tip ? `${id}-tip` : undefined}
         className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5"
       >
         {choices.map(({ value, label }, index) => (

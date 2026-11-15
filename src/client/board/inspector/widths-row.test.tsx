@@ -148,6 +148,21 @@ describe('WidthsRow', () => {
     expect(screen.getByRole('button', { name: 'Add a width' })).toBeDisabled()
   })
 
+  it('describes the list through its label’s tip, with no standing line', () => {
+    renderRow(HERO)
+
+    expect(
+      screen.getByRole('group', { name: 'Also shows at' }),
+    ).toHaveAccessibleDescription(
+      'Each is drawn beside the frame from the same file.',
+    )
+    expect(
+      screen.queryByText('Each is drawn beside the frame from the same file.', {
+        selector: 'p',
+      }),
+    ).toBeNull()
+  })
+
   it('holds the plus with its reason for a frame hugging its width', async () => {
     const sent = renderRow({ ...HERO, widths: [], hugWidth: true })
 

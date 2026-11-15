@@ -11,6 +11,7 @@ import {
   type StepStart,
 } from '@/shared/present-transition'
 
+import { LabelTip } from '../label-tip'
 import { TypePicker } from './typography'
 import type { WriteElement } from './write'
 
@@ -110,10 +111,6 @@ export function StepSection({ step, disabled, write }: StepSectionProps) {
           />
         </div>
       )}
-      <p className="mt-1.5 text-caption text-muted-foreground">
-        Shown on that press while presenting. Edit mode and export show every
-        step.
-      </p>
     </section>
   )
 }
@@ -143,11 +140,22 @@ function StepField({
     if (String(number ?? '') !== stored.trim()) onCommit(number)
   }
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-caption text-muted-foreground">
-        Appears on step
-      </span>
+    <div className="flex flex-col gap-1">
+      <LabelTip
+        label="Appears on step"
+        tip="Shown on that press while presenting. Edit mode and export show every step."
+        tipId="inspector-step-tip"
+      >
+        <span
+          id="inspector-step-field"
+          className="text-caption text-muted-foreground"
+        >
+          Appears on step
+        </span>
+      </LabelTip>
       <Input
+        aria-labelledby="inspector-step-field"
+        aria-describedby="inspector-step-tip"
         inputMode="numeric"
         placeholder="Always shown"
         value={typed}
@@ -160,6 +168,6 @@ function StepField({
           if (event.key === 'Escape') setTyped(stored)
         }}
       />
-    </label>
+    </div>
   )
 }

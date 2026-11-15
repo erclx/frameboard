@@ -3991,11 +3991,11 @@ describe('InspectorPanel with an element selected', () => {
         .getAllByRole('button')
         .filter((button) => button.closest('section')),
     ].filter(
-      // Export writes nothing to the board, so it stays live in a tab that reads.
+      // Export and a label's tip write nothing to the board, so they stay live in a tab that reads.
       (control) =>
         !control.closest(
           '[aria-labelledby="inspector-frame"], [aria-labelledby="inspector-export"]',
-        ),
+        ) && !control.matches('[aria-label^="About "]'),
     )
     expect(controls.length).toBeGreaterThan(5)
     expect(controls.filter((control) => !control.matches(':disabled'))).toEqual(

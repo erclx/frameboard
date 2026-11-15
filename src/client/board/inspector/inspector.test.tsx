@@ -703,6 +703,25 @@ describe('InspectorPanel', () => {
       expect(sent).toEqual([{ refs: [SWATCHES.ref], device: null }])
     })
 
+    it('describes the group with the sentence its label’s mark shows on keyboard focus', async () => {
+      render(
+        <TooltipProvider>
+          <FrameSection page={PAGE} frames={[SWATCHES]} />
+        </TooltipProvider>,
+      )
+      const sentence =
+        'Drawn by the board around the frame. The file is unchanged, and export can include it.'
+
+      // Tab from the radio before the mark, as a keyboard reaches it.
+      act(() => screen.getByRole('radio', { name: 'Fixed' }).focus())
+      await userEvent.tab()
+
+      expect(screen.getByRole('button', { name: 'About Device' })).toHaveFocus()
+      expect(device()).toHaveAccessibleDescription(sentence)
+      // The hidden description holds one copy, so the open tip is the second.
+      expect(await screen.findAllByText(sentence)).toHaveLength(2)
+    })
+
     it('rolls back to the stored device when the write is refused', async () => {
       const { calls } = deviceCalls(() =>
         Response.json(
