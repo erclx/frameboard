@@ -1713,6 +1713,45 @@ async function headlineOnHero(page: Page): Promise<void> {
 }
 
 /**
+ * Double-clicks the hero's caption past the end of the command it holds once
+ * the frame has loaded, where only the caption draws, so the capture shows a
+ * container's outline with the four corner marks it takes.
+ */
+async function captionOnHero(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const pick = () => {
+      const hero = document.querySelector('[data-frame="webapp/home/hero"]')
+      const iframe = hero?.querySelector('iframe')
+      const caption = iframe?.dataset.renderedAt
+        ? iframe.contentDocument?.querySelector('[data-name="Caption"]')
+        : null
+      const hit = document.querySelector('[data-hit-layer]')
+      const layer = document.querySelector<HTMLElement>('[data-layer]')
+      if (!hero || !caption || !hit || !layer) {
+        if (--left > 0) requestAnimationFrame(pick)
+        else console.error('No hero caption to select')
+        return
+      }
+      const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+      const frame = hero.getBoundingClientRect()
+      const inner = caption.getBoundingClientRect()
+      const at = {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: frame.left + (inner.right - 40) * k,
+        clientY: frame.top + (inner.top + inner.height / 2) * k,
+      }
+      hit.dispatchEvent(new MouseEvent('mousedown', at))
+      window.dispatchEvent(new MouseEvent('mouseup', at))
+      hit.dispatchEvent(new MouseEvent('dblclick', at))
+    }
+    document.addEventListener('DOMContentLoaded', pick)
+  }, PRESS_FRAMES)
+}
+
+/**
  * Serves the hero with a Free 160 by 120 box at `left` in its 1440 px width,
  * added to the bytes on the way to the tab, so the fixture on disk never
  * holds it and the frame keeps the hash its file stamps.
@@ -4377,6 +4416,15 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(headlineOnHero),
+      },
+      {
+        section: 'container-corners',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(captionOnHero),
       },
       {
         // An arrow key moved the Decoration row's focus ring off its lit button.
