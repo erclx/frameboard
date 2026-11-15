@@ -59,7 +59,9 @@ export function InspectorTabs({
       </TabsList>
       {head}
       {INSPECTOR_TABS.map((one) => (
-        <TabsContent key={one} value={one} className="text-body">
+        // Every tab holds controls, so Tab from the strip lands on the first
+        // of them rather than on an unringed panel.
+        <TabsContent key={one} value={one} tabIndex={-1} className="text-body">
           {bodies[one]}
         </TabsContent>
       ))}

@@ -320,6 +320,17 @@ describe('InspectorPanel', () => {
       ).toBeVisible()
     })
 
+    it('tabs from the strip into the tab’s first control, past the panel', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+      act(() => screen.getByRole('tab', { name: 'Export' }).focus())
+      await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
+
+      await userEvent.tab()
+
+      expect(screen.getByRole('button', { name: 'Export scale' })).toHaveFocus()
+    })
+
     it('draws no tab strip under the Frame tool', () => {
       modeStore.setState({ tool: 'frame', mode: 'edit' })
 
