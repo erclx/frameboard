@@ -36,6 +36,14 @@ describe('the step field', () => {
     )
   })
 
+  it('focuses the field on a click of its label', async () => {
+    mount(NO_STEP)
+
+    await userEvent.click(screen.getByText('Appears on step'))
+
+    expect(field()).toHaveFocus()
+  })
+
   it('writes data-step on Enter', async () => {
     const written = mount(NO_STEP)
 

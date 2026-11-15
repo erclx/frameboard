@@ -146,15 +146,15 @@ function StepField({
         tip="Shown on that press while presenting. Edit mode and export show every step."
         tipId="inspector-step-tip"
       >
-        <span
-          id="inspector-step-field"
+        <label
+          htmlFor="inspector-step-field"
           className="text-caption text-muted-foreground"
         >
           Appears on step
-        </span>
+        </label>
       </LabelTip>
       <Input
-        aria-labelledby="inspector-step-field"
+        id="inspector-step-field"
         aria-describedby="inspector-step-tip"
         inputMode="numeric"
         placeholder="Always shown"
