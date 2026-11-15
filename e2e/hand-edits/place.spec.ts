@@ -416,14 +416,14 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
-  test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
+  test('a placed Text set Absolute writes no size, so its box stays as wide as its words', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
     const headline = await centerOf(page, 'h1')
 
-    // Flow places the Text in the block body's flow, so the inspector's Free is what takes it out.
+    // Flow places the Text in the block body's flow, so the inspector's Absolute is what takes it out.
     await tools(page).getByRole('button', { name: 'Flow' }).click()
     await tools(page).getByRole('button', { name: 'Text' }).click()
     await page.mouse.click(headline.x, headline.y + 8)
@@ -442,7 +442,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect(page.locator('[data-element-selection]')).toBeVisible()
     await page
       .getByRole('group', { name: 'Placement' })
-      .getByRole('button', { name: 'Free', exact: true })
+      .getByRole('button', { name: 'Absolute', exact: true })
       .click()
 
     await expect
@@ -470,7 +470,7 @@ test.describe('placing text and shapes into a frame', () => {
     ['Centered', 'text-align: center'],
     ['Boxed', 'width: 320px; text-align: center'],
   ] as const) {
-    test(`Free keeps ${name.toLowerCase()} text's words where they rendered`, async ({
+    test(`Absolute keeps ${name.toLowerCase()} text's words where they rendered`, async ({
       page,
     }) => {
       writeFileSync(
@@ -499,7 +499,7 @@ test.describe('placing text and shapes into a frame', () => {
       await expect(page.locator('[data-element-selection]')).toBeVisible()
       await page
         .getByRole('group', { name: 'Placement' })
-        .getByRole('button', { name: 'Free', exact: true })
+        .getByRole('button', { name: 'Absolute', exact: true })
         .click()
 
       await expect

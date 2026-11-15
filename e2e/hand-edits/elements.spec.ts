@@ -235,7 +235,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(order).toEqual(['Headline', 'Caption'])
   })
 
-  test('Free places an element in a static parent as two start tags, and one undo takes both back', async ({
+  test('Absolute places an element in a static parent as two start tags, and one undo takes both back', async ({
     page,
   }) => {
     const path = join(board.root, `${HERO}.html`)
@@ -248,7 +248,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect(page.locator('[data-element-selection]')).toBeVisible()
     await page
       .getByRole('group', { name: 'Placement' })
-      .getByRole('button', { name: 'Free', exact: true })
+      .getByRole('button', { name: 'Absolute', exact: true })
       .click()
 
     await expect
@@ -266,7 +266,7 @@ test.describe('selecting an element inside a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
-  test('Shift-click selects two elements, Free places both, and one undo takes them back', async ({
+  test('Shift-click selects two elements, Absolute places both, and one undo takes them back', async ({
     page,
   }) => {
     const path = join(board.root, `${HERO}.html`)
@@ -296,7 +296,7 @@ test.describe('selecting an element inside a frame', () => {
     ).toBeVisible()
     await page
       .getByRole('group', { name: 'Placement' })
-      .getByRole('button', { name: 'Free', exact: true })
+      .getByRole('button', { name: 'Absolute', exact: true })
       .click()
 
     await expect.poll(() => read().match(/position: absolute/g)).toHaveLength(2)
@@ -338,7 +338,7 @@ test.describe('selecting an element inside a frame', () => {
     await page.keyboard.up('Shift')
     await page
       .getByRole('group', { name: 'Placement' })
-      .getByRole('button', { name: 'Free', exact: true })
+      .getByRole('button', { name: 'Absolute', exact: true })
       .click()
     await expect.poll(() => read().match(/position: absolute/g)).toHaveLength(2)
     const placed = read()

@@ -3655,7 +3655,7 @@ describe('InspectorPanel with several elements selected', () => {
     await mountAndSelect([3, 4])
 
     expect(screen.getByRole('textbox', { name: 'Opacity' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Free' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Absolute' })).toBeDisabled()
   })
 })
 

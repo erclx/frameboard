@@ -83,7 +83,7 @@ describe('PositionSection', () => {
       hugs: true,
     })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(places).toEqual([{ left: 90, top: 16, width: 120, height: 40 }])
   })
@@ -91,7 +91,7 @@ describe('PositionSection', () => {
   it('places text alone a stated width sizes from its own box', async () => {
     const { places } = renderSection(placementOf({ wordsLeft: 90 }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(places).toEqual([{ left: 24, top: 16, width: 120, height: 40 }])
   })
@@ -99,7 +99,7 @@ describe('PositionSection', () => {
   it('places an in-flow element where it renders, at its size, in one call', async () => {
     const { places } = renderSection(placementOf())
 
-    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(places).toEqual([{ left: 24, top: 16, width: 120, height: 40 }])
   })
@@ -107,7 +107,7 @@ describe('PositionSection', () => {
   it('leaves out a size that resolves to no length', async () => {
     const { places } = renderSection(placementOf({ width: null }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(places).toEqual([{ left: 24, top: 16, height: 40 }])
   })
@@ -123,7 +123,7 @@ describe('PositionSection', () => {
   it('sends nothing for the option already chosen', async () => {
     const { places } = renderSection(placementOf({ free: true }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(places).toEqual([])
   })
@@ -165,13 +165,13 @@ describe('PositionSection', () => {
     expect(changes).toEqual([{ kind: 'style', property: 'top', value: '40px' }])
   })
 
-  it('says on Free that it positions the element inside its parent', async () => {
+  it('says on Absolute that it positions the element inside its parent', async () => {
     renderSection(placementOf())
 
-    await userEvent.hover(screen.getByRole('button', { name: 'Free' }))
+    await userEvent.hover(screen.getByRole('button', { name: 'Absolute' }))
 
     expect(
-      await screen.findByText('Free positions it inside its parent', {
+      await screen.findByText('Absolute positions it inside its parent', {
         selector: '[data-slot="tooltip-content"]',
       }),
     ).toBeInTheDocument()
