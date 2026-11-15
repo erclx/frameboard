@@ -3356,22 +3356,14 @@ const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
 )
 
 /**
- * The home view and one board page of the preview's `basic` fixture, the
- * home view with a card's menu open and with a card's name being renamed,
- * then the board under Hide UI, in Play, in Play with the hero entered from
- * its layers row, with the avatar menu open, the element
- * inspector for the hero's headline with its token menu open, the hero's
- * Selection colors, and with the Theme
- * tab open, with tokens and with none, the Assets tab with the reference's
- * six files, a frame's findings list open from its badge, a frame with
- * findings selected, whose inspector lists none, and the right-click menus on a frame, beside its copy toast, on
- * the selected element, on empty canvas, and on a page and a layers row, and
- * the guide a new board's start page shows. The "Edited" times count back from
- * each file's checkout time, so they are masked. The `about` frame sets no
- * font, a warning, so the board cases also hold the label's quiet findings
- * mark in both themes, and one case adds an error for the filled pill, beside the hero taking its colors and faces from the tokens. Every
- * board case waits on the server's browser sweep first, so the mark's count
- * is settled.
+ * The home view and one board page of the preview's `basic` fixture. Home is
+ * captured with a card menu open and with a card being renamed. The board is
+ * captured under Hide UI, in Play, with the avatar menu, the element
+ * inspector, the Theme and Assets tabs, a frame's findings list, the
+ * right-click menus, and the new-board guide. The "Edited" times are masked.
+ * The `about` frame sets no font, so the board cases also hold the label's
+ * findings mark in both themes. Every board case waits on the server's
+ * browser sweep first, so the mark's count is settled.
  */
 const CASES: CaptureCase[] = [
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => [

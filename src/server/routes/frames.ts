@@ -60,24 +60,15 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 /**
- * Serves `/frames/<project>/<page>/<file>` and `/frames/<project>/assets/<path>`
- * from the board, so a frame's relative links resolve with no rewriting, and
- * `/frames/<project>/tokens.css`, so a project sheet's relative links resolve
- * the same way. It is a handler of its own rather than static serving over
- * the root, since it reads the developer's files and has to refuse
- * everything else: board records, dot-named paths, and any path whose
- * realpath leaves its project. Every refusal answers 404, so nothing tells a
- * caller what exists.
- *
- * A frame served from a page gets the faces and the token sheets spliced
- * first into its `head`, in the response alone, and is never cached. Every
- * other file is served byte for byte under a validator the browser checks on
- * each use, so an edit shows on the next load and an unchanged file answers
- * 304 with no body. A frame path carrying `?at=<hash>` serves the
- * version `version` holds under that hash in its place, with the same head,
- * and any other path carrying it answers 404. `base` prefixes the sheet URLs
- * the head imports, for a listener serving these routes under a path of its
- * own, since the head names them from the server's root.
+ * Serves `/frames/<project>/<page>/<file>`, `/frames/<project>/assets/<path>`,
+ * and `/frames/<project>/tokens.css` from the board, so a frame's relative
+ * links resolve with no rewriting. It is a handler of its own rather than
+ * static serving, since it must refuse board records, dot-named paths, and any
+ * path whose realpath leaves its project. Every refusal answers 404, so
+ * nothing tells a caller what exists. A frame gets the faces and token sheets
+ * spliced into its `head`, in the response alone and never cached. Any other
+ * file is served byte for byte under a validator, and `?at=<hash>` serves the
+ * version `version` holds. `base` prefixes the head's sheet URLs.
  */
 export function frameRoutes(
   root: string,

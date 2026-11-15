@@ -293,13 +293,10 @@ export type PlaceInserted = (html: string, index: number) => Placed
  * edit, through a temporary file and a rename after reading the file again.
  * A hash the file no longer has is refused as stale with no search, since the
  * gap's indices name nothing once the file moved, which also lands a retried
- * insert at most once.
- *
- * Given `place`, the element is placed out of the flow in the same write.
- * Its span then carries the element's placed bytes, and `parent` the start
- * tag a static parent took, so undoing both changes as one step takes the
- * element out after the parent's tag goes back, and a redo finds the gap
- * under the parent as it first stood.
+ * insert at most once. Given `place`, the element is placed out of the flow
+ * in the same write. Its span carries the placed bytes and `parent` the start
+ * tag a static parent took, so one undo takes the element out after the
+ * parent's tag goes back, and a redo finds the gap as it first stood.
  */
 export function insertFrameFile(
   path: string,

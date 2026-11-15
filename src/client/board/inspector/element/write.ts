@@ -109,21 +109,13 @@ export function forgetText(at: Pick<ElementKey, 'frame' | 'index'>): void {
 
 /**
  * Writes one change into the element `key` names, made from the hash its
- * frame rendered. The server finds the element again past an agent's write
- * to the frame by the bytes the change reads, and refuses as stale once the
- * agent changed those. The answered hash goes to the selection at once,
- * before the watcher reloads the frame, which leaves its hash check to this
- * write until it answers, and the element is selected again at the index it
- * landed at. A refusal raises the toast and answers false, so the field
- * shows the stored value, and a refused text edit keeps its text for the
- * Text field.
- *
- * Edits of one frame go in order. While another session holds the frame an
- * edit waits, and one made from the hash an earlier waiting edit started
- * from is sent from the hash that one answered, so neither is lost nor sent
- * on bytes the file no longer holds. Once one was found again elsewhere, an
- * edit of an element the chain never edited goes from its own hash instead,
- * for the server to find again too. A refusal drops the edits behind it.
+ * frame rendered. The server finds the element again past an agent's write by
+ * the bytes the change reads, and refuses as stale once the agent changed
+ * those. The answered hash goes to the selection before the watcher reloads
+ * the frame. A refusal raises the toast and answers false, so the field shows
+ * the stored value. Edits of one frame go in order, each sent from the hash
+ * the one before answered, and wait while another session holds the frame. A
+ * refusal drops the edits behind it.
  */
 export function writeElement(
   page: string,

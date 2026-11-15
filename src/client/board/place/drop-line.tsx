@@ -25,15 +25,12 @@ interface DropLineProps {
 /**
  * The 2px line at the gap a placement tool's click would land in, in the
  * selection blue at a constant screen size, drawn while the Text or Shape
- * tool is on and the pointer is over a live frame. It draws nothing over
- * bare canvas or a frame still loading, where a click places nothing. While
- * a Rectangle, Ellipse, or Image press is held it stays at the gap the press began
- * in, where the drag sized shape lands.
- *
- * While a Move drag carries the selected element, it draws the gap the
- * element would drop into instead, and nothing where a drop would leave it
- * where it is. While an Assets tile is dragged over the canvas, it draws the
- * gap the file would land in, whatever the tool.
+ * tool is on and the pointer is over a live frame, and nothing over bare
+ * canvas or a frame still loading. While a Rectangle, Ellipse, or Image press
+ * is held it stays at the gap the press began in. While a Move drag carries
+ * the selected element it draws the gap the element would drop into, and
+ * nothing where a drop would leave it. A dragged Assets tile draws the gap
+ * its file would land in, whatever the tool.
  */
 export function DropLine({
   viewport,

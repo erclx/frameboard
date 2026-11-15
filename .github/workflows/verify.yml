@@ -21,6 +21,7 @@ jobs:
   static-checks:
     name: 🔍 Static Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -50,6 +51,7 @@ jobs:
   unit-tests:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -97,6 +99,7 @@ jobs:
   build-verify:
     name: 🏗️ Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -127,6 +130,7 @@ jobs:
   e2e-tests:
     name: 🎭 E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [static-checks, unit-tests, build-verify]
     steps:
       - name: Checkout

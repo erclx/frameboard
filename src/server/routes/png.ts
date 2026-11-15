@@ -31,20 +31,14 @@ const DEFAULT_SCALE = 2
 
 /**
  * `GET /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>`, a
- * frame rendered at `scale` times its layout size, twice when no scale is
- * given. An added `filmstrip=<n>` of 2 or more renders `n` moments of its
- * timeline in one row instead, refusing a frame with no timeline as
- * `motion-missing` and one that never ends as `motion-unbounded`. An added
- * `device=1` draws a frame holding a device inside its body, and leaves a
- * frame holding none as it is. An added `element=<index>&hash=<hash>`, the
- * address `edit` takes, renders that one element alone on a transparent
- * ground at its own box. It answers 409 `stale-address` when the file's
- * hash is no longer `hash`, and 422 `invalid-address` for an index naming
- * no element or one with no layout box. The three additions exclude each
- * other, and `element` without `hash` is no address, each refusing as
- * `usage`. It takes no token, since the image shows only
- * what the frame route already serves, and a refusal answers the CLI's
- * `{ ok, error }` envelope.
+ * frame rendered at `scale` times its layout size, twice when none is given.
+ * Three additions each change what is drawn and exclude each other, each
+ * refusing as `usage`: `filmstrip=<n>` renders `n` moments of the timeline in
+ * one row, `device=1` draws a frame's device inside its body, and
+ * `element=<index>&hash=<hash>` renders that one element alone on a
+ * transparent ground, refusing a moved file as 409 `stale-address`. It takes
+ * no token, since the image shows only what the frame route already serves,
+ * and a refusal answers the CLI's `{ ok, error }` envelope.
  */
 export function pngRoutes(
   root: string,

@@ -96,22 +96,12 @@ const sendSchema = z
 /**
  * The board's note writes, each behind `requireWriter`: pin a note, reply in
  * its thread, send it to a listening session, and mark it done. Each answers
- * the CLI's `{ ok, data }` envelope with the note it wrote, and a refusal its
- * `{ ok, error }`. A write offers the queue to delivery at once rather than
- * waiting on the watcher.
- *
- * Pin, reply, and send take `dispatch: true` in place of `to`, which starts a
- * session through `dispatch` under an id minted here and marks the thread's
- * root delivered to it, so the started session's inbox never prints it a
- * second time. A failed start takes back the message the request added, and
- * no `dispatch` refuses before anything is written.
- *
- * A note's images go up first, as multipart `files` with the `page` ref, to
- * `/api/notes/images`, which saves them to the page's `.notes/` and answers
- * their page-relative paths for pin and reply to carry. A write naming an
- * image its page does not hold is refused. `/api/note-images/...` reads one
- * back with no writer check, as the frames route reads a page's files, since
- * an `<img>` sends no `Origin`.
+ * the CLI's `{ ok, data }` envelope, and a refusal its `{ ok, error }`. Pin,
+ * reply, and send take `dispatch: true` in place of `to`, which starts a
+ * session through `dispatch` and marks the thread's root delivered to it, and
+ * a failed start takes back the message the request added. Images go up first
+ * to `/api/notes/images`, and `/api/note-images/...` reads one back with no
+ * writer check, since an `<img>` sends no `Origin`.
  */
 export function notesRoutes(
   root: string,

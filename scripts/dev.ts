@@ -1,16 +1,15 @@
 // Backs `bun run dev`: starts the board server Vite proxies `/api`, `/frames`,
 // and `/frameboard` to, then Vite in front of it, so one command gives a
 // healthy board at Vite's address. The board runs from source in this process
-// with `src/client` as its client folder, which passes the built-client check
-// with no build, so its own port serves a page that does not load and only
-// Vite's address is printed. The board port is read from the proxy target in
-// `vite.config.ts`, which owns it.
+// with `src/client` as its client folder, so its own port serves a page that
+// does not load and only Vite's address is printed. The board port is read
+// from the proxy target in `vite.config.ts`, which owns it.
 //
 // CANON_PREVIEW_ROOT names the checkout whose `basic` board is served, as in
-// `preview.ts`. Unset, a temporary copy is served instead of the committed
-// fixture, so a hand edit writes no tracked file and a concurrent `test:e2e`
-// finds no live server on the fixture. The board runs with the hidden
-// `--open-route`, so the printed link hands any local browser a writing tab.
+// `preview.ts`. Unset, a temporary copy is served instead, so a hand edit
+// writes no tracked file and a concurrent `test:e2e` finds no live server on
+// the fixture. The board runs with the hidden `--open-route`, so the printed
+// link hands any local browser a writing tab.
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

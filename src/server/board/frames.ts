@@ -1076,15 +1076,11 @@ class PageLayout {
   /**
    * Writes the seven fixed keys on the entry it creates or changes, after any
    * key the entry already held, so unknown keys survive in place. A hug flag
-   * is written on an entry it creates, once it is on, or when the entry holds
-   * it, so a write to an entry from before the flags adds no key. `scroll` is
-   * written once it is on or when the entry holds it, and a scroll entry
-   * writes both hug flags false, since it fixes both axes. `widths` is
-   * written while it lists one and removed once it lists none, and a held
-   * value no reader understands is left as it stands. `device` is written
-   * while the frame holds one and removed once it is cleared, leaving a held
-   * value no reader understands as `widths` does. `transition` is written
-   * the same way as `device`.
+   * is written once it is on or when the entry holds it, so an entry from
+   * before the flags gains no key, and a scroll entry writes both hug flags
+   * false, since it fixes both axes. `scroll` follows the same rule. `widths`,
+   * `device`, and `transition` are written while the frame holds one and
+   * removed once cleared, leaving a held value no reader understands as is.
    */
   set(
     name: string,

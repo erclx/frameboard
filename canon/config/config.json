@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.84.0",
-      "syncedAt": "2026-11-11T13:46:01.194Z",
+      "version": "5.93.0",
+      "syncedAt": "2026-11-15T12:38:55.565Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -26,7 +26,7 @@
         ".claude/rules/canon/lib/test-scope.md": "sha256:be592b8fb8e316a336bf4719b26e4e1ab186c0ac07ed0a17a45449b24b812972",
         ".claude/rules/canon/lib/testing-ts.md": "sha256:48e6b1693fccf0931ce216247cbbef4f3b5694c6858ccbe397a5939e8504b23f",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
-        ".claude/rules/canon/tooling/code-comments.md": "sha256:98d585be0dcf8d97c063c80619d1e67c920e1c672df611ed621fe82c1ba862c8",
+        ".claude/rules/canon/tooling/code-comments.md": "sha256:64aefa372c435719203b94084d2cc4fec7679bae6c3f9c63b2e0a276b56f1e1d",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:df6b5c282cad711211d45620599bd550679d8a15c48c77c72a7ef44c384a2b53",
         ".claude/rules/canon/tooling/dependencies.md": "sha256:beef3a95783523a1853a1501d2b235dea3ca88b46ba14bda77356349932a4093",
         ".claude/rules/canon/ui/craft.md": "sha256:166ac910f3e81e0ecad2bf850741992801db4b6eb1055aece5a854ed4d159ba6",
@@ -36,15 +36,15 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.84.0",
-      "syncedAt": "2026-11-11T13:45:44.070Z",
+      "version": "5.93.0",
+      "syncedAt": "2026-11-15T12:39:13.311Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
-        ".github/workflows/phase-label-gate.yml": "sha256:a4dd2f6e78751e22d2d9ecd8bc4a66f42e7e1022c04d4038a4f6689c791ed64f",
-        ".github/workflows/pr-local-preview.yml": "sha256:29a3541db02f1ffb0e7fbe6ae84e49462c6900728584398c28fe4fb8fa8f5b2d",
+        ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
+        ".github/workflows/pr-local-preview.yml": "sha256:f75f4263eae2dade5be73c6ab2fed7c5f82f2bf2dc7e0d01f896a584455abb0e",
         ".github/workflows/verify.yml": "sha256:0b6e3c9d3f347cf9c732886abbf6d08fbd78a0572568c8d30eb2703dbcc8ce35",
         ".husky/commit-msg": "sha256:466995785613d23781be71a1338fec590dec636a8b2a0f13d7b850639358fbeb",
-        ".husky/post-merge": "sha256:ac70b19c4ec53acb87d49eb9b2f2989d93d200de41b5f72ec72fe27c6992e03a",
+        ".husky/post-merge": "sha256:c40426a0d545cb0fcf94c61eb69409d7e3952a86cfe780ff1ebb6201320f504b",
         ".husky/post-rewrite": "sha256:4f35974c54e0cf6cb9ce587f8840c24132ea8d7e74ca5ae884ee546f7b878a91",
         ".husky/pre-commit": "sha256:a7e3ee0be7554bb60837cd7a414e61aa6a51db987390e325a3799cbdc254ddd8",
         ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
@@ -63,7 +63,7 @@
       "dispositions": {
         ".github/workflows/deploy.yml": {
           "disposition": "customized",
-          "base": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2"
+          "base": "sha256:c10b99a419a6f54dd238f889dfb86f71ad86d79d2c0ec12b1655785ce128c25c"
         },
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
@@ -71,7 +71,7 @@
         },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
-          "base": "sha256:5707d43282ecb8754b0ca4f389a9df2fc4e1cb4b0310238a37641d4139cb470b"
+          "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
@@ -100,6 +100,34 @@
         "e2e/screenshot.ts": {
           "disposition": "customized",
           "base": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b"
+        },
+        "package.json:lint": {
+          "disposition": "customized",
+          "base": "sha256:03b1fcb7710ef8f0542169a929a505de57da18a391283ea86b50a8b3a09ec856"
+        },
+        "package.json:lint:fix": {
+          "disposition": "customized",
+          "base": "sha256:f5e7b7d244eb0d26a7a7e4c0dc7474961d45097c2461910faae9095f06b9b760"
+        },
+        "package.json:screenshot": {
+          "disposition": "customized",
+          "base": "sha256:bc35258b147950c026e4eb66f60291deb057b27987e13e86577f161fb85b8b9e"
+        },
+        "package.json:test:coverage": {
+          "disposition": "customized",
+          "base": "sha256:e2c449ee6d3a8a3b09d00bd5ee97a758f8ebece5c7668373818071028a76236f"
+        },
+        "package.json:test:e2e": {
+          "disposition": "customized",
+          "base": "sha256:94ca88c092a6c15494a87a73f113f197a0f1425d3e5d127ad8b203270b4c484b"
+        },
+        "package.json:test:e2e:changed": {
+          "disposition": "customized",
+          "base": "sha256:6c90a1da356198944a2abd7440bc3125c428f13e85211a546d20541307b9975c"
+        },
+        "package.json:test:run": {
+          "disposition": "customized",
+          "base": "sha256:a9f07d70d30ee848c66c3a46453a52ce11dd6eb2067d020162b67c6d853567b7"
         },
         "src/site.ts": {
           "disposition": "declined",
