@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.84.0",
-      "syncedAt": "2026-11-11T13:46:01.194Z",
+      "version": "5.93.0",
+      "syncedAt": "2026-11-15T12:38:55.565Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -26,7 +26,7 @@
         ".claude/rules/canon/lib/test-scope.md": "sha256:be592b8fb8e316a336bf4719b26e4e1ab186c0ac07ed0a17a45449b24b812972",
         ".claude/rules/canon/lib/testing-ts.md": "sha256:48e6b1693fccf0931ce216247cbbef4f3b5694c6858ccbe397a5939e8504b23f",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
-        ".claude/rules/canon/tooling/code-comments.md": "sha256:98d585be0dcf8d97c063c80619d1e67c920e1c672df611ed621fe82c1ba862c8",
+        ".claude/rules/canon/tooling/code-comments.md": "sha256:64aefa372c435719203b94084d2cc4fec7679bae6c3f9c63b2e0a276b56f1e1d",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:df6b5c282cad711211d45620599bd550679d8a15c48c77c72a7ef44c384a2b53",
         ".claude/rules/canon/tooling/dependencies.md": "sha256:beef3a95783523a1853a1501d2b235dea3ca88b46ba14bda77356349932a4093",
         ".claude/rules/canon/ui/craft.md": "sha256:166ac910f3e81e0ecad2bf850741992801db4b6eb1055aece5a854ed4d159ba6",
