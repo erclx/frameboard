@@ -310,6 +310,16 @@ describe('InspectorPanel', () => {
       expect(screen.getByRole('tab', { name: 'Slides' })).toHaveFocus()
     })
 
+    it('says to open a page on Slides with nothing selected and no page open', async () => {
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+
+      expect(
+        screen.getByText('Open a page to set how its slides present.'),
+      ).toBeVisible()
+    })
+
     it('draws no tab strip under the Frame tool', () => {
       modeStore.setState({ tool: 'frame', mode: 'edit' })
 

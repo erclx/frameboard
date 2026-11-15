@@ -181,7 +181,13 @@ export function InspectorPanel({
               {page && frames.length > 0 ? (
                 <SlideSection frames={frames} />
               ) : null}
-              {slidesPage ? <PageSection page={slidesPage} /> : null}
+              {slidesPage ? (
+                <PageSection page={slidesPage} />
+              ) : frames.length > 0 ? null : (
+                <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+                  Open a page to set how its slides present.
+                </p>
+              )}
             </>
           }
           export={
