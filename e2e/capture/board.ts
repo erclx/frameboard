@@ -126,7 +126,7 @@ async function fixedPhoneLink(page: Page): Promise<void> {
   )
 }
 
-/** Clicks the Frame section's Open on a phone button once a writing tab enables it. */
+/** Clicks the Export tab's Open on a phone button once a writing tab enables it. */
 async function openPhoneLink(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
     let left = frames
@@ -176,6 +176,31 @@ function leftTab(name: string): (page: Page) => Promise<void> {
 }
 
 const themeTab = leftTab('Theme')
+
+/**
+ * Opens the inspector's tab named `name` once the board has drawn it, scoped
+ * to the inspector, since the left panel's strip also holds a Design tab. The
+ * pick holds across the selection a later setup makes.
+ */
+function inspectorTab(name: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ label, frames }) => {
+        let left = frames
+        const open = () => {
+          const tab = [
+            ...document.querySelectorAll('[data-inspector] [role="tab"]'),
+          ].find((candidate) => candidate.textContent?.trim() === label)
+          if (tab instanceof HTMLElement) tab.click()
+          else if (--left > 0) requestAnimationFrame(open)
+          else console.error(`No ${label} inspector tab to open`)
+        }
+        document.addEventListener('DOMContentLoaded', open)
+      },
+      { label: name, frames: TAB_FRAMES },
+    )
+  }
+}
 
 /** The reference's six files, for a preview board whose `assets/` holds none. */
 const REFERENCE_ASSETS = [
@@ -4070,6 +4095,7 @@ const CASES: CaptureCase[] = [
             homePushes,
             noAgentChanges,
             asWriter,
+            inspectorTab('Slides'),
             readyWhen(
               '[aria-labelledby="inspector-page"] button[aria-label="Direction"]',
             ),
@@ -4089,6 +4115,7 @@ const CASES: CaptureCase[] = [
             homeWipes,
             noAgentChanges,
             asWriter,
+            inspectorTab('Slides'),
             transitionMenuOnLoad,
             readyWhen('[data-slot="dropdown-menu-content"]'),
           ),
@@ -4172,7 +4199,9 @@ const CASES: CaptureCase[] = [
           both(
             asWriter,
             onCanvas({ select: ['webapp/home/about'] }),
-            readyWhen('[aria-labelledby="inspector-export"]'),
+            readyWhen(
+              '[aria-labelledby="inspector-frame"] button[aria-label^="Rename frame"]',
+            ),
           ),
         ),
       },
@@ -4223,6 +4252,7 @@ const CASES: CaptureCase[] = [
             asWriter,
             fixedPhoneLink,
             onCanvas({ select: ['webapp/home/hero'] }),
+            inspectorTab('Export'),
             openPhoneLink,
             readyWhen('[data-slot="popover-content"] svg[role="img"]'),
           ),
@@ -5233,8 +5263,8 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        // An animated hero held mid-slide: the Motion section with its time,
-        // track, and Filmstrip row, and the Held chip on the label.
+        // An animated hero held mid-slide: the Motion section with its time
+        // and track, and the Held chip on the label.
         setup: themed(
           both(
             slidingHero,
@@ -5273,11 +5303,12 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        // The one-frame inspector scrolled to Export at its 2x and Both themes
-        // default, the Name field on the frame's name over one line per file.
+        // The one-frame Export tab at its 2x and Both themes default, the
+        // Name field on the frame's name over one line per file.
         setup: themed(
           both(
             onCanvas({ select: ['webapp/home/hero'] }),
+            inspectorTab('Export'),
             exportInView,
             readyWhen(`[${EXPORT_IN_VIEW}]`),
           ),
@@ -5290,10 +5321,67 @@ const CASES: CaptureCase[] = [
         evidence: true,
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
-        // The hero's headline selected, its inspector scrolled to the Export
-        // section named for the frame and the element.
+        // The hero's headline selected, its Export tab named for the frame
+        // and the element.
         setup: themed(
-          both(headlineOnHero, exportInView, readyWhen(`[${EXPORT_IN_VIEW}]`)),
+          both(
+            headlineOnHero,
+            inspectorTab('Export'),
+            exportInView,
+            readyWhen(`[${EXPORT_IN_VIEW}]`),
+          ),
+        ),
+      },
+      {
+        section: 'export-filmstrip',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // An animated hero's Export tab, the filmstrip under the frame's
+        // own Export and over Open on a phone.
+        setup: themed(
+          both(
+            slidingHero,
+            noAgentChanges,
+            onCanvas({ select: ['webapp/home/hero'] }),
+            inspectorTab('Export'),
+            readyWhen('#inspector-filmstrip'),
+          ),
+        ),
+      },
+      {
+        section: 'export-none',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // Two frames on the Export tab, which says one exports at a time.
+        setup: themed(
+          both(
+            onCanvas({ select: ['webapp/home/hero', 'webapp/home/about'] }),
+            inspectorTab('Export'),
+            readyWhen('[data-inspector] [role="tabpanel"] p'),
+          ),
+        ),
+      },
+      {
+        section: 'slides-element',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The hero's headline on the Slides tab: the frame's crumb, then its
+        // step, This slide, and Page.
+        setup: themed(
+          both(
+            headlineOnHero,
+            inspectorTab('Slides'),
+            readyWhen('[aria-labelledby="inspector-step"]'),
+          ),
         ),
       },
       {
@@ -5604,6 +5692,7 @@ const WRITING_SECTIONS = [
   'inspector-widths-hug',
   'motion-held',
   'motion-ended',
+  'export-filmstrip',
   'page-transition',
   'page-transition-own',
   'present-steps',
