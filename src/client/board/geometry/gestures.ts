@@ -418,10 +418,9 @@ export function attachGestures(
   /**
    * The corner mark a press at this point takes, null when it takes none.
    * Only an element that takes a resize answers from its marks. Any other
-   * press on the selected element, a container's or a divider's corners
-   * included, carries it on a drag, since they are sized by what they hold or
-   * by their line. The frame's handles are hidden while an element is
-   * selected, so they answer nothing then.
+   * press on the selected element, a divider's or a rotated element's
+   * corners included, carries it on a drag. The frame's handles are hidden
+   * while an element is selected, so they answer nothing then.
    */
   const markAt = (
     event: MouseEvent,

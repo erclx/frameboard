@@ -4,7 +4,16 @@ import { liveStore } from '@/client/live/store'
 import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
-import { degreesOf, previewStyle } from '../inspector/element/styles'
+import {
+  type Axis,
+  sizeDeclarations,
+} from '../inspector/element/size-declarations'
+import {
+  degreesOf,
+  type LiveLayout,
+  previewStyle,
+  readLayout,
+} from '../inspector/element/styles'
 import { writeElement, writeElements } from '../inspector/element/write'
 import type { Margins } from '../place/flow-guess'
 import type { ElementKey } from '../selection'
@@ -18,25 +27,37 @@ export interface ElementSize {
 
 /**
  * What a corner drag writes on an element: width and height on a `box` or
- * `media`, width alone on `text`, whose height follows its words.
+ * `media`, width alone on `text`, whose height follows its words, and on a
+ * `container` each side the drag changed, set Fixed as the Size row sets it.
  */
-export type ResizeKind = 'box' | 'text' | 'media'
+export type ResizeKind = 'box' | 'text' | 'media' | 'container'
+
+/** The document's own wrappers, which a corner drag never sizes. */
+const ROOTS = new Set(['html', 'body'])
 
 /**
  * The kind of corner resize an element's markup takes, or null for one sized
- * by what it holds, being a container, or by its line, being a divider. A box
+ * by its line, being a divider, or one of the document's own wrappers. A box
  * is a `div` holding no element and no text, as a placed Rectangle or Ellipse
- * is, and text holds nothing but words, so a `<p>` holding a `<b>` is a
- * container.
+ * is, text holds nothing but words, and any element holding another is a
+ * container, so a `<p>` holding a `<b>` is one.
  */
 export function resizeKindOf(element: Element | null): ResizeKind | null {
-  if (!element) return null
+  if (!element || ROOTS.has(element.localName)) return null
   if (element.localName === 'img' || element.localName === 'video') {
     return 'media'
   }
-  if (element.childElementCount > 0) return null
+  if (element.childElementCount > 0) return 'container'
   if ((element.textContent ?? '').trim() !== '') return 'text'
   return element.localName === 'div' ? 'box' : null
+}
+
+/** What a container's corner drag reads at the press to write Fixed the way the Size row does. */
+export interface ContainerSizing {
+  /** Its flow and its parent's, holding the size it draws at, which a side the drag leaves keeps. */
+  layout: LiveLayout
+  /** Whether it grows along its flex parent's main axis, being Fill there, which Fixed takes off. */
+  fills: boolean
 }
 
 /** What a live element's corner drag acts from. */
@@ -52,23 +73,52 @@ export interface ResizeRead {
    * box, so a write takes this off rather than jump by it.
    */
   inset: ElementSize
+  /** On a `container`, what its Fixed write reads, null on any other kind. */
+  sizing: ContainerSizing | null
 }
+
+/** What a corner drag's write reads off the element it resizes. */
+export type ResizeTarget = Pick<ResizeRead, 'kind' | 'inset'> &
+  Partial<Pick<ResizeRead, 'sizing'>>
 
 /**
  * How a live element takes a corner resize, or null for one it would not
  * size. A rotated element's outline is its turned bounding box, whose corners
- * are not the element's own, and a width does nothing to inline text.
+ * are not the element's own, and a width does nothing to inline text or an
+ * inline container.
  */
 export function readResize(element: Element): ResizeRead | null {
   const kind = resizeKindOf(element)
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
-  if (!kind || !style || degreesOf(style.rotate) !== 0) return null
-  if (kind === 'text' && style.display === 'inline') return null
+  const view = element.ownerDocument.defaultView
+  const style = view?.getComputedStyle(element)
+  if (!kind || !view || !style || degreesOf(style.rotate) !== 0) return null
+  if (
+    (kind === 'text' || kind === 'container') &&
+    (style.display === 'inline' || style.display === 'contents')
+  ) {
+    return null
+  }
   return {
     kind,
     natural: naturalSize(element),
     hugsHeight: kind === 'text' && !statesHeight(element),
     inset: contentBoxInset(style),
+    sizing: kind === 'container' ? containerSizing(element, style, view) : null,
+  }
+}
+
+const FLEX_PARENTS = new Set(['vertical', 'horizontal', 'wrap'])
+
+function containerSizing(
+  element: Element,
+  style: CSSStyleDeclaration,
+  view: Window,
+): ContainerSizing {
+  const layout = readLayout(element, style, view)
+  return {
+    layout,
+    fills:
+      FLEX_PARENTS.has(layout.parent) && (parseFloat(style.flexGrow) || 0) > 0,
   }
 }
 
@@ -176,17 +226,38 @@ export function dragSize(
     : cornerSize(start, corner, dx, dy, keepRatio, read.natural ?? start)
 }
 
-/** The declarations a corner drag to a drawn size writes on an element. */
+/**
+ * The declarations a corner drag to a drawn size writes on an element. A
+ * container writes only the sides the drag moved a pixel or more from the
+ * size it drew at, each through `sizeDeclarations` as Fixed, so a Fill child
+ * drops its flex and a side the drag left keeps its mode.
+ */
 export function resizeDeclarations(
-  { kind, inset }: Pick<ResizeRead, 'kind' | 'inset'>,
+  { kind, inset, sizing }: ResizeTarget,
   { width, height }: ElementSize,
 ): { property: string; value: string }[] {
   const px = (drawn: number, held: number) =>
-    `${Math.max(0, Math.round(drawn - held))}px`
-  const wide = { property: 'width', value: px(width, inset.width) }
+    Math.max(0, Math.round(drawn - held))
+  if (kind === 'container') {
+    if (!sizing) return []
+    const { layout, fills } = sizing
+    const drawn: Record<Axis, number> = { width, height }
+    return (['width', 'height'] as const).flatMap((axis) =>
+      Math.abs(drawn[axis] - layout[axis]) < 1
+        ? []
+        : sizeDeclarations(
+            layout,
+            axis,
+            fills ? 'fill' : null,
+            'fixed',
+            px(drawn[axis], inset[axis]),
+          ),
+    )
+  }
+  const wide = { property: 'width', value: `${px(width, inset.width)}px` }
   return kind === 'text'
     ? [wide]
-    : [wide, { property: 'height', value: px(height, inset.height) }]
+    : [wide, { property: 'height', value: `${px(height, inset.height)}px` }]
 }
 
 /** A corner drag of one element, previewed on its live node and written once on release. */
@@ -206,7 +277,7 @@ export interface ElementResize {
 export function startElementResize(
   page: string,
   key: ElementKey,
-  read: Pick<ResizeRead, 'kind' | 'inset'>,
+  read: ResizeTarget,
 ): ElementResize | null {
   const holder = liveStore.getState().claims[key.frame]
   if (holder) {
@@ -217,13 +288,16 @@ export function startElementResize(
     })
     return null
   }
+  // Every property a preview wrote, since a container's drag may write its flex too.
+  const shown = new Set(['width', 'height'])
   const putBack = () => {
-    previewStyle(key, 'width', null)
-    previewStyle(key, 'height', null)
+    for (const property of shown) previewStyle(key, property, null)
   }
   return {
     preview: (size) => {
+      putBack()
       for (const { property, value } of resizeDeclarations(read, size)) {
+        shown.add(property)
         previewStyle(key, property, value)
       }
     },

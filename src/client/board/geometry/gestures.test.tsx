@@ -80,6 +80,7 @@ function setup(
       natural: null,
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     },
     placed,
     ghost,
@@ -2677,6 +2678,7 @@ describe('attachGestures', () => {
             natural: null,
             hugsHeight: true,
             inset: { width: 0, height: 0 },
+            sizing: null,
           },
         })
         detach = canvas.detach
@@ -2718,6 +2720,7 @@ describe('attachGestures', () => {
             natural: { width: 1, height: 1 },
             hugsHeight: false,
             inset: { width: 0, height: 0 },
+            sizing: null,
           },
         })
         detach = canvas.detach

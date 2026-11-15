@@ -632,6 +632,9 @@ test.describe('placing text and shapes into a frame', () => {
       '<img data-name="Pic" src="../assets/hero.png" alt="" style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px">'
     const VIDEO =
       '<video data-name="Clip" src="../assets/demo.mp4" muted style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px"></video>'
+    // Its middle falls in the gap between its children, so a click there picks the container.
+    const WRAPPED =
+      '<div data-name="Group" style="display: flex; flex-direction: row; gap: 8px; position: absolute; left: 20px; top: 300px"><div data-name="A" style="width: 40px; height: 20px; background: var(--muted)"></div><div data-name="B" style="width: 40px; height: 20px; background: var(--muted)"></div></div>'
 
     /**
      * Adds `markup` to the hero, selects the element named `name`, and drags
@@ -705,6 +708,28 @@ test.describe('placing text and shapes into a frame', () => {
       await expect(
         page.locator('[data-element-selection] [data-chip]'),
       ).toHaveText(`${width} × Hug`)
+
+      await undo(page)
+
+      await expect.poll(read).toBe(original)
+    })
+
+    test('on a wrapped container across writes its width alone, reading W Fixed and H Hug, and one undo puts it back', async ({
+      page,
+    }) => {
+      const { original } = await dragCorner(page, WRAPPED, 'Group', 60, 0)
+
+      await expect.poll(read).not.toBe(original)
+      const [, style = ''] =
+        /data-name="Group" style="([^"]*)"/.exec(read()) ?? []
+      expect(style).toMatch(/; width: \d+px$/)
+      expect(style).not.toContain('height')
+      await expect(page.getByRole('button', { name: 'Width mode' })).toHaveText(
+        'Fixed',
+      )
+      await expect(
+        page.getByRole('button', { name: 'Height mode' }),
+      ).toHaveText('Hug')
 
       await undo(page)
 
