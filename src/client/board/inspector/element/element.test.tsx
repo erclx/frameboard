@@ -34,7 +34,7 @@ import { RotationRow } from './rotation'
 import { ARRANGE_FREE_ONLY } from './several'
 import { ShadowSection } from './shadow'
 import { StrokeSection } from './stroke'
-import { type Rotation, useLiveElement } from './styles'
+import { previewStyle, type Rotation, useLiveElement } from './styles'
 import { TextSection } from './text'
 import { TypographySection } from './typography'
 import {
@@ -3823,6 +3823,25 @@ describe('InspectorPanel with an element selected', () => {
 
     await waitFor(() => expect(result.current).not.toBeNull())
     expect(result.current?.borderWidth).toBe(width)
+  })
+
+  it('puts a token border shorthand back whole once a width preview ends', async () => {
+    await mountFrame(
+      '<style>:root { --edge: red }</style><div style="border: 4px solid var(--edge)"></div>',
+    )
+    const key = { frame: HERO.ref, index: 4, hash: HASH }
+    const node = document
+      .querySelector<HTMLIFrameElement>(`[data-frame="${HERO.ref}"] iframe`)
+      ?.contentDocument?.querySelector('div')
+    if (!node) throw new Error('the frame holds no div')
+
+    previewStyle(key, 'border-width', '9px')
+    previewStyle(key, 'border-width', null)
+
+    expect(node.getAttribute('style')).toBe('border: 4px solid var(--edge)')
+    expect(
+      node.ownerDocument.defaultView?.getComputedStyle(node).borderTopWidth,
+    ).toBe('4px')
   })
 
   it('reads a one-line truncation and the type details it sets', async () => {

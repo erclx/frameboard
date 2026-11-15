@@ -681,6 +681,11 @@ interface Replaced {
   element: HTMLElement
   value: string
   priority: string
+  /**
+   * The whole `style` attribute before the preview. A longhand of a shorthand
+   * holding `var()` reads as empty, so removing it would strip the shorthand.
+   */
+  attribute: string | null
 }
 
 /** Each previewed declaration by element and property, until it is put back or written. */
@@ -709,8 +714,13 @@ export function previewStyle(
   if (value === null) {
     previews.delete(at)
     if (!replaced || replaced.element !== node || !node) return
-    if (replaced.value === '') node.style.removeProperty(property)
-    else node.style.setProperty(property, replaced.value, replaced.priority)
+    if (replaced.value !== '') {
+      node.style.setProperty(property, replaced.value, replaced.priority)
+    } else if (replaced.attribute === null) {
+      node.removeAttribute('style')
+    } else {
+      node.setAttribute('style', replaced.attribute)
+    }
     if (node.getAttribute('style') === '') node.removeAttribute('style')
     return
   }
@@ -720,6 +730,7 @@ export function previewStyle(
       element: node,
       value: node.style.getPropertyValue(property),
       priority: node.style.getPropertyPriority(property),
+      attribute: node.getAttribute('style'),
     })
   }
   node.style.setProperty(property, value, 'important')
