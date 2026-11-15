@@ -396,9 +396,14 @@ test.describe('selecting an element inside a frame', () => {
     await expect
       .poll(read)
       .toMatch(
-        /<div style="display: flex; flex-direction: column; gap: 0px">\s*<h1 data-name="Headline">hero<\/h1>\s*<p data-name="Caption">/,
+        /<div data-name="Container" style="display: flex; flex-direction: column; gap: 0px">\s*<h1 data-name="Headline">hero<\/h1>\s*<p data-name="Caption">/,
       )
     await expect(page.locator('[data-element-selection]')).toHaveCount(1)
+    await expect(
+      page
+        .getByRole('list', { name: 'Elements of hero' })
+        .getByRole('button', { name: 'Container', exact: true }),
+    ).toBeVisible()
 
     await undo(page)
 

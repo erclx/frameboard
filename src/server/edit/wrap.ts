@@ -40,6 +40,20 @@ function subtree(element: Element): number {
   return children(element).reduce((count, child) => count + subtree(child), 1)
 }
 
+/** The first of `Container`, `Container 2`, and on that no element of `elements` is named. */
+function containerName(elements: readonly Element[]): string {
+  const taken = new Set(
+    elements.flatMap((element) =>
+      element.attrs.flatMap((attr) =>
+        attr.name === 'data-name' ? [attr.value.trim()] : [],
+      ),
+    ),
+  )
+  let name = 'Container'
+  for (let n = 2; taken.has(name); n += 1) name = `Container ${n}`
+  return name
+}
+
 function isFree(facts: PlaceFacts | undefined): boolean {
   const position = facts?.position?.trim().toLowerCase()
   return position === 'absolute' || position === 'fixed'
@@ -132,7 +146,7 @@ export function wrapElements(
       ? ['position: absolute', `left: ${px(spot.left)}`, `top: ${px(spot.top)}`]
       : []),
   ]
-  const container = `<div style="${declarations.join('; ')}">${ranges
+  const container = `<div data-name="${containerName(tree.elements)}" style="${declarations.join('; ')}">${ranges
     .map((range) => `${inner}${html.slice(range?.[0], range?.[1])}`)
     .join('')}${indent}</div>`
 
