@@ -544,7 +544,13 @@ export function shorthandPart(
   const parts: ShorthandPart[] = []
   let start = 0
   for (const text of splitTopLevel(value, ' ')) {
-    if (text.startsWith('!')) break
+    // An `!important` may be written against the last part, as `red!important`.
+    const bang = text.search(/!\s*important$/i)
+    if (bang === 0 || text.startsWith('!')) break
+    if (bang > 0) {
+      parts.push({ text: text.slice(0, bang), start })
+      break
+    }
     if (text !== '') parts.push({ text, start })
     start += text.length + 1
   }

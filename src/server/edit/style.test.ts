@@ -132,6 +132,16 @@ describe('setDeclaration', () => {
       ).toEqual({ ok: true, style: 'border: 1px solid #1e40af !important' })
     })
 
+    it('should keep an !important written against the color', () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid red!important',
+          'border-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'border: 1px solid #1e40af!important' })
+    })
+
     it('should leave a background image beside the color alone', () => {
       expect(
         setDeclaration(
