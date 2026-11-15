@@ -83,6 +83,7 @@ test.describe("scrubbing a frame's motion", () => {
     await motion.getByRole('button', { name: 'Pause' }).click()
     await expect(page.getByRole('button', { name: /^Held at/ })).toBeVisible()
 
+    await page.getByRole('tab', { name: 'Export' }).click()
     await page.getByRole('button', { name: 'Export scale' }).click()
     await page.getByRole('menuitemradio', { name: '1x' }).click()
     await page.getByRole('button', { name: 'Export theme' }).click()
