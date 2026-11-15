@@ -482,6 +482,8 @@ test.describe('exporting a selected frame', () => {
       .frameLocator(`[data-frame="${HERO}"] iframe`)
       .locator('h1')
     await expect(headline).toBeVisible()
+    // Export sits on its own tab, which holds while the selection lands.
+    await page.getByRole('tab', { name: 'Export' }).click()
     // As above, a click before the canvas fits lands beside the frame.
     await expect(async () => {
       await headline.click()
@@ -523,7 +525,7 @@ test.describe('the colors a selected frame uses', () => {
     board.cleanup()
   })
 
-  test('Selection colors follows Export, and pressing a row puts its color on the clipboard', async ({
+  test('Selection colors ends Design, and pressing a row puts its color on the clipboard', async ({
     page,
     context,
   }) => {
@@ -538,7 +540,7 @@ test.describe('the colors a selected frame uses', () => {
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export 2 files' }),
+        page.getByRole('button', { name: 'Rename frame hero' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
     const colors = page.getByRole('region', { name: /^Selection colors/ })
@@ -550,10 +552,7 @@ test.describe('the colors a selected frame uses', () => {
       .evaluateAll((regions) =>
         regions.map((region) => region.getAttribute('aria-labelledby')),
       )
-    expect(order.slice(-2)).toEqual([
-      'inspector-export',
-      'inspector-selection-colors',
-    ])
+    expect(order.at(-1)).toBe('inspector-selection-colors')
 
     const row = colors.getByRole('button', { name: /^Copy / }).first()
     const label = (await row.getAttribute('aria-label')) ?? ''
@@ -590,7 +589,7 @@ test.describe('the colors a selected frame uses', () => {
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export 2 files' }),
+        page.getByRole('button', { name: 'Rename frame hero' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
 

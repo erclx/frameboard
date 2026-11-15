@@ -28,6 +28,22 @@ function mount(step: LiveStep) {
 const field = () => screen.getByRole('textbox', { name: 'Appears on step' })
 
 describe('the step field', () => {
+  it('describes the field with when its step shows', () => {
+    mount(NO_STEP)
+
+    expect(field()).toHaveAccessibleDescription(
+      'Shown on that press while presenting. Edit mode and export show every step.',
+    )
+  })
+
+  it('focuses the field on a click of its label', async () => {
+    mount(NO_STEP)
+
+    await userEvent.click(screen.getByText('Appears on step'))
+
+    expect(field()).toHaveFocus()
+  })
+
   it('writes data-step on Enter', async () => {
     const written = mount(NO_STEP)
 

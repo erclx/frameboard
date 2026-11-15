@@ -7,14 +7,16 @@ import {
   DEFAULT_TRANSITION_MS,
   type Direction,
   DIRECTIONS,
+  SAME_AS_PAGE_WORD,
   takesDirection,
   type Transition,
   transitionLabel,
 } from '@/shared/present-transition'
-import type { PageRecord } from '@/shared/records/list'
+import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
 import { reportRefusal } from '../left-panel/page-actions'
 import { TypePicker } from './element/typography'
+import { LabelTip } from './label-tip'
 import { useTransitionNames } from './transition-names'
 
 /** The lengths the Duration menu offers, a page holding another adding its own. */
@@ -27,14 +29,9 @@ const DIRECTION_LABELS = {
   down: 'Down',
 } as const satisfies Record<Direction, string>
 
-/** The note under a transition setting, saying the board draws it and never the file. */
-export function TransitionNote() {
-  return (
-    <p className="mt-1.5 text-caption text-muted-foreground">
-      Drawn by the board while presenting. Slide files are unchanged.
-    </p>
-  )
-}
+/** The tip on a transition setting's label, saying the board draws it and never the file. */
+export const TRANSITION_TIP =
+  'Drawn by the board while presenting. Slide files are unchanged.'
 
 /**
  * The open page's settings, shown with nothing selected: the transition
@@ -76,12 +73,20 @@ export function PageSection({
       aria-labelledby="inspector-page"
       className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
     >
-      <h2 id="inspector-page" className="mb-2 text-xs font-semibold">
-        Page
-      </h2>
+      <LabelTip
+        label="Page"
+        tip={TRANSITION_TIP}
+        tipId="inspector-page-tip"
+        className="mb-2"
+      >
+        <h2 id="inspector-page" className="text-xs font-semibold">
+          Page
+        </h2>
+      </LabelTip>
       <Setting title="Slide transition">
         <TypePicker
           label="Slide transition"
+          describedBy="inspector-page-tip"
           shown={transitionLabel(name)}
           current={name}
           options={names.map((value) => ({
@@ -132,7 +137,6 @@ export function PageSection({
           />
         </Setting>
       )}
-      <TransitionNote />
     </section>
   )
 }
@@ -148,5 +152,67 @@ function Setting({ title, children }: { title: string; children: ReactNode }) {
       </span>
       {children}
     </div>
+  )
+}
+
+const SAME_AS_PAGE = SAME_AS_PAGE_WORD
+
+/**
+ * The transition each selected frame arrives with while presenting, Same as
+ * page or a named one over its page's, reading Mixed where the frames
+ * differ. A pick writes every frame's `layout.json` entry in one undo step.
+ */
+export function SlideSection({
+  frames,
+  calls = structure,
+}: {
+  frames: readonly FrameRecord[]
+  calls?: Structure
+}) {
+  const canWrite = useLive((state) => state.canWrite)
+  const names = useTransitionNames(frames[0]?.project)
+  const values = frames.map((frame) => frame.transition?.name ?? SAME_AS_PAGE)
+  const current = values.every((value) => value === values[0])
+    ? (values[0] ?? null)
+    : null
+  const label = (value: string) =>
+    value === SAME_AS_PAGE ? 'Same as page' : transitionLabel(value)
+  return (
+    <section
+      aria-labelledby="inspector-slide"
+      className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
+    >
+      <LabelTip
+        label="This slide"
+        tip={TRANSITION_TIP}
+        tipId="inspector-slide-tip"
+        className="mb-2"
+      >
+        <h2 id="inspector-slide" className="text-xs font-semibold">
+          This slide
+        </h2>
+      </LabelTip>
+      <TypePicker
+        label="This slide"
+        describedBy="inspector-slide-tip"
+        shown={current === null ? 'Mixed' : label(current)}
+        current={current}
+        options={[
+          { value: SAME_AS_PAGE, name: label(SAME_AS_PAGE) },
+          ...names.map((value) => ({ value, name: label(value) })),
+        ]}
+        disabled={!canWrite}
+        onPick={(value) => {
+          const name = names.find((candidate) => candidate === value)
+          calls
+            .setFrameTransition(
+              frames.map((frame) => frame.ref),
+              name ? { name } : null,
+            )
+            .catch(reportRefusal('Couldn’t set the slide transition'))
+        }}
+        className="w-full"
+      />
+    </section>
   )
 }

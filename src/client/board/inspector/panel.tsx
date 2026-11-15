@@ -43,22 +43,32 @@ import { TypographySection } from './element/typography'
 import { VideoSection } from './element/video'
 import { type ElementChange, shownHash, writeElement } from './element/write'
 import { ExportSection } from './export-section'
-import { FrameSection } from './frame-section'
-import { MotionSection } from './motion-section'
-import { PageSection } from './page-section'
+import { FrameCrumb, FrameSection } from './frame-section'
+import { FilmstripSection, MotionSection } from './motion-section'
+import { PageSection, SlideSection } from './page-section'
+import { PhoneLink } from './phone-link'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
+import { InspectorTabs } from './tabs'
 
 /**
  * The right panel: the header of the avatar and the zoom level, over the
- * Frame tool's presets while that tool is on, else the Frame section for one
- * selected frame with its Fill and Export, or the `N frames` section and
- * Arrange for several, each ending on the colors they use, and a hint while
- * nothing is selected. An element selected inside the frame adds its
- * sections under Frame, whose name row it hides, with its own Export, and several selected inside
- * the frame take the panel with their shared sections. A tab that reads opens the
- * panel on one View only line, since every field under it reads greyed.
+ * Frame tool's presets while that tool is on, a line in Play, and otherwise
+ * the Design, Slides, and Export tabs, each holding the sections for its job.
+ * The tab holds across selections, and every selection kind draws each tab.
+ *
+ * ```text
+ * Design: Frame, Arrange, Position, Layout, Appearance, Typography, Fill, Text, Stroke, Shadow, Video, Motion playback, Selection colors
+ * Slides: This slide for frames, Appears on step for one element, Page
+ * Export: Export, Export filmstrip, Open on a phone
+ * ```
+ *
+ * An element selected inside the frame puts one row naming its frame over
+ * every tab in place of the frame's fields, and several selected inside the
+ * frame take Design with their shared sections. Export reads one line where
+ * no single frame or element is selected. A tab that reads opens the panel on
+ * one View only line, since every field under it reads greyed.
  */
 export function InspectorPanel({
   open,
@@ -94,6 +104,9 @@ export function InspectorPanel({
   )
   const inFrame = element && frames.length === 1 ? element : null
   const several = inFrame && (elements?.length ?? 0) > 1 ? elements : undefined
+  const canWrite = useLive((state) => state.canWrite)
+  // The selection's page while one holds, else the page the canvas shows.
+  const slidesPage = page && frames.length > 0 ? shown : openPage
   return (
     <aside
       aria-label="Inspector"
@@ -114,44 +127,90 @@ export function InspectorPanel({
       ) : null}
       {framing ? (
         <PresetSection />
-      ) : page && several && frames[0] ? (
-        <SeveralElements page={page} frame={frames[0]} elements={several} />
-      ) : page && frames.length > 0 ? (
-        <>
-          <FrameSection page={page} frames={frames} named={!inFrame} />
-          {frames.length > 1 ? <ArrangeSection /> : null}
-          {frames.length === 1 && !inFrame && frames[0] ? (
-            <>
-              <FrameFill page={page} frame={frames[0].ref} />
-              <MotionSection
-                key={`motion:${frames[0].ref}`}
-                frame={frames[0]}
-              />
-              <ExportSection key={frames[0].ref} frame={frames[0]} />
-            </>
-          ) : null}
-          {inFrame ? (
-            <ElementSections page={page} frame={frames[0]} element={inFrame} />
-          ) : (
-            <FramesColors page={page} frames={frames} />
-          )}
-        </>
+      ) : playing ? (
+        <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+          Playing. Nothing selects in Play.
+        </p>
       ) : (
-        <>
-          {openPage && !playing ? <PageSection page={openPage} /> : null}
-          <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
-            {playing ? (
-              <p>Playing. Nothing selects in Play.</p>
-            ) : (
+        <InspectorTabs
+          head={
+            page && inFrame && !several && frames[0] ? (
+              <ElementCrumb page={page} frame={frames[0]} element={inFrame} />
+            ) : null
+          }
+          design={
+            page && several && frames[0] ? (
+              <SeveralElements
+                page={page}
+                frame={frames[0]}
+                elements={several}
+              />
+            ) : page && frames.length > 0 ? (
               <>
+                {inFrame ? null : <FrameSection page={page} frames={frames} />}
+                {frames.length > 1 ? <ArrangeSection /> : null}
+                {frames.length === 1 && !inFrame && frames[0] ? (
+                  <>
+                    <FrameFill page={page} frame={frames[0].ref} />
+                    <MotionSection
+                      key={`motion:${frames[0].ref}`}
+                      frame={frames[0]}
+                    />
+                  </>
+                ) : null}
+                {inFrame ? (
+                  <ElementDesign page={page} element={inFrame} />
+                ) : (
+                  <FramesColors page={page} frames={frames} />
+                )}
+              </>
+            ) : (
+              <div className="px-3 pt-2.5 pb-3 text-muted-foreground">
                 <p>Select a frame to see its details.</p>
                 <p className="mt-4">
                   Click a frame, or drag on the canvas to select several.
                 </p>
+              </div>
+            )
+          }
+          slides={
+            <>
+              {page && inFrame && !several ? (
+                <ElementSlides page={page} element={inFrame} />
+              ) : null}
+              {page && frames.length > 0 ? (
+                <SlideSection frames={frames} />
+              ) : null}
+              {slidesPage ? (
+                <PageSection page={slidesPage} />
+              ) : frames.length > 0 ? null : (
+                <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+                  Open a page to set how its slides present.
+                </p>
+              )}
+            </>
+          }
+          export={
+            page && inFrame && !several && frames[0] ? (
+              <ElementExport frame={frames[0]} element={inFrame} />
+            ) : frames.length === 1 && !inFrame && frames[0] ? (
+              <>
+                <ExportSection key={frames[0].ref} frame={frames[0]} />
+                <FilmstripSection
+                  key={`filmstrip:${frames[0].ref}`}
+                  frame={frames[0]}
+                />
+                <div className="border-b border-sidebar-border px-3 pt-2.5 pb-3">
+                  <PhoneLink frame={frames[0]} disabled={!canWrite} />
+                </div>
               </>
-            )}
-          </div>
-        </>
+            ) : (
+              <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+                Select one frame or element to export it.
+              </p>
+            )
+          }
+        />
       )}
     </aside>
   )
@@ -177,35 +236,71 @@ function useProjectTokens(frame: string): {
   }
 }
 
-interface ElementSectionsProps {
+interface ElementProps {
   page: string
-  /** The one selected frame the element sits in, absent while its record is not held. */
-  frame: FrameRecord | undefined
   element: ElementKey
 }
 
+const NOT_ON_SCREEN = (
+  <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+    The element’s details show once its frame is on screen.
+  </p>
+)
+
 /**
- * The selected element's sections in the order `inspector/text` draws them,
+ * The selected element's Slides sections: which press of its slide reveals
+ * it. Nothing draws until the frame's live page shows the element.
+ */
+function ElementSlides({ page, element }: ElementProps) {
+  const canWrite = useLive((state) => state.canWrite)
+  const live = useLiveElement(element)
+  if (!live) return NOT_ON_SCREEN
+  return (
+    <StepSection
+      step={live.step}
+      disabled={!canWrite}
+      write={(change) => writeElement(page, element, change)}
+    />
+  )
+}
+
+/** The selected element's Export, named for its frame and its Layers row. */
+function ElementExport({
+  frame,
+  element,
+}: {
+  frame: FrameRecord
+  element: ElementKey
+}) {
+  const tree = useElementTree(element.frame)
+  return (
+    <ExportSection
+      key={`export:${element.frame}\n${element.index}`}
+      frame={frame}
+      element={{
+        index: element.index,
+        hash: element.hash,
+        name: layerName(tree, element.index),
+      }}
+    />
+  )
+}
+
+/**
+ * The selected element's Design sections in the order `inspector/text` draws them,
  * read from the live element and from the frame's static cascade, each
  * control disabled while the tab may not write. Nothing draws until the
  * frame's live page shows the element, which a placeholder never does.
  */
-function ElementSections({ page, frame, element }: ElementSectionsProps) {
+function ElementDesign({ page, element }: ElementProps) {
   const canWrite = useLive((state) => state.canWrite)
-  const tree = useElementTree(element.frame)
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const media = useLiveMedia(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
   const { colors, shadows, fonts } = useProjectTokens(element.frame)
 
-  if (!live) {
-    return (
-      <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
-        The element’s details show once its frame is on screen.
-      </p>
-    )
-  }
+  if (!live) return NOT_ON_SCREEN
   const disabled = !canWrite
   const write = (change: ElementChange) => writeElement(page, element, change)
   const preview = (property: string, value: string | null) =>
@@ -299,18 +394,6 @@ function ElementSections({ page, frame, element }: ElementSectionsProps) {
         disabled={disabled}
         write={write}
       />
-      <StepSection step={live.step} disabled={disabled} write={write} />
-      {frame ? (
-        <ExportSection
-          key={`export:${element.frame}\n${element.index}`}
-          frame={frame}
-          element={{
-            index: element.index,
-            hash: element.hash,
-            name: layerName(tree, element.index),
-          }}
-        />
-      ) : null}
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}
@@ -326,6 +409,26 @@ function ElementSections({ page, frame, element }: ElementSectionsProps) {
         }
       />
     </>
+  )
+}
+
+/** The selected element's frame as the one row over its sections, under the name its Layers row shows. */
+function ElementCrumb({
+  page,
+  frame,
+  element,
+}: {
+  page: string
+  frame: FrameRecord
+  element: ElementKey
+}) {
+  const tree = useElementTree(element.frame)
+  return (
+    <FrameCrumb
+      page={page}
+      frame={frame}
+      element={layerName(tree, element.index)}
+    />
   )
 }
 

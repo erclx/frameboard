@@ -203,8 +203,8 @@ These catch a running `preview` out.
 
 Two catch a copy missing the seeded states.
 
-- A rebuild copies the checkout as it stands, so the seeded pages reach the copy only when the `launch` line seeded the worktree's own fixture before the reviewer's `--baseline`
-- The rebuild never copies `.run/` either, so the seed's reservation on `webapp/settings` is missing from a fresh copy
+- A rebuild copies the checkout as it stands, so the seeded pages reach the copy by the `seed` key in `canon/config/preview.json`, which runs `scripts/drive-seed.ts` on the copy after each rebuild
+- The rebuild never copies `.run/` either, so a copy rebuilt without that seed lacks the reservation on `webapp/settings`
 
 One catches a drive that needs a claimed frame.
 

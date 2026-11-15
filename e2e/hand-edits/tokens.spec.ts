@@ -111,7 +111,7 @@ test.describe('replacing a raw color with a token from Selection colors', () => 
     await expect(async () => {
       await headline.click()
       await expect(
-        page.getByRole('button', { name: 'Export 2 files' }),
+        page.getByRole('button', { name: 'Rename frame hero' }),
       ).toBeVisible({ timeout: 1000 })
     }).toPass({ timeout: 10_000 })
 

@@ -25,7 +25,9 @@ import {
 import { startFrameRename, stopFrameRename } from '../structure/actions'
 import { presetStore } from '../structure/tool'
 import { FrameSection } from './frame-section'
+import { SlideSection } from './page-section'
 import { InspectorPanel } from './panel'
+import { inspectorTabStore } from './tab-store'
 
 const PAGE = 'studio/home'
 const SWATCHES = frameOf('swatches', {
@@ -63,6 +65,7 @@ describe('InspectorPanel', () => {
       trees.store.setState({ byRef: {} })
       modeStore.setState({ tool: 'move', mode: 'edit' })
       presetStore.setState({ preset: 'desktop' })
+      inspectorTabStore.setState({ tab: 'design' })
       stopFrameRename()
     })
   })
@@ -197,19 +200,19 @@ describe('InspectorPanel', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows the open page’s Page section while nothing is selected', () => {
+  it('shows the open page’s Page section on Slides while nothing is selected', async () => {
     render(
       <TooltipProvider>
         <InspectorPanel open={PAGE} />
       </TooltipProvider>,
     )
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+
     expect(screen.getByRole('region', { name: 'Page' })).toBeInTheDocument()
   })
 
-  it('drops the Page section once a frame is selected', () => {
-    act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
-
+  it('keeps the Page section off Design', () => {
     render(
       <TooltipProvider>
         <InspectorPanel open={PAGE} />
@@ -217,6 +220,137 @@ describe('InspectorPanel', () => {
     )
 
     expect(screen.queryByRole('region', { name: 'Page' })).toBeNull()
+  })
+
+  describe('tabs', () => {
+    const regions = () =>
+      within(screen.getByRole('complementary', { name: 'Inspector' }))
+        .queryAllByRole('region')
+        .map((region) => region.getAttribute('aria-labelledby'))
+
+    it('opens on Design', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(screen.getByRole('tab', { name: 'Design' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
+
+    it('holds the picked tab across a selection change', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+
+      act(() => select(selectionStore, PAGE, [SUNSET.ref]))
+
+      expect(screen.getByRole('tab', { name: 'Slides' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByRole('region', { name: 'This slide' })).toBeVisible()
+    })
+
+    it('keeps the slide and export sections off one frame’s Design', () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+      renderPanel()
+
+      expect(regions()).not.toContain('inspector-slide')
+      expect(regions()).not.toContain('inspector-export')
+      expect(screen.queryByRole('button', { name: /on a phone/ })).toBeNull()
+    })
+
+    it('draws This slide then Page on one frame’s Slides', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+
+      await waitFor(() =>
+        expect(regions()).toEqual(['inspector-slide', 'inspector-page']),
+      )
+    })
+
+    it('draws Export and Open on a phone on one frame’s Export', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
+
+      // Design's sections leave as its panel unmounts, a render after the press.
+      await waitFor(() => expect(regions()).toEqual(['inspector-export']))
+      expect(
+        screen.getByRole('button', { name: /Open on a phone/ }),
+      ).toBeInTheDocument()
+    })
+
+    it('says one frame exports at a time on several frames’ Export', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
+
+      expect(
+        screen.getByText('Select one frame or element to export it.'),
+      ).toBeVisible()
+      // Design's sections leave as its panel unmounts, a render after the press.
+      await waitFor(() => expect(regions()).toEqual([]))
+    })
+
+    it('moves between tabs with the arrow keys', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+      act(() => screen.getByRole('tab', { name: 'Design' }).focus())
+
+      await userEvent.keyboard('{ArrowRight}')
+
+      expect(screen.getByRole('tab', { name: 'Slides' })).toHaveFocus()
+    })
+
+    it('says to open a page on Slides with nothing selected and no page open', async () => {
+      renderPanel()
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+
+      expect(
+        screen.getByText('Open a page to set how its slides present.'),
+      ).toBeVisible()
+    })
+
+    it('tabs from the strip into the tab’s first control, past the panel', async () => {
+      act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+      renderPanel()
+      act(() => screen.getByRole('tab', { name: 'Export' }).focus())
+      await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
+      // Design's controls sit ahead of Export's until its panel unmounts.
+      await waitFor(() => expect(regions()).toEqual(['inspector-export']))
+
+      await userEvent.tab()
+
+      expect(screen.getByRole('button', { name: 'Export scale' })).toHaveFocus()
+    })
+
+    it('draws no tab strip under the Frame tool', () => {
+      modeStore.setState({ tool: 'frame', mode: 'edit' })
+
+      renderPanel()
+
+      expect(screen.queryByRole('tablist')).toBeNull()
+    })
+
+    it('draws no tab strip in Play', () => {
+      modeStore.setState({ tool: 'move', mode: 'play' })
+
+      renderPanel()
+
+      expect(screen.queryByRole('tablist')).toBeNull()
+      expect(
+        screen.getByText('Playing. Nothing selects in Play.'),
+      ).toBeVisible()
+    })
   })
 
   it('shows one frame’s name and box', () => {
@@ -406,7 +540,7 @@ describe('InspectorPanel', () => {
       })
     })
 
-    it('ends one frame’s sections on Export, then Selection colors', async () => {
+    it('ends one frame’s Design on Selection colors', async () => {
       act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
 
       renderPanel()
@@ -417,10 +551,7 @@ describe('InspectorPanel', () => {
       )
         .getAllByRole('region')
         .map((region) => region.getAttribute('aria-labelledby'))
-      expect(regions.slice(-2)).toEqual([
-        'inspector-export',
-        'inspector-selection-colors',
-      ])
+      expect(regions.at(-1)).toBe('inspector-selection-colors')
     })
   })
 
@@ -703,6 +834,25 @@ describe('InspectorPanel', () => {
       expect(sent).toEqual([{ refs: [SWATCHES.ref], device: null }])
     })
 
+    it('describes the group with the sentence its label’s mark shows on keyboard focus', async () => {
+      render(
+        <TooltipProvider>
+          <FrameSection page={PAGE} frames={[SWATCHES]} />
+        </TooltipProvider>,
+      )
+      const sentence =
+        'Drawn by the board around the frame. The file is unchanged, and export can include it.'
+
+      // Tab from the radio before the mark, as a keyboard reaches it.
+      act(() => screen.getByRole('radio', { name: 'Fixed' }).focus())
+      await userEvent.tab()
+
+      expect(screen.getByRole('button', { name: 'About Device' })).toHaveFocus()
+      expect(device()).toHaveAccessibleDescription(sentence)
+      // The hidden description holds one copy, so the open tip is the second.
+      expect(await screen.findAllByText(sentence)).toHaveLength(2)
+    })
+
     it('rolls back to the stored device when the write is refused', async () => {
       const { calls } = deviceCalls(() =>
         Response.json(
@@ -720,7 +870,7 @@ describe('InspectorPanel', () => {
     })
   })
 
-  describe('This slide row', () => {
+  describe('This slide section', () => {
     function transitionCalls() {
       const sent: unknown[] = []
       const calls = createStructure(async (_path, init) => {
@@ -738,15 +888,14 @@ describe('InspectorPanel', () => {
     }
 
     it('reads Same as page on a frame holding no transition', () => {
-      render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
+      render(<SlideSection frames={[SWATCHES]} />)
 
       expect(slide()).toHaveTextContent('Same as page')
     })
 
     it('reads Mixed where the frames differ', () => {
       render(
-        <FrameSection
-          page={PAGE}
+        <SlideSection
           frames={[{ ...SWATCHES, transition: { name: 'zoom' } }, SUNSET]}
         />,
       )
@@ -756,9 +905,7 @@ describe('InspectorPanel', () => {
 
     it('sets a named transition on every frame in one write', async () => {
       const { sent, calls } = transitionCalls()
-      render(
-        <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
-      )
+      render(<SlideSection frames={[SWATCHES, SUNSET]} calls={calls} />)
 
       await pick('Flip')
 
@@ -779,7 +926,7 @@ describe('InspectorPanel', () => {
         }),
       )
       const { sent, calls } = transitionCalls()
-      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+      render(<SlideSection frames={[SWATCHES]} calls={calls} />)
 
       await userEvent.click(slide())
       const items = await screen.findAllByRole('menuitemradio')
@@ -796,8 +943,7 @@ describe('InspectorPanel', () => {
     it('clears the override with Same as page, sending null', async () => {
       const { sent, calls } = transitionCalls()
       render(
-        <FrameSection
-          page={PAGE}
+        <SlideSection
           frames={[{ ...SWATCHES, transition: { name: 'zoom' } }]}
           calls={calls}
         />,
@@ -836,6 +982,10 @@ describe('InspectorPanel', () => {
   })
 
   describe('Export', () => {
+    beforeEach(() => {
+      inspectorTabStore.setState({ tab: 'export' })
+    })
+
     it('draws for one selected frame', () => {
       act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
 
@@ -935,6 +1085,48 @@ describe('InspectorPanel', () => {
         )
       })
 
+      it('names its frame in one row that goes up to the frame', async () => {
+        await mountSwatches()
+        act(() =>
+          selectElement(selectionStore, PAGE, {
+            frame: SWATCHES.ref,
+            index: 3,
+            hash: HASH,
+          }),
+        )
+        renderPanel()
+        const crumb = await screen.findByRole('region', { name: 'Frame' })
+        await waitFor(() => expect(crumb).toHaveTextContent('Swatches'))
+
+        await userEvent.click(
+          within(crumb).getByRole('button', { name: SWATCHES.name }),
+        )
+
+        expect(selectionStore.getState()).toMatchObject({
+          frames: [SWATCHES.ref],
+          element: null,
+        })
+      })
+
+      it('draws the element’s step on Slides', async () => {
+        await mountSwatches()
+        act(() =>
+          selectElement(selectionStore, PAGE, {
+            frame: SWATCHES.ref,
+            index: 3,
+            hash: HASH,
+          }),
+        )
+        inspectorTabStore.setState({ tab: 'slides' })
+
+        renderPanel()
+
+        expect(
+          await screen.findByRole('textbox', { name: 'Appears on step' }),
+        ).toBeVisible()
+        expect(screen.getByRole('region', { name: 'This slide' })).toBeVisible()
+      })
+
       it('draws no section for several selected elements', async () => {
         await mountSwatches()
         act(() =>
@@ -946,7 +1138,9 @@ describe('InspectorPanel', () => {
 
         renderPanel()
 
-        await screen.findByRole('region', { name: 'Position' })
+        expect(
+          await screen.findByText('Select one frame or element to export it.'),
+        ).toBeVisible()
         expect(screen.queryByRole('region', { name: 'Export' })).toBeNull()
       })
     })

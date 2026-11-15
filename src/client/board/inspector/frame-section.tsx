@@ -19,26 +19,24 @@ import {
 } from '@/client/live/structure'
 import type { Device } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
-import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import type { Box } from '../geometry/box'
 import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
 import { reportRefusal } from '../left-panel/page-actions'
+import { select, selectionStore } from '../selection'
 import {
   renameFrame,
   startFrameRename,
   stopFrameRename,
   useRenamingFrame,
 } from '../structure/actions'
-import { TypePicker } from './element/typography'
+import { LabelTip } from './label-tip'
 import { type NumberChange, NumberField } from './number-field'
-import { TransitionNote } from './page-section'
-import { PhoneLink } from './phone-link'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
 import { PreviewRow } from './preview-row'
-import { useTransitionNames } from './transition-names'
 import { WidthsRow } from './widths-row'
 
 const FIELDS = [
@@ -55,8 +53,6 @@ interface FrameSectionProps {
   frames: readonly FrameRecord[]
   /** The page they sit on, which the write names. */
   page: string
-  /** False while an element inside the frame is selected, which hides the name row as `inspector/text` draws it. */
-  named?: boolean
   write?: typeof writeBoxes
   /** The server calls a rename makes, the board's own when absent. */
   calls?: Structure
@@ -75,7 +71,6 @@ interface FrameSectionProps {
 export function FrameSection({
   frames,
   page,
-  named = true,
   write = writeBoxes,
   calls,
 }: FrameSectionProps) {
@@ -137,7 +132,7 @@ export function FrameSection({
           void write(page, boxes, expected)
         }}
       />
-      {several || !named ? null : renaming === frame.ref ? (
+      {several ? null : renaming === frame.ref ? (
         <div className="mb-1.5 flex h-[26px] items-center pl-1.5">
           <RenameField
             name={frame.name}
@@ -185,11 +180,6 @@ export function FrameSection({
         disabled={!canWrite || locked}
         calls={calls ?? structure}
       />
-      <SlideRow
-        frames={frames}
-        disabled={!canWrite}
-        calls={calls ?? structure}
-      />
       <PreviewRow frames={frames} />
       {several ? null : (
         <WidthsRow
@@ -198,7 +188,47 @@ export function FrameSection({
           calls={calls ?? structure}
         />
       )}
-      {several ? null : <PhoneLink frame={frame} disabled={!canWrite} />}
+    </section>
+  )
+}
+
+/**
+ * The selected element's frame as one row over the element's sections, the
+ * frame's name going up to select the frame and the element's Layers name
+ * after it. It stands in for the frame's own fields, which the frame shows
+ * once selected.
+ */
+export function FrameCrumb({
+  page,
+  frame,
+  element,
+}: {
+  page: string
+  frame: FrameRecord
+  /** The element's name as its Layers row shows it. */
+  element: string
+}) {
+  return (
+    <section
+      aria-labelledby="inspector-frame"
+      className="flex h-9 shrink-0 items-center gap-1 border-b border-sidebar-border px-3 whitespace-nowrap"
+    >
+      <h2 id="inspector-frame" className="sr-only">
+        Frame
+      </h2>
+      <ActionTooltip label="Select the frame" side="bottom">
+        <button
+          type="button"
+          onClick={() => select(selectionStore, page, [frame.ref])}
+          className="-ml-1 min-w-0 shrink truncate rounded-[5px] px-1 py-px text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          {frame.name}
+        </button>
+      </ActionTooltip>
+      <span aria-hidden className="text-faint">
+        /
+      </span>
+      <span className="min-w-0 truncate font-semibold">{element}</span>
     </section>
   )
 }
@@ -378,78 +408,27 @@ const DEVICE_CHOICES = [
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   return (
-    <>
-      <ChoiceRow
-        id="inspector-device"
-        title="Device"
-        choices={DEVICE_CHOICES}
-        frames={frames}
-        valueOf={(frame) => frame.device ?? 'none'}
-        disabled={disabled}
-        refusal="Couldn’t set the device"
-        write={(refs, device) =>
-          calls.setDevice(refs, device === 'none' ? null : device)
-        }
-      />
-      <p className="mt-1.5 text-caption text-muted-foreground">
-        Drawn by the board around the frame. The file is unchanged, and export
-        can include it.
-      </p>
-    </>
-  )
-}
-
-const SAME_AS_PAGE = SAME_AS_PAGE_WORD
-
-/**
- * The transition each frame arrives with while presenting, Same as page or
- * a named one over its page's, reading Mixed where the frames differ. A
- * pick writes every frame's `layout.json` entry in one undo step.
- */
-function SlideRow({ frames, disabled, calls }: HeightRowProps) {
-  const names = useTransitionNames(frames[0]?.project)
-  const values = frames.map((frame) => frame.transition?.name ?? SAME_AS_PAGE)
-  const current = values.every((value) => value === values[0])
-    ? (values[0] ?? null)
-    : null
-  const label = (value: string) =>
-    value === SAME_AS_PAGE ? 'Same as page' : transitionLabel(value)
-  return (
-    <div className="mt-2.5">
-      <span
-        aria-hidden
-        className="mb-1.5 block text-caption text-muted-foreground"
-      >
-        This slide
-      </span>
-      <TypePicker
-        label="This slide"
-        shown={current === null ? 'Mixed' : label(current)}
-        current={current}
-        options={[
-          { value: SAME_AS_PAGE, name: label(SAME_AS_PAGE) },
-          ...names.map((value) => ({ value, name: label(value) })),
-        ]}
-        disabled={disabled}
-        onPick={(value) => {
-          const name = names.find((candidate) => candidate === value)
-          calls
-            .setFrameTransition(
-              frames.map((frame) => frame.ref),
-              name ? { name } : null,
-            )
-            .catch(reportRefusal('Couldn’t set the slide transition'))
-        }}
-        className="w-full"
-      />
-      <TransitionNote />
-    </div>
+    <ChoiceRow
+      id="inspector-device"
+      title="Device"
+      tip="Drawn by the board around the frame. The file is unchanged, and export can include it."
+      choices={DEVICE_CHOICES}
+      frames={frames}
+      valueOf={(frame) => frame.device ?? 'none'}
+      disabled={disabled}
+      refusal="Couldn’t set the device"
+      write={(refs, device) =>
+        calls.setDevice(refs, device === 'none' ? null : device)
+      }
+    />
   )
 }
 
 interface ChoiceRowProps<T extends string> {
   id: string
   title: string
+  /** The sentence the title's mark shows, which describes the radio group. */
+  tip?: string
   choices: readonly { value: T; label: string }[]
   frames: readonly FrameRecord[]
   valueOf: (frame: FrameRecord) => T
@@ -469,6 +448,7 @@ interface ChoiceRowProps<T extends string> {
 function ChoiceRow<T extends string>({
   id,
   title,
+  tip,
   choices,
   frames,
   valueOf,
@@ -527,9 +507,17 @@ function ChoiceRow<T extends string>({
   return (
     <div className="mt-2.5">
       <div className="mb-1.5 flex h-4 items-center justify-between">
-        <span id={id} className="text-caption text-muted-foreground">
-          {title}
-        </span>
+        {tip ? (
+          <LabelTip label={title} tip={tip} tipId={`${id}-tip`}>
+            <span id={id} className="text-caption text-muted-foreground">
+              {title}
+            </span>
+          </LabelTip>
+        ) : (
+          <span id={id} className="text-caption text-muted-foreground">
+            {title}
+          </span>
+        )}
         {shown === null ? (
           <span className="text-caption text-muted-foreground">Mixed</span>
         ) : null}
@@ -537,6 +525,7 @@ function ChoiceRow<T extends string>({
       <div
         role="radiogroup"
         aria-labelledby={id}
+        aria-describedby={tip ? `${id}-tip` : undefined}
         className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5"
       >
         {choices.map(({ value, label }, index) => (

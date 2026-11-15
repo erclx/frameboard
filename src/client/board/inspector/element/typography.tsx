@@ -259,6 +259,8 @@ interface TypePickerProps {
   /** Called for an option other than the current one. */
   onPick: (value: string) => void
   className?: string
+  /** The id of the sentence describing the picker, such as its label's tip. */
+  describedBy?: string
 }
 
 /** A menu of named values with the current one checked, for the family and the weight. */
@@ -270,11 +272,13 @@ export function TypePicker({
   disabled,
   onPick,
   className,
+  describedBy,
 }: TypePickerProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={label}
+        aria-describedby={describedBy}
         disabled={disabled}
         className={cn(
           'flex h-[26px] min-w-0 items-center gap-1 rounded-md bg-input px-2 text-left text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50',
