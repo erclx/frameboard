@@ -71,7 +71,7 @@
         },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
-          "base": "sha256:5707d43282ecb8754b0ca4f389a9df2fc4e1cb4b0310238a37641d4139cb470b"
+          "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
