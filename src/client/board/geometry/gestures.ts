@@ -197,7 +197,8 @@ type Gesture =
   | { kind: 'move'; boxes: Record<string, Box>; bounds: Box }
   /**
    * A press on the selected element, which a drag turns into a move of it
-   * and a click leaves as a press on `frame`, or as nothing on its outline.
+   * and a plain click keeps. `frame` holds a press inside its box, which a
+   * Shift-click toggles, and is null on its outline.
    */
   | {
       kind: 'element'
@@ -1026,6 +1027,29 @@ export function attachGestures(
       })
   }
 
+  /**
+   * Selects the element a plain click in `frame` lands on, picked as a
+   * Cmd-click picks it, or the frame where it lands on none, as on its bare
+   * body or its label strip. It waits on the frame's tree, and a later press
+   * drops it.
+   */
+  const pickOrFrame = (event: MouseEvent, frame: FrameRecord) => {
+    const turn = presses
+    void stores
+      .pickElement(target.layer, withDrawn(target.frames()), toCanvas(event))
+      .then((key) => {
+        if (turn !== presses) return
+        if (key?.frame === frame.ref) selectElement(selection, target.page, key)
+        else select(selection, target.page, [frame.ref])
+      })
+  }
+
+  /** Whether an element of `frame` is selected, which a plain click there picks past. */
+  const holdsElement = (frame: FrameRecord) =>
+    selectedElements(selection.getState()).some(
+      (key) => key.frame === frame.ref,
+    )
+
   let revealing: ReturnType<typeof setTimeout> | undefined
   /**
    * Centers a frame a click just selected once a double-click can no longer
@@ -1066,13 +1090,14 @@ export function attachGestures(
         pickToggle(event)
       } else if (gesture.kind === 'press') {
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
+        else if (holdsElement(gesture.frame)) pickOrFrame(event, gesture.frame)
         else {
           select(selection, target.page, [gesture.frame.ref])
           if (gesture.fresh) revealLater(gesture.frame)
         }
       } else if (gesture.kind === 'element' && gesture.frame) {
+        // A plain click inside a selected element's own box keeps it.
         if (gesture.shift) toggle(selection, target.page, gesture.frame.ref)
-        else select(selection, target.page, [gesture.frame.ref])
       } else if (gesture.kind === 'section') {
         selectSection(selection, target.page, gesture.section.name)
       } else if (gesture.kind === 'marquee' && !gesture.shift) {

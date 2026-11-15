@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -233,6 +233,44 @@ test.describe('selecting an element inside a frame', () => {
     await undo(page)
 
     await expect.poll(order).toEqual(['Headline', 'Caption'])
+  })
+
+  test('a click on the sibling of a double-clicked rectangle selects that sibling, outline and inspector both', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    writeFileSync(
+      path,
+      readFileSync(path, 'utf8').replace(
+        '</body>',
+        '<div data-name="Left" style="position: absolute; left: 20px; top: 300px; width: 80px; height: 60px; background: var(--muted)"></div><div data-name="Right" style="position: absolute; left: 160px; top: 300px; width: 80px; height: 60px; background: var(--muted)"></div>\n  </body>',
+      ),
+    )
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const left = await settledBox(page, '[data-name="Left"]')
+    const right = await settledBox(page, '[data-name="Right"]')
+    const outline = page.locator('[data-element-selection]')
+
+    await page.mouse.dblclick(left.x + left.width / 2, left.y + left.height / 2)
+    await expect
+      .poll(async () => (await selection()).element?.name)
+      .toBe('Left')
+    await page.mouse.click(
+      right.x + right.width / 2,
+      right.y + right.height / 2,
+    )
+
+    await expect
+      .poll(async () => (await selection()).element?.name)
+      .toBe('Right')
+    await expect(outline).toHaveCount(1)
+    const drawn = await outline.boundingBox()
+    expect(drawn?.x).toBeCloseTo(right.x, -0.5)
+    expect(drawn?.width).toBeCloseTo(right.width, -0.5)
+    await expect(
+      page.getByRole('button', { name: 'Right', exact: true }),
+    ).toHaveAttribute('aria-current', 'true')
   })
 
   test('Absolute places an element in a static parent as two start tags, and one undo takes both back', async ({
