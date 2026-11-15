@@ -224,6 +224,13 @@ export function ColorPickerPanel({
         ) : mode === 'hsl' ? (
           <HslChannels hsv={color.hsv} onChange={setRgb} />
         ) : null}
+        {/* A custom color raises the theme check on the paint it sets, so
+            the line says so first. A token's own value is per theme by design. */}
+        {tokensTab ? (
+          <p className="mt-2 text-muted-foreground">
+            A custom color shows the same in both themes.
+          </p>
+        ) : null}
         {tokens.length > 0 ? (
           <div className="mt-2.5 border-t border-border pt-2">
             <p className="mb-1.5 text-label font-semibold text-muted-foreground">

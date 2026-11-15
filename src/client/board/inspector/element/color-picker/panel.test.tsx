@@ -8,6 +8,7 @@ import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 
 import { ColorRow } from '../color-row'
+import { ColorPickerPanel } from './panel'
 
 const PRIMARY: TokenRow = {
   name: '--primary',
@@ -229,5 +230,46 @@ describe('the color picker', () => {
     await act(async () => {})
 
     expect(screen.getByRole('textbox', { name: 'Hex' })).toHaveValue('0EA5E9')
+  })
+
+  describe('the theme line', () => {
+    const LINE = 'A custom color shows the same in both themes.'
+
+    it('says on Custom that a custom color ignores the theme', async () => {
+      renderRow()
+
+      await openCustom()
+
+      expect(screen.getByText(LINE)).toBeInTheDocument()
+    })
+
+    it('says nothing of it on Tokens', async () => {
+      renderRow({ value: 'var(--primary)', token: '--primary', percent: 100 })
+
+      await userEvent.click(screen.getByRole('button', { name: 'Fill token' }))
+      await screen.findByRole('list', { name: 'Fill tokens' })
+
+      expect(screen.queryByText(LINE)).toBeNull()
+    })
+
+    it('says nothing of it where the picker sets a token’s own value', () => {
+      render(
+        <ColorPickerPanel
+          label="Primary"
+          color={{ hsv: { h: 0, s: 0, v: 0 }, percent: 100 }}
+          onColor={() => {}}
+          onSubmit={() => {}}
+          tab="custom"
+          onTab={() => {}}
+          tokens={[]}
+          theme="light"
+          token={null}
+          onToken={() => {}}
+          tokensTab={false}
+        />,
+      )
+
+      expect(screen.queryByText(LINE)).toBeNull()
+    })
   })
 })
