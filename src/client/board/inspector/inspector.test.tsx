@@ -269,7 +269,9 @@ describe('InspectorPanel', () => {
 
       await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
 
-      expect(regions()).toEqual(['inspector-slide', 'inspector-page'])
+      await waitFor(() =>
+        expect(regions()).toEqual(['inspector-slide', 'inspector-page']),
+      )
     })
 
     it('draws Export and Open on a phone on one frame’s Export', async () => {
@@ -278,7 +280,8 @@ describe('InspectorPanel', () => {
 
       await userEvent.click(screen.getByRole('tab', { name: 'Export' }))
 
-      expect(regions()).toEqual(['inspector-export'])
+      // Design's sections leave as its panel unmounts, a render after the press.
+      await waitFor(() => expect(regions()).toEqual(['inspector-export']))
       expect(
         screen.getByRole('button', { name: /Open on a phone/ }),
       ).toBeInTheDocument()
