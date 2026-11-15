@@ -37,6 +37,8 @@ export interface LiveElement {
   color: string
   /** Whether any side draws a border. */
   bordered: boolean
+  /** The border width in px, null where the sides differ. */
+  borderWidth: number | null
   /** Whether the element or anything in it shows text. */
   holdsText: boolean
   /** Whether it holds text and no element, so its text is edited as a whole. */
@@ -373,6 +375,9 @@ function readLive(element: Element, view: Window): LiveElement {
     display: style.display,
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
+    borderWidth: sides.every((width) => width === sides[0])
+      ? hundredths(style.borderTopWidth)
+      : null,
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,

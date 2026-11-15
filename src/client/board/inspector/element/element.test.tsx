@@ -40,6 +40,7 @@ import { TypographySection } from './typography'
 import {
   type ElementChange,
   forgetText,
+  type PreviewStyle,
   type Refusal,
   type WriteElement,
   writeElement,
@@ -2217,6 +2218,112 @@ describe('StrokeSection', () => {
       { kind: 'style', property: 'border-color', value: 'var(--primary)' },
     ])
   })
+
+  describe('width', () => {
+    function renderWidth(
+      borderWidth: number | null,
+      write: WriteElement,
+      preview?: PreviewStyle,
+    ) {
+      render(
+        <StrokeSection
+          bordered
+          borderColor={tokenValueOf('--border')}
+          borderWidth={borderWidth}
+          tokens={[PRIMARY, BORDER]}
+          theme="light"
+          inline={false}
+          disabled={false}
+          write={write}
+          preview={preview}
+        />,
+      )
+      return screen.getByRole('textbox', { name: 'Stroke width' })
+    }
+
+    it('shows the element’s border width', () => {
+      expect(renderWidth(4, recorder().write)).toHaveValue('4')
+    })
+
+    it('writes a typed width, keeping a fraction', async () => {
+      const { changes, write } = recorder()
+      const field = renderWidth(1, write)
+
+      await userEvent.tripleClick(field)
+      await userEvent.keyboard('1.5{Enter}')
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'border-width', value: '1.5px' },
+      ])
+    })
+
+    it('writes a stepped width once', async () => {
+      const { changes, write } = recorder()
+      const field = renderWidth(1, write)
+
+      await userEvent.click(field)
+      await userEvent.keyboard('{ArrowUp>2/}')
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'border-width', value: '3px' },
+      ])
+    })
+
+    it('never writes a width below 1px', async () => {
+      const { changes, write } = recorder()
+      const field = renderWidth(2, write)
+
+      await userEvent.tripleClick(field)
+      await userEvent.keyboard('0{Enter}')
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'border-width', value: '1px' },
+      ])
+    })
+
+    it('reads Mixed on uneven sides and writes one width for all four', async () => {
+      const { changes, write } = recorder()
+      const field = renderWidth(null, write)
+      expect(field).toHaveAttribute('placeholder', 'Mixed')
+
+      await userEvent.tripleClick(field)
+      await userEvent.keyboard('2{Enter}')
+
+      expect(changes).toEqual([
+        { kind: 'style', property: 'border-width', value: '2px' },
+      ])
+    })
+
+    it('puts the stored width back on Esc during a step and writes nothing', async () => {
+      const { changes, write } = recorder()
+      const previews: (string | null)[] = []
+      const field = renderWidth(1, write, (property, css) =>
+        previews.push(`${property}: ${css}`),
+      )
+
+      await userEvent.click(field)
+      await userEvent.keyboard('{ArrowUp>3}{Escape}{/ArrowUp}')
+
+      expect(previews.at(-1)).toBe('border-width: null')
+      expect(changes).toEqual([])
+    })
+
+    it('shows no width field where the caller passes none', () => {
+      render(
+        <StrokeSection
+          bordered
+          borderColor={tokenValueOf('--border')}
+          tokens={[PRIMARY, BORDER]}
+          theme="light"
+          inline={false}
+          disabled={false}
+          write={recorder().write}
+        />,
+      )
+
+      expect(screen.queryByRole('textbox', { name: 'Stroke width' })).toBeNull()
+    })
+  })
 })
 
 describe('ShadowSection', () => {
@@ -3703,6 +3810,19 @@ describe('InspectorPanel with an element selected', () => {
       background: true,
       border: true,
     })
+  })
+
+  it.each([
+    ['border: 3px solid', 3],
+    ['border: solid; border-width: 1px 2px', null],
+  ])('reads the border width of %s', async (style, width) => {
+    await mountFrame(`<div style="${style}"></div>`)
+    const { result } = renderHook(() =>
+      useLiveElement({ frame: HERO.ref, index: 3, hash: HASH }),
+    )
+
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(result.current?.borderWidth).toBe(width)
   })
 
   it('reads a one-line truncation and the type details it sets', async () => {
