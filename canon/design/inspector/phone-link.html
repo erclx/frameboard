@@ -50,6 +50,126 @@
         margin-left: -2px;
         color: var(--muted);
       }
+      .itabs {
+        display: flex;
+        margin: 8px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 7px;
+      }
+      .itabs span {
+        flex: 1;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 5px;
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 12px;
+      }
+      .itabs .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .q {
+        display: inline-grid;
+        place-items: center;
+        width: 12px;
+        height: 12px;
+        margin-left: 4px;
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px var(--faint);
+        color: var(--muted);
+        font-size: 8px;
+        font-weight: 500;
+        line-height: 1;
+        vertical-align: 1px;
+      }
+      .qtip {
+        position: absolute;
+        z-index: 8;
+        width: 200px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 1.45;
+      }
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 36px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .crumb .up {
+        color: var(--muted);
+        border-radius: 4px;
+        padding: 1px 3px;
+        margin-left: -3px;
+      }
+      .crumb .up.hov {
+        background: var(--raised);
+        color: var(--text);
+      }
+      .crumb .sl {
+        color: var(--faint);
+      }
+      .crumb b {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ihint {
+        padding: 10px 12px 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .xsel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--text);
+      }
+      .xsel i {
+        font-style: normal;
+        color: var(--muted);
+      }
+      .xlab {
+        display: block;
+        color: var(--muted);
+        margin: 8px 0 4px 2px;
+      }
+      .xlab:first-child {
+        margin-top: 0;
+      }
+      .xbtn {
+        display: grid;
+        place-items: center;
+        height: 26px;
+        margin-top: 8px;
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px var(--border);
+        color: var(--text);
+      }
+      .xfile {
+        margin-top: 6px;
+        color: var(--muted);
+        font:
+          10px/1.5 'Geist Mono',
+          'DejaVu Sans Mono',
+          monospace;
+      }
     </style>
     <meta charset="utf-8" />
     <title>frame-phone-link</title>
@@ -1381,7 +1501,7 @@
         gap: 8px;
         width: 100%;
         height: 26px;
-        margin-top: 10px;
+        margin-top: 0;
         padding: 0 8px;
         background: var(--raised);
         border-radius: 6px;
@@ -1841,102 +1961,23 @@
               <path d="M6 9l6 6 6-6" /></svg
           ></span>
         </div>
+        <div class="itabs">
+          <span>Design</span><span>Slides</span><span class="on">Export</span>
+        </div>
         <div class="isec">
-          <div class="ihead"><span>Frame</span></div>
-          <label class="fld wide"><span class="v">Color swatches</span></label>
+          <div class="ihead"><span>Export</span></div>
           <div class="grid2">
-            <label class="fld"
-              ><span class="k">X</span><span class="v">460</span></label
-            ><label class="fld"
-              ><span class="k">Y</span><span class="v">116</span></label
-            ><label class="fld"
-              ><span class="k">W</span><span class="v">640</span></label
-            ><label class="fld"
-              ><span class="k">H</span><span class="v">188</span
-              ><span class="fit" title="Fit height"
-                ><svg
-                  class="ic"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M12 22v-6M12 8V2M4 12H2M10 12H8M16 12h-2M22 12h-2M15 19l-3-3-3 3M15 5l-3 3-3-3"
-                  /></svg></span
-            ></label>
+            <div class="xsel">2x<i>⌄</i></div>
+            <div class="xsel">Both themes<i>⌄</i></div>
           </div>
-          <div class="pvhead"><span>Preview</span></div>
-          <div class="grid2">
-            <div class="pvseg">
-              <button title="Preview at phone width, 390">
-                <svg
-                  class="ic"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="7" y="2" width="10" height="20" rx="2" />
-                  <path d="M11 18h2" />
-                </svg></button
-              ><button title="Preview at tablet width, 834">
-                <svg
-                  class="ic"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="4" y="2" width="16" height="20" rx="2" />
-                  <path d="M11 18h2" />
-                </svg></button
-              ><button title="Preview at desktop width, 1440">
-                <svg
-                  class="ic"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <path d="M8 21h8M12 17v4" />
-                </svg>
-              </button>
-            </div>
-            <label class="fld"
-              ><span class="k"
-                ><svg
-                  class="ic"
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M18 8l4 4-4 4M6 8l-4 4 4 4M2 12h20" /></svg></span
-              ><span class="v">640</span></label
-            >
-          </div>
+          <span class="xlab">Name</span>
+          <div class="xsel">Color swatches</div>
+          <div class="xbtn">Export 2 files</div>
+          <p class="xfile">
+            Color swatches.light@2x.png<br />Color swatches.dark@2x.png
+          </p>
+        </div>
+        <div class="isec">
           <button class="phbtn">
             <svg
               class="ic"
@@ -1953,47 +1994,6 @@
               <path d="M12 18h.01" /></svg
             >Open on a phone
           </button>
-        </div>
-        <div class="isec">
-          <div class="ihead"><span>Selection colors · 2</span></div>
-          <div class="crow">
-            <span class="sw" style="background: #111827"></span
-            ><span class="hex">111827</span><span class="pct">100%</span
-            ><span class="flag"
-              ><svg
-                class="ic"
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M12 8v5M12 16v.5" />
-                <circle cx="12" cy="12" r="9" /></svg
-            ></span>
-          </div>
-          <div class="crow">
-            <span class="sw" style="background: #4f46e5"></span
-            ><span class="tok">primary</span><span class="pct">100%</span
-            ><svg
-              class="ic"
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"
-              />
-            </svg>
-          </div>
         </div>
       </aside>
       <div class="phcard">

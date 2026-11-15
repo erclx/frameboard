@@ -670,6 +670,129 @@
         margin-left: auto;
         color: var(--muted);
       }
+      .itabs {
+        display: flex;
+        margin: 8px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 7px;
+      }
+      .itabs span {
+        flex: 1;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 5px;
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 12px;
+      }
+      .itabs .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .q {
+        display: inline-grid;
+        place-items: center;
+        width: 12px;
+        height: 12px;
+        margin-left: 4px;
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px var(--faint);
+        color: var(--muted);
+        font-size: 8px;
+        font-weight: 500;
+        line-height: 1;
+        vertical-align: 1px;
+      }
+      .qtip {
+        position: absolute;
+        z-index: 8;
+        width: 200px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+        font-weight: 400;
+        line-height: 1.45;
+      }
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 36px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .crumb .up {
+        color: var(--muted);
+        border-radius: 4px;
+        padding: 1px 3px;
+        margin-left: -3px;
+      }
+      .crumb .up.hov {
+        background: var(--raised);
+        color: var(--text);
+      }
+      .crumb .sl {
+        color: var(--faint);
+      }
+      .crumb b {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ihint {
+        padding: 10px 12px 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .xsel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--text);
+      }
+      .xsel i {
+        font-style: normal;
+        color: var(--muted);
+      }
+      .xlab {
+        display: block;
+        color: var(--muted);
+        margin: 8px 0 4px 2px;
+      }
+      .xlab:first-child {
+        margin-top: 0;
+      }
+      .xbtn {
+        display: grid;
+        place-items: center;
+        height: 26px;
+        margin-top: 8px;
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px var(--border);
+        color: var(--text);
+      }
+      .xfile {
+        margin-top: 6px;
+        color: var(--muted);
+        font:
+          10px/1.5 'Geist Mono',
+          'DejaVu Sans Mono',
+          monospace;
+      }
+      .insp .itabs {
+        margin: -4px -4px 10px;
+      }
     </style>
   </head>
   <body>
@@ -706,7 +829,7 @@
         <div class="r"><b>Layout</b><span>Flow, gap, padding.</span></div>
         <div class="r"><b>Media</b><span>Image, video, audio.</span></div>
       </div>
-      <div class="menu2" style="right: 196px; top: 96px">
+      <div class="menu2" style="right: 196px; top: 176px">
         <div>None</div>
         <div class="on">Fade</div>
         <div>Slide left</div>
@@ -716,17 +839,16 @@
         <div>Dissolve</div>
       </div>
       <div class="insp" style="width: 226px">
-        <h4>Page</h4>
-        <div class="fl">Slide transition<span class="new">new</span></div>
+        <div class="itabs">
+          <span>Design</span><span class="on">Slides</span><span>Export</span>
+        </div>
+        <h4>This slide<span class="q">?</span></h4>
+        <div class="sel3">Same as page</div>
+        <h4 style="margin-top: 6px">Page<span class="q">?</span></h4>
+        <div class="fl">Slide transition</div>
         <div class="sel3">Fade</div>
         <div class="fl">Duration</div>
         <div class="sel3">300 ms</div>
-        <h4 style="margin-top: 6px">Frame</h4>
-        <div class="fl">This slide<span class="new">new</span></div>
-        <div class="sel3">Same as page</div>
-        <div class="note2">
-          Drawn by the board while presenting. Slide files are unchanged.
-        </div>
       </div>
       <div class="term">
         <b>$</b> frameboard page transition deck fade --ms 300 --json<br /><b
