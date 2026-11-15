@@ -19,12 +19,7 @@ import { contrastOnPage } from '@/test/contrast'
 import { contrastHovered } from '@/test/hover-contrast'
 
 import { modeStore } from '../mode'
-import {
-  pickerStore,
-  placementStore,
-  shapeStore,
-  usePlaceTools,
-} from '../place/tool'
+import { pickerStore, shapeStore, usePlaceTools } from '../place/tool'
 import { boxToolStore } from '../sections/actions'
 import { Toolbar } from './toolbar'
 import { stageForRoom } from './toolbar-stage'
@@ -351,64 +346,6 @@ describe('Toolbar', () => {
     })
   })
 
-  describe('the Place toggle', () => {
-    afterEach(() => {
-      placementStore.setState({ placing: 'auto' })
-    })
-
-    it('starts on Auto', () => {
-      renderToolbar()
-
-      const toggle = screen.getByRole('group', { name: 'Place new elements' })
-      expect(
-        within(toggle)
-          .getAllByRole('button')
-          .map((button) => [
-            button.textContent,
-            button.getAttribute('aria-pressed'),
-          ]),
-      ).toEqual([
-        ['Auto', 'true'],
-        ['Flow', 'false'],
-        ['Free', 'false'],
-      ])
-    })
-
-    it.each([
-      ['Flow', 'flow'],
-      ['Free', 'free'],
-      ['Auto', 'auto'],
-    ] as const)('sets %s on a press', async (label, placing) => {
-      placementStore.setState({ placing: label === 'Auto' ? 'free' : 'auto' })
-      renderToolbar()
-
-      await userEvent.click(screen.getByRole('button', { name: label }))
-
-      expect(placementStore.getState().placing).toBe(placing)
-      expect(screen.getByRole('button', { name: label })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
-    })
-
-    it('holds one tab stop on the choice on, and moves along it by arrow', async () => {
-      placementStore.setState({ placing: 'flow' })
-      renderToolbar()
-      const flow = screen.getByRole('button', { name: 'Flow' })
-
-      expect(
-        within(screen.getByRole('group', { name: 'Place new elements' }))
-          .getAllByRole('button')
-          .map((button) => button.tabIndex),
-      ).toEqual([-1, 0, -1])
-      act(() => flow.focus())
-      await userEvent.keyboard('{ArrowRight}')
-
-      expect(screen.getByRole('button', { name: 'Free' })).toHaveFocus()
-      expect(placementStore.getState().placing).toBe('flow')
-    })
-  })
-
   describe('the Frame slot', () => {
     function renderWithBoxTools() {
       const tool = (
@@ -712,7 +649,6 @@ describe('the toolbar in a narrow column', () => {
     }) as Action
 
   afterEach(() => {
-    placementStore.setState({ placing: 'auto' })
     pickerStore.setState({ open: false })
     modeStore.setState({ tool: 'move', mode: 'edit' })
     liveStore.setState({ canWrite: false })
@@ -730,9 +666,6 @@ describe('the toolbar in a narrow column', () => {
         'Rectangle',
         'Shapes',
         'Note',
-        'Auto',
-        'Flow',
-        'Free',
         'Undo',
         'Redo',
         'Zoom to fit',
@@ -753,7 +686,6 @@ describe('the toolbar in a narrow column', () => {
         'Rectangle',
         'Shapes',
         'Note',
-        'Place new elements, Auto',
         'More tools',
         'Edit',
         'Play',
@@ -783,7 +715,6 @@ describe('the toolbar in a narrow column', () => {
   })
 
   const FOUR = ['Undo', 'Redo', 'Zoom to fit', 'Theme']
-  const PLACE = ['Auto', 'Flow', 'Free']
   const SHAPE_ROWS = [
     'Rectangle',
     'Ellipse',
@@ -793,7 +724,7 @@ describe('the toolbar in a narrow column', () => {
 
   it.each([
     [560, FOUR],
-    [357, ['Hand', 'Section', ...SHAPE_ROWS, ...PLACE, ...FOUR]],
+    [357, ['Hand', 'Section', ...SHAPE_ROWS, ...FOUR]],
     [
       221,
       [
@@ -804,7 +735,6 @@ describe('the toolbar in a narrow column', () => {
         'Text',
         ...SHAPE_ROWS,
         'Note',
-        ...PLACE,
         ...FOUR,
       ],
     ],
@@ -821,7 +751,6 @@ describe('the toolbar in a narrow column', () => {
         'Text',
         ...SHAPE_ROWS,
         'Note',
-        ...PLACE,
         ...FOUR,
       ],
     ],
@@ -951,45 +880,7 @@ describe('the toolbar in a narrow column', () => {
     )
   })
 
-  it('carries a Place choice made in More to the wider folded button', async () => {
-    const column = renderInRoom(357)
-
-    await openMore()
-    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Free' }))
-    column.style.width = `${560 + 24}px`
-
-    expect(
-      await screen.findByRole('button', { name: 'Place new elements, Free' }),
-    ).toBeVisible()
-    expect(placementStore.getState().placing).toBe('free')
-  })
-
-  it('marks the Place choice on in More', async () => {
-    placementStore.setState({ placing: 'free' })
-    renderInRoom(357)
-
-    await openMore()
-
-    expect(screen.getByRole('menuitemradio', { name: 'Free' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-  })
-
-  it('sets Place from the folded button', async () => {
-    renderInRoom(560)
-
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Place new elements, Auto' }),
-    )
-    await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Flow' }),
-    )
-
-    expect(placementStore.getState().placing).toBe('flow')
-  })
-
-  it('disables a row whose action cannot run, and leaves Place usable', async () => {
+  it('disables a row whose action cannot run', async () => {
     register(action('edit.undo', { label: 'Undo', enabled: () => false }))
     renderInRoom(357)
 
@@ -999,9 +890,6 @@ describe('the toolbar in a narrow column', () => {
       'aria-disabled',
       'true',
     )
-    expect(
-      screen.getByRole('menuitemradio', { name: 'Free' }),
-    ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('reaches Edit and Play in More at the narrowest stage', async () => {

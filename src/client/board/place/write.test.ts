@@ -7,7 +7,6 @@ import { frameOf } from '@/test/board'
 import { writeElement } from '../inspector/element/write'
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
-import { placementStore } from './tool'
 import {
   deleteElement,
   fileFrameName,
@@ -37,7 +36,6 @@ let layer: HTMLDivElement | undefined
 afterEach(() => {
   layer?.remove()
   layer = undefined
-  placementStore.setState({ placing: 'auto' })
 })
 
 /** A canvas layer holding one live frame showing `body`, resolved once it has loaded. */
@@ -76,8 +74,7 @@ function server(status: number, body: unknown) {
 
 describe('placeElement', () => {
   it('sends the gap under the point from the rendered hash, then selects the new element and returns to Move', async () => {
-    placementStore.setState({ placing: 'flow' })
-    const container = await mount(COLUMN)
+    const container = await mount(ROW)
     const selection = createSelectionStore()
     const mode = createModeStore(1280)
     mode.setState({ tool: 'shape' })
@@ -91,7 +88,7 @@ describe('placeElement', () => {
       container,
       'studio/home',
       [HERO],
-      { x: HERO.box.x + 50, y: HERO.box.y + 30 },
+      { x: HERO.box.x + 60, y: HERO.box.y + 20 },
       'rectangle',
       { selection, mode, live: createLiveStore(), send },
     )
@@ -301,7 +298,7 @@ describe('placeElement under each placing mode', () => {
     return sent[0]
   }
 
-  it('centers a clicked rectangle on the point under Auto in a block parent', async () => {
+  it('centers a clicked rectangle on the point in a block parent', async () => {
     const sent = await sendAt(COLUMN, 'rectangle', { x: 80, y: 70 })
 
     expect(sent).toMatchObject({
@@ -311,7 +308,7 @@ describe('placeElement under each placing mode', () => {
     })
   })
 
-  it('lands a drawn rectangle at the corner of its box, at its size, under Auto', async () => {
+  it('lands a drawn rectangle at the corner of its box, at its size', async () => {
     const sent = await sendAt(
       COLUMN,
       'rectangle',
@@ -331,34 +328,14 @@ describe('placeElement under each placing mode', () => {
     expect(sent).toMatchObject({ at: { left: 80, top: 70 } })
   })
 
-  it('joins a flex parent at the gap with no spot under Auto', async () => {
+  it('joins a flex parent at the gap with no spot', async () => {
     const sent = await sendAt(ROW, 'text', { x: 120, y: 20 })
 
     expect(sent).toMatchObject({ parent: 3, before: 5 })
     expect(sent).not.toHaveProperty('at')
   })
 
-  it('places out of the flow in a flex parent under Free', async () => {
-    placementStore.setState({ placing: 'free' })
-
-    const sent = await sendAt(ROW, 'text', { x: 120, y: 20 })
-
-    expect(sent).toMatchObject({ at: { left: 120, top: 20 } })
-    expect(sent).not.toHaveProperty('at.orFlow')
-  })
-
-  it('joins a block parent at the gap with no spot under Flow', async () => {
-    placementStore.setState({ placing: 'flow' })
-
-    const sent = await sendAt(COLUMN, 'rectangle', { x: 80, y: 70 })
-
-    expect(sent).toMatchObject({ parent: 3, before: null })
-    expect(sent).not.toHaveProperty('at')
-  })
-
-  it('keeps a divider in the flow under Free', async () => {
-    placementStore.setState({ placing: 'free' })
-
+  it('keeps a divider in the flow of a block parent', async () => {
     const sent = await sendAt(COLUMN, 'divider', { x: 80, y: 70 })
 
     expect(sent).not.toHaveProperty('at')

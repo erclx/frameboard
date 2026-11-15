@@ -3202,7 +3202,7 @@ function findingsOn(frame: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Draws a Rectangle under Free across empty space in the hero's body, with
+ * Draws a Rectangle across empty space in the hero's block body, with
  * real pointer input, and waits for the write to land, so the reload the
  * harness makes next shows it out of the flow where it was drawn. The board
  * undoes it when the page closes, through its own undo rather than a file
@@ -3227,7 +3227,6 @@ async function rectangleDrawnFree(page: Page): Promise<void> {
   })
   await page.goto(`${base}/p/webapp/home`)
   const tools = page.getByRole('toolbar', { name: 'Tools' })
-  await tools.getByRole('button', { name: 'Free' }).click()
   await tools.getByRole('button', { name: 'Rectangle' }).click()
   const frame = await page
     .locator('[data-frame="webapp/home/hero"] iframe')
@@ -3692,15 +3691,6 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, pressOnLoad('^Shapes$'))),
-      },
-      {
-        section: 'place-toggle',
-        theme,
-        route: '/p/webapp/home',
-        evidence: true,
-        excludeViewports: STATE_ONLY,
-        mask: [AVATAR],
-        setup: themed(both(asWriter, pressOnLoad('^Free$'))),
       },
       {
         section: 'pointer-caret',
