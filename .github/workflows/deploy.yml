@@ -32,6 +32,7 @@ jobs:
     name: 📦 Build
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -66,6 +67,7 @@ jobs:
     name: 🚀 Deploy
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check for Cloudflare secrets
         id: secrets-check
@@ -133,6 +135,7 @@ jobs:
     name: 🧹 Delete Branch Previews
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       # The default branch, since a closed pull request may have no merge ref to
       # check out, and the script that holds the Cloudflare token should not

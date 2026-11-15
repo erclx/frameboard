@@ -63,7 +63,7 @@
       "dispositions": {
         ".github/workflows/deploy.yml": {
           "disposition": "customized",
-          "base": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2"
+          "base": "sha256:c10b99a419a6f54dd238f889dfb86f71ad86d79d2c0ec12b1655785ce128c25c"
         },
         ".github/workflows/readme-screenshot.yml": {
           "disposition": "declined",
