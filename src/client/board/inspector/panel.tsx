@@ -50,7 +50,6 @@ import { PhoneLink } from './phone-link'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
-import type { InspectorTab } from './tab-store'
 import { InspectorTabs } from './tabs'
 
 /**
@@ -160,12 +159,7 @@ export function InspectorPanel({
                   </>
                 ) : null}
                 {inFrame ? (
-                  <ElementSections
-                    tab="design"
-                    page={page}
-                    frame={frames[0]}
-                    element={inFrame}
-                  />
+                  <ElementDesign page={page} element={inFrame} />
                 ) : (
                   <FramesColors page={page} frames={frames} />
                 )}
@@ -182,12 +176,7 @@ export function InspectorPanel({
           slides={
             <>
               {page && inFrame && !several ? (
-                <ElementSections
-                  tab="slides"
-                  page={page}
-                  frame={frames[0]}
-                  element={inFrame}
-                />
+                <ElementSlides page={page} element={inFrame} />
               ) : null}
               {page && frames.length > 0 ? (
                 <SlideSection frames={frames} />
@@ -196,13 +185,8 @@ export function InspectorPanel({
             </>
           }
           export={
-            page && inFrame && !several ? (
-              <ElementSections
-                tab="export"
-                page={page}
-                frame={frames[0]}
-                element={inFrame}
-              />
+            page && inFrame && !several && frames[0] ? (
+              <ElementExport frame={frames[0]} element={inFrame} />
             ) : frames.length === 1 && !inFrame && frames[0] ? (
               <>
                 <ExportSection key={frames[0].ref} frame={frames[0]} />
@@ -246,58 +230,76 @@ function useProjectTokens(frame: string): {
   }
 }
 
-interface ElementSectionsProps {
-  /** Which tab's sections to draw. */
-  tab: InspectorTab
+interface ElementProps {
   page: string
-  /** The one selected frame the element sits in, absent while its record is not held. */
-  frame: FrameRecord | undefined
   element: ElementKey
 }
 
+const NOT_ON_SCREEN = (
+  <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+    The element’s details show once its frame is on screen.
+  </p>
+)
+
 /**
- * The selected element's sections in the order `inspector/text` draws them,
+ * The selected element's Slides sections: which press of its slide reveals
+ * it. Nothing draws until the frame's live page shows the element.
+ */
+function ElementSlides({ page, element }: ElementProps) {
+  const canWrite = useLive((state) => state.canWrite)
+  const live = useLiveElement(element)
+  if (!live) return NOT_ON_SCREEN
+  return (
+    <StepSection
+      step={live.step}
+      disabled={!canWrite}
+      write={(change) => writeElement(page, element, change)}
+    />
+  )
+}
+
+/** The selected element's Export, named for its frame and its Layers row. */
+function ElementExport({
+  frame,
+  element,
+}: {
+  frame: FrameRecord
+  element: ElementKey
+}) {
+  const tree = useElementTree(element.frame)
+  return (
+    <ExportSection
+      key={`export:${element.frame}\n${element.index}`}
+      frame={frame}
+      element={{
+        index: element.index,
+        hash: element.hash,
+        name: layerName(tree, element.index),
+      }}
+    />
+  )
+}
+
+/**
+ * The selected element's Design sections in the order `inspector/text` draws them,
  * read from the live element and from the frame's static cascade, each
  * control disabled while the tab may not write. Nothing draws until the
  * frame's live page shows the element, which a placeholder never does.
  */
-function ElementSections({ tab, page, frame, element }: ElementSectionsProps) {
+function ElementDesign({ page, element }: ElementProps) {
   const canWrite = useLive((state) => state.canWrite)
-  const tree = useElementTree(element.frame)
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const media = useLiveMedia(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
   const { colors, shadows, fonts } = useProjectTokens(element.frame)
 
-  if (!live) {
-    return (
-      <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
-        The element’s details show once its frame is on screen.
-      </p>
-    )
-  }
+  if (!live) return NOT_ON_SCREEN
   const disabled = !canWrite
   const write = (change: ElementChange) => writeElement(page, element, change)
   const preview = (property: string, value: string | null) =>
     previewStyle(element, property, value)
   const own = styles?.element
-  if (tab === 'slides') {
-    return <StepSection step={live.step} disabled={disabled} write={write} />
-  }
-  if (tab === 'export') {
-    return frame ? (
-      <ExportSection
-        key={`export:${element.frame}\n${element.index}`}
-        frame={frame}
-        element={{
-          index: element.index,
-          hash: element.hash,
-          name: layerName(tree, element.index),
-        }}
-      />
-    ) : null
-  }
   return (
     <>
       {media ? (
