@@ -1,7 +1,7 @@
 import type { Element } from 'domhandler'
 import postcss from 'postcss'
 
-import { buildCascade, splitTopLevel } from '@/server/checks/cascade'
+import { buildCascade, shorthandPart } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
 import type {
   ElementStyles,
@@ -57,43 +57,6 @@ const NEVER_USES = new Set([
   'option',
 ])
 
-/** Words of a `border` or `background` shorthand that are never its color. */
-const NOT_COLOR = new Set([
-  'none',
-  'hidden',
-  'dotted',
-  'dashed',
-  'solid',
-  'double',
-  'groove',
-  'ridge',
-  'inset',
-  'outset',
-  'thin',
-  'medium',
-  'thick',
-  'repeat',
-  'no-repeat',
-  'repeat-x',
-  'repeat-y',
-  'space',
-  'round',
-  'fixed',
-  'scroll',
-  'local',
-  'center',
-  'top',
-  'bottom',
-  'left',
-  'right',
-  'cover',
-  'contain',
-  'auto',
-  'border-box',
-  'padding-box',
-  'content-box',
-])
-
 const VAR = /^var\(\s*(--[\w-]+)\s*(?:,.*)?\)$/is
 const MIX =
   /^color-mix\(\s*in\s+srgb\s*,\s*var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)\s+([\d.]+)%\s*,\s*transparent\s*\)$/is
@@ -131,7 +94,7 @@ export function frameStyles(
     const found = cascade.specified(element, property)
     if (!found) return null
     const part = found.shorthand
-      ? shorthandPart(found.value, property)
+      ? (shorthandPart(found.value, property)?.text ?? null)
       : found.value
     return part === null ? null : named(part, found.element)
   }
@@ -261,28 +224,6 @@ function declaredNames(sheets: Sheet[]): Set<string> {
     }
   }
   return names
-}
-
-/**
- * The part of a `border` or `background` shorthand that sets `property`:
- * the last part that reads as a color for a color, since a color comes last
- * in a border, and the first length for a width. Null when none does.
- */
-function shorthandPart(value: string, property: string): string | null {
-  const parts = splitTopLevel(value.trim(), ' ').filter((part) => part !== '')
-  if (property === 'border-width') {
-    return (
-      parts.find((part) => /^(?:[\d.]|thin|medium|thick)/i.test(part)) ?? null
-    )
-  }
-  return parts.findLast(isColorish) ?? null
-}
-
-function isColorish(part: string): boolean {
-  const lower = part.toLowerCase()
-  if (NOT_COLOR.has(lower)) return false
-  if (/^[\d.+-]/.test(lower) || lower.includes('/')) return false
-  return !/^(?:url|[a-z-]*gradient|image-set)\(/.test(lower)
 }
 
 function within(element: Element, root: Element): boolean {

@@ -487,6 +487,83 @@ export function splitTopLevel(text: string, separator: string): string[] {
   return parts
 }
 
+/** Words of a `border` or `background` shorthand that are never its color. */
+const NOT_COLOR = new Set([
+  'none',
+  'hidden',
+  'dotted',
+  'dashed',
+  'solid',
+  'double',
+  'groove',
+  'ridge',
+  'inset',
+  'outset',
+  'thin',
+  'medium',
+  'thick',
+  'repeat',
+  'no-repeat',
+  'repeat-x',
+  'repeat-y',
+  'space',
+  'round',
+  'fixed',
+  'scroll',
+  'local',
+  'center',
+  'top',
+  'bottom',
+  'left',
+  'right',
+  'cover',
+  'contain',
+  'auto',
+  'border-box',
+  'padding-box',
+  'content-box',
+])
+
+/** One space-separated part of a shorthand value, and where it starts in it. */
+export interface ShorthandPart {
+  text: string
+  start: number
+}
+
+/**
+ * The part of a `border` or `background` shorthand that sets `property`:
+ * the last part that reads as a color for a color, since a color comes last
+ * in a border, and the first length for a width. Null when none does. An
+ * `!important` ends the parts, so a raw attribute value reads as the parsed
+ * one does, and `start` lets a writer replace the part in place.
+ */
+export function shorthandPart(
+  value: string,
+  property: string,
+): ShorthandPart | null {
+  const parts: ShorthandPart[] = []
+  let start = 0
+  for (const text of splitTopLevel(value, ' ')) {
+    if (text.startsWith('!')) break
+    if (text !== '') parts.push({ text, start })
+    start += text.length + 1
+  }
+  if (property === 'border-width') {
+    return (
+      parts.find(({ text }) => /^(?:[\d.]|thin|medium|thick)/i.test(text)) ??
+      null
+    )
+  }
+  return parts.findLast(({ text }) => isColorish(text)) ?? null
+}
+
+function isColorish(part: string): boolean {
+  const lower = part.toLowerCase()
+  if (NOT_COLOR.has(lower)) return false
+  if (/^[\d.+-]/.test(lower) || lower.includes('/')) return false
+  return !/^(?:url|[a-z-]*gradient|image-set)\(/.test(lower)
+}
+
 /** The first family of a `font-family` list, unquoted. */
 function firstOf(families: string): string {
   const first = (splitTopLevel(families, ',')[0] ?? '').trim()
