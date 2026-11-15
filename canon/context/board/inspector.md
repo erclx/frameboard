@@ -97,11 +97,11 @@ Every number is `number-field.tsx`, on base-ui's `NumberField`. ArrowUp and Arro
 - Esc during either puts the stored value back and writes nothing, and a refused write puts back the preview too
 - The picker under `element/color-picker/` previews a color and writes it once on Enter or as it closes, which a press outside does as it goes down, since a drag fires no click
 - Esc in the picker writes nothing, and a token swatch writes at once and closes it
-  A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
+
+A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
 - A hand edit writes the element's inline style, one attribute, or its text, or drops one attribute, through `POST /api/frames/edit`, which records one undo step
-- A token pick writes `var(--token)`, so it keeps following the theme, and a raw value carries no mark
-- A paint longhand over an inline `background` or `border` holding its part rewrites that part through the reader's `shorthandPart`
+- A token pick writes `var(--token)`, so it keeps following the theme, and a raw value carries no mark. Over an inline `background` or `border` holding its part, a paint longhand rewrites that part.
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so the element's text and children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, given a property set, so a token is named exactly and a raw value equal to a token is not named as one
 - Only a token sheet's name reads as a token. A frame's own name reads as the first token its chain reaches, else its light value, as the cascade sees no `data-theme`.
