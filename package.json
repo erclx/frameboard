@@ -32,7 +32,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts",
+    "build": "vite build && rolldown -c rolldown.config.ts && bun scripts/copy-faces.ts && bun scripts/copy-kits.ts",
     "dev": "WORKTREE_PORT_OFFSET=$(bash scripts/worktree-port.sh) && export WORKTREE_PORT_OFFSET && bun scripts/dev.ts",
     "preview": "bun scripts/preview.ts",
     "test": "vitest",
