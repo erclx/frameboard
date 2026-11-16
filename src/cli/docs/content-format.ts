@@ -13,6 +13,7 @@ import {
 } from '@/server/board/scan'
 import { NOTES_FOLDER } from '@/server/notes/images'
 import { NOTES_FILE } from '@/server/notes/store'
+import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { FACES } from '@/shared/faces'
 import { BEZELS } from '@/shared/frame-device'
@@ -85,6 +86,12 @@ export function contentFormat() {
       `A project adds its own transition as a stylesheet at ${ASSETS_FOLDER}/${TRANSITIONS_FOLDER}/<name>${TRANSITION_FILE_EXTENSION}, set by <name> as a built-in is. The name is lowercase kebab case and never a built-in name, none, or page. The file holds @keyframes enter, which the arriving slide plays, optionally @keyframes leave, which the leaving slide plays or else holds still, and nothing else: no other rule or at-rule, and no url(), quoted string, or backslash escape in a value. The board plays those two keyframes over the transition's ms and never loads the file itself. It takes --ms and no direction, so a second file covers a second direction. A file breaking any of this is refused whole, reported by check and the write hook as transition-file, left out of list --json's transitions on its project, and a page or frame naming it cuts. Turning transition-file off silences the finding and the file stays refused.`,
       "page transition <page-ref> <name> sets the page's, and none clears it so slides cut. frame transition <frame-ref> <name> sets a frame's, and page clears it so the frame takes its page's. Both take --ms and --direction, refuse usage on a name that is neither built in nor the project's own with the known names in the error's details, and write only layout.json.",
       `A step is an element present mode holds back until a press reveals it, marked by three attributes on that element and nothing else. ${STEP_ATTRIBUTES.step}="<n>" is a positive integer, and steps show in number order with equal numbers together and gaps closed. ${STEP_ATTRIBUTES.effect} is one of ${STEP_EFFECTS.join(', ')}, defaulting to appear. ${STEP_ATTRIBUTES.start} is one of ${STEP_STARTS.join(', ')}, defaulting to click, where with shows the step beside the one before it and after shows it once that one finishes. Set them with edit --attr. Edit, Play, capture, and an exported PNG show every step.`,
+    ],
+    controls: [
+      `A control is an ordinary range or number input in a frame carrying ${BINDS_ATTRIBUTE}="<selector> <--property>" and ${UNIT_ATTRIBUTE}="<unit>". The selector names the element it tunes and may hold spaces, the last word is a custom property the target's own CSS reads through var(), and the unit follows the control's value, so a value of 130 under ${UNIT_ATTRIBUTE}="%" sets 130%. The frame holds no script for it.`,
+      "In Play, moving a control sets its property inline on the target at once and writes nothing. Keep values writes each moved control's value attribute and one style attribute per target holding its properties, as one undo step. Reset, or leaving the frame or Play without keeping, puts the file's values back.",
+      'An export, a thumbnail, a presented slide, and the phone link hide every control, a label holding one, and a container holding only controls and their labels. The canvas and capture show them.',
+      `check reports binding-target at warning when a ${BINDS_ATTRIBUTE} misses its selector or property, sets a property that is not custom, or matches no element, as after a rewrite renames the target's id.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
