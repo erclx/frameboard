@@ -17,7 +17,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 ### `src/server/live/`
 
-Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports.
+Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports. A reload carries a frame's content hash only when its own file was the batch's sole cause for it, which a tab reads to keep a page already showing those bytes.
 
 - A frame's own `.html` or a temp file such as `hero.html.swap` reloads that frame, unless the board's own rename only moved it, and any other page-folder file reloads the page
 - A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing

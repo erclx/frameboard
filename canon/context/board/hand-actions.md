@@ -51,7 +51,9 @@ An element selection holds the hash the frame rendered, and a reload showing oth
 
 A drag on an Absolute element previews `left` and `top`, carries its pins, and writes both once on release, through `resize.ts` beside an element's corner drag. Esc writes nothing.
 
-- The released outline stays at the drop through `held.ts` until the reloaded frame measures the element, since `ResizeObserver` never fires on a move, and a refused write lets it go
+- The released outline stays at the drop through `held.ts` until the frame measures the element at the answered hash, since `ResizeObserver` never fires on a move, and a refused write lets it go
+- A drop, a corner resize, and a group drag write only what their preview drew, so an unrelocated answer to one sent from the shown bytes stamps its hash on the page, whose reload then keeps the iframe
+- Any other write, an undo, a token change in the same batch, or another writer's bytes reloads the frame, and the frame forgets the hashes it could have skipped to
 - An element past its frame's edge draws a dashed ghost there while its frame is selected, read by `overflow.ts`, and a press on the ghost selects and drags it
 - A scroll frame draws no ghost, since its rail already shows there is more
 
