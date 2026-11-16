@@ -115,6 +115,45 @@ test.describe('projects by hand from the home view', () => {
     await expect(page).toHaveURL(`${server.url}/`)
   })
 
+  test('titles a new project with a space, moves its folder, and undo puts both back', async ({
+    page,
+  }) => {
+    await openAsWriter(page)
+
+    await page.getByRole('button', { name: 'New project' }).click()
+    await expect(
+      page.getByRole('textbox', { name: 'Rename project untitled' }),
+    ).toBeFocused()
+    await page.keyboard.type('Manual drive')
+    await page.keyboard.press('Enter')
+    await expect(card(page, 'Manual drive')).toBeVisible()
+    expect(
+      JSON.parse(readFileSync(at('manual-drive/project.json'), 'utf8')).title,
+    ).toBe('Manual drive')
+
+    await undoAtHome(page)
+
+    await expect(card(page, 'untitled')).toBeVisible()
+    expect(existsSync(at('manual-drive'))).toBe(false)
+    expect(
+      JSON.parse(readFileSync(at('untitled/project.json'), 'utf8')).title,
+    ).toBeUndefined()
+  })
+
+  test("pins a project from its card's corner on hover", async ({ page }) => {
+    await openAsWriter(page)
+
+    await card(page, 'studio').hover()
+    await page.getByRole('button', { name: 'Pin studio' }).click()
+
+    await expect(
+      page.getByRole('button', { name: 'Pin studio', pressed: true }),
+    ).toBeVisible()
+    await expect(
+      card(page, 'studio').getByRole('img', { name: 'Pinned' }),
+    ).toBeVisible()
+  })
+
   test('drags a card onto another to make a folder, and undo takes it apart', async ({
     page,
   }) => {
