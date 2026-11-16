@@ -369,3 +369,27 @@ export function attributeLocation(
 export function sheetBase(sheet: Sheet): string {
   return dirname(sheet.path)
 }
+
+/**
+ * A script's inline text, or its `src` file's when the file sits in the
+ * board. A remote, outside, or unreadable `src` reads as empty, since the
+ * write hook never reports a read as failed.
+ */
+export function scriptText(element: Element, source: FrameSource): string {
+  const src = element.attribs.src
+  if (src === undefined) return textOf(element)
+  const file = localTarget(src, source.pageDir)
+  if (!file || !isInside(source.root, file)) return ''
+  try {
+    return readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
+/** An element's own text, joined from its text children. */
+function textOf(element: Element): string {
+  return element.children
+    .map((node) => ('data' in node ? node.data : ''))
+    .join('')
+}
