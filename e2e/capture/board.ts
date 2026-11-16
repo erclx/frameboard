@@ -1713,45 +1713,6 @@ async function headlineOnHero(page: Page): Promise<void> {
 }
 
 /**
- * Double-clicks the hero's caption past the end of the command it holds once
- * the frame has loaded, where only the caption draws, so the capture shows a
- * container's outline with the four corner marks it takes.
- */
-async function captionOnHero(page: Page): Promise<void> {
-  await page.addInitScript((frames) => {
-    let left = frames
-    const pick = () => {
-      const hero = document.querySelector('[data-frame="webapp/home/hero"]')
-      const iframe = hero?.querySelector('iframe')
-      const caption = iframe?.dataset.renderedAt
-        ? iframe.contentDocument?.querySelector('[data-name="Caption"]')
-        : null
-      const hit = document.querySelector('[data-hit-layer]')
-      const layer = document.querySelector<HTMLElement>('[data-layer]')
-      if (!hero || !caption || !hit || !layer) {
-        if (--left > 0) requestAnimationFrame(pick)
-        else console.error('No hero caption to select')
-        return
-      }
-      const k = Number(layer.style.getPropertyValue('--zoom') || 1)
-      const frame = hero.getBoundingClientRect()
-      const inner = caption.getBoundingClientRect()
-      const at = {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: frame.left + (inner.right - 40) * k,
-        clientY: frame.top + (inner.top + inner.height / 2) * k,
-      }
-      hit.dispatchEvent(new MouseEvent('mousedown', at))
-      window.dispatchEvent(new MouseEvent('mouseup', at))
-      hit.dispatchEvent(new MouseEvent('dblclick', at))
-    }
-    document.addEventListener('DOMContentLoaded', pick)
-  }, PRESS_FRAMES)
-}
-
-/**
  * Serves the hero with a Free 160 by 120 box at `left` in its 1440 px width,
  * added to the bytes on the way to the tab, so the fixture on disk never
  * holds it and the frame keeps the hash its file stamps.
@@ -1804,15 +1765,17 @@ function elementOnHero(selector: string): (page: Page) => Promise<void> {
 /**
  * Selects the element matching `selector` in the frame `ref` once the frame
  * has loaded and every video on the canvas has decoded its first frame, which
- * a capture would otherwise race.
+ * a capture would otherwise race. It double-clicks the element's middle, or
+ * with `low` its bottom left, clear of the children a container holds.
  */
 function elementInFrame(
   ref: string,
   selector: string,
+  low = false,
 ): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ owner, target, frames }) => {
+      ({ owner, target, frames, low }) => {
         let left = frames
         const pick = () => {
           const shown = document.querySelector(`[data-frame="${owner}"]`)
@@ -1849,8 +1812,12 @@ function elementInFrame(
             bubbles: true,
             cancelable: true,
             view: window,
-            clientX: frame.left + (inner.left + inner.width / 2) * k,
-            clientY: frame.top + (inner.top + inner.height / 2) * k,
+            clientX:
+              frame.left +
+              (low ? inner.left + 8 : inner.left + inner.width / 2) * k,
+            clientY:
+              frame.top +
+              (low ? inner.bottom - 8 : inner.top + inner.height / 2) * k,
           }
           hit.dispatchEvent(new MouseEvent('mousedown', at))
           window.dispatchEvent(new MouseEvent('mouseup', at))
@@ -1858,7 +1825,7 @@ function elementInFrame(
         }
         document.addEventListener('DOMContentLoaded', pick)
       },
-      { owner: ref, target: selector, frames: PRESS_FRAMES },
+      { owner: ref, target: selector, frames: PRESS_FRAMES, low },
     )
   }
 }
@@ -4418,15 +4385,6 @@ const CASES: CaptureCase[] = [
         setup: themed(headlineOnHero),
       },
       {
-        section: 'container-corners',
-        theme,
-        route: '/p/webapp/home',
-        evidence: true,
-        excludeViewports: STATE_ONLY,
-        mask: [AVATAR],
-        setup: themed(captionOnHero),
-      },
-      {
         // An arrow key moved the Decoration row's focus ring off its lit button.
         section: 'segmented-focus',
         theme,
@@ -4487,6 +4445,26 @@ const CASES: CaptureCase[] = [
           ),
         ),
       },
+      {
+        // A container wears its four marks, as a shape does.
+        section: 'corner-marks-container',
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            elementInFrame(
+              'marketing/states/free',
+              '[data-name="Column"]',
+              true,
+            ),
+            readyWhen('[data-element-selection]'),
+          ),
+        ),
+      },
       ...(
         [
           // Text wearing its marks, its chip naming the height as hugging.
@@ -4496,8 +4474,6 @@ const CASES: CaptureCase[] = [
           ['corner-marks-video', 'free', '[data-name="Free video"]'],
           // A shape keeps its marks and its size.
           ['corner-marks-shape', 'free', '[data-name="Free shape"]'],
-          // A container takes no resize, so it wears none.
-          ['corner-marks-container', 'free', '[data-name="Column"]'],
           // Text at the width a corner writes, wrapping with its height hugging.
           ['corner-resized-text', 'sized', '[data-name="Sized text"]'],
           // An image and a video at the size a corner writes, stating both sides.
