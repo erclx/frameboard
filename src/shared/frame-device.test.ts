@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { bezelBox, deviceOf } from './frame-device'
+import { bezelBox, deviceForWidth, deviceOf, laptopParts } from './frame-device'
 import { drawnExtent } from './frame-widths'
 
 const frame = { x: 100, y: 40, width: 390, height: 844 }
@@ -17,6 +17,20 @@ describe('deviceOf', () => {
     ['nothing', undefined],
   ])('reads %s as none', (_, value) => {
     expect(deviceOf(value)).toBeNull()
+  })
+})
+
+describe('deviceForWidth', () => {
+  it.each([
+    [319, null],
+    [320, 'phone'],
+    [479, 'phone'],
+    [480, 'tablet'],
+    [1023, 'tablet'],
+    [1024, 'laptop'],
+    [1440, 'laptop'],
+  ] as const)('draws a %i wide frame in %s', (width, device) => {
+    expect(deviceForWidth(width)).toBe(device)
   })
 })
 
@@ -39,8 +53,27 @@ describe('bezelBox', () => {
     })
   })
 
+  it('grows a laptop frame by its lid above, and its chin, base, and the base reach below and aside', () => {
+    const desktop = { x: 0, y: 0, width: 1440, height: 900 }
+    expect(bezelBox(desktop, 'laptop')).toEqual({
+      x: -109,
+      y: -20,
+      width: 1658,
+      height: 962,
+    })
+  })
+
   it('keeps the box with no device', () => {
     expect(bezelBox(frame, null)).toEqual(frame)
+  })
+})
+
+describe('laptopParts', () => {
+  it('sets the chin under the screen as wide as the lid and the base past it on both sides', () => {
+    expect(laptopParts({ width: 1440, height: 900 })).toEqual({
+      chin: { x: -20, y: 900, width: 1480, height: 28 },
+      base: { x: -109, y: 928, width: 1658, height: 14 },
+    })
   })
 })
 
@@ -48,6 +81,13 @@ describe('drawnExtent with a device', () => {
   it('holds the bezel, so a frame placed past it lands clear', () => {
     const extent = drawnExtent(frame, [], 'phone')
     expect(extent).toEqual(bezelBox(frame, 'phone'))
+  })
+
+  it('holds the laptop base reaching past the lid', () => {
+    const desktop = { x: 0, y: 0, width: 1440, height: 900 }
+    expect(drawnExtent(desktop, [], 'laptop')).toEqual(
+      bezelBox(desktop, 'laptop'),
+    )
   })
 
   it('holds the bezel around the frame and the linked widths past it', () => {
