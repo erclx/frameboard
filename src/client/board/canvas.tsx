@@ -37,6 +37,7 @@ import {
   type View,
 } from './cull'
 import { useElementActions } from './element/actions'
+import { BindingLinks } from './element/binding-links'
 import { ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
@@ -865,6 +866,7 @@ export function Canvas({
             })}
             <SelectionOverlay frames={frames} sections={page.sections} />
             <ElementOverlay frames={frames} container={layer} />
+            <BindingLinks frames={frames} container={layer} />
             {/* Under the drop line, which a shape placed in the flow lands at. */}
             <ShapeDraft
               viewport={viewportRef}
