@@ -277,8 +277,9 @@
     <header>
       <h1>Toolbar, every width</h1>
       <p>
-        The bar folds by its column's width. Place folds first, More takes the
-        rest, and More alone holds every control in the narrowest column.
+        The bar folds by its column's width. More takes the tools and the edit
+        and view actions as it narrows, and More alone holds every control in
+        the narrowest column.
       </p>
     </header>
     <div class="pair">
@@ -397,21 +398,6 @@
                 stroke-linejoin="round"
               >
                 <path d="M4 5h16v11H9l-5 4z" />
-              </svg></button
-            ><span class="sep"></span
-            ><button class="segbtn" aria-label="Place new elements, Auto">
-              Auto<svg
-                class="ic"
-                width="9"
-                height="9"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" />
               </svg></button
             ><span class="sep"></span
             ><button
@@ -550,198 +536,6 @@
                   /></svg></span
               >Theme
             </div>
-          </div>
-        </div>
-      </section>
-      <section class="strip" style="width: 542px">
-        <div class="cap">
-          <span>Place open</span><span class="meas" data-meas></span>
-        </div>
-        <div class="col" style="width: 542px; height: 250px">
-          <div class="pill" role="toolbar" aria-label="Tools">
-            <button class="tb on" aria-label="Move">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M5 3l14 8-6 2-3 6z" />
-              </svg></button
-            ><span class="caret"
-              ><svg
-                class="ic"
-                width="9"
-                height="9"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" /></svg></span
-            ><button class="tb" aria-label="Frame">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M7 3v18M17 3v18M3 7h18M3 17h18" />
-              </svg></button
-            ><span class="caret"
-              ><svg
-                class="ic"
-                width="9"
-                height="9"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" /></svg></span
-            ><button class="tb" aria-label="Text">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M5 6V4h14v2M12 4v16M9 20h6" />
-              </svg></button
-            ><button class="tb" aria-label="Rectangle">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="4" y="5" width="16" height="14" rx="1.5" />
-              </svg></button
-            ><span class="caret"
-              ><svg
-                class="ic"
-                width="9"
-                height="9"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" /></svg></span
-            ><button class="tb" aria-label="Note">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M4 5h16v11H9l-5 4z" />
-              </svg></button
-            ><span class="sep"></span
-            ><button
-              class="segbtn"
-              aria-expanded="true"
-              aria-label="Place new elements, Auto"
-            >
-              Auto<svg
-                class="ic"
-                width="9"
-                height="9"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg></button
-            ><span class="sep"></span
-            ><button class="tb more" aria-label="More tools">
-              <svg
-                class="ic"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="5" cy="12" r="1.2" />
-                <circle cx="12" cy="12" r="1.2" />
-                <circle cx="19" cy="12" r="1.2" />
-              </svg></button
-            ><span class="sep"></span
-            ><span class="seg"
-              ><button class="on">
-                <svg
-                  class="ic"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 20l4-1 11-11-3-3L5 16z" /></svg
-                >Edit</button
-              ><button>
-                <svg
-                  class="ic"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M7 5l12 7-12 7z" /></svg
-                >Play
-              </button></span
-            >
-          </div>
-          <div class="menu" style="width: 196px">
-            <div class="mlabel">Place new elements</div>
-            <div class="mi chosen">Auto</div>
-            <div class="mi">Flow</div>
-            <div class="mi">Free</div>
           </div>
         </div>
       </section>
@@ -1189,11 +983,6 @@
                 <path d="M4 5h16v11H9l-5 4z" /></svg
               >Note<span class="kb"><span>N</span></span>
             </div>
-            <div class="msep"></div>
-            <div class="mlabel">Place new elements</div>
-            <div class="mi chosen">Auto</div>
-            <div class="mi">Flow</div>
-            <div class="mi">Free</div>
             <div class="msep"></div>
             <div class="mi">
               <svg

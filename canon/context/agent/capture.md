@@ -87,4 +87,5 @@ A seeked shot skips that settle.
 These catch an element address out.
 
 - Inspect prints nothing and refuses `invalid-address` for an index with no layout box, `address-mismatch` when the live tag order leaves the file's, and `stale-address` when the file changed mid-load
-- Eight readers count elements and share no code: `readTextElements`, `waitForImages`, `waitForVideos`, inspect, the element shot, the client pick, and two browser checks. `LOOK_MARKER` moves all eight.
+- Eight readers count elements and share no code, and `LOOK_MARKER` moves all eight
+- They are `readTextElements`, `waitForImages`, `waitForVideos`, inspect, the element shot, the client pick, and two browser checks

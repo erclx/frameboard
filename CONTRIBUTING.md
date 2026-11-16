@@ -47,8 +47,15 @@ After changing a manifest, check it. `claude plugin validate .` reads the market
 - `bun run test:run` runs Vitest once across two projects. The `node` project covers `src/cli/`, `src/server/`, and `src/shared/`, and the `browser` project runs `src/client/` in headless Chromium.
 - `bun run test:e2e` builds the CLI and runs Playwright against it
 - `bun run check:full` runs the whole gate followed by the end to end suite
-- `test:run` and the two e2e runs share a lock across every checkout on the machine, so two runs go at once and a third waits, printing a line naming the holders, such as `[test-lock 10:59:15] waiting on pid 3974197 in /repo/other running 'vitest run'`
-- A run still going after 15 minutes is killed with every process it started and exits 124. `FRAMEBOARD_TEST_LIMIT` sets the limit in seconds, 0 for none, and `FRAMEBOARD_TEST_SLOTS=1` runs one at a time.
+
+### The test lock
+
+Heavy runs share the machine through one lock.
+
+- `test:run` and the two e2e runs share a lock across every checkout on the machine, so two runs go at once and a third waits
+- A waiting run prints a line naming the holders, such as `[test-lock 10:59:15] waiting on pid 3974197 in /repo/other running 'vitest run'`
+- A run still going after 15 minutes is killed with every process it started and exits 124
+- `FRAMEBOARD_TEST_LIMIT` sets the limit in seconds, 0 for none, and `FRAMEBOARD_TEST_SLOTS=1` runs one at a time
 
 Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/` or `src/server/` should start under both. After `bun run build`, run `node dist/cli.js serve` and `bun dist/cli.js serve` and open the board each time.
 
@@ -78,7 +85,10 @@ CI runs the static checks, unit tests, build, and end to end tests on every pull
 
 ## Releases
 
-release-please cuts every release from the conventional commits on `main`. Each push to `main` keeps one release pull request open, holding the next version, its `CHANGELOG.md` entry, and the matching `version` in `package.json` and `plugins/frameboard/.claude-plugin/plugin.json`. Merging that pull request tags the release, and the same workflow builds the tag and publishes `frameboard` to npm.
+release-please cuts every release from the conventional commits on `main`. Merging its release pull request tags the release, and the same workflow builds the tag and publishes `frameboard` to npm.
+
+- Each push to `main` keeps one release pull request open, holding the next version and its `CHANGELOG.md` entry
+- It also holds the matching `version` in `package.json` and `plugins/frameboard/.claude-plugin/plugin.json`
 
 The workflow needs two repository secrets. `NPM_TOKEN` is an npm token allowed to publish `frameboard`, and `RELEASE_PLEASE_TOKEN` is a GitHub token that opens the release pull request so CI runs on it. Until both are set, the workflow fails on every push to `main` before it cuts anything.
 

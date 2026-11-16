@@ -7,7 +7,7 @@ description: Folder watcher, socket hub, claims record, write access, and the HT
 
 ## Overview
 
-Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/hand-actions.md`, and the live findings in `canon/context/agent/checks.md`.
+Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/commands.md`, and the live findings in `canon/context/agent/checks.md`.
 
 ## Layout
 
