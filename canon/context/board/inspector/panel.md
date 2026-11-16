@@ -7,7 +7,7 @@ description: The right panel's tabs and frame sections, Slides and Export, selec
 
 ## Overview
 
-Owns the right panel's shell and its frame-level controls, being the tabs, the frame sections, Slides, Export, selection colors, and the number field every section steps and scrubs with. An element's own sections, and what a hand edit writes into a frame, are in `canon/context/board/inspector-element.md`.
+Owns the right panel's shell and its frame-level controls, being the tabs, the frame sections, Slides, Export, selection colors, and the number field every section steps and scrubs with. An element's own sections, and what a hand edit writes into a frame, are in `canon/context/board/inspector/element.md`.
 
 ## Layout
 

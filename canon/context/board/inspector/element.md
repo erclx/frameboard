@@ -7,7 +7,9 @@ description: An element's sections in the inspector, being layout, size, positio
 
 ## Overview
 
-Owns the sections the inspector shows for a selected element and the bar each new control clears, from Layout and Position through type, rotation, and paint, plus what a hand edit writes into a frame. The panel around them, its tabs, and the number field are in `canon/context/board/inspector.md`.
+Owns the sections the inspector shows for a selected element and the bar each new control clears, from Layout and Position through type, rotation, and paint, plus what a hand edit writes into a frame.
+
+The color picker the paint rows open is in `canon/context/board/inspector/color-picker.md`, and the panel around them, its tabs, and the number field in `canon/context/board/inspector/panel.md`.
 
 ## Layout
 
@@ -56,11 +58,6 @@ Owns an element's sections, read from the live node and the static cascade, and 
 - **Shadow:** one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
-
-The color picker previews like the number field in `canon/context/board/inspector.md` does, and writes once.
-
-- The picker under `element/color-picker/` previews a color and writes it once on Enter or as it closes, which a press outside does as it goes down, since a drag fires no click
-- Esc in the picker writes nothing, and a token swatch writes at once and closes it
 
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 

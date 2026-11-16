@@ -7,7 +7,7 @@ description: The Text, Shape, and Image tools, where a new element lands in a fr
 
 ## Overview
 
-Owns dropping a new element into a frame, being the placement tools, the cues that show where it lands, and a file placed from the project's assets. Moving and resizing an element once placed is in `canon/context/board/hand-actions.md`, and the Position row that moves it in or out of the flow in `canon/context/board/inspector-element.md`.
+Owns dropping a new element into a frame, being the placement tools, the cues that show where it lands, and a file placed from the project's assets. Moving and resizing an element once placed is in `canon/context/board/hand-actions.md`, and the Position row that moves it in or out of the flow in `canon/context/board/inspector/element.md`.
 
 ## Layout
 

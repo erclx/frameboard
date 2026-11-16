@@ -7,7 +7,7 @@ description: A frame's motion held in the board, Play mode, and presenting a pag
 
 ## Overview
 
-Owns how the board runs what a frame draws over time, being the motion hold, Play mode, and present mode with its transitions and steps. The canvas around it is in `canon/context/board/shell.md`, and the inspector sections that set a hold, a transition, or a step in `canon/context/board/inspector.md`.
+Owns how the board runs what a frame draws over time, being the motion hold, Play mode, and present mode with its transitions and steps. The canvas around it is in `canon/context/board/shell.md`, and the inspector sections that set a hold, a transition, or a step in `canon/context/board/inspector/panel.md`.
 
 ## Layout
 
