@@ -25,6 +25,35 @@ export function elementAt(document: Document, index: number): Element | null {
   return frameElements(document)[index] ?? null
 }
 
+/** A frame's own live iframe on the canvas, leaving out its linked widths. */
+export function liveIframe(ref: string): HTMLIFrameElement | null {
+  return document.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] iframe`,
+  )
+}
+
+/**
+ * Stamps a live frame as rendering the file `hash` names, as its reload
+ * would have, for a page that already shows those bytes. A document with no
+ * stamp to move is left alone.
+ */
+export function stampRenderedHash(document: Document, hash: string): void {
+  document
+    .querySelector(`style[${LOOK_MARKER}]`)
+    ?.setAttribute(RENDERED_HASH, hash)
+}
+
+/**
+ * Stamps the file time a frame's iframe rendered, which its `load` listener
+ * sets from the board on a reload, for a reload the page took without one.
+ */
+export function stampRenderedAt(
+  iframe: HTMLIFrameElement,
+  modifiedAt: string,
+): void {
+  iframe.dataset.renderedAt = modifiedAt
+}
+
 /**
  * The content hash of the file a live frame rendered, read off the stamp the
  * frame route put on its injected style, or null for a document with none.

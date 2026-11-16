@@ -94,6 +94,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     state.board?.projects.find((candidate) => candidate.name === project),
   )
   const reloads = useLive((state) => state.reloads)
+  const kept = useLive((state) => state.kept)
   const findings = useLive((state) => state.findings)
   const claims = useLive((state) => state.claims)
   const focus = useLive((state) => state.focus)
@@ -206,6 +207,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
                     <Canvas
                       page={content}
                       reloads={reloads}
+                      kept={kept}
                       findings={findings}
                       claims={claims}
                       focus={held ? null : focus}

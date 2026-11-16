@@ -844,6 +844,50 @@ test.describe('placing text and shapes into a frame', () => {
       ).toEqual([])
     })
 
+    test('a drop keeps the frame loaded with the Box selected, and an inspector edit after it still reloads', async ({
+      page,
+    }) => {
+      const { center, zoom } = await selectBox(page)
+      const iframe = page.locator(`[data-frame="${HERO}"] iframe`)
+      const src = await iframe.getAttribute('src')
+      const renderedAt = await iframe.getAttribute('data-rendered-at')
+      expect(renderedAt).not.toBeNull()
+      const hash = await shownHash(page)
+
+      await page.mouse.move(center.x, center.y)
+      await page.mouse.down()
+      await page.mouse.move(center.x + 200 * zoom, center.y + 100 * zoom, {
+        steps: 8,
+      })
+      await page.mouse.up()
+
+      await expect.poll(leftNear(300)).toBe(true)
+      await expect
+        .poll(() => shownHash(page))
+        .toBe(createHash('sha256').update(read()).digest('hex'))
+      // The skipped reload stamps the file time its load would have, which
+      // a reload would stamp too, so the src is what tells the two apart.
+      await expect(iframe).not.toHaveAttribute(
+        'data-rendered-at',
+        renderedAt ?? '',
+      )
+      expect(await shownHash(page)).not.toBe(hash)
+      expect(await iframe.getAttribute('src')).toBe(src)
+      await expect(page.locator('[data-element-selection]')).toBeVisible()
+
+      const opacity = page.getByRole('textbox', {
+        name: 'Opacity',
+        exact: true,
+      })
+      await opacity.fill('50')
+      await opacity.press('Enter')
+
+      await expect(iframe).not.toHaveAttribute('src', src ?? '')
+      await expect
+        .poll(() => shownHash(page))
+        .toBe(createHash('sha256').update(read()).digest('hex'))
+    })
+
     test('a drag past the edge leaves a ghost there, which a press grabs to drag the element back', async ({
       page,
     }) => {

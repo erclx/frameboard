@@ -1,7 +1,12 @@
+import { liveIframe, stampRenderedAt } from '@/client/board/frame-dom'
 import {
+  awaitingHash,
+  forgetLiveHashes,
   renameSelection,
   type SelectionStore,
   selectionStore,
+  takeLiveHash,
+  whenSettled,
 } from '@/client/board/selection'
 import {
   renameFlipped,
@@ -13,6 +18,7 @@ import {
   LIVE_PATH,
   type ServerMessage,
 } from '@/shared/live-messages'
+import type { ListResult } from '@/shared/records/list'
 
 import {
   type LiveStore,
@@ -98,8 +104,9 @@ export function connectLive(
         if (board) pruneUnseen(unseen, board)
       } else if (message.type === 'access') {
         receiveAccess(store, message.write, message.dispatch)
-      } else if (message.type === 'reload') receiveReload(store, message.refs)
-      else if (message.type === 'renamed') {
+      } else if (message.type === 'reload') {
+        receiveLiveReload(store, message.refs, message.hashes)
+      } else if (message.type === 'renamed') {
         const { before, after } = message
         // The stores keyed by frame ref move first, since the renamed board
         // prunes a selection it no longer holds the moment it lands.
@@ -136,4 +143,53 @@ export function connectLive(
     clearTimeout(retry)
     socket?.close()
   }
+}
+
+/**
+ * Reloads the named frames, keeping the page of each whose reload renders
+ * bytes a live write of this tab left it showing. A ref with a hash and a
+ * write in flight waits for that write to settle, since its answer decides
+ * the skip, and is then kept or reloaded, never dropped. Any doubt reloads.
+ */
+export function receiveLiveReload(
+  store: LiveStore,
+  refs: readonly string[],
+  hashes: Readonly<Record<string, string>> = {},
+): void {
+  const waiting = refs.filter((ref) => ref in hashes && awaitingHash(ref))
+  const now = refs.filter((ref) => !waiting.includes(ref))
+  settleReload(store, now, hashes)
+  for (const ref of waiting) {
+    void whenSettled(ref).then(() => settleReload(store, [ref], hashes))
+  }
+}
+
+function settleReload(
+  store: LiveStore,
+  refs: readonly string[],
+  hashes: Readonly<Record<string, string>>,
+): void {
+  if (refs.length === 0) return
+  const kept = refs.filter((ref) => {
+    const hash = hashes[ref]
+    if (hash !== undefined && takeLiveHash(ref, hash)) return true
+    // The page now shows the file, so no earlier live bytes may be skipped to.
+    forgetLiveHashes(ref)
+    return false
+  })
+  // The live write's answer already stamped the hash and kept its previews,
+  // so a drag begun since keeps its own for Esc to put back.
+  for (const ref of kept) {
+    const iframe = liveIframe(ref)
+    const modifiedAt = frameOf(store.getState().board, ref)?.modifiedAt
+    if (iframe && modifiedAt) stampRenderedAt(iframe, modifiedAt)
+  }
+  receiveReload(store, refs, kept)
+}
+
+function frameOf(board: ListResult | null, ref: string) {
+  return board?.projects
+    .flatMap((project) => project.pages)
+    .flatMap((page) => page.frames)
+    .find((frame) => frame.ref === ref)
 }

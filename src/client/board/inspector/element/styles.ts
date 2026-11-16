@@ -736,3 +736,15 @@ export function previewStyle(
   }
   node.style.setProperty(property, value, 'important')
 }
+
+/**
+ * Forgets a frame's previews without putting anything back, once a write
+ * of exactly what they show landed and the frame keeps its page rather than
+ * reloading. The previewed value is then the written one, so a later
+ * cancel puts it back rather than the value from before the write.
+ */
+export function keepPreviews(frame: string): void {
+  for (const at of previews.keys()) {
+    if (at.startsWith(`${frame}:`)) previews.delete(at)
+  }
+}

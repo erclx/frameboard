@@ -2,15 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createModeStore } from '@/client/board/mode'
 import {
+  awaitHash,
   createSelectionStore,
   followSelection,
+  forgetLiveHashes,
+  rememberLiveHash,
   select,
   selectElement,
+  whenSettled,
 } from '@/client/board/selection'
 import { createThemeStore, flipFrame } from '@/client/theme/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
-import { connectLive } from './socket'
+import { connectLive, receiveLiveReload } from './socket'
 import { createLiveStore } from './store'
 import { createUnseenStore } from './unseen'
 
@@ -310,5 +314,94 @@ describe('connectLive access', () => {
 
     expect(Object.keys(unseen.getState().unseen)).toEqual(['studio/home/hero'])
     stop()
+  })
+})
+
+describe('receiveLiveReload', () => {
+  const HERO = 'studio/home/hero'
+
+  afterEach(() => {
+    forgetLiveHashes(null)
+  })
+
+  it('keeps the page of a frame whose reload renders bytes a live write left it at', () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+
+    expect(store.getState().reloads).toEqual({ [HERO]: 1 })
+    expect(store.getState().kept).toEqual({ [HERO]: 1 })
+  })
+
+  it('reloads a frame whose reload carries no hash, as one a token change also reached', () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+
+    receiveLiveReload(store, [HERO])
+
+    expect(store.getState().reloads).toEqual({ [HERO]: 1 })
+    expect(store.getState().kept).toEqual({})
+  })
+
+  it('reloads into bytes another writer left, and then no longer skips to the live ones', () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'agent' })
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+
+    expect(store.getState().reloads).toEqual({ [HERO]: 2 })
+    expect(store.getState().kept).toEqual({})
+  })
+
+  it('holds a reload while a live write is in flight and keeps the page once it answers', async () => {
+    const store = createLiveStore()
+    const done = awaitHash(HERO, true)
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'h2' })
+    expect(store.getState().reloads).toEqual({})
+
+    rememberLiveHash(HERO, 'h2')
+    done()
+    await whenSettled(HERO)
+
+    expect(store.getState().kept).toEqual({ [HERO]: 1 })
+  })
+
+  it('reloads a held reload once the write in flight was not live', async () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+    const done = awaitHash(HERO)
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+    done()
+    await whenSettled(HERO)
+
+    expect(store.getState().reloads).toEqual({ [HERO]: 1 })
+    expect(store.getState().kept).toEqual({})
+  })
+
+  it('reloads the bytes a live write left once an undo was sent since', () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+    awaitHash(null)()
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+
+    expect(store.getState().kept).toEqual({})
+  })
+
+  it('keeps a late reload of the first of two drops, then reloads those bytes after the second', () => {
+    const store = createLiveStore()
+    rememberLiveHash(HERO, 'h1')
+    rememberLiveHash(HERO, 'h2')
+
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+    receiveLiveReload(store, [HERO], { [HERO]: 'h2' })
+    receiveLiveReload(store, [HERO], { [HERO]: 'h1' })
+
+    expect(store.getState().reloads).toEqual({ [HERO]: 3 })
+    expect(store.getState().kept).toEqual({ [HERO]: 2 })
   })
 })
