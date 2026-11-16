@@ -151,14 +151,16 @@ function useBindingMeasures(
         `[data-frame="${CSS.escape(ref)}"] iframe`,
       )?.contentDocument
       const view = doc?.defaultView
-      if (!doc || !view) {
+      // A restamp can reach a page being replaced, which holds no root yet.
+      const root = doc?.documentElement
+      if (!doc || !view || !root) {
         setBindings([])
         return
       }
       const read = () => setBindings(readBindings(doc))
       read()
       const observer = new view.ResizeObserver(read)
-      observer.observe(doc.documentElement)
+      observer.observe(root)
       view.addEventListener('scroll', read, true)
       stopWatching = () => {
         observer.disconnect()

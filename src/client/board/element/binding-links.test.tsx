@@ -108,6 +108,26 @@ describe('BindingLinks', () => {
     )
   })
 
+  it('draws nothing for a restamped page holding no root', async () => {
+    const mounted = await mountFrame(TUNER)
+    act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+    const { container } = render(
+      <BindingLinks frames={[HERO]} container={mounted} />,
+    )
+    await screen.findByText('#photo --brightness')
+    const iframe = mounted.querySelector('iframe')
+    if (!iframe) throw new Error('The frame draws no iframe')
+
+    iframe.contentDocument?.documentElement.remove()
+    act(() => {
+      iframe.dispatchEvent(new Event(RESTAMPED))
+    })
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-binding-link]')).toBeNull(),
+    )
+  })
+
   it('draws nothing in Play', async () => {
     const mounted = await mountFrame(TUNER)
     act(() => select(selectionStore, 'studio/home', [HERO.ref]))
