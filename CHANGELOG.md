@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.37.0](https://github.com/erclx/frameboard/compare/v0.36.0...v0.37.0) (2026-11-16)
+
+
+### Features
+
+* **canvas:** resize containers, select on click, drop Place toggle ([#344](https://github.com/erclx/frameboard/issues/344)) ([a96a917](https://github.com/erclx/frameboard/commit/a96a917eee16337ee1aed3a4ce55baf6e75ea193))
+* **inspector:** group the right panel into Design, Slides, Export tabs ([#342](https://github.com/erclx/frameboard/issues/342)) ([fca051b](https://github.com/erclx/frameboard/commit/fca051be1c47e7e22a2ba5cf9f63994be57474ac))
+* **inspector:** set a stroke's width and keep paint off dead tokens ([#343](https://github.com/erclx/frameboard/issues/343)) ([cfc26e3](https://github.com/erclx/frameboard/commit/cfc26e3d910b7e24f7148322ddd86c2c914c8b80))
+
+
+### Bug Fixes
+
+* **capture:** stop a full sweep painting a stray toast ([#337](https://github.com/erclx/frameboard/issues/337)) ([f24c272](https://github.com/erclx/frameboard/commit/f24c272eb3e1e221358243dc5db182630f8dce4f))
+* **test-lock:** stop a clock step sparing the kill's live processes ([#339](https://github.com/erclx/frameboard/issues/339)) ([8a4f7f1](https://github.com/erclx/frameboard/commit/8a4f7f10d30a729716a5f2629a512cfaa9524cce))
+
 ## [0.36.0](https://github.com/erclx/frameboard/compare/v0.35.0...v0.36.0) (2026-11-14)
 
 
