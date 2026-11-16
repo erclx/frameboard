@@ -1,4 +1,10 @@
-import { House, PanelLeft } from 'lucide-react'
+import {
+  House,
+  ListChevronsUpDown,
+  PanelLeft,
+  Plus,
+  Search,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
 import { Link } from 'wouter'
@@ -145,11 +151,24 @@ function LeftLoading({ project }: { project: string }) {
             className="flex shrink-0 flex-col"
             style={{ height: PAGES_HEIGHT }}
           >
-            <PanelSection id="pages-heading" title="Pages" />
+            <PanelSection id="pages-heading" title="Pages">
+              <span className="flex gap-0.5">
+                <HeaderButton label="Search pages">
+                  <Search aria-hidden className="size-[13px]" />
+                </HeaderButton>
+                <HeaderButton label="Add page">
+                  <Plus aria-hidden className="size-[13px]" />
+                </HeaderButton>
+              </span>
+            </PanelSection>
             <Rows />
           </div>
           <div className="h-[9px] shrink-0 border-t border-sidebar-border" />
-          <PanelSection id="layers-heading" title="Layers" />
+          <PanelSection id="layers-heading" title="Layers">
+            <HeaderButton label="Collapse all layers">
+              <ListChevronsUpDown aria-hidden className="size-[15px]" />
+            </HeaderButton>
+          </PanelSection>
           <Rows />
         </div>
       </Tabs>
@@ -181,6 +200,28 @@ function InspectorLoading() {
       </Tabs>
       <Rows />
     </aside>
+  )
+}
+
+/** A Pages or Layers heading's button, disabled until the lists it acts on load. */
+function HeaderButton({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-disabled
+      className="group/target grid size-6 place-items-center text-muted-foreground outline-none aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+    >
+      <span className="grid size-5 place-items-center rounded-md group-focus-visible/target:ring-3 group-focus-visible/target:ring-ring/50">
+        {children}
+      </span>
+    </button>
   )
 }
 

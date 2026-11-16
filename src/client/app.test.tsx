@@ -8,6 +8,7 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { ListResult, PageRecord } from '@/shared/records/list'
 
 import { App } from './app'
+import { inspectorTabStore } from './board/inspector/tab-store'
 import { modeStore } from './board/mode'
 import { liveStore, receiveBoard } from './live/store'
 
@@ -76,6 +77,7 @@ describe('App', () => {
   describe('home before the first board', () => {
     afterEach(() => {
       localStorage.removeItem('frameboard.home.layout')
+      localStorage.removeItem('frameboard.home.sort')
     })
 
     it('draws the header and Projects heading with New project disabled', () => {
@@ -113,6 +115,16 @@ describe('App', () => {
       expect(screen.getByText('Name')).toBeVisible()
     })
 
+    it('names the remembered sort on its disabled Sort button', () => {
+      localStorage.setItem('frameboard.home.sort', 'name')
+
+      renderAt('/')
+
+      expect(
+        screen.getByRole('button', { name: /Sort: Name/ }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
+
     it('gives way to the projects once the board arrives', () => {
       renderAt('/')
 
@@ -126,6 +138,45 @@ describe('App', () => {
   describe('a board page before the first board', () => {
     afterEach(() => {
       modeStore.setState({ hideUi: false })
+      inspectorTabStore.setState({ tab: 'design' })
+      localStorage.removeItem('react-resizable-panels:frameboard.board.panels')
+    })
+
+    it('opens the left panel at its remembered width', () => {
+      localStorage.setItem(
+        'react-resizable-panels:frameboard.board.panels',
+        JSON.stringify({ 'left,canvas,right': { layout: [25, 56.25, 18.75] } }),
+      )
+
+      renderAt('/p/studio/home')
+
+      const left = screen.getByRole('complementary', {
+        name: 'Pages and layers',
+      })
+      expect(left.getBoundingClientRect().width).toBeCloseTo(320, -1)
+    })
+
+    it('marks the remembered inspector tab', () => {
+      inspectorTabStore.setState({ tab: 'export' })
+
+      renderAt('/p/studio/home')
+
+      const inspector = screen.getByRole('complementary', { name: 'Inspector' })
+      expect(
+        within(inspector).getByRole('tab', { name: 'Export' }),
+      ).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('draws the Pages and Layers buttons disabled', () => {
+      renderAt('/p/studio/home')
+
+      expect(screen.getByRole('button', { name: 'Add page' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(
+        screen.getByRole('button', { name: 'Collapse all layers' }),
+      ).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('draws the project name from the route and both panels', () => {
