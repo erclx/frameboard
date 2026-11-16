@@ -1,24 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { bezelBox, deviceForWidth, deviceOf, laptopParts } from './frame-device'
+import { bezelBox, deviceForWidth, laptopParts } from './frame-device'
 import { drawnExtent } from './frame-widths'
 
 const frame = { x: 100, y: 40, width: 390, height: 844 }
-
-describe('deviceOf', () => {
-  it.each(['phone', 'tablet'] as const)('reads %s as written', (device) => {
-    expect(deviceOf(device)).toBe(device)
-  })
-
-  it.each([
-    ['an unknown device', 'watch'],
-    ['a capitalized device', 'Phone'],
-    ['a number', 1],
-    ['nothing', undefined],
-  ])('reads %s as none', (_, value) => {
-    expect(deviceOf(value)).toBeNull()
-  })
-})
 
 describe('deviceForWidth', () => {
   it.each([

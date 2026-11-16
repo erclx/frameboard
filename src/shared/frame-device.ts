@@ -149,14 +149,6 @@ export function bezelShadow(
 }
 
 /**
- * A layout entry's `device` value, or null for anything but a known device,
- * so a value no reader understands reads as a frame with no device.
- */
-export function deviceOf(value: unknown): Device | null {
-  return DEVICES.find((device) => device === value) ?? null
-}
-
-/**
  * The box a device's body covers around a frame's box, the box itself with
  * none. A laptop's base reaches past its lid, so its sides grow by more
  * than its top.
