@@ -23,7 +23,7 @@ Owns the action registry every toolbar button, menu item, and key runs through, 
 
 The type checker refuses an action carrying neither `command` nor `palette: false`, so leaving one out of the palette is a choice. The opt-out is kept to arrow nudges and pans, Esc aliases, focus walks the open palette could never run, and the actions a context menu runs at its point. A row needing a field adds it to `ActionBase` as optional.
 
-`character-keys.ts` holds the Single-key shortcuts switch WCAG 2.1.4 asks for, on by default and kept in `localStorage`. While it is off, `press` skips a key typing a character before `preventDefault`, so the press reaches the browser untouched, and every chip reads its key through `liveKey`, which skips that key.
+`character-keys.ts` holds the Single-key shortcuts switch the WCAG character key shortcuts criterion asks for, on by default and kept in `localStorage`. While it is off, `press` skips a key typing a character before `preventDefault`, so the press reaches the browser untouched, and every chip reads its key through `liveKey`, which skips that key.
 
 ### `src/client/palette/`
 
