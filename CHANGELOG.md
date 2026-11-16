@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.38.0](https://github.com/erclx/frameboard/compare/v0.37.0...v0.38.0) (2026-11-16)
+
+
+### Features
+
+* **canvas:** keep the frame through a drop and leave no outline trail ([#346](https://github.com/erclx/frameboard/issues/346)) ([1469b85](https://github.com/erclx/frameboard/commit/1469b85a7820c2f73561cd73c2fbd00854861b7f))
+* **checks:** report a frame script naming a board route ([#351](https://github.com/erclx/frameboard/issues/351)) ([54c38b4](https://github.com/erclx/frameboard/commit/54c38b4c90fd43a0f420edab1796ebd3b0b23082))
+* **device:** draw the device a frame's width names behind one switch ([#349](https://github.com/erclx/frameboard/issues/349)) ([597ddfc](https://github.com/erclx/frameboard/commit/597ddfc4ae15cad9ad0a2357bc928c8ac413ef10))
+* **home:** give projects a free title and cards their corner buttons ([#347](https://github.com/erclx/frameboard/issues/347)) ([17443fa](https://github.com/erclx/frameboard/commit/17443fa3dd5b0888a9b6421461a9d3957bcb0fe7))
+* **present:** keep the present bar one width across a deck ([#350](https://github.com/erclx/frameboard/issues/350)) ([389ee2d](https://github.com/erclx/frameboard/commit/389ee2d3095912061f52496fbf921ae377e26344))
+* **shell:** draw the home and board chrome while the board loads ([#352](https://github.com/erclx/frameboard/issues/352)) ([e172273](https://github.com/erclx/frameboard/commit/e172273e1e9cd599574dd544465cb6ce664755ba))
+* **skill:** route the draw skill's features to reference files ([#353](https://github.com/erclx/frameboard/issues/353)) ([f40f58b](https://github.com/erclx/frameboard/commit/f40f58b91b7ca69ef09875e5f360277b0a860bf1))
+
 ## [0.37.0](https://github.com/erclx/frameboard/compare/v0.36.0...v0.37.0) (2026-11-16)
 
 
