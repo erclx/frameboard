@@ -20,7 +20,8 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 - Two names collide when they match case-insensitively, because the default macOS volume is case-insensitive, and `assets` is reserved as a page name
 - `project.json` gains a `createdAt` once, from `project add` or the first `serve` of an empty folder, and an older project reads as made at no time, never at a file's birth time
 - `project.json` may hold `group`, the one-level folder home files it under, and `archived: true`. A value of another type reads as absent, so a hand edit never fails the scan
-- `project.json` may hold `title`, the name a person reads, in any characters. Refs, URLs, pins, claims, and CLI arguments keep naming the folder, which `ProjectRecord.name` carries beside `title`
+
+`project.json` may also hold `title`, the name a person reads, in any characters. Refs, URLs, pins, claims, and CLI arguments keep naming the folder, which `ProjectRecord.name` carries beside `title`.
 
 ### `src/server/board/`
 
