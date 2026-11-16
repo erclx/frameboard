@@ -694,6 +694,71 @@ async function slidingHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
+/** The drive seed's photo tuner, a photo beside a column of three sliders bound to it. */
+const TUNER_FRAME = join(
+  import.meta.dirname,
+  '../../scripts/lib/drive-tuner.html',
+)
+
+/**
+ * Serves the photo tuner in the hero's place, so the hero draws drawn
+ * controls, and puts the file back once the capture page closes so no later
+ * case shows it.
+ */
+async function tunerHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(path, readFileSync(TUNER_FRAME, 'utf8'))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Enters the hero in Play once its live page holds the sliders, then moves
+ * the first one as a drag would, so the Keep values bar draws. Play is
+ * pressed only then, since the chrome drawn while the board loads carries a
+ * Play button that does nothing, and the hero is entered by a click on the
+ * shield over it, as a person enters a frame. It polls in an init script as
+ * `pressOnLoad` does, and steps again whenever a reload of the swapped file
+ * puts the slider back.
+ */
+async function slideOnLoad(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    const slide = () => {
+      const iframe = document.querySelector<HTMLIFrameElement>(
+        '[data-frame="webapp/home/hero"] iframe',
+      )
+      const control =
+        iframe?.contentDocument?.querySelector<HTMLInputElement>('[data-binds]')
+      const shield = document.querySelector('[data-play-shield]')
+      const entered = document.body?.textContent?.includes(
+        'In frame, Esc to leave',
+      )
+      const bar = document.querySelector('[data-keep-bar]')
+      if (iframe && control && !shield) {
+        ;[...document.querySelectorAll('button')]
+          .find((button) => button.textContent?.trim() === 'Play')
+          ?.click()
+      } else if (iframe && control && shield && !entered) {
+        const box = iframe.getBoundingClientRect()
+        shield.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            clientX: box.left + box.width / 2,
+            clientY: box.top + box.height / 2,
+          }),
+        )
+      } else if (control && entered && !bar) {
+        control.value = '130'
+        control.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      if (--left > 0) requestAnimationFrame(slide)
+      else if (!bar) console.error('No slider in the entered hero to move')
+    }
+    document.addEventListener('DOMContentLoaded', slide)
+  }, PRESS_FRAMES)
+}
+
 /**
  * Sets the Motion section's track to its middle once it lights, as a drag
  * releasing there would, then marks the body `data-capture-held` once the
@@ -3837,6 +3902,34 @@ const CASES: CaptureCase[] = [
         ),
       },
       {
+        // The photo tuner selected in the hero's place, so each slider wears its tag and dashed link.
+        section: 'controls-edit',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            tunerHero,
+            pressOnLoad('^Select hero$'),
+            readyWhen('[data-binding-link]'),
+          ),
+        ),
+      },
+      {
+        // Play entered on the tuner with one slider moved, so Keep values draws in the hero's corner.
+        section: 'controls-play',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(tunerHero, asWriter, slideOnLoad, readyWhen('[data-keep-bar]')),
+        ),
+      },
+      {
         section: 'avatar-menu',
         theme,
         route: '/p/webapp/home',
@@ -5779,6 +5872,8 @@ const WRITING_SECTIONS = [
   'page-transition',
   'page-transition-own',
   'present-steps',
+  'controls-edit',
+  'controls-play',
 ]
 
 const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')
