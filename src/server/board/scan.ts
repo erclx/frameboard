@@ -104,13 +104,14 @@ export async function listFrames(pageDir: string): Promise<string[]> {
 /**
  * The page order a reader shows: listed pages that exist in that order, then
  * unlisted ones by name. A file that fails to read orders every page by name.
- * The creation time, folder, archive flag, and turned-off rules come from the
+ * The creation time, title, folder, archive flag, and turned-off rules come from the
  * same read, each read as absent when the file holds none or holds one of
  * another type.
  */
 export async function readPageOrder(projectDir: string): Promise<{
   pages: string[]
   createdAt: string | null
+  title: string | null
   group: string | null
   archived: boolean
   checksOff: string[]
@@ -126,6 +127,7 @@ export async function readPageOrder(projectDir: string): Promise<{
     return {
       pages: folders,
       createdAt: null,
+      title: null,
       group: null,
       archived: false,
       checksOff: [],
@@ -135,6 +137,7 @@ export async function readPageOrder(projectDir: string): Promise<{
   return {
     pages: orderPages(file.pages, folders),
     createdAt: isTime(file.createdAt) ? file.createdAt : null,
+    title: titleOf(file.title),
     group: groupOf(file.group),
     archived: file.archived === true,
     checksOff: checksOffOf(file.checks),
@@ -159,6 +162,15 @@ export function checksOffOf(checks: unknown): string[] {
 
 /** A folder name as home shows it, trimmed, null for a blank or a non-string. */
 export function groupOf(value: unknown): string | null {
+  return trimmedOf(value)
+}
+
+/** A project's title as readers show it, trimmed, null for a blank or a non-string. */
+export function titleOf(value: unknown): string | null {
+  return trimmedOf(value)
+}
+
+function trimmedOf(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed === '' ? null : trimmed
@@ -282,6 +294,7 @@ export async function scanProject(
   const {
     pages: order,
     createdAt,
+    title,
     group,
     archived,
     checksOff,
@@ -301,6 +314,7 @@ export async function scanProject(
   ])
   return {
     name,
+    title,
     path,
     modifiedAt: new Date(Math.max(...times)).toISOString(),
     createdAt,

@@ -9,6 +9,7 @@ function project(name: string, group: string | null = null): ProjectRecord {
     name,
     path: `/board/${name}`,
     modifiedAt: '2026-10-15T09:00:00.000Z',
+    title: null,
     createdAt: null,
     group,
     archived: false,

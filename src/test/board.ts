@@ -49,6 +49,7 @@ export function boardOf(...pages: PageRecord[]): ListResult {
         name: 'studio',
         path: '/board/studio',
         modifiedAt: '2026-10-15T00:00:00.000Z',
+        title: null,
         createdAt: null,
         group: null,
         archived: false,

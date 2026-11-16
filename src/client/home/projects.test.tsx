@@ -43,6 +43,7 @@ function project(
     name,
     path: `/board/${name}`,
     modifiedAt,
+    title: null,
     createdAt,
     group: null,
     archived: false,

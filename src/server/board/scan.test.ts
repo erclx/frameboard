@@ -123,6 +123,34 @@ describe('scanBoard', () => {
       },
     )
 
+    it("reads a project's title trimmed, null on one that holds none", async () => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({ version: 1, pages: ['home'], title: ' Web app! ' }),
+      )
+
+      const [marketing, webapp] = (await scanBoard(board.root)).projects
+
+      expect([marketing?.title, webapp?.title]).toEqual([null, 'Web app!'])
+    })
+
+    it.each([
+      ['a number', 7],
+      ['a blank', '   '],
+      ['a list', ['Web app']],
+    ])('reads a title that is %s as none', async (_, title) => {
+      board = copyFixtureBoard('basic')
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({ version: 1, pages: ['home'], title }),
+      )
+
+      const [, webapp] = (await scanBoard(board.root)).projects
+
+      expect([webapp?.title, webapp?.projectFileError]).toEqual([null, null])
+    })
+
     it("reads a project's turned-off rules in the file's order, each once", async () => {
       board = copyFixtureBoard('basic')
       writeFileSync(

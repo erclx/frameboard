@@ -47,6 +47,7 @@ function untouchedBoard(): ListResult {
         name: 'untitled',
         path: '/board/untitled',
         modifiedAt: '2026-10-25T09:00:00.000Z',
+        title: null,
         createdAt: '2026-10-25T09:00:00.000Z',
         group: null,
         archived: false,

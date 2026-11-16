@@ -37,6 +37,10 @@ export const projectFileSchema = z.looseObject({
   // and reads as ungrouped or unarchived, as createdAt does.
   group: z.union([z.string(), z.unknown()]).optional(),
   archived: z.union([z.boolean(), z.unknown()]).optional(),
+  // The name home and the board show for the project, which may hold any
+  // characters while the folder keeps a valid name. A value of another type
+  // parses as written and reads as no title, as group does.
+  title: z.union([z.string(), z.unknown()]).optional(),
 })
 
 export type ProjectFile = z.infer<typeof projectFileSchema>
