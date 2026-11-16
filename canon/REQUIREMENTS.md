@@ -11,8 +11,7 @@ This record holds at most 650 words.
 - An agent draws by writing an HTML file and running commands with machine-readable output and no prompts
 - The files are the design, with no private copy
 - Frames render as real web pages, so animation, video, and interaction work
-- A board folder lives anywhere, with or without git
-- An empty folder starts with one command
+- A board folder lives anywhere, with or without git, and an empty one starts with one command
 - A new board's first page asks for a name, first screen size, and look
 
 ### Projects and navigation
@@ -24,24 +23,28 @@ This record holds at most 650 words.
 ### Hand edits
 
 - Most edits a designer makes in a design tool are made by hand, outside the non-goals
-- The developer adds, duplicates, renames, reorders, and deletes pages and frames, adds a frame from device sizes or draws one, selects several, and undoes their changes
-- By hand, a developer sets a frame's position, size, fill, and the widths it also shows at, and an element's name, opacity, radius, rotation, flip, type, fill, stroke, shadow, and text. Colors show their token names, and number fields scrub.
-- A developer places text, a shape, an image, video, or audio in a frame, sizes it by drag or corners, deletes it, and edits text in place
-- A developer sets a container's flow, gap, padding, and alignment and a child's fixed, hug, or fill size, places an element freely or back in the flow, and restacks it among siblings
-- A developer wraps several selected elements in one flow container
+- The developer adds, duplicates, renames, reorders, and deletes pages and frames, draws or picks a frame's size, selects several, and undoes their changes
+- By hand, a developer sets a frame's position, size, fill, and extra widths, and an element's name, look, and text, with colors showing their token names
+- A developer places text, a shape, an image, video, audio, or a 3D model in a frame, sizes it, deletes it, and edits text in place
+- A developer sets a container's flow, spacing, and alignment and each child's size, places an element freely or in the flow, and wraps a selection in one container
 
 ### Working with the agent
 
-- The agent sees the developer's selection and works through notes pinned on frames, carrying images, which reach a listening session or start one, and take replies.
+- The agent sees the developer's selection and works through notes pinned on frames, with images and replies, which reach a listening session or start one
 - The board shows the frame an agent is editing and warns a second session
-- A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off.
-- An agent screenshots a frame or page, and the developer exports a frame or an element as a PNG at 1x to 3x, in either theme or both
-- A developer or an agent opens one project's frames on a phone on the same network, read only, from a link and a code
+- A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off
+- An agent screenshots a frame or page, and the developer exports a frame or an element as a PNG in either theme
+- A developer opens one project's frames read only on a phone on the same network
 
 ### Themes and tokens
 
-- Every frame works in light and dark, switched board-wide or flipped alone.
-- Frames share one look through design tokens, a board-wide default with per-project overrides, edited by hand
+- Every frame works in light and dark, switched board-wide or flipped alone
+- Frames share one look through design tokens, a board-wide default with per-project overrides, edited by hand, and a project can start from a kit the board previews
+
+## Richer frames
+
+- A developer plays controls drawn in a frame and keeps the values they set
+- A developer or an agent finds an openly licensed image or 3D model, or generates one, saved into the project with its license
 
 ## Non-goals
 
@@ -54,7 +57,7 @@ This record holds at most 650 words.
 
 ### Never by hand
 
-- Vector editing, pen and path tools, or image editing
+- Vector or mesh editing, pen and path tools, or image editing
 - Edge constraints, grid tracks, a stacking order beside the file's, or editing a shared style rule
 - Components and variants
 
