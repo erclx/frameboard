@@ -31,3 +31,12 @@ Images, videos, and audio come from the project's `assets/` folder and land the 
 - A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
   - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
 - Controls, Autoplay, Loop, and Muted in the file are the switches that write, each setting or dropping one attribute, and audio has no Controls switch
+
+## Drawn controls
+
+A slider an agent draws beside an element can tune it, keeping the frame plain HTML and CSS.
+
+- A range or number input carrying `data-binds="#photo --brightness"` and `data-unit="%"` sets that custom property on its target, which the target's own CSS reads through `var()`
+- In Edit, a selected frame tags each control with what it binds and draws a dashed line to its target, and a red tag marks one that matches nothing
+- In Play, moving a control changes its target live, and a bar in the frame's corner offers Keep values, which writes every moved value as one undo step, or Reset
+- Leaving the frame or Play without keeping puts the file's values back, and a view-only tab tunes without Keep values

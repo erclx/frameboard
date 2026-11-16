@@ -18,6 +18,7 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 - The inspector's Export tab saves one selected frame as a PNG at 1x, 2x, or 3x, in light, dark, or both, where Copy as PNG puts it on the clipboard at 2x in the theme on screen
 - Its Name field starts as the frame's name and takes any name you type, and each file is listed under the button, as `hero.light@2x.png`
 - With one element selected the same section exports that element alone on a transparent background, named `<frame>-<element>` until you type over it
+- An export, a presented slide, and the phone link leave out every drawn control, so the design ships without its sliders
 - The Export tab's Filmstrip puts up to 12 moments of a moving frame in one row at Export's scale and theme, offering only counts that fit, named like `hero.filmstrip-5.light@2x.png`
 
 ## Motion and phone
