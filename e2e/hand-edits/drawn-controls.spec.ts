@@ -13,23 +13,10 @@ import { undo } from '../support/history'
 const HERO = 'webapp/home/hero'
 
 /** A photo whose CSS reads two custom properties, and a slider bound to each. */
-const TUNER = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>hero</title>
-    <style>
-      #photo { width: 240px; height: 160px; background: #c2410c;
-        filter: brightness(var(--brightness, 100%)) grayscale(var(--grayscale, 0%)); }
-    </style>
-  </head>
-  <body>
-    <div id="photo" data-name="Photo"></div>
-    <label>Brightness <input type="range" min="0" max="200" value="100" data-binds="#photo --brightness" data-unit="%" /></label>
-    <label>Black and white <input type="range" min="0" max="100" value="0" data-binds="#photo --grayscale" data-unit="%" /></label>
-  </body>
-</html>
-`
+const TUNER = readFileSync(
+  join(import.meta.dirname, '../../test/fixtures/frames/photo-tuner.html'),
+  'utf8',
+)
 
 test.describe('controls drawn in a frame', () => {
   let board: FixtureBoard

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
 
+import TUNER from '../../../../test/fixtures/frames/tuner-links.html?raw'
 import { modeStore } from '../mode'
 import { clear, select, selectionStore } from '../selection'
 import { BindingLinks } from './binding-links'
@@ -12,16 +13,6 @@ import { BindingLinks } from './binding-links'
 const HERO = frameOf('hero', {
   box: { x: 100, y: 50, width: 600, height: 300 },
 })
-
-/** A photo beside two sliders bound to it, and a third whose target is gone. */
-const TUNER = `<!doctype html><html><head><style>body{margin:0;display:flex;gap:20px}#photo{width:200px;height:120px}</style></head><body>
-<div id="photo"></div>
-<div>
-  <input type="range" data-binds="#photo --brightness" data-unit="%">
-  <input type="range" data-binds="#photo --contrast" data-unit="%">
-  <input type="range" data-binds="#hero-image --grayscale" data-unit="%">
-</div>
-</body></html>`
 
 let layer: HTMLDivElement | undefined
 

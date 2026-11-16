@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import TUNER from '../../../../test/fixtures/frames/tuner-binder.html?raw'
 import { bindControls } from './controls'
-
-const TUNER = `<style>#photo { filter: brightness(var(--brightness, 100%)) }</style>
-<img id="photo" style="--grayscale: 0%">
-<input id="brightness" type="range" min="0" max="200" value="100" data-binds="#photo --brightness" data-unit="%">
-<input id="contrast" type="range" min="0" max="200" value="100" data-binds="#photo --contrast" data-unit="%">
-<input id="grayscale" type="range" min="0" max="100" value="0" data-binds="#photo --grayscale" data-unit="%">
-<input id="dead" type="range" value="5" data-binds="#gone --blur" data-unit="px">`
 
 let iframe: HTMLIFrameElement | undefined
 
