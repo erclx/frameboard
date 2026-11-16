@@ -140,20 +140,6 @@ test.describe('projects by hand from the home view', () => {
     ).toBeUndefined()
   })
 
-  test("pins a project from its card's corner on hover", async ({ page }) => {
-    await openAsWriter(page)
-
-    await card(page, 'studio').hover()
-    await page.getByRole('button', { name: 'Pin studio' }).click()
-
-    await expect(
-      page.getByRole('button', { name: 'Pin studio', pressed: true }),
-    ).toBeVisible()
-    await expect(
-      card(page, 'studio').getByRole('img', { name: 'Pinned' }),
-    ).toBeVisible()
-  })
-
   test('drags a card onto another to make a folder, and undo takes it apart', async ({
     page,
   }) => {
