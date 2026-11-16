@@ -20,7 +20,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 - Run `frameboard serve --json` in the background. It creates a board in a folder that has none, and on a board already served it reports `reused: true` and binds nothing, so a second call is safe.
 - Run `frameboard list --json` to see the projects, pages, and frames before adding any.
 - Run `frameboard project add`, `rename`, or `delete` to manage projects, taking the arguments from `docs`, and reach for the rest of the `project` verbs as below
-  - `project title <name> <title>` gives one a free display title, and a blank title takes it off
+  - `project title <name> <title>` sets a free display title, and a blank one takes it off. It can move the folder to a name made from the title, so run `list --json` again before using an old path.
   - `project group <name> <folder>` files one under a home folder, and `--clear` takes it out
   - `project archive <name>` moves one to home's Archived section, and `--restore` brings it back
   - `project tokens` gives one with no token sheet a starter
