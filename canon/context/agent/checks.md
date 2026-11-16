@@ -23,7 +23,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 
 `board-route` reports a frame script naming the board's own routes, since a frame on the board's origin reaches the board's server.
 
-- It reads inline and local scripts and `on*` handlers for a quoted path under `/api/`, bare or after a host, and a path built at runtime passes
+- It reads inline and local scripts that run and `on*` handlers for a quoted path under `/api/`, bare or after a host. A JSON or import map block and a path built at runtime pass
 - `scriptSource` in `frame-source.ts` is the script reader it shares with `unknown-token`
 
 Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.

@@ -103,6 +103,27 @@ describe('checkBoardRoutes', () => {
     ).toEqual([])
   })
 
+  it.each([
+    ['a module', 'module'],
+    ['a JavaScript type', 'text/javascript'],
+  ])('reports %s script', (_, type) => {
+    const findings = routesOf(
+      `<script type="${type}">fetch('/api/frames')</script>`,
+    )
+
+    expect(findings).toMatchObject([{ rule: 'board-route' }])
+  })
+
+  it.each([
+    ['a JSON data block', 'application/json'],
+    ['an import map', 'importmap'],
+    ['a template block', 'text/template'],
+  ])('leaves %s alone, since it never runs', (_, type) => {
+    expect(
+      routesOf(`<script type="${type}">{"url": "/api/users/1"}</script>`),
+    ).toEqual([])
+  })
+
   it('leaves a string naming another app path alone', () => {
     expect(
       routesOf("<script>fetch('/v1/api/users'); fetch('api/x')</script>"),

@@ -1,3 +1,5 @@
+import type { Element } from 'domhandler'
+
 import type { Finding, FindingLocation } from '@/shared/records/check'
 
 import {
@@ -63,10 +65,24 @@ export function checkBoardRoutes(source: FrameSource): Finding[] {
   )
 }
 
+/**
+ * Whether a browser runs the script, as it does for no `type`, `module`, or a
+ * JavaScript type. A JSON, import map, or template block is data, which the
+ * rule's own message names as the way to mock an app's calls.
+ */
+function runs(element: Element): boolean {
+  const type = (element.attribs.type ?? '').trim().toLowerCase()
+  return (
+    type === '' ||
+    type === 'module' ||
+    /^(?:application|text)\/(?:x-)?(?:java|ecma)script$/.test(type)
+  )
+}
+
 function frameCode(source: FrameSource): Code[] {
   const code: Code[] = []
   for (const element of source.elements) {
-    if (element.name === 'script') {
+    if (element.name === 'script' && runs(element)) {
       const script = scriptSource(element, source)
       if (script) {
         const inline = element.attribs.src === undefined
