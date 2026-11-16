@@ -7,7 +7,7 @@ description: The content rules a frame is checked against, their levels, and tur
 
 The checks report what keeps a frame from rendering right, at once to the agent and on the board.
 
-`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder or colors set for one theme alone, and exits 8 on any error. With `--json` the findings sit under `data.findings` whether it passes or fails.
+`frameboard check` reports every content rule a frame breaks, such as a link outside its page folder, colors set for one theme alone, or a script calling the board's own `/api/` routes, and exits 8 on any error. With `--json` the findings sit under `data.findings` whether it passes or fails.
 
 - An error means the frame renders wrong or cannot load, and a warning means it renders and a style call is in question, such as a generic font. `frameboard docs` prints each rule's level.
 - The board runs the same rules on each change, and a frame's findings mark opens the list. Any error draws it as a filled red badge, and warnings alone as a grey dot and a count
