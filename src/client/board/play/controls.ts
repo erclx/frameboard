@@ -82,7 +82,9 @@ export function bindControls(
 
   const onInput = (event: Event) => {
     const control = event.target
-    if (!isControl(control)) return
+    // An emptied number field holds no value, and the unit alone would be a
+    // defined property that skips the target's `var()` fallback.
+    if (!isControl(control) || control.value === '') return
     const bound = resolve(control)
     const style = bound && styleOf(bound.target)
     if (!bound || !style) return
@@ -95,6 +97,9 @@ export function bindControls(
       originals.set(bound.target, kept)
     }
     style.setProperty(bound.property, `${control.value}${bound.unit}`)
+    // Last moved goes last, since `keepEdits` keeps the later of two
+    // controls setting one property, as the live page shows it.
+    moved.delete(control)
     moved.set(control, bound)
     onMove(moved.size)
   }
@@ -107,7 +112,7 @@ export function bindControls(
       for (const { control, target, property, unit } of moved.values()) {
         const index = elementIndex(doc, control)
         const at = elementIndex(doc, target)
-        if (index === null || at === null) continue
+        if (index === null || at === null || control.value === '') continue
         entries.push({
           index,
           value: control.value,

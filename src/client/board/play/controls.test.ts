@@ -130,6 +130,38 @@ describe('bindControls', () => {
 
     expect(photoStyle(doc).getPropertyValue('--brightness')).toBe('')
   })
+
+  it('keeps the value of the control moved last when two set one property', async () => {
+    const doc = await frameOf(
+      '<img id="photo"><input id="a" type="range" data-binds="#photo --blur" data-unit="px"><input id="b" type="range" data-binds="#photo --blur" data-unit="px">',
+    )
+    const binder = bindControls(doc, () => {})
+
+    slide(doc, 'a', '10')
+    slide(doc, 'b', '20')
+    slide(doc, 'a', '30')
+
+    expect(photoStyle(doc).getPropertyValue('--blur')).toBe('30px')
+    expect(binder.edits().at(-1)).toEqual({
+      index: 3,
+      change: {
+        kind: 'styles',
+        declarations: [{ property: '--blur', value: '30px' }],
+      },
+    })
+  })
+
+  it('leaves an emptied number field out of the page and the keep', async () => {
+    const doc = await frameOf(
+      '<img id="photo"><input id="size" type="number" value="4" data-binds="#photo --blur" data-unit="px">',
+    )
+    const binder = bindControls(doc, () => {})
+
+    slide(doc, 'size', '')
+
+    expect(photoStyle(doc).getPropertyValue('--blur')).toBe('')
+    expect(binder.edits()).toEqual([])
+  })
 })
 
 describe('followEnteredControls', () => {
