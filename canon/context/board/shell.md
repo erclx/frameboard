@@ -50,13 +50,14 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 
 ### `src/client/board/device/`
 
-Owns `bezel.tsx`, the phone or tablet body drawn around a frame whose entry names a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
+Owns `bezel.tsx`, the phone, tablet, or laptop body drawn around a frame whose record shows a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
 
 - One element over the frame rounds its page to the screen radius and spreads the body as a `box-shadow`, so the body's outer radius is the screen's plus the border
+- A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
 - The body and the island scale with the canvas, while its hairline edge stays one screen pixel at any zoom
 - It takes no pointer events, so a click reaches the frame as it would bare
-- The label, the open-alone link, the rail, and the In frame tag stand past the body, and a linked width draws no device
-- Present fits the frame with its body through `bezelBox`
+- The label, the open-alone link, the rail, and the In frame tag stand past the border, a laptop's lid, and a linked width draws no device
+- Present fits and centers the frame by its body through `bezelBox`, since a laptop's body reaches further below than above
 
 ### `src/client/board/scroll/`
 

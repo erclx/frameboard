@@ -31,7 +31,7 @@ The Frame section sizes one frame or several.
 
 Device and Preview change how a frame shows without changing its file.
 
-- **Device:** a None, Phone, and Tablet radio row under Height, drawn through the same `ChoiceRow`, writing every frame through `POST /api/frame/device` as one undo step
+- **Show device:** a switch under Height naming the device each frame's width picks, or No device fits under 320, and reading Mixed where frames differ. It writes every frame through `POST /api/frame/device` as one undo step, sharing `usePick` with `ChoiceRow`.
 - **Preview:** a row under the size fields shows every selected frame at a preset or scrubbed width, with End preview. It writes nothing, and W keeps reading the stored width.
 - **Preset range:** phone, tablet, and desktop each read a width range, so a toggle presses while every shown width fits and a click keeps a fitting width rather than the default.
 
