@@ -12,9 +12,10 @@ import { createPortal } from 'react-dom'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
+import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
 
 import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
@@ -382,6 +383,18 @@ function ScaledFrame({
   )
 }
 
+/**
+ * Hides every drawn control in a presented slide, which shows the design
+ * alone, by one injected style, and answers its undo.
+ */
+function hideControls(doc: Document): () => void {
+  const style = doc.createElement('style')
+  style.setAttribute(LOOK_MARKER, '')
+  style.textContent = HIDE_CONTROLS_CSS
+  doc.head?.append(style)
+  return () => style.remove()
+}
+
 const HOLD_ID = 'frameboard-present-hold'
 
 /**
@@ -526,6 +539,14 @@ function PresentedFrame({
         if (doc) holdAnimations(doc, held)
       }),
     [held],
+  )
+  useEffect(
+    () =>
+      onEachLoad(iframe.current, (element) => {
+        const doc = element.contentDocument
+        if (doc) return hideControls(doc)
+      }),
+    [],
   )
   // Only the arriving frame takes the present keys and wakes the bar.
   useEffect(

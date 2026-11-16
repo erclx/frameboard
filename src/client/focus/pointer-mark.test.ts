@@ -123,6 +123,22 @@ describe('markPointerFocus', () => {
     expect(first).toHaveAttribute(MARK)
   })
 
+  it('leaves a control a key inside a frame moved focus to unmarked', async () => {
+    const first = button('First')
+    const frame = document.createElement('iframe')
+    document.body.append(frame)
+    await userEvent.keyboard('{Escape}')
+    await new Promise((settled) => setTimeout(settled))
+    frame.focus()
+
+    frame.contentWindow?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab' }),
+    )
+    first.focus()
+
+    expect(first).not.toHaveAttribute(MARK)
+  })
+
   it('leaves a control reached by Tab out of a frame unmarked', () => {
     const first = button('First')
     const frame = document.createElement('iframe')

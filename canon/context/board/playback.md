@@ -33,6 +33,15 @@ Owns Play's own state and surfaces, being the frame entered, the shield, and wha
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
 - A layers row in Play reveals its frame and enters it
 
+Drawn controls run in the entered frame alone, through `controls.ts` and `keep-bar.tsx`.
+
+- `controls.ts` listens for `input` on the entered frame's document from the board, so the frame holds no script and gains no element, and a moved control sets its custom property inline on its target
+  - It binds again on every load of the entered frame's iframe, since a frame can be entered before its page draws and a reload is a new document
+- Leaving the frame, a page switch, or leaving Play puts each moved control and property back to the file's values, so Edit never shows a value the file does not hold
+- `keep-bar.tsx` draws in the notes layer inside the frame's bottom right corner once a control moves
+- Keep values sends `keepEdits` from `src/shared/bindings.ts` through `writeElements`, so one undo puts the file back
+- A view-only tab tunes live and its bar offers Reset alone
+
 ### `src/client/board/present/`
 
 Owns present mode, which shows a page's frames one at a time over the whole window on black, through the browser's Fullscreen API. Each frame scales to fit, never past twice its size. It is a view and never a write, so it records no undo step.
@@ -49,6 +58,7 @@ The overlay and its bar carry the stepping, the keys, and the way back.
 - The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
 - Leaving returns focus to what opened presenting, or to the Present button once that is gone
 - `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
+- It puts the drawn controls' hiding style, marked `data-frameboard`, into each slide's document on every load, so a slide shows the design alone
 
 A transition between slides and the steps inside one are the board's own drawing, and neither writes a frame's file.
 

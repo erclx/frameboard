@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>controls-edit-720</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --frame: #fff;
+        --bad: #d92d2d;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #3a3a3a;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --frame: #262626;
+        --bad: #f06a6a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'Noto Sans', 'DejaVu Sans', sans-serif;
+        font-size: 11px;
+        color: var(--text);
+        background: var(--canvas);
+        -webkit-font-smoothing: antialiased;
+      }
+      .stage {
+        width: 720px;
+        padding: 14px 16px 20px;
+      }
+      .cap {
+        color: var(--muted);
+        line-height: 1.45;
+        margin-bottom: 12px;
+        max-width: 680px;
+      }
+      .cap b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .lab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 10px;
+        margin-bottom: 4px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 15px;
+        padding: 0 6px;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--bad) 30%, transparent);
+        color: var(--bad);
+        font-weight: 600;
+        font-size: 9px;
+      }
+      .mode {
+        margin-left: auto;
+        display: flex;
+        gap: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+        padding: 2px;
+      }
+      .mode span {
+        padding: 1px 8px;
+        border-radius: 4px;
+      }
+      .mode span.on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .fr {
+        position: relative;
+        background: var(--frame);
+        box-shadow: 0 0 0 1px var(--border);
+        padding: 18px;
+        display: flex;
+        gap: 22px;
+        align-items: flex-start;
+        min-height: 200px;
+      }
+      .photo {
+        width: 300px;
+        height: 190px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #f97316, #db2777 50%, #1e3a8a);
+        position: relative;
+        flex-shrink: 0;
+      }
+      .photo:after {
+        content: '';
+        position: absolute;
+        left: 200px;
+        top: 40px;
+        width: 62px;
+        height: 62px;
+        border-radius: 31px;
+        background: #fde68a;
+      }
+      .ctl {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 220px;
+        position: relative;
+      }
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .track {
+        position: relative;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border);
+      }
+      .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 2px;
+        background: var(--accent);
+      }
+      .thumb {
+        position: absolute;
+        top: -5px;
+        width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        background: #fff;
+        box-shadow:
+          0 0 0 1.5px var(--accent),
+          0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        align-self: flex-start;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+        font-size: 9px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+      }
+      .tag.dead {
+        background: color-mix(in srgb, var(--bad) 14%, transparent);
+        color: var(--bad);
+      }
+      .link {
+        position: absolute;
+        border-top: 1.5px dashed var(--accent);
+        transform-origin: left center;
+      }
+      .keep {
+        position: absolute;
+        right: 14px;
+        bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px 6px 10px;
+        border-radius: 9px;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 6px 20px rgba(0, 0, 0, 0.12);
+      }
+      .keep span {
+        color: var(--muted);
+      }
+      .btn {
+        padding: 4px 9px;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .note {
+        margin-top: 10px;
+        color: var(--muted);
+        line-height: 1.45;
+        max-width: 680px;
+      }
+      .note b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .code {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 10px;
+        background: var(--raised);
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+      .pop {
+        position: absolute;
+        left: 12px;
+        top: -6px;
+        width: 270px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 8px 24px rgba(0, 0, 0, 0.14);
+        line-height: 1.45;
+      }
+      .pop b {
+        display: block;
+        margin-bottom: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <p class="cap">
+        <b>controls-edit-720.</b> Edit mode. The agent or the developer draws
+        three sliders beside a photo. Each slider is an ordinary range input
+        carrying one line,
+        <span class="code">data-binds="#photo --contrast"</span>, and the board
+        draws the link as a dashed line and a tag.
+      </p>
+      <div class="lab">
+        photo-tuner<span class="mode"
+          ><span class="on">Edit</span><span class="">Play</span></span
+        >
+      </div>
+      <div class="fr">
+        <div class="photo" style="filter: none"></div>
+        <div class="ctl">
+          <div class="row">
+            <span>Brightness</span>
+            <div class="track">
+              <div class="fill" style="width: 50%"></div>
+              <div class="thumb" style="left: calc(50% - 7px)"></div>
+            </div>
+            <span class="tag">#photo --brightness</span>
+          </div>
+          <div class="row">
+            <span>Contrast</span>
+            <div class="track">
+              <div class="fill" style="width: 50%"></div>
+              <div class="thumb" style="left: calc(50% - 7px)"></div>
+            </div>
+            <span class="tag">#photo --contrast</span>
+          </div>
+          <div class="row">
+            <span>Black and white</span>
+            <div class="track">
+              <div class="fill" style="width: 0%"></div>
+              <div class="thumb" style="left: calc(0% - 7px)"></div>
+            </div>
+            <span class="tag">#photo --grayscale</span>
+          </div>
+        </div>
+        <div class="link" style="left: 318px; top: 52px; width: 22px"></div>
+        <div class="link" style="left: 318px; top: 110px; width: 22px"></div>
+        <div class="link" style="left: 318px; top: 168px; width: 22px"></div>
+      </div>
+      <p class="note">
+        The photo's CSS reads the three values:
+        <span class="code"
+          >filter: brightness(var(--brightness)) contrast(var(--contrast))
+          grayscale(var(--grayscale))</span
+        >. Nothing else in the file is special.
+      </p>
+    </div>
+  </body>
+</html>

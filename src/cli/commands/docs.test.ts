@@ -27,6 +27,7 @@ describe('docs', () => {
       exitCodes: unknown
       records: Record<string, { type?: string }>
       contentFormat: {
+        controls: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -122,6 +123,14 @@ describe('docs', () => {
       'video-landscape',
       'video-portrait',
     ])
+  })
+
+  it('states the drawn controls contract by its attribute names', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.controls[0]).toContain(
+      'data-binds="<selector> <--property>" and data-unit="<unit>"',
+    )
   })
 
   it('prints the exit table and the name rule from their sources', async () => {

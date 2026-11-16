@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { listFrames, listPageFolders } from '@/server/board/scan'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
+import { BINDING_RULES } from './bindings'
 import { BOARD_ROUTE_RULES } from './board-routes'
 import { CONTRAST_RULES } from './browser/contrast'
 import { DECLARATION_RULES } from './browser/declarations'
@@ -30,6 +31,7 @@ export const RULES: RuleDoc[] = [
   ...STRUCTURE_RULES,
   ...LINK_RULES,
   ...BOARD_ROUTE_RULES,
+  ...BINDING_RULES,
   ...FONT_RULES,
   ...THEME_RULES,
   ...CUSTOM_PROPERTY_RULES,

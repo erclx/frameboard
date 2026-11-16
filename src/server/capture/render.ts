@@ -1,5 +1,6 @@
 import type { Browser, Page } from 'playwright-core'
 
+import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { MAX_COMPOSITE_SIDE } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import {
@@ -13,7 +14,7 @@ import {
   laptopParts,
   PHONE_ISLAND,
 } from '@/shared/frame-device'
-import { frameThemeUrl, type Theme } from '@/shared/theme'
+import { frameThemeUrl, LOOK_MARKER, type Theme } from '@/shared/theme'
 
 import { settleAnimations } from './animation-settle'
 import { isolateElement } from './element-shot'
@@ -244,6 +245,7 @@ export function createWarmRenderer({
       })
       let shot: Buffer
       try {
+        await hideControls(opened.page)
         shot =
           element === undefined
             ? await opened.page.screenshot({
@@ -259,6 +261,23 @@ export function createWarmRenderer({
     queue = run.catch(() => {})
     return run
   }
+}
+
+/**
+ * Hides every drawn control, so an export or a thumbnail shows the design
+ * alone. The style is marked as the board's own, so an element export's
+ * index still counts the file's elements.
+ */
+async function hideControls(page: Page): Promise<void> {
+  await page.evaluate(
+    ({ css, marker }) => {
+      const style = document.createElement('style')
+      style.setAttribute(marker, '')
+      style.textContent = css
+      document.head.append(style)
+    },
+    { css: HIDE_CONTROLS_CSS, marker: LOOK_MARKER },
+  )
 }
 
 /** One element's shot alone on a transparent ground, at its whole box. */

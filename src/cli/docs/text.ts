@@ -83,6 +83,8 @@ function formatLines(format: ReturnType<typeof contentFormat>): string[] {
     ...format.layout.map((line) => `${INDENT}${line}`),
     'Present',
     ...format.present.map((line) => `${INDENT}${line}`),
+    'Controls',
+    ...format.controls.map((line) => `${INDENT}${line}`),
     'Assets',
     `${INDENT}${format.assets}`,
     'Look',

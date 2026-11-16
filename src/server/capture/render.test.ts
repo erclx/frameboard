@@ -24,20 +24,33 @@ const FRAME = { ref: 'studio/home/hero', box: { width: 10, height: 10 } }
 
 /** The alpha of a PNG's top left pixel, read by decoding it in a page. */
 async function cornerAlpha(browser: Browser, png: Buffer): Promise<number> {
+  return (await pixelAt(browser, png, 0, 0))[3] ?? -1
+}
+
+/** The red, green, blue, and alpha of one pixel of a PNG. */
+async function pixelAt(
+  browser: Browser,
+  png: Buffer,
+  x: number,
+  y: number,
+): Promise<number[]> {
   const context = await browser.newContext()
   try {
     const page = await context.newPage()
-    return await page.evaluate(async (data) => {
-      const image = new Image()
-      image.src = `data:image/png;base64,${data}`
-      await image.decode()
-      const canvas = document.createElement('canvas')
-      canvas.width = image.width
-      canvas.height = image.height
-      const drawn = canvas.getContext('2d')
-      drawn?.drawImage(image, 0, 0)
-      return drawn?.getImageData(0, 0, 1, 1).data[3] ?? -1
-    }, png.toString('base64'))
+    return await page.evaluate(
+      async ({ data, x, y }) => {
+        const image = new Image()
+        image.src = `data:image/png;base64,${data}`
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = image.width
+        canvas.height = image.height
+        const drawn = canvas.getContext('2d')
+        drawn?.drawImage(image, 0, 0)
+        return [...(drawn?.getImageData(x, y, 1, 1).data ?? [])]
+      },
+      { data: png.toString('base64'), x, y },
+    )
   } finally {
     await context.close()
   }
@@ -224,6 +237,10 @@ describe.skipIf(shell === null)(
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
           '<span style="display:block;width:60px;height:40px;border-radius:20px;background:blue"></span>',
+        // The controls' column would draw blue right of the green photo.
+        'studio/home/tuner.html':
+          '<style>body{margin:0;background:#fff;display:flex}#photo{width:100px;height:100px;background:#0a0}.controls{width:100px;height:100px;background:#00f}</style>' +
+          '<div id="photo"></div><div class="controls"><label>Brightness <input type="range" data-binds="#photo --brightness" data-unit="%"></label></div>',
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -340,6 +357,26 @@ describe.skipIf(shell === null)(
         120, 80,
       ])
       expect(corner).toBe(0)
+    })
+
+    it('hides drawn controls and the column holding them', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        { ref: 'studio/home/tuner', box: { width: 200, height: 100 } },
+        'light',
+      )
+
+      expect(await pixelAt(requireShell(shell), bytes, 150, 50)).toEqual([
+        255, 255, 255, 255,
+      ])
+      expect(await pixelAt(requireShell(shell), bytes, 50, 50)).toEqual([
+        0, 170, 0, 255,
+      ])
     })
 
     it('draws no device around an element', async () => {
