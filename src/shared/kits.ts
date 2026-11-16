@@ -15,3 +15,36 @@ export const KIT_PAGE = 'kit'
 export const KIT_ASSETS = 'kit'
 /** The dot folder in a board holding the kits saved from its projects, which home never lists as a project. */
 export const KITS_FOLDER = '.kits'
+
+/** The kits the tool ships, in the order a picker shows them. */
+export const SHIPPED_KITS = ['clean', 'sketch', 'wireframe'] as const
+
+/** Where a listed kit comes from: the tool's own, or one saved into this board's kits folder. */
+export type KitSource = 'shipped' | 'board'
+
+/** One kit as `kit list` and `GET /api/kits` answer it. */
+export interface KitRecord {
+  /** The kit's folder name, which `kit add` and the install route take. */
+  name: string
+  title: string
+  description: string
+  source: KitSource
+  /** The sample frame a preview card renders, at the size its page lays it out, or null for a kit with none. */
+  preview: { frame: string; width: number; height: number } | null
+}
+
+/** What installing a kit answers, on the route and the verb alike. */
+export interface KitInstallRecord {
+  project: string
+  kit: string
+  /** Every file and folder the install wrote, absolute. */
+  written: string[]
+}
+
+/** What saving a project as a kit answers. */
+export interface KitSaveRecord {
+  project: string
+  kit: string
+  /** The saved kit's folder, absolute. */
+  path: string
+}

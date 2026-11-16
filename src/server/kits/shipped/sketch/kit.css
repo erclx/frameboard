@@ -1,0 +1,76 @@
+/*
+ * Sketch: hand drawn boxes and lines in Caveat. Each box draws its outline
+ * and fill on a ::before layer behind it, and only that layer takes the rough
+ * filter, so the text stays crisp. The filter is a data URL rather than an
+ * element id, since this sheet reaches a frame that holds no SVG of its own.
+ */
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-text);
+}
+
+.kit-card,
+.kit-note,
+.kit-button {
+  position: relative;
+  isolation: isolate;
+  border: var(--stroke) solid transparent;
+  background: transparent;
+}
+
+.kit-card::before,
+.kit-note::before,
+.kit-button::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--stroke) * -1);
+  z-index: -1;
+  border: var(--stroke) solid var(--line);
+  border-radius: inherit;
+  background: var(--fill, var(--surface));
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='rough'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='2' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3'/%3E%3C/filter%3E%3C/svg%3E#rough");
+}
+
+.kit-card {
+  padding: 16px;
+  border-radius: var(--radius);
+}
+
+.kit-note {
+  --fill: var(--note);
+  padding: 12px 14px;
+  rotate: -2deg;
+}
+
+.kit-note:nth-of-type(even) {
+  rotate: 1.5deg;
+}
+
+.kit-button {
+  padding: 4px 14px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.15em;
+}
+
+.kit-button.kit-primary {
+  --fill: var(--accent);
+  color: #ffffff;
+}
+
+.kit-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: var(--stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='rough'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='2' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3'/%3E%3C/filter%3E%3C/svg%3E#rough");
+}
+
+.kit-muted {
+  color: var(--muted);
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "frames": {
+    "sample": { "x": 0, "y": 0, "width": 480, "height": 300, "order": 0 },
+    "parts": { "x": 560, "y": 0, "width": 720, "height": 440, "order": 1 }
+  }
+}

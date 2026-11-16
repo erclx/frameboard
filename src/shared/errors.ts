@@ -88,6 +88,10 @@ export const EXIT_CODES = {
   'motion-unbounded': 10,
   // A phone link asked of a machine with no address on a local network, starting nothing.
   'no-network-address': 3,
+  // A kit named that neither the tool ships nor the board saved, or a folder holding no kit.
+  'kit-not-found': 3,
+  // A kit whose `kit.json` does not read, or that lacks its token sheet.
+  'kit-invalid': 5,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

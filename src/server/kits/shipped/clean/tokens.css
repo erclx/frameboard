@@ -1,0 +1,22 @@
+:root {
+  --accent: #2f7bf0;
+  --surface: #ffffff;
+  --text: #111111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --line: #d1d5db;
+  --note: #fef9c3;
+  --radius: 10px;
+  --stroke: 1px;
+  --font-text: Geist, sans-serif;
+}
+
+[data-theme='dark'] {
+  --accent: #4e92f6;
+  --surface: #111111;
+  --text: #ededed;
+  --muted: #9ca3af;
+  --border: #2e2e2e;
+  --line: #3f3f46;
+  --note: #3a3417;
+}
