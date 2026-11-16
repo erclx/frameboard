@@ -57,7 +57,7 @@ Owns the right panel, under a header of the avatar and the zoom level, and its c
 - **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
 - **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.
 - **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
-- **Position:** an In flow and Free toggle above Appearance. Free places the element where it renders through `POST /api/frames/place`, and its X and Y then write `left` and `top` as any other edit.
+- **Position:** an In flow and Absolute toggle above Appearance. Absolute places the element where it renders through `POST /api/frames/place`, and its X and Y then write `left` and `top`.
 - **Placing:** the place writes `position: absolute` with pixel offsets, and `position: relative` on a static parent other than `body` in the same undo step
 - **Placed size:** the place writes the rendered size on an axis no rule sizes, and none on an element holding text alone, which hugs its words from where they start unless a length sizes it
 - **Back in flow:** drops `left` and `top`, and `position` or writes `static` over a rule's. It drops each size this tab's placement wrote that the element still holds, and a reload forgets them.
@@ -116,8 +116,9 @@ A hand edit's write goes through `src/server/routes/edit.ts` into the edit write
 A corner drag writes one `styles` edit, and Esc writes nothing.
 
 - Text takes width alone, so its height keeps hugging, and a shape, an image, or a video takes width and height
+- A container takes each side the drag moved, set Fixed as the Size row sets it, so a Fill child drops its flex
 - A write takes a `content-box` element's padding and border off the drawn size, so the outline lands where the drag ends
-- Shift holds a shape's drawn ratio and media's decoded one. Inline text, a container, or a divider takes no corner drag and draws no marks.
+- Shift holds a shape's drawn ratio and media's decoded one. Inline text, an inline container, a rotated element, or a divider takes no corner drag and draws no marks.
 - The chip reads `Hug` for text with no height on its own `style`, so a height a rule states also reads as `Hug`
 
 A place reads the parent's position from the static cascade.

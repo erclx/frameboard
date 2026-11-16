@@ -37,7 +37,7 @@ import {
 import { type AssetSize, naturalSize, placedSize } from './asset-size'
 import type { FlowGuess } from './flow-guess'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
-import { placementStore, placesFree } from './tool'
+import { placesFree } from './tool'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type PlacedKind = 'text' | 'rectangle' | 'ellipse' | 'divider' | 'asset'
@@ -97,10 +97,8 @@ export async function placeElement(
     kind !== 'divider' && placesFree(gap)
       ? {
           ...spotFor(kind, corner ?? at, under, !corner && !size),
-          // Auto chose Free on its own, so a parent that cannot take it joins the flow instead.
-          ...(placementStore.getState().placing === 'auto'
-            ? { orFlow: true }
-            : {}),
+          // The gap chose a free spot on its own, so a parent that cannot take it joins the flow instead.
+          orFlow: true,
         }
       : undefined
   const element =

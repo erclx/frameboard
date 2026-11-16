@@ -80,6 +80,7 @@ function setup(
       natural: null,
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     },
     placed,
     ghost,
@@ -2677,6 +2678,7 @@ describe('attachGestures', () => {
             natural: null,
             hugsHeight: true,
             inset: { width: 0, height: 0 },
+            sizing: null,
           },
         })
         detach = canvas.detach
@@ -2718,6 +2720,7 @@ describe('attachGestures', () => {
             natural: { width: 1, height: 1 },
             hugsHeight: false,
             inset: { width: 0, height: 0 },
+            sizing: null,
           },
         })
         detach = canvas.detach
@@ -2746,7 +2749,7 @@ describe('attachGestures', () => {
       })
     })
 
-    it('carries a container on a drag from its corner', () => {
+    it('carries an element that takes no resize on a drag from its corner', () => {
       const canvas = setupWithElement()
 
       canvas.pointer.drag([250, 200], [290, 230])
@@ -2763,10 +2766,96 @@ describe('attachGestures', () => {
       expect(selectionStore.getState().element).toEqual(ELEMENT)
     })
 
-    it('selects the frame on a click inside the element away from its outline', () => {
-      const canvas = setupWithElement()
+    describe('a plain click in its frame', () => {
+      const SIBLING = { ...ELEMENT, index: 6 }
+      const element = () => selectionStore.getState().element
+      // One macrotask drains every promise a pick's answer settles through.
+      const drained = () => new Promise((done) => setTimeout(done))
 
-      canvas.pointer.click(200, 175)
+      function setupPicking(
+        pick: (at: Point) => ElementKey | null | Promise<ElementKey | null>,
+      ) {
+        const canvas = setup(undefined, { elementBox: ELEMENT_BOX, pick })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+        return canvas
+      }
+
+      it('selects the sibling it lands on', async () => {
+        const canvas = setupPicking(() => SIBLING)
+
+        canvas.pointer.click(200, 260)
+
+        await vi.waitFor(() => expect(element()).toEqual(SIBLING))
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('selects the frame on its bare body, where it lands on no element', async () => {
+        const canvas = setupPicking(() => null)
+
+        canvas.pointer.click(200, 260)
+
+        await vi.waitFor(() => expect(element()).toBeNull())
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('selects the frame on its label strip, above every element', async () => {
+        const canvas = setupPicking((at) =>
+          at.y >= LEFT.box.y ? SIBLING : null,
+        )
+
+        canvas.pointer.click(150, 90)
+
+        await vi.waitFor(() => expect(element()).toBeNull())
+        expect(selectedRefs()).toEqual([LEFT.ref])
+      })
+
+      it('keeps the element inside its own box, away from its outline', async () => {
+        const canvas = setupPicking(() => SIBLING)
+
+        canvas.pointer.click(200, 175)
+        await drained()
+
+        expect(element()).toEqual(ELEMENT)
+      })
+
+      it('selects another frame on a click there, as before', async () => {
+        const elsewhere = { frame: RIGHT.ref, index: 3, hash: 'b'.repeat(64) }
+        const canvas = setupPicking(() => elsewhere)
+
+        canvas.pointer.click(500, 200)
+        await drained()
+
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+        expect(element()).toBeNull()
+      })
+
+      it('drops a pick still waiting once a later press landed', async () => {
+        let answer: (key: ElementKey) => void = () => {}
+        const canvas = setupPicking(
+          () =>
+            new Promise<ElementKey>((resolve) => {
+              answer = resolve
+            }),
+        )
+
+        canvas.pointer.click(200, 260)
+        canvas.pointer.click(450, 150)
+        answer(SIBLING)
+        await drained()
+
+        expect(selectedRefs()).toEqual([RIGHT.ref])
+        expect(element()).toBeNull()
+      })
+    })
+
+    it('selects the frame and picks nothing on a click with no element selected', async () => {
+      const canvas = setup(undefined, { pick: () => ELEMENT })
+      detach = canvas.detach
+      act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+      canvas.pointer.click(200, 260)
+      await new Promise((done) => setTimeout(done))
 
       expect(selectedRefs()).toEqual([LEFT.ref])
       expect(selectionStore.getState().element).toBeNull()

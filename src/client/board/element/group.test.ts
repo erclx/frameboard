@@ -188,6 +188,48 @@ describe('scaleMembers', () => {
     ])
   })
 
+  it('scales a free container with the rest, writing both sides it grows', () => {
+    const layout = {
+      flow: 'vertical',
+      inline: false,
+      direction: 'column',
+      wrap: 'nowrap',
+      justify: 'normal',
+      alignItems: 'normal',
+      ownJustify: false,
+      rowGap: 0,
+      columnGap: 0,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      parent: 'block',
+      parentAlignItems: 'normal',
+      width: 50,
+      height: 20,
+    } as const
+    const members = [
+      member({ index: 1, box: { x: 0, y: 0, width: 50, height: 20 } }),
+      member({
+        index: 2,
+        box: { x: 50, y: 0, width: 50, height: 20 },
+        placed: { left: 50, top: 0 },
+        read: {
+          kind: 'container',
+          inset: { width: 0, height: 0 },
+          sizing: { layout, fills: false },
+        },
+      }),
+    ]
+    const from = { x: 0, y: 0, width: 100, height: 20 }
+    const to = { x: 0, y: 0, width: 200, height: 40 }
+
+    expect(scalesAsGroup(members)).toBe(true)
+    expect(scaleMembers(members, from, to)[1]?.declarations).toEqual([
+      { property: 'left', value: '100px' },
+      { property: 'top', value: '0px' },
+      { property: 'width', value: '100px' },
+      { property: 'height', value: '40px' },
+    ])
+  })
+
   it('writes nothing while a member is in the flow', () => {
     const members = [member({ index: 1 }), member({ index: 2, placed: null })]
     const box = { x: 0, y: 0, width: 10, height: 10 }

@@ -499,7 +499,8 @@ function wordsLeft(
   return words.getBoundingClientRect().left - inset
 }
 
-function readLayout(
+/** The flow `element` lays out and its parent lays it in, as its frame's window computes them. */
+export function readLayout(
   element: Element,
   style: CSSStyleDeclaration,
   view: Window,

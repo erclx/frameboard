@@ -1,14 +1,11 @@
 import { Ellipsis, type LucideIcon } from 'lucide-react'
 import { Fragment } from 'react'
-import { useStore } from 'zustand'
 
 import { liveKey, useCharacterKeysOn } from '@/client/actions/character-keys'
 import { keyLabel } from '@/client/actions/keys'
 import { type Action, isEnabled } from '@/client/actions/registry'
 import {
   DropdownMenu,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -16,7 +13,7 @@ import {
 } from '@/client/components/ui/dropdown-menu'
 import { cn } from '@/client/lib/cn'
 
-import { placementStore, type Placing, SHAPES } from '../place/tool'
+import { SHAPES } from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
@@ -29,7 +26,6 @@ import {
   MODE_TOGGLE,
   MODES,
   NOTE_TOOL,
-  PLACINGS,
   POINTER_TOOLS,
   PRESENT,
   type Slot,
@@ -107,26 +103,6 @@ export function ImageRow({ action }: { action: Action | undefined }) {
         {IMAGE_ROW.label}…
       </span>
     </ActionMenuItem>
-  )
-}
-
-/** The Place choices under their heading, which write nothing and so stay on in any tab. */
-export function PlaceRows() {
-  const placing = useStore(placementStore, (state) => state.placing)
-  return (
-    <DropdownMenuGroup>
-      <DropdownMenuLabel>Place new elements</DropdownMenuLabel>
-      <DropdownMenuRadioGroup
-        value={placing}
-        onValueChange={(value: Placing) =>
-          placementStore.setState({ placing: value })
-        }
-      >
-        {PLACINGS.map(({ value, label }) => (
-          <ChoiceRow key={value} value={value} label={label} />
-        ))}
-      </DropdownMenuRadioGroup>
-    </DropdownMenuGroup>
   )
 }
 
@@ -262,8 +238,6 @@ export function MoreMenu({
         {stage === 'folded' ? null : (
           <>
             <ToolRows actions={actions} slotsInView={stage === 'tools'} />
-            <DropdownMenuSeparator />
-            <PlaceRows />
             <DropdownMenuSeparator />
           </>
         )}

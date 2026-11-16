@@ -142,7 +142,7 @@ Two cues show where a placement lands before it does.
   - Enter and Shift+Enter add a line, and Esc or a click outside writes the text
   - A break is a newline in the element's one text node, never a `<br>`, and goes out with `white-space: pre-line` in the same write on an element that collapses newlines
 
-The Place toggle's `placementStore` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. Auto lands it free unless the container is flex or grid, or its static parent would move an element anchored above it, and a Divider always joins the flow.
+`placesFree` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. It lands free unless the container is flex or grid, or its static parent would move an element anchored above it, and a Divider always joins the flow. The inspector's Position row moves it either way after.
 
 The Image tool and a tile drag place a file from the project's `assets/`.
 
@@ -228,7 +228,7 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 
 Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
 
-- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, the Place toggle, Undo, Redo, Zoom to fit, the theme toggle, the Edit and Play toggle, and Present
+- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, the Edit and Play toggle, and Present
 - The Move button shows Hand while Hand is on, and the Frame button Frame or Section, whichever was chosen last, and each caret opens both, keys V and H, and F and Shift+S
 - The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift

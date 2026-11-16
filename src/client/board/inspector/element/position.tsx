@@ -8,7 +8,7 @@ import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }
 
-export const FREE_TIP = 'Free positions it inside its parent'
+export const FREE_TIP = 'Absolute positions it inside its parent'
 
 interface PositionSectionProps {
   placement: Placement
@@ -24,10 +24,10 @@ interface PositionSectionProps {
 }
 
 /**
- * The Position section of `inspector/position`: an In flow and Free toggle
- * in the header, and while Free, the `left` and `top` the element holds as
+ * The Position section of `inspector/position`: an In flow and Absolute toggle
+ * in the header, and while Absolute, the `left` and `top` the element holds as
  * X and Y, each stepping and scrubbing, as `inspector/position-flow` hides
- * them in the flow. Free places it where it renders, counted from its parent,
+ * them in the flow. Absolute places it where it renders, counted from its parent,
  * at the size it renders at unless it holds text alone, which hugs its words
  * from where they start.
  */
@@ -46,7 +46,7 @@ export function PositionSection({
   }
   const options = [
     { label: 'In flow', on: !free, value: false },
-    { label: 'Free', on: free, value: true },
+    { label: 'Absolute', on: free, value: true },
   ]
   return (
     <section

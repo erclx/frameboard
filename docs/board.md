@@ -9,7 +9,7 @@ What you can do by hand on the board, from picking an element to undoing an edit
 
 ## Selecting
 
-On the board, Cmd-click or double-click selects an element inside a frame.
+On the board, Cmd-click or double-click selects an element inside a frame. Once one is selected, a plain click on another element of that frame selects it, and a click on the frame's bare background or label goes back to the frame.
 
 - Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements.
 - With one frame selected and focus on the board, Tab and Shift+Tab step through the frames in layers order. On a frame label's button, such as Compare, Tab moves focus as usual.
@@ -52,8 +52,8 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 - The inspector's Design tab edits a frame's fill and an element's opacity, radius, rotation, flip, type, case, truncation, line height, letter spacing, fill, stroke, shadow, and text
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow
-- Use auto layout in the Layout header, or Shift+A, wraps the selected elements in one flow container, a row or a column by how they sit with their spacing as its gap, when they share one parent
-- Position's Free takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
+- Use auto layout in the Layout header, or Shift+A, wraps the selected elements in one flow container named Container, a row or a column by how they sit, when they share one parent
+- Position's Absolute takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
 - Every inspector number steps on arrows and scrubs from its label
 - The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
@@ -68,12 +68,12 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 
 The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
 
-Drag a corner of selected upright text, a shape, an image, or a video to resize it. Text wraps to the new width with its height following, and Shift keeps a shape's or media's ratio. Inline text, a container, and a divider draw no corner marks.
+Drag a corner of selected upright text, a shape, an image, a video, or a container to resize it. Text wraps to the new width with its height following, a container sets each side you drag to Fixed, and Shift keeps a shape's or media's ratio. Inline text and a divider draw no corner marks.
 
-Past a frame's edge, a Free element shows as a dashed ghost a press drags back, unless the frame scrolls. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
+Past a frame's edge, an Absolute element shows as a dashed ghost a press drags back, unless the frame scrolls. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
 
-- The toolbar's Place toggle decides where a new element lands, and Auto puts it Free where you drew it unless its parent lays out as flex or grid
-- Flow and Free force one or the other, and a divider always joins the flow
+- A new element lands where you drew it unless its parent lays out as flex or grid, where it joins the flow, and a divider always joins the flow
+- Position's In flow and Absolute move it either way afterward
 
 Selection colors lists every color the selection uses, and a raw color's swatch, or its `Use <token>`, swaps it for a token on each element setting it inline, as one undo step. Select on a hovered or focused row selects the elements within the selection using that color.
 

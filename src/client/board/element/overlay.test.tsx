@@ -234,6 +234,16 @@ describe('ElementOverlay', () => {
         '<video style="width: 80px; height: 40px"></video>',
         /^80 × 40$/,
       ],
+      [
+        'a container',
+        '<section style="width: 80px; height: 40px"><p>Held</p></section>',
+        /^80 × 40$/,
+      ],
+      [
+        'text holding an inline element',
+        '<p style="width: 80px; height: 40px">Some <b>bold</b></p>',
+        /^80 × 40$/,
+      ],
     ])(
       'draws four marks on %s, with both sides in px',
       async (_name, body, size) => {
@@ -246,16 +256,6 @@ describe('ElementOverlay', () => {
 
     it.each([
       [
-        'a container',
-        '<section style="width: 80px; height: 40px"><p>Held</p></section>',
-        /^80 × 40$/,
-      ],
-      [
-        'text holding an inline element',
-        '<p style="width: 80px; height: 40px">Some <b>bold</b></p>',
-        /^80 × 40$/,
-      ],
-      [
         'a divider',
         '<hr style="width: 80px; height: 2px; border: 0">',
         /^80 × 2$/,
@@ -263,6 +263,11 @@ describe('ElementOverlay', () => {
       [
         'rotated text',
         '<p style="width: 80px; height: 40px; rotate: 90deg">Turned</p>',
+        /^40 × 80$/,
+      ],
+      [
+        'a rotated container',
+        '<section style="width: 80px; height: 40px; rotate: 90deg"><p>Held</p></section>',
         /^40 × 80$/,
       ],
     ])('draws no marks on %s', async (_name, body, size) => {
@@ -284,6 +289,7 @@ describe('ElementOverlay', () => {
             natural: null,
             hugsHeight: true,
             inset: { width: 0, height: 0 },
+            sizing: null,
           },
         }),
       )

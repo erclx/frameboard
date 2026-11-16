@@ -17,7 +17,7 @@ import {
   Undo2,
 } from 'lucide-react'
 
-import { IMAGE_TOOL, type Placing } from '../place/tool'
+import { IMAGE_TOOL } from '../place/tool'
 
 /**
  * A toolbar place and what it shows before its action registers. A row
@@ -73,21 +73,6 @@ export const IMAGE_ROW = {
   key: '$mod+Shift+KeyK',
   icon: ImageIcon,
 }
-
-/** The Place toggle's choices, each named in its tooltip by where a new element lands. */
-export const PLACINGS: readonly {
-  value: Placing
-  label: string
-  tip: string
-}[] = [
-  {
-    value: 'auto',
-    label: 'Auto',
-    tip: 'Place where drawn, or in the flow of a flex or grid',
-  },
-  { value: 'flow', label: 'Flow', tip: 'Place in the flow' },
-  { value: 'free', label: 'Free', tip: 'Place where drawn' },
-]
 
 /** The groups More takes first, in the order the full bar draws them. */
 export const EDIT_AND_VIEW: readonly (readonly Slot[])[] = [

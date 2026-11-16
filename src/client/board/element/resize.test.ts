@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
+import type { LiveLayout } from '../inspector/element/styles'
 import {
   cornerSize,
   dragSize,
@@ -10,6 +11,7 @@ import {
   shownGroup,
   shownResize,
   startElementResize,
+  startGroupEdit,
 } from './resize'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
@@ -70,6 +72,7 @@ describe('dragSize', () => {
       natural: null,
       hugsHeight: true,
       inset: { width: 0, height: 0 },
+      sizing: null,
     } as const
 
     expect(dragSize(text, BOX, 'se', 40, 90, true)).toEqual({
@@ -84,6 +87,7 @@ describe('dragSize', () => {
       natural: null,
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     } as const
 
     expect(dragSize(box, BOX, 'se', 100, 10, true)).toEqual({
@@ -98,6 +102,7 @@ describe('dragSize', () => {
       natural: { width: 1, height: 1 },
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     } as const
 
     expect(dragSize(media, BOX, 'se', 100, 10, true)).toEqual({
@@ -112,6 +117,7 @@ describe('dragSize', () => {
       natural: null,
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     } as const
 
     expect(dragSize(media, BOX, 'se', 100, 10, true)).toEqual({
@@ -126,6 +132,7 @@ describe('dragSize', () => {
       natural: { width: 1, height: 1 },
       hugsHeight: false,
       inset: { width: 0, height: 0 },
+      sizing: null,
     } as const
 
     expect(dragSize(media, BOX, 'se', 40, 20, false)).toEqual({
@@ -136,11 +143,20 @@ describe('dragSize', () => {
 })
 
 describe('resizeKindOf', () => {
+  let host: HTMLDivElement | undefined
+
+  // Attached, so a child's computed display reads as the page lays it out.
   const parse = (markup: string) => {
-    const host = document.createElement('div')
+    host = document.createElement('div')
     host.innerHTML = markup
+    document.body.append(host)
     return host.firstElementChild
   }
+
+  afterEach(() => {
+    host?.remove()
+    host = undefined
+  })
 
   it.each([
     ['a placed rectangle', '<div data-name="Rectangle"></div>', 'box'],
@@ -149,17 +165,35 @@ describe('resizeKindOf', () => {
     ['an image', '<img alt="">', 'media'],
     ['a video', '<video></video>', 'media'],
     ['a video holding its sources', '<video><source></video>', 'media'],
+    ['a box holding an element', '<div><span></span></div>', 'container'],
+    ['text holding an inline element', '<p>Some <b>bold</b> words</p>', 'text'],
+    ['a paragraph holding inline code', '<p><code>serve</code></p>', 'text'],
+    [
+      'a box holding words and a block element',
+      '<div>Hi <p>there</p></div>',
+      'container',
+    ],
+    [
+      'a box holding a flex row',
+      '<div><div style="display: flex"><span>a</span></div></div>',
+      'container',
+    ],
   ])('reads %s by what its corners write', (_name, markup, kind) => {
     expect(resizeKindOf(parse(markup))).toBe(kind)
   })
 
   it.each([
     ['a divider', '<hr>'],
-    ['a box holding an element', '<div><span></span></div>'],
-    ['text holding an inline element', '<p>Some <b>bold</b> words</p>'],
     ['an empty paragraph', '<p></p>'],
   ])('reads %s as nothing its corners resize', (_name, markup) => {
     expect(resizeKindOf(parse(markup))).toBeNull()
+  })
+
+  it('reads the body as nothing its corners resize, though it holds elements', () => {
+    const body = document.implementation.createHTMLDocument('').body
+    body.append(document.createElement('div'))
+
+    expect(resizeKindOf(body)).toBeNull()
   })
 })
 
@@ -187,6 +221,97 @@ describe('resizeDeclarations', () => {
       { property: 'width', value: '188px' },
       { property: 'height', value: '62px' },
     ])
+  })
+
+  describe('on a container', () => {
+    /** A container drawn 200 by 40 under a block parent, unless overridden. */
+    const layoutOf = (overrides: Partial<LiveLayout> = {}): LiveLayout => ({
+      flow: 'horizontal',
+      inline: false,
+      direction: 'row',
+      wrap: 'nowrap',
+      justify: 'normal',
+      alignItems: 'normal',
+      ownJustify: false,
+      rowGap: 0,
+      columnGap: 0,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      parent: 'block',
+      parentAlignItems: 'normal',
+      width: 200,
+      height: 40,
+      ...overrides,
+    })
+
+    it('writes only the side a drag changed, so the other keeps hugging', () => {
+      const sizing = { layout: layoutOf(), fills: false }
+
+      expect(
+        resizeDeclarations(
+          { kind: 'container', inset: NO_INSET, sizing },
+          { width: 240, height: 40.4 },
+        ),
+      ).toEqual([{ property: 'width', value: '240px' }])
+    })
+
+    it('writes both sides when a drag changes both', () => {
+      const sizing = { layout: layoutOf(), fills: false }
+
+      expect(
+        resizeDeclarations(
+          { kind: 'container', inset: NO_INSET, sizing },
+          SIZE,
+        ),
+      ).toEqual([
+        { property: 'width', value: '240px' },
+        { property: 'height', value: '90px' },
+      ])
+    })
+
+    it('drops a Fill child’s flex along its row parent, as the Size row’s Fixed does', () => {
+      const sizing = {
+        layout: layoutOf({ parent: 'horizontal' }),
+        fills: true,
+      }
+
+      expect(
+        resizeDeclarations(
+          { kind: 'container', inset: NO_INSET, sizing },
+          { width: 240, height: 40 },
+        ),
+      ).toEqual([
+        { property: 'width', value: '240px' },
+        { property: 'flex', value: '0 1 auto' },
+      ])
+    })
+
+    it('leaves a Fill child’s flex when the drag changes only the cross side', () => {
+      const sizing = {
+        layout: layoutOf({ parent: 'horizontal' }),
+        fills: true,
+      }
+
+      expect(
+        resizeDeclarations(
+          { kind: 'container', inset: NO_INSET, sizing },
+          { width: 200, height: 90 },
+        ),
+      ).toEqual([{ property: 'height', value: '90px' }])
+    })
+
+    it('takes a content box padding and border off each side it writes', () => {
+      const sizing = { layout: layoutOf(), fills: false }
+
+      expect(
+        resizeDeclarations(
+          { kind: 'container', inset: { width: 52, height: 28 }, sizing },
+          SIZE,
+        ),
+      ).toEqual([
+        { property: 'width', value: '188px' },
+        { property: 'height', value: '62px' },
+      ])
+    })
   })
 
   it('writes no less than 0 px when the drag is narrower than the padding', () => {
@@ -382,10 +507,92 @@ describe('a live element', () => {
       })
     })
 
+    it('reads a container as one whose drag writes what it changed', async () => {
+      const shown = await mount(
+        '<div style="display: flex; gap: 8px"><span>a</span><span>b</span></div>',
+      )
+
+      expect(shownResize(shown, KEY)).toMatchObject({
+        kind: 'container',
+        sizing: { layout: { parent: 'block' }, fills: false },
+      })
+    })
+
+    it('reads a container growing along its row parent as filling it', async () => {
+      const shown = await mount(
+        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div><span>b</span></div>',
+      )
+
+      expect(shownResize(shown, { ...KEY, index: 4 })).toMatchObject({
+        kind: 'container',
+        sizing: { layout: { parent: 'horizontal' }, fills: true },
+      })
+    })
+
+    it('refuses an inline container, which a width does not size', async () => {
+      const shown = await mount('<span><b>bold</b> words</span>')
+
+      expect(shownResize(shown, KEY)).toBeNull()
+    })
+
+    it('refuses a container its rotate turns', async () => {
+      const shown = await mount(
+        '<div style="rotate: 30deg"><span>a</span></div>',
+      )
+
+      expect(shownResize(shown, KEY)).toBeNull()
+    })
+
     it('reads nothing from a frame showing other bytes', async () => {
       const shown = await mount('<p>Words</p>')
 
       expect(shownResize(shown, { ...KEY, hash: 'f'.repeat(64) })).toBeNull()
+    })
+  })
+
+  describe('startGroupEdit', () => {
+    it('puts back a side an earlier preview wrote once a later one leaves it', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div><div style="position: absolute; left: 40px; top: 0"><p>a</p></div>',
+      )
+      const edit = startGroupEdit('studio/home', [KEY, { ...KEY, index: 4 }])
+      const container = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelectorAll<HTMLElement>('body > div')[1]
+
+      edit?.preview([
+        { index: 4, declarations: [{ property: 'width', value: '120px' }] },
+      ])
+      edit?.preview([
+        { index: 4, declarations: [{ property: 'top', value: '5px' }] },
+      ])
+
+      expect(container?.style.width).toBe('')
+      expect(container?.style.top).toBe('5px')
+    })
+
+    it('leaves a member stating no offsets as it was after a cancel', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div><div style="position: absolute"><p>a</p></div>',
+      )
+      const edit = startGroupEdit('studio/home', [KEY, { ...KEY, index: 4 }])
+      const member = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelectorAll('body > div')[1]
+
+      edit?.preview([
+        {
+          index: 4,
+          declarations: [
+            { property: 'left', value: '40px' },
+            { property: 'top', value: '10px' },
+            { property: 'width', value: '120px' },
+          ],
+        },
+      ])
+      edit?.cancel()
+
+      expect(member?.getAttribute('style')).toBe('position: absolute')
     })
   })
 
@@ -422,6 +629,64 @@ describe('a live element', () => {
       resize?.cancel()
 
       expect(paragraph(shown).style.width).toBe('fit-content')
+    })
+
+    it('puts back every declaration a container’s preview wrote on a cancel', async () => {
+      const shown = await mount(
+        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div></div>',
+      )
+      const key = { ...KEY, index: 4 }
+      const read = shownResize(shown, key)
+      if (!read) throw new Error('The container reads no resize')
+      const resize = startElementResize('studio/home', key, read)
+      const child = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector<HTMLElement>('div > div')
+
+      resize?.preview({ width: 120, height: read.sizing?.layout.height ?? 0 })
+      expect(child?.style.flex).toBe('0 1 auto')
+      resize?.cancel()
+
+      expect(child?.style.flex).toBe('1 1 0px')
+      expect(child?.style.width).toBe('')
+    })
+
+    it('leaves a hugging container’s style as it was after a cancel of a drag on both sides', async () => {
+      const shown = await mount(
+        '<div style="display: flex; gap: 8px"><p>a</p><p>b</p></div>',
+      )
+      const read = shownResize(shown, KEY)
+      if (!read) throw new Error('The container reads no resize')
+      const resize = startElementResize('studio/home', KEY, read)
+      const container = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('body > div')
+
+      resize?.preview({ width: 300, height: 200 })
+      resize?.cancel()
+
+      expect(container?.getAttribute('style')).toBe('display: flex; gap: 8px')
+    })
+
+    it('leaves a Fill row child’s style as it was after a cancel of a drag on both sides', async () => {
+      const shown = await mount(
+        '<style>.grow { flex: 1 }</style><div style="display: flex; width: 400px"><div class="grow" style="width: 100px"><p>a</p></div></div>',
+      )
+      const key = { ...KEY, index: 5 }
+      const read = shownResize(shown, key)
+      if (!read) throw new Error('The container reads no resize')
+      const resize = startElementResize('studio/home', key, read)
+      const child = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('.grow')
+
+      resize?.preview({
+        width: 160,
+        height: (read.sizing?.layout.height ?? 0) + 40,
+      })
+      resize?.cancel()
+
+      expect(child?.getAttribute('style')).toBe('width: 100px;')
     })
   })
 })

@@ -50,7 +50,7 @@ const SECTION = 'border-b border-sidebar-border px-3 pt-2.5 pb-3'
 
 /** Why Arrange stands disabled while a member sits in the flow, whose place its container's alignment sets. */
 export const ARRANGE_FREE_ONLY =
-  'Arrange moves free elements. Set each one to Free to align it here.'
+  'Arrange moves free elements. Set each one to Absolute to align it here.'
 
 /** Sends a change to each member `change` names one for, as one write. */
 type Fan = (
@@ -274,7 +274,7 @@ function PositionPart({
   }
   const options = [
     { label: 'In flow', on: free.length === 0, value: false },
-    { label: 'Free', on: allFree, value: true },
+    { label: 'Absolute', on: allFree, value: true },
   ]
   return (
     <section aria-labelledby="inspector-position" className={SECTION}>

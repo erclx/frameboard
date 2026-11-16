@@ -65,8 +65,31 @@ describe('wrapElements', () => {
 
     expect(wrapped).toMatchObject({
       ok: true,
-      html: '<body><div style="display: flex; flex-direction: row; gap: 16px; position: absolute; left: 10px; top: 20px"><b>a</b><i>b</i></div></body>',
+      html: '<body><div data-name="Container" style="display: flex; flex-direction: row; gap: 16px; position: absolute; left: 10px; top: 20px"><b>a</b><i>b</i></div></body>',
     })
+  })
+
+  it.each([
+    [
+      'Container 2 when the frame already holds a Container',
+      '<body><div data-name="Container"></div><b>a</b><i>b</i></body>',
+      'Container 2',
+    ],
+    [
+      'the first free number when a later one is taken',
+      '<body><div data-name="Container"></div><div data-name="Container 3"></div><b>a</b><i>b</i></body>',
+      'Container 2',
+    ],
+  ])('names the container %s', (_, source, name) => {
+    const members = parseFrame(source).elements.flatMap((element, index) =>
+      element.tagName === 'b' || element.tagName === 'i' ? [index] : [],
+    )
+
+    const wrapped = wrapElements(source, members, ROW, null, factsFor(source))
+
+    expect(wrapped.ok && wrapped.html).toContain(
+      `<div data-name="${name}" style="display: flex`,
+    )
   })
 
   it('leaves every byte outside the parent unchanged', () => {

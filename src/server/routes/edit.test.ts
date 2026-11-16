@@ -1117,7 +1117,7 @@ describe('editRoutes', () => {
         data: { ref: HERO, index: 5, members: [6, 7], hash: hash() },
       })
       expect(read()).toContain(
-        '<div style="display: flex; flex-direction: column; gap: 8px">\n      <h1 data-name="Headline">hero</h1>\n      <p data-name="Caption">',
+        '<div data-name="Container" style="display: flex; flex-direction: column; gap: 8px">\n      <h1 data-name="Headline">hero</h1>\n      <p data-name="Caption">',
       )
     })
 

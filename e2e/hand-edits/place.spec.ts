@@ -265,7 +265,7 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
-  test('a Rectangle clicked into a flex row under Free lands centered on the point, the row takes relative, and one undo puts both back', async ({
+  test('a Rectangle clicked into a flex row joins its flow, Absolute takes it out where it rendered with the row taking relative, and undo puts both back', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
@@ -273,24 +273,44 @@ test.describe('placing text and shapes into a frame', () => {
     const original = read()
     const one = await hero(page).locator('[data-name="One"]').boundingBox()
     if (!one) throw new Error('The row draws no first child')
-    const point = { x: one.x + one.width + 20, y: one.y + one.height / 2 }
 
-    await tools(page).getByRole('button', { name: 'Free' }).click()
     await tools(page).getByRole('button', { name: 'Rectangle' }).click()
-    await page.mouse.click(point.x, point.y)
+    await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
+    await expect
+      .poll(read)
+      .toMatch(
+        /data-name="Rectangle" style="width: 100px; height: 100px; background: var\(--muted\)"/,
+      )
+    const placed = read()
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(placed).digest('hex'))
+    const flowed = await hero(page)
+      .locator('[data-name="Rectangle"]')
+      .boundingBox()
+    if (!flowed) throw new Error('The Rectangle draws no box in the flow')
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Absolute', exact: true })
+      .click()
 
     await expect
       .poll(read)
       .toMatch(
         /<div data-name="Row" style="display: flex; gap: 40px; position: relative">.*data-name="Rectangle" style="width: 100px; height: 100px; background: var\(--muted\); position: absolute; left: -?[\d.]+px; top: -?[\d.]+px"/,
       )
-    const placed = await hero(page)
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+    const freed = await hero(page)
       .locator('[data-name="Rectangle"]')
       .boundingBox()
-    if (!placed) throw new Error('The Rectangle draws no box')
-    expect(placed.x + placed.width / 2).toBeCloseTo(point.x, -0.5)
-    expect(placed.y + placed.height / 2).toBeCloseTo(point.y, -0.5)
+    if (!freed) throw new Error('The Rectangle draws no box once absolute')
+    expect(freed.x).toBeCloseTo(flowed.x, 0)
+    expect(freed.y).toBeCloseTo(flowed.y, 0)
 
+    await undo(page)
+    await expect.poll(read).toBe(placed)
     await undo(page)
 
     await expect.poll(read).toBe(original)
@@ -382,19 +402,18 @@ test.describe('placing text and shapes into a frame', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     const headline = await centerOf(page, 'h1')
 
-    // Flow keeps a Text placed in the block body in the flow, between the headline and the row.
-    await tools(page).getByRole('button', { name: 'Flow' }).click()
     await tools(page).getByRole('button', { name: 'Text' }).click()
-    // On the headline's lower half, so the Text lands between it and the row.
+    // On the headline's lower half, clear of the point the double-click below opens.
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
     await page.keyboard.type('Hello')
     await page.keyboard.press('Escape')
 
+    // The block body places it where it was clicked.
     await expect
       .poll(read)
-      .toContain(
-        '</h1>\n    <p data-name="Text" style="font-family: var(--font-text); width: fit-content">Hello</p><div data-name="Row"',
+      .toMatch(
+        /<p data-name="Text" style="font-family: var\(--font-text\); width: fit-content; margin: 0; position: absolute; left: [\d.]+px; top: [\d.]+px">Hello<\/p>/,
       )
 
     // The pick vouches only for bytes the frame shows, so it waits out the reload.
@@ -416,15 +435,14 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
-  test('a placed Text set Free writes no size, so its box stays as wide as its words', async ({
+  test('a placed Text set Absolute writes no size, so its box stays as wide as its words', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
     const headline = await centerOf(page, 'h1')
 
-    // Flow places the Text in the block body's flow, so the inspector's Free is what takes it out.
-    await tools(page).getByRole('button', { name: 'Flow' }).click()
+    // The block body places the Text freely, so In flow puts it in the flow and Absolute is what takes it out again.
     await tools(page).getByRole('button', { name: 'Text' }).click()
     await page.mouse.click(headline.x, headline.y + 8)
     await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
@@ -442,13 +460,25 @@ test.describe('placing text and shapes into a frame', () => {
     await expect(page.locator('[data-element-selection]')).toBeVisible()
     await page
       .getByRole('group', { name: 'Placement' })
-      .getByRole('button', { name: 'Free', exact: true })
+      .getByRole('button', { name: 'In flow', exact: true })
+      .click()
+    await expect
+      .poll(read)
+      .toContain(
+        '<p data-name="Text" style="font-family: var(--font-text); width: fit-content; margin: 0">Hello</p>',
+      )
+    await expect
+      .poll(() => shownHash(page))
+      .toBe(createHash('sha256').update(read()).digest('hex'))
+    await page
+      .getByRole('group', { name: 'Placement' })
+      .getByRole('button', { name: 'Absolute', exact: true })
       .click()
 
     await expect
       .poll(read)
       .toMatch(
-        /<p data-name="Text" style="font-family: var\(--font-text\); width: fit-content; position: absolute; left: [\d.]+px; top: [\d.]+px">Hello<\/p>/,
+        /<p data-name="Text" style="font-family: var\(--font-text\); width: fit-content; margin: 0; position: absolute; left: [\d.]+px; top: [\d.]+px">Hello<\/p>/,
       )
     await expect
       .poll(() => shownHash(page))
@@ -470,7 +500,7 @@ test.describe('placing text and shapes into a frame', () => {
     ['Centered', 'text-align: center'],
     ['Boxed', 'width: 320px; text-align: center'],
   ] as const) {
-    test(`Free keeps ${name.toLowerCase()} text's words where they rendered`, async ({
+    test(`Absolute keeps ${name.toLowerCase()} text's words where they rendered`, async ({
       page,
     }) => {
       writeFileSync(
@@ -499,7 +529,7 @@ test.describe('placing text and shapes into a frame', () => {
       await expect(page.locator('[data-element-selection]')).toBeVisible()
       await page
         .getByRole('group', { name: 'Placement' })
-        .getByRole('button', { name: 'Free', exact: true })
+        .getByRole('button', { name: 'Absolute', exact: true })
         .click()
 
       await expect
@@ -602,6 +632,9 @@ test.describe('placing text and shapes into a frame', () => {
       '<img data-name="Pic" src="../assets/hero.png" alt="" style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px">'
     const VIDEO =
       '<video data-name="Clip" src="../assets/demo.mp4" muted style="position: absolute; left: 20px; top: 300px; width: 160px; height: 120px"></video>'
+    // Its middle falls in the gap between its children, so a click there picks the container.
+    const WRAPPED =
+      '<div data-name="Group" style="display: flex; flex-direction: row; gap: 8px; position: absolute; left: 20px; top: 300px"><div data-name="A" style="width: 40px; height: 20px; background: var(--muted)"></div><div data-name="B" style="width: 40px; height: 20px; background: var(--muted)"></div></div>'
 
     /**
      * Adds `markup` to the hero, selects the element named `name`, and drags
@@ -675,6 +708,28 @@ test.describe('placing text and shapes into a frame', () => {
       await expect(
         page.locator('[data-element-selection] [data-chip]'),
       ).toHaveText(`${width} × Hug`)
+
+      await undo(page)
+
+      await expect.poll(read).toBe(original)
+    })
+
+    test('on a wrapped container across writes its width alone, reading W Fixed and H Hug, and one undo puts it back', async ({
+      page,
+    }) => {
+      const { original } = await dragCorner(page, WRAPPED, 'Group', 60, 0)
+
+      await expect.poll(read).not.toBe(original)
+      const [, style = ''] =
+        /data-name="Group" style="([^"]*)"/.exec(read()) ?? []
+      expect(style).toMatch(/; width: \d+px$/)
+      expect(style).not.toContain('height')
+      await expect(page.getByRole('button', { name: 'Width mode' })).toHaveText(
+        'Fixed',
+      )
+      await expect(
+        page.getByRole('button', { name: 'Height mode' }),
+      ).toHaveText('Hug')
 
       await undo(page)
 

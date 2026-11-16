@@ -1,13 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import {
-  Fragment,
-  type KeyboardEvent,
-  type RefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
-import { useStore } from 'zustand'
+import { Fragment, type RefObject, useLayoutEffect, useRef } from 'react'
 
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
 import {
@@ -19,11 +11,11 @@ import {
 import { cn } from '@/client/lib/cn'
 
 import { AssetPicker } from '../place/asset-picker'
-import { placementStore, shapeRow, SHAPES, useShape } from '../place/tool'
+import { shapeRow, SHAPES, useShape } from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ChromeMenuContent } from './menu'
-import { ImageRow, MoreMenu, PlaceRows, ToolRow } from './more-menu'
+import { ImageRow, MoreMenu, ToolRow } from './more-menu'
 import { useToolbarStage } from './toolbar-stage'
 import {
   BOX_TOOLS,
@@ -33,7 +25,6 @@ import {
   MODE_TOGGLE,
   MODES,
   NOTE_TOOL,
-  PLACINGS,
   POINTER_TOOLS,
   PRESENT,
   PRESENT_NOTHING,
@@ -131,10 +122,9 @@ export function Toolbar({ project }: { project?: string }) {
       )}
       {stage === 'full' ? (
         <>
-          <PlaceToggle />
-          {EDIT_AND_VIEW.map((group) => (
+          {EDIT_AND_VIEW.map((group, index) => (
             <Fragment key={group[0]?.id}>
-              <Rule />
+              {index > 0 ? <Rule /> : null}
               {group.map((slot) => (
                 <ToolButton
                   key={slot.id}
@@ -147,12 +137,6 @@ export function Toolbar({ project }: { project?: string }) {
         </>
       ) : (
         <>
-          {stage === 'folded' ? (
-            <>
-              <PlaceMenu />
-              <Rule />
-            </>
-          ) : null}
           <MoreMenu key={stage} stage={stage} actions={actions} />
         </>
       )}
@@ -413,102 +397,6 @@ function PointerTool({ actions, carets }: ToolProps) {
         </DropdownMenu>
       ) : null}
     </>
-  )
-}
-
-const PLACE_STEPS: Record<string, (at: number, count: number) => number> = {
-  ArrowRight: (at, count) => (at + 1) % count,
-  ArrowLeft: (at, count) => (at - 1 + count) % count,
-  Home: () => 0,
-  End: (_, count) => count - 1,
-}
-
-/**
- * The Place toggle: Auto, Flow, and Free, setting how Text, Shape, and Image
- * place what they add, drawn as the Edit and Play segment is. It holds one
- * tab stop, resting on the choice on, and the arrow keys, Home, and End move
- * along it, as the inspector's segmented rows do. It writes nothing, so it
- * stays on whether or not this tab may write.
- */
-function PlaceToggle() {
-  const placing = useStore(placementStore, (state) => state.placing)
-  const buttons = useRef<(HTMLButtonElement | null)[]>([])
-  // The focused button while focus is inside the toggle, null once it leaves.
-  const [focused, setFocused] = useState<number | null>(null)
-  const lit = PLACINGS.findIndex(({ value }) => value === placing)
-  const stop = focused ?? lit
-  const onKeyDown = (event: KeyboardEvent, at: number) => {
-    const step = PLACE_STEPS[event.key]
-    if (!step) return
-    event.preventDefault()
-    buttons.current[step(at, PLACINGS.length)]?.focus()
-  }
-  return (
-    <div
-      role="group"
-      aria-label="Place new elements"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setFocused(null)
-        }
-      }}
-      className="flex shrink-0 rounded-lg bg-muted p-0.5"
-    >
-      {PLACINGS.map(({ value, label, tip }, at) => (
-        <ActionTooltip key={value} label={tip}>
-          <button
-            ref={(button) => {
-              buttons.current[at] = button
-            }}
-            type="button"
-            aria-pressed={value === placing}
-            tabIndex={at === stop ? 0 : -1}
-            onFocus={() => setFocused(at)}
-            onKeyDown={(event) => onKeyDown(event, at)}
-            onClick={() => placementStore.setState({ placing: value })}
-            className={cn(
-              'flex h-[26px] items-center rounded-md px-[9px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
-              value === placing && 'bg-card text-foreground ring-1 ring-border',
-            )}
-          >
-            {label}
-          </button>
-        </ActionTooltip>
-      ))}
-    </div>
-  )
-}
-
-/**
- * The Place choice folded to a button naming it, for the stage with no room
- * for the toggle.
- */
-function PlaceMenu() {
-  const placing = useStore(placementStore, (state) => state.placing)
-  const label = PLACINGS.find(({ value }) => value === placing)?.label
-  return (
-    <DropdownMenu>
-      <ActionTooltip label="Place new elements">
-        <DropdownMenuTrigger
-          aria-label={`Place new elements, ${label}`}
-          className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-muted pr-2 pl-[9px] font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent"
-        >
-          {label}
-          <ChevronDown
-            aria-hidden
-            className="size-[9px] text-muted-foreground"
-          />
-        </DropdownMenuTrigger>
-      </ActionTooltip>
-      <ChromeMenuContent
-        side="top"
-        align="start"
-        sideOffset={8}
-        className="w-[196px]"
-      >
-        <PlaceRows />
-      </ChromeMenuContent>
-    </DropdownMenu>
   )
 }
 

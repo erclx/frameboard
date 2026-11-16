@@ -5,7 +5,7 @@ import {
   type ElementSize,
   type PlacedOffsets,
   resizeDeclarations,
-  type ResizeRead,
+  type ResizeTarget,
 } from './resize'
 
 /** One of several selected elements, as a group drag reads it at the press. */
@@ -15,8 +15,8 @@ export interface GroupMember {
   box: Box
   /** The `left` and `top` it holds, null for one in the flow, which no group drag moves. */
   placed: PlacedOffsets | null
-  /** How it takes a corner resize, null for one sized by what it holds. */
-  read: Pick<ResizeRead, 'kind' | 'inset'> | null
+  /** How it takes a corner resize, null for one sized by its line. */
+  read: ResizeTarget | null
   /** The margins the browser computed for it, absent where nothing measured them, which a wrap reads as none. */
   margin?: Margins
 }
@@ -34,8 +34,8 @@ export function groupBounds(members: readonly GroupMember[]): Box | null {
 
 /**
  * Whether a corner drag scales the group, which takes every member free and
- * each one taking a resize, since a member in the flow or sized by what it
- * holds has no box to scale.
+ * each one taking a resize, since a member in the flow or sized by its line
+ * has no box to scale.
  */
 export function scalesAsGroup(members: readonly GroupMember[]): boolean {
   return (

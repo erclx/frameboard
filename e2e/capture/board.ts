@@ -1765,15 +1765,17 @@ function elementOnHero(selector: string): (page: Page) => Promise<void> {
 /**
  * Selects the element matching `selector` in the frame `ref` once the frame
  * has loaded and every video on the canvas has decoded its first frame, which
- * a capture would otherwise race.
+ * a capture would otherwise race. It double-clicks the element's middle, or
+ * with `low` its bottom left, clear of the children a container holds.
  */
 function elementInFrame(
   ref: string,
   selector: string,
+  low = false,
 ): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ owner, target, frames }) => {
+      ({ owner, target, frames, low }) => {
         let left = frames
         const pick = () => {
           const shown = document.querySelector(`[data-frame="${owner}"]`)
@@ -1810,8 +1812,12 @@ function elementInFrame(
             bubbles: true,
             cancelable: true,
             view: window,
-            clientX: frame.left + (inner.left + inner.width / 2) * k,
-            clientY: frame.top + (inner.top + inner.height / 2) * k,
+            clientX:
+              frame.left +
+              (low ? inner.left + 8 : inner.left + inner.width / 2) * k,
+            clientY:
+              frame.top +
+              (low ? inner.bottom - 8 : inner.top + inner.height / 2) * k,
           }
           hit.dispatchEvent(new MouseEvent('mousedown', at))
           window.dispatchEvent(new MouseEvent('mouseup', at))
@@ -1819,7 +1825,7 @@ function elementInFrame(
         }
         document.addEventListener('DOMContentLoaded', pick)
       },
-      { owner: ref, target: selector, frames: PRESS_FRAMES },
+      { owner: ref, target: selector, frames: PRESS_FRAMES, low },
     )
   }
 }
@@ -3202,7 +3208,7 @@ function findingsOn(frame: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Draws a Rectangle under Free across empty space in the hero's body, with
+ * Draws a Rectangle across empty space in the hero's block body, with
  * real pointer input, and waits for the write to land, so the reload the
  * harness makes next shows it out of the flow where it was drawn. The board
  * undoes it when the page closes, through its own undo rather than a file
@@ -3227,7 +3233,6 @@ async function rectangleDrawnFree(page: Page): Promise<void> {
   })
   await page.goto(`${base}/p/webapp/home`)
   const tools = page.getByRole('toolbar', { name: 'Tools' })
-  await tools.getByRole('button', { name: 'Free' }).click()
   await tools.getByRole('button', { name: 'Rectangle' }).click()
   const frame = await page
     .locator('[data-frame="webapp/home/hero"] iframe')
@@ -3692,15 +3697,6 @@ const CASES: CaptureCase[] = [
         excludeViewports: STATE_ONLY,
         mask: [AVATAR],
         setup: themed(both(asWriter, pressOnLoad('^Shapes$'))),
-      },
-      {
-        section: 'place-toggle',
-        theme,
-        route: '/p/webapp/home',
-        evidence: true,
-        excludeViewports: STATE_ONLY,
-        mask: [AVATAR],
-        setup: themed(both(asWriter, pressOnLoad('^Free$'))),
       },
       {
         section: 'pointer-caret',
@@ -4449,6 +4445,26 @@ const CASES: CaptureCase[] = [
           ),
         ),
       },
+      {
+        // A container wears its four marks, as a shape does.
+        section: 'corner-marks-container',
+        theme,
+        route: '/p/marketing/states',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            asWriter,
+            elementInFrame(
+              'marketing/states/free',
+              '[data-name="Column"]',
+              true,
+            ),
+            readyWhen('[data-element-selection]'),
+          ),
+        ),
+      },
       ...(
         [
           // Text wearing its marks, its chip naming the height as hugging.
@@ -4458,8 +4474,6 @@ const CASES: CaptureCase[] = [
           ['corner-marks-video', 'free', '[data-name="Free video"]'],
           // A shape keeps its marks and its size.
           ['corner-marks-shape', 'free', '[data-name="Free shape"]'],
-          // A container takes no resize, so it wears none.
-          ['corner-marks-container', 'free', '[data-name="Column"]'],
           // Text at the width a corner writes, wrapping with its height hugging.
           ['corner-resized-text', 'sized', '[data-name="Sized text"]'],
           // An image and a video at the size a corner writes, stating both sides.
