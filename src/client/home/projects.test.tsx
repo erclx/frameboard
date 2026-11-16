@@ -929,6 +929,116 @@ describe('project actions', () => {
   })
 })
 
+describe('a project title', () => {
+  afterEach(() => {
+    cleanup()
+    liveStore.setState({ canWrite: false, board: null })
+  })
+
+  it('names the card by its title over its folder', () => {
+    renderOne({ ...project('manual-drive', NEW), title: 'Manual drive' })
+
+    expect(screen.getByRole('link', { name: /Manual drive/ })).toBeVisible()
+  })
+
+  it('shows the folder the typed title lands in under the open field', async () => {
+    renderLive(PROJECTS, server().calls)
+    screen.getByRole('link', { name: /webapp/ }).focus()
+    await userEvent.keyboard('{F2}')
+
+    await userEvent.clear(
+      screen.getByRole('textbox', { name: 'Rename project webapp' }),
+    )
+    await userEvent.keyboard('Studio site')
+
+    expect(screen.getByText('studio-site').parentElement).toHaveTextContent(
+      'Folder studio-site',
+    )
+  })
+
+  it('names the next free folder when another project holds the name', async () => {
+    renderLive(PROJECTS, server().calls)
+    screen.getByRole('link', { name: /webapp/ }).focus()
+    await userEvent.keyboard('{F2}')
+
+    await userEvent.clear(
+      screen.getByRole('textbox', { name: 'Rename project webapp' }),
+    )
+    await userEvent.keyboard('Studio')
+
+    expect(screen.getByText('studio-2')).toBeVisible()
+  })
+})
+
+describe('the card corner', () => {
+  afterEach(() => {
+    cleanup()
+    liveStore.setState({ canWrite: false, board: null })
+  })
+
+  it('opens the name for renaming from Rename', async () => {
+    renderLive(PROJECTS, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rename webapp' }))
+
+    expect(
+      screen.getByRole('textbox', { name: 'Rename project webapp' }),
+    ).toHaveFocus()
+  })
+
+  it('pins the project from Pin', async () => {
+    renderLive(PROJECTS, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pin webapp' }))
+
+    expect(
+      screen.getByRole('button', { name: 'Pin webapp', pressed: true }),
+    ).toBeInTheDocument()
+  })
+
+  it('lights Pin in the accent color on a pinned project', () => {
+    togglePin('webapp')
+
+    renderLive(PROJECTS, server().calls)
+
+    expect(
+      screen.getByRole('button', { name: 'Pin webapp', pressed: true }),
+    ).toHaveClass('text-primary')
+  })
+
+  it("opens the project's menu from More", async () => {
+    const { sent, calls } = server()
+    renderLive(PROJECTS, calls)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Project actions for webapp' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Duplicate' }),
+    )
+
+    await expect
+      .poll(() => sent)
+      .toEqual([{ path: '/api/project/duplicate', body: { ref: 'webapp' } }])
+  })
+
+  it('leaves Rename out in a tab that may not write, keeping Pin', () => {
+    renderLive(PROJECTS, server().calls)
+    act(() => liveStore.setState({ canWrite: false }))
+
+    expect([
+      screen.queryByRole('button', { name: 'Rename webapp' }),
+      screen.getByRole('button', { name: 'Pin webapp' }),
+    ]).toEqual([null, expect.any(HTMLButtonElement)])
+  })
+
+  it('draws no corner on a list row', () => {
+    renderLive(PROJECTS, server().calls, 'list')
+
+    expect(screen.queryByRole('button', { name: 'Pin webapp' })).toBeNull()
+  })
+})
+
 describe('Home order and pins', () => {
   const THREE = [
     project('atlas', '2026-10-01T00:00:00.000Z'),

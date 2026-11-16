@@ -1,3 +1,4 @@
+import { Ellipsis } from 'lucide-react'
 import { type ReactElement, type ReactNode, useRef } from 'react'
 
 import { type Action, isEnabled, useActions } from '@/client/actions/registry'
@@ -15,6 +16,11 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/client/components/ui/dropdown-menu'
 import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { fileProjects, focusProject } from '@/client/projects/actions'
@@ -49,6 +55,73 @@ interface ProjectMenuProps {
  * Archive reads Restore on an archived one. The menu key and Shift+F10 open it too, with focus on its first item.
  */
 export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
+  const content = useRef<HTMLDivElement>(null)
+  const keyboard = useKeyboardOpen(content)
+  return (
+    <ContextMenu
+      onOpenChange={(opened) => {
+        if (opened) focusProject(project)
+      }}
+      onOpenChangeComplete={keyboard.onOpenChangeComplete}
+    >
+      <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
+      <ContextMenuContent ref={content}>
+        <ProjectItems project={project} calls={calls} />
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+interface ProjectMoreProps {
+  project: string
+  /** The name the button's label reads, the project's title or else its folder. */
+  label: string
+  className?: string
+  calls?: Structure
+}
+
+/**
+ * The More button on a card's corner, opening under it the same items the
+ * right-click menu holds, acting on the card's project.
+ */
+export function ProjectMore({
+  project,
+  label,
+  className,
+  calls,
+}: ProjectMoreProps) {
+  return (
+    <DropdownMenu
+      onOpenChange={(opened) => {
+        if (opened) focusProject(project)
+      }}
+    >
+      <DropdownMenuTrigger
+        aria-label={`Project actions for ${label}`}
+        // Out of the tab sequence, as the corner's other buttons are.
+        tabIndex={-1}
+        className={className}
+      >
+        <Ellipsis aria-hidden className="size-3" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-50 rounded-[10px] text-xs shadow-[0_12px_40px_rgba(0,0,0,.3)] ring-border"
+      >
+        <ProjectItems project={project} calls={calls} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** The project items both menus hold, Pin reading Unpin on a pinned project. */
+function ProjectItems({
+  project,
+  calls,
+}: {
+  project: string
+  calls: Structure | undefined
+}) {
   const [
     open,
     rename,
@@ -67,68 +140,58 @@ export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
     (name) => group === null || folderKey(name) !== folderKey(group),
   )
   const canWrite = useLive((state) => state.canWrite)
-  const content = useRef<HTMLDivElement>(null)
-  const keyboard = useKeyboardOpen(content)
   return (
-    <ContextMenu
-      onOpenChange={(opened) => {
-        if (opened) focusProject(project)
-      }}
-      onOpenChangeComplete={keyboard.onOpenChangeComplete}
-    >
-      <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
-      <ContextMenuContent ref={content}>
-        <ContextMenuGroup>
-          <ContextMenuLabel>Project</ContextMenuLabel>
-          <MenuItem action={open} keyHint="↵" keyName="Enter">
-            Open
-          </MenuItem>
-          <MenuItem action={rename}>Rename</MenuItem>
-          <MenuItem action={duplicate}>Duplicate</MenuItem>
-          <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuGroup>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger
-              disabled={!canWrite || !record}
-              className="h-7 px-2 py-0 text-xs"
-            >
-              Move to folder
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              {others.map((name) => (
-                <ContextMenuItem
-                  key={name}
-                  onClick={() => void fileProjects([project], name, calls)}
-                >
-                  {name}
-                </ContextMenuItem>
-              ))}
-              {others.length > 0 ? <ContextMenuSeparator /> : null}
-              <MenuItem action={newFolder}>New folder</MenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          {group === null ? null : (
-            <MenuItem action={ungroup}>Remove from folder</MenuItem>
-          )}
-          {record?.archived ? (
-            <MenuItem action={restore}>Restore</MenuItem>
-          ) : (
-            <MenuItem action={archive}>Archive</MenuItem>
-          )}
-        </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <MenuItem
-          action={remove}
-          keyHint="⌫"
-          keyName="Delete"
-          variant="destructive"
-        >
-          Delete
+    <>
+      <ContextMenuGroup>
+        <ContextMenuLabel>Project</ContextMenuLabel>
+        <MenuItem action={open} keyHint="↵" keyName="Enter">
+          Open
         </MenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+        <MenuItem action={rename}>Rename</MenuItem>
+        <MenuItem action={duplicate}>Duplicate</MenuItem>
+        <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuGroup>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger
+            disabled={!canWrite || !record}
+            className="h-7 px-2 py-0 text-xs"
+          >
+            Move to folder
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            {others.map((name) => (
+              <ContextMenuItem
+                key={name}
+                onClick={() => void fileProjects([project], name, calls)}
+              >
+                {name}
+              </ContextMenuItem>
+            ))}
+            {others.length > 0 ? <ContextMenuSeparator /> : null}
+            <MenuItem action={newFolder}>New folder</MenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        {group === null ? null : (
+          <MenuItem action={ungroup}>Remove from folder</MenuItem>
+        )}
+        {record?.archived ? (
+          <MenuItem action={restore}>Restore</MenuItem>
+        ) : (
+          <MenuItem action={archive}>Archive</MenuItem>
+        )}
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <MenuItem
+        action={remove}
+        keyHint="⌫"
+        keyName="Delete"
+        variant="destructive"
+      >
+        Delete
+      </MenuItem>
+    </>
   )
 }
 
