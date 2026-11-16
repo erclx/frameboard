@@ -44,7 +44,7 @@ To keep it around, install it with `npm install -g frameboard` or `bun add -g fr
 - You change text, shapes, color, and type by hand, picking colors from your project's tokens
 - A note you pin on a frame or an element reaches your agent straight away
 
-[Everything you can do on the board](docs/board.md)
+[Everything you can do on the board](docs/board/index.md)
 
 ## For your agent
 
@@ -52,7 +52,7 @@ To keep it around, install it with `npm install -g frameboard` or `bun add -g fr
 - `frameboard check` flags what breaks a frame, such as clipped text or a color set for one theme only
 - The Claude Code plugin checks each frame the agent writes and hands it your notes as they arrive
 
-[The command and check reference](docs/agents.md)
+[The command and check reference](docs/agents/index.md)
 
 ## Requirements
 
