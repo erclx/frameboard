@@ -1,7 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
+import {
+  ADDRESS_FILE,
+  ASSETS_FOLDER,
+  RUN_FOLDER,
+  TOKEN_FILE,
+} from '@/shared/board-files'
+import { KIT_ASSETS, KIT_SHEET } from '@/shared/kits'
 
 import type { Sheet } from './frame-source'
 
@@ -58,8 +64,9 @@ export function recordedTokens(root: string): string | null {
 }
 
 /**
- * The token sheets a project's frames render with, board-wide first and then
- * the project's own, which the cascade reads ahead of each frame's sheets.
+ * The sheets the frame route imports ahead of a project's frames, being the
+ * board's tokens, then the project's, then an installed kit's stylesheet,
+ * which the cascade reads ahead of each frame's own sheets.
  */
 export function tokenSheets(
   root: string,
@@ -67,7 +74,8 @@ export function tokenSheets(
   tokens?: string | null,
 ): Sheet[] {
   const paths = tokenSheetPaths(root, project, tokens)
-  return [paths.board, paths.project]
+  const kit = join(root, project, ASSETS_FOLDER, KIT_ASSETS, KIT_SHEET)
+  return [paths.board, paths.project, existsSync(kit) ? kit : null]
     .filter((path) => path !== null)
     .map((path) => ({
       css: readFileSync(path, 'utf8'),

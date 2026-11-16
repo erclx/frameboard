@@ -109,4 +109,18 @@ describe('tokenSheets', () => {
       ':root { --fg: navy }',
     ])
   })
+
+  it("reads an installed kit's stylesheet after the project sheet, as a frame imports it", () => {
+    board = writeBoard({
+      'site/tokens.css': ':root { --fg: navy }',
+      'site/assets/kit/kit.css': 'body { font-family: var(--font-text) }',
+    })
+
+    const sheets = tokenSheets(board.root, 'site')
+
+    expect(sheets.map((sheet) => sheet.css)).toEqual([
+      ':root { --fg: navy }',
+      'body { font-family: var(--font-text) }',
+    ])
+  })
 })
