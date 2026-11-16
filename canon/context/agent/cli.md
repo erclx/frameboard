@@ -101,7 +101,10 @@ Owns the `frameboard:draw` skill in `skills/draw/`, the check hook, the version 
 
 - The lookup takes the project's `node_modules` install, then its own `dist/` when its `package.json` names `frameboard`, then PATH's, so the checkout checks itself and its note names `bun run build`
 
+The skill, the hook, and the monitor each stay thin beside the CLI.
+
 - The skill holds judgment and carries no verb table or rule list, so it cannot drift from the installed tool, and `docs` holds the facts
+- The body keeps the core loop and routes each feature past it to a file under `references/`, so a new feature adds a reference and its trigger line rather than growing the body
 - The skill follows the Agent Skills format and the hook is a thin call into a CLI entry, so another agent needs only its own manifest
 - The monitor runs `inbox --follow`, and Claude Code hands each line to the session as an event, so a sent note is acted on at once with no MCP server
 - The board sends a note to the claim holder while it listens, else to the only listener, else to a new session when nobody listens and `serve` can start one, else to the one the developer picks
