@@ -55,7 +55,7 @@ Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes
 - A change is one layout or section entry, page order, rename, hashed path, hand-edited or placed element, or token, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
-- A page or project rename, its undo, and its redo each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route to the new name
+- A page or project rename, a title that moved a project's folder, and the undo and redo of each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route
 
 On `renamed` the socket moves the selection, the flipped frames, and the unseen marks ahead of the live store, since the renamed board prunes a selection it no longer holds. A frame rename broadcasts it too, and its frame takes all three along but no alias, so it remounts from its new file.
 
