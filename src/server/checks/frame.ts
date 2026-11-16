@@ -5,6 +5,7 @@ import { PROJECT_FILE } from '@/shared/board-files'
 import type { ProjectChecks } from '@/shared/records/board'
 import type { CheckResult, Finding } from '@/shared/records/check'
 
+import { checkBoardRoutes } from './board-routes'
 import { buildCascade } from './cascade'
 import { checkUnknownTokens } from './custom-properties'
 import { checkFonts } from './fonts'
@@ -55,6 +56,7 @@ export function checkFrameIn(
       ...checkMalformedTags(source),
       ...checkNesting(source),
       ...checkLinks(source),
+      ...checkBoardRoutes(source),
       ...checkFonts(source, cascade, config),
       ...checkTheme(source),
       ...checkUnknownTokens(source, tokens),

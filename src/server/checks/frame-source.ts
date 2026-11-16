@@ -370,21 +370,42 @@ export function sheetBase(sheet: Sheet): string {
   return dirname(sheet.path)
 }
 
+/** A script's code, the file holding it, and where the code starts there. */
+export interface ScriptSource {
+  text: string
+  path: string
+  offset: number
+}
+
 /**
  * A script's inline text, or its `src` file's when the file sits in the
- * board. A remote, outside, or unreadable `src` reads as empty, since the
+ * board. A remote, outside, or unreadable `src` reads as null, since the
  * write hook never reports a read as failed.
  */
-export function scriptText(element: Element, source: FrameSource): string {
+export function scriptSource(
+  element: Element,
+  source: FrameSource,
+): ScriptSource | null {
   const src = element.attribs.src
-  if (src === undefined) return textOf(element)
-  const file = localTarget(src, source.pageDir)
-  if (!file || !isInside(source.root, file)) return ''
-  try {
-    return readFileSync(file, 'utf8')
-  } catch {
-    return ''
+  if (src === undefined) {
+    return {
+      text: textOf(element),
+      path: source.path,
+      offset: element.children[0]?.startIndex ?? 0,
+    }
   }
+  const file = localTarget(src, source.pageDir)
+  if (!file || !isInside(source.root, file)) return null
+  try {
+    return { text: readFileSync(file, 'utf8'), path: file, offset: 0 }
+  } catch {
+    return null
+  }
+}
+
+/** A script's code as `scriptSource` reads it, empty where that reads none. */
+export function scriptText(element: Element, source: FrameSource): string {
+  return scriptSource(element, source)?.text ?? ''
 }
 
 /** An element's own text, joined from its text children. */
