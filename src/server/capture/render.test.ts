@@ -293,6 +293,31 @@ describe.skipIf(shell === null)(
       expect(corner).toBe(0)
     })
 
+    it('grows a PNG by the laptop body, its base past the lid, and leaves its corners clear', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 1024, height: 200 },
+          device: 'laptop',
+        },
+        'light',
+      )
+      const corner = await cornerAlpha(requireShell(shell), bytes)
+
+      // The base reaches 64 past the 1064 lid, 6% of it, on each side.
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        1024 + 2 * (20 + 64),
+        200 + 20 + 28 + 14,
+      ])
+      expect(corner).toBe(0)
+    })
+
     it('answers one element alone at its own size times the scale, on a clear ground', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

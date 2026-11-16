@@ -317,7 +317,9 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
-      {frame.device ? <Bezel device={frame.device} /> : null}
+      {frame.device ? (
+        <Bezel device={frame.device} width={width} height={height} />
+      ) : null}
       {frame.scroll && live && !playing ? (
         <ScrollRail
           iframe={iframe}

@@ -85,6 +85,37 @@ describe('GET /api/frames/png', () => {
       expect(asked).toEqual(['phone'])
     })
 
+    it('renders a desktop-wide frame shown with its device in a laptop', async () => {
+      board = writeBoard({
+        'studio/home/hero.html': '<p>Hello</p>',
+        'studio/home/layout.json': JSON.stringify({
+          version: 1,
+          frames: {
+            hero: {
+              x: 0,
+              y: 0,
+              width: 1440,
+              height: 900,
+              order: 0,
+              showDevice: true,
+            },
+          },
+        }),
+      })
+      const asked: unknown[] = []
+
+      await pngRoutes(
+        board.root,
+        async (frame) => {
+          asked.push(frame.device)
+          return PNG
+        },
+        async () => PNG,
+      ).request('/api/frames/png?ref=home/hero&theme=light&device=1')
+
+      expect(asked).toEqual(['laptop'])
+    })
+
     it('renders the bare frame when not asked', async () => {
       const asked: unknown[] = []
 
