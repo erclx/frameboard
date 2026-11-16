@@ -1361,6 +1361,24 @@ describe('folders', () => {
     })
   })
 
+  it('marks a folder card with a folder glyph before its name', () => {
+    renderLive(CLIENT, server().calls)
+
+    expect(
+      folderCard('Client A').querySelector('[data-folder-glyph]'),
+    ).not.toBeNull()
+  })
+
+  it('draws no folder glyph on a project card', () => {
+    renderLive(CLIENT, server().calls)
+
+    expect(
+      screen
+        .getByRole('link', { name: /drawings/ })
+        .querySelector('[data-folder-glyph]'),
+    ).toBeNull()
+  })
+
   it('shows a folder card naming its count in place of its members', () => {
     renderLive(CLIENT, server().calls)
 
