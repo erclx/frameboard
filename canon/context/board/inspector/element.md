@@ -17,47 +17,73 @@ The color picker the paint rows open is in `canon/context/board/inspector/color-
 
 Owns an element's sections, read from the live node and the static cascade, and the writes each one sends.
 
-- **Step:** `element/step.tsx` opens one element's Slides with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
-- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
-- **Arrange for elements:** several Absolute elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow
-- **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone
-  - Controls, Autoplay, Loop, and Muted in the file follow, each a switch that sets one attribute or drops it
-  - An audio shows no Controls switch, since one without `controls` draws nothing
+The Layout section sets how a container lays out its children.
+
 - **Layout:** sits first among an element's other sections, reading Block, Vertical, Horizontal, Wrap, or Grid off the computed `display`
 - **Flow pick:** writes only the declarations whose computed value differs. Grid writes `display` alone and never a track.
-- **Use auto layout:** the Layout header's icon button runs the wrap action behind Shift+A on one element or several siblings, and stays focusable while disabled so its tooltip gives the reason
-- **Wrap order:** a wrap keeps its members in document order, never screen order, so an element placed left of an earlier one lands after it in a row
-- **Wrap gap:** the gap is the space between neighbors less both margins, which flex keeps apart, and margins that collapsed in a block parent leave it at 0
 - **Add flow:** a block's `+` writes `display: flex` and `flex-direction: column`, and its children keep their margins
 - **Rule caption:** names the selector of a flow rule several elements share, with its count from the static cascade. An unread sheet names no rule.
 - **Gap:** writes `gap` in px. Auto gap writes `justify-content: space-between`, and off drops the element's own value or writes `flex-start`.
+
+Alignment, padding, and auto layout finish the flow a container sets.
+
 - **Alignment:** the 3×3 grid writes `justify-content` and `align-items` as one edit, its rows and columns swapping for a column
 - **Padding:** horizontal and vertical fields write their two longhands as one edit, and a per-side toggle opens a field per side
+- **Use auto layout:** the Layout header's icon button runs the wrap action behind Shift+A on one element or several siblings, and stays focusable while disabled so its tooltip gives the reason
+- **Wrap order:** a wrap keeps its members in document order, never screen order, so an element placed left of an earlier one lands after it in a row
+- **Wrap gap:** the gap is the space between neighbors less both margins, which flex keeps apart, and margins that collapsed in a block parent leave it at 0
+
+Size and Fill set how a child takes its room.
+
 - **Size:** W and H write px as Fixed, each with a Fixed, Hug, or Fill menu read from the static cascade
 - **Fill:** offered only under a flex parent, writing `flex: 1 1 0` along its axis and `align-self: stretch` across it
-- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. Layers renames an element.
-- **Type details:** a settings button ending the alignment row opens decoration, case, one-line truncate, and wrap style. Truncate writes its three declarations as one edit.
-- **Rotation:** a degrees field writes `rotate`, clockwise and normalized to (-180, 180], beside Rotate 90°, Flip horizontal, and Flip vertical
-- **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
-- **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.
-- **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
+
+Position moves an element out of the flow and back.
+
 - **Position:** an In flow and Absolute toggle above Appearance. Absolute places the element where it renders through `POST /api/frames/place`, and its X and Y then write `left` and `top`.
 - **Placing:** the place writes `position: absolute` with pixel offsets, and `position: relative` on a static parent other than `body` in the same undo step
 - **Placed size:** the place writes the rendered size on an axis no rule sizes, and none on an element holding text alone, which hugs its words from where they start unless a length sizes it
 - **Back in flow:** drops `left` and `top`, and `position` or writes `static` over a rule's. It drops each size this tab's placement wrote that the element still holds, and a reload forgets them.
+- **Arrange for elements:** several Absolute elements add the frames' Arrange row, which stands disabled with its reason while one sits in the flow
+
+Rotation and flip turn an element without touching its `transform`.
+
+- **Rotation:** a degrees field writes `rotate`, clockwise and normalized to (-180, 180], beside Rotate 90°, Flip horizontal, and Flip vertical
+- **Flip:** writes `scale` as an x and y pair, so a rule's uniform scale survives it
+- **What rotation leaves:** neither writes `transform`. A value equal to what a rule gives under the element's own declaration drops it. The field reads `rotate` alone.
+- **Rotation off:** for a 3D value, and where the computed `transform` translates, since `rotate` composes ahead of it and swings the element away. A tooltip says why.
+
+Typography sets the face, its weight, and the type details.
+
+- **Appearance and typography:** captioned opacity and corner radius, then family, weight, size, spacing, and alignment with justify, plus its text when it holds text only. Layers renames an element.
+- **Type details:** a settings button ending the alignment row opens decoration, case, one-line truncate, and wrap style. Truncate writes its three declarations as one edit.
 - **Family and weight:** menus. Family lists the font tokens holding a stack, then the served faces, each in its own face. Weight names only the weights the element's face ships.
 - **Reading the family:** the computed stack never names a token, so Family takes the token from the static cascade's `fontFamily`, else the face the stack starts with, and reads any other as written
 - **Unlisted faces:** Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
-- **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
+
+Spacing and text edit what an element says and how it sits.
+
 - **Type spacing:** line height and letter spacing write px. A `normal` line height reads Auto and steps from 1.2 times the size.
 - **Text:** Enter or a blur applies it and Esc cancels, with the keys hinted while the field has focus. The field adds no line.
 - **Text breaks:** a pasted newline becomes a space, unless the element's style shows breaks as lines, as a text given lines on the canvas does.
 - **Kept text:** text an agent's write refused stays as a draft by frame and index while the frame's element count held, and its toast offers Copy text either way.
+- **Icon names:** an align button or a number field with an icon prefix names itself in a tooltip on hover and keyboard focus
+
+Paint sets fill, stroke, and shadow, and takes the element's own paint off.
+
 - **Fill:** color through the board's picker, opened on Custom from the swatch and on Tokens from the chip, and fill opacity. On an element holding text alone it is the text color, as in Figma.
 - **Stroke:** the border color through the same row, and a `W` field after it writing `border-width` from 1px, `Mixed` over uneven sides
 - **Shadow:** one of the project's shadow tokens or none, writing `box-shadow: none`, in a menu at its row's width
 - **Remove:** a minus on the fill and stroke rows drops the element's own paint, and over a rule's writes `transparent` or `border-style: none`. A rule's text color has none.
 - **What remove drops:** `color` on a text-only element, `background-color`, the whole `background` only where the shorthand states the fill, or `border` with its longhands
+
+Some sections show only for one kind of selection.
+
+- **Step:** `element/step.tsx` opens one element's Slides with Appears on step, Effect, and Start, writing `data-step`, `data-step-effect`, and `data-step-start` as one edit
+- **Several elements:** `element/several.tsx` shows `Mixed` where values differ and `1 of 3` on a section only some hold, whose edit writes those alone, as one write and one undo step.
+- **Video:** a `<video>` or `<audio>` opens the element sections with play, the time, sound, and a scrub track that act on the live page alone
+  - Controls, Autoplay, Loop, and Muted in the file follow, each a switch that sets one attribute or drops it
+  - An audio shows no Controls switch, since one without `controls` draws nothing
 
 A hand edit's write goes through `src/server/routes/edit.ts` into the edit writer, both in folders other entries own.
 
