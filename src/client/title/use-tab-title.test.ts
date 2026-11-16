@@ -127,6 +127,20 @@ describe('useTabTitle', () => {
     expect(document.title).toBe('(3) landing-v2 · Frameboard')
   })
 
+  it('names the open project by its title', () => {
+    const [studio] = BOARD.projects
+    if (!studio) throw new Error('The board has no project')
+    act(() =>
+      liveStore.setState({
+        board: { ...BOARD, projects: [{ ...studio, title: 'Studio site' }] },
+      }),
+    )
+
+    renderAt('/p/studio/home')
+
+    expect(document.title).toBe('Studio site · Frameboard')
+  })
+
   it('drops the count once every change is marked seen', () => {
     act(() => receiveChanges(unseenStore, [change('landing-v2/home/hero')]))
     renderAt('/p/landing-v2/home')

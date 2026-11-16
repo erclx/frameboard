@@ -82,6 +82,18 @@ describe('orderProjects', () => {
     ])
   })
 
+  it('orders a titled project by its title', () => {
+    const projects = [
+      project('zebra', '2026-10-15T09:00:00.000Z'),
+      { ...project('zz-top', '2026-10-15T09:00:00.000Z'), title: 'Alpha' },
+    ]
+
+    expect(names(orderProjects(projects, 'name', NONE))).toEqual([
+      'zz-top',
+      'zebra',
+    ])
+  })
+
   it('breaks a tie by name', () => {
     const at = '2026-10-15T00:00:00.000Z'
     const projects = [project('webapp', at), project('atlas', at)]

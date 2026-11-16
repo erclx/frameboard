@@ -362,7 +362,10 @@ export function useFolderActions(calls: Structure = structure): void {
         ? { key, name: first.group, members }
         : undefined
     }
-    const projectHint = () => project()?.name ?? ''
+    const projectHint = () => {
+      const target = project()
+      return target ? projectLabel(target) : ''
+    }
     const folderHint = () => folder()?.name ?? ''
     const unregister = registerActions([
       {
@@ -589,7 +592,10 @@ export function useProjectActions(
         .board?.projects.find((project) => project.name === name)
     }
     const onProject = () => writable() && focused() !== undefined
-    const hint = () => focused()?.name ?? ''
+    const hint = () => {
+      const target = focused()
+      return target ? projectLabel(target) : ''
+    }
 
     const actions: Action[] = [
       {

@@ -4,6 +4,7 @@ import { jumpTo } from '@/client/board/jump'
 import { select, selectionStore } from '@/client/board/selection'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
+import { projectLabel } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
 import type { ListResult } from '@/shared/records/list'
 
@@ -26,16 +27,17 @@ export interface Targets {
 /**
  * Every project, and with one open, every project's pages and frames, the
  * open project's first. Each page is hinted with its project and each frame
- * with `project / page`, since two projects can share a page name. A hidden
- * frame is listed and marked, since choosing it shows it first.
+ * with `project / page`, since two projects can share a page name. A project
+ * reads as its title while its ref stays on the folder. A hidden frame is
+ * listed and marked, since choosing it shows it first.
  */
 export function boardTargets(
   board: ListResult,
   project: string | null,
 ): Targets {
-  const projects = board.projects.map(({ name }) => ({
-    ref: name,
-    label: name,
+  const projects = board.projects.map((each) => ({
+    ref: each.name,
+    label: projectLabel(each),
   }))
   if (project === null) return { projects, pages: [], frames: [] }
   const ordered = [
@@ -48,7 +50,7 @@ export function boardTargets(
       open.pages.map((page) => ({
         ref: page.ref,
         label: page.name,
-        hint: open.name,
+        hint: projectLabel(open),
       })),
     ),
     frames: ordered.flatMap((open) =>
@@ -56,7 +58,7 @@ export function boardTargets(
         page.frames.map((frame): Target => ({
           ref: frame.ref,
           label: frame.name,
-          hint: `${open.name} / ${page.name}`,
+          hint: `${projectLabel(open)} / ${page.name}`,
           ...(frame.hidden ? { hidden: true } : {}),
         })),
       ),

@@ -97,6 +97,20 @@ describe('boardTargets', () => {
     ])
   })
 
+  it('labels a titled project and hints its pages and frames with the title, keeping the folder ref', () => {
+    const [studio] = BOARD.projects
+    if (!studio) throw new Error('The board has no project')
+    const titled = { ...BOARD, projects: [{ ...studio, title: 'Studio site' }] }
+
+    const { projects, pages, frames } = boardTargets(titled, 'studio')
+
+    expect([projects[0], pages[0]?.hint, frames[0]?.hint]).toEqual([
+      { ref: 'studio', label: 'Studio site' },
+      'Studio site',
+      'Studio site / home',
+    ])
+  })
+
   it('lists projects alone with no project open', () => {
     const { frames, pages, projects } = boardTargets(BOARD, null)
 
