@@ -20,6 +20,13 @@ Owns the home view, where every project shows as a card with a thumbnail of its 
 - `src/shared/card-frames.ts` makes that pick for the thumbnail route, the ask, and the skeleton alike, so a card never draws a box whose capture was never stamped
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
 
+**Loading shell**
+
+Until the first board arrives, `loading.tsx` stands in for the view on `/`.
+
+- It draws the real header and Projects row with four grey cards, or rows under a remembered list layout, and keeps its status for a screen reader alone
+- It reads the remembered layout and sort without registering their actions, so the switch, New project, and Sort read disabled until `home.tsx` takes over
+
 The header and each card's menu run the `project.*` actions.
 
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project

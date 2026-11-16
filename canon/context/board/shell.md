@@ -30,6 +30,15 @@ Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the too
   - `screen.tsx` holds one page at most and appends a new canvas after the held one, since moving an iframe's node reloads it
   - Until the drop the document holds two `[data-canvas]` and two `[data-layer]`, the hidden one possibly first, so a harness reads the layer whose `checkVisibility()` passes
 
+**Loading shell**
+
+Until the first board arrives, `app.tsx` routes a board page to `loading.tsx` rather than to `screen.tsx`.
+
+- The shell draws both panels at the widths `panels.ts` remembers, the project name from the route, the real toolbar, and a visible Connecting to the board status
+- Grey blocks stand only for the page rows, the layer rows, the inspector's rows, and one frame on the canvas, and none of them moves
+- It registers none of the board's actions, so the tools and the panels' controls read disabled while the theme toggle stays live
+- A remembered width or Hide UI read differently in the shell jumps the page on arrival, so both screens read `panels.ts` and `mode.ts`
+
 A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
 
 In Edit, hover or selection shows an open-alone link over the frame's right edge, opening the frame's `/frames/` address in a new tab. The label shrinks to clear it while it shows.
@@ -100,7 +109,7 @@ Owns what floats over the canvas, being the toolbar, the Play banner, the Hide U
 The toolbar folds in stages to fit its column.
 
 - `toolbar-stage.ts` picks one of five stages from the column's width, never the window's, since a dragged panel narrows the column at any window size
-- Below a 778 px column Place folds to a dropdown and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
+- Below 601 px of room Undo, Redo, Zoom to fit, and the theme toggle fold into More, and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
 - The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, and the clip test in `toolbar.test.tsx` catches a width that stopped fitting
 
 The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner. The stack layers over a dialog's overlay, so a toast raised inside a dialog takes its clicks, and menus, popovers, and tooltips layer over the stack.
