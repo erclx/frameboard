@@ -70,7 +70,7 @@ The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a
 
 Drag a corner of selected upright text, a shape, an image, a video, or a container to resize it. Text wraps to the new width with its height following, a container sets each side you drag to Fixed, and Shift keeps a shape's or media's ratio. Inline text and a divider draw no corner marks.
 
-Past a frame's edge, a Free element shows as a dashed ghost a press drags back, unless the frame scrolls. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
+Past a frame's edge, an Absolute element shows as a dashed ghost a press drags back, unless the frame scrolls. The color picker holds a hex field, opacity, and token swatches. A raw color equal to a token in the shown theme offers `Use <token>` on its row, and Stroke's `+` writes a grey `#808080` where the project names no color token.
 
 - A new element lands where you drew it unless its parent lays out as flex or grid, where it joins the flow, and a divider always joins the flow
 - Position's In flow and Absolute move it either way afterward
