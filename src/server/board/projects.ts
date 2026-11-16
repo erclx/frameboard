@@ -4,12 +4,7 @@ import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import {
-  folderName,
-  namesCollide,
-  nextFreeName,
-  TITLE_MAX_LENGTH,
-} from '@/shared/names'
+import { nextFreeName, TITLE_MAX_LENGTH, titledFolder } from '@/shared/names'
 import type { ProjectFile } from '@/shared/records/board'
 import type { ProjectRecord } from '@/shared/records/list'
 
@@ -102,14 +97,8 @@ export async function retitleProject(
       journal?.project(path, before, after)
     }),
   )
-  const folder = folderName(trimmed)
-  if (folder === '' || namesCollide(folder, project.name)) {
-    return scanProject(root, project.name)
-  }
-  const others = (await listProjects(root)).filter(
-    (each) => each !== project.name,
-  )
-  const moved = nextFreeName(folder, others)
+  const moved = titledFolder(project.name, trimmed, await listProjects(root))
+  if (moved === project.name) return scanProject(root, project.name)
   const target = join(root, moved)
   if (journal) await journal.moved(project.path, target)
   else await rename(project.path, target)

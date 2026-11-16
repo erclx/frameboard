@@ -6,6 +6,7 @@ import {
   isValidName,
   namesCollide,
   nextFreeName,
+  titledFolder,
 } from './names'
 
 describe('isValidName', () => {
@@ -88,5 +89,29 @@ describe('folderName', () => {
     'a'.repeat(80),
   ])('makes a valid name from %j', (title) => {
     expect(isValidName(folderName(title))).toBe(true)
+  })
+})
+
+describe('titledFolder', () => {
+  it('takes the name made from the title', () => {
+    expect(titledFolder('untitled', 'Manual drive', ['untitled'])).toBe(
+      'manual-drive',
+    )
+  })
+
+  it('takes the next free name when another project holds it', () => {
+    expect(titledFolder('untitled', 'Studio', ['untitled', 'studio'])).toBe(
+      'studio-2',
+    )
+  })
+
+  it('keeps the folder a title already names, in any case', () => {
+    expect(titledFolder('Studio', 'studio', ['Studio', 'studio-2'])).toBe(
+      'Studio',
+    )
+  })
+
+  it('keeps the folder when the title names none', () => {
+    expect(titledFolder('studio', '!!!', ['studio'])).toBe('studio')
   })
 })

@@ -33,6 +33,25 @@ export function nextFreeName(base: string, taken: Iterable<string>): string {
 }
 
 /**
+ * The folder a project in `current` lands in once titled `title`: the name
+ * made from the title, the next free one when another of `taken` holds it,
+ * and `current` itself when the title names no folder or names the one it
+ * is in.
+ */
+export function titledFolder(
+  current: string,
+  title: string,
+  taken: Iterable<string>,
+): string {
+  const folder = folderName(title)
+  if (folder === '' || namesCollide(folder, current)) return current
+  return nextFreeName(
+    folder,
+    [...taken].filter((name) => name !== current),
+  )
+}
+
+/**
  * A typed title as the folder it names, lower case with each run of
  * characters a name may not hold turned into one dash, so `Acme mobile`
  * becomes `acme-mobile`. Empty when the title holds nothing a name may.
