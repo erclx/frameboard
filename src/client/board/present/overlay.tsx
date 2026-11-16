@@ -358,19 +358,26 @@ function ScaledFrame({
   frame: FrameRecord
   room: { width: number; height: number }
 } & LiveProps) {
-  // A frame in a device fits with its body, which draws past its box.
-  const scale = fitScale(bezelBox(frame.box, frame.device), room)
+  // A frame in a device fits and centers with its body, which draws past its
+  // box, further below than above for a laptop.
+  const { width, height } = frame.box
+  const body = bezelBox({ x: 0, y: 0, width, height }, frame.device)
+  const scale = fitScale(body, room)
+  const shiftX = width / 2 - (body.x + body.width / 2)
+  const shiftY = height / 2 - (body.y + body.height / 2)
   return (
     <div
       className="absolute top-1/2 left-1/2"
       style={{
-        width: frame.box.width,
-        height: frame.box.height,
-        transform: `translate(-50%, -50%) scale(${scale})`,
+        width,
+        height,
+        transform: `translate(-50%, -50%) scale(${scale}) translate(${shiftX}px, ${shiftY}px)`,
       }}
     >
       <PresentedFrame frame={frame} {...live} />
-      {frame.device ? <Bezel device={frame.device} /> : null}
+      {frame.device ? (
+        <Bezel device={frame.device} width={width} height={height} />
+      ) : null}
     </div>
   )
 }

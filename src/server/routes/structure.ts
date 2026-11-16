@@ -57,7 +57,6 @@ import { writeStarterSheet } from '@/server/look/starter'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -129,7 +128,7 @@ const pasteSchema = z.object({
 })
 const frameDeviceSchema = z.object({
   refs,
-  device: z.enum(DEVICES).nullable(),
+  show: z.boolean(),
 })
 const linkedWidth = z.int().min(1)
 /** More widths than any device list offers, so a body cannot grow without bound. */
@@ -522,13 +521,13 @@ export function structureRoutes(
     return c.json({ ok: true, data: frames })
   })
 
-  /** Sets or clears the device drawn around each frame, in one step, leaving every frame file alone. */
+  /** Shows or hides the device each frame's width names, in one step, leaving every frame file alone. */
   app.post('/api/frame/device', async (c) => {
     const body = await parseBody(c.req.raw, frameDeviceSchema)
     const frames = await eachFrame(
       body.refs,
       (frame, journal) =>
-        setFrameDevice(root, frame, body.device, { cwd, journal }),
+        setFrameDevice(root, frame, body.show, { cwd, journal }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })

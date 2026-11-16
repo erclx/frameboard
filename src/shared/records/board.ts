@@ -71,8 +71,11 @@ export const layoutEntrySchema = z.looseObject({
       z.unknown(),
     ])
     .optional(),
-  // The device the board draws around the frame, phone or tablet. A value of
-  // another kind parses as written and reads as none, as widths does.
+  // Whether the board draws the frame inside the device its width names.
+  // Only true shows it, and a value of another kind parses as written.
+  showDevice: z.unknown().optional(),
+  // The key before showDevice, naming a device. Any string reads as shown,
+  // and the next write of the entry replaces it with showDevice.
   device: z.unknown().optional(),
   // The transition the frame arrives with in present mode, over its page's.
   // A value no reader knows parses as written and reads as none.

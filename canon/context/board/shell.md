@@ -47,16 +47,17 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 - A linked box is a view and never a frame. `frameAt` and `framesIn` answer the frame for a point or marquee on one, and `pickAt` reads the frame's own box alone, so no element picks inside it
 - It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
 - Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
+- Its row moves out by a laptop base's reach past the lid, so a linked box taller than the frame never meets the base
 
 ### `src/client/board/device/`
 
-Owns `bezel.tsx`, the phone or tablet body drawn around a frame whose entry names a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
+Owns `bezel.tsx`, the phone, tablet, or laptop body drawn around a frame whose record shows a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
 
 - One element over the frame rounds its page to the screen radius and spreads the body as a `box-shadow`, so the body's outer radius is the screen's plus the border
-- The body and the island scale with the canvas, while its hairline edge stays one screen pixel at any zoom
-- It takes no pointer events, so a click reaches the frame as it would bare
-- The label, the open-alone link, the rail, and the In frame tag stand past the body, and a linked width draws no device
-- Present fits the frame with its body through `bezelBox`
+- A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
+- The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
+- The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
+- Present fits and centers the frame by its body through `bezelBox`, since a laptop's body reaches further below than above
 
 ### `src/client/board/scroll/`
 

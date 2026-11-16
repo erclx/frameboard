@@ -803,6 +803,44 @@
       .insp .itabs {
         margin: -4px -4px 10px;
       }
+      .swr {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 16px;
+        margin-bottom: 12px;
+      }
+      .swv {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .sw {
+        position: relative;
+        display: block;
+        width: 26px;
+        height: 14px;
+        border-radius: 7px;
+        background: var(--raised);
+      }
+      .sw::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background: #fff;
+      }
+      .sw.on {
+        background: var(--accentfill);
+      }
+      .sw.on::after {
+        left: 14px;
+      }
     </style>
   </head>
   <body>
@@ -847,15 +885,13 @@
           <span class="on">Design</span><span>Slides</span><span>Export</span>
         </div>
         <h4>Frame</h4>
-        <div style="color: var(--muted); margin-bottom: 4px">
-          Device<span class="q">?</span>
+        <div class="swr">
+          <span>Show device<span class="q">?</span></span
+          ><span class="swv">Phone<i class="sw on"></i></span>
         </div>
-        <div class="seg">
-          <span class="">None</span><span class="on">Phone</span
-          ><span class="">Tablet</span>
-        </div>
-        <div class="qtip" style="left: 12px; top: 150px; width: 166px">
-          Drawn by the board around the frame. The file is unchanged, and export
+        <div class="qtip" style="left: 12px; top: 90px; width: 180px">
+          Drawn by the board around the frame, a phone from 320 wide, a tablet
+          from 480, and a laptop from 1024. The file is unchanged, and export
           can include it.
         </div>
       </div>

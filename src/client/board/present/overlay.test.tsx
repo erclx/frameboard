@@ -153,6 +153,25 @@ describe('presenting a page', () => {
     expect(bottom).toBeLessThanOrEqual(window.innerHeight + 0.5)
   })
 
+  it('centers a laptop by its body, which reaches further below than above', () => {
+    present([
+      frameOf('desktop', {
+        box: { x: 0, y: 0, width: 1440, height: 900 },
+        showDevice: true,
+        device: 'laptop',
+      }),
+    ])
+
+    const screen = document
+      .querySelector('[data-bezel]')
+      ?.getBoundingClientRect()
+    const scale = (screen?.width ?? 0) / 1440
+    const above = (screen?.top ?? 0) - 20 * scale
+    const below = window.innerHeight - ((screen?.bottom ?? 0) + 42 * scale)
+
+    expect(above).toBeCloseTo(below, 1)
+  })
+
   it('steps by arrow in reading order, skipping hidden frames', async () => {
     present(framesOf('first', 'second', 'hidden', 'third'))
 

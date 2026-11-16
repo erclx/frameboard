@@ -1,4 +1,4 @@
-import { bezelBox, type Device } from './frame-device'
+import { bezelBox, BEZELS, type Device } from './frame-device'
 import { FRAME_GAP } from './frame-sizes'
 
 interface Box {
@@ -40,10 +40,18 @@ function isSize(value: unknown): value is number {
 /**
  * Where each linked width draws: in a row at the frame's `y`, the first
  * `FRAME_GAP` past the frame's right edge and each next one past the last.
+ * A laptop's base reaches past its lid below the screen, where a linked width
+ * taller than the frame would meet it, so the row moves out by that reach.
  */
-export function linkedBoxes(box: Box, widths: readonly LinkedWidth[]): Box[] {
+export function linkedBoxes(
+  box: Box,
+  widths: readonly LinkedWidth[],
+  device?: Device | null,
+): Box[] {
   const boxes: Box[] = []
-  let x = box.x + box.width
+  const body = bezelBox(box, device)
+  const lid = device ? BEZELS[device].border : 0
+  let x = body.x + body.width - lid
   for (const { width, height } of widths) {
     x += FRAME_GAP
     boxes.push({ x, y: box.y, width, height })
@@ -61,7 +69,7 @@ export function drawnExtent(
   widths: readonly LinkedWidth[],
   device?: Device | null,
 ): Box {
-  const boxes = [bezelBox(box, device), ...linkedBoxes(box, widths)]
+  const boxes = [bezelBox(box, device), ...linkedBoxes(box, widths, device)]
   const left = Math.min(...boxes.map(({ x }) => x))
   const top = Math.min(...boxes.map(({ y }) => y))
   const right = Math.max(...boxes.map(({ x, width }) => x + width))

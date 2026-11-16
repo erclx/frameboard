@@ -17,7 +17,7 @@ import {
   type Structure,
   structure,
 } from '@/client/live/structure'
-import type { Device } from '@/shared/frame-device'
+import { type Device, deviceForWidth } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -64,8 +64,8 @@ interface FrameSectionProps {
  * values differ. A field writes through the same write the gestures use, a
  * typed value setting every selected frame and a step on `Mixed` moving each
  * by the step. The heading opens the Frame tool's sizes. The Height row sets
- * how every frame holds its height, the Device row which device the board
- * draws around each, and the Preview row shows the frames at another width
+ * how every frame holds its height, the Show device switch whether the board
+ * draws each inside the device its width names, and the Preview row shows the frames at another width
  * and writes nothing. One frame also lists the widths it shows at.
  */
 export function FrameSection({
@@ -396,31 +396,75 @@ function screenHeightsOf(
   return heights
 }
 
-const DEVICE_CHOICES = [
-  { value: 'none', label: 'None' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'tablet', label: 'Tablet' },
-] as const satisfies readonly { value: Device | 'none'; label: string }[]
+const DEVICE_NAMES = {
+  phone: 'Phone',
+  tablet: 'Tablet',
+  laptop: 'Laptop',
+} as const satisfies Record<Device, string>
+
+const DEVICE_TIP =
+  'Drawn by the board around the frame, a phone from 320 wide, a tablet from 480, and a laptop from 1024. The file is unchanged, and export can include it.'
 
 /**
- * The device the board draws around the frames, None, Phone, or Tablet,
- * which leaves each frame file and its size as they are.
+ * Whether the board draws the frames inside the device each one's width
+ * names, which leaves each frame file and its size as they are. While on,
+ * the row names that device, or says none fits a frame under 320 wide, and
+ * frames that differ read `Mixed`, which a press turns on for all.
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
+  const id = 'inspector-device'
+  const { shown, pick } = usePick({
+    frames,
+    valueOf: (frame) => frame.showDevice === true,
+    refusal: 'Couldn’t set the device',
+    write: (refs, show) => calls.setDevice(refs, show),
+  })
+  const names = frames.map(({ box }) => {
+    const device = deviceForWidth(box.width)
+    return device ? DEVICE_NAMES[device] : 'No device fits'
+  })
+  const named = names.every((name) => name === names[0]) ? names[0] : 'Mixed'
+  const value = shown === null ? 'Mixed' : shown ? named : undefined
+
   return (
-    <ChoiceRow
-      id="inspector-device"
-      title="Device"
-      tip="Drawn by the board around the frame. The file is unchanged, and export can include it."
-      choices={DEVICE_CHOICES}
-      frames={frames}
-      valueOf={(frame) => frame.device ?? 'none'}
-      disabled={disabled}
-      refusal="Couldn’t set the device"
-      write={(refs, device) =>
-        calls.setDevice(refs, device === 'none' ? null : device)
-      }
-    />
+    <div className="mt-2.5 flex h-4 items-center justify-between gap-2">
+      <LabelTip label="Show device" tip={DEVICE_TIP} tipId={`${id}-tip`}>
+        <label htmlFor={id} className="text-xs">
+          Show device
+        </label>
+      </LabelTip>
+      <span className="flex min-w-0 items-center gap-2">
+        {value ? (
+          <span
+            id={`${id}-value`}
+            className="truncate text-caption text-muted-foreground"
+          >
+            {value}
+          </span>
+        ) : null}
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={shown === true}
+          aria-describedby={value ? `${id}-value ${id}-tip` : `${id}-tip`}
+          disabled={disabled}
+          onClick={() => pick(shown !== true)}
+          className={cn(
+            'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
+            shown === true ? 'bg-primary' : 'bg-input',
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
+              shown === true ? 'left-[14px]' : 'left-0.5',
+            )}
+          />
+        </button>
+      </span>
+    </div>
   )
 }
 
@@ -436,6 +480,54 @@ interface ChoiceRowProps<T extends string> {
   /** The toast a refused write raises. */
   refusal: string
   write: (refs: string[], value: T) => Promise<unknown>
+}
+
+/**
+ * One setting of the frames read off the records, null where they differ,
+ * and a pick that writes every frame in one step. The pick shows at once and
+ * stands until the frames read another value than the one it was made from,
+ * and is then forgotten, so an undo back to it reads as stored. A refused
+ * write puts the stored value back.
+ */
+function usePick<T>({
+  frames,
+  valueOf,
+  refusal,
+  write,
+}: {
+  frames: readonly FrameRecord[]
+  valueOf: (frame: FrameRecord) => T
+  refusal: string
+  write: (refs: string[], value: T) => Promise<unknown>
+}): { shown: T | null; pick: (value: T) => void } {
+  const refs = frames.map((frame) => frame.ref)
+  const values = frames.map(valueOf)
+  const stored = values.every((value) => value === values[0])
+    ? (values[0] ?? null)
+    : null
+  const [pending, setPending] = useState<{
+    key: string
+    from: T | null
+    value: T
+  } | null>(null)
+  const key = refs.join('\n')
+  if (pending && (pending.key !== key || pending.from !== stored)) {
+    setPending(null)
+  }
+  const shown =
+    pending && pending.key === key && pending.from === stored
+      ? pending.value
+      : stored
+
+  const pick = (value: T) => {
+    if (value === shown) return
+    setPending({ key, from: stored, value })
+    write(refs, value).catch((error: unknown) => {
+      setPending(null)
+      reportRefusal(refusal)(error)
+    })
+  }
+  return { shown, pick }
 }
 
 /**
@@ -456,36 +548,8 @@ function ChoiceRow<T extends string>({
   refusal,
   write,
 }: ChoiceRowProps<T>) {
-  const refs = frames.map((frame) => frame.ref)
-  const values = frames.map(valueOf)
-  const stored = values.every((value) => value === values[0])
-    ? (values[0] ?? null)
-    : null
-  // A pick stands until the frames read another value than the one it was
-  // made from, and is then forgotten, so an undo back to it reads as stored.
-  const [pending, setPending] = useState<{
-    key: string
-    from: T | null
-    value: T
-  } | null>(null)
-  const key = refs.join('\n')
-  if (pending && (pending.key !== key || pending.from !== stored)) {
-    setPending(null)
-  }
-  const shown =
-    pending && pending.key === key && pending.from === stored
-      ? pending.value
-      : stored
+  const { shown, pick } = usePick({ frames, valueOf, refusal, write })
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
-
-  const pick = (value: T) => {
-    if (value === shown) return
-    setPending({ key, from: stored, value })
-    write(refs, value).catch((error: unknown) => {
-      setPending(null)
-      reportRefusal(refusal)(error)
-    })
-  }
 
   const step = (event: KeyboardEvent, index: number) => {
     const by = ARROW_STEPS[event.key]

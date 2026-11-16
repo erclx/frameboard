@@ -61,11 +61,12 @@ An entry's `widths` lists the extra widths one frame file shows at, each a `{ wi
 - `PageLayout.set` writes `widths` while it lists one, removes it once a valid list empties, and leaves a value no reader understands as written
 - Every writer placing a frame beside another, `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts`, reads `drawnExtent` rather than the box, so nothing lands under a linked width or a device
 
-An entry's `device` names the device the board draws around the frame, `phone` or `tablet`, and the frame file never changes for it.
+An entry's `showDevice: true` has the board draw the frame inside the device its width names, and the frame file never changes for it.
 
-- `deviceOf` in `src/shared/frame-device.ts` reads any other value as none
-- `PageLayout.set` writes the key while a frame holds one, removes it once cleared, and leaves an unknown value as written
-- The body is a fixed border in points, 16 for the phone and 44 for the tablet, around whatever box the frame holds, and `drawnExtent` grows by it
+- `deviceForWidth` in `src/shared/frame-device.ts` picks a phone from 320, a tablet from 480, and a laptop from 1024, and none under 320, at read time, so a resize redraws the body with no write
+- The record reports that pick as `device`, and `scan.ts` reads a `device` string written before `showDevice` as shown
+- `PageLayout.set` writes `showDevice` while a frame shows one, removes it once off, leaves any other value as written, and drops a legacy `device` string on every write
+- The phone's border is 16 and the tablet's 44 on every side, the laptop's lid 20 with a chin and a base reaching 6% of the lid past each side, and `drawnExtent` grows by the whole body
 
 ### `src/server/edit/`
 

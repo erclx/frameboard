@@ -9,6 +9,8 @@ import {
   bezelShadow,
   type Device,
   HOME_BAR,
+  LAPTOP_BASE,
+  laptopParts,
   PHONE_ISLAND,
 } from '@/shared/frame-device'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
@@ -289,8 +291,9 @@ async function drawBezel(
   device: Device,
   scale: number,
 ): Promise<Buffer> {
-  const { border, screenRadius } = BEZELS[device]
+  const { screenRadius } = BEZELS[device]
   const outer = bezelBox({ x: 0, y: 0, ...box }, device)
+  const laptop = device === 'laptop'
   const context = await browser.newContext({
     viewport: { width: outer.width, height: outer.height },
     deviceScaleFactor: scale,
@@ -301,12 +304,17 @@ async function drawBezel(
       device === 'phone'
         ? `<span style="${pill(PHONE_ISLAND.width, PHONE_ISLAND.height, BEZEL_COLORS.island)}top:${PHONE_ISLAND.top}px"></span>` +
           `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
-        : ''
+        : laptop
+          ? laptopMarks(box)
+          : ''
+    const radius = laptop
+      ? `${screenRadius}px ${screenRadius}px 0 0`
+      : `${screenRadius}px`
     await page.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
-        `<div style="position:absolute;left:${border}px;top:${border}px;width:${box.width}px;height:${box.height}px">` +
+        `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
         `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%">` +
-        `<div style="position:absolute;inset:0;border-radius:${screenRadius}px;box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
+        `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
     )
@@ -314,6 +322,19 @@ async function drawBezel(
   } finally {
     await context.close()
   }
+}
+
+/**
+ * The laptop's chin and base as the board draws them, past the screen's
+ * bottom, with the body's edge as its last pixel rather than past it.
+ */
+function laptopMarks(box: { width: number; height: number }): string {
+  const { chin, base } = laptopParts(box)
+  const edge = `1px solid ${BEZEL_COLORS.edge}`
+  return (
+    `<span style="position:absolute;box-sizing:border-box;left:${chin.x}px;top:${chin.y}px;width:${chin.width}px;height:${chin.height}px;background:${BEZEL_COLORS.body};border-left:${edge};border-right:${edge}"></span>` +
+    `<span style="position:absolute;box-sizing:border-box;left:${base.x}px;top:${base.y}px;width:${base.width}px;height:${base.height}px;background:${BEZEL_COLORS.base};border:${edge};border-radius:0 0 ${LAPTOP_BASE.radius}px ${LAPTOP_BASE.radius}px"></span>`
+  )
 }
 
 function pill(width: number, height: number, color: string): string {

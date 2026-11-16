@@ -771,7 +771,7 @@ describe('InspectorPanel', () => {
     ).not.toBeInTheDocument()
   })
 
-  describe('Device row', () => {
+  describe('Show device', () => {
     /** A structure whose device write answers `answer`, recording each body sent. */
     function deviceCalls(answer: () => Response) {
       const sent: unknown[] = []
@@ -781,23 +781,41 @@ describe('InspectorPanel', () => {
       })
       return { sent, calls }
     }
-    const device = () => screen.getByRole('radiogroup', { name: 'Device' })
-    const checked = () =>
-      within(device())
-        .queryAllByRole('radio', { checked: true })
-        .map((radio) => radio.textContent)
-
-    it.each([
-      ['None', {}],
-      ['Phone', { device: 'phone' as const }],
-      ['Tablet', { device: 'tablet' as const }],
-    ])('reads %s off the frame', (label, fields) => {
-      render(<FrameSection page={PAGE} frames={[{ ...SWATCHES, ...fields }]} />)
-
-      expect(checked()).toEqual([label])
+    const toggle = () => screen.getByRole('switch', { name: 'Show device' })
+    const shownAt = (width: number) => ({
+      ...SWATCHES,
+      box: { ...SWATCHES.box, width },
+      showDevice: true as const,
     })
 
-    it('sets a device on every frame in one write', async () => {
+    it('reads off while the frame shows no device, naming none', () => {
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
+
+      expect(toggle()).not.toBeChecked()
+      expect(screen.queryByText('Tablet')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      [390, 'Phone'],
+      [640, 'Tablet'],
+      [1440, 'Laptop'],
+    ])('names the device a %i wide frame shows', (width, name) => {
+      render(<FrameSection page={PAGE} frames={[shownAt(width)]} />)
+
+      expect(toggle()).toBeChecked()
+      expect(toggle()).toHaveAccessibleDescription(
+        expect.stringMatching(new RegExp(`^${name} `)),
+      )
+    })
+
+    it('stays on under 320 wide, saying no device fits', () => {
+      render(<FrameSection page={PAGE} frames={[shownAt(300)]} />)
+
+      expect(toggle()).toBeChecked()
+      expect(screen.getByText('No device fits')).toBeInTheDocument()
+    })
+
+    it('shows the device on every frame in one write', async () => {
       const { sent, calls } = deviceCalls(() =>
         Response.json({ ok: true, data: [] }),
       )
@@ -805,55 +823,87 @@ describe('InspectorPanel', () => {
         <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
       )
 
-      await userEvent.click(
-        within(device()).getByRole('radio', { name: 'Phone' }),
-      )
+      await userEvent.click(toggle())
 
-      expect(sent).toEqual([
-        { refs: [SWATCHES.ref, SUNSET.ref], device: 'phone' },
-      ])
-      expect(checked()).toEqual(['Phone'])
+      expect(sent).toEqual([{ refs: [SWATCHES.ref, SUNSET.ref], show: true }])
+      expect(toggle()).toBeChecked()
     })
 
-    it('clears the device with None, sending null', async () => {
+    it('hides the device, sending show false', async () => {
+      const { sent, calls } = deviceCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(<FrameSection page={PAGE} frames={[shownAt(640)]} calls={calls} />)
+
+      await userEvent.click(toggle())
+
+      expect(sent).toEqual([{ refs: [SWATCHES.ref], show: false }])
+    })
+
+    it('reads Mixed over frames that differ, and a press shows the device on both', async () => {
       const { sent, calls } = deviceCalls(() =>
         Response.json({ ok: true, data: [] }),
       )
       render(
         <FrameSection
           page={PAGE}
-          frames={[{ ...SWATCHES, device: 'tablet' }]}
+          frames={[shownAt(640), SUNSET]}
           calls={calls}
         />,
       )
+      expect(screen.getByText('Mixed')).toBeInTheDocument()
+      expect(toggle()).not.toBeChecked()
 
-      await userEvent.click(
-        within(device()).getByRole('radio', { name: 'None' }),
-      )
+      await userEvent.click(toggle())
 
-      expect(sent).toEqual([{ refs: [SWATCHES.ref], device: null }])
+      expect(sent).toEqual([{ refs: [SWATCHES.ref, SUNSET.ref], show: true }])
     })
 
-    it('describes the group with the sentence its label’s mark shows on keyboard focus', async () => {
+    it('reads Mixed over shown frames whose widths name different devices', () => {
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[shownAt(390), { ...SUNSET, showDevice: true }]}
+        />,
+      )
+
+      expect(toggle()).toBeChecked()
+      expect(screen.getByText('Mixed')).toBeInTheDocument()
+    })
+
+    it('toggles from its label as well as the switch', async () => {
+      const { sent, calls } = deviceCalls(() =>
+        Response.json({ ok: true, data: [] }),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(screen.getByText('Show device'))
+
+      expect(sent).toEqual([{ refs: [SWATCHES.ref], show: true }])
+    })
+
+    it('describes the switch with the sentence its label’s mark shows on keyboard focus', async () => {
       render(
         <TooltipProvider>
           <FrameSection page={PAGE} frames={[SWATCHES]} />
         </TooltipProvider>,
       )
       const sentence =
-        'Drawn by the board around the frame. The file is unchanged, and export can include it.'
+        'Drawn by the board around the frame, a phone from 320 wide, a tablet from 480, and a laptop from 1024. The file is unchanged, and export can include it.'
 
       // Tab from the radio before the mark, as a keyboard reaches it.
       act(() => screen.getByRole('radio', { name: 'Fixed' }).focus())
       await userEvent.tab()
 
-      expect(screen.getByRole('button', { name: 'About Device' })).toHaveFocus()
-      expect(device()).toHaveAccessibleDescription(sentence)
+      expect(
+        screen.getByRole('button', { name: 'About Show device' }),
+      ).toHaveFocus()
+      expect(toggle()).toHaveAccessibleDescription(sentence)
       // The hidden description holds one copy, so the open tip is the second.
       expect(await screen.findAllByText(sentence)).toHaveLength(2)
     })
 
-    it('rolls back to the stored device when the write is refused', async () => {
+    it('rolls back to off when the write is refused', async () => {
       const { calls } = deviceCalls(() =>
         Response.json(
           { ok: false, error: { code: 'frame-locked', message: 'Locked.' } },
@@ -862,11 +912,9 @@ describe('InspectorPanel', () => {
       )
       render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
 
-      await userEvent.click(
-        within(device()).getByRole('radio', { name: 'Tablet' }),
-      )
+      await userEvent.click(toggle())
 
-      await waitFor(() => expect(checked()).toEqual(['None']))
+      await waitFor(() => expect(toggle()).not.toBeChecked())
     })
   })
 

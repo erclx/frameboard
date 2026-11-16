@@ -44,7 +44,7 @@ export const LinkedBoxes = memo(function LinkedBoxes({
 }: LinkedBoxesProps) {
   const drawn = useDrawnBox(frame)
   if (frame.widths.length === 0 || frame.hidden) return null
-  return linkedBoxes(drawn, frame.widths).map((box) => (
+  return linkedBoxes(drawn, frame.widths, frame.device).map((box) => (
     <LinkedBox
       key={box.width}
       frame={frame}
