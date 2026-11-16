@@ -35,6 +35,8 @@ Several elements in one frame select together, all at one hash, with `element` h
   - While a video's bar is up, one injected style hides the strip the browser draws for `controls` on every video in that page, since the strip grows with zoom
   - As the bar narrows the time goes first, then the track, then the speaker, and the scrub track's focus ring draws on its thumb alone through `seek-track` in `styles.css`
 
+Each selected frame's drawn controls in Edit draw through `binding-links.tsx`, a tag under every control naming its selector and property and a dashed link from its target, at a constant screen size. A control matching nothing takes a red tag saying so and no link.
+
 Enter at a frame selects the first child of its `body`, and Esc at a child of `body` selects the frame, so the next Esc clears the selection. Tab wraps within the parent, and Enter and Tab walk only while focus sits on the canvas. Esc closes an open note card before it moves the selection, and returns an armed tool to Move first.
 
 - With one frame and no element selected, Tab and Shift+Tab step to the next and previous frame in Layers order, through `board-actions.ts`

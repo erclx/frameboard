@@ -21,6 +21,8 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 - `project.json` gains a `createdAt` once, from `project add` or the first `serve` of an empty folder, and an older project reads as made at no time, never at a file's birth time
 - `project.json` may hold `group`, the one-level folder home files it under, and `archived: true`. A value of another type reads as absent, so a hand edit never fails the scan
 
+`bindings.ts` holds the drawn controls contract, being `data-binds="<selector> <--property>"` with the property as the last word, `data-unit`, the grouping of a keep into one `styles` change per target, and the hiding style. The client, the capture, the phone link, and the check all read it.
+
 `project.json` may also hold `title`, the name a person reads, in any characters. Refs, URLs, pins, claims, and CLI arguments keep naming the folder, which `ProjectRecord.name` carries beside `title`.
 
 ### `src/server/board/`

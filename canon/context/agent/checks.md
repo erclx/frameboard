@@ -20,6 +20,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - `check` exits 8 with `check-findings` when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
 - The result sits under `data` in both answers, and a failure repeats it in the error's details, which older scripts read
 - Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, `board-route`, and `unknown-token`
+  - `binding-target` is exact too, warning on a `data-binds` that misses its selector or property, sets a property that is not custom, or matches no element
 
 `board-route` reports a frame script naming the board's own routes, since a frame on the board's origin reaches the board's server.
 

@@ -36,6 +36,8 @@ Two flags hold a frame's motion still at moments its timeline names.
 - The PNG route's `filmstrip=<n>` of 2 or more renders on its own queue, answering `motion-missing` and `motion-unbounded` at 422
 - The record's `at` and `moments` name the clamped moments, and its `motion` names the source and the duration, null when every animation repeats forever
 
+The warm renderer behind the PNG route and the thumbnails hides drawn controls through one style marked `data-frameboard`, so an element export's index still counts the file. `capture`, `fit`, and `inspect` open the frame without it, so an agent sees its controls.
+
 The PNG route's `device=1` draws a frame holding a device inside its body on a second page, its corners past the body transparent, and leaves a frame holding none bare. Beside `filmstrip=<n>` it refuses as `usage`, since a filmstrip draws no device.
 
 - The route's `element=<index>&hash=<hash>` renders one element alone at its own box, which can run past the frame's, on a transparent ground
