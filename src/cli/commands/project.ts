@@ -6,6 +6,7 @@ import {
   fileProjects,
   type Filing,
   renameProject,
+  retitleProject,
 } from '@/server/board/projects'
 import { writeStarterSheet } from '@/server/look/starter'
 import { FrameboardError } from '@/shared/errors'
@@ -58,6 +59,33 @@ export function registerProject(
       return {
         data: record,
         human: `Renamed project ${name} to ${record.name}`,
+      }
+    },
+  )
+
+  act<CommonOptions>(
+    addVerb(
+      project,
+      'title',
+      'Set the name a person reads for a project, which may hold any characters, and move its folder to the name made from it',
+    )
+      .argument('<name>', 'the project folder')
+      .argument('<title>', 'its title, a blank one taking the title out'),
+    context,
+    async ([name = '', title = ''], options) => {
+      const record = await retitleProject(
+        await boardOf(options, io),
+        name,
+        title,
+      )
+      return {
+        data: record,
+        human:
+          record.title === null
+            ? `Took the title off project ${record.name}`
+            : record.name === name
+              ? `Titled project ${name} '${record.title}'`
+              : `Titled project ${name} '${record.title}' and moved it to ${record.name}`,
       }
     },
   )

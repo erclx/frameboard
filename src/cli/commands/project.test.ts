@@ -48,6 +48,19 @@ describe('project', () => {
     expect(result.json().error?.code).toBe('name-taken')
   })
 
+  it('title sets the title and moves the folder to the name made from it', async () => {
+    const result = await run('project', 'title', 'webapp', 'Web app')
+
+    expect(result.json().data).toMatchObject({
+      name: 'web-app',
+      title: 'Web app',
+    })
+    expect(
+      JSON.parse(readFileSync(join(board.root, 'web-app/project.json'), 'utf8'))
+        .title,
+    ).toBe('Web app')
+  })
+
   it('delete returns what it deleted', async () => {
     const result = await run('project', 'delete', 'marketing')
 
