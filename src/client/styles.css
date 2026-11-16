@@ -262,3 +262,12 @@
     background: var(--faint);
   }
 }
+
+/* A carried outline moves inside the fractionally scaled canvas layer, where
+   GPU raster leaves slivers of its old paint, so it takes its own layer for
+   the carry alone. Kept at rest, the layer would blur the outline. */
+@layer components {
+  [data-carrying] [data-element-selection] {
+    will-change: transform;
+  }
+}
