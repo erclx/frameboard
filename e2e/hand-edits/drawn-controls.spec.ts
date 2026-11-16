@@ -128,4 +128,20 @@ test.describe('controls drawn in a frame', () => {
     await expect(slider(page, 'Black and white')).toHaveValue('0')
     expect(read()).toBe(original)
   })
+
+  test('a presented slide shows the design with its controls hidden', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect(slider(page, 'Brightness')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Present page' }).click()
+
+    const slide = page
+      .getByRole('dialog', { name: /^Presenting/ })
+      .frameLocator('iframe')
+    await expect(slide.locator('#photo')).toBeVisible()
+    await expect(slide.getByRole('slider', { name: 'Brightness' })).toBeHidden()
+    await expect(slide.getByText('Black and white')).toBeHidden()
+  })
 })

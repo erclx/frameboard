@@ -5,9 +5,12 @@ import type { AddressInfo } from 'node:net'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 
+import { injectHead } from '@/server/look/inject'
 import { BOARD_SHEET_URL } from '@/server/routes/frames'
 import { servedFrames } from '@/server/routes/look'
+import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { FACES_URL } from '@/shared/faces'
+import { LOOK_MARKER } from '@/shared/theme'
 
 /** Where every phone link starts, ahead of its token. */
 const LINK_PREFIX = '/v/'
@@ -68,9 +71,10 @@ export function previewApp(token: string, options: PreviewOptions): Hono {
     // replaced version the phone has no business reading.
     const theme = url.searchParams.get('theme')
     const query = theme === null ? '' : `?${new URLSearchParams({ theme })}`
-    return served.fetch(
+    const answer = await served.fetch(
       new Request(`http://preview${inner}${query}`, { method, headers }),
     )
+    return method === 'GET' ? withControlsHidden(answer) : answer
   })
 
   return app
@@ -102,6 +106,24 @@ function innerPath(
     return null
   }
   return decoded === project ? inner : null
+}
+
+/**
+ * A served frame with its drawn controls hidden, since the phone link shows
+ * the design alone. Any answer other than a whole page passes as it is.
+ */
+async function withControlsHidden(response: Response): Promise<Response> {
+  const page =
+    response.status === 200 &&
+    (response.headers.get('Content-Type') ?? '').startsWith('text/html')
+  if (!page) return response
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  const headers = new Headers(response.headers)
+  headers.delete('Content-Length')
+  return new Response(
+    injectHead(bytes, `<style ${LOOK_MARKER}>${HIDE_CONTROLS_CSS}</style>`),
+    { status: response.status, statusText: response.statusText, headers },
+  )
 }
 
 /** The response with one header set, copied first since a forwarded one may be immutable. */

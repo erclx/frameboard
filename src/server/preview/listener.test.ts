@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { version } from '@/shared/version'
 
 import {
@@ -52,6 +53,20 @@ describe('previewApp', () => {
       expect(html).toContain(
         `@import url("/v/${TOKEN}/frameboard/faces/v${version}/geist/index.css")`,
       )
+    })
+
+    it('serves a frame with its drawn controls hidden', async () => {
+      const response = await request(`/v/${TOKEN}/frames/studio/home/hero.html`)
+
+      expect(await response.text()).toContain(HIDE_CONTROLS_CSS)
+    })
+
+    it('serves an asset byte for byte, with nothing hidden in it', async () => {
+      const response = await request(
+        `/v/${TOKEN}/frames/studio/assets/clip.mp4`,
+      )
+
+      expect(await response.text()).toBe('0123456789')
     })
 
     it('serves a byte range of an asset, so a video seeks', async () => {
