@@ -1113,6 +1113,39 @@ describe('structureRoutes', () => {
       expect(wrote).toEqual([{ before: 'studio', after: 'atelier' }])
     })
 
+    it('titles a project, moves its folder, and undoes both back on disk', async () => {
+      const response = await post('/api/project/title', {
+        ref: 'studio',
+        title: 'Manual drive',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { name: 'manual-drive', title: 'Manual drive' },
+      })
+
+      await history.undo()
+
+      expect([
+        existsSync(join(board.root, 'manual-drive')),
+        JSON.parse(
+          readFileSync(join(board.root, 'studio/project.json'), 'utf8'),
+        ).title,
+      ]).toEqual([false, undefined])
+    })
+
+    it('records a title that moved the folder as a rename', async () => {
+      const wrote: unknown[] = []
+      history = new History(board.root, undefined, (step) =>
+        wrote.push(step.renamed),
+      )
+      app = structureRoutes(board.root, ACCESS, history)
+
+      await post('/api/project/title', { ref: 'studio', title: 'Atelier' })
+      await post('/api/project/title', { ref: 'atelier', title: 'ATELIER' })
+
+      expect(wrote).toEqual([{ before: 'studio', after: 'atelier' }, undefined])
+    })
+
     it('renames a project to its own name in another case', async () => {
       const response = await post('/api/project/rename', {
         ref: 'studio',
@@ -1512,6 +1545,11 @@ describe('structureRoutes', () => {
         'a project rename',
         '/api/project/rename',
         { ref: 'studio', name: 'site' },
+      ],
+      [
+        'a project title',
+        '/api/project/title',
+        { ref: 'studio', title: 'Studio site' },
       ],
       ['a project delete', '/api/project/delete', { ref: 'studio' }],
       ['a filing', '/api/project/group', { refs: ['studio'], group: 'Client' }],

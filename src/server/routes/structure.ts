@@ -34,6 +34,7 @@ import {
   duplicateProject,
   fileProjects,
   renameProject,
+  retitleProject,
   setProjectRule,
 } from '@/server/board/projects'
 import {
@@ -80,6 +81,8 @@ const index = z.int().min(0)
 const addSchema = z.object({ ref, index: index.optional() })
 const duplicateSchema = z.object({ ref, name: name.optional() })
 const renameSchema = z.object({ ref, name })
+/** Any characters, since the folder takes a valid name made from it. */
+const retitleSchema = z.object({ ref, title: z.string().max(256) })
 const moveSchema = z.object({ ref, index })
 const deleteSchema = z.object({ ref })
 
@@ -751,6 +754,22 @@ export function structureRoutes(
       async (renamed) => ({
         ...(await onHome()),
         renamed: { before: source.name, after: renamed.name },
+      }),
+    )
+    return c.json({ ok: true, data: project })
+  })
+
+  app.post('/api/project/title', async (c) => {
+    const body = await parseBody(c.req.raw, retitleSchema)
+    const source = await resolveProject(root, body.ref)
+    await refuseHeld([source.name])
+    const project = await recorded(
+      (journal) => retitleProject(root, body.ref, body.title, { journal }),
+      async (retitled) => ({
+        ...(await onHome()),
+        ...(retitled.name === source.name
+          ? {}
+          : { renamed: { before: source.name, after: retitled.name } }),
       }),
     )
     return c.json({ ok: true, data: project })
