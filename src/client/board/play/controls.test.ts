@@ -151,6 +151,21 @@ describe('bindControls', () => {
     })
   })
 
+  it('puts a moved field back once it is emptied, so a later settle leaves nothing inline', async () => {
+    const doc = await frameOf(
+      '<img id="photo"><input id="size" type="number" value="4" data-binds="#photo --blur" data-unit="px">',
+    )
+    const counts: number[] = []
+    const binder = bindControls(doc, (moved) => counts.push(moved))
+
+    slide(doc, 'size', '9')
+    slide(doc, 'size', '')
+    binder.settle()
+
+    expect(photoStyle(doc).getPropertyValue('--blur')).toBe('')
+    expect(counts).toEqual([1, 0, 0])
+  })
+
   it('leaves an emptied number field out of the page and the keep', async () => {
     const doc = await frameOf(
       '<img id="photo"><input id="size" type="number" value="4" data-binds="#photo --blur" data-unit="px">',

@@ -80,11 +80,42 @@ export function bindControls(
     }
   }
 
+  /**
+   * Takes an emptied field out of the moved set and puts its property back,
+   * to the value of another moved control setting it or else the file's, so
+   * no later settle leaves its earlier value inline. An empty value set as
+   * the unit alone would be a defined property skipping the `var()` fallback.
+   */
+  const unmove = (control: HTMLInputElement) => {
+    const bound = moved.get(control)
+    moved.delete(control)
+    const style = bound && styleOf(bound.target)
+    if (bound && style) {
+      const still = [...moved.values()]
+        .reverse()
+        .find(
+          (other) =>
+            other.target === bound.target && other.property === bound.property,
+        )
+      const original = originals.get(bound.target)?.get(bound.property)
+      if (still) {
+        style.setProperty(bound.property, `${still.control.value}${still.unit}`)
+      } else if (!original || original.value === '') {
+        style.removeProperty(bound.property)
+      } else {
+        style.setProperty(bound.property, original.value, original.priority)
+      }
+    }
+    onMove(moved.size)
+  }
+
   const onInput = (event: Event) => {
     const control = event.target
-    // An emptied number field holds no value, and the unit alone would be a
-    // defined property that skips the target's `var()` fallback.
-    if (!isControl(control) || control.value === '') return
+    if (!isControl(control)) return
+    if (control.value === '') {
+      if (moved.has(control)) unmove(control)
+      return
+    }
     const bound = resolve(control)
     const style = bound && styleOf(bound.target)
     if (!bound || !style) return
