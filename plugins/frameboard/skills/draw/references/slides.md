@@ -1,0 +1,27 @@
+---
+title: Slides and decks
+description: How a session drawing a deck chooses between a step and a transition, adds a transition of the project's own, and captures a stepped slide
+---
+
+# Slides and decks
+
+Read this when the task is about presenting a page, such as a deck, a slide's entrance, or an element a press reveals. Take every attribute, value, range, and refusal from the `present` block of `frameboard docs --json`, since it describes the installed version.
+
+## Choose a step or a transition
+
+A transition and a step answer different questions, so pick by what moves.
+
+- A transition is how a whole slide arrives and leaves. The board draws it from the page's or the frame's layout entry and never writes it into the frame file.
+- A step is one element inside a slide that waits for a press. It lives in the frame file as attributes on that element, set with `frameboard edit --attr`.
+- Reach for a step when a slide builds up point by point, and for a transition when the deck moves between ideas
+- Set a transition on the page so every slide shares it, and on one frame only when that slide arrives differently
+
+## Add a slide transition of the project's own
+
+- Write `assets/transitions/<name>.css` holding `@keyframes enter` and optionally `@keyframes leave`, as the `present` block of `frameboard docs` allows
+- Set it by name with `frameboard page transition <page> <name>`, or on one slide with `frameboard frame transition <page>/<frame> <name>`
+- Run `frameboard check` after the write, since a file breaking the block's rules is refused whole and reported as `transition-file`, and every slide naming it cuts
+
+## Capture a stepped slide
+
+A capture shows every step at once, so a plain capture is the slide at its last press. Check the earlier moments by reading the step numbers back in document order, and ask the developer to press through the slide in present mode when a build's order matters.
