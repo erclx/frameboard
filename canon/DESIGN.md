@@ -43,10 +43,9 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 ## Layout
 
-- Below 1024px wide the board opens with Hide UI on, so the canvas keeps the screen and still pans and zooms.
-- The width is read once at load, so resizing across 1024px later leaves Hide UI where the developer set it.
-- The toolbar folds by its column's width, so a dragged panel folds it at any window size, and every control stays reachable in the bar or under More down to a 68px column.
-- The inspector groups its sections by job under Design, Slides, and Export tabs, drawn with the same control as the left panel's Design, Theme, and Assets.
+- A board loading below 1024px wide opens with Hide UI on, so the canvas keeps the screen, and a later resize leaves it alone.
+- The toolbar folds by its column's width, keeping every control in the bar or under More down to a 68px column.
+- The inspector groups its sections by job under Design, Slides, and Export tabs, drawn like the left panel's tabs.
 
 ## Shapes
 
@@ -60,10 +59,9 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 ## Motion
 
-- The claim pulse is the one looped motion, an agent's outline and tag tint fading slowly with a ring breathing on the initial while it holds a frame. Its text and initial hold their contrast.
-- Under reduced motion the pulse stops and holds the outline, tint, and initial at full strength.
-- No marching ants, no animated guides, and no entrance motion on panels.
-- Under reduced motion the kit popups, tooltip and dialog alike, open and close with no fade or zoom.
+- The claim pulse is the one looped motion, fading a claimed frame's outline and tag tint and breathing a ring on the agent's initial.
+- The pulse never dims its text or initial, and under reduced motion it holds the outline, tint, and initial at full strength.
+- No marching ants, animated guides, or panel entrance motion, and under reduced motion kit popups open and close unanimated.
 
 ## Iconography
 
