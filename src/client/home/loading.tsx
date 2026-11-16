@@ -70,9 +70,14 @@ function GridLoading() {
           className="rounded-xl border border-border bg-card"
         >
           <Skeleton className="m-1.5 h-[150px] rounded-lg" />
-          <span className="flex flex-col gap-1.5 px-3 pt-2.5 pb-4">
-            <Skeleton className="h-3 w-1/2 rounded-sm" />
-            <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+          {/* Each bar sits in a row one line of the real card's type tall, so the card lands at the shell's height. */}
+          <span className="flex flex-col px-3 pt-1.5 pb-3">
+            <span className="flex h-lh items-center text-panel">
+              <Skeleton className="h-3 w-1/2 rounded-sm" />
+            </span>
+            <span className="flex h-lh items-center text-body">
+              <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+            </span>
           </span>
         </li>
       ))}

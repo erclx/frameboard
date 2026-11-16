@@ -125,6 +125,18 @@ describe('App', () => {
       ).toHaveAttribute('aria-disabled', 'true')
     })
 
+    it('draws each grey card at the height the real card lands at', () => {
+      renderAt('/')
+      const grey = document.querySelector('li[data-placeholder]')
+      const greyHeight = grey?.getBoundingClientRect().height ?? 0
+
+      act(() => receiveBoard(liveStore, BOARD))
+
+      const card = screen.getByRole('link', { name: /studio/ })
+      expect(greyHeight).toBeGreaterThan(0)
+      expect(card.getBoundingClientRect().height).toBeCloseTo(greyHeight, 0)
+    })
+
     it('gives way to the projects once the board arrives', () => {
       renderAt('/')
 
