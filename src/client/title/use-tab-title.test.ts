@@ -72,6 +72,7 @@ const BOARD: ListResult = {
       name: 'studio',
       path: '/board/studio',
       modifiedAt: '2026-10-15T00:00:00.000Z',
+      title: null,
       createdAt: null,
       group: null,
       archived: false,
@@ -123,6 +124,20 @@ describe('useTabTitle', () => {
     renderAt('/p/landing-v2/home')
 
     expect(document.title).toBe('(3) landing-v2 · Frameboard')
+  })
+
+  it('names the open project by its title', () => {
+    const [studio] = BOARD.projects
+    if (!studio) throw new Error('The board has no project')
+    act(() =>
+      liveStore.setState({
+        board: { ...BOARD, projects: [{ ...studio, title: 'Studio site' }] },
+      }),
+    )
+
+    renderAt('/p/studio/home')
+
+    expect(document.title).toBe('Studio site · Frameboard')
   })
 
   it('drops the count once every change is marked seen', () => {

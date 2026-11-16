@@ -102,6 +102,7 @@ function boardWith(...refs: string[]): ListResult {
       name,
       path: `/board/${name}`,
       modifiedAt: '2026-10-19T12:00:00.000Z',
+      title: null,
       createdAt: null,
       group: null,
       archived: false,

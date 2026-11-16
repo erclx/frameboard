@@ -16,6 +16,7 @@ import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import {
   projectHref,
+  projectLabel,
   renameProject,
   stopProjectRename,
   useRenamingProject,
@@ -87,10 +88,12 @@ export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
         <RenameField
           key={renaming.attempt}
           name={renaming.draft}
-          label={`Rename project ${project.name}`}
-          onCommit={(name) => {
-            void renameProject(project.name, name, calls).then((landed) => {
-              if (landed) navigate(boardUrl(landed, page), { replace: true })
+          label={`Rename project ${projectLabel(project)}`}
+          onCommit={(title) => {
+            void renameProject(project.name, title, calls).then((landed) => {
+              if (landed && landed !== project.name) {
+                navigate(boardUrl(landed, page), { replace: true })
+              }
             })
           }}
           onCancel={stopProjectRename}
@@ -103,11 +106,13 @@ export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
       <button
         type="button"
         disabled={!canRename}
-        title={canRename ? `Rename ${project.name}` : project.name}
+        title={
+          canRename ? `Rename ${projectLabel(project)}` : projectLabel(project)
+        }
         onClick={() => rename?.run()}
         className="min-w-0 truncate rounded-[5px] px-1 -ml-1 text-left text-panel outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 disabled:hover:bg-transparent"
       >
-        {project.name}
+        {projectLabel(project)}
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -133,7 +138,7 @@ export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
                   onClick={() => navigate(projectHref(other))}
                   className={MENU_ROW}
                 >
-                  <span className="truncate">{other.name}</span>
+                  <span className="truncate">{projectLabel(other)}</span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuSubContent>

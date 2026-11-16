@@ -15,6 +15,8 @@ interface RenameFieldProps {
   hug?: boolean
   /** Commits an emptied name as `''` rather than cancelling, for a name that has a fallback. */
   clearable?: boolean
+  /** Told each value as it is typed, for a hint that reads it live. */
+  onType?: (value: string) => void
 }
 
 /**
@@ -32,6 +34,7 @@ export function RenameField({
   onCancel,
   hug = false,
   clearable = false,
+  onType,
 }: RenameFieldProps) {
   const input = useRef<HTMLInputElement>(null)
   const done = useRef(false)
@@ -55,7 +58,10 @@ export function RenameField({
       ref={input}
       aria-label={label}
       value={value}
-      onChange={(event) => setValue(event.target.value)}
+      onChange={(event) => {
+        setValue(event.target.value)
+        onType?.(event.target.value)
+      }}
       // One character, so the input's own default width never props the hug open.
       size={hug ? 1 : undefined}
       spellCheck={false}

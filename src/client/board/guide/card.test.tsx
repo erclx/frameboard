@@ -39,6 +39,7 @@ function startBoard() {
         name: 'untitled',
         path: '/board/untitled',
         modifiedAt: '2026-10-25T09:00:00.000Z',
+        title: null,
         createdAt: '2026-10-25T09:00:00.000Z',
         group: null,
         archived: false,
@@ -61,6 +62,13 @@ interface Sent {
   path: string
   body: unknown
 }
+
+/** Answers a title write with the project landing in `folder`. */
+const landsIn = (folder: string) => () =>
+  Response.json({
+    ok: true,
+    data: { ...startBoard().projects[0], name: folder },
+  })
 
 /** A server answering each write with `answer`, recording what the card sent. */
 function server(
@@ -118,9 +126,9 @@ describe('GuideCard', () => {
     },
   )
 
-  it('renames the project to the folder the typed name makes', async () => {
+  it('sends the typed name as the title', async () => {
     const user = userEvent.setup()
-    const { sent, calls } = server()
+    const { sent, calls } = server(landsIn('acme-mobile'))
     renderCard({ calls })
 
     await user.clear(
@@ -135,15 +143,15 @@ describe('GuideCard', () => {
       .poll(() => sent)
       .toEqual([
         {
-          path: '/api/project/rename',
-          body: { ref: 'untitled', name: 'acme-mobile' },
+          path: '/api/project/title',
+          body: { ref: 'untitled', title: 'Acme mobile' },
         },
       ])
   })
 
-  it('moves the board to the renamed project and on to the size step', async () => {
+  it('moves the board to the folder the title landed in and on to the size step', async () => {
     const user = userEvent.setup()
-    const memory = renderCard()
+    const memory = renderCard({ calls: server(landsIn('acme')).calls })
 
     await user.clear(
       screen.getByRole('textbox', { name: 'What are you designing?' }),
@@ -162,7 +170,7 @@ describe('GuideCard', () => {
   it('carries a pin on untitled to the name the guide gives it', async () => {
     localStorage.setItem('frameboard.home.pins', JSON.stringify(['untitled']))
     const user = userEvent.setup()
-    renderCard()
+    renderCard({ calls: server(landsIn('acme')).calls })
 
     await user.clear(
       screen.getByRole('textbox', { name: 'What are you designing?' }),

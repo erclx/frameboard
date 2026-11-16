@@ -3,6 +3,9 @@ export const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
 export const NAME_MAX_LENGTH = 64
 
+/** The longest title a project takes, which its folder name is cut from. */
+export const TITLE_MAX_LENGTH = 256
+
 /** Names a page may not take, since the folder means something else in a project. */
 export const RESERVED_PAGE_NAMES = ['assets'] as const
 
@@ -27,4 +30,42 @@ export function nextFreeName(base: string, taken: Iterable<string>): string {
     const candidate = `${base}-${suffix}`
     if (!lowered.has(candidate.toLowerCase())) return candidate
   }
+}
+
+/**
+ * The folder a project in `current` lands in once titled `title`: the name
+ * made from the title, the next free one when another of `taken` holds it,
+ * and `current` itself when the title names no folder or names the one it
+ * is in. A taken name near the length limit is cut back until a free one
+ * fits, its suffix included, so the folder always stays a valid name.
+ */
+export function titledFolder(
+  current: string,
+  title: string,
+  taken: Iterable<string>,
+): string {
+  const folder = folderName(title)
+  if (folder === '' || namesCollide(folder, current)) return current
+  const others = [...taken].filter((name) => name !== current)
+  for (let cut = folder.length; cut > 0; cut--) {
+    const base = folder.slice(0, cut).replace(/-+$/, '')
+    const free = nextFreeName(base, others)
+    if (base !== '' && free.length <= NAME_MAX_LENGTH) return free
+  }
+  return current
+}
+
+/**
+ * A typed title as the folder it names, lower case with each run of
+ * characters a name may not hold turned into one dash, so `Acme mobile`
+ * becomes `acme-mobile`. Empty when the title holds nothing a name may.
+ */
+export function folderName(typed: string): string {
+  return typed
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+/, '')
+    .slice(0, NAME_MAX_LENGTH)
+    .replace(/-+$/, '')
 }

@@ -76,6 +76,7 @@ function project(pages: PageRecord[]): ProjectRecord {
     name: 'studio',
     path: '/board/studio',
     modifiedAt: '2026-10-15T00:00:00.000Z',
+    title: null,
     createdAt: null,
     group: null,
     archived: false,
@@ -320,8 +321,12 @@ describe('LeftPanel', () => {
       return studio
     }
 
-    it('renames the project from a click on its name and follows it', async () => {
-      const { sent, calls } = server()
+    it('renames the project from a click on its name and follows its folder', async () => {
+      const { sent, calls } = server({
+        ...atlas,
+        name: 'gallery',
+        title: 'Gallery',
+      })
       const studio = withProjectActions(calls)
       const location = renderPanel(studio, 'home', undefined, { calls })
 
@@ -330,15 +335,49 @@ describe('LeftPanel', () => {
         name: 'Rename project studio',
       })
       await userEvent.clear(field)
-      await userEvent.type(field, 'gallery{Enter}')
+      await userEvent.type(field, 'Gallery{Enter}')
 
       await expect.poll(() => location.history?.at(-1)).toBe('/p/gallery/home')
       expect(sent).toEqual([
         {
-          path: '/api/project/rename',
-          body: { ref: 'studio', name: 'gallery' },
+          path: '/api/project/title',
+          body: { ref: 'studio', title: 'Gallery' },
         },
       ])
+    })
+
+    /** The board holding `studio` and `atlas`, each with a title. */
+    function withTitles() {
+      const studio = { ...project([page('home')]), title: 'Studio site' }
+      liveStore.setState({
+        board: {
+          root: '/board',
+          projects: [studio, { ...atlas, title: 'Atlas app' }],
+        },
+      })
+      cleanups.push(() => liveStore.setState({ board: null }))
+      return studio
+    }
+
+    it("shows the project's title over its folder", () => {
+      renderPanel(withTitles(), 'home')
+
+      expect(screen.getByRole('button', { name: 'Studio site' })).toBeVisible()
+    })
+
+    it('lists the other projects by title under Switch project', async () => {
+      renderPanel(withTitles(), 'home')
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Project menu' }),
+      )
+      await userEvent.click(
+        await screen.findByRole('menuitem', { name: 'Switch project' }),
+      )
+
+      expect(
+        await screen.findByRole('menuitem', { name: 'Atlas app' }),
+      ).toBeInTheDocument()
     })
 
     it('duplicates the project from its menu', async () => {

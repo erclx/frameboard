@@ -3,6 +3,7 @@ import { useRoute } from 'wouter'
 
 import { useLive } from '@/client/live/store'
 import { unseenReplies, useUnseen } from '@/client/live/unseen'
+import { projectLabel } from '@/client/projects/actions'
 
 /** The title `index.html` ships and the tab reads with nothing to count. */
 export const APP_TITLE = 'Frameboard'
@@ -19,7 +20,8 @@ export function tabTitle(count: number, project: string | null): string {
 /**
  * Keeps `document.title` on the count of every unseen agent change and agent
  * note reply on the board, whichever project is open, since the toast and
- * its Mark all seen span the whole board too.
+ * its Mark all seen span the whole board too. The open project reads as its
+ * title, found by the folder the route names.
  */
 export function useTabTitle(): void {
   const [onProject, params] = useRoute<{ project: string }>(
@@ -30,7 +32,14 @@ export function useTabTitle(): void {
   const replies = useLive((state) =>
     unseenReplies(state.notes, seenReplies, state.board),
   )
-  const title = tabTitle(changes + replies, onProject ? params.project : null)
+  const label = useLive((state) => {
+    if (!onProject) return null
+    const open = state.board?.projects.find(
+      (project) => project.name === params.project,
+    )
+    return open ? projectLabel(open) : params.project
+  })
+  const title = tabTitle(changes + replies, label)
   useEffect(() => {
     document.title = title
   }, [title])

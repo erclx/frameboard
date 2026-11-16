@@ -67,11 +67,12 @@ Two keys shape a frame past its size, and `frame fit` reads both.
 
 ### `src/cli/commands/project.ts`
 
-Owns the project verbs, being add, rename, delete, the two filing verbs, and tokens. A project takes no duplicate or move from the CLI.
+Owns the project verbs, being add, rename, title, delete, the two filing verbs, and tokens. A project takes no duplicate or move from the CLI.
 
 - `project group` and `project archive` file one project through `fileProjects`, the writer behind the board's filing routes, so the lock, the Edited time, and every other `project.json` key hold
 - Unlike those routes, the verbs neither refuse a project another session holds nor journal the filing for undo
 - `group` refuses a blank folder as `invalid-name`, since the writer reads one as a clear, and a call giving both or neither of a folder and `--clear` as `usage`
+- `project title <name> <title>` sets a title in any characters through `retitleProject` and moves the folder to the name made from it, so the ref an agent passes next is the record's `name`
 - `project tokens` writes a starter token sheet the way the guide's look step does, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
 
 ### `src/cli/commands/references.ts`

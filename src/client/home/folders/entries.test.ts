@@ -13,6 +13,7 @@ function project(
     name,
     path: `/board/${name}`,
     modifiedAt,
+    title: null,
     createdAt: null,
     group,
     archived: false,

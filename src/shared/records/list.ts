@@ -79,7 +79,10 @@ export const pageRecordSchema = z.object({
 export type PageRecord = z.infer<typeof pageRecordSchema>
 
 export const projectRecordSchema = z.object({
+  /** The folder, which every ref, URL, and CLI argument names the project by. */
   name: z.string(),
+  /** The name a person reads, null when `project.json` holds none, where readers show `name`. */
+  title: z.string().nullable(),
   path: z.string(),
   modifiedAt: z.string(),
   /** When the project was made, null for one made before the time was recorded. */

@@ -31,8 +31,9 @@ export function setHomeFilter(text: string): void {
 }
 
 /**
- * The projects a filter shows: each whose name holds the text in any case,
- * and every member of a folder whose name holds it. A blank filter shows all.
+ * The projects a filter shows: each whose title or folder holds the text in
+ * any case, and every member of a home folder whose name holds it. A blank
+ * filter shows all.
  */
 export function filterProjects(
   projects: readonly ProjectRecord[],
@@ -43,6 +44,7 @@ export function filterProjects(
   return projects.filter(
     (project) =>
       project.name.toLowerCase().includes(needle) ||
+      (project.title?.toLowerCase().includes(needle) ?? false) ||
       (project.group?.toLowerCase().includes(needle) ?? false),
   )
 }

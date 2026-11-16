@@ -13,6 +13,7 @@ function project(
     name,
     path: `/board/${name}`,
     modifiedAt,
+    title: null,
     createdAt,
     group: null,
     archived: false,
@@ -78,6 +79,18 @@ describe('orderProjects', () => {
       'Atlas',
       'studio',
       'webapp',
+    ])
+  })
+
+  it('orders a titled project by its title', () => {
+    const projects = [
+      project('zebra', '2026-10-15T09:00:00.000Z'),
+      { ...project('zz-top', '2026-10-15T09:00:00.000Z'), title: 'Alpha' },
+    ]
+
+    expect(names(orderProjects(projects, 'name', NONE))).toEqual([
+      'zz-top',
+      'zebra',
     ])
   })
 

@@ -2,6 +2,7 @@ import { ArrowDownUp, CalendarPlus, CaseSensitive, Clock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { refreshActions, registerActions } from '@/client/actions/registry'
+import { projectLabel } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 
 export type HomeSort = 'edited' | 'created' | 'name'
@@ -118,9 +119,15 @@ export function splitArchived(projects: readonly ProjectRecord[]): {
 
 type Compare = (a: ProjectRecord, b: ProjectRecord) => number
 
-const byName: Compare = (a, b) =>
-  a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) ||
-  (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+/** By the name a person reads, then by folder, so the order never rests on the input's. */
+const byName: Compare = (a, b) => {
+  const [left, right] = [projectLabel(a), projectLabel(b)]
+  return (
+    left.localeCompare(right, 'en', { sensitivity: 'base' }) ||
+    (left < right ? -1 : left > right ? 1 : 0) ||
+    (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+  )
+}
 
 /** Each key ascending, so a direction is a sign on it. */
 const COMPARE: Readonly<Record<HomeSort, Compare>> = {

@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import { nextFreeName } from '@/shared/names'
+import { nextFreeName, TITLE_MAX_LENGTH, titledFolder } from '@/shared/names'
 import type { ProjectFile } from '@/shared/records/board'
 import type { ProjectRecord } from '@/shared/records/list'
 
@@ -53,6 +53,56 @@ export async function renameProject(
   if (journal) await journal.moved(project.path, renamed)
   else await rename(project.path, renamed)
   return scanProject(root, newName)
+}
+
+/**
+ * Sets the name a person reads for the project, which may hold any
+ * characters, and moves the folder to the name made from it, the next free
+ * one when another project holds it. A title naming no folder, such as one in
+ * a script a name cannot hold, or one naming the folder it is in, keeps the
+ * folder. A blank title takes the key out, so readers show the folder again.
+ * The title goes in first under the old folder and the move follows, which
+ * the board's undo reverses in turn. The times are put back as a filing's
+ * are, since a title draws nothing.
+ */
+export async function retitleProject(
+  root: string,
+  name: string,
+  title: string,
+  { journal }: JournalOptions = {},
+): Promise<ProjectRecord> {
+  const project = await resolveProject(root, name)
+  const path = join(project.path, PROJECT_FILE)
+  const trimmed = title.trim()
+  if (trimmed.length > TITLE_MAX_LENGTH) {
+    throw new FrameboardError(
+      'invalid-name',
+      `A project title holds at most ${TITLE_MAX_LENGTH} characters.`,
+      { title: trimmed },
+    )
+  }
+  await keepingTimes([path], (keep) =>
+    withLocks([path], async () => {
+      const file = await readRecord(path, {
+        ...projectSpec,
+        empty: emptyProject,
+      })
+      const { title: _title, ...rest } = file
+      const next = trimmed === '' ? rest : { ...rest, title: trimmed }
+      const before = filingOf(file)
+      const after = filingOf(next)
+      if (isSameFiling(before, after)) return
+      await keep(path)
+      await writeRecord(path, next)
+      journal?.project(path, before, after)
+    }),
+  )
+  const moved = titledFolder(project.name, trimmed, await listProjects(root))
+  if (moved === project.name) return scanProject(root, project.name)
+  const target = join(root, moved)
+  if (journal) await journal.moved(project.path, target)
+  else await rename(project.path, target)
+  return scanProject(root, moved)
 }
 
 /**
@@ -166,6 +216,7 @@ export function filingOf(file: ProjectFile): ProjectFiling {
   return {
     ...(file.group === undefined ? {} : { group: file.group }),
     ...(file.archived === undefined ? {} : { archived: file.archived }),
+    ...(file.title === undefined ? {} : { title: file.title }),
     ...(off === undefined ? {} : { off }),
   }
 }
@@ -174,6 +225,7 @@ function isSameFiling(a: ProjectFiling, b: ProjectFiling): boolean {
   return (
     a.group === b.group &&
     a.archived === b.archived &&
+    a.title === b.title &&
     isDeepStrictEqual(a.off, b.off)
   )
 }
@@ -265,7 +317,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Runs `run`, a section holding the lock of each project file it writes, and
  * puts back the times that file and its folder held, which the scanner reads
- * as the project's last edit. `run` calls `keep` under the lock before each
+ * as the project's last edit. `land` names where a file stands once `run`
+ * is done, for a run that moves its folder, and the times go back there. `run` calls `keep` under the lock before each
  * write, so the file's time is read after any writer that held the lock first.
  * The folder's time is read before the lock, since taking and dropping the
  * lock moves it, and goes back only where the file kept its time until `keep`,
@@ -274,6 +327,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function keepingTimes<T>(
   files: string[],
   run: (keep: (file: string) => Promise<void>) => Promise<T>,
+  land: (file: string) => string = (file) => file,
 ): Promise<T> {
   const before = new Map(
     await Promise.all(
@@ -301,10 +355,11 @@ export async function keepingTimes<T>(
   } finally {
     await Promise.all(
       [...kept].map(async ([file, time]) => {
-        await put(file, time)
+        const at = land(file)
+        await put(at, time)
         const { file: was, folder } = before.get(file) ?? {}
         if (folder && was?.mtimeMs === time.mtimeMs) {
-          await put(dirname(file), folder)
+          await put(dirname(at), folder)
         }
       }),
     )

@@ -18,6 +18,7 @@ import { toast, Toaster } from '@/client/components/ui/toast'
 import { pinnedProjects } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
+import type { ProjectRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import {
@@ -25,6 +26,7 @@ import {
   focusProject,
   projectStore,
   renameProject,
+  startProjectRename,
   useNewProjectAction,
   useProjectActions,
 } from './actions'
@@ -196,12 +198,56 @@ describe('project.pin', () => {
 })
 
 describe('renameProject', () => {
-  it('moves the pin to the new name', async () => {
+  const landed = (name: string, title: string): ProjectRecord => {
+    const [studio] = boardOf().projects
+    if (!studio) throw new Error('The board holds no project.')
+    return { ...studio, name, title }
+  }
+
+  it('sends the typed name as the title', async () => {
+    const { sent, calls } = server(landed('atlas-mobile', 'Atlas mobile'))
+
+    await renameProject('studio', 'Atlas mobile', calls)
+
+    expect(sent).toEqual([
+      {
+        path: '/api/project/title',
+        body: { ref: 'studio', title: 'Atlas mobile' },
+      },
+    ])
+  })
+
+  it('moves the pin to the folder the title landed in', async () => {
     localStorage.setItem('frameboard.home.pins', JSON.stringify(['studio']))
 
-    await renameProject('studio', 'atlas', server().calls)
+    await renameProject(
+      'studio',
+      'Atlas mobile',
+      server(landed('atlas-mobile', 'Atlas mobile')).calls,
+    )
 
-    expect([...pinnedProjects()]).toEqual(['atlas'])
+    expect([...pinnedProjects()]).toEqual(['atlas-mobile'])
+  })
+
+  it('keeps the pin where a title kept the folder', async () => {
+    localStorage.setItem('frameboard.home.pins', JSON.stringify(['studio']))
+
+    await renameProject('studio', '!!!', server(landed('studio', '!!!')).calls)
+
+    expect([...pinnedProjects()]).toEqual(['studio'])
+  })
+
+  it('opens the field on the title the project shows', () => {
+    liveStore.setState({
+      board: {
+        root: '/board',
+        projects: [landed('studio', 'Studio site')],
+      },
+    })
+
+    startProjectRename('studio')
+
+    expect(projectStore.getState().renaming?.draft).toBe('Studio site')
   })
 
   it('keeps the pin on the old name when the rename is refused', async () => {
@@ -218,10 +264,10 @@ describe('renameProject', () => {
     expect([...pinnedProjects()]).toEqual(['studio'])
   })
 
-  it('resolves the new name once the rename lands', async () => {
-    const { calls } = server()
+  it('resolves the folder the title landed in', async () => {
+    const { calls } = server(landed('atlas', 'Atlas'))
 
-    expect(await renameProject('studio', 'atlas', calls)).toBe('atlas')
+    expect(await renameProject('studio', 'Atlas', calls)).toBe('atlas')
   })
 
   it('resolves null when the server refuses the name', async () => {

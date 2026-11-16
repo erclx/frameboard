@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  folderName,
   isReservedPageName,
   isValidName,
   namesCollide,
   nextFreeName,
+  titledFolder,
 } from './names'
 
 describe('isValidName', () => {
@@ -50,5 +52,82 @@ describe('nextFreeName', () => {
 
   it('counts a name differing only in case as taken', () => {
     expect(nextFreeName('hero', ['Hero'])).toBe('hero-2')
+  })
+})
+
+describe('folderName', () => {
+  it('turns a space into a dash and lowers the case', () => {
+    expect(folderName('Manual drive')).toBe('manual-drive')
+  })
+
+  it('folds a run of refused characters into one dash and drops a trailing one', () => {
+    expect(folderName('Drive 38 basics!')).toBe('drive-38-basics')
+  })
+
+  it('drops a leading dot', () => {
+    expect(folderName('.hidden plans')).toBe('hidden-plans')
+  })
+
+  it('cuts a long title to the name limit', () => {
+    const folder = folderName('a'.repeat(80))
+    expect(folder).toBe('a'.repeat(64))
+  })
+
+  it('does not end on a dash where the cut lands on one', () => {
+    expect(folderName(`${'a'.repeat(63)} b`)).toBe('a'.repeat(63))
+  })
+
+  it('is empty for a title holding nothing a name may', () => {
+    expect(folderName('!!!')).toBe('')
+  })
+
+  it.each([
+    'Manual drive',
+    'Drive 38 basics!',
+    '.hidden plans',
+    '_x',
+    'a'.repeat(80),
+  ])('makes a valid name from %j', (title) => {
+    expect(isValidName(folderName(title))).toBe(true)
+  })
+})
+
+describe('titledFolder', () => {
+  it('takes the name made from the title', () => {
+    expect(titledFolder('untitled', 'Manual drive', ['untitled'])).toBe(
+      'manual-drive',
+    )
+  })
+
+  it('takes the next free name when another project holds it', () => {
+    expect(titledFolder('untitled', 'Studio', ['untitled', 'studio'])).toBe(
+      'studio-2',
+    )
+  })
+
+  it('keeps the folder a title already names, in any case', () => {
+    expect(titledFolder('Studio', 'studio', ['Studio', 'studio-2'])).toBe(
+      'Studio',
+    )
+  })
+
+  it('keeps the folder when the title names none', () => {
+    expect(titledFolder('studio', '!!!', ['studio'])).toBe('studio')
+  })
+
+  it('cuts a taken name at the length limit back to a free one that fits', () => {
+    const long = 'a'.repeat(64)
+
+    expect(titledFolder('untitled', 'a'.repeat(80), ['untitled', long])).toBe(
+      'a'.repeat(63),
+    )
+  })
+
+  it('keeps every landing folder a valid name when the cut names are taken too', () => {
+    const taken = ['untitled', 'a'.repeat(64), 'a'.repeat(63)]
+
+    expect(isValidName(titledFolder('untitled', 'a'.repeat(80), taken))).toBe(
+      true,
+    )
   })
 })

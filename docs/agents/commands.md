@@ -17,6 +17,8 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
+`project title <name> <title>` gives a project a name a person reads, in any characters, and moves its folder to a safe name made from it. Name the folder `list --json` reports as `name` in the next command.
+
 ## Capturing
 
 `capture` writes images of what the board renders.

@@ -114,19 +114,6 @@ export function useGuideLanding(): boolean {
 }
 
 /**
- * A typed project name as the folder it renames to, lower case with each run
- * of characters a name may not hold turned into one dash, so `Acme mobile`
- * becomes `acme-mobile`. The server still checks what comes out.
- */
-export function folderName(typed: string): string {
-  return typed
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-/**
  * The folder to open Claude Code in for a board at `root`, being the folder
  * `serve` ran in when it made `.frameboard/` there, since the CLI's walk
  * finds the board from it, and the root itself for a `--root` board.

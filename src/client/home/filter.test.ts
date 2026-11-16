@@ -4,11 +4,16 @@ import type { ProjectRecord } from '@/shared/records/list'
 
 import { filterProjects } from './filter'
 
-function project(name: string, group: string | null = null): ProjectRecord {
+function project(
+  name: string,
+  group: string | null = null,
+  title: string | null = null,
+): ProjectRecord {
   return {
     name,
     path: `/board/${name}`,
     modifiedAt: '2026-10-15T09:00:00.000Z',
+    title,
     createdAt: null,
     group,
     archived: false,
@@ -48,6 +53,18 @@ describe('filterProjects', () => {
       'client-web',
       'notes',
     ])
+  })
+
+  it('matches a title or the folder under it', () => {
+    const board = [
+      project('manual-drive', null, 'Manual drive'),
+      project('drawings'),
+    ]
+
+    expect([
+      names(filterProjects(board, 'manual d')),
+      names(filterProjects(board, 'manual-d')),
+    ]).toEqual([['manual-drive'], ['manual-drive']])
   })
 
   it('shows nothing when no name matches', () => {
