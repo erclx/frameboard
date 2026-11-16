@@ -1,6 +1,6 @@
 ---
 name: draw
-description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing.
+description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, or lay out a video scene.
 ---
 
 # Frameboard
@@ -19,7 +19,11 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 - Run `frameboard serve --json` in the background. It creates a board in a folder that has none, and on a board already served it reports `reused: true` and binds nothing, so a second call is safe.
 - Run `frameboard list --json` to see the projects, pages, and frames before adding any.
-- Run `frameboard project add`, `rename`, or `delete` to manage projects, `project group <name> <folder>` to file one under a home folder (`--clear` takes it out), `project archive <name>` to move it to home's Archived section (`--restore` brings it back), and `project tokens` to give one with no token sheet a starter. Take the arguments from `docs`.
+- Run `frameboard project add`, `rename`, or `delete` to manage projects, taking the arguments from `docs`, and reach for the rest of the `project` verbs as below
+  - `project title <name> <title>` sets a free display title, and a blank one takes it off. It can move the folder to a name made from the title, so run `list --json` again before using an old path.
+  - `project group <name> <folder>` files one under a home folder, and `--clear` takes it out
+  - `project archive <name>` moves one to home's Archived section, and `--restore` brings it back
+  - `project tokens` gives one with no token sheet a starter
 - Run `frameboard open --no-open --json` when the developer needs a second tab that can edit, and hand them its `writeUrl`. The link works once and expires at `expiresAt`, and a tab opened on the plain address only reads.
 
 ## Draw a frame
@@ -45,6 +49,7 @@ Run these on each frame once it is placed.
    - A finding at error means the frame renders wrong or cannot load, and a warning is a style call the frame still renders through
    - Read the findings from the envelope's `data.findings` in both answers, each naming its rule, file, line, and column
    - An error finding exits 8 and warnings alone exit 0, so branch on the exit and read `data.findings` either way
+   - A frame runs on the board's own origin, so `board-route` reports a script naming a path under `/api/`. Mock an app's calls with data kept in the script rather than calling the board's server.
 3. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
@@ -52,18 +57,16 @@ Run these on each frame once it is placed.
 5. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
-## Add a slide transition of the project's own
+## Read the reference for the task
 
-- Write `assets/transitions/<name>.css` holding `@keyframes enter` and optionally `@keyframes leave`, as the `present` block of `frameboard docs` allows
-- Set it by name with `frameboard page transition <page> <name>`
+Each feature past the core loop keeps its judgment in its own file. Read the one matching the task before the first write, and skip the rest.
+
+- When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md`
+- When the task is presenting a page, such as a deck, a slide transition, or an element a press reveals, read `${CLAUDE_SKILL_DIR}/references/slides.md`
 
 ## Keep frames in their sections
 
 The developer draws sections on the board, and `list --json` names each section's frames. A frame belongs to the section holding its center, so moving a frame out of the box takes it out of the section. Place a new frame inside a section's box to put it there, and never write a section yourself.
-
-## Lift an existing page
-
-When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md` first.
 
 ## Make every frame work in both themes
 
