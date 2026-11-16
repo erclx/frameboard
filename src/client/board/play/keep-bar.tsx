@@ -1,0 +1,71 @@
+import { useEffect, useState } from 'react'
+
+import { Button } from '@/client/components/ui/button'
+import { useLive } from '@/client/live/store'
+import type { FrameRecord } from '@/shared/records/list'
+
+import { screen } from '../geometry/draw'
+import {
+  followEnteredControls,
+  keepControls,
+  resetControls,
+  useMovedControls,
+} from './controls'
+
+/** How far inside the entered frame's bottom right corner the bar sits, in screen pixels. */
+const INSET = 12
+
+/**
+ * The bar Play shows inside the entered frame's bottom right corner once one
+ * of its drawn controls moved, at a constant screen size: how many values
+ * changed, Reset, and Keep values, which writes them as one undo step. A
+ * view-only tab tunes live but offers no Keep values. It draws in the notes
+ * layer, the board-space layer a press reaches in Play. While mounted it
+ * binds the entered frame's controls, so it mounts for Play alone.
+ */
+export function KeepBar({
+  page,
+  frames,
+}: {
+  page: string
+  frames: readonly FrameRecord[]
+}) {
+  useEffect(() => followEnteredControls(), [])
+  const { ref, moved } = useMovedControls()
+  const canWrite = useLive((state) => state.canWrite)
+  const [keeping, setKeeping] = useState(false)
+  const frame = frames.find((candidate) => candidate.ref === ref)
+  if (!frame || moved === 0) return null
+  const { x, y, width, height } = frame.box
+  return (
+    <div className="absolute" style={{ left: x + width, top: y + height }}>
+      <div
+        data-keep-bar
+        role="group"
+        aria-label="Moved controls"
+        className="pointer-events-auto absolute flex origin-bottom-right items-center gap-2 rounded-[9px] border border-border bg-card py-1.5 pr-2 pl-2.5 text-[11px] whitespace-nowrap text-foreground shadow-lg [transform:scale(calc(1/var(--zoom,1)))]"
+        style={{ right: screen(INSET), bottom: screen(INSET) }}
+      >
+        <span className="text-muted-foreground">
+          {moved} {moved === 1 ? 'value' : 'values'} changed
+        </span>
+        <Button variant="outline" size="xs" onClick={resetControls}>
+          Reset
+        </Button>
+        {canWrite ? (
+          <Button
+            size="xs"
+            aria-disabled={keeping || undefined}
+            onClick={() => {
+              if (keeping) return
+              setKeeping(true)
+              void keepControls(page).finally(() => setKeeping(false))
+            }}
+          >
+            Keep values
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,131 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { expect, type Page, test } from '@playwright/test'
+
+import {
+  copyFixtureBoard,
+  type FixtureBoard,
+} from '../../test/support/fixture-board'
+import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
+
+const HERO = 'webapp/home/hero'
+
+/** A photo whose CSS reads two custom properties, and a slider bound to each. */
+const TUNER = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>hero</title>
+    <style>
+      #photo { width: 240px; height: 160px; background: #c2410c;
+        filter: brightness(var(--brightness, 100%)) grayscale(var(--grayscale, 0%)); }
+    </style>
+  </head>
+  <body>
+    <div id="photo" data-name="Photo"></div>
+    <label>Brightness <input type="range" min="0" max="200" value="100" data-binds="#photo --brightness" data-unit="%" /></label>
+    <label>Black and white <input type="range" min="0" max="100" value="0" data-binds="#photo --grayscale" data-unit="%" /></label>
+  </body>
+</html>
+`
+
+test.describe('controls drawn in a frame', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const path = () => join(board.root, `${HERO}.html`)
+  const read = () => readFileSync(path(), 'utf8')
+  const hero = (page: Page) =>
+    page.frameLocator(`[data-frame="${HERO}"] iframe`)
+  const slider = (page: Page, name: string) =>
+    hero(page).getByRole('slider', { name })
+  const bar = (page: Page) =>
+    page.getByRole('group', { name: 'Moved controls' })
+  const photoProperty = (page: Page, property: string) =>
+    hero(page)
+      .locator('#photo')
+      .evaluate(
+        (photo, name) => (photo as HTMLElement).style.getPropertyValue(name),
+        property,
+      )
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    writeFileSync(path(), TUNER)
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  /** Opens the page as a writer, enters Play, and enters the hero frame. */
+  async function enterHero(page: Page) {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect(slider(page, 'Brightness')).toBeVisible()
+    await page.getByRole('button', { name: 'Play' }).click()
+    await hero(page).locator('#photo').click()
+    await expect(page.getByText('In frame, Esc to leave')).toBeVisible()
+  }
+
+  test('a moved slider tunes live, Keep values writes one step, and one undo restores the file', async ({
+    page,
+  }) => {
+    const original = read()
+    await enterHero(page)
+
+    await slider(page, 'Brightness').fill('130')
+    await slider(page, 'Black and white').fill('60')
+    await expect.poll(() => photoProperty(page, '--brightness')).toBe('130%')
+    await expect(bar(page)).toContainText('2 values changed')
+    expect(read()).toBe(original)
+    await bar(page).getByRole('button', { name: 'Keep values' }).click()
+
+    await expect
+      .poll(read)
+      .toContain('style="--brightness: 130%; --grayscale: 60%"')
+    expect(read()).toContain(
+      'value="130" data-binds="#photo --brightness" data-unit="%"',
+    )
+    expect(read()).toContain(
+      'value="60" data-binds="#photo --grayscale" data-unit="%"',
+    )
+    await expect(bar(page)).toBeHidden()
+
+    await undo(page)
+    await expect.poll(read).toBe(original)
+  })
+
+  test('leaving Play without keeping puts the file values back', async ({
+    page,
+  }) => {
+    const original = read()
+    await enterHero(page)
+    await slider(page, 'Brightness').fill('130')
+    await expect(bar(page)).toContainText('1 value changed')
+
+    await page.getByRole('button', { name: 'Edit' }).click()
+
+    await expect(bar(page)).toBeHidden()
+    await expect.poll(() => photoProperty(page, '--brightness')).toBe('')
+    await expect(slider(page, 'Brightness')).toHaveValue('100')
+    expect(read()).toBe(original)
+  })
+
+  test('Reset drops the moved values and writes nothing', async ({ page }) => {
+    const original = read()
+    await enterHero(page)
+    await slider(page, 'Black and white').fill('60')
+
+    await bar(page).getByRole('button', { name: 'Reset' }).click()
+
+    await expect(bar(page)).toBeHidden()
+    await expect.poll(() => photoProperty(page, '--grayscale')).toBe('')
+    await expect(slider(page, 'Black and white')).toHaveValue('0')
+    expect(read()).toBe(original)
+  })
+})

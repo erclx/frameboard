@@ -77,6 +77,7 @@ import {
 import { takeDraft } from './place/tool'
 import { placeElement, placeFile } from './place/write'
 import { enteredStore } from './play/entered'
+import { KeepBar } from './play/keep-bar'
 import { PlayShield } from './play/shield'
 import { pressRail, railReach } from './scroll/page'
 import { placeSection } from './sections/actions'
@@ -1025,6 +1026,7 @@ export function Canvas({
         className="pointer-events-none absolute top-0 left-0 origin-top-left"
       >
         <NotesLayer page={page.ref} frames={frames} container={layer} />
+        {playing ? <KeepBar page={page.ref} frames={frames} /> : null}
         {/* Here rather than on the label, since the hit layer covers the frames' layer. */}
         <LabelRename frames={frames} />
       </div>
