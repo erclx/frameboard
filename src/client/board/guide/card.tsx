@@ -20,6 +20,7 @@ import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
+import { projectLabel } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
@@ -84,6 +85,11 @@ export function GuideCard({
   const state = useStore(guideStore)
   const table = useTokenTable(page.project, loadTokens)
   const root = useLive((live) => live.board?.root ?? '')
+  const record = useLive((live) =>
+    live.board?.projects.find(
+      (each) => each.name === (state.project ?? page.project),
+    ),
+  )
   const [, navigate] = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -96,7 +102,8 @@ export function GuideCard({
     : ['name', 'size', 'agent']
   const at = Math.min(state.at, steps.length - 1)
   const step = steps[at] ?? 'name'
-  const name = state.name ?? project
+  const label = record ? projectLabel(record) : project
+  const name = state.name ?? label
   const folder = folderName(name)
 
   useEffect(() => {
@@ -162,18 +169,22 @@ export function GuideCard({
     open()
     set({ busy: true })
     if (step === 'name') {
-      if (folder === '') {
+      const title = name.trim()
+      if (title === '') {
         return set({ refusal: 'Enter a name for the project.', busy: false })
       }
-      if (folder === project) return advance()
+      if (title === label) return advance()
+      let landed: string
       try {
-        await calls.renameProject(project, folder)
+        landed = (await calls.retitleProject(project, title)).name
       } catch (error) {
         return refuse(error, `Couldn't rename ${project}`)
       }
-      movePin(project, folder)
-      set({ project: folder, name: null })
-      navigate(boardUrl(folder, page.name), { replace: true })
+      set({ project: landed, name: null })
+      if (landed !== project) {
+        movePin(project, landed)
+        navigate(boardUrl(landed, page.name), { replace: true })
+      }
       return advance()
     }
     if (step === 'agent') return finish()

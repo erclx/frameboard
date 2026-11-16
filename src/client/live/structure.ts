@@ -50,6 +50,9 @@ export function createStructure(send: typeof fetch = fetch) {
       post<ProjectRecord>('/api/project/add', { name }),
     renameProject: (ref: string, name: string) =>
       post<ProjectRecord>('/api/project/rename', { ref, name }),
+    /** Sets the project's title and moves its folder to the name made from it, answering where it landed. */
+    retitleProject: (ref: string, title: string) =>
+      post<ProjectRecord>('/api/project/title', { ref, title }),
     duplicateProject: (ref: string) =>
       post<ProjectRecord>('/api/project/duplicate', { ref }),
     deleteProject: (ref: string) =>

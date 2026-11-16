@@ -838,7 +838,7 @@ describe('project actions', () => {
     await userEvent.keyboard('site{Enter}')
 
     expect(sent).toEqual([
-      { path: '/api/project/rename', body: { ref: 'webapp', name: 'site' } },
+      { path: '/api/project/title', body: { ref: 'webapp', title: 'site' } },
     ])
   })
 

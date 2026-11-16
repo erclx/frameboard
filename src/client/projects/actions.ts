@@ -265,9 +265,19 @@ export async function ungroupFolder(
   if (first) focusProject(first)
 }
 
+/** The name a person reads for a project, its title or else its folder. */
+export function projectLabel(
+  project: Pick<ProjectRecord, 'name' | 'title'>,
+): string {
+  return project.title ?? project.name
+}
+
+/** Opens the project's name as a rename field, holding the title it shows. */
 export function startProjectRename(project: string): void {
+  const record = boardProjects().find((each) => each.name === project)
+  const draft = record ? projectLabel(record) : project
   projectStore.setState({
-    renaming: { project, draft: project, refusal: null, attempt: 0 },
+    renaming: { project, draft, refusal: null, attempt: 0 },
   })
 }
 
@@ -282,23 +292,25 @@ export function projectHref({ name, pages }: ProjectRecord): string {
 }
 
 /**
- * Renames a project through the server, carrying its pin to the new name.
- * The new board guide renames through the structure client and carries the
- * pin itself. A name the verb refuses as invalid
- * keeps the field open with the reason under it, and any other refusal
- * closes the field and raises the error toast. Resolves the new name, or
- * null when the project kept its own.
+ * Renames a project by setting the title typed, which may hold any
+ * characters, and lets the server move the folder to the name made from it,
+ * carrying the pin to wherever the folder landed. The new board guide titles
+ * through the structure client and carries the pin itself. A title the verb
+ * refuses as invalid keeps the field open with the reason under it, and any
+ * other refusal closes the field and raises the error toast. Resolves the
+ * folder the project now sits in, or null on a refusal.
  */
 export async function renameProject(
   project: string,
-  name: string,
+  title: string,
   calls: Structure = structure,
 ): Promise<string | null> {
   projectStore.setState(({ renaming }) => ({
-    renaming: renaming && { ...renaming, draft: name },
+    renaming: renaming && { ...renaming, draft: title },
   }))
+  let landed: ProjectRecord
   try {
-    await calls.renameProject(project, name)
+    landed = await calls.retitleProject(project, title)
   } catch (error) {
     if (error instanceof BoardWriteError && error.code === 'invalid-name') {
       projectStore.setState(({ renaming }) => ({
@@ -314,10 +326,10 @@ export async function renameProject(
     reportRefusal(`Couldn't rename ${project}`)(error)
     return null
   }
-  movePin(project, name)
+  if (landed.name !== project) movePin(project, landed.name)
   stopProjectRename()
-  focusProject(name)
-  return name
+  focusProject(landed.name)
+  return landed.name
 }
 
 /** The focused card or row, which the home view's project actions act on. */
