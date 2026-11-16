@@ -11,6 +11,7 @@ The browser app, split into the shell, commands, agent work, the inspector, the 
 - [Commands](commands.md): The action registry, the command palette and shortcuts sheet, and undo and redo
 - [Hand actions](hand-actions.md): Selection, undo and redo, hide and lock, arranging and snapping, copying a frame as an image, right-click menus, and the keys behind each
 - [Home view](home.md): The home view's project cards and rows, and the project actions it shares with the board
-- [Inspector](inspector.md): The right panel's controls for a selected frame, several frames, or an element, the bar a new control clears, and what a hand edit writes
+- [Inspector element sections](inspector-element.md): An element's sections in the inspector, being layout, size, position, type, rotation, paint, and text, and what a hand edit writes into a frame
+- [Inspector](inspector.md): The right panel's tabs and frame sections, Slides and Export, selection colors, and the number field every control shares
 - [Board server](server.md): Folder watcher, socket hub, claims record, write access, and the HTTP routes behind the board
 - [Board shell](shell.md): The board screen and canvas, Edit and Play, the panels, find, and the toolbar
