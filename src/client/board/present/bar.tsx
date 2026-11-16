@@ -44,7 +44,11 @@ export function PresentBar({
         disabled={at <= 1 && step <= 0}
         onClick={onPrevious}
       />
-      <span className="px-2 whitespace-nowrap text-[#ddd] tabular-nums select-none">
+      {/* Wide enough for the deck's last count, so passing 9 to 10 moves nothing. */}
+      <span
+        style={{ minWidth: `calc(${`${count} / ${count}`.length}ch + 1rem)` }}
+        className="px-2 text-center whitespace-nowrap text-[#ddd] tabular-nums select-none"
+      >
         {at} / {count}
       </span>
       <BarButton
@@ -53,7 +57,7 @@ export function PresentBar({
         disabled={at >= count && step >= steps}
         onClick={onNext}
       />
-      {steps > 0 ? <StepDots step={step} steps={steps} /> : null}
+      <StepSlot step={step} steps={steps} />
       <Separator />
       <span className="w-[150px] truncate px-2 text-[#aaa]">{name}</span>
       <Separator />
@@ -89,22 +93,38 @@ function BarButton({
   )
 }
 
-/** One dot per step, filled up to the step shown, read as a count by a screen reader. */
-function StepDots({ step, steps }: { step: number; steps: number }) {
+/** Past this many, dots stop being countable at their size, so the slot reads as text. */
+const MOST_DOTS = 6
+
+/**
+ * The steps at one width on every slide, sized for six dots, so Next and
+ * Leave never move when a stepped slide arrives. It holds one dot per step,
+ * filled up to the step shown, or the count as text past six, and stays an
+ * empty, unnamed span on a slide with none. A screen reader hears the count.
+ */
+function StepSlot({ step, steps }: { step: number; steps: number }) {
+  const slot =
+    'flex w-[57px] shrink-0 items-center justify-center gap-[3px] px-1.5'
+  if (steps === 0) return <span aria-hidden className={slot} />
   return (
-    <span
-      role="img"
-      aria-label={`Step ${step} of ${steps}`}
-      className="flex items-center gap-[3px] px-1.5"
-    >
-      {Array.from({ length: steps }, (_, index) => index + 1).map((number) => (
+    <span role="img" aria-label={`Step ${step} of ${steps}`} className={slot}>
+      {steps > MOST_DOTS ? (
         <span
-          key={number}
           aria-hidden
-          data-filled={number <= step || undefined}
-          className="size-[5px] rounded-full bg-[#5a5a5a] data-filled:bg-[#ddd]"
-        />
-      ))}
+          className="text-[#ddd] tabular-nums whitespace-nowrap select-none"
+        >
+          {step}/{steps}
+        </span>
+      ) : (
+        Array.from({ length: steps }, (_, index) => index + 1).map((number) => (
+          <span
+            key={number}
+            aria-hidden
+            data-filled={number <= step || undefined}
+            className="size-[5px] rounded-full bg-[#5a5a5a] data-filled:bg-[#ddd]"
+          />
+        ))
+      )}
     </span>
   )
 }

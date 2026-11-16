@@ -77,6 +77,9 @@ function present(
 const shownFrame = () => screen.getByRole('dialog').querySelector('iframe')
 const count = () =>
   screen.getByRole('toolbar', { name: 'Presenting' }).textContent
+const barWidth = () =>
+  screen.getByRole('toolbar', { name: 'Presenting' }).getBoundingClientRect()
+    .width
 
 afterEach(() => {
   presentStore.setState({ page: null, frame: null, leaving: null })
@@ -616,6 +619,51 @@ describe('steps inside a slide', () => {
     await fill('first', '<p>Plain</p>')
 
     expect(screen.queryByRole('img', { name: /^Step / })).toBeNull()
+  })
+
+  it('keeps the bar one width from a slide with no steps to one with steps', async () => {
+    present(framesOf('plain', 'stepped'))
+    await fill('plain', '<p>Plain</p>')
+    const before = barWidth()
+
+    await userEvent.keyboard('{ArrowRight}')
+    await fill('stepped', STEPPED)
+    await dots('Step 0 of 2')
+
+    expect(barWidth()).toBe(before)
+  })
+
+  it('keeps the bar one width on a slide with more steps than it draws dots for', async () => {
+    present(framesOf('few', 'many'))
+    await fill('few', STEPPED)
+    await dots('Step 0 of 2')
+    const before = barWidth()
+
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}')
+    await fill(
+      'many',
+      Array.from(
+        { length: 9 },
+        (_, at) => `<p data-step="${at + 1}">${at + 1}</p>`,
+      ).join(''),
+    )
+
+    expect((await dots('Step 0 of 9')).textContent).toBe('0/9')
+    expect(barWidth()).toBe(before)
+  })
+})
+
+describe('the count in the bar', () => {
+  it('keeps the bar one width passing from frame 9 to frame 10', async () => {
+    const names = Array.from({ length: 10 }, (_, at) => `frame-${at + 1}`)
+    present(framesOf(...names), ['frame-9'])
+    await screen.findByText('9 / 10')
+    const before = barWidth()
+
+    await userEvent.keyboard('{ArrowRight}')
+    await screen.findByText('10 / 10')
+
+    expect(barWidth()).toBe(before)
   })
 })
 
