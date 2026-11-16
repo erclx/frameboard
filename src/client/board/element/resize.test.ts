@@ -269,7 +269,10 @@ describe('resizeDeclarations', () => {
     })
 
     it('drops a Fill child’s flex along its row parent, as the Size row’s Fixed does', () => {
-      const sizing = { layout: layoutOf({ parent: 'horizontal' }), fills: true }
+      const sizing = {
+        layout: layoutOf({ parent: 'horizontal' }),
+        fills: true,
+      }
 
       expect(
         resizeDeclarations(
@@ -283,7 +286,10 @@ describe('resizeDeclarations', () => {
     })
 
     it('leaves a Fill child’s flex when the drag changes only the cross side', () => {
-      const sizing = { layout: layoutOf({ parent: 'horizontal' }), fills: true }
+      const sizing = {
+        layout: layoutOf({ parent: 'horizontal' }),
+        fills: true,
+      }
 
       expect(
         resizeDeclarations(
@@ -660,6 +666,27 @@ describe('a live element', () => {
       resize?.cancel()
 
       expect(container?.getAttribute('style')).toBe('display: flex; gap: 8px')
+    })
+
+    it('leaves a Fill row child’s style as it was after a cancel of a drag on both sides', async () => {
+      const shown = await mount(
+        '<style>.grow { flex: 1 }</style><div style="display: flex; width: 400px"><div class="grow" style="width: 100px"><p>a</p></div></div>',
+      )
+      const key = { ...KEY, index: 5 }
+      const read = shownResize(shown, key)
+      if (!read) throw new Error('The container reads no resize')
+      const resize = startElementResize('studio/home', key, read)
+      const child = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('.grow')
+
+      resize?.preview({
+        width: 160,
+        height: (read.sizing?.layout.height ?? 0) + 40,
+      })
+      resize?.cancel()
+
+      expect(child?.getAttribute('style')).toBe('width: 100px;')
     })
   })
 })

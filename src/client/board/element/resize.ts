@@ -301,14 +301,17 @@ export function startElementResize(
     })
     return null
   }
-  // Every property a preview wrote, since a container's drag may write its flex too.
-  const shown = new Set(['width', 'height'])
+  // The properties the latest preview wrote, in the order it wrote them, since
+  // a container's drag may write its flex too and a row parent's draw puts it
+  // between width and height.
+  const shown = new Set<string>()
   // Newest first, since `previewStyle` may put back the whole `style` it saved,
   // which holds every earlier preview.
   const putBack = () => {
     for (const property of [...shown].toReversed()) {
       previewStyle(key, property, null)
     }
+    shown.clear()
   }
   return {
     preview: (size) => {
