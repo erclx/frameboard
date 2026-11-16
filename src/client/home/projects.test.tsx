@@ -684,13 +684,16 @@ describe('project actions', () => {
     liveStore.setState({ canWrite: false, board: null })
   })
 
-  it('adds an untitled project from New project and opens its name for renaming', async () => {
+  it('adds an untitled project from New project with no kit and opens its name for renaming', async () => {
     const { sent, calls } = server(() =>
       Response.json({ ok: true, data: project('untitled', NEW) }),
     )
     const home = renderLive(PROJECTS, calls)
 
     await userEvent.click(screen.getByRole('button', { name: 'New project' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Create project' }),
+    )
     home.receive([...PROJECTS, project('untitled', NEW)])
 
     expect(sent).toEqual([{ path: '/api/project/add', body: {} }])
@@ -706,6 +709,9 @@ describe('project actions', () => {
     const home = renderLive([], calls)
 
     await userEvent.click(screen.getByRole('button', { name: 'New project' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Create project' }),
+    )
     home.receive([project('untitled', NEW)])
 
     expect(sent.map((request) => request.path)).toEqual(['/api/project/add'])

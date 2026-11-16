@@ -75,6 +75,8 @@ interface ProjectState {
   pendingRename: { from: string; to: string } | null
   /** The project whose card takes focus once home draws it, after a write moved it out of a closed panel. */
   focusTarget: string | null
+  /** Whether home shows New project's dialog, which picks the kit the project starts from. */
+  creating: boolean
 }
 
 export const projectStore = createStore<ProjectState>()(() => ({
@@ -85,6 +87,7 @@ export const projectStore = createStore<ProjectState>()(() => ({
   openFolder: null,
   pendingRename: null,
   focusTarget: null,
+  creating: false,
 }))
 
 export function useRenamingProject(project: string): Renaming | null {
@@ -530,16 +533,13 @@ export function useHomeAction(goHome: () => void): void {
 }
 
 /**
- * Registers `project.new` while the home view or a board is mounted, and a
- * new project opens its name for renaming on the home view. It is lit while
- * the tab may write. The board passes `leave`, which goes home before the add
- * rather than after, since leaving clears the board's project state and would
- * close the rename field the add opened.
+ * Registers `project.new` while the home view or a board is mounted, which
+ * opens New project's dialog on the home view, where the add runs and the new
+ * project opens its name for renaming. It is lit while the tab may write. The
+ * board passes `leave`, which goes home before the dialog opens, since
+ * leaving clears the board's project state and would close it.
  */
-export function useNewProjectAction(
-  calls: Structure = structure,
-  leave?: () => void,
-): void {
+export function useNewProjectAction(leave?: () => void): void {
   useEffect(() => {
     const writable = () => liveStore.getState().canWrite
     const unregister = registerActions([
@@ -551,10 +551,7 @@ export function useNewProjectAction(
         enabled: writable,
         run: () => {
           leave?.()
-          calls.addProject().then((added) => {
-            focusProject(added.name)
-            startProjectRename(added.name)
-          }, reportRefusal("Couldn't add a project"))
+          projectStore.setState({ creating: true })
         },
       },
     ])
@@ -565,7 +562,28 @@ export function useNewProjectAction(
       unsubscribe()
       unregister()
     }
-  }, [calls, leave])
+  }, [leave])
+}
+
+/**
+ * Adds a project and installs `kit` into it, null keeping the board's own
+ * look, then focuses its card and opens its name for renaming. The kit goes
+ * in with `replace`, since the new project holds no look of its own and a
+ * board sheet would otherwise refuse it. A refused install leaves the project
+ * added and says why.
+ */
+export async function createProject(
+  kit: string | null,
+  calls: Structure = structure,
+): Promise<void> {
+  const added = await calls.addProject()
+  if (kit !== null) {
+    await calls
+      .installKit(added.name, kit, true)
+      .catch(reportRefusal(`Couldn't install the kit into ${added.name}`))
+  }
+  focusProject(added.name)
+  startProjectRename(added.name)
 }
 
 /**
