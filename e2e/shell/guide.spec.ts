@@ -10,12 +10,15 @@ import { join } from 'node:path'
 
 import { expect, type Locator, test } from '@playwright/test'
 
-import { STARTER_ACCENTS } from '@/shared/starter-tokens'
-
 import { cli } from '../../test/support/cli'
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { liveCanvas } from '../support/canvas'
 import { undo } from '../support/history'
+
+/** A file of a kit the tool ships, as the source tree holds it. */
+function shippedKit(path: string): string {
+  return join(import.meta.dirname, '../../src/server/kits/shipped', path)
+}
 
 /** Picks a guide option through the card that wraps its radio, the way a pointer reaches it. */
 async function choose(radio: Locator): Promise<void> {
@@ -69,10 +72,10 @@ test.describe('a new board guided to its first frame', () => {
     await expect(page).toHaveURL(/\/p\/acme-mobile\/page-1$/)
     await choose(guide.getByRole('radio', { name: /Desktop/ }))
     await guide.getByRole('button', { name: 'Next' }).click()
-    await choose(guide.getByRole('radio', { name: 'Purple' }))
+    await choose(guide.getByRole('radio', { name: 'Sketch' }))
     await guide.getByRole('button', { name: 'Next' }).click()
     await guide.getByRole('button', { name: 'Back' }).click()
-    await choose(guide.getByRole('radio', { name: 'Green' }))
+    await choose(guide.getByRole('radio', { name: 'Wireframe' }))
     await guide.getByRole('button', { name: 'Next' }).click()
     await choose(guide.getByRole('radio', { name: /start myself/ }))
     await guide.getByRole('button', { name: 'Finish' }).click()
@@ -81,9 +84,10 @@ test.describe('a new board guided to its first frame', () => {
     await expect
       .poll(() => readdirSync(at('acme-mobile/page-1')))
       .toContain('desktop.html')
-    expect(readFileSync(at('acme-mobile/tokens.css'), 'utf8')).toContain(
-      STARTER_ACCENTS.green.light,
+    expect(readFileSync(at('acme-mobile/tokens.css'), 'utf8')).toBe(
+      readFileSync(shippedKit('wireframe/tokens.css'), 'utf8'),
     )
+    expect(existsSync(at('acme-mobile/assets/kit/kit.css'))).toBe(true)
     expect(existsSync(at('untitled'))).toBe(false)
     await expect
       .poll(() =>
@@ -103,6 +107,7 @@ test.describe('a new board guided to its first frame', () => {
     await expect
       .poll(() => existsSync(at('acme-mobile/tokens.css')))
       .toBe(false)
+    expect(existsSync(at('acme-mobile/assets/kit'))).toBe(false)
     await undo(page)
     await expect.poll(() => existsSync(at('untitled/page-1'))).toBe(true)
   })

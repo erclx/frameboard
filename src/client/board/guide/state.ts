@@ -12,11 +12,6 @@ import {
 import { boardUrl } from '@/shared/board-urls'
 import type { FrameSizePreset } from '@/shared/frame-sizes'
 import type { PageRecord } from '@/shared/records/list'
-import {
-  DEFAULT_LOOK,
-  type StarterAccent,
-  type StarterFont,
-} from '@/shared/starter-tokens'
 
 import { isUntouched } from './untouched'
 
@@ -28,12 +23,12 @@ export interface GuideState {
   /** The project the guide answers for, which its rename moves. */
   project: string | null
   at: number
-  /** Whether the look step runs, fixed at the first answer so the count holds when a sheet reaches the project mid-guide. */
+  /** Whether the kit step runs, fixed at the first answer so the count holds when a sheet reaches the project mid-guide. */
   withLook: boolean | null
   name: string | null
   size: FrameSizePreset
-  accent: StarterAccent
-  font: StarterFont
+  /** The kit Finish installs, by the name the kit list answers. */
+  kit: string
   drawer: Drawer
   refusal: string | null
   busy: boolean
@@ -54,8 +49,7 @@ const START: GuideState = {
   withLook: null,
   name: null,
   size: 'phone',
-  accent: DEFAULT_LOOK.accent,
-  font: DEFAULT_LOOK.font,
+  kit: 'clean',
   drawer: 'agent',
   refusal: null,
   busy: false,
