@@ -12,6 +12,7 @@ import { registerEditing } from './commands/editing'
 import { registerFrame } from './commands/frame'
 import { registerInbox } from './commands/inbox'
 import { registerInspect } from './commands/inspect'
+import { registerKit } from './commands/kit'
 import { registerList } from './commands/list'
 import { registerNotes } from './commands/notes'
 import { registerOpen } from './commands/open'
@@ -170,6 +171,7 @@ export function createProgram(context: ProgramContext): Command {
   registerSelection(program, context)
   registerList(program, context)
   registerProject(program, context)
+  registerKit(program, context)
   registerPage(program, context)
   registerFrame(program, faced)
   registerEdit(program, context)
