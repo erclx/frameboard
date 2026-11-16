@@ -996,6 +996,18 @@ describe('the card corner', () => {
     ).toBeInTheDocument()
   })
 
+  it("fills the pin after the card's name once Pin pins it", async () => {
+    renderLive(PROJECTS, server().calls)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pin webapp' }))
+
+    expect(
+      within(screen.getByRole('link', { name: /webapp/ })).getByRole('img', {
+        name: 'Pinned',
+      }),
+    ).toBeVisible()
+  })
+
   it('lights Pin in the accent color on a pinned project', () => {
     togglePin('webapp')
 
