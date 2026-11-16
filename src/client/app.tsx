@@ -12,6 +12,7 @@ import { buttonVariants } from './components/ui/button'
 import { Toaster } from './components/ui/toast'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Home } from './home/home'
+import { HomeLoading } from './home/loading'
 import { useLive } from './live/store'
 import { CommandPalette } from './palette/commands'
 import { ShortcutsSheet } from './palette/shortcuts'
@@ -74,12 +75,19 @@ function Shell() {
           </Route>
         </Switch>
       ) : (
-        <p
-          role="status"
-          className="flex h-full items-center justify-center text-body text-muted-foreground"
-        >
-          Connecting to the board
-        </p>
+        <Switch>
+          <Route path="/">
+            <HomeLoading />
+          </Route>
+          <Route>
+            <p
+              role="status"
+              className="flex h-full items-center justify-center text-body text-muted-foreground"
+            >
+              Connecting to the board
+            </p>
+          </Route>
+        </Switch>
       )}
       {projects && !connected ? (
         <p

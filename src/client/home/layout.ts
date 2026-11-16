@@ -48,7 +48,7 @@ export function useHomeLayout(): HomeLayout {
   return layout
 }
 
-function readLayout(): HomeLayout {
+export function readLayout(): HomeLayout {
   try {
     return localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'grid'
   } catch {

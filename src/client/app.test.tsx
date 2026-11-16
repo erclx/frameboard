@@ -1,6 +1,6 @@
 import './styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -72,12 +72,63 @@ describe('App', () => {
     liveStore.setState({ board: null, reloads: {}, connected: false })
   })
 
-  it('says it is connecting until the first board arrives', () => {
-    renderAt('/')
+  describe('home before the first board', () => {
+    afterEach(() => {
+      localStorage.removeItem('frameboard.home.layout')
+    })
+
+    it('draws the header and Projects heading with New project disabled', () => {
+      renderAt('/')
+
+      expect(screen.getByText('Frameboard')).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Projects' })).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: 'New project' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('says it is connecting in one status', () => {
+      renderAt('/')
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Connecting to the board',
+      )
+    })
+
+    it('draws grey cards where the projects will be, hidden from a reader', () => {
+      renderAt('/')
+
+      const cards = document.querySelectorAll('li[data-placeholder]')
+      expect(cards.length).toBeGreaterThan(0)
+      expect(cards[0]?.closest('[aria-hidden="true"]')).not.toBeNull()
+      expect(screen.queryByRole('link', { name: /studio/ })).toBeNull()
+    })
+
+    it('draws rows rather than cards for a remembered list layout', () => {
+      localStorage.setItem('frameboard.home.layout', 'list')
+
+      renderAt('/')
+
+      expect(screen.getByText('Name')).toBeVisible()
+    })
+
+    it('gives way to the projects once the board arrives', () => {
+      renderAt('/')
+
+      act(() => receiveBoard(liveStore, BOARD))
+
+      expect(screen.getByRole('link', { name: /studio/ })).toBeVisible()
+      expect(screen.queryByText('Connecting to the board')).toBeNull()
+    })
+  })
+
+  it('keeps a bare status line on an address with no shell', () => {
+    renderAt('/elsewhere')
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Connecting to the board',
     )
+    expect(screen.queryByRole('heading', { name: 'Projects' })).toBeNull()
   })
 
   it('lists the projects at the root', () => {
