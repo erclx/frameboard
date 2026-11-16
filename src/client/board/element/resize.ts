@@ -39,17 +39,30 @@ const ROOTS = new Set(['html', 'body'])
  * The kind of corner resize an element's markup takes, or null for one sized
  * by its line, being a divider, or one of the document's own wrappers. A box
  * is a `div` holding no element and no text, as a placed Rectangle or Ellipse
- * is, text holds nothing but words, and any element holding another is a
- * container, so a `<p>` holding a `<b>` is one.
+ * is, and text holds words whose every element child lays out inline, so a
+ * `<p>` holding a `<b>` is text. Any other element holding another is a
+ * container.
  */
 export function resizeKindOf(element: Element | null): ResizeKind | null {
   if (!element || ROOTS.has(element.localName)) return null
   if (element.localName === 'img' || element.localName === 'video') {
     return 'media'
   }
-  if (element.childElementCount > 0) return 'container'
-  if ((element.textContent ?? '').trim() !== '') return 'text'
+  const words = (element.textContent ?? '').trim() !== ''
+  if (element.childElementCount > 0) {
+    return words && [...element.children].every(laysOutInline)
+      ? 'text'
+      : 'container'
+  }
+  if (words) return 'text'
   return element.localName === 'div' ? 'box' : null
+}
+
+/** Whether `element` flows inside its parent's line, read in its frame's own window. */
+function laysOutInline(element: Element): boolean {
+  const display =
+    element.ownerDocument.defaultView?.getComputedStyle(element).display ?? ''
+  return display === 'inline' || display.startsWith('inline-')
 }
 
 /** What a container's corner drag reads at the press to write Fixed the way the Size row does. */

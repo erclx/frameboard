@@ -142,11 +142,20 @@ describe('dragSize', () => {
 })
 
 describe('resizeKindOf', () => {
+  let host: HTMLDivElement | undefined
+
+  // Attached, so a child's computed display reads as the page lays it out.
   const parse = (markup: string) => {
-    const host = document.createElement('div')
+    host = document.createElement('div')
     host.innerHTML = markup
+    document.body.append(host)
     return host.firstElementChild
   }
+
+  afterEach(() => {
+    host?.remove()
+    host = undefined
+  })
 
   it.each([
     ['a placed rectangle', '<div data-name="Rectangle"></div>', 'box'],
@@ -156,9 +165,16 @@ describe('resizeKindOf', () => {
     ['a video', '<video></video>', 'media'],
     ['a video holding its sources', '<video><source></video>', 'media'],
     ['a box holding an element', '<div><span></span></div>', 'container'],
+    ['text holding an inline element', '<p>Some <b>bold</b> words</p>', 'text'],
+    ['a paragraph holding inline code', '<p><code>serve</code></p>', 'text'],
     [
-      'text holding an inline element',
-      '<p>Some <b>bold</b> words</p>',
+      'a box holding words and a block element',
+      '<div>Hi <p>there</p></div>',
+      'container',
+    ],
+    [
+      'a box holding a flex row',
+      '<div><div style="display: flex"><span>a</span></div></div>',
       'container',
     ],
   ])('reads %s by what its corners write', (_name, markup, kind) => {
@@ -497,7 +513,7 @@ describe('a live element', () => {
 
     it('reads a container growing along its row parent as filling it', async () => {
       const shown = await mount(
-        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><span>a</span></div><span>b</span></div>',
+        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div><span>b</span></div>',
       )
 
       expect(shownResize(shown, { ...KEY, index: 4 })).toMatchObject({
@@ -564,7 +580,7 @@ describe('a live element', () => {
 
     it('puts back every declaration a container’s preview wrote on a cancel', async () => {
       const shown = await mount(
-        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><span>a</span></div></div>',
+        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div></div>',
       )
       const key = { ...KEY, index: 4 }
       const read = shownResize(shown, key)
