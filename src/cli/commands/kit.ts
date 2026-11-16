@@ -17,6 +17,7 @@ import {
 
 interface AddOptions extends CommonOptions {
   from?: string
+  replace?: boolean
 }
 
 export function registerKit(program: Command, context: ProgramContext): void {
@@ -49,11 +50,15 @@ export function registerKit(program: Command, context: ProgramContext): void {
     addVerb(
       kit,
       'add',
-      'Install a kit into a project no token sheet reaches, refusing tokens-exist where a board, --tokens, or project sheet does',
+      'Install a kit into a project no token sheet reaches, refusing tokens-exist where a board, --tokens, or project sheet does unless --replace is given',
     )
       .argument('<project>', 'the project')
       .argument('[kit]', 'a kit `kit list` names')
-      .option('--from <folder>', 'install the kit in this folder instead'),
+      .option('--from <folder>', 'install the kit in this folder instead')
+      .option(
+        '--replace',
+        "install over the project's own sheet, kit page, and kit files, or over a board sheet",
+      ),
     context,
     async ([project = '', name], options) => {
       if ((name === undefined) === (options.from === undefined)) {
@@ -69,7 +74,9 @@ export function registerKit(program: Command, context: ProgramContext): void {
         folder === null
           ? findKit(root, name ?? '')
           : { name: basename(folder), path: folder }
-      const record = await installKit(root, project, found)
+      const record = await installKit(root, project, found, {
+        replace: options.replace ?? false,
+      })
       return {
         data: record,
         human: `Installed ${record.kit} into ${record.project}`,

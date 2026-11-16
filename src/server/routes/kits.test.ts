@@ -94,6 +94,24 @@ describe('kitRoutes', () => {
     expect(body.error.code).toBe('tokens-exist')
   })
 
+  it('installs over a kit with replace, and a second undo brings the old sheet back', async () => {
+    await post('/api/kits/install', { project: 'acme', kit: 'clean' })
+    const clean = readFileSync(join(board.root, 'acme/tokens.css'), 'utf8')
+
+    const response = await post('/api/kits/install', {
+      project: 'acme',
+      kit: 'sketch',
+      replace: true,
+    })
+    expect(response.status).toBe(200)
+    await history.undo()
+    await history.undo()
+
+    expect(readFileSync(join(board.root, 'acme/tokens.css'), 'utf8')).toBe(
+      clean,
+    )
+  })
+
   it("saves a project's look as a kit the list then answers", async () => {
     await post('/api/kits/install', { project: 'acme', kit: 'sketch' })
 

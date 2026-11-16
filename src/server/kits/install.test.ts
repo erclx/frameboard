@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { recordingJournal } from '../../../test/support/recording-journal'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
-import { installKit } from './install'
+import { installKit, takeOutLook } from './install'
 import { findKit, shippedKitsDir } from './list'
 
 const PROJECT = {
@@ -19,6 +19,10 @@ const FOLDER_KIT = {
   'kits/plain/tokens.css': ':root { --accent: teal }\n',
   'kits/plain/kit.css': '.kit-card { border: 1px solid }\n',
   'kits/plain/kit.md': '# Plain\n',
+}
+
+function read(board: TempBoard, path: string): string {
+  return readFileSync(join(board.root, path), 'utf8')
 }
 
 describe('installKit', () => {
@@ -128,6 +132,46 @@ describe('installKit', () => {
       installKit(board.root, 'acme', findKit(board.root, 'clean')),
     ).rejects.toMatchObject({ code: 'name-taken' })
     expect(existsSync(join(board.root, 'acme/tokens.css'))).toBe(false)
+  })
+
+  describe('with replace', () => {
+    it("takes out the project's own sheet, kit page, and kit files through the journal", async () => {
+      board = writeBoard(PROJECT)
+      await installKit(board.root, 'acme', findKit(board.root, 'clean'))
+      const { journal, calls } = recordingJournal(board.root)
+
+      await takeOutLook(board.root, 'acme', { journal })
+
+      expect(calls).toEqual([
+        { kind: 'removed', path: 'acme/tokens.css' },
+        { kind: 'removed', path: 'acme/kit' },
+        { kind: 'removed', path: 'acme/assets/kit' },
+      ])
+    })
+
+    it('installs over the kit a project already has', async () => {
+      board = writeBoard(PROJECT)
+      await installKit(board.root, 'acme', findKit(board.root, 'clean'))
+
+      await installKit(board.root, 'acme', findKit(board.root, 'sketch'), {
+        replace: true,
+      })
+
+      expect(read(board, 'acme/tokens.css')).toBe(
+        readFileSync(join(shippedKitsDir(), 'sketch/tokens.css'), 'utf8'),
+      )
+    })
+
+    it('writes a project sheet over a board sheet, leaving the board sheet as it was', async () => {
+      board = writeBoard({ ...PROJECT, 'tokens.css': ':root { --a: 1 }\n' })
+
+      await installKit(board.root, 'acme', findKit(board.root, 'wireframe'), {
+        replace: true,
+      })
+
+      expect(read(board, 'tokens.css')).toBe(':root { --a: 1 }\n')
+      expect(existsSync(join(board.root, 'acme/assets/kit/kit.css'))).toBe(true)
+    })
   })
 
   it('refuses kit-invalid for a folder with no kit.json, writing nothing', async () => {

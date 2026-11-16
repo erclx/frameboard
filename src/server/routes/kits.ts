@@ -6,8 +6,13 @@ import { z } from 'zod'
 
 import { contentHash } from '@/server/edit/address'
 import type { History } from '@/server/history/stack'
-import { installKit } from '@/server/kits/install'
-import { findKit, listKits, shippedKitsDir } from '@/server/kits/list'
+import { installKit, takeOutLook } from '@/server/kits/install'
+import {
+  findKit,
+  listKits,
+  readKitFile,
+  shippedKitsDir,
+} from '@/server/kits/list'
 import { saveKit } from '@/server/kits/save'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
@@ -20,7 +25,12 @@ import { decodeSegments } from './frames'
 
 const name = z.string().min(1).max(256)
 
-const installSchema = z.object({ project: name, kit: name })
+const installSchema = z.object({
+  project: name,
+  kit: name,
+  /** Installs over a look already there, which an undo brings back. */
+  replace: z.boolean().default(false),
+})
 
 const saveSchema = z.object({ project: name, name })
 
@@ -84,8 +94,16 @@ export function kitRoutes(
   app.post('/api/kits/install', requireWriter(access), async (c) => {
     const body = await parseBody(c.req.raw, installSchema)
     const kit = findKit(root, body.kit, shipped)
+    if (body.replace) {
+      await readKitFile(kit)
+      await recorded((journal) => takeOutLook(root, body.project, { journal }))
+    }
     const installed = await recorded((journal) =>
-      installKit(root, body.project, kit, { tokens, journal }),
+      installKit(root, body.project, kit, {
+        tokens,
+        journal,
+        replace: body.replace,
+      }),
     )
     return c.json({ ok: true, data: installed })
   })

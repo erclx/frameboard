@@ -91,6 +91,17 @@ describe('kit', () => {
     expect(result.json().error?.code).toBe('tokens-exist')
   })
 
+  it('add --replace installs over the kit a project already has', async () => {
+    await run('kit', 'add', 'acme', 'clean')
+
+    const result = await run('kit', 'add', 'acme', 'sketch', '--replace')
+
+    expect(result.exitCode).toBe(0)
+    expect(
+      readFileSync(join(board.root, 'acme/assets/kit/kit.md'), 'utf8'),
+    ).toContain('# Sketch')
+  })
+
   it('save makes a kit another project then installs by name', async () => {
     await run('kit', 'add', 'acme', 'sketch')
 
