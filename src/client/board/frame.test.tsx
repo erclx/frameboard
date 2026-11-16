@@ -22,6 +22,7 @@ import {
   playMotion,
   releaseMotion,
 } from './motion/store'
+import { enterFrame, leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
 import { clear, select, selectionStore } from './selection'
 import {
@@ -133,6 +134,25 @@ describe('Frame in Play', () => {
     pressEscapeIn(iframeOf(container, 'a'))
 
     expect(exits).toBe(1)
+  })
+
+  it('stands the entered tag below a laptop base rather than on its chin', () => {
+    act(() => modeStore.setState({ mode: 'play' }))
+    act(() => enterFrame('studio/home/a'))
+    cleanups.push(() => act(() => leaveFrame()))
+    const laptop: FrameRecord = {
+      ...frame('a'),
+      box: { x: 0, y: 0, width: 1440, height: 900 },
+      device: 'laptop',
+    }
+    const { container, getByText } = render(
+      <Frame frame={laptop} live version={0} />,
+    )
+
+    const box = container.querySelector('[data-frame]')?.getBoundingClientRect()
+    const tag = getByText('In frame, Esc to leave').getBoundingClientRect()
+
+    expect(tag.top).toBeGreaterThanOrEqual((box?.bottom ?? 0) + 42)
   })
 })
 

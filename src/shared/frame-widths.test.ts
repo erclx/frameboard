@@ -49,6 +49,20 @@ describe('linkedBoxes', () => {
       { x: 2534, y: 40, width: 390, height: 844 },
     ])
   })
+
+  it('starts the row past a laptop base reaching beyond the lid', () => {
+    expect(
+      linkedBoxes(frame, [{ width: 834, height: 1194 }], 'laptop'),
+    ).toEqual([{ x: 1709, y: 40, width: 834, height: 1194 }])
+  })
+
+  it('keeps the row 80 past a phone frame, whose body reaches no further', () => {
+    const phone = { x: 100, y: 40, width: 390, height: 844 }
+
+    expect(linkedBoxes(phone, [{ width: 320, height: 568 }], 'phone')).toEqual([
+      { x: 570, y: 40, width: 320, height: 568 },
+    ])
+  })
 })
 
 describe('drawnExtent', () => {

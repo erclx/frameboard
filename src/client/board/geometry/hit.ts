@@ -200,8 +200,9 @@ function within(box: Box, point: Point): boolean {
 function drawnBoxes({
   box,
   widths,
-}: Pick<FrameRecord, 'box' | 'widths'>): Box[] {
-  return [box, ...linkedBoxes(box, widths)]
+  device,
+}: Pick<FrameRecord, 'box' | 'widths' | 'device'>): Box[] {
+  return [box, ...linkedBoxes(box, widths, device)]
 }
 
 /**

@@ -295,7 +295,10 @@ export async function captureComposite(
     // A frame's linked widths each open it again, so its videos count once.
     const videos = new Map<string, CapturedVideo>()
     for (const frame of frames) {
-      for (const box of [frame.box, ...linkedBoxes(frame.box, frame.widths)]) {
+      for (const box of [
+        frame.box,
+        ...linkedBoxes(frame.box, frame.widths, frame.device),
+      ]) {
         const { bytes, videos: unloaded } = await renderFrame(
           browser,
           baseUrl,

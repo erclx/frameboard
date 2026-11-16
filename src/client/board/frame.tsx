@@ -224,6 +224,8 @@ export const Frame = memo(function Frame({
   const held = hold && !hold.playing && !playing ? hold : undefined
   // Chrome beside the frame stands past a device body rather than on it.
   const inset = frame.device ? BEZELS[frame.device].border : 0
+  // A laptop's chin and base stand below its screen deeper than its lid.
+  const below = frame.device ? BEZELS[frame.device].bottom : 0
 
   return (
     <div
@@ -332,7 +334,7 @@ export const Frame = memo(function Frame({
         <CompareView frameRef={frame.ref} name={frame.name} hash={compared} />
       ) : null}
       {claimed ? <ClaimOutline /> : null}
-      {entered ? <EnteredTag inset={inset} /> : null}
+      {entered ? <EnteredTag inset={inset} below={below} /> : null}
       {findings && findings.length > 0 ? (
         <span
           aria-hidden
@@ -539,11 +541,11 @@ function HeldChip({ frameRef, at }: { frameRef: string; at: number }) {
 }
 
 /** The entered frame's tag under its bottom left, at a constant screen size. */
-function EnteredTag({ inset }: { inset: number }) {
+function EnteredTag({ inset, below }: { inset: number; below: number }) {
   return (
     <div
       className="absolute top-full left-0 origin-top-left pt-1 [transform:scale(calc(1/var(--zoom,1)))]"
-      style={inset ? { top: `calc(100% + ${inset}px)`, left: -inset } : {}}
+      style={below ? { top: `calc(100% + ${below}px)`, left: -inset } : {}}
     >
       <span className="block rounded-[4px] bg-primary-fill px-[5px] py-px text-[10px] font-medium whitespace-nowrap text-primary-foreground">
         In frame, Esc to leave
