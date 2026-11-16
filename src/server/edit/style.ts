@@ -1,7 +1,10 @@
+import { shorthandPart } from '@/server/checks/cascade'
+
 /**
  * The longhands a shorthand write drops, so a later longhand in the attribute
  * does not keep overriding the value just set. A longhand write leaves its
- * shorthand alone, since the longhand comes later and already wins.
+ * shorthand alone, since the longhand comes later and already wins, except
+ * where `PART_SHORTHANDS` rewrites the shorthand's own part instead.
  */
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left'] as const
 const BORDER_PARTS = ['color', 'style', 'width'] as const
@@ -31,6 +34,13 @@ const SHORTHAND_LONGHANDS: Readonly<Record<string, readonly string[]>> = {
     'border-bottom-left-radius',
   ],
   padding: ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'],
+}
+
+/** The paint longhands whose part of a shorthand the inspector reads, and that shorthand. */
+const PART_SHORTHANDS: Readonly<Record<string, string>> = {
+  'background-color': 'background',
+  'border-color': 'border',
+  'border-width': 'border',
 }
 
 const CHARACTER_REFERENCE = /&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);/iy
@@ -125,6 +135,21 @@ export function declaredValues(style: string, property: string): string[] {
     .map((segment) => segment.slice(segment.indexOf(':') + 1).trim())
 }
 
+/**
+ * The part of a decoded style's last shorthand that a paint longhand reads
+ * from, which `setDeclaration` writes in place of the longhand. Undefined for
+ * a property with no such shorthand, or a shorthand holding no such part.
+ */
+export function shorthandValue(
+  style: string,
+  property: string,
+): string | undefined {
+  const shorthand = PART_SHORTHANDS[property]
+  if (!shorthand) return undefined
+  const value = declaredValues(style, shorthand).at(-1)
+  return value === undefined ? undefined : shorthandPart(value, property)?.text
+}
+
 export type DeclarationResult =
   | { readonly ok: true; readonly style: string }
   | { readonly ok: false }
@@ -133,7 +158,8 @@ export type DeclarationResult =
  * Sets one declaration in a raw style value, or drops it on an empty value.
  * The first declaration of the property is replaced in place and any later one
  * dropped, so nothing further in the attribute overrides the edit, and a
- * shorthand also drops its longhands. The value arrives already escaped for
+ * shorthand also drops its longhands. A paint longhand over a shorthand
+ * holding its part rewrites that part instead. The value arrives already escaped for
  * the attribute. An empty style means none is left. A style ending inside an
  * open quote or comment refuses, since an appended declaration would land in it.
  */
@@ -158,6 +184,9 @@ export function setDeclaration(
     return { ok: true, style: kept.join(';').replace(/^[\s;]+/, '') }
   }
 
+  const rewritten = withShorthandPart(segments, property, value.trim())
+  if (rewritten !== null) return { ok: true, style: rewritten }
+
   if (!segments.some((segment) => propertyOf(segment) === property)) {
     // Drop empty segments rather than strip trailing `;` characters, since an
     // entity's own `;` ends a value such as `&quot;A&quot;`.
@@ -180,6 +209,63 @@ export function setDeclaration(
     return [`${lead}${declaration}`]
   })
   return { ok: true, style: next.join(';') }
+}
+
+/**
+ * The segments with `value` in place of the part of the last shorthand that
+ * sets `property`, so a paint edit over `border: 1px solid var(--primary)`
+ * leaves no token behind it as dead text. A declaration of the property ahead
+ * of the shorthand is already overridden by it, so it drops. Null when the
+ * property has no such shorthand, a later declaration sets the part on any
+ * side and would keep winning there, its value holds no such part, or a
+ * comment sits in it.
+ */
+function withShorthandPart(
+  segments: readonly string[],
+  property: string,
+  value: string,
+): string | null {
+  const shorthand = PART_SHORTHANDS[property]
+  if (!shorthand) return null
+  const at = segments.findLastIndex(
+    (segment) => propertyOf(segment) === shorthand,
+  )
+  const segment = segments[at]
+  if (segment === undefined || segment.includes('/*')) return null
+  if (
+    segments
+      .slice(at + 1)
+      .some((later) => setsPart(propertyOf(later), property))
+  ) {
+    return null
+  }
+  const colon = segment.indexOf(':')
+  const part = shorthandPart(segment.slice(colon + 1), property)
+  if (!part) return null
+  const from = colon + 1 + part.start
+  const rewritten =
+    segment.slice(0, from) + value + segment.slice(from + part.text.length)
+  return segments
+    .flatMap((each, index) => {
+      if (index === at) return [rewritten]
+      return index < at && propertyOf(each) === property ? [] : [each]
+    })
+    .join(';')
+    .replace(/^\s+/, '')
+}
+
+const BORDER_SIDE =
+  /^border-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?(?:-(color|width|style))?$/
+
+/**
+ * Whether a declaration of `declared` sets the part `property` names on any
+ * side, as `border-top` or `border-top-width` does for `border-width`.
+ */
+function setsPart(declared: string, property: string): boolean {
+  if (declared === property) return true
+  const side = BORDER_SIDE.exec(declared)
+  if (!side || !property.startsWith('border-')) return false
+  return side[1] === undefined || `border-${side[1]}` === property
 }
 
 /**

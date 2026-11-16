@@ -37,6 +37,8 @@ export interface LiveElement {
   color: string
   /** Whether any side draws a border. */
   bordered: boolean
+  /** The border width in px, null where the sides differ. */
+  borderWidth: number | null
   /** Whether the element or anything in it shows text. */
   holdsText: boolean
   /** Whether it holds text and no element, so its text is edited as a whole. */
@@ -373,6 +375,9 @@ function readLive(element: Element, view: Window): LiveElement {
     display: style.display,
     color: style.color,
     bordered: sides.some((width) => parseFloat(width) > 0),
+    borderWidth: sides.every((width) => width === sides[0])
+      ? hundredths(style.borderTopWidth)
+      : null,
     holdsText: text.trim() !== '',
     textOnly: element.childElementCount === 0 && text.trim() !== '',
     text,
@@ -676,6 +681,11 @@ interface Replaced {
   element: HTMLElement
   value: string
   priority: string
+  /**
+   * The whole `style` attribute before the preview. A longhand of a shorthand
+   * holding `var()` reads as empty, so removing it would strip the shorthand.
+   */
+  attribute: string | null
 }
 
 /** Each previewed declaration by element and property, until it is put back or written. */
@@ -704,8 +714,13 @@ export function previewStyle(
   if (value === null) {
     previews.delete(at)
     if (!replaced || replaced.element !== node || !node) return
-    if (replaced.value === '') node.style.removeProperty(property)
-    else node.style.setProperty(property, replaced.value, replaced.priority)
+    if (replaced.value !== '') {
+      node.style.setProperty(property, replaced.value, replaced.priority)
+    } else if (replaced.attribute === null) {
+      node.removeAttribute('style')
+    } else {
+      node.setAttribute('style', replaced.attribute)
+    }
     if (node.getAttribute('style') === '') node.removeAttribute('style')
     return
   }
@@ -715,6 +730,7 @@ export function previewStyle(
       element: node,
       value: node.style.getPropertyValue(property),
       priority: node.style.getPropertyPriority(property),
+      attribute: node.getAttribute('style'),
     })
   }
   node.style.setProperty(property, value, 'important')

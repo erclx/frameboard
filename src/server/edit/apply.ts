@@ -8,7 +8,7 @@ import {
   setRawAttribute,
 } from './attribute'
 import { type ElementSpan, type SpanScope, spanText } from './element-span'
-import { declaredValues, setDeclaration } from './style'
+import { declaredValues, setDeclaration, shorthandValue } from './style'
 import { setText } from './text'
 
 export interface ElementAddress {
@@ -308,8 +308,11 @@ function holdsValue(element: Element, change: EditChange): boolean {
   return declarations.every(({ property, value }) => {
     const declared = declaredValues(style, property)
     const wanted = value.trim()
-    return wanted === ''
-      ? declared.length === 0
+    if (wanted === '') return declared.length === 0
+    // A paint longhand over its shorthand rewrites the shorthand's part and
+    // states no longhand, so the part holds the value instead.
+    return declared.length === 0
+      ? shorthandValue(style, property) === wanted
       : declared.length === 1 && declared[0] === wanted
   })
 }

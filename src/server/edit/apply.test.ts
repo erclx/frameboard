@@ -42,6 +42,88 @@ describe('applyEdit', () => {
       ).toMatchObject({ ok: true, html: '<p id=a>x</p>' })
     })
 
+    it.each([
+      [
+        'border-width',
+        '4px',
+        '<h1 style="border: 4px solid var(--border)">x</h1>',
+      ],
+      [
+        'border-color',
+        '#1e40af',
+        '<h1 style="border: 1px solid #1e40af">x</h1>',
+      ],
+    ])(
+      "should write %s into the border shorthand's part",
+      (property, value, html) => {
+        expect(
+          applyEdit(
+            '<h1 style="border: 1px solid var(--border)">x</h1>',
+            FIRST,
+            { kind: 'style', property, value },
+          ),
+        ).toMatchObject({ ok: true, html })
+      },
+    )
+
+    it.each([
+      [
+        'border: 1px solid red; border-top-width: 3px',
+        'border-width',
+        '2px',
+        'border: 1px solid red; border-top-width: 3px; border-width: 2px',
+      ],
+      [
+        'border: 1px solid red; border-top: 3px solid red',
+        'border-width',
+        '2px',
+        'border: 1px solid red; border-top: 3px solid red; border-width: 2px',
+      ],
+      [
+        'border: 1px solid red; border-left-color: blue',
+        'border-color',
+        '#000',
+        'border: 1px solid red; border-left-color: blue; border-color: #000',
+      ],
+    ])(
+      'should state the longhand after a later side over %s',
+      (style, property, value, written) => {
+        expect(
+          applyEdit(`<h1 style="${style}">x</h1>`, FIRST, {
+            kind: 'style',
+            property,
+            value,
+          }),
+        ).toMatchObject({ ok: true, html: `<h1 style="${written}">x</h1>` })
+      },
+    )
+
+    it('should drop a longhand the shorthand after it already overrode', () => {
+      expect(
+        applyEdit(
+          '<h1 style="border-color: red; border: 1px solid blue">x</h1>',
+          FIRST,
+          { kind: 'style', property: 'border-color', value: '#000' },
+        ),
+      ).toMatchObject({
+        ok: true,
+        html: '<h1 style="border: 1px solid #000">x</h1>',
+      })
+    })
+
+    it("should write a background color into the background shorthand's part", () => {
+      expect(
+        applyEdit('<div style="background: var(--muted)">x</div>', FIRST, {
+          kind: 'style',
+          property: 'background-color',
+          value: '#1e40af',
+        }),
+      ).toMatchObject({
+        ok: true,
+        html: '<div style="background: #1e40af">x</div>',
+      })
+    })
+
     it("should keep an entity's semicolon when appending after it", () => {
       expect(
         applyEdit('<p style="font-family: &quot;A&quot;">x</p>', FIRST, {

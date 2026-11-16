@@ -91,6 +91,107 @@ describe('setDeclaration', () => {
     })
   })
 
+  describe('a paint longhand over its shorthand', () => {
+    it("should rewrite a background shorthand's color in place", () => {
+      expect(
+        setDeclaration(
+          'width: 10px; background: var(--muted)',
+          'background-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'width: 10px; background: #1e40af' })
+    })
+
+    it("should rewrite a border shorthand's color in place", () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid var(--primary)',
+          'border-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'border: 1px solid #1e40af' })
+    })
+
+    it("should rewrite a border shorthand's width in place", () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid var(--primary)',
+          'border-width',
+          '4px',
+        ),
+      ).toEqual({ ok: true, style: 'border: 4px solid var(--primary)' })
+    })
+
+    it('should keep an !important the shorthand carries', () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid var(--primary) !important',
+          'border-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'border: 1px solid #1e40af !important' })
+    })
+
+    it('should keep an !important written against the color', () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid red!important',
+          'border-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'border: 1px solid #1e40af!important' })
+    })
+
+    it('should leave a background image beside the color alone', () => {
+      expect(
+        setDeclaration(
+          'background: url(a.png) var(--muted)',
+          'background-color',
+          '#1e40af',
+        ),
+      ).toEqual({ ok: true, style: 'background: url(a.png) #1e40af' })
+    })
+
+    it('should append the longhand when the shorthand holds no color', () => {
+      expect(
+        setDeclaration('border: 2px solid', 'border-color', '#1e40af'),
+      ).toEqual({ ok: true, style: 'border: 2px solid; border-color: #1e40af' })
+    })
+
+    it('should replace a longhand stated after the shorthand in place', () => {
+      expect(
+        setDeclaration(
+          'background: red; background-color: blue',
+          'background-color',
+          '#1e40af',
+        ),
+      ).toEqual({
+        ok: true,
+        style: 'background: red; background-color: #1e40af',
+      })
+    })
+
+    it('should keep a color-mix color one part when the width changes', () => {
+      expect(
+        setDeclaration(
+          'border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent)',
+          'border-width',
+          '2.5px',
+        ),
+      ).toEqual({
+        ok: true,
+        style:
+          'border: 2.5px solid color-mix(in srgb, var(--primary) 50%, transparent)',
+      })
+    })
+
+    it('should drop the longhand rather than the shorthand on an empty value', () => {
+      expect(
+        setDeclaration('border: 1px solid red', 'border-color', ''),
+      ).toEqual({ ok: true, style: 'border: 1px solid red' })
+    })
+  })
+
   it('should not split inside parentheses or quotes', () => {
     expect(
       setDeclaration("background: url(a;b); content: 'x;y'", 'color', 'red'),

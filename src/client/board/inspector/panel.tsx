@@ -379,6 +379,7 @@ function ElementDesign({ page, element }: ElementProps) {
       <StrokeSection
         bordered={live.bordered}
         borderColor={own?.borderColor ?? null}
+        borderWidth={live.borderWidth}
         tokens={colors}
         theme={theme}
         inline={live.inline.border}
