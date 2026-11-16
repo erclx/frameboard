@@ -513,6 +513,8 @@ export function startGroupEdit(
   }
   return {
     preview: (edits) => {
+      // A container's edit leaves out a side the drag brought back, so each preview starts clean.
+      putBack()
       for (const { index, declarations } of edits) {
         const key = keyOf.get(index)
         if (!key) continue

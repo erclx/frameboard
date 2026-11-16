@@ -11,6 +11,7 @@ import {
   shownGroup,
   shownResize,
   startElementResize,
+  startGroupEdit,
 } from './resize'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
@@ -540,6 +541,28 @@ describe('a live element', () => {
       const shown = await mount('<p>Words</p>')
 
       expect(shownResize(shown, { ...KEY, hash: 'f'.repeat(64) })).toBeNull()
+    })
+  })
+
+  describe('startGroupEdit', () => {
+    it('puts back a side an earlier preview wrote once a later one leaves it', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div><div style="position: absolute; left: 40px; top: 0"><p>a</p></div>',
+      )
+      const edit = startGroupEdit('studio/home', [KEY, { ...KEY, index: 4 }])
+      const container = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelectorAll<HTMLElement>('body > div')[1]
+
+      edit?.preview([
+        { index: 4, declarations: [{ property: 'width', value: '120px' }] },
+      ])
+      edit?.preview([
+        { index: 4, declarations: [{ property: 'top', value: '5px' }] },
+      ])
+
+      expect(container?.style.width).toBe('')
+      expect(container?.style.top).toBe('5px')
     })
   })
 
