@@ -1,4 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -90,6 +96,19 @@ describe('History', () => {
         false,
         { version: 1, pages: ['settings', 'home'] },
       ])
+    })
+
+    it("keeps the project file's time through the undo and the redo", async () => {
+      const past = new Date('2026-01-01T00:00:00.000Z')
+      utimesSync(at('webapp/project.json'), past, past)
+      await retitleWebapp('Web app')
+
+      await history.undo()
+      const undone = statSync(at('webapp/project.json')).mtime.toISOString()
+      await history.redo()
+      const redone = statSync(at('web-app/project.json')).mtime.toISOString()
+
+      expect([undone, redone]).toEqual([past.toISOString(), past.toISOString()])
     })
 
     it('redoes into the new folder with the title', async () => {

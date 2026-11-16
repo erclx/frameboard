@@ -166,30 +166,54 @@ export class History {
       .flatMap(lockPaths)
       .filter((path) => existsSync(dirname(path)))
       .filter((path) => !moves.some((folder) => path.startsWith(folder + sep)))
-    // A filing is not an edit to the project, so neither is its undo.
-    const timed = step.changes.flatMap((change) =>
-      change.kind === 'project' ? [change.file] : [],
+    // A filing is not an edit to the project, so neither is its undo. Each
+    // file's time is kept where it stands now and put back where the step
+    // leaves it, which differ for a title that moved its folder.
+    const landing = new Map(
+      standing.flatMap((change, index) =>
+        change.kind === 'project'
+          ? [
+              [
+                change.file,
+                standingAt(
+                  step.changes[index] ?? change,
+                  step.changes.slice(index + 1),
+                  to,
+                ),
+              ] as const,
+            ]
+          : [],
+      ),
     )
+    const timed = [...landing.keys()]
+    const landed = (file: string) => {
+      const change = landing.get(file)
+      return change?.kind === 'project' ? change.file : file
+    }
     try {
-      await keepingTimes(timed, (keep) =>
-        withLocks(locks, async () => {
-          for (const change of standing) {
-            if (!(await holds(change, was))) {
-              throw new FrameboardError(
-                'undo-overtaken',
-                `An agent changed ${nameOf(change)} after your edit, so that step was dropped.`,
-                { change: change.kind },
-              )
+      await keepingTimes(
+        timed,
+        (keep) =>
+          withLocks(locks, async () => {
+            for (const change of standing) {
+              if (!(await holds(change, was))) {
+                throw new FrameboardError(
+                  'undo-overtaken',
+                  `An agent changed ${nameOf(change)} after your edit, so that step was dropped.`,
+                  { change: change.kind },
+                )
+              }
             }
-          }
-          for (const file of timed) await keep(file)
-          const ordered =
-            to === 'before' ? [...step.changes].reverse() : step.changes
-          for (const change of ordered) {
-            const hash = await restore(change, to)
-            if (hash !== undefined && 'ref' in change) hashes[change.ref] = hash
-          }
-        }),
+            for (const file of timed) await keep(file)
+            const ordered =
+              to === 'before' ? [...step.changes].reverse() : step.changes
+            for (const change of ordered) {
+              const hash = await restore(change, to)
+              if (hash !== undefined && 'ref' in change)
+                hashes[change.ref] = hash
+            }
+          }),
+        landed,
       )
     } catch (error) {
       // Only an overtaken step is dropped. One that waited out a lock stays to try again.

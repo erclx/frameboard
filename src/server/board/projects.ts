@@ -317,7 +317,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Runs `run`, a section holding the lock of each project file it writes, and
  * puts back the times that file and its folder held, which the scanner reads
- * as the project's last edit. `run` calls `keep` under the lock before each
+ * as the project's last edit. `land` names where a file stands once `run`
+ * is done, for a run that moves its folder, and the times go back there. `run` calls `keep` under the lock before each
  * write, so the file's time is read after any writer that held the lock first.
  * The folder's time is read before the lock, since taking and dropping the
  * lock moves it, and goes back only where the file kept its time until `keep`,
@@ -326,6 +327,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function keepingTimes<T>(
   files: string[],
   run: (keep: (file: string) => Promise<void>) => Promise<T>,
+  land: (file: string) => string = (file) => file,
 ): Promise<T> {
   const before = new Map(
     await Promise.all(
@@ -353,10 +355,11 @@ export async function keepingTimes<T>(
   } finally {
     await Promise.all(
       [...kept].map(async ([file, time]) => {
-        await put(file, time)
+        const at = land(file)
+        await put(at, time)
         const { file: was, folder } = before.get(file) ?? {}
         if (folder && was?.mtimeMs === time.mtimeMs) {
-          await put(dirname(file), folder)
+          await put(dirname(at), folder)
         }
       }),
     )
