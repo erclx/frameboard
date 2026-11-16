@@ -23,6 +23,7 @@ import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import { folderName } from '@/shared/names'
 import type { PageRecord } from '@/shared/records/list'
 import type { TokenTable } from '@/shared/records/tokens'
 import {
@@ -36,7 +37,6 @@ import {
   agentFolder,
   agentPrompt,
   type Drawer,
-  folderName,
   type GuideState,
   guideStore,
 } from './state'

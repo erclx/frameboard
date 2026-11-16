@@ -28,3 +28,18 @@ export function nextFreeName(base: string, taken: Iterable<string>): string {
     if (!lowered.has(candidate.toLowerCase())) return candidate
   }
 }
+
+/**
+ * A typed title as the folder it names, lower case with each run of
+ * characters a name may not hold turned into one dash, so `Acme mobile`
+ * becomes `acme-mobile`. Empty when the title holds nothing a name may.
+ */
+export function folderName(typed: string): string {
+  return typed
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[._-]+/, '')
+    .slice(0, NAME_MAX_LENGTH)
+    .replace(/-+$/, '')
+}
