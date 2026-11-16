@@ -19,13 +19,18 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 - A project turns a rule off by listing its id in `checks.off` of `project.json`, an error rule included, and every path returns through `withoutOff` in `rule.ts`, so none reports it
 - `check` exits 8 with `check-findings` when any finding is an error, so a script branches on the exit alone. A result holding warnings alone exits 0
 - The result sits under `data` in both answers, and a failure repeats it in the error's details, which older scripts read
-- Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, and `unknown-token`
+- Exact rules read the parsed file, being `naming`, `dot-folder`, `head-body`, `table-tbody`, `malformed-tag`, `nesting`, `outside-link`, `network`, `missing-file`, `board-route`, and `unknown-token`
+
+`board-route` reports a frame script naming the board's own routes, since a frame on the board's origin reaches the board's server.
+
+- It reads inline and local scripts that run and `on*` handlers for a quoted path under `/api/`, bare or after a host. A JSON or import map block and a path built at runtime pass
+- `scriptSource` in `frame-source.ts` is the script reader it shares with `unknown-token`
 
 Every rule's level sits on its `RuleDoc` as `severity`, which `docs` prints beside its id, so a new rule cannot ship without one.
 
 - An error means the frame is broken, rendering wrong or not loading, and fails `check`. A warning means it renders and a style call is in question, so it never does
 - The board fills a frame's mark red for any error and draws warnings alone as a grey dot and count, keeping amber for a warning's glyph inside the open list
-- The errors are the link, markup, and naming rules, `clipped`, `theme`, and `allowed-fonts`, which a project chose. Every other rule warns, `uppercase`, `min-font-size`, and `min-contrast` included
+- The errors are the link, markup, naming, and `board-route` rules, `clipped`, `theme`, and the chosen `allowed-fonts`. Every other rule warns, `uppercase`, `min-font-size`, and `min-contrast` included
 - `findingFor` binds a module's docs and stamps each finding with its rule's level, refusing a rule the docs never declare
 
 Four places filter through `withoutOff`, which imports the finding type alone so the hook's start stays as it was.
