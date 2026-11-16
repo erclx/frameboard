@@ -3,6 +3,9 @@ export const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
 export const NAME_MAX_LENGTH = 64
 
+/** The longest title a project takes, which its folder name is cut from. */
+export const TITLE_MAX_LENGTH = 256
+
 /** Names a page may not take, since the folder means something else in a project. */
 export const RESERVED_PAGE_NAMES = ['assets'] as const
 

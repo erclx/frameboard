@@ -4,7 +4,12 @@ import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import { folderName, namesCollide, nextFreeName } from '@/shared/names'
+import {
+  folderName,
+  namesCollide,
+  nextFreeName,
+  TITLE_MAX_LENGTH,
+} from '@/shared/names'
 import type { ProjectFile } from '@/shared/records/board'
 import type { ProjectRecord } from '@/shared/records/list'
 
@@ -74,6 +79,13 @@ export async function retitleProject(
   const project = await resolveProject(root, name)
   const path = join(project.path, PROJECT_FILE)
   const trimmed = title.trim()
+  if (trimmed.length > TITLE_MAX_LENGTH) {
+    throw new FrameboardError(
+      'invalid-name',
+      `A project title holds at most ${TITLE_MAX_LENGTH} characters.`,
+      { title: trimmed },
+    )
+  }
   await keepingTimes([path], (keep) =>
     withLocks([path], async () => {
       const file = await readRecord(path, {

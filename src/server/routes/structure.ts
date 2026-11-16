@@ -81,8 +81,8 @@ const index = z.int().min(0)
 const addSchema = z.object({ ref, index: index.optional() })
 const duplicateSchema = z.object({ ref, name: name.optional() })
 const renameSchema = z.object({ ref, name })
-/** Any characters, since the folder takes a valid name made from it. */
-const retitleSchema = z.object({ ref, title: z.string().max(256) })
+/** Any characters, since the folder takes a valid name made from it, and the verb refuses a title past its limit. */
+const retitleSchema = z.object({ ref, title: z.string().max(1024) })
 const moveSchema = z.object({ ref, index })
 const deleteSchema = z.object({ ref })
 

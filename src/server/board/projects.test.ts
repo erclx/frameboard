@@ -179,6 +179,12 @@ describe('projects', () => {
       expect(statSync(file).mtime.toISOString()).toBe(past.toISOString())
     })
 
+    it('refuses a title past the length limit as invalid-name', async () => {
+      await expect(
+        retitleProject(board.root, 'webapp', 'a'.repeat(257)),
+      ).rejects.toMatchObject({ code: 'invalid-name' })
+    })
+
     it('refuses a file that does not parse before moving anything', async () => {
       writeFileSync(join(board.root, 'webapp', 'project.json'), '{ broken')
 
