@@ -50,7 +50,9 @@ A responsive page is one frame file shown at several widths, so every fix to the
 - Each width hugs its content when the frame does and holds its device height otherwise
 - `capture` names each width's image `<frame>@<width>.<theme>.png`, and a browser finding at a width prints as `<path>@<width>`
 
-`frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names: a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, a resize redraws the body, and `off` hides it. The older `phone` and `tablet` read as `on`, and `none` as `off`.
+`frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
+
+The older `phone` and `tablet` read as `on`, and `none` as `off`.
 
 ## Design references
 

@@ -54,8 +54,7 @@ Owns `bezel.tsx`, the phone, tablet, or laptop body drawn around a frame whose r
 
 - One element over the frame rounds its page to the screen radius and spreads the body as a `box-shadow`, so the body's outer radius is the screen's plus the border
 - A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
-- The body and the island scale with the canvas, while its hairline edge stays one screen pixel at any zoom
-- It takes no pointer events, so a click reaches the frame as it would bare
+- The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
 - The label, the open-alone link, the rail, and the In frame tag stand past the border, a laptop's lid, and a linked width draws no device
 - Present fits and centers the frame by its body through `bezelBox`, since a laptop's body reaches further below than above
 

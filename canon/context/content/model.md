@@ -66,7 +66,7 @@ An entry's `showDevice: true` has the board draw the frame inside the device its
 - `deviceForWidth` in `src/shared/frame-device.ts` picks a phone from 320, a tablet from 480, and a laptop from 1024, and none under 320, at read time, so a resize redraws the body with no write
 - The record reports that pick as `device`, and `scan.ts` reads a `device` string written before `showDevice` as shown
 - `PageLayout.set` writes `showDevice` while a frame shows one, removes it once off, leaves any other value as written, and drops a legacy `device` string on every write
-- The phone's border is 16 and the tablet's 44 on every side, and the laptop's lid is 20 above and aside with a chin and base below, the base reaching 6% of the lid past each side, and `drawnExtent` grows by the whole body
+- The phone's border is 16 and the tablet's 44 on every side, the laptop's lid 20 with a chin and a base reaching 6% of the lid past each side, and `drawnExtent` grows by the whole body
 
 ### `src/server/edit/`
 
