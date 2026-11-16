@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react'
 import { STEP_ATTRIBUTES } from '@/shared/present-transition'
 import type { FrameStyles, UsedColor } from '@/shared/records/elements'
 
-import { elementAt, elementIndex, renderedHash } from '../../frame-dom'
+import {
+  elementAt,
+  elementIndex,
+  renderedHash,
+  RESTAMPED,
+} from '../../frame-dom'
 import type { FreeSpot } from '../../place/write'
 import type { ElementKey } from '../../selection'
 import type { LiveStep } from './step'
@@ -314,8 +319,9 @@ export function mergeColors(
 
 /**
  * A frame's `body` as an element key, read off its live iframe on every
- * load, so a frame Fill writes through the element edit. Null until the
- * frame shows stamped bytes, which a placeholder never does.
+ * load and every stamp a kept drop makes, so a frame Fill writes through
+ * the element edit from the bytes the page shows. Null until the frame
+ * shows stamped bytes, which a placeholder never does.
  */
 export function useLiveBody(frame: string): ElementKey | null {
   const [held, setHeld] = useState<ElementKey | null>(null)
@@ -339,7 +345,11 @@ export function useLiveBody(frame: string): ElementKey | null {
     }
     read(document.querySelector<HTMLIFrameElement>(`${scope} iframe`))
     document.addEventListener('load', loaded, true)
-    return () => document.removeEventListener('load', loaded, true)
+    document.addEventListener(RESTAMPED, loaded, true)
+    return () => {
+      document.removeEventListener('load', loaded, true)
+      document.removeEventListener(RESTAMPED, loaded, true)
+    }
   }, [frame])
 
   return held?.frame === frame ? held : null

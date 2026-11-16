@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
-import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
+import { LOOK_MARKER } from '@/shared/theme'
 
-import { elementAt, renderedHash } from '../frame-dom'
+import { elementAt, renderedHash, RESTAMPED } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
@@ -183,7 +183,7 @@ function useGhosts(
           styled.add(shown)
           styles.observe(shown, {
             attributes: true,
-            attributeFilter: ['style', RENDERED_HASH],
+            attributeFilter: ['style'],
             subtree: true,
           })
         }
@@ -197,8 +197,10 @@ function useGhosts(
     measure()
     // A load does not bubble, so a frame mounting or reloading is caught on the way down.
     container.addEventListener('load', measure, true)
+    container.addEventListener(RESTAMPED, measure, true)
     return () => {
       container.removeEventListener('load', measure, true)
+      container.removeEventListener(RESTAMPED, measure, true)
       cancelAnimationFrame(pending)
       resizes.disconnect()
       styles.disconnect()

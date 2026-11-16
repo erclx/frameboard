@@ -33,14 +33,25 @@ export function liveIframe(ref: string): HTMLIFrameElement | null {
 }
 
 /**
- * Stamps a live frame as rendering the file `hash` names, as its reload
- * would have, for a page that already shows those bytes. A document with no
- * stamp to move is left alone.
+ * The event a frame's iframe dispatches once its rendered hash is stamped
+ * with no load, so a reader that re-reads the page on `load` re-reads it on
+ * this too. It does not bubble, so a container listens in the capture phase.
  */
-export function stampRenderedHash(document: Document, hash: string): void {
-  document
-    .querySelector(`style[${LOOK_MARKER}]`)
-    ?.setAttribute(RENDERED_HASH, hash)
+export const RESTAMPED = 'frameboard:restamped'
+
+/**
+ * Stamps a live frame as rendering the file `hash` names, as its reload
+ * would have, for a page that already shows those bytes, and dispatches
+ * `RESTAMPED` on the iframe. A page with no stamp to move is left alone.
+ */
+export function stampRenderedHash(
+  iframe: HTMLIFrameElement,
+  hash: string,
+): void {
+  const stamp = iframe.contentDocument?.querySelector(`style[${LOOK_MARKER}]`)
+  if (!stamp) return
+  stamp.setAttribute(RENDERED_HASH, hash)
+  iframe.dispatchEvent(new Event(RESTAMPED))
 }
 
 /**

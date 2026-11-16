@@ -82,9 +82,10 @@ function showsSent(previewed: boolean, frame: string, hash: string): boolean {
  */
 function adoptLive(frame: string, hash: string): void {
   rememberLiveHash(frame, hash)
-  const shown = liveIframe(frame)?.contentDocument
-  if (shown) stampRenderedHash(shown, hash)
+  // Previews first, so a reader the stamp wakes sees no stale original.
   keepPreviews(frame)
+  const iframe = liveIframe(frame)
+  if (iframe) stampRenderedHash(iframe, hash)
 }
 
 /**

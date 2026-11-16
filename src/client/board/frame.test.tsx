@@ -14,7 +14,7 @@ import { ringFocused } from '@/test/focus-ring'
 
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
-import { frameElements } from './frame-dom'
+import { frameElements, stampRenderedHash } from './frame-dom'
 import { modeStore } from './mode'
 import {
   holdMotion,
@@ -1051,6 +1051,28 @@ describe('Frame preview', () => {
 
     const root = container.querySelector<HTMLElement>('[data-frame]')
     expect(root?.style.height).toBe('320px')
+  })
+
+  it('reads a hugging height again when a kept drop stamps the page, with no load', async () => {
+    const hugging = { ...frame('a'), hugHeight: true }
+    const { container } = render(<Frame frame={hugging} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const document = iframe.contentDocument
+    if (!document) throw new Error('no frame document')
+    document.head.insertAdjacentHTML(
+      'beforeend',
+      '<style data-frameboard data-hash="old"></style>',
+    )
+    document.body.innerHTML = '<div style="height:320px"></div>'
+    document.body.style.margin = '0'
+    act(() => setPreview(['studio/home/a'], 1440))
+    document.body.innerHTML = '<div style="height:480px"></div>'
+
+    act(() => stampRenderedHash(iframe, 'new'))
+
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    expect(root?.style.height).toBe('480px')
   })
 
   it("reads a hugging height at the previewed width's reference height, not the box's", async () => {
