@@ -564,6 +564,30 @@ describe('a live element', () => {
       expect(container?.style.width).toBe('')
       expect(container?.style.top).toBe('5px')
     })
+
+    it('leaves a member stating no offsets as it was after a cancel', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div><div style="position: absolute"><p>a</p></div>',
+      )
+      const edit = startGroupEdit('studio/home', [KEY, { ...KEY, index: 4 }])
+      const member = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelectorAll('body > div')[1]
+
+      edit?.preview([
+        {
+          index: 4,
+          declarations: [
+            { property: 'left', value: '40px' },
+            { property: 'top', value: '10px' },
+            { property: 'width', value: '120px' },
+          ],
+        },
+      ])
+      edit?.cancel()
+
+      expect(member?.getAttribute('style')).toBe('position: absolute')
+    })
   })
 
   describe('startElementResize', () => {
@@ -619,6 +643,23 @@ describe('a live element', () => {
 
       expect(child?.style.flex).toBe('1 1 0px')
       expect(child?.style.width).toBe('')
+    })
+
+    it('leaves a hugging container’s style as it was after a cancel of a drag on both sides', async () => {
+      const shown = await mount(
+        '<div style="display: flex; gap: 8px"><p>a</p><p>b</p></div>',
+      )
+      const read = shownResize(shown, KEY)
+      if (!read) throw new Error('The container reads no resize')
+      const resize = startElementResize('studio/home', KEY, read)
+      const container = shown
+        .querySelector('iframe')
+        ?.contentDocument?.querySelector('body > div')
+
+      resize?.preview({ width: 300, height: 200 })
+      resize?.cancel()
+
+      expect(container?.getAttribute('style')).toBe('display: flex; gap: 8px')
     })
   })
 })

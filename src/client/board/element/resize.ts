@@ -303,8 +303,12 @@ export function startElementResize(
   }
   // Every property a preview wrote, since a container's drag may write its flex too.
   const shown = new Set(['width', 'height'])
+  // Newest first, since `previewStyle` may put back the whole `style` it saved,
+  // which holds every earlier preview.
   const putBack = () => {
-    for (const property of shown) previewStyle(key, property, null)
+    for (const property of [...shown].toReversed()) {
+      previewStyle(key, property, null)
+    }
   }
   return {
     preview: (size) => {
@@ -503,8 +507,9 @@ export function startGroupEdit(
   }
   const keyOf = new Map(keys.map((key) => [key.index, key]))
   const shown = new Set<string>()
+  // Newest first, for the reason `startElementResize` puts back that way.
   const putBack = () => {
-    for (const at of shown) {
+    for (const at of [...shown].toReversed()) {
       const [index, property] = at.split(':')
       const key = keyOf.get(Number(index))
       if (key && property) previewStyle(key, property, null)
