@@ -7,6 +7,7 @@ import {
 } from '@/shared/bindings'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { RESTAMPED } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { screen } from '../geometry/draw'
 import { useMode } from '../mode'
@@ -165,10 +166,13 @@ function useBindingMeasures(
       }
     }
     measure()
-    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
+    // Neither a load nor a restamp bubbles, so a frame mounting, reloading,
+    // or keeping a live edit's page is caught on the way down.
     container.addEventListener('load', measure, true)
+    container.addEventListener(RESTAMPED, measure, true)
     return () => {
       container.removeEventListener('load', measure, true)
+      container.removeEventListener(RESTAMPED, measure, true)
       stopWatching()
     }
   }, [container, ref])
