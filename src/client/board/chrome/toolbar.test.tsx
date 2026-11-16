@@ -581,10 +581,10 @@ describe('Toolbar', () => {
 
 describe('the stage a room picks', () => {
   it.each([
-    [754, 'full'],
-    [753, 'folded'],
-    [560, 'folded'],
-    [559, 'tools'],
+    [601, 'full'],
+    [600, 'folded'],
+    [486, 'folded'],
+    [485, 'tools'],
     [357, 'tools'],
     [356, 'active'],
     [221, 'active'],
@@ -656,7 +656,7 @@ describe('the toolbar in a narrow column', () => {
 
   it.each([
     [
-      754,
+      601,
       [
         'Move',
         'Pointer tools',
@@ -676,7 +676,7 @@ describe('the toolbar in a narrow column', () => {
       ],
     ],
     [
-      560,
+      486,
       [
         'Move',
         'Pointer tools',
@@ -723,7 +723,7 @@ describe('the toolbar in a narrow column', () => {
   ]
 
   it.each([
-    [560, FOUR],
+    [486, FOUR],
     [357, ['Hand', 'Section', ...SHAPE_ROWS, ...FOUR]],
     [
       221,
@@ -761,12 +761,12 @@ describe('the toolbar in a narrow column', () => {
   })
 
   it('draws no More while every control fits', () => {
-    renderInRoom(754)
+    renderInRoom(601)
 
     expect(screen.queryByRole('button', { name: 'More tools' })).toBeNull()
   })
 
-  it.each([754, 560, 357, 221, 44])(
+  it.each([601, 486, 357, 221, 44])(
     'clips nothing at the narrowest room %i',
     (room) => {
       renderInRoom(room)
@@ -777,7 +777,7 @@ describe('the toolbar in a narrow column', () => {
   )
 
   it('changes stage when the column narrows, closing an open More', async () => {
-    const column = renderInRoom(560)
+    const column = renderInRoom(486)
     await openMore()
 
     column.style.width = `${357 + 24}px`
@@ -806,7 +806,7 @@ describe('the toolbar in a narrow column', () => {
   it('runs the action the bar button runs from its More row', async () => {
     let runs = 0
     register(action('edit.undo', { label: 'Undo', run: () => (runs += 1) }))
-    renderInRoom(560)
+    renderInRoom(486)
 
     await openMore()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Undo' }))

@@ -1006,6 +1006,14 @@ async function aboutSmall(page: Page): Promise<void> {
 }
 
 /**
+ * Holds the live socket open with no server behind it, so no board ever
+ * arrives and the page stays on its loading shell.
+ */
+async function neverConnects(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', () => {})
+}
+
+/**
  * Hands the board an empty change log on every `changes` message, since
  * `rawIndigoHero` writes the hero as an outside write the change tracker
  * would otherwise raise as an agent's, racing the shot.
@@ -3614,6 +3622,29 @@ const CASES: CaptureCase[] = [
       evidence: true,
       mask: [AVATAR],
       setup: both(browserSwept, chosenTheme(theme)),
+    },
+    {
+      section: 'home-loading',
+      theme,
+      route: '/',
+      evidence: true,
+      setup: both(
+        chosenTheme(theme),
+        neverConnects,
+        readyWhen('main li[data-placeholder]'),
+      ),
+    },
+    {
+      section: 'board-loading',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      mask: [AVATAR],
+      setup: both(
+        chosenTheme(theme),
+        neverConnects,
+        readyWhen('main [data-placeholder]'),
+      ),
     },
     {
       section: 'linked-widths',

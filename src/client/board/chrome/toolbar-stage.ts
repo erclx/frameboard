@@ -4,13 +4,14 @@ import { type RefObject, useLayoutEffect, useState } from 'react'
 export type ToolbarStage = 'full' | 'folded' | 'tools' | 'active' | 'more'
 
 /**
- * The room each stage needs, widest first. Each runs wider than
+ * The room each stage needs, widest first, being the bar's own width at that
+ * stage in the bundled Geist face. Each runs wider than
  * `canon/design/toolbar/narrow` measures, since that frame draws no Present
- * button, so the bar can fold a stage early but never clips.
+ * button.
  */
 const STAGE_FLOORS = [
-  [754, 'full'],
-  [560, 'folded'],
+  [601, 'full'],
+  [486, 'folded'],
   [357, 'tools'],
   [221, 'active'],
 ] as const

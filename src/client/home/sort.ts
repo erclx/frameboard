@@ -144,7 +144,7 @@ function madeAt(project: ProjectRecord): number {
   return project.createdAt ? Date.parse(project.createdAt) : 0
 }
 
-function readOrder(): HomeOrder {
+export function readOrder(): HomeOrder {
   try {
     const stored = localStorage.getItem(SORT_KEY)
     const by = SORTS.find((sort) => sort === stored) ?? 'edited'
