@@ -44,7 +44,11 @@ export function PresentBar({
         disabled={at <= 1 && step <= 0}
         onClick={onPrevious}
       />
-      <span className="px-2 whitespace-nowrap text-[#ddd] tabular-nums select-none">
+      {/* Wide enough for the deck's last count, so passing 9 to 10 moves nothing. */}
+      <span
+        style={{ minWidth: `calc(${`${count} / ${count}`.length}ch + 1rem)` }}
+        className="px-2 text-center whitespace-nowrap text-[#ddd] tabular-nums select-none"
+      >
         {at} / {count}
       </span>
       <BarButton

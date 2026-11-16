@@ -653,6 +653,20 @@ describe('steps inside a slide', () => {
   })
 })
 
+describe('the count in the bar', () => {
+  it('keeps the bar one width passing from frame 9 to frame 10', async () => {
+    const names = Array.from({ length: 10 }, (_, at) => `frame-${at + 1}`)
+    present(framesOf(...names), ['frame-9'])
+    await screen.findByText('9 / 10')
+    const before = barWidth()
+
+    await userEvent.keyboard('{ArrowRight}')
+    await screen.findByText('10 / 10')
+
+    expect(barWidth()).toBe(before)
+  })
+})
+
 describe('focus on leave', () => {
   /** A button outside the overlay, standing for the toolbar or a palette row. */
   function buttonNamed(name: string): HTMLButtonElement {
