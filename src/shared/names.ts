@@ -36,7 +36,8 @@ export function nextFreeName(base: string, taken: Iterable<string>): string {
  * The folder a project in `current` lands in once titled `title`: the name
  * made from the title, the next free one when another of `taken` holds it,
  * and `current` itself when the title names no folder or names the one it
- * is in.
+ * is in. A taken name near the length limit is cut back until a free one
+ * fits, its suffix included, so the folder always stays a valid name.
  */
 export function titledFolder(
   current: string,
@@ -45,10 +46,13 @@ export function titledFolder(
 ): string {
   const folder = folderName(title)
   if (folder === '' || namesCollide(folder, current)) return current
-  return nextFreeName(
-    folder,
-    [...taken].filter((name) => name !== current),
-  )
+  const others = [...taken].filter((name) => name !== current)
+  for (let cut = folder.length; cut > 0; cut--) {
+    const base = folder.slice(0, cut).replace(/-+$/, '')
+    const free = nextFreeName(base, others)
+    if (base !== '' && free.length <= NAME_MAX_LENGTH) return free
+  }
+  return current
 }
 
 /**

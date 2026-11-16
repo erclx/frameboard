@@ -114,4 +114,20 @@ describe('titledFolder', () => {
   it('keeps the folder when the title names none', () => {
     expect(titledFolder('studio', '!!!', ['studio'])).toBe('studio')
   })
+
+  it('cuts a taken name at the length limit back to a free one that fits', () => {
+    const long = 'a'.repeat(64)
+
+    expect(titledFolder('untitled', 'a'.repeat(80), ['untitled', long])).toBe(
+      'a'.repeat(63),
+    )
+  })
+
+  it('keeps every landing folder a valid name when the cut names are taken too', () => {
+    const taken = ['untitled', 'a'.repeat(64), 'a'.repeat(63)]
+
+    expect(isValidName(titledFolder('untitled', 'a'.repeat(80), taken))).toBe(
+      true,
+    )
+  })
 })
