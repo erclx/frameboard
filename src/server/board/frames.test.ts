@@ -22,6 +22,7 @@ import {
   fitHeight,
   moveFrame,
   orderFrame,
+  readFrame,
   renameFrame,
   resizeFrame,
   setBoxes,
@@ -827,68 +828,146 @@ describe('frames', () => {
     })
 
     describe('device', () => {
-      it('sets a device on the entry and leaves the frame file alone', async () => {
+      it('shows the device the width names, writing only the flag and leaving the frame file alone', async () => {
         const root = open()
         const bytes = file('webapp/home/hero.html')
 
-        const set = await setFrameDevice(root, 'webapp/home/hero', 'phone', {
+        const set = await setFrameDevice(root, 'webapp/home/hero', true, {
           cwd: root,
         })
 
-        expect(set.device).toBe('phone')
-        expect(layout('webapp/home').frames.hero.device).toBe('phone')
-        expect(file('webapp/home/hero.html')).toBe(bytes)
-      })
-
-      it('clears a device, leaving no key and the frame file alone', async () => {
-        const root = open()
-        const bytes = file('webapp/home/hero.html')
-        await setFrameDevice(root, 'webapp/home/hero', 'tablet', { cwd: root })
-
-        const cleared = await setFrameDevice(root, 'webapp/home/hero', null, {
-          cwd: root,
+        expect(set).toMatchObject({ showDevice: true, device: 'laptop' })
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          showDevice: true,
         })
-
-        expect(cleared).not.toHaveProperty('device')
         expect(layout('webapp/home').frames.hero).not.toHaveProperty('device')
         expect(file('webapp/home/hero.html')).toBe(bytes)
       })
 
-      it('reads an unknown value as none and leaves it as written', async () => {
+      it.each([
+        ['a phone', 390, 'phone'],
+        ['a tablet', 834, 'tablet'],
+      ] as const)(
+        'reports %s for a %i wide frame',
+        async (_, width, device) => {
+          const root = open()
+          hugHero(root, { width, showDevice: true })
+
+          const hero = await readFrame(root, 'webapp/home/hero', { cwd: root })
+
+          expect(hero.device).toBe(device)
+        },
+      )
+
+      it('changes the device as a resize crosses a band, writing no device', async () => {
         const root = open()
-        hugHero(root, { device: 'watch' })
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+
+        const resized = await resizeFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          width: 800,
+        })
+
+        expect(resized).toMatchObject({ showDevice: true, device: 'tablet' })
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('device')
+      })
+
+      it('shows no device under 320 wide while the flag stays on', async () => {
+        const root = open()
+        hugHero(root, { width: 319, showDevice: true })
+
+        const hero = await readFrame(root, 'webapp/home/hero', { cwd: root })
+
+        expect(hero.showDevice).toBe(true)
+        expect(hero).not.toHaveProperty('device')
+      })
+
+      it('hides the device, leaving no key and the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+
+        const cleared = await setFrameDevice(root, 'webapp/home/hero', false, {
+          cwd: root,
+        })
+
+        expect(cleared).not.toHaveProperty('showDevice')
+        expect(cleared).not.toHaveProperty('device')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty(
+          'showDevice',
+        )
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('reads a device name written before the flag as shown, by the width', async () => {
+        const root = open()
+        hugHero(root, { device: 'phone' })
+
+        const hero = await readFrame(root, 'webapp/home/hero', { cwd: root })
+
+        expect(hero).toMatchObject({ showDevice: true, device: 'laptop' })
+      })
+
+      it('replaces a device name with the flag on the next write', async () => {
+        const root = open()
+        hugHero(root, { device: 'tablet' })
+
+        await moveFrame(root, 'webapp/home/hero', { cwd: root, x: 40 })
+
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          showDevice: true,
+        })
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('device')
+      })
+
+      it('hides a device name written before the flag, leaving neither key', async () => {
+        const root = open()
+        hugHero(root, { device: 'tablet' })
+
+        await setFrameDevice(root, 'webapp/home/hero', false, { cwd: root })
+
+        const entry = layout('webapp/home').frames.hero
+        expect(entry).not.toHaveProperty('device')
+        expect(entry).not.toHaveProperty('showDevice')
+      })
+
+      it('keeps a flag value no reader knows as written, showing nothing', async () => {
+        const root = open()
+        hugHero(root, { showDevice: 'yes' })
 
         const moved = await moveFrame(root, 'webapp/home/hero', {
           cwd: root,
           x: 40,
         })
 
-        expect(moved).not.toHaveProperty('device')
-        expect(layout('webapp/home').frames.hero.device).toBe('watch')
+        expect(moved).not.toHaveProperty('showDevice')
+        expect(layout('webapp/home').frames.hero.showDevice).toBe('yes')
       })
 
-      it('add writes the device it is given', async () => {
+      it('add shows the device when asked', async () => {
         const root = open()
 
         const added = await addFrame(root, 'webapp/home/card', {
           cwd: root,
           size: 'phone',
-          device: 'phone',
+          showDevice: true,
         })
 
-        expect(added.device).toBe('phone')
-        expect(layout('webapp/home').frames.card.device).toBe('phone')
+        expect(added).toMatchObject({ showDevice: true, device: 'phone' })
+        expect(layout('webapp/home').frames.card).toMatchObject({
+          showDevice: true,
+        })
       })
 
-      it('duplicate lands 80 past the bezel of a frame in a device', async () => {
+      it('duplicate lands 80 past the body of a frame in a device', async () => {
         const root = open()
-        await setFrameDevice(root, 'webapp/home/about', 'tablet', { cwd: root })
+        await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })
 
         const copy = await duplicateFrame(root, 'webapp/home/about', {
           cwd: root,
         })
 
-        expect(copy.box.x).toBe(1520 + 390 + 44 + 80)
+        expect(copy.box.x).toBe(1520 + 390 + 16 + 80)
       })
     })
 

@@ -528,7 +528,7 @@ export function structureRoutes(
     const frames = await eachFrame(
       body.refs,
       (frame, journal) =>
-        setFrameDevice(root, frame, body.device, { cwd, journal }),
+        setFrameDevice(root, frame, body.device !== null, { cwd, journal }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })

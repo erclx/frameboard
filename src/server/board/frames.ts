@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import { type Device, deviceOf } from '@/shared/frame-device'
 import {
   FRAME_GAP,
   type FrameSizeName,
@@ -79,8 +78,8 @@ export interface BodyOptions {
 }
 
 export interface DeviceOptions {
-  /** The device the board draws around the frame, absent for none. */
-  device?: Device
+  /** Whether the board draws the frame inside the device its width names, off when absent. */
+  showDevice?: boolean
 }
 
 export type FrameFlag = 'hidden' | 'locked'
@@ -189,7 +188,7 @@ export async function addFrame(
         ...hugs,
         scroll,
         widths,
-        ...(options.device ? { device: options.device } : {}),
+        ...(options.showDevice ? { showDevice: true as const } : {}),
       })
       layout.renumber()
     },
@@ -907,19 +906,19 @@ export async function setFrameFlag(
 }
 
 /**
- * Sets the device the board draws around a frame, or clears it with null.
- * The frame's file and box are left as they stand, since the bezel wraps
- * whatever size the frame is.
+ * Shows or hides the device the board draws around a frame, which the
+ * frame's width picks. The frame's file and box are left as they stand,
+ * since the body wraps whatever size the frame is.
  */
 export async function setFrameDevice(
   root: string,
   ref: string,
-  device: Device | null,
+  show: boolean,
   options: RefOptions & JournalOptions,
 ): Promise<FrameRecord> {
   return updatePlacement(root, ref, options, (placement) => {
-    const { device: _held, ...rest } = placement
-    return device ? { ...rest, device } : rest
+    const { showDevice: _held, device: _device, ...rest } = placement
+    return show ? { ...rest, showDevice: true } : rest
   })
 }
 
@@ -1079,8 +1078,9 @@ class PageLayout {
    * is written once it is on or when the entry holds it, so an entry from
    * before the flags gains no key, and a scroll entry writes both hug flags
    * false, since it fixes both axes. `scroll` follows the same rule. `widths`,
-   * `device`, and `transition` are written while the frame holds one and
+   * `showDevice`, and `transition` are written while the frame holds one and
    * removed once cleared, leaving a held value no reader understands as is.
+   * A `device` name from before `showDevice` is replaced by it on any write.
    */
   set(
     name: string,
@@ -1091,7 +1091,7 @@ class PageLayout {
       locked,
       scroll,
       widths,
-      device,
+      showDevice,
       transition,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
@@ -1117,13 +1117,14 @@ class PageLayout {
       ...(widths.length > 0
         ? { widths: widths.map(({ width, height }) => ({ width, height })) }
         : {}),
-      ...(device ? { device } : {}),
+      ...(showDevice ? { showDevice } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
     }
     if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
     }
-    if (!device && deviceOf(held?.device)) delete entry.device
+    if (!showDevice && held?.showDevice === true) delete entry.showDevice
+    if (typeof held?.device === 'string') delete entry.device
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition
     }

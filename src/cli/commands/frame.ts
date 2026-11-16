@@ -3,7 +3,6 @@ import { Argument, type Command, Option } from 'commander'
 import {
   addFrame,
   deleteFrame,
-  type DeviceOptions,
   duplicateFrame,
   fitScrollError,
   type FrameFlag,
@@ -21,7 +20,6 @@ import {
 } from '@/server/board/frames'
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
-import { deviceOf, DEVICES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
@@ -48,11 +46,33 @@ const ANY_INTEGER = parseInteger(Number.MIN_SAFE_INTEGER)
 type FrameOptions = CommonOptions &
   SizeOptions &
   ScrollOptions &
-  WidthsOptions &
-  DeviceOptions & { x?: number; y?: number }
+  WidthsOptions & { x?: number; y?: number; device?: string }
 
 const DEVICE_HELP =
-  'the device the board draws around the frame, leaving the frame file and its size as they are'
+  'on to draw the frame inside the phone, tablet, or laptop its width names, leaving the frame file and its size as they are, with phone and tablet taken as on'
+
+/**
+ * What `frame device` takes, on or off, with the device names it took before
+ * the width picked the body kept as aliases, so no agent's call breaks.
+ */
+const DEVICE_SWITCH = {
+  on: true,
+  off: false,
+  phone: true,
+  tablet: true,
+  none: false,
+} as const satisfies Record<string, boolean>
+
+const DEVICE_ON = ['on', 'phone', 'tablet'] as const
+
+/** What `frame device` did, naming the device the frame's width gave it. */
+function deviceHeadline({ ref, box, showDevice, device }: FrameRecord): string {
+  if (!showDevice) return `Hid the device on ${ref}`
+  if (!device) {
+    return `Showed the device on ${ref}, though no device fits its ${box.width} px width`
+  }
+  return `Showed the ${device} on ${ref}`
+}
 
 const WIDTHS_HELP =
   'the extra widths the frame also shows at, a comma list such as 834,390, each drawn beside it and hugging or holding its height as the frame does'
@@ -112,15 +132,16 @@ export function registerFrame(
           .option('--scroll', SCROLL_HELP)
           .option('--widths <list>', WIDTHS_HELP, parseWidths)
           .addOption(
-            new Option('--device <device>', DEVICE_HELP).choices(DEVICES),
+            new Option('--device <on>', DEVICE_HELP).choices(DEVICE_ON),
           ),
       ),
     ),
     context,
-    async ([ref = ''], options) =>
+    async ([ref = ''], { device, ...options }) =>
       done(
         await addFrame(await boardOf(options, io), ref, {
           ...options,
+          ...(device ? { showDevice: true } : {}),
           cwd: io.cwd,
         }),
         'Added',
@@ -260,25 +281,25 @@ export function registerFrame(
   act<CommonOptions>(
     verb(
       'device',
-      'Set the device the board draws around a frame, or clear it with none, leaving the frame file and its size as they are',
+      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names, leaving the frame file and its size as they are',
     ).addArgument(
-      new Argument('<device>', 'the device, or none to clear it').choices([
-        ...DEVICES,
-        'none',
-      ]),
+      new Argument(
+        '<on|off>',
+        'on to show the device, off to hide it, with phone and tablet taken as on and none as off',
+      ).choices(Object.keys(DEVICE_SWITCH)),
     ),
     context,
-    async ([ref = '', device = ''], options) => {
+    async ([ref = '', value = ''], options) => {
+      const show = Object.hasOwn(DEVICE_SWITCH, value)
+        ? DEVICE_SWITCH[value as keyof typeof DEVICE_SWITCH]
+        : false
       const record = await setFrameDevice(
         await boardOf(options, io),
         ref,
-        deviceOf(device),
+        show,
         { ...options, cwd: io.cwd },
       )
-      return done(
-        record,
-        record.device ? `Set ${record.device} on` : 'Cleared the device on',
-      )
+      return { data: record, human: deviceHeadline(record) }
     },
   )
 

@@ -330,29 +330,57 @@ describe('frame', () => {
   })
 
   describe('device', () => {
-    it('answers the frame with the device it set', async () => {
+    it('answers on with the device the width names', async () => {
       const run = on('basic')
 
-      const result = await run('frame', 'device', 'webapp/home/about', 'phone')
+      const result = await run('frame', 'device', 'webapp/home/about', 'on')
 
       expect(result.exitCode).toBe(0)
       expect(result.json().data).toMatchObject({
         ref: 'webapp/home/about',
+        showDevice: true,
         device: 'phone',
       })
     })
 
-    it('answers the frame with no device after none', async () => {
+    it('answers a desktop frame shown with a laptop', async () => {
       const run = on('basic')
-      await run('frame', 'device', 'webapp/home/about', 'tablet')
 
-      const result = await run('frame', 'device', 'webapp/home/about', 'none')
+      const result = await run('frame', 'device', 'webapp/home/hero', 'on')
 
-      expect(result.exitCode).toBe(0)
-      expect(result.json().data).not.toHaveProperty('device')
+      expect(result.json().data).toMatchObject({ device: 'laptop' })
     })
 
-    it('refuses an unknown device with usage, exit 2, writing nothing', async () => {
+    it.each(['phone', 'tablet'])(
+      'takes %s as on, the width still picking the body',
+      async (name) => {
+        const run = on('basic')
+
+        const result = await run('frame', 'device', 'webapp/home/hero', name)
+
+        expect(result.exitCode).toBe(0)
+        expect(result.json().data).toMatchObject({
+          showDevice: true,
+          device: 'laptop',
+        })
+      },
+    )
+
+    it.each(['off', 'none'])(
+      'answers the frame with no device after %s',
+      async (name) => {
+        const run = on('basic')
+        await run('frame', 'device', 'webapp/home/about', 'on')
+
+        const result = await run('frame', 'device', 'webapp/home/about', name)
+
+        expect(result.exitCode).toBe(0)
+        expect(result.json().data).not.toHaveProperty('showDevice')
+        expect(result.json().data).not.toHaveProperty('device')
+      },
+    )
+
+    it('refuses an unknown value with usage, exit 2, writing nothing', async () => {
       const run = on('basic')
       const layout = join(board.root, 'webapp/home/layout.json')
       const bytes = readFileSync(layout, 'utf8')
@@ -364,21 +392,27 @@ describe('frame', () => {
       expect(readFileSync(layout, 'utf8')).toBe(bytes)
     })
 
-    it('add --device places the frame in that device', async () => {
-      const run = on('basic')
+    it.each(['on', 'phone'])(
+      'add --device %s places the frame in the device its width names',
+      async (value) => {
+        const run = on('basic')
 
-      const result = await run(
-        'frame',
-        'add',
-        'webapp/home/pricing',
-        '--size',
-        'phone',
-        '--device',
-        'phone',
-      )
+        const result = await run(
+          'frame',
+          'add',
+          'webapp/home/pricing',
+          '--size',
+          'tablet',
+          '--device',
+          value,
+        )
 
-      expect(result.json().data).toMatchObject({ device: 'phone' })
-    })
+        expect(result.json().data).toMatchObject({
+          showDevice: true,
+          device: 'tablet',
+        })
+      },
+    )
   })
 
   it('fails usage, exit 2, on an unknown size preset', async () => {

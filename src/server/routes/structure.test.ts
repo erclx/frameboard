@@ -761,14 +761,14 @@ describe('structureRoutes', () => {
         device: 'phone',
       })
       expect(layout()).toMatchObject({
-        hero: { device: 'phone' },
-        mobile: { device: 'phone' },
+        hero: { showDevice: true },
+        mobile: { showDevice: true },
       })
       expect(history.counts().undo).toBe(1)
       await history.undo()
 
-      expect(layout().hero).not.toHaveProperty('device')
-      expect(layout().mobile).not.toHaveProperty('device')
+      expect(layout().hero).not.toHaveProperty('showDevice')
+      expect(layout().mobile).not.toHaveProperty('showDevice')
       expect(readFileSync(frameFile('hero'))).toEqual(bytes)
     })
 

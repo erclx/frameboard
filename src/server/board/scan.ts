@@ -10,7 +10,7 @@ import {
   PROJECT_FILE,
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, deviceOf } from '@/shared/frame-device'
+import { type Device, deviceForWidth } from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_GAP,
@@ -68,7 +68,9 @@ export interface Placement {
   hugHeight: boolean
   scroll: boolean
   widths: LinkedWidth[]
-  /** Absent for a frame with no device or one holding a value no reader knows. */
+  /** Present while the board draws the frame inside a device. */
+  showDevice?: true
+  /** The device the box's width names while one shows, absent under 320 wide. */
   device?: Device
   /** Absent for a frame with no override or one holding a value no reader knows. */
   transition?: Transition
@@ -213,10 +215,17 @@ export function placeFrames(
     // A scroll frame fixes both axes, so a hug flag an older `frame fit` left
     // beside the key reads as off and the hug step never measures it.
     const scroll = entry.scroll ?? false
-    const device = deviceOf(entry.device)
+    const box = {
+      x: entry.x,
+      y: entry.y,
+      width: entry.width,
+      height: entry.height,
+    }
+    const shown = showsDevice(entry)
+    const device = shown ? deviceForWidth(box.width) : null
     const transition = readTransition(entry.transition)
     placements.set(name, {
-      box: { x: entry.x, y: entry.y, width: entry.width, height: entry.height },
+      box,
       order: entry.order,
       hidden: entry.hidden ?? false,
       locked: entry.locked ?? false,
@@ -224,6 +233,7 @@ export function placeFrames(
       hugHeight: !scroll && (entry.hugHeight ?? false),
       scroll,
       widths: widthsOf(entry.widths),
+      ...(shown ? { showDevice: true as const } : {}),
       ...(device ? { device } : {}),
       ...(transition ? { transition } : {}),
       placed: true,
@@ -237,6 +247,11 @@ export function placeFrames(
     placements.set(name, next)
   }
   return placements
+}
+
+/** Whether an entry shows its device, through its own key or the device name written before it. */
+export function showsDevice(entry: LayoutEntry | undefined): boolean {
+  return entry?.showDevice === true || typeof entry?.device === 'string'
 }
 
 /**

@@ -37,7 +37,9 @@ export const frameRecordSchema = z.object({
   scroll: z.boolean(),
   /** The extra widths the frame also shows at, beside it in a row, none when it lists none. */
   widths: z.array(z.object({ width: z.number(), height: z.number() })),
-  /** The device the board draws around the frame, absent when it has none. */
+  /** Whether the board draws the frame inside a device, absent when it does not. */
+  showDevice: z.boolean().optional(),
+  /** The device the frame's width names while it shows one, absent when off or under 320 wide. */
   device: z.enum(DEVICES).optional(),
   /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
   transition: transitionRecordSchema.optional(),
