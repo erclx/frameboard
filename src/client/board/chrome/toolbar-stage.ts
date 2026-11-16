@@ -3,7 +3,11 @@ import { type RefObject, useLayoutEffect, useState } from 'react'
 /** What the bar draws, from every control down to More alone. */
 export type ToolbarStage = 'full' | 'folded' | 'tools' | 'active' | 'more'
 
-/** The room each stage needs, read from `canon/design/toolbar/narrow`, widest first. */
+/**
+ * The room each stage needs, widest first. Each runs wider than
+ * `canon/design/toolbar/narrow` measures, since that frame draws no Present
+ * button, so the bar can fold a stage early but never clips.
+ */
 const STAGE_FLOORS = [
   [754, 'full'],
   [560, 'folded'],
