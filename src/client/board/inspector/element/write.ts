@@ -4,11 +4,12 @@ import type { EditResult } from '@/shared/records/edit'
 
 import { WaitDropped, whenFree } from '../../claims/waiting'
 import { catchUpTree, trees } from '../../element/tree'
-import { renderedHash } from '../../frame-dom'
+import { liveIframe, renderedHash, stampRenderedHash } from '../../frame-dom'
 import {
   awaitHash,
   type ElementKey,
   rememberHash,
+  rememberLiveHash,
   selectedElements,
   selectElement,
   selectElements,
@@ -18,6 +19,7 @@ import {
   settleRefused,
 } from '../../selection'
 import type { NumberChange } from '../number-field'
+import { keepPreviews } from './styles'
 
 /** One change to the selected element, as `POST /api/frames/edit` takes it. */
 export type ElementChange =
@@ -55,6 +57,35 @@ export interface WriteDeps {
   notify?: (refusal: Refusal) => void
   /** Brings the frame's element tree up to the bytes an edit answered, `catchUpHeldTree` by default. */
   catchUp?: (ref: string, hash: string) => Promise<void>
+  /**
+   * Whether the frame's live page already previews every declaration the
+   * edit writes, as a drag's release does. Such an edit, sent from the bytes
+   * the frame shows and answered where it was sent, leaves the page as it is
+   * and is not reloaded. False by default, which reloads.
+   */
+  previewed?: boolean
+}
+
+/**
+ * Whether a live edit of `frame` is sent from the bytes its page shows, so
+ * its answer names bytes the page then shows too.
+ */
+function showsSent(previewed: boolean, frame: string, hash: string): boolean {
+  return previewed && shownHash(frame) === hash
+}
+
+/**
+ * Takes a live edit's answer onto the page that already shows it, ahead of
+ * the selection moving to the answered hash, so the outline measures the
+ * element at once: the frame is stamped with the new hash, its previews are
+ * kept as written, and the reload of those bytes is marked for skipping.
+ */
+function adoptLive(frame: string, hash: string): void {
+  rememberLiveHash(frame, hash)
+  // Previews first, so a reader the stamp wakes sees no stale original.
+  keepPreviews(frame)
+  const iframe = liveIframe(frame)
+  if (iframe) stampRenderedHash(iframe, hash)
 }
 
 /**
@@ -196,6 +227,7 @@ async function batchInTurn(
     send = fetch,
     notify = showRefusal,
     catchUp = catchUpHeldTree,
+    previewed = false,
   }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
@@ -213,9 +245,11 @@ async function batchInTurn(
     change,
   }))
   let done = () => {}
+  let showing = false
   try {
     const answer = await whenFree([frame], 'edit', async () => {
-      done = awaitHash(frame)
+      showing = showsSent(previewed, frame, hash)
+      done = awaitHash(frame, showing)
       rememberHash(frame, hash)
       try {
         return await writeBoard<EditResult>(
@@ -232,6 +266,7 @@ async function batchInTurn(
     const relocated = answer.from !== undefined && answer.from !== hash
     if (relocated && answer.from) rememberHash(frame, answer.from)
     rememberHash(frame, answer.hash)
+    if (showing && !relocated) adoptLive(frame, answer.hash)
     const landedAt = new Map(
       edits.map(({ key }, at) => [
         key.index,
@@ -292,6 +327,7 @@ async function editInTurn(
     send = fetch,
     notify = showRefusal,
     catchUp = catchUpHeldTree,
+    previewed = false,
   }: WriteDeps,
 ): Promise<Landed> {
   const before = prior ? await prior : undefined
@@ -306,10 +342,12 @@ async function editInTurn(
   const hash = rebased ? before.to : key.hash
   const index = rebased ? (moved ?? key.index) : key.index
   let done = () => {}
+  let showing = false
   try {
     const answer = await whenFree([key.frame], 'edit', async () => {
+      showing = showsSent(previewed, key.frame, hash)
       // Held from the send, so a wait of minutes never skips the frame's hash check.
-      done = awaitHash(key.frame)
+      done = awaitHash(key.frame, showing)
       // The frame still shows these bytes when the answer lands, its reload to come.
       rememberHash(key.frame, hash)
       try {
@@ -328,6 +366,7 @@ async function editInTurn(
     // The frame shows the agent's bytes the edit landed over until its reload.
     if (relocated && answer.from) rememberHash(key.frame, answer.from)
     rememberHash(key.frame, answer.hash)
+    if (showing && !relocated) adoptLive(key.frame, answer.hash)
     const { page: shownPage, frames, element: held } = selection.getState()
     // The agent's reload during the wait drops the element to its frame.
     const dropped =
@@ -385,9 +424,7 @@ async function editInTurn(
 
 /** The hash of the bytes a frame's live iframe shows, null while none does. */
 export function shownHash(ref: string): string | null {
-  const shown = document.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(ref)}"] iframe`,
-  )?.contentDocument
+  const shown = liveIframe(ref)?.contentDocument
   return shown ? renderedHash(shown) : null
 }
 

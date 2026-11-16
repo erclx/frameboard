@@ -117,10 +117,14 @@ const pageViews = new Map<string, View>()
  */
 const untouchedEmpty = new Set<string>()
 
+const NONE_KEPT: Readonly<Record<string, number>> = {}
+
 interface CanvasProps {
   page: PageRecord
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
+  /** How many of each frame's reloads its own iframe kept its page through, by ref, absent meaning zero. */
+  kept?: Readonly<Record<string, number>>
   /** Check findings by frame ref, absent meaning none. */
   findings?: Readonly<Record<string, readonly Finding[]>>
   /** The live claims by frame ref, absent meaning nobody holds the frame. */
@@ -149,6 +153,7 @@ interface CanvasProps {
 export function Canvas({
   page,
   reloads,
+  kept = NONE_KEPT,
   findings,
   claims,
   focus,
@@ -841,7 +846,9 @@ export function Canvas({
                   <Frame
                     frame={frame}
                     live={live}
-                    version={version}
+                    // A reload the live page kept leaves its iframe as it is,
+                    // while the linked widths, which drew no preview, reload.
+                    version={version - (kept[frame.ref] ?? 0)}
                     findings={findings?.[frame.ref]}
                     claim={claims?.[frame.ref]}
                     unseen={frame.ref in unseen}

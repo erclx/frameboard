@@ -322,11 +322,14 @@ export function startElementResize(
       }
     },
     commit: async (size) => {
-      const written = await writeElement(page, key, {
-        kind: 'styles',
-        declarations: resizeDeclarations(read, size),
-      })
-      // A landed write reloads the frame with the size, so only a refusal puts it back.
+      // The last preview drew this size, so the frame keeps its page.
+      const written = await writeElement(
+        page,
+        key,
+        { kind: 'styles', declarations: resizeDeclarations(read, size) },
+        { previewed: true },
+      )
+      // A landed write leaves the frame at the size, so only a refusal puts it back.
       if (!written) putBack()
       return written
     },
@@ -392,13 +395,18 @@ export function startPlacedMove(
   return {
     preview: show,
     commit: async ({ left, top }) => {
-      const written = await writeElement(page, key, {
-        kind: 'styles',
-        declarations: [
-          { property: 'left', value: `${left}px` },
-          { property: 'top', value: `${top}px` },
-        ],
-      })
+      const written = await writeElement(
+        page,
+        key,
+        {
+          kind: 'styles',
+          declarations: [
+            { property: 'left', value: `${left}px` },
+            { property: 'top', value: `${top}px` },
+          ],
+        },
+        { previewed: true },
+      )
       if (!written) show(null)
       return written
     },
@@ -541,8 +549,9 @@ export function startGroupEdit(
             ? [{ key, change: { kind: 'styles' as const, declarations } }]
             : []
         }),
+        { previewed: true },
       )
-      // A landed write reloads the frame with the offsets, so only a refusal puts them back.
+      // A landed write leaves the frame at the offsets, so only a refusal puts them back.
       if (!written) putBack()
       return written
     },

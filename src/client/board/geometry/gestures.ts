@@ -174,6 +174,15 @@ const STORES: GestureStores = {
     elementsIn(layer, frame, rect, treeOf(frame.ref)),
 }
 
+/** The drags that move or resize a selected element's outline while it carries. */
+const CARRIES: ReadonlySet<Gesture['kind']> = new Set([
+  'placed',
+  'carry',
+  'group',
+  'group-resize',
+  'element-resize',
+])
+
 type Gesture =
   | {
       kind: 'press'
@@ -321,6 +330,13 @@ export function attachGestures(
     target.layer.querySelector<HTMLElement>('[data-overlay]')
   // The element outline is drawn beside the frame overlay rather than in it,
   // so a frame drag shifts it here, as `drawMove` shifts the frame's.
+  // GPU raster leaves slivers of an outline moved inside the fractionally
+  // scaled layer, so `styles.css` gives it a layer of its own while
+  // `data-carrying` is set, and only then, since a layer blurs it at rest.
+  const markCarrying = (on: boolean) => {
+    if (on) target.layer.dataset.carrying = ''
+    else delete target.layer.dataset.carrying
+  }
   const shiftElementOutline = (dx: number, dy: number) => {
     for (const outline of target.layer.querySelectorAll<HTMLElement>(
       '[data-element-selection]',
@@ -1294,6 +1310,7 @@ export function attachGestures(
     }
     event.preventDefault()
     event.stopImmediatePropagation()
+    markCarrying(false)
     gesture = { kind: 'none' }
   }
 
@@ -1337,6 +1354,7 @@ export function attachGestures(
         if (distance <= CLICK_DISTANCE) return
         moved = true
         begin()
+        markCarrying(CARRIES.has(gesture.kind))
       }
       update(source)
     })
@@ -1344,6 +1362,7 @@ export function attachGestures(
       removeEventListener('keydown', onEscape, true)
       removeEventListener('keydown', onKey)
       removeEventListener('keyup', onKey)
+      markCarrying(false)
       finish(event.sourceEvent)
       last = null
     })
@@ -1359,6 +1378,7 @@ export function attachGestures(
   return {
     detach: () => {
       clearTimeout(revealing)
+      markCarrying(false)
       selectionOfHit.on('.drag', null)
       hit.removeEventListener('contextmenu', noMenu)
       removeEventListener('keydown', onEscape, true)

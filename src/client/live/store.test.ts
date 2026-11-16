@@ -155,6 +155,31 @@ describe('receiveReload', () => {
 
     expect(store.getState().reloads).toEqual({ 'studio/home/hero': 2 })
   })
+
+  it('counts a kept reload as kept while its reload count still rises', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+
+    receiveReload(
+      store,
+      ['studio/home/hero', 'studio/home/about'],
+      ['studio/home/hero'],
+    )
+
+    const { reloads, kept } = store.getState()
+    expect(reloads).toEqual({ 'studio/home/hero': 1, 'studio/home/about': 1 })
+    expect(kept).toEqual({ 'studio/home/hero': 1 })
+  })
+
+  it('drops the kept count of a frame the board no longer holds', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    receiveReload(store, ['studio/home/about'], ['studio/home/about'])
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(store.getState().kept).toEqual({})
+  })
 })
 
 function themeFinding(frame: string): Finding {

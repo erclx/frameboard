@@ -293,15 +293,67 @@ const awaiting = new Map<string | null, number>()
  * ends it. A frame's reload can land before that answer, showing bytes the
  * selection's hash does not name yet, so while one is in flight the frame
  * leaves its hash check to the write.
+ *
+ * Only a `live` write, whose every declaration the frame already previews,
+ * keeps the frame's live hashes. Any other forgets them, so no reload of
+ * bytes the page showed before that write is skipped.
  */
-export function awaitHash(ref: string | null): () => void {
+export function awaitHash(ref: string | null, live = false): () => void {
+  if (!live) forgetLiveHashes(ref)
   awaiting.set(ref, (awaiting.get(ref) ?? 0) + 1)
   let done = false
   return () => {
     if (done) return
     done = true
     awaiting.set(ref, (awaiting.get(ref) ?? 1) - 1)
+    for (const waiter of settling) {
+      if (!awaitingHash(waiter.ref)) {
+        settling.delete(waiter)
+        waiter.resolve()
+      }
+    }
   }
+}
+
+/** Reloads waiting for a frame's writes to settle. */
+const settling = new Set<{ ref: string; resolve: () => void }>()
+
+/** Resolves once no write that will answer `ref`'s hash is in flight, at once when none is. */
+export function whenSettled(ref: string): Promise<void> {
+  if (!awaitingHash(ref)) return Promise.resolve()
+  return new Promise((resolve) => settling.add({ ref, resolve }))
+}
+
+/**
+ * The hashes live writes answered by frame, oldest first, since the frame's
+ * last write of any other kind or last real reload. The page shows each the
+ * moment its answer lands, since the preview already drew every declaration.
+ */
+const liveWritten = new Map<string, string[]>()
+
+/** Notes bytes a live write left a frame at, which its page already shows. */
+export function rememberLiveHash(ref: string, hash: string): void {
+  const held = (liveWritten.get(ref) ?? []).filter((known) => known !== hash)
+  liveWritten.set(ref, [...held, hash].slice(-WRITTEN_CAP))
+}
+
+/**
+ * Whether a reload of `ref` into the bytes `hash` names can be skipped, being
+ * bytes a live write left it at, and forgets the live hashes older than it,
+ * since a later reload of those would put back bytes the file has moved past.
+ */
+export function takeLiveHash(ref: string, hash: string): boolean {
+  const held = liveWritten.get(ref) ?? []
+  const at = held.indexOf(hash)
+  if (at === -1) return false
+  liveWritten.set(ref, held.slice(at))
+  return true
+}
+
+/** Forgets a frame's live hashes, or every frame's under null. */
+export function forgetLiveHashes(ref: string | null): void {
+  if (ref === null) liveWritten.clear()
+  else liveWritten.delete(ref)
 }
 
 /** The hashes of bytes the board's own writes left each frame at, newest last. */

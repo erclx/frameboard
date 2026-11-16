@@ -35,7 +35,7 @@ import { FINDINGS_MARK, severityOf } from './findings/level'
 import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
 import { openFindings, useFindingsOpen } from './findings/open'
-import { renderedHash } from './frame-dom'
+import { renderedHash, RESTAMPED } from './frame-dom'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
 import { useMode } from './mode'
@@ -170,7 +170,8 @@ export const Frame = memo(function Frame({
   }, [live, frame.ref])
 
   // A previewed frame hugging its height takes its content's height at the
-  // previewed width, read again on each load, as an agent's write reloads it.
+  // previewed width, read again on each load, as an agent's write reloads it,
+  // and on each stamp, as a drop the page keeps moves its content.
   // It reads at the width's reference height, as the server's fit does.
   const previewWidth = preview?.width
   const { hugHeight } = frame
@@ -185,7 +186,11 @@ export const Frame = memo(function Frame({
       )
     measure()
     element.addEventListener('load', measure)
-    return () => element.removeEventListener('load', measure)
+    element.addEventListener(RESTAMPED, measure)
+    return () => {
+      element.removeEventListener('load', measure)
+      element.removeEventListener(RESTAMPED, measure)
+    }
   }, [live, previewWidth, hugHeight, frame.ref])
 
   useHiddenScrollbar(iframe, live, frame.scroll)

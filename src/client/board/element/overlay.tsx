@@ -5,7 +5,7 @@ import { useStore } from 'zustand'
 import type { FrameRecord } from '@/shared/records/list'
 import { LOOK_MARKER } from '@/shared/theme'
 
-import { elementAt, renderedHash } from '../frame-dom'
+import { elementAt, renderedHash, RESTAMPED } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
@@ -128,10 +128,11 @@ function outsideOf(box: Box, frame: Box): string {
 
 /**
  * The elements past the edge of each named frame, read when the frames
- * change, when one loads or its viewport resizes, and when an inline style
- * inside one changes, as a drag's preview writes it. Reads coalesce to one an
- * animation frame. Empty while no frame is named, so the walk runs only under
- * a selection.
+ * change, when one loads or its viewport resizes, when an inline style
+ * inside one changes, as a drag's preview writes it, and when its rendered
+ * hash is stamped, as a drop that keeps the page moves it. Reads coalesce to
+ * one an animation frame. Empty while no frame is named, so the walk runs
+ * only under a selection.
  */
 function useGhosts(
   container: HTMLElement | null,
@@ -196,8 +197,10 @@ function useGhosts(
     measure()
     // A load does not bubble, so a frame mounting or reloading is caught on the way down.
     container.addEventListener('load', measure, true)
+    container.addEventListener(RESTAMPED, measure, true)
     return () => {
       container.removeEventListener('load', measure, true)
+      container.removeEventListener(RESTAMPED, measure, true)
       cancelAnimationFrame(pending)
       resizes.disconnect()
       styles.disconnect()

@@ -12,6 +12,12 @@ export interface LiveState {
   board: ListResult | null
   /** Per-frame reload counters by ref, absent meaning zero. */
   reloads: Readonly<Record<string, number>>
+  /**
+   * How many of each frame's reloads its own iframe took without loading, by
+   * ref, absent meaning zero, since its live page already showed the bytes.
+   * Everything else reading the frame's file still follows `reloads`.
+   */
+  kept: Readonly<Record<string, number>>
   connected: boolean
   /** Whether this tab may write, false until the server's `access` answer and again whenever the socket drops. */
   canWrite: boolean
@@ -46,6 +52,7 @@ export function createLiveStore(): LiveStore {
   return createStore<LiveState>()(() => ({
     board: null,
     reloads: {},
+    kept: {},
     connected: false,
     canWrite: false,
     dispatch: false,
@@ -109,6 +116,7 @@ export function receiveRename(
   store.setState({
     board: renamed,
     reloads: moveKeys(state.reloads),
+    kept: moveKeys(state.kept),
     findings: moveKeys(state.findings),
     notes: moveKeys(state.notes),
     claims: moveKeys(state.claims),
@@ -314,10 +322,11 @@ export function receiveBoard(store: LiveStore, board: ListResult): void {
   const pageRefs = new Set(pages.map((page) => page.ref))
   const held = <T>(byRef: Readonly<Record<string, T>>, keep: Set<string>) =>
     Object.fromEntries(Object.entries(byRef).filter(([ref]) => keep.has(ref)))
-  const { reloads, findings, notes, claims, aliases } = store.getState()
+  const { reloads, kept, findings, notes, claims, aliases } = store.getState()
   store.setState({
     board,
     reloads: held(reloads, refs),
+    kept: held(kept, refs),
     findings: held(findings, refs),
     notes: held(notes, pageRefs),
     // A reservation names a frame the board does not list until it lands.
@@ -418,11 +427,22 @@ export function receiveAccess(
   store.setState({ canWrite: write, dispatch, accessKnown: true })
 }
 
-/** Bumps each frame's counter, which reloads its iframe alone. */
-export function receiveReload(store: LiveStore, refs: string[]): void {
-  const reloads = { ...store.getState().reloads }
+/**
+ * Bumps each frame's counter, which reloads its iframe alone. A ref in
+ * `kept` bumps its kept counter too, so its own iframe stays as it is while
+ * its linked widths and every read of its file still reload.
+ */
+export function receiveReload(
+  store: LiveStore,
+  refs: readonly string[],
+  kept: readonly string[] = [],
+): void {
+  const state = store.getState()
+  const reloads = { ...state.reloads }
   for (const ref of refs) reloads[ref] = (reloads[ref] ?? 0) + 1
-  store.setState({ reloads })
+  const keptNow = { ...state.kept }
+  for (const ref of kept) keptNow[ref] = (keptNow[ref] ?? 0) + 1
+  store.setState({ reloads, kept: keptNow })
 }
 
 /** The one store the app's socket writes and its screens read. */

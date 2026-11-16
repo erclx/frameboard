@@ -1358,6 +1358,18 @@ describe('attachGestures', () => {
       expect(canvas.part(`[data-frame="${LEFT.ref}"]`).style.left).toBe('130px')
     })
 
+    it('leaves the layer unmarked, since no element outline carries', () => {
+      const canvas = setup()
+      detach = canvas.detach
+      const layer = canvas.part('[data-layer]')
+
+      canvas.pointer.down(150, 150)
+      canvas.pointer.move(180, 175)
+
+      expect(layer.hasAttribute('data-carrying')).toBe(false)
+      canvas.pointer.up(180, 175)
+    })
+
     it('moves every selected frame in the one write', () => {
       const canvas = setup()
       detach = canvas.detach
@@ -2399,6 +2411,37 @@ describe('attachGestures', () => {
           null,
           true,
         ])
+      })
+
+      it('marks the layer as carrying for the drag alone, clearing it on release', () => {
+        const canvas = setupPlaced()
+        const layer = canvas.part('[data-layer]')
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        const during = layer.hasAttribute('data-carrying')
+        canvas.pointer.up(225, 155)
+
+        expect([during, layer.hasAttribute('data-carrying')]).toEqual([
+          true,
+          false,
+        ])
+      })
+
+      it('clears the carrying mark when Esc puts the drag back', () => {
+        const canvas = setupPlaced()
+        const layer = canvas.part('[data-layer]')
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        act(() => {
+          dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+        })
+
+        expect(layer.hasAttribute('data-carrying')).toBe(false)
+        canvas.pointer.up(225, 155)
       })
 
       it('holds nothing when Esc puts the drag back', () => {

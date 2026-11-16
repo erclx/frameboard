@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import {
   mkdtempSync,
   readFileSync,
@@ -30,6 +31,10 @@ import {
 import { withoutRepeats } from '../../test/support/live-pushes'
 import { loadChanges } from './changes/persist'
 import { BoardTabs, type RunningServer, startServer } from './start'
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text).digest('hex')
+}
 
 // The server's browser sweep refuses at once, so no spec here starts Chromium.
 async function noBrowser(): Promise<never> {
@@ -432,7 +437,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         'changes',
       ])
     const pushes = withoutRepeats(messages)
-    expect(pushes[1]).toEqual({ type: 'reload', refs: ['studio/home/hero'] })
+    expect(pushes[1]).toEqual({
+      type: 'reload',
+      refs: ['studio/home/hero'],
+      hashes: { 'studio/home/hero': sha256('<p>new</p>') },
+    })
     expect(pushes.slice(2, 4)).toEqual([
       {
         type: 'thumbnails',
@@ -449,6 +458,20 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       type: 'findings',
       findings: { 'studio/home/hero': [{ rule: 'default-font' }] },
     })
+  })
+
+  it('sends no hash for a frame a token change in the same batch reached', async () => {
+    // The sheet goes first, so a batch split under load still opens on it.
+    writeFileSync(join(board.root, 'tokens.css'), ':root { --gap: 4px; }')
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    await expect
+      .poll(() => messages.find((message) => message.type === 'reload'), {
+        timeout: 5000,
+      })
+      .toMatchObject({ refs: expect.arrayContaining(['studio/home/hero']) })
+    const reload = messages.find((message) => message.type === 'reload')
+    expect(reload).not.toHaveProperty('hashes')
   })
 
   it('reads a second write of the same frame as the same pushes', async () => {
