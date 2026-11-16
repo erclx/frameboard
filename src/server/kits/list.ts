@@ -110,6 +110,24 @@ export function findKit(
  * sheet, since installing one would leave a project with no look.
  */
 export async function readKit(kit: FoundKit): Promise<KitRecord> {
+  const file = await readKitFile(kit)
+  return {
+    name: kit.name,
+    title: file.title,
+    description: file.description,
+    source: kit.source,
+    preview: await previewOf(kit.path, file.preview),
+  }
+}
+
+/**
+ * Reads the `kit.json` of the kit folder at `kit.path`, refusing
+ * `kit-invalid` as `readKit` does, for a caller holding a folder that is
+ * neither shipped nor saved.
+ */
+export async function readKitFile(
+  kit: Pick<FoundKit, 'name' | 'path'>,
+): Promise<KitFile> {
   const file = await readRecord(join(kit.path, KIT_FILE), {
     schema: kitFileSchema,
     invalidCode: 'kit-invalid',
@@ -128,13 +146,7 @@ export async function readKit(kit: FoundKit): Promise<KitRecord> {
       { kit: kit.name, path: kit.path },
     )
   }
-  return {
-    name: kit.name,
-    title: file.title,
-    description: file.description,
-    source: kit.source,
-    preview: await previewOf(kit.path, file.preview),
-  }
+  return file
 }
 
 /** The preview frame and its laid-out size, null where the kit names none or its page does not hold it. */
