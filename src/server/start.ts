@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { EventEmitter, once } from 'node:events'
-import { stat } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { join, relative, sep } from 'node:path'
@@ -57,6 +57,7 @@ import { createSelectionHolder } from './live/selection'
 import {
   type BoardWatcher,
   type MovedFolder,
+  ownReloadRefs,
   placedRefs,
   relistedRefs,
   reloadRefs,
@@ -680,7 +681,19 @@ async function pushBatch(
   )
   if (refs.length > 0) {
     const reloads = unmovedRefs(refs, board, moved(), last)
-    if (reloads.length > 0) hub.broadcast({ type: 'reload', refs: reloads })
+    if (reloads.length > 0) {
+      const hashes = await ownFileHashes(
+        board,
+        ownReloadRefs(root, paths, board, tokens).filter((ref) =>
+          reloads.includes(ref),
+        ),
+      )
+      hub.broadcast({
+        type: 'reload',
+        refs: reloads,
+        ...(Object.keys(hashes).length > 0 ? { hashes } : {}),
+      })
+    }
     thumbnails.invalidate(refs)
     const stale = Object.fromEntries(refs.map((ref) => [ref, null]))
     for (const theme of THEMES) {
@@ -695,6 +708,32 @@ async function pushBatch(
   }
   rendered.queue(board, recheckRefs(root, paths, board, tokens))
   await pushNotes(root, paths, hub, delivery)
+}
+
+/**
+ * The content hash of each named frame's file as it stands now, which is
+ * what its reload will render. A file that cannot be read is left out, so
+ * its frame reloads.
+ */
+async function ownFileHashes(
+  board: ListResult,
+  refs: readonly string[],
+): Promise<Record<string, string>> {
+  const named = new Set(refs)
+  const frames = board.projects
+    .flatMap((project) => project.pages)
+    .flatMap((page) => page.frames)
+    .filter((frame) => named.has(frame.ref))
+  const read = await Promise.all(
+    frames.map(async (frame) => {
+      try {
+        return [[frame.ref, contentHash(await readFile(frame.path))] as const]
+      } catch {
+        return []
+      }
+    }),
+  )
+  return Object.fromEntries(read.flat())
 }
 
 /**

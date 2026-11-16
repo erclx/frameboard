@@ -12,6 +12,7 @@ import {
 import {
   type BoardWatcher,
   createBatcher,
+  ownReloadRefs,
   placedRefs,
   relistedRefs,
   reloadRefs,
@@ -181,6 +182,19 @@ describe('reloadRefs', () => {
       expect(refs).toEqual(EVERY_FRAME)
     })
 
+    it('names no frame as its own file once the --tokens sheet outside the board changed', async () => {
+      const tokens = join(board.root, '../brand.css')
+
+      const refs = ownReloadRefs(
+        board.root,
+        [tokens, join(board.root, 'studio/home/hero.html')],
+        await scanBoard(board.root),
+        tokens,
+      )
+
+      expect(refs).toEqual([])
+    })
+
     it("reloads nothing for the board's own tokens.css while --tokens stands in for it", async () => {
       const refs = reloadRefs(
         board.root,
@@ -191,6 +205,48 @@ describe('reloadRefs', () => {
 
       expect(refs).toEqual([])
     })
+  })
+})
+
+describe('ownReloadRefs', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('live')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  async function ownFor(...paths: string[]) {
+    const snapshot = await scanBoard(board.root)
+    return ownReloadRefs(
+      board.root,
+      paths.map((path) => join(board.root, path)),
+      snapshot,
+    )
+  }
+
+  it('names a frame whose own file was the only change reaching it', async () => {
+    expect(
+      await ownFor('studio/home/hero.html', 'studio/pricing/plans.html'),
+    ).toEqual(['studio/home/hero', 'studio/pricing/plans'])
+  })
+
+  it.each([
+    ['the board token sheet', 'tokens.css'],
+    ["the project's token sheet", 'studio/tokens.css'],
+    ['an asset', 'studio/assets/dot.svg'],
+    ['another file in its page folder', 'studio/home/styles.css'],
+  ])('leaves out a frame %s also reached', async (_case, path) => {
+    expect(await ownFor('studio/home/hero.html', path)).toEqual([])
+  })
+
+  it('keeps a frame on another page than the one a page file reached', async () => {
+    expect(
+      await ownFor('studio/pricing/plans.html', 'studio/home/styles.css'),
+    ).toEqual(['studio/pricing/plans'])
   })
 })
 

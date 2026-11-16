@@ -161,6 +161,60 @@ export function reloadRefs(
   board: ListResult,
   tokens: string | null = null,
 ): string[] {
+  const { refs, everyFrame } = reloadCauses(root, paths, tokens)
+  const named: string[] = []
+  for (const project of board.projects) {
+    for (const page of project.pages) {
+      for (const frame of page.frames) {
+        if (
+          everyFrame ||
+          refs.has(frame.ref) ||
+          refs.has(`${page.ref}/*`) ||
+          refs.has(`${project.name}/*`)
+        ) {
+          named.push(frame.ref)
+        }
+      }
+    }
+  }
+  return named
+}
+
+/**
+ * The frames `reloadRefs` names through their own file alone, with no token
+ * sheet, asset, or other page-folder file in the batch reaching them, in
+ * board order. Only these reload into bytes a hash of that one file names.
+ */
+export function ownReloadRefs(
+  root: string,
+  paths: string[],
+  board: ListResult,
+  tokens: string | null = null,
+): string[] {
+  const { refs, everyFrame } = reloadCauses(root, paths, tokens)
+  if (everyFrame) return []
+  return board.projects.flatMap((project) =>
+    refs.has(`${project.name}/*`)
+      ? []
+      : project.pages.flatMap((page) =>
+          refs.has(`${page.ref}/*`)
+            ? []
+            : page.frames
+                .filter((frame) => refs.has(frame.ref))
+                .map((frame) => frame.ref),
+        ),
+  )
+}
+
+/**
+ * What a batch's paths reach: frame refs, `<page>/*` and `<project>/*`
+ * wildcards, and whether a board-wide sheet reaches every frame.
+ */
+function reloadCauses(
+  root: string,
+  paths: string[],
+  tokens: string | null,
+): { refs: Set<string>; everyFrame: boolean } {
   const refs = new Set<string>()
   let everyFrame = false
   for (const path of paths) {
@@ -187,23 +241,7 @@ export function reloadRefs(
       )
     }
   }
-
-  const named: string[] = []
-  for (const project of board.projects) {
-    for (const page of project.pages) {
-      for (const frame of page.frames) {
-        if (
-          everyFrame ||
-          refs.has(frame.ref) ||
-          refs.has(`${page.ref}/*`) ||
-          refs.has(`${project.name}/*`)
-        ) {
-          named.push(frame.ref)
-        }
-      }
-    }
-  }
-  return named
+  return { refs, everyFrame }
 }
 
 /** A project or page folder the board's own rename moved from `from` to `path`, at `at` in epoch milliseconds. */
