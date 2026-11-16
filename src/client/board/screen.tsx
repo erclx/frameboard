@@ -40,14 +40,12 @@ import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
 import { ThemeTab } from './left-panel/theme/tab'
 import { useMode } from './mode'
+import { LAYOUT_ID, PANEL, panelStorage } from './panels'
 import { PresentOverlay } from './present/overlay'
 import { usePreviewActions } from './preview/actions'
 import { useSectionActions } from './sections/actions'
 import { useStructureActions } from './structure/actions'
 import { useFrameTool } from './structure/tool'
-
-/** Pixels, since a bare string reads as percent and 300 would mean 300 percent. */
-const PANEL = { defaultSize: 240, minSize: 200, maxSize: 400 } as const
 
 const NO_FRAMES: readonly FrameRecord[] = []
 const NO_SECTIONS: readonly SectionRecord[] = []
@@ -74,9 +72,6 @@ function show(mounted: Mounted, key: string): Mounted {
   const left = mounted.shown === '' ? [] : [mounted.shown]
   return { keys: [...left, key], shown: key }
 }
-
-/** Where the panel widths are remembered between loads. */
-const LAYOUT_ID = 'frameboard.board.panels'
 
 interface BoardScreenProps {
   project: string
@@ -261,22 +256,4 @@ function Missing({ message }: { message: string }) {
       </Link>
     </div>
   )
-}
-
-/** A browser refusing storage keeps the widths for this visit alone. */
-const panelStorage = {
-  getItem: (key: string): string | null => {
-    try {
-      return localStorage.getItem(key)
-    } catch {
-      return null
-    }
-  },
-  setItem: (key: string, value: string): void => {
-    try {
-      localStorage.setItem(key, value)
-    } catch {
-      // Nothing to keep the widths in, so they last until the tab closes.
-    }
-  },
 }
