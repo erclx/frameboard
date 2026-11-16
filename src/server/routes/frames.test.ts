@@ -132,6 +132,33 @@ describe('frameRoutes', () => {
       ])
     })
 
+    it("imports an installed kit's stylesheet after the project sheet", async () => {
+      writeFileSync(
+        join(board.root, 'studio/tokens.css'),
+        ':root { --fg: navy }',
+      )
+      mkdirSync(join(board.root, 'studio/assets/kit'), { recursive: true })
+      writeFileSync(
+        join(board.root, 'studio/assets/kit/kit.css'),
+        '.kit-card { border: 2px solid }',
+      )
+
+      const served = await (await get('/frames/studio/home/hero.html')).text()
+
+      expect(importsOf(served).slice(-2)).toEqual([
+        '/frames/studio/tokens.css',
+        '/frames/studio/assets/kit/kit.css',
+      ])
+    })
+
+    it('imports no kit stylesheet into a project with no kit', async () => {
+      const served = await (await get('/frames/studio/home/hero.html')).text()
+
+      expect(importsOf(served)).not.toContain(
+        '/frames/studio/assets/kit/kit.css',
+      )
+    })
+
     it('imports no token sheet that does not exist', async () => {
       const served = await (await get('/frames/studio/home/hero.html')).text()
 
