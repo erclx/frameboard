@@ -72,7 +72,8 @@ export function ProjectCard({
 }: ProjectItemProps & { captures: Captures }) {
   const renaming = useRenamingProject(project.name) !== null
   return (
-    <div className="group/project relative">
+    // The radius is the card's, since a drop over the card rings this wrapper.
+    <div className="group/project relative rounded-xl">
       <ProjectLink
         project={project}
         tabbable={tabbable}
