@@ -57,9 +57,27 @@ export function markPointerFocus(target: Window): () => void {
   const onFocusOut = (event: FocusEvent) => {
     if (event.target instanceof Element) event.target.removeAttribute(MARK)
   }
+  // The window of the frame holding focus, heard for a key, since Tab inside
+  // it moves focus back out with no key this window sees.
+  let heardFrame: Window | null = null
+  const onFrameKey = () => {
+    pointer = false
+  }
+  const unhearFrame = () => {
+    heardFrame?.removeEventListener('keydown', onFrameKey, true)
+    heardFrame = null
+  }
   const onBlur = () => {
-    if (!keying && document.activeElement instanceof HTMLIFrameElement) {
-      pointer = true
+    const active = document.activeElement
+    if (!(active instanceof HTMLIFrameElement)) return
+    if (!keying) pointer = true
+    unhearFrame()
+    try {
+      heardFrame = active.contentWindow
+      heardFrame?.addEventListener('keydown', onFrameKey, true)
+    } catch {
+      // A frame on another origin hides its window, so its keys stay unheard.
+      heardFrame = null
     }
   }
 
@@ -68,11 +86,14 @@ export function markPointerFocus(target: Window): () => void {
   document.addEventListener('focusin', onFocusIn, true)
   document.addEventListener('focusout', onFocusOut, true)
   target.addEventListener('blur', onBlur)
+  target.addEventListener('focus', unhearFrame)
   return () => {
     target.removeEventListener('pointerdown', onPointer, true)
     target.removeEventListener('keydown', onKey, true)
     document.removeEventListener('focusin', onFocusIn, true)
     document.removeEventListener('focusout', onFocusOut, true)
     target.removeEventListener('blur', onBlur)
+    target.removeEventListener('focus', unhearFrame)
+    unhearFrame()
   }
 }
