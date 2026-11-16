@@ -15,7 +15,7 @@ Owns where the developer picks a project, being the home view and the project ac
 
 Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row. Opening a card opens its board, and the board's home button is the one way back and between projects.
 
-- A card shows the project's name and when it was last edited, and a list row adds the day `project.json` says it was made, empty for an older project
+- A card shows the project's title, or its folder name when it holds none, and when it was last edited. A list row adds the day `project.json` says it was made, empty for an older project
 - A card's well fits the visible frames of the first page holding one as a group, each capture drawn over its white box until one lands. A list row's mark draws the boxes alone
 - `src/shared/card-frames.ts` makes that pick for the thumbnail route, the ask, and the skeleton alike, so a card never draws a box whose capture was never stamped
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a frame new, resized, or reloaded. Each landing reaches the live store over the socket
@@ -26,12 +26,16 @@ The header and each card's menu run the `project.*` actions.
 - The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, which the palette lists too
 - Under them it names the two directions after the key, such as Newest first and Oldest first, and picking the other one runs `home.sortReverse`
 - New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
+- The field saves what is typed as the title through `POST /api/project/title`, and a card shows a muted `Folder <name>` line under it naming the folder the title lands in
 - A board registers New project too and goes home before the add, since leaving the board clears the rename field the add opens
 
 A card or row takes the menu and the keys the same way.
 
 - A right click, the menu key, or Shift+F10 on a card or row opens `project-menu.tsx`, and F2 and Delete rename and delete a focused card
 - `project-card.tsx` draws a project's card and row for the main list, a folder's panel, and the Archived section alike, and `rove.ts` holds the arrow keys all three share
+- A card shows Rename, Pin, and More on its well's corner on hover or keyboard focus on the card, and while More's menu is open. Rename hides in a read-only tab and Pin reads pressed in the accent color on a pinned project
+- The corner buttons sit beside the link rather than in it, and outside the tab sequence, so one Tab still leaves the cards and F2 and the menu key reach each action
+- More opens the same items as the right-click menu, which `project-menu.tsx` holds once for both
 
 **Folders**
 
@@ -40,6 +44,7 @@ A card or row takes the menu and the keys the same way.
 - `entries.ts` turns the shown order into cards, a folder standing where its first member would. It sorts through that member and rises with the pinned when pinned itself or holding a pinned member
 - Two groups differing only in case or trailing space read as one folder, and a folder whose last member leaves shows nothing
 - A grid folder card opens `panel.tsx`, a kit dialog with the folder menu's ⋯ in its header over its members, and a list folder row opens in place on a click, Enter, Space, or Right
+- A folder card draws a tab on its top left edge into the grid's row gap, so every card body stays level, and a folder glyph before its name. The tab takes the card's ring on hover, focus, an open menu, and a drop
 - Move to folder in the card menu lists every other folder and New folder, which files under the next free `Folder` and opens its name, as a drag of one card onto another does through `drop.ts`
 - A rename writes the new name to every member and refuses one another folder holds in any case, since writing it would merge the two
 
@@ -54,7 +59,7 @@ While a project is over a card or row, the target says what the drop does, clear
 - The hint sits in a card's well and over a row's date columns, anchored to an open folder's header band
 - Below `sm` a row hides it from sight, so the ring cues the target and the status text stays for assistive tech
 
-A typed name in `filter-field.tsx` shows its matches flat, archived ones included, along with every member of a folder whose name matches. Cmd+F focuses it through `home.filter`.
+A typed name in `filter-field.tsx` matches a title or a folder name and shows its matches flat, archived ones included, along with every member of a folder whose name matches. Cmd+F focuses it through `home.filter`.
 
 `archived.tsx` holds archived projects in a collapsed section after the rest, and the card menu reads Restore on them in place of Archive.
 
@@ -68,7 +73,7 @@ A typed name in `filter-field.tsx` shows its matches flat, archived ones include
 
 `sort.ts` and `pins.ts` hold the viewer's own order, kept in the browser beside the grid and list choice.
 
-- `sort.ts` orders the projects by last edited, created, or name, last edited newest first by default, and `home.tsx` orders them once so the cards, the arrow keys, and the tab stop follow what is shown
+- `sort.ts` orders the projects by last edited, created, or name, the title when there is one, last edited newest first by default, and `home.tsx` orders them once so the cards, the arrow keys, and the tab stop follow what is shown
 - Choosing a key starts it in its natural direction, the dates newest first and the name from A. Either way an undated project sits last and a tie falls to the name from A.
 - A pinned project sits above the rest in the grid and the list, each group in the chosen order, and carries a filled pin after its name
 - A quiet Pinned label sits over the pinned group, and the rest start on a new grid row under a hairline, while the list parts the groups with a band, since every list row already ends on a hairline
@@ -88,6 +93,7 @@ Owns the `project.*` actions, shared by the home view, where they act on the foc
 
 - `nav.home` goes home on Alt+ArrowUp, Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
-- A rename carries a pin to the new name, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned
+- A rename carries a pin to the folder the title moved it to, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned
+- `projectLabel` reads a project's title or else its folder, which the header, the palette's rows and hints, and the tab title show
 - A delete acts at once and raises a toast naming the project and what it held, whose Undo runs `edit.undo` and puts back the pin the delete dropped
 - That toast closes on the next history message after the delete's own, since the capped journal's counts cannot tell a later step apart and Undo would take that step back instead

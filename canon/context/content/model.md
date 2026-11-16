@@ -20,6 +20,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 - Two names collide when they match case-insensitively, because the default macOS volume is case-insensitive, and `assets` is reserved as a page name
 - `project.json` gains a `createdAt` once, from `project add` or the first `serve` of an empty folder, and an older project reads as made at no time, never at a file's birth time
 - `project.json` may hold `group`, the one-level folder home files it under, and `archived: true`. A value of another type reads as absent, so a hand edit never fails the scan
+- `project.json` may hold `title`, the name a person reads, in any characters. Refs, URLs, pins, claims, and CLI arguments keep naming the folder, which `ProjectRecord.name` carries beside `title`
 
 ### `src/server/board/`
 
@@ -35,6 +36,12 @@ Owns reading, watching, and writing the board folder. A board folder is whatever
 
 - It writes `group` and `archived` under each file's lock, keeping every other key as written
 - It puts the file's and folder's modified times back once the lock drops, and its undo does the same, so a filing never moves a project's Edited time
+
+`retitleProject` writes `title` the same way, then moves the folder to `titledFolder` in `src/shared/names.ts`, the name made from the title or the next free one.
+
+- A title naming no valid folder, such as `!!!`, or naming the folder it sits in keeps the folder, and a blank title takes the key out
+- The journal records the title under the old folder and then the move, so the undo moves the folder back before it restores the file
+- The undo's check reads that file where the step's later moves left it, and leaves a record inside a moved folder unlocked, since its lock file would travel with the folder
 
 `layout.json` may also hold `sections`, each a named box with an order. A frame belongs to the topmost section holding its center, read by `membersOf` in `src/shared/sections.ts`, so no frame writer keeps a member list in step.
 
