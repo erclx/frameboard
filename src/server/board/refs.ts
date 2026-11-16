@@ -35,7 +35,7 @@ export interface RefOptions {
   allowMissing?: boolean
 }
 
-export type NameKind = 'project' | 'page' | 'frame' | 'section'
+export type NameKind = 'project' | 'page' | 'frame' | 'section' | 'kit'
 
 /**
  * The project a verb acts on: the one named, else the board's only project.
