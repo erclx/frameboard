@@ -439,6 +439,54 @@ interface ChoiceRowProps<T extends string> {
 }
 
 /**
+ * One setting of the frames read off the records, null where they differ,
+ * and a pick that writes every frame in one step. The pick shows at once and
+ * stands until the frames read another value than the one it was made from,
+ * and is then forgotten, so an undo back to it reads as stored. A refused
+ * write puts the stored value back.
+ */
+function usePick<T>({
+  frames,
+  valueOf,
+  refusal,
+  write,
+}: {
+  frames: readonly FrameRecord[]
+  valueOf: (frame: FrameRecord) => T
+  refusal: string
+  write: (refs: string[], value: T) => Promise<unknown>
+}): { shown: T | null; pick: (value: T) => void } {
+  const refs = frames.map((frame) => frame.ref)
+  const values = frames.map(valueOf)
+  const stored = values.every((value) => value === values[0])
+    ? (values[0] ?? null)
+    : null
+  const [pending, setPending] = useState<{
+    key: string
+    from: T | null
+    value: T
+  } | null>(null)
+  const key = refs.join('\n')
+  if (pending && (pending.key !== key || pending.from !== stored)) {
+    setPending(null)
+  }
+  const shown =
+    pending && pending.key === key && pending.from === stored
+      ? pending.value
+      : stored
+
+  const pick = (value: T) => {
+    if (value === shown) return
+    setPending({ key, from: stored, value })
+    write(refs, value).catch((error: unknown) => {
+      setPending(null)
+      reportRefusal(refusal)(error)
+    })
+  }
+  return { shown, pick }
+}
+
+/**
  * One setting of the frames as one radio group read off the records,
  * checking nothing and reading `Mixed` where they differ. A pick writes
  * every frame in one step and shows at once, until the board answers with
@@ -456,36 +504,8 @@ function ChoiceRow<T extends string>({
   refusal,
   write,
 }: ChoiceRowProps<T>) {
-  const refs = frames.map((frame) => frame.ref)
-  const values = frames.map(valueOf)
-  const stored = values.every((value) => value === values[0])
-    ? (values[0] ?? null)
-    : null
-  // A pick stands until the frames read another value than the one it was
-  // made from, and is then forgotten, so an undo back to it reads as stored.
-  const [pending, setPending] = useState<{
-    key: string
-    from: T | null
-    value: T
-  } | null>(null)
-  const key = refs.join('\n')
-  if (pending && (pending.key !== key || pending.from !== stored)) {
-    setPending(null)
-  }
-  const shown =
-    pending && pending.key === key && pending.from === stored
-      ? pending.value
-      : stored
+  const { shown, pick } = usePick({ frames, valueOf, refusal, write })
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
-
-  const pick = (value: T) => {
-    if (value === shown) return
-    setPending({ key, from: stored, value })
-    write(refs, value).catch((error: unknown) => {
-      setPending(null)
-      reportRefusal(refusal)(error)
-    })
-  }
 
   const step = (event: KeyboardEvent, index: number) => {
     const by = ARROW_STEPS[event.key]
