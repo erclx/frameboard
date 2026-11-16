@@ -54,7 +54,7 @@
       }
     </style>
     <meta charset="utf-8" />
-    <title>guide-look</title>
+    <title>guide-kit</title>
     <style>
       * {
         box-sizing: border-box;
@@ -1618,6 +1618,165 @@
       [data-theme='dark'] .a-purple {
         --sw: #9a5cd0;
       }
+
+      .kits {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .kit {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 5px 5px 8px;
+        text-align: left;
+      }
+      .kit.on {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .kit .pv {
+        position: relative;
+        height: 76px;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .kit b {
+        display: block;
+        margin: 7px 3px 1px;
+        font-weight: 600;
+      }
+      .kit span {
+        display: block;
+        margin: 0 3px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .pv i {
+        position: absolute;
+        display: block;
+        font-style: normal;
+      }
+      .pv .n {
+        left: 7px;
+        top: 10px;
+        width: 38px;
+        height: 30px;
+      }
+      .pv .c {
+        left: 54px;
+        top: 12px;
+        right: 7px;
+        height: 50px;
+        padding: 5px 6px;
+        font-size: 10px;
+        line-height: 1.2;
+      }
+      .pv .c em {
+        position: absolute;
+        left: 6px;
+        bottom: 6px;
+        width: 28px;
+        height: 10px;
+        font-style: normal;
+      }
+      .pv.sketch {
+        background: #fffdf8;
+      }
+      .pv.sketch .n {
+        background: #ffec99;
+        border: 1.5px solid #1e1e1e;
+        transform: rotate(-3deg);
+      }
+      .pv.sketch .c {
+        border: 1.5px solid #1e1e1e;
+        border-radius: 8px;
+        font:
+          13px/1 Caveat,
+          cursive;
+        color: #1e1e1e;
+      }
+      .pv.sketch .c em {
+        border-radius: 6px;
+        background: #e8590c;
+      }
+      .pv.clean {
+        background: #fff;
+      }
+      .pv.clean .n {
+        background: #fef9c3;
+        border-radius: 3px;
+      }
+      .pv.clean .c {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #111;
+      }
+      .pv.clean .c em {
+        border-radius: 4px;
+        background: #2f7bf0;
+      }
+      .pv.wire {
+        background: #fff;
+      }
+      .pv.wire .n {
+        background: #f1f3f5;
+        border: 1px dashed #adb5bd;
+      }
+      .pv.wire .c {
+        border: 1px dashed #adb5bd;
+        font:
+          9px/1.2 'Geist Mono',
+          monospace;
+        color: #343a40;
+      }
+      .pv.wire .c em {
+        background: #495057;
+      }
+      [data-theme='dark'] .pv.sketch {
+        background: #1c1b19;
+      }
+      [data-theme='dark'] .pv.sketch .n {
+        background: #5c4a12;
+        border-color: #e9e6df;
+      }
+      [data-theme='dark'] .pv.sketch .c {
+        border-color: #e9e6df;
+        color: #f1efe9;
+      }
+      [data-theme='dark'] .pv.sketch .c em {
+        background: #ff8a3d;
+      }
+      [data-theme='dark'] .pv.clean {
+        background: #111;
+      }
+      [data-theme='dark'] .pv.clean .n {
+        background: #3a3417;
+      }
+      [data-theme='dark'] .pv.clean .c {
+        border-color: #2e2e2e;
+        color: #ededed;
+      }
+      [data-theme='dark'] .pv.clean .c em {
+        background: #4e92f6;
+      }
+      [data-theme='dark'] .pv.wire {
+        background: #151618;
+      }
+      [data-theme='dark'] .pv.wire .n {
+        background: #24272b;
+        border-color: #5c636a;
+      }
+      [data-theme='dark'] .pv.wire .c {
+        border-color: #5c636a;
+        color: #dee2e6;
+      }
+      [data-theme='dark'] .pv.wire .c em {
+        background: #ced4da;
+      }
     </style>
   </head>
   <body>
@@ -1731,38 +1890,34 @@
               <i class="on"></i><i class="on"></i><i class="on"></i><i></i>
             </div>
             <div class="gbody">
-              <h2>Pick a starting look</h2>
+              <h2>Pick a kit</h2>
               <p>
-                Every frame in this project reads these tokens, in light and
-                dark. The Theme tab shows them.
+                A kit sets the tokens, styles, and sample frames every frame in
+                this project draws with, in light and dark.
               </p>
-              <div class="look">
-                <div class="lk">
-                  <span>Accent</span>
-                  <div class="sws">
-                    <i class="a-blue on"></i><i class="a-red"></i
-                    ><i class="a-green"></i><i class="a-orange"></i
-                    ><i class="a-purple"></i>
+              <div class="kits">
+                <div class="kit on">
+                  <div class="pv clean">
+                    <i class="n"></i><i class="c">Install a kit<em></em></i>
                   </div>
+                  <b>Clean</b><span>The starter look</span>
                 </div>
-                <div class="lk">
-                  <span>Font</span>
-                  <div class="fsel">
-                    Geist<svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
+                <div class="kit">
+                  <div class="pv sketch">
+                    <i class="n"></i><i class="c">Install a kit<em></em></i>
                   </div>
+                  <b>Sketch</b><span>Hand drawn, for brainstorms</span>
+                </div>
+                <div class="kit">
+                  <div class="pv wire">
+                    <i class="n"></i><i class="c">Install a kit<em></em></i>
+                  </div>
+                  <b>Wireframe</b><span>Greys, for layout</span>
                 </div>
               </div>
               <div class="writes">
-                Finish writes <code>acme-mobile/tokens.css</code>
+                Finish writes <code>acme-mobile/tokens.css</code> and a
+                <code>kit</code> page
               </div>
             </div>
             <div class="gfoot">
