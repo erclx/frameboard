@@ -210,7 +210,6 @@ function boardNote(id: string): BoardNote {
     to: null,
     state: 'open',
     thread: null,
-    title: null,
     createdAt: '2026-10-19T10:00:00.000Z',
     updatedAt: '2026-10-19T10:00:00.000Z',
     element: null,

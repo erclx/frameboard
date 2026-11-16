@@ -49,7 +49,6 @@ function note(fields: Partial<BoardNote> & Pick<BoardNote, 'id'>): BoardNote {
     to: null,
     state: 'open',
     thread: 'n_root',
-    title: null,
     createdAt: '2026-10-19T16:12:00.000Z',
     updatedAt: '2026-10-19T16:12:00.000Z',
     element: null,
