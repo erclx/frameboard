@@ -3274,9 +3274,10 @@ const STATE_ONLY = ['320', '768', '1536']
 /**
  * The home bundle's states: the change toast with Next under focus naming its
  * key in a tooltip, the open folder with its pen under focus, the Deleted
- * toast a delete raises with its Undo, and the Pinned label over the pinned
- * group in the grid and the list. The delete is answered in the browser, so
- * the served board keeps its project.
+ * toast a delete raises with its Undo, the Pinned label over the pinned
+ * group in the grid and the list, a pinned card's corner buttons under
+ * keyboard focus, and a folder card's tab ringed under focus. The delete is
+ * answered in the browser, so the served board keeps its project.
  */
 const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
   (theme): CaptureCase[] => [
@@ -3366,6 +3367,36 @@ const HOME_BUNDLE_CASES: CaptureCase[] = (['light', 'dark'] as const).flatMap(
         chosenTheme(theme),
         homeStored('frameboard.home.pins', JSON.stringify(['webapp'])),
         readyWhen('[data-pin-label]'),
+      ),
+    },
+    {
+      section: 'home-card-corner',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        homeStored('frameboard.home.pins', JSON.stringify(['webapp'])),
+        focusOnLoad('main a[href^="/p/webapp"]'),
+        readyWhen('main a[href^="/p/webapp"]:focus-visible'),
+      ),
+    },
+    {
+      section: 'home-folder-focus',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        filedBoard(),
+        focusOnLoad('main button[data-project-link]'),
+        readyWhen('main button[data-project-link]:focus-visible'),
       ),
     },
     {
