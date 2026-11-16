@@ -7,7 +7,12 @@ description: The board screen and canvas, Edit and Play, the panels, find, and t
 
 ## Overview
 
-Owns the browser app around the frames, being the board screen and canvas, its panels, find, and the toolbar. Its look belongs to `canon/DESIGN.md`. The home view is in `canon/context/board/home.md`, commands in `canon/context/board/commands.md`, agent work in `canon/context/board/agent-work.md`, and the server in `canon/context/board/server.md`.
+Owns the browser app around the frames, being the board screen and canvas, widths, devices, scroll, sections, find, and the toolbar. Its look belongs to `canon/DESIGN.md`.
+
+The rest of the app sits in its own entries:
+
+- Playback in `canon/context/board/playback.md`, the placement tools in `canon/context/board/placing.md`, and the left panel in `canon/context/board/left-panel.md`
+- The home view in `canon/context/board/home.md`, commands in `canon/context/board/commands.md`, agent work in `canon/context/board/agent-work.md`, and the server in `canon/context/board/server.md`
 
 ## Layout
 
@@ -61,61 +66,6 @@ Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge, 
 - A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
 - The scroll offset lives on the iframe's window and is never written to the layout or to undo
 
-### `src/client/board/motion/`
-
-Owns the hold, a frame's timeline driven by the board in this tab alone. The inspector's Motion section sets it, and the label shows a Held chip naming the moment, whose click ends it.
-
-- `store.ts` keeps each held or playing frame's moment by ref, and nothing in it reaches the server, the history, or another tab
-- `seek.ts` calls the seek functions in `src/shared/motion.ts` on the iframe's own window, so the hold lands on the frame's clock and never the board's
-- A drag keeps only the latest moment while a seek runs, and play seeks every animation frame. A finite timeline stops held at its end, and one that repeats forever loops over one iteration.
-- A hold ends on entering Play and when the frame leaves the canvas on a page switch, and an agent's write reloading the frame lands it on the same moment
-- Ending a hold plays CSS animations on from where they stand, and reloads a `__hf` or `__timelines` page, since neither contract names a play
-
-A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded` rather than a read every frame.
-
-### `src/client/board/play/`
-
-Owns Play's own state and surfaces, being the frame entered, the shield, and what the banner can say about a page's reach.
-
-- `entered.ts` holds the one entered frame by ref, cleared on leaving Play, on a page switch, and when the frame stops drawing a live page
-- `shield.tsx` sits under the frames' layer, so the wheel and a drag over any other frame reach `d3-zoom`. A click enters the frame `frameAt` finds and a click on empty canvas leaves.
-- d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
-- Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
-- A layers row in Play reveals its frame and enters it
-
-### `src/client/board/present/`
-
-Owns present mode, which shows a page's frames one at a time over the whole window on black, through the browser's Fullscreen API. Each frame scales to fit, never past twice its size. It is a view and never a write, so it records no undo step.
-
-- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in reading order, or the next shown one when that is hidden
-- It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
-- `order.ts` reads rows top to bottom, each left to right. A frame joins the open row while its top sits above the middle of that row's first frame.
-- Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
-- `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
-
-The overlay and its bar carry the stepping, the keys, and the way back.
-
-- `bar.tsx` draws back, the count, the name in a fixed 150px slot, next, and leave, shown on a pointer move and hidden after two seconds still
-- The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
-- Leaving returns focus to what opened presenting, or to the Present button once that is gone
-- `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
-
-A transition between slides and the steps inside one are the board's own drawing, and neither writes a frame's file.
-
-- `transition.tsx` keeps the leaving slide mounted under the arriving one for the transition's length, each a `data-present-layer`, and the leaving layer takes no pointer
-- `travel.ts` resolves a frame's own transition over its page's. Going back, the leaving slide takes back the one it arrived with, and reduced motion makes every one a cut.
-
-A project's own transition plays keyframes the server read out of its file, never the file.
-
-- `own-transitions.ts` fetches them when presenting starts and when the project record's names change, and a step taken before they arrive cuts
-- `ownKeyframesName` names each pair with its project, and a transition holding no `leave` keeps its leaving slide still
-
-Steps sit inside one slide.
-
-- `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
-- `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
-- `bar.tsx` draws one dot per step, filled up to the step shown. Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
-
 ### `src/client/board/sections/`
 
 Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which is the panel's section heading and shares only the word.
@@ -125,94 +75,6 @@ Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which
 - `actions.ts` registers Wrap in section on `$mod+Alt+KeyG`, rename on F2, delete on Delete, the arrow nudges, and the Section tool
 - A wrap pads the selected frames' bounds by 40, with 200 on top so the name clears the frames' labels down to about 25% zoom. Delete keeps every frame.
 - The Section tool, Shift+S, draws a section at a dragged box or at 800 by 600 on a click, then selects it and returns to Move
-
-### `src/client/board/place/`
-
-Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which drop one new element into a frame at the click and move nothing else, and the drop of a selected element a Move drag carries or an Assets tile, which over bare canvas makes a frame of its own.
-
-- `gap.ts` reads the container and the sibling gap under the pointer from the live DOM, along x in a flex row or a grid and along y otherwise, as the insert route's file indices
-- A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
-
-Two cues show where a placement lands before it does.
-
-- `drop-line.tsx` draws a 2px selection-blue line at that gap while a tool is on, an element is carried, or a tile is dragged, never over bare canvas, a loading frame, or a carried element's own spot
-- `drop-ghost.tsx` draws the frame a dragged tile would make over bare canvas, a dashed box the file's size holding `New frame` and that size under the frame's name, once the size is read
-- `write.ts` posts the kind, never markup, behind any element edit queued on the frame, then selects the new element and returns to Move, and sends nothing to a frame another session holds
-- A placed Text opens in place with its word selected, so typing replaces it, through `src/client/board/element/text-in-place.ts`
-  - Enter and Shift+Enter add a line, and Esc or a click outside writes the text
-  - A break is a newline in the element's one text node, never a `<br>`, and goes out with `white-space: pre-line` in the same write on an element that collapses newlines
-
-`placesFree` in `tool.ts` decides whether a new element lands free at the drawn point, sending `at`, or joins the flow at the gap. It lands free unless the container is flex or grid, or its static parent would move an element anchored above it, and a Divider always joins the flow. The inspector's Position row moves it either way after.
-
-The Image tool and a tile drag place a file from the project's `assets/`.
-
-- `asset-picker.tsx`, opened from the Shape menu's Image, video, or audio row, lists the project's images, GIFs, SVGs, videos, and audio and arms the Image tool with the one chosen
-- An asset posts its path under `assets/` and a size from `asset-size.ts`, its own capped at the container's width, else 240 by 135
-  - The server picks `<img>`, `<video controls autoplay muted loop playsinline>`, or `<audio controls>`
-- An image, GIF, SVG, video, or audio tile in the Assets tab drags while the tab may write, carrying the data `src/client/board/assets/drag.ts` shapes
-- A video tile preloads metadata alone, shows its first frame and length, plays muted only while hovered or focused, and names a codec it cannot decode
-- `asset-drop.ts` makes the hit layer a drop target for a tile and swallows a system file dropped there, so it never opens in place of the board
-
-A tile released over no frame's box makes a frame of its own, and a hidden or locked frame counts as a frame.
-
-- `placeFileFrame` in `write.ts` adds a frame the file's size centered on the point, named for the file's stem and selected
-- `POST /api/frame/add` carries the file as `asset`, so the frame and its media are one write and one undo step, and an audio's frame is 300 wide and hugs the player's height
-- The new file's `body` is a column with no margin, so no line box adds a gap under the media
-
-A Rectangle, Ellipse, Image, or Frame drag past 3 screen pixels draws a preview through `shape-draft.tsx`.
-
-- A Rectangle or Ellipse draws as the shape, with its corners and size, and draws nothing over bare canvas
-- Its fill is the token `src/shared/shape-paint.ts` names, read in the frame's own document and theme
-- The others draw a tinted box
-
-Shapes and files land at the gap the drag started in, and a frame on a box of at least 40 by 40 screen pixels. Shorter drags, Dividers, and Text stay clicks.
-
-`moveElement` in `write.ts` sends a carried element to the gap under the release, within its own frame.
-
-### `src/client/board/left-panel/`
-
-Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, Rules turned off from `rules-off.tsx`, and All projects.
-
-- Design holds a searchable pages list and a layers tree under a per-project divider that opens fit to 4 to 8 rows
-  - A double-click on the divider fits every page, stopping before Layers keeps fewer than three rows
-  - A page add grows the list to the 4 to 8 fit, or to every page when it already showed them all
-  - Theme, in `theme/`, tags each token Board or Project and edits it in place into the sheet its tag names, per `canon/context/content/themes-and-tokens.md`
-- A page is added after the current one, renamed on a double-click or F2 through `src/client/components/rename-field.tsx`, deleted with Delete, and dragged into place through `reorder.ts`
-
-The Assets tab, in `src/client/board/assets/`, lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips.
-
-- Root files come first, each folder's group collapses from its heading, and a chip with no files hides
-- A tile's `<type> · <frames>` line reads `Unused` for a file no frame links, and its size stays in its accessible name
-- A tile click copies `../assets/<path>`, each segment encoded
-- A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access shows why and adds nothing while a tile still copies
-- Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
-
-The layers tree lists the top of the stack first. A row click selects its frame and Shift-click adds it, a double-click or F2 renames it, a drag restacks it, and its eye and lock show on hover and stay while on. A hidden frame's row dims and does not select. Only a selected row is tinted, never its frame's other rows or the frame holding it.
-
-Each section's row in `section-rows.tsx` holds its frames' rows indented under it, and the frames in no section follow. A row restacks within its own group and never into or out of a section, landing at the page-wide index beside the frame it drops by, so the canvas draws it over or under that frame.
-
-- `board/frame-order.ts` holds that grouping, so the selection chip's count and the Tab step read the order the rows draw
-- Choosing a frame not wholly in view, from its row or by a plain canvas click, centers its drawn box at the current zoom through `canvasView.reveal`
-- A row click fits a frame larger than the view. A canvas click never fits one, and reveals only a frame it newly selected.
-- A canvas click waits out `REVEAL_DELAY_MS` first, since a travel would move the point a double-click picks at. A Shift-click, a marquee, or a drag leaves the view put.
-- The reveal reports as a hand move, so it stops Follow, and only a frame lying wholly in view leaves the view
-
-An element row draws `T` for text, an image glyph for media, a corner bracket over a box for a placed element, a dash for an `hr`, a circle for an empty box rounded by half, and otherwise its layout. `GET /api/frames/elements` reads the layout, the rounding, and `position` from the static cascade, so a culled frame keeps its glyphs.
-
-An element row renames on a double-click or F2 too, writing `data-name`, which is the only place an element is renamed. Its F2 stops at the row, so the board's own F2 opens no second field.
-
-- An element row drags to another place among its siblings and never into another parent, which stays a canvas drag
-- Each parent's rows share one `reorder.ts` list keyed by frame and parent, and the drop sends `moveElementTo`'s index move
-
-### `src/client/board/guide/`
-
-Owns the first-run guide, the card a new board's empty page shows in place of its note. It asks for a project name, a first frame size, a starting look, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.
-
-- `untouched.ts` holds while the board is the start project alone with its one empty start page and the tab writes, so nothing on disk records the guide
-- `state.ts` keeps the guide's step in the tab, so it outlives the canvas a rename remounts under the new route, and Skip or Finish ends it until reload
-- A tab `main.tsx` booted on `/` lands on the start page while the board is untouched, once per tab, so a later way home shows home. Home renders nothing until access is known.
-- Each answer goes through a write the board already makes, being the project rename, `POST /api/project/tokens`, and the Frame tool's add, so Undo takes each back
-- Finish writes the sheet and then the frame, and fits the view to it. The look step writes nothing, since the sheet is create-only, and drops out where the token table names any sheet.
 
 ### `src/client/board/find/`
 
