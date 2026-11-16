@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import { nextFreeName } from '@/shared/names'
+import { folderName, namesCollide, nextFreeName } from '@/shared/names'
 import type { ProjectFile } from '@/shared/records/board'
 import type { ProjectRecord } from '@/shared/records/list'
 
@@ -53,6 +53,55 @@ export async function renameProject(
   if (journal) await journal.moved(project.path, renamed)
   else await rename(project.path, renamed)
   return scanProject(root, newName)
+}
+
+/**
+ * Sets the name a person reads for the project, which may hold any
+ * characters, and moves the folder to the name made from it, the next free
+ * one when another project holds it. A title naming no folder, such as one in
+ * a script a name cannot hold, or one naming the folder it is in, keeps the
+ * folder. A blank title takes the key out, so readers show the folder again.
+ * The title goes in first under the old folder and the move follows, which
+ * the board's undo reverses in turn. The times are put back as a filing's
+ * are, since a title draws nothing.
+ */
+export async function retitleProject(
+  root: string,
+  name: string,
+  title: string,
+  { journal }: JournalOptions = {},
+): Promise<ProjectRecord> {
+  const project = await resolveProject(root, name)
+  const path = join(project.path, PROJECT_FILE)
+  const trimmed = title.trim()
+  await keepingTimes([path], (keep) =>
+    withLocks([path], async () => {
+      const file = await readRecord(path, {
+        ...projectSpec,
+        empty: emptyProject,
+      })
+      const { title: _title, ...rest } = file
+      const next = trimmed === '' ? rest : { ...rest, title: trimmed }
+      const before = filingOf(file)
+      const after = filingOf(next)
+      if (isSameFiling(before, after)) return
+      await keep(path)
+      await writeRecord(path, next)
+      journal?.project(path, before, after)
+    }),
+  )
+  const folder = folderName(trimmed)
+  if (folder === '' || namesCollide(folder, project.name)) {
+    return scanProject(root, project.name)
+  }
+  const others = (await listProjects(root)).filter(
+    (each) => each !== project.name,
+  )
+  const moved = nextFreeName(folder, others)
+  const target = join(root, moved)
+  if (journal) await journal.moved(project.path, target)
+  else await rename(project.path, target)
+  return scanProject(root, moved)
 }
 
 /**
@@ -166,6 +215,7 @@ export function filingOf(file: ProjectFile): ProjectFiling {
   return {
     ...(file.group === undefined ? {} : { group: file.group }),
     ...(file.archived === undefined ? {} : { archived: file.archived }),
+    ...(file.title === undefined ? {} : { title: file.title }),
     ...(off === undefined ? {} : { off }),
   }
 }
@@ -174,6 +224,7 @@ function isSameFiling(a: ProjectFiling, b: ProjectFiling): boolean {
   return (
     a.group === b.group &&
     a.archived === b.archived &&
+    a.title === b.title &&
     isDeepStrictEqual(a.off, b.off)
   )
 }

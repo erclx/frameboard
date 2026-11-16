@@ -22,6 +22,7 @@ import {
   fileProjects,
   keepingTimes,
   renameProject,
+  retitleProject,
   setProjectRule,
 } from './projects'
 
@@ -100,6 +101,91 @@ describe('projects', () => {
       await expect(
         renameProject(board.root, 'webapp', 'marketing'),
       ).rejects.toMatchObject({ code: 'name-taken' })
+    })
+  })
+
+  describe('retitleProject', () => {
+    const read = (name: string) =>
+      JSON.parse(readFileSync(join(board.root, name, 'project.json'), 'utf8'))
+
+    it('keeps a title with a space and moves the folder to the name made from it', async () => {
+      const project = await retitleProject(board.root, 'webapp', 'Manual drive')
+
+      expect([project.name, project.title, read('manual-drive').title]).toEqual(
+        ['manual-drive', 'Manual drive', 'Manual drive'],
+      )
+      expect(existsSync(join(board.root, 'webapp'))).toBe(false)
+    })
+
+    it('takes the next free folder when another project holds the name', async () => {
+      const project = await retitleProject(board.root, 'webapp', 'Marketing')
+
+      expect([project.name, project.title]).toEqual([
+        'marketing-2',
+        'Marketing',
+      ])
+      expect(read('marketing').title).toBeUndefined()
+    })
+
+    it('keeps the folder when the title names it', async () => {
+      const project = await retitleProject(board.root, 'webapp', 'WebApp')
+
+      expect([project.name, project.title]).toEqual(['webapp', 'WebApp'])
+    })
+
+    it('keeps the folder when the title holds nothing a name may', async () => {
+      const project = await retitleProject(board.root, 'webapp', '!!!')
+
+      expect([project.name, project.title]).toEqual(['webapp', '!!!'])
+    })
+
+    it('takes the title out on a blank one', async () => {
+      await retitleProject(board.root, 'webapp', 'WebApp')
+
+      const project = await retitleProject(board.root, 'webapp', '   ')
+
+      expect([project.title, read('webapp').title]).toEqual([null, undefined])
+    })
+
+    it('keeps every other key in the file', async () => {
+      writeFileSync(
+        join(board.root, 'webapp', 'project.json'),
+        JSON.stringify({
+          version: 1,
+          pages: ['settings', 'home'],
+          group: 'Client',
+          checks: { off: ['no-script'] },
+        }),
+      )
+
+      await retitleProject(board.root, 'webapp', 'Web app')
+
+      expect(read('web-app')).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
+        group: 'Client',
+        checks: { off: ['no-script'] },
+        title: 'Web app',
+      })
+    })
+
+    it('leaves the project file time as it was', async () => {
+      const past = new Date('2026-01-01T00:00:00.000Z')
+      const file = join(board.root, 'webapp', 'project.json')
+      utimesSync(file, past, past)
+
+      await retitleProject(board.root, 'webapp', 'WebApp')
+
+      expect(statSync(file).mtime.toISOString()).toBe(past.toISOString())
+    })
+
+    it('refuses a file that does not parse before moving anything', async () => {
+      writeFileSync(join(board.root, 'webapp', 'project.json'), '{ broken')
+
+      await expect(
+        retitleProject(board.root, 'webapp', 'Web app'),
+      ).rejects.toMatchObject({ code: 'project-file-invalid' })
+      expect(existsSync(join(board.root, 'webapp'))).toBe(true)
     })
   })
 
@@ -450,6 +536,22 @@ describe('projects', () => {
       await renameProject(board.root, 'webapp', 'site', { journal })
 
       expect(calls).toEqual([{ kind: 'moved', from: 'webapp', to: 'site' }])
+    })
+
+    it('a retitle reports the title under the old folder and then the move', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await retitleProject(board.root, 'webapp', 'Web app', { journal })
+
+      expect(calls).toEqual([
+        {
+          kind: 'project',
+          file: 'webapp/project.json',
+          before: {},
+          after: { title: 'Web app' },
+        },
+        { kind: 'moved', from: 'webapp', to: 'web-app' },
+      ])
     })
 
     it('delete takes the folder out through the journal', async () => {

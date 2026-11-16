@@ -151,12 +151,21 @@ export class History {
     const step = from.pop()
     if (!step) throw empty()
     const was: Side = to === 'before' ? 'after' : 'before'
+    const standing = step.changes.map((change, index) =>
+      standingAt(change, step.changes.slice(index + 1), was),
+    )
     // A record inside a folder an agent removed has no folder to lock in, and
-    // its change cannot hold, so the check refuses it unlocked.
+    // its change cannot hold, so the check refuses it unlocked. One inside a
+    // folder the step moves goes unlocked too, as the move does, since its
+    // lock file would move with the folder and outlive the release.
     const hashes: Record<string, string> = {}
-    const locks = step.changes
+    const moves = step.changes.flatMap((change) =>
+      change.kind === 'moved' ? [change.from, change.to] : [],
+    )
+    const locks = standing
       .flatMap(lockPaths)
       .filter((path) => existsSync(dirname(path)))
+      .filter((path) => !moves.some((folder) => path.startsWith(folder + sep)))
     // A filing is not an edit to the project, so neither is its undo.
     const timed = step.changes.flatMap((change) =>
       change.kind === 'project' ? [change.file] : [],
@@ -164,7 +173,7 @@ export class History {
     try {
       await keepingTimes(timed, (keep) =>
         withLocks(locks, async () => {
-          for (const change of step.changes) {
+          for (const change of standing) {
             if (!(await holds(change, was))) {
               throw new FrameboardError(
                 'undo-overtaken',
@@ -205,6 +214,24 @@ export class History {
     this.#turn = run.catch(() => {})
     return run
   }
+}
+
+/**
+ * The change as the board stands at `side`, reading a project file where the
+ * moves `later` in its step left it on the after side, since a retitle writes
+ * the file under the old folder and then moves the folder. Restoring keeps the
+ * recorded path, since the moves are undone first and redone last.
+ */
+function standingAt(change: Change, later: Change[], side: Side): Change {
+  if (side === 'before' || change.kind !== 'project') return change
+  let file = change.file
+  for (const each of later) {
+    if (each.kind !== 'moved') continue
+    if (file.startsWith(each.from + sep)) {
+      file = each.to + file.slice(each.from.length)
+    }
+  }
+  return file === change.file ? change : { ...change, file }
 }
 
 /** What a refusal names as overtaken, being a frame, a section, a page, the slide transition, the page order, or a filed project. */

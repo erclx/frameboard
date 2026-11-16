@@ -15,7 +15,7 @@ import {
   renamePage,
   setPageTransition,
 } from '../board/pages'
-import { fileProjects } from '../board/projects'
+import { fileProjects, retitleProject } from '../board/projects'
 import { addSection, renameSection } from '../board/sections'
 import { contentHash } from '../edit/address'
 import {
@@ -280,6 +280,17 @@ describe('changes', () => {
       expect(JSON.parse(read('webapp/project.json'))).toEqual({
         version: 1,
         pages: ['home', 'settings'],
+      })
+    })
+
+    it('takes out a title the file lacked before', async () => {
+      await retitleProject(board.root, 'webapp', 'Webapp', options())
+
+      await restore(first(), 'before')
+
+      expect(JSON.parse(read('webapp/project.json'))).toEqual({
+        version: 1,
+        pages: ['settings', 'home'],
       })
     })
 

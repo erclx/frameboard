@@ -9,7 +9,7 @@ import {
 } from '../../../test/support/fixture-board'
 import { moveFrame, setBoxes } from '../board/frames'
 import { addPage, movePage, renamePage } from '../board/pages'
-import { renameProject } from '../board/projects'
+import { renameProject, retitleProject } from '../board/projects'
 import { addSection } from '../board/sections'
 import { contentHash } from '../edit/address'
 import { editFrameFile } from '../edit/frame-file'
@@ -65,6 +65,45 @@ describe('History', () => {
       frames: [],
     })
   }
+
+  async function retitleWebapp(title: string): Promise<void> {
+    const journal = history.journal()
+    await retitleProject(board.root, 'webapp', title, { journal })
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: [],
+    })
+  }
+
+  describe('a title that moved the folder', () => {
+    const projectFile = (name: string) =>
+      JSON.parse(readFileSync(at(`${name}/project.json`), 'utf8'))
+
+    it('undoes into the old folder with no title', async () => {
+      await retitleWebapp('Web app')
+
+      await history.undo()
+
+      expect([existsSync(at('web-app')), projectFile('webapp')]).toEqual([
+        false,
+        { version: 1, pages: ['settings', 'home'] },
+      ])
+    })
+
+    it('redoes into the new folder with the title', async () => {
+      await retitleWebapp('Web app')
+      await history.undo()
+
+      await history.redo()
+
+      expect([existsSync(at('webapp')), projectFile('web-app').title]).toEqual([
+        false,
+        'Web app',
+      ])
+    })
+  })
 
   it('undoes a step and answers the page to show', async () => {
     await renameHome('start')

@@ -81,7 +81,7 @@ export type Change =
   | { kind: 'present'; layout: string; before: unknown; after: unknown }
   /** The page order one `project.json` holds. */
   | { kind: 'pages'; file: string; before: string[]; after: string[] }
-  /** The folder, archive, and off-rule keys one `project.json` holds, with the others left as they stand. */
+  /** The folder, archive, title, and off-rule keys one `project.json` holds, with the others left as they stand. */
   | {
       kind: 'project'
       file: string
@@ -328,7 +328,12 @@ export async function restore(
     }
     case 'project': {
       const file = await readRecord(change.file, projectSpec)
-      const { group: _group, archived: _archived, ...rest } = file
+      const {
+        group: _group,
+        archived: _archived,
+        title: _title,
+        ...rest
+      } = file
       const { off, ...filing } = change[side]
       await writeRecord(change.file, withOff({ ...rest, ...filing }, off))
       return
