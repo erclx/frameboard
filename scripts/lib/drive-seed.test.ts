@@ -192,7 +192,16 @@ describe('the raw colors page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes', 'stacked'],
+      pages: [
+        'settings',
+        'home',
+        'raw',
+        'feed',
+        'deck',
+        'shapes',
+        'stacked',
+        'tuner',
+      ],
     })
   })
 
@@ -225,7 +234,16 @@ describe('the scroll feed page', () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
-      pages: ['settings', 'home', 'raw', 'feed', 'deck', 'shapes', 'stacked'],
+      pages: [
+        'settings',
+        'home',
+        'raw',
+        'feed',
+        'deck',
+        'shapes',
+        'stacked',
+        'tuner',
+      ],
     })
   })
 
@@ -496,5 +514,37 @@ describe('the settings reservation', () => {
       'webapp/settings/security',
       'webapp/settings/team',
     ])
+  })
+})
+
+describe('the drawn controls page', () => {
+  it('lays a photo whose three sliders each bind a property it reads', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(
+      join(root, 'webapp/tuner/photo-tuner.html'),
+      'utf8',
+    )
+    expect(seeded.tuner).toBe('laid')
+    expect(html.match(/data-binds="#photo --/g)).toHaveLength(3)
+    expect(
+      checkFrame({
+        root,
+        project: 'webapp',
+        page: 'tuner',
+        name: 'photo-tuner',
+      }).findings.filter((finding) => finding.rule === 'binding-target'),
+    ).toEqual([])
+  })
+
+  it('leaves a hand-edited tuner page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/tuner/photo-tuner.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.tuner).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })

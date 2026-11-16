@@ -92,6 +92,15 @@ const STACKED = {
   ],
 }
 
+/**
+ * The page holding one frame of a photo and three sliders bound to it, so a
+ * reel draws the links in Edit, tunes and keeps the values in Play, and
+ * exports the photo alone.
+ */
+const TUNER = { project: 'webapp', page: 'tuner', frame: 'photo-tuner' }
+
+const TUNER_PAGE = join(import.meta.dirname, 'drive-tuner.html')
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -128,6 +137,8 @@ export interface Seeded {
   shapes: 'laid' | 'kept'
   /** Whether the stacked findings page was laid now or was already there and kept. */
   stacked: 'laid' | 'kept'
+  /** Whether the drawn controls page was laid now or was already there and kept. */
+  tuner: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
@@ -139,7 +150,7 @@ export interface Seeded {
  * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
  * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
  * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped and one arriving with webapp's own `wipe`, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a Drives folder of two projects, and a live
+ * transition with one stepped and one arriving with webapp's own `wipe`, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a `webapp/tuner` page of a photo and three drawn controls, a Drives folder of two projects, and a live
  * reservation of three boxes on `webapp/settings`. A
  * page already present is left as a reel edited it, and the reservation
  * replaces the seed's own earlier set.
@@ -159,6 +170,10 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   const deck = await layDeck(root)
   const shapes = await layOne(root, GROUP, GROUP_PAGE)
   const stacked = await layStacked(root)
+  const tuner = await layOne(root, TUNER, TUNER_PAGE, {
+    width: 640,
+    height: 280,
+  })
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
   return {
@@ -170,6 +185,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     transition,
     shapes,
     stacked,
+    tuner,
     folder,
     reserved,
   }
