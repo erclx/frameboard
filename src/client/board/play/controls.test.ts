@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import TUNER from '../../../../test/fixtures/frames/tuner-binder.html?raw'
-import { bindControls } from './controls'
+import { bindControls, controlsStore, followEnteredControls } from './controls'
+import { enterFrame, leaveFrame } from './entered'
 
 let iframe: HTMLIFrameElement | undefined
 
@@ -128,5 +129,57 @@ describe('bindControls', () => {
     slide(doc, 'brightness', '130')
 
     expect(photoStyle(doc).getPropertyValue('--brightness')).toBe('')
+  })
+})
+
+describe('followEnteredControls', () => {
+  const REF = 'studio/home/tuner'
+  let stop: (() => void) | undefined
+  let root: HTMLDivElement | undefined
+
+  afterEach(() => {
+    stop?.()
+    stop = undefined
+    leaveFrame()
+    root?.remove()
+    root = undefined
+  })
+
+  /** Mounts the frame's root and live iframe of the tuner, as the canvas draws one. */
+  async function mountTuner(): Promise<Document> {
+    root = document.createElement('div')
+    root.dataset.frame = REF
+    const made = document.createElement('iframe')
+    root.append(made)
+    document.body.append(root)
+    await new Promise((resolve) => {
+      made.addEventListener('load', resolve, { once: true })
+      made.srcdoc = TUNER
+    })
+    const doc = made.contentDocument
+    if (!doc) throw new Error('The frame has no document')
+    return doc
+  }
+
+  it('binds a frame entered before its iframe mounted', async () => {
+    stop = followEnteredControls()
+    enterFrame(REF)
+
+    const doc = await mountTuner()
+    slide(doc, 'brightness', '130')
+
+    expect(controlsStore.getState()).toEqual({ ref: REF, moved: 1 })
+  })
+
+  it('puts the moved values back when the frame is left', async () => {
+    stop = followEnteredControls()
+    const doc = await mountTuner()
+    enterFrame(REF)
+    slide(doc, 'brightness', '130')
+
+    leaveFrame()
+
+    expect(photoStyle(doc).getPropertyValue('--brightness')).toBe('')
+    expect(controlsStore.getState()).toEqual({ ref: null, moved: 0 })
   })
 })

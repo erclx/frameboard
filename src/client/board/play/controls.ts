@@ -186,24 +186,32 @@ function release(): void {
 function enter(ref: string | null): void {
   if (active?.ref === ref) return
   release()
-  const iframe = ref === null ? null : liveIframe(ref)
-  if (ref === null || !iframe) return
+  if (ref === null) return
+  let bound: Document | null = null
   const bind = () => {
     if (!active) return
+    const doc = liveIframe(ref)?.contentDocument ?? null
+    const loaded = doc && doc.URL !== 'about:blank' ? doc : null
+    if (loaded === bound) return
     active.binder?.detach()
-    const doc = iframe.contentDocument
-    active.binder =
-      doc && doc.URL !== 'about:blank'
-        ? bindControls(doc, (moved) => report(ref, moved))
-        : null
+    bound = loaded
+    active.binder = loaded
+      ? bindControls(loaded, (moved) => report(ref, moved))
+      : null
     report(ref, 0)
   }
-  // A reload is a new document holding the file's values, so nothing is left to reset.
-  iframe.addEventListener('load', bind)
+  // The frame can be entered before its iframe mounts, and a reload or a
+  // remount is a new document holding the file's values, so every load of
+  // the entered frame's iframe binds again with nothing left to reset. A
+  // load does not bubble, so the board's document hears it on the way down.
+  const onLoad = (event: Event) => {
+    if (event.target === liveIframe(ref)) bind()
+  }
+  document.addEventListener('load', onLoad, true)
   active = {
     ref,
     binder: null,
-    unload: () => iframe.removeEventListener('load', bind),
+    unload: () => document.removeEventListener('load', onLoad, true),
   }
   bind()
 }
