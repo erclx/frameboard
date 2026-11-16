@@ -1,5 +1,4 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
-import type { Device } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
 import type { Transition } from '@/shared/present-transition'
 import type {
@@ -124,9 +123,9 @@ export function createStructure(send: typeof fetch = fetch) {
       }),
     orderFrame: (ref: string, index: number) =>
       post<FrameRecord>('/api/frame/order', { ref, index }),
-    /** Sets the device drawn around each frame in one undo step, null clearing it. */
-    setDevice: (refs: readonly string[], device: Device | null) =>
-      post<FrameRecord[]>('/api/frame/device', { refs, device }),
+    /** Shows or hides the device each frame's width names, in one undo step. */
+    setDevice: (refs: readonly string[], show: boolean) =>
+      post<FrameRecord[]>('/api/frame/device', { refs, show }),
     /**
      * Sets the whole list of widths each frame also shows at, in one undo
      * step, an empty list clearing it. `expected` holds each frame's list as

@@ -758,7 +758,7 @@ describe('structureRoutes', () => {
 
       await post('/api/frame/device', {
         refs: ['studio/home/hero', 'studio/home/mobile'],
-        device: 'phone',
+        show: true,
       })
       expect(layout()).toMatchObject({
         hero: { showDevice: true },
@@ -772,14 +772,14 @@ describe('structureRoutes', () => {
       expect(readFileSync(frameFile('hero'))).toEqual(bytes)
     })
 
-    it('refuses an unknown device and writes nothing', async () => {
+    it('refuses a show that is not a boolean and writes nothing', async () => {
       const response = await post('/api/frame/device', {
         refs: ['studio/home/hero'],
-        device: 'watch',
+        show: 'phone',
       })
 
       expect(response.status).toBe(400)
-      expect(layout().hero).not.toHaveProperty('device')
+      expect(layout().hero).not.toHaveProperty('showDevice')
     })
 
     describe('widths', () => {

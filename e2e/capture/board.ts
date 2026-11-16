@@ -845,12 +845,17 @@ async function aboutScrolling(page: Page): Promise<void> {
   })
 }
 
-/** Draws the phone-sized about frame inside a phone, putting its layout back when the page closes. */
-async function aboutInPhone(page: Page): Promise<void> {
+/**
+ * Shows the device on the phone-sized about frame and the desktop hero, which
+ * their widths draw as a phone and a laptop, putting the layout back when the
+ * page closes.
+ */
+async function devicesShown(page: Page): Promise<void> {
   const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
   const originalLayout = readFileSync(layoutPath, 'utf8')
   const layout = JSON.parse(originalLayout)
-  layout.frames.about.device = 'phone'
+  layout.frames.about.showDevice = true
+  layout.frames.hero.showDevice = true
   writeFileSync(layoutPath, JSON.stringify(layout))
   page.once('close', () => {
     writeFileSync(layoutPath, originalLayout)
@@ -3981,10 +3986,12 @@ const CASES: CaptureCase[] = [
         mask: [AVATAR],
         setup: themed(
           both(
-            aboutInPhone,
+            devicesShown,
             noAgentChanges,
             onCanvas({ select: ['webapp/home/about'] }),
-            readyWhen('[data-bezel="phone"]'),
+            readyWhen(
+              'body:has([data-bezel="phone"]):has([data-bezel="laptop"])',
+            ),
           ),
         ),
       },
