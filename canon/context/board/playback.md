@@ -64,4 +64,6 @@ Steps sit inside one slide.
 
 - `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
 - `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
-- `bar.tsx` draws one dot per step, filled up to the step shown. Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
+- `bar.tsx` draws the steps in one slot sized for six dots on every slide, empty and unnamed on a slide with none, so the bar keeps its width
+- Past six steps the slot shows `N/M` as text, and the count reserves the width of the deck's last number
+- Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
