@@ -7,6 +7,7 @@ import { ViewOnlyNotice } from './access/notice'
 import { SHOW_OFFER } from './board/changes/show'
 import { ShowOfferBody } from './board/changes/show-toast'
 import { CHANGE_TOAST, ChangeToastBody } from './board/changes/toast'
+import { BoardLoading } from './board/loading'
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
 import { Toaster } from './components/ui/toast'
@@ -78,6 +79,12 @@ function Shell() {
         <Switch>
           <Route path="/">
             <HomeLoading />
+          </Route>
+          <Route path="/p/:project/:page">
+            {({ project }) => <BoardLoading project={project} />}
+          </Route>
+          <Route path="/p/:project">
+            {({ project }) => <BoardLoading project={project} />}
           </Route>
           <Route>
             <p

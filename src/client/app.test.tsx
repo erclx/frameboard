@@ -1,6 +1,6 @@
 import './styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -8,6 +8,7 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { ListResult, PageRecord } from '@/shared/records/list'
 
 import { App } from './app'
+import { modeStore } from './board/mode'
 import { liveStore, receiveBoard } from './live/store'
 
 function page(
@@ -119,6 +120,83 @@ describe('App', () => {
 
       expect(screen.getByRole('link', { name: /studio/ })).toBeVisible()
       expect(screen.queryByText('Connecting to the board')).toBeNull()
+    })
+  })
+
+  describe('a board page before the first board', () => {
+    afterEach(() => {
+      modeStore.setState({ hideUi: false })
+    })
+
+    it('draws the project name from the route and both panels', () => {
+      modeStore.setState({ hideUi: false })
+
+      renderAt('/p/studio/home')
+
+      expect(screen.getByText('studio')).toBeVisible()
+      expect(
+        screen.getByRole('complementary', { name: 'Pages and layers' }),
+      ).toBeVisible()
+      expect(
+        screen.getByRole('complementary', { name: 'Inspector' }),
+      ).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Pages' })).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Layers' })).toBeVisible()
+    })
+
+    it('draws the tools disabled', () => {
+      renderAt('/p/studio/home')
+
+      const tools = screen.getByRole('toolbar', { name: 'Tools' })
+      expect(
+        within(tools).getByRole('button', { name: 'Move' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('draws one grey frame on the canvas, hidden from a reader', () => {
+      renderAt('/p/studio')
+
+      const frame = document.querySelector('main [data-placeholder]')
+      expect(frame).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('says it is connecting in one status', () => {
+      renderAt('/p/studio/home')
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Connecting to the board',
+      )
+    })
+
+    it('draws the canvas alone under Hide UI', () => {
+      modeStore.setState({ hideUi: true })
+
+      renderAt('/p/studio/home')
+
+      expect(
+        screen.queryByRole('complementary', { name: 'Inspector' }),
+      ).toBeNull()
+      expect(screen.getByRole('toolbar', { name: 'Tools' })).toBeVisible()
+    })
+
+    it('gives way to the board once it arrives', () => {
+      renderAt('/p/studio/pricing')
+
+      act(() => receiveBoard(liveStore, BOARD))
+
+      const pages = screen.getByRole('navigation', { name: 'Pages' })
+      expect(pages.querySelector('[aria-current="page"]')).toHaveTextContent(
+        'pricing',
+      )
+      expect(screen.queryByText('Connecting to the board')).toBeNull()
+    })
+
+    it('gives way to the missing message for a project the board lacks', () => {
+      renderAt('/p/gone/home')
+
+      act(() => receiveBoard(liveStore, BOARD))
+
+      expect(screen.getByText('No project gone on this board.')).toBeVisible()
     })
   })
 
