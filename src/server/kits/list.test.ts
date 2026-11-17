@@ -50,6 +50,33 @@ describe('listKits', () => {
     })
   })
 
+  it.each([
+    ['a kit.json that does not parse', { '.kits/bad/kit.json': '{ nope' }],
+    [
+      'a sample page whose layout does not parse',
+      {
+        '.kits/bad/kit.json':
+          '{ "version": 1, "title": "Bad", "description": "", "preview": "sample" }\n',
+        '.kits/bad/tokens.css': ':root {}\n',
+        '.kits/bad/kit/sample.html': '<p>sample</p>\n',
+        '.kits/bad/kit/layout.json': '{ nope',
+      },
+    ],
+  ])(
+    'still lists the shipped kits beside a saved kit holding %s',
+    async (_case, files) => {
+      board = writeBoard(files)
+
+      const kits = await listKits(board.root)
+
+      expect(kits.map((kit) => kit.name)).toEqual([
+        'clean',
+        'sketch',
+        'wireframe',
+      ])
+    },
+  )
+
   it('leaves out a folder in the kits folder holding no kit.json', async () => {
     board = writeBoard({ '.kits/stray/tokens.css': ':root {}\n' })
 

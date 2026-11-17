@@ -56,7 +56,8 @@ export function boardKitsDir(root: string): string {
 /**
  * Every kit a project can install, the shipped ones in the order a picker
  * shows them and then the board's own by name. A board kit sharing a shipped
- * kit's name is left out, since the shipped one answers to the name.
+ * kit's name is left out, since the shipped one answers to the name, and so
+ * is a board kit that does not read.
  */
 export async function listKits(
   root: string,
@@ -76,7 +77,22 @@ export async function listKits(
         path: join(boardKitsDir(root), name),
       })),
   ]
-  return Promise.all(found.map(readKit))
+  const read = await Promise.all(
+    found.map((kit) =>
+      kit.source === 'board' ? readKit(kit).catch(unreadable) : readKit(kit),
+    ),
+  )
+  return read.filter((kit) => kit !== null)
+}
+
+/**
+ * Leaves out a saved kit that does not read, such as a hand-edited
+ * `kit.json` or a sample layout saved unvalidated, so one bad kit in the
+ * board's folder never hides the rest. Any other failure still throws.
+ */
+function unreadable(error: unknown): null {
+  if (error instanceof FrameboardError) return null
+  throw error
 }
 
 /**
