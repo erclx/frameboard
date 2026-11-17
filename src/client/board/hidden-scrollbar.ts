@@ -10,10 +10,8 @@ import { LOOK_MARKER } from '@/shared/theme'
 const HIDDEN_SCROLLBAR = 'html { scrollbar-width: none }'
 
 /**
- * Hides a scroll frame's scrollbar in its iframe on every load, for the
- * frame's own box and each linked width alike. The style is marked as the
- * look injection is, so the element index skips it, and put last in the
- * head, so the look style stays the first marked one.
+ * Hides a scroll frame's scrollbar on every load, its style marked so the
+ * element index skips it and placed last so the look style stays first.
  */
 export function useHiddenScrollbar(
   iframe: RefObject<HTMLIFrameElement | null>,

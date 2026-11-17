@@ -7,11 +7,8 @@ import { boardUrl } from '@/shared/board-urls'
 let stopWaiting: (() => void) | null = null
 
 /**
- * Applies a selection on the page `<project>/<page>` and zooms to it. The
- * selection is applied before the route changes, since a canvas mounting for
- * another page clears one naming a different page, and the zoom waits for
- * the new page's canvas to attach, since there is nothing to zoom before. A
- * later jump drops the wait of an earlier one that never saw its canvas.
+ * Selects on a page and zooms to it, selecting before the route changes, since
+ * a mounting canvas clears another page's selection, and zooming once it attaches.
  */
 export function jumpTo(pageRef: string, applySelection: () => void): void {
   const [project = '', page = ''] = pageRef.split('/')

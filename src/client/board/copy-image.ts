@@ -8,10 +8,8 @@ const COPY_SCALE = 2
 const MAX_CANVAS_SIDE = 16384
 
 /**
- * Copies a frame to the clipboard as a PNG in the theme on screen. The
- * clipboard write starts at once with the image's fetch as its pending
- * value, since a browser grants the write only inside the key press's user
- * activation, which an awaited fetch would outlast.
+ * Copies a frame as a PNG, starting the clipboard write at once with the fetch
+ * pending, since the browser grants it only inside the press's activation.
  */
 export function copyFrameImage(
   ref: string,
@@ -30,10 +28,8 @@ export interface CopiedFrames {
 }
 
 /**
- * Asks the server to put the frames on the OS clipboard as one file list,
- * which only a server holding a clipboard backend accepts, so one paste lands
- * every image. A ref in `themes` renders in that theme and the rest in
- * `theme`, and an empty `themes` posts no map at all.
+ * Asks the server to put the frames on the OS clipboard as one file list, so
+ * one paste lands every image, and an empty `themes` posts no map.
  */
 export function copyFramesToClipboard(
   refs: readonly string[],
@@ -98,11 +94,8 @@ export function stitchLayout(
 }
 
 /**
- * Copies the frames as one PNG laid out as on the canvas, over `background`,
- * each in its own `theme` where it carries one and in `theme` otherwise, for
- * a system the server holds no clipboard backend for. The write starts
- * inside the key press with the composition as its pending value, as
- * `copyFrameImage` does.
+ * Copies the frames as one PNG laid out as on the canvas, for a server with no
+ * clipboard backend, starting the write inside the press as `copyFrameImage` does.
  */
 export function copyStitchedImage(
   frames: readonly StitchFrame[],

@@ -174,7 +174,6 @@ export function elementActions(context: ElementContext): Action[] {
     )
   }
   // Holds the press even at an end, so it never falls through to a frame's key.
-
   const shift = (step: 1 | -1) => ({
     enabled: () =>
       elementSelected() && context.writable() && context.boardFocused(),
@@ -186,7 +185,6 @@ export function elementActions(context: ElementContext): Action[] {
     },
   })
   // Keyless, so it reads the tree with no focus test.
-
   const restack = (to: (place: number, count: number) => number) => {
     const moves = () => {
       const state = current()
@@ -205,7 +203,6 @@ export function elementActions(context: ElementContext): Action[] {
     }
   }
   // With no free member, the press falls through to the frame's nudge.
-
   const nudged = () => {
     const state = selection.getState()
     if (!elementSelected() || !context.writable() || !context.boardFocused()) {
@@ -257,7 +254,6 @@ export function elementActions(context: ElementContext): Action[] {
     },
   })
   // A flow member disables it, since its place is its container's alignment.
-
   const arrange = (
     least: number,
     arranged: (boxes: Record<string, Box>) => Record<string, Box>,
@@ -283,7 +279,6 @@ export function elementActions(context: ElementContext): Action[] {
     }
   }
   // Siblings alone, since moving an element between parents changes what it inherits.
-
   const wrappable = () => {
     const state = selection.getState()
     if (!elementSelected() || !context.writable() || !state.page) return null

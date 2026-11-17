@@ -3,12 +3,8 @@ import type { FrameRecord } from '@/shared/records/list'
 import { LABEL_HEIGHT } from './geometry/hit'
 
 /**
- * The board-unit gap above each frame's top edge, up to the nearest frame
- * above it that overlaps it across. A frame with nothing above takes
- * `Infinity`, and one whose top another frame covers takes zero. The canvas
- * hides a label whose gap, at the current zoom, is shorter than the label,
- * so it never draws over the frame above. A pairwise pass, which stays cheap
- * at the frame counts a page holds.
+ * The gap above each frame up to the nearest frame overlapping it across, so
+ * the canvas can hide a label that would draw over the frame above.
  */
 export function labelRoom(
   frames: readonly Pick<FrameRecord, 'ref' | 'box'>[],
@@ -32,10 +28,8 @@ export function labelRoom(
 }
 
 /**
- * Marks each frame element in `layer` whose room is shorter than the label
- * at `zoom`, as `data-label-crowded`, which the frame reads to hide its
- * label. It writes attributes alone, so the zoom handler calls it on every
- * gesture frame with no React render.
+ * Marks crowded frames with `data-label-crowded`, writing attributes alone so
+ * the zoom handler calls it every gesture frame with no React render.
  */
 export function markCrowded(
   layer: ParentNode,

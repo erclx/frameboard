@@ -229,8 +229,7 @@ describe('Canvas', () => {
       modeStore.setState({ mode: 'play' })
     })
 
-    // A drag leaves d3's click swallower on the window until a macrotask
-    // runs, which would eat the next case's entering click.
+    // d3's click swallower outlives a drag until a macrotask, eating the next click.
     afterEach(async () => {
       leaveFrame()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -948,8 +947,7 @@ describe('Canvas', () => {
   })
 
   describe('making frames live', () => {
-    // Eight frames in a row, so the fit puts the view center between the
-    // middle two and the outer two fall outside the first batch of six.
+    // Eight in a row, so the outer two fall outside the first batch of six.
     const row = () =>
       page(
         'studio/row',
@@ -991,8 +989,7 @@ describe('Canvas', () => {
         '[data-frame="studio/home/d"] iframe',
       )
 
-      // A page rename moves every frame ref and records the alias the frame
-      // keys read, while the canvas stays mounted.
+      // A rename records the alias the frame keys read while the canvas stays mounted.
       act(() =>
         liveStore.setState({ aliases: { 'studio/lobby': 'studio/home' } }),
       )

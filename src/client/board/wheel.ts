@@ -8,10 +8,8 @@ export const PAN_EASE_MS = 120
 const NOTCH_STEP = 1.2
 
 /**
- * Whether one axis of a wheel event is a mouse notch. A mouse sends a
- * line-mode event or a pixel one of 50 or more per notch, while a trackpad
- * sends many small ones. No standard field tells the two apart, so a fast
- * trackpad fling reads as notches too.
+ * Whether a wheel axis is a mouse notch, line mode or 50 pixels and up. No
+ * standard field tells a mouse from a trackpad, so a fast fling reads as notches.
  */
 export function isNotch(delta: number, deltaMode: number): boolean {
   if (delta === 0) return false

@@ -146,10 +146,8 @@ function presentablePage() {
 }
 
 /**
- * Presenting's own actions, registered ahead of every other so a shared key
- * such as an arrow or Esc steps or leaves while a page presents. The overlay
- * runs the stepping and leaving ones from its own key listener, which keeps
- * every other key from the board.
+ * Presenting's actions, registered first so a shared key steps or leaves while
+ * a page presents, the overlay running them from its own listener.
  */
 function presentActions(): Action[] {
   const step = (by: 1 | -1) => () => stepPresenting(by)
@@ -263,9 +261,7 @@ function boardActions(): Action[] {
       run: () => set({ mode: read().mode === 'play' ? 'edit' : 'play' }),
     },
     {
-      // Ahead of Exit Play on the same key, so Esc leaves the entered frame
-      // first. It reads the store at the press, since an entered frame's own
-      // window hands Esc to the board.
+      // Ahead of Exit Play, so Esc leaves the entered frame first.
       id: 'play.leaveFrame',
       label: 'Leave frame',
       group: 'mode',
@@ -302,8 +298,7 @@ function boardActions(): Action[] {
       group: 'tool',
       palette: false,
       keys: ['Escape'],
-      // The selection's Esc keys stand aside while a tool is armed, so the
-      // selection stays, and an open note card takes the press to close.
+      // Stands aside for an armed tool or an open note card, so the selection stays.
       enabled: () =>
         read().mode === 'edit' &&
         read().tool !== 'move' &&
@@ -361,8 +356,7 @@ function boardActions(): Action[] {
       enabled: onCanvas((count) => count > 0),
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
     },
-    // Tab walks an element's siblings while one is selected, and moves focus
-    // off the board, so a step takes it only for one frame with focus on it.
+    // Only for one frame with board focus, since Tab otherwise walks elements or focus.
     ...STEPS.map(({ name, label, key, by }): Action => ({
       id: `frame.${name}`,
       label,
@@ -503,8 +497,7 @@ function boardActions(): Action[] {
         })
       },
     },
-    // One row per size the Frame tool places, found by a query alone, since
-    // every size at once would bury what an empty palette opens on.
+    // Search-only, since every size at once would bury the empty palette.
     ...FRAME_TOOL_GROUPS.flatMap(({ rows }) => rows).map((row): Action => ({
       id: `frame.resizeTo.${row.name}`,
       label: `Resize to ${row.label}`,
@@ -554,12 +547,9 @@ function boardActions(): Action[] {
 }
 
 /**
- * Copies several frames, each in the theme it shows: as files on the OS
- * clipboard where the server holds a backend and this tab may write, so one
- * paste lands each, and otherwise as one image laid out as on the canvas. A
- * view-only tab stitches, since the route takes the board key and the PNG
- * route does not. Only a frame flipped from the board's theme names its own,
- * so an unflipped selection posts the body it always did.
+ * Copies frames in their shown themes, as OS clipboard files where the server
+ * has a backend and the tab writes, else one stitched image, since the
+ * clipboard route takes the board key and the PNG route does not.
  */
 function copyFrames(frames: readonly FrameRecord[]): void {
   const theme = shownTheme(themeStore.getState())

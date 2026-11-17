@@ -19,11 +19,8 @@ export interface Size {
 }
 
 /**
- * The refs of frames worth keeping live: those whose drawn extent, the box,
- * its device, and any linked widths beside it, meets the viewport grown by one viewport
- * on every side, so a short pan never shows a placeholder and a frame and its
- * linked boxes mount together. A linear pass, which stays cheap at the frame
- * counts a page holds.
+ * The frames whose drawn extent meets the viewport grown by one viewport each
+ * side, so a short pan never shows a placeholder and linked boxes mount together.
  */
 export function mountedRefs(
   frames: readonly (Pick<FrameRecord, 'ref' | 'box'> &
@@ -88,12 +85,8 @@ export interface StagedLive {
 }
 
 /**
- * Makes the refs in `order` live a batch of `STAGE_BATCH` per animation
- * frame, in the order given, so a page of frames answers at once with empty
- * boxes and fills from the first ref on. A ref leaving `order` stops being
- * live in the same render rather than waiting a frame. The first batch lands
- * on the next animation frame, never in the commit that changed `order`. A
- * null `order` means nothing is live yet.
+ * Makes `order` live a batch per animation frame, so a page answers at once
+ * with empty boxes, while a ref leaving `order` stops being live in that render.
  */
 export function useStagedLive(order: readonly string[] | null): StagedLive {
   const [admitted, setAdmitted] = useState<ReadonlySet<string>>(() => new Set())
