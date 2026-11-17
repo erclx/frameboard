@@ -1,4 +1,4 @@
-import { BOARD_CASES } from './board'
+import { BOARD_CASES } from './board/cases'
 import type { CaptureCase } from './types'
 
 /**

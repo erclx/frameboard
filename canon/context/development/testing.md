@@ -18,7 +18,7 @@ Owns the Playwright specs, grouped by role into `cli/`, `agent-work/`, `hand-edi
 - A spec that writes board files serves its own copy of a fixture through `e2e/support/board-server.ts`, since writing into the committed fixture would leak between specs
 - `playwright-core`, the one runtime dependency, is pinned to the version `@playwright/test` resolves, so bump both together
 - A capture case picks its theme by saving `frameboard.theme` from an init script, since the board reads the choice before its first paint and a class added by hand is overwritten
-- A capture case that writes the served board joins `WRITING_SECTIONS` in `e2e/capture/board.ts`, which runs it after the rest
+- A capture case that writes the served board joins `WRITING_SECTIONS` in `e2e/capture/board/cases.ts`, which runs it after the rest
 - Those cases run last because a fresh browser paints the server's whole change log as unseen in every later case
 
 Three rules keep the capture sweep honest.
