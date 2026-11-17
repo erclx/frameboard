@@ -1,6 +1,6 @@
 ---
 name: draw
-description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, or draw sliders that tune an element.
+description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, draw sliders that tune an element, or draw in a design kit such as a sketch or a wireframe.
 ---
 
 # Frameboard
@@ -64,6 +64,7 @@ Each feature past the core loop keeps its judgment in its own file. Read the one
 - When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md`
 - When the task is presenting a page, such as a deck, a slide transition, or an element a press reveals, read `${CLAUDE_SKILL_DIR}/references/slides.md`
 - When drawing sliders or other controls that tune an element the developer keeps values for, read `${CLAUDE_SKILL_DIR}/references/controls.md`
+- When the project holds `assets/kit/`, or the developer asks for a look such as a sketch or a wireframe, read `${CLAUDE_SKILL_DIR}/references/kits.md`
 
 ## Keep frames in their sections
 
