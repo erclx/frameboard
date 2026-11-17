@@ -3597,10 +3597,11 @@ const CASES: CaptureCase[] = [
       route: '/',
       evidence: true,
       excludeViewports: STATE_ONLY,
-      mask: ['[data-edited]'],
+      // A mask paints above the dialog, so the edited times behind it are hidden instead.
       setup: both(
         chosenTheme(theme),
         asWriter,
+        hiddenBehind('main [data-edited]'),
         newProjectOnLoad,
         readyWhen(
           'input[name="new-project-kit"]',
