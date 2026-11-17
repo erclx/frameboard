@@ -295,21 +295,53 @@ function pressOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Presses the guide's Next until its drawer step draws, waiting in an init
- * script as `pressOnLoad` does. The name, size, and look steps write nothing
- * while the name is left as it is, so only Finish would touch the board.
+ * Presses the guide's Next until the step headed `heading` draws, waiting in
+ * an init script as `pressOnLoad` does. It reads the heading rather than a
+ * step's radios, since the kit step draws its radios only once the kit list
+ * answers. The name, size, and kit steps write nothing while the name is
+ * left as it is, so only Finish would touch the board.
  */
-async function guideToAgentStep(page: Page): Promise<void> {
+function guideTo(heading: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ heading, frames }) => {
+        let left = frames
+        const press = () => {
+          if (document.getElementById('guide-step')?.textContent === heading) {
+            return
+          }
+          const next = [...document.querySelectorAll('button')].find(
+            (button) =>
+              !button.disabled && button.textContent?.trim() === 'Next',
+          )
+          next?.click()
+          if (--left > 0) requestAnimationFrame(press)
+          else console.error(`The guide never reached ${heading}`)
+        }
+        document.addEventListener('DOMContentLoaded', press)
+      },
+      { heading, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/** The guide's drawer step, the last before Finish. */
+const guideToAgentStep = guideTo('Who draws the first frame?')
+
+/**
+ * Waits for New project to light, which it does once the server grants
+ * writes, then presses it once, so home opens New project's dialog.
+ */
+async function newProjectOnLoad(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
     let left = frames
     const press = () => {
-      if (document.querySelector('input[name="guide-drawer"]')) return
-      const next = [...document.querySelectorAll('button')].find(
-        (button) => !button.disabled && button.textContent?.trim() === 'Next',
+      const add = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="New project"]:not([aria-disabled])',
       )
-      next?.click()
-      if (--left > 0) requestAnimationFrame(press)
-      else console.error('The guide never reached its drawer step')
+      if (add) add.click()
+      else if (--left > 0) requestAnimationFrame(press)
+      else console.error('New project never lit')
     }
     document.addEventListener('DOMContentLoaded', press)
   }, PRESS_FRAMES)
@@ -3559,6 +3591,24 @@ const CASES: CaptureCase[] = [
       ),
     },
     {
+      // New project's dialog over the grid, each kit a live render of its sample frame.
+      section: 'home-new-project-kit',
+      theme,
+      route: '/',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: ['[data-edited]'],
+      setup: both(
+        chosenTheme(theme),
+        asWriter,
+        newProjectOnLoad,
+        readyWhen(
+          'input[name="new-project-kit"]',
+          '[role="dialog"] iframe:not([data-loaded])',
+        ),
+      ),
+    },
+    {
       section: 'home-folders',
       theme,
       route: '/',
@@ -5799,6 +5849,24 @@ const CASES: CaptureCase[] = [
             asWriter,
             guideToAgentStep,
             readyWhen('input[name="guide-drawer"]'),
+          ),
+        ),
+      },
+      {
+        // The kit step, each card a live render of its kit's sample frame.
+        section: 'guide-kit',
+        theme,
+        route: '/p/untitled/page-1',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: themed(
+          both(
+            untouchedBoard,
+            noTokens,
+            asWriter,
+            guideTo('Pick a kit'),
+            readyWhen('input[name="guide-kit"]'),
           ),
         ),
       },
