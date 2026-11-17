@@ -99,7 +99,7 @@
         },
         "e2e/screenshot.ts": {
           "disposition": "customized",
-          "base": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b"
+          "base": "sha256:18c692151d45977b240d61c185c95fc18939a4e6f3960bb93f9429f5e84c0e53"
         },
         "package.json:lint": {
           "disposition": "customized",
