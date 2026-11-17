@@ -46,11 +46,8 @@ function splitId(project: string): string {
 }
 
 /**
- * Pixels. A row is 26 tall under a 29 heading and a 7 gap, with 12 of room
- * under the last row so the divider never crowds it. A new split opens at
- * four to eight rows, while a drag may take the list down to `PAGES_MIN`. A
- * double-click fits every page, stopping where Layers would show fewer than
- * three rows under its heading, `LAYERS_FLOOR`.
+ * Pixels. A new split opens at four to eight rows, a drag may go down to
+ * `PAGES_MIN`, and a double-click fits every page above `LAYERS_FLOOR`.
  */
 const ROW_HEIGHT = 26
 const PAGES_GAP = 7
@@ -86,10 +83,8 @@ const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
 
 /**
- * The left panel of `canon/design/toolbar/floating`: the header with the
- * way home, the project name, and Hide UI, then the Design, Theme, and Assets
- * tabs, Design holding the pages and the page's layers. While find is open,
- * its panel stands in for the tabs under the same header.
+ * The left panel of `canon/design/toolbar/floating`, find's panel standing in
+ * for the tabs while it is open.
  */
 export function LeftPanel({
   project,
@@ -108,18 +103,10 @@ export function LeftPanel({
   })
   const pagesPanel = usePanelRef()
   const layersPanel = usePanelRef()
-  // The reset is the panel's own resize rather than a drag, which the
-  // layout hook would skip saving, so the change it causes is marked as the
-  // developer's.
+  // Marked as the developer's, since the layout hook skips saving a non-drag resize.
   const resetting = useRef(false)
   const pagesHeight = rowsHeight(Math.min(Math.max(project.pages.length, 4), 8))
-  // A page added grows a split shorter than the new fit, so the new page
-  // shows, and leaves one already taller. A list that showed every page
-  // before the add grows to show every page after it, so a list fit by
-  // double-click keeps fitting. Counts compare within one project,
-  // since another project's list is a different split. A hidden Design tab
-  // unmounts the split, so the count holds until it shows again, and the
-  // check waits a frame for a remounted group to measure its height.
+  // A page add grows a shorter split to its fit, and a list showing every page keeps showing all.
   const [tab, setTab] = useState('design')
   const splitShown = !finding && tab === 'design'
   const counted = useRef({ project: project.name, pages: project.pages.length })
@@ -217,8 +204,7 @@ export function LeftPanel({
                     pages: panel,
                     layers: layersPanel.current,
                   })
-                  // A split already at its fit changes no layout, so no
-                  // change would arrive to clear the mark.
+                  // Already at its fit, no change would arrive to clear the mark.
                   if (Math.abs(panel.getSize().inPixels - target) < 1) return
                   resetting.current = true
                   panel.resize(target)

@@ -52,10 +52,8 @@ export function closeNote(): void {
 const canWrite = () => liveStore.getState().canWrite
 
 /**
- * Registers the Note tool, key N, which fills the toolbar's Note slot. It
- * writes, so it is enabled only while this tab may, and a tab losing write
- * returns to Move and closes an open composer. The canvas leaving, as on a
- * page change, does the same, so the tool never carries to the next page.
+ * Registers the Note tool, enabled only while the tab writes. Losing write or
+ * the canvas returns to Move and closes the composer, so it never carries over.
  */
 export function useNoteTool(): void {
   useEffect(() => {

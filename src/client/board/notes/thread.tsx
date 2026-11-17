@@ -29,11 +29,8 @@ interface ThreadProps {
 }
 
 /**
- * `Note <n>`, per `canon/design/notes/thread`: the developer's and the
- * agent's messages live from the store, and a reply box that answers in the
- * thread, hands the thread to the picked session with Send, or closes it
- * with Done. A reply takes pasted or dropped images as the composer does,
- * and each message shows its own.
+ * A note's thread per `canon/design/notes/thread`, its reply box answering in
+ * place, sending to the picked session, or closing it with Done.
  */
 export function Thread({ notes, page, onClose }: ThreadProps) {
   const listeners = useLive((state) => state.listeners)
@@ -117,13 +114,11 @@ export function Thread({ notes, page, onClose }: ThreadProps) {
       <ol
         ref={messages}
         aria-label="Messages"
-        // Focusable so a keyboard scrolls it, since a message holds no control.
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a keyboard scrolls it, since a message holds no control
         tabIndex={0}
         onScroll={followNewest}
         onKeyDown={(event) => {
-          // The board binds the arrows to nudges on the window, which would
-          // swallow the keys that scroll this list.
+          // Kept from the board's window nudges, which would swallow the scroll keys.
           if (SCROLL_KEYS.has(event.key)) event.stopPropagation()
         }}
         className="min-h-0 overflow-y-auto outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
@@ -260,11 +255,8 @@ function Message({ note, page }: { note: BoardNote; page?: string }) {
 }
 
 /**
- * Whether the viewer wrote a note. The server stamps a null author only when
- * no name exists, so that note is the viewer's. A named note is theirs only
- * once their own name has arrived and matches, so it never reads You first
- * and flips. Git's `user.name` can differ from a saved name by case or a stray
- * space, which the comparison forgives.
+ * Whether the viewer wrote a note, a null author being theirs and a named one
+ * only once their name arrives, so it never flips, forgiving case and spaces.
  */
 function signedByViewer(
   author: string | null,
@@ -291,10 +283,8 @@ const SCROLL_KEYS = new Set([
 ])
 
 /**
- * Keeps the list scrolled to its newest message as it opens, as the card's
- * cap shrinks it, and as a message arrives, the last only while the list
- * already sat at its newest, so a reader scrolled up stays where they are.
- * Returns the list's scroll handler, which tracks where it sits.
+ * Keeps the list at its newest message, following an arrival only while it
+ * already sat there, so a reader scrolled up stays where they are.
  */
 function useNewestInView(
   list: RefObject<HTMLOListElement | null>,

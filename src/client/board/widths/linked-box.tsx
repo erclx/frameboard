@@ -31,10 +31,8 @@ interface LinkedBoxesProps {
 }
 
 /**
- * The views of a frame at each width it lists, in a row past its drawn box,
- * moving with it while a drag holds it. They are views and never frames: the
- * hit layer answers a press on one as the frame, so selection, notes, and
- * drags stay on the frame, and no element is picked inside one.
+ * A frame's views at its listed widths, never frames, since the hit layer
+ * answers a press on one as the frame and no element is picked inside.
  */
 export const LinkedBoxes = memo(function LinkedBoxes({
   frame,
@@ -78,8 +76,7 @@ export function LinkedBox({
   const playing = useMode((state) => state.mode === 'play')
   const entered = useEntered(frame.ref) && playing
   const selected = useSelection((state) => state.frames.includes(frame.ref))
-  // As the frame does, the theme is read on mount and reload alone, and a
-  // switch rewrites the root rather than restarting the page.
+  // The theme is read on load, as the frame's is, so a switch never restarts the page.
   const [loaded, setLoaded] = useState({ ref: frame.ref, version, live })
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
@@ -133,8 +130,7 @@ export function LinkedBox({
       data-linked-frame={frame.ref}
       className={cn(
         'absolute',
-        // An entered frame is played in every view of it, each taking the
-        // pointer back from the shield as the frame's own box does.
+        // Every view of an entered frame takes the pointer back from the shield.
         entered && 'pointer-events-auto',
       )}
       style={{

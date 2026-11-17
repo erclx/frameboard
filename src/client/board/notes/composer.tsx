@@ -18,10 +18,8 @@ interface ComposerProps {
 }
 
 /**
- * `New note on <frame>`, per `canon/design/notes/place`: the text, the
- * listening session it goes to, Save to pin it without sending, and Send to
- * pin it and queue it to that session, or to start a new one with it. An
- * image pasted or dropped in goes up with the note on Save or Send.
+ * The new note card per `canon/design/notes/place`, Save pinning it unsent and
+ * Send queuing it to a session or starting a new one.
  */
 export function Composer({ pick, onClose }: ComposerProps) {
   const listeners = useLive((state) => state.listeners)
@@ -102,8 +100,7 @@ export function Composer({ pick, onClose }: ComposerProps) {
       >
         <textarea
           aria-label={`Note on ${pick.frame.name}`}
-          // The composer opens on a click meant to start writing.
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by a click meant to start writing
           autoFocus
           value={text}
           disabled={!canWrite}
@@ -193,8 +190,7 @@ export function NoteCard({
           onClose()
         }
       }}
-      // The canvas pans on a drag and the Note tool pins on a click, and
-      // neither belongs to a press inside the card.
+      // Kept from the canvas, whose drag pans and whose Note tool pins on a click.
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
       className="pointer-events-auto flex w-[300px] flex-col overflow-hidden rounded-xl border border-border bg-card text-body text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)]"

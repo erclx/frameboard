@@ -63,11 +63,8 @@ function bindingMatches(binding: string, event: KeyboardEvent): boolean {
 }
 
 /**
- * Takes every key press in `target` ahead of the board. A press one of the
- * present actions binds runs it, and anything else stops before the board's
- * keys, so the palette and the canvas tools stay shut while presenting. In a
- * frame's own window only the present keys are taken, so the slide keeps the
- * rest.
+ * Takes every key ahead of the board while presenting, except in a frame's own
+ * window, where only the present keys are taken.
  */
 function takeKeys(target: Window, frame: boolean): () => void {
   const press = (event: KeyboardEvent) => {
@@ -116,11 +113,9 @@ function useInertBehind(layer: RefObject<HTMLElement | null>): void {
 }
 
 /**
- * Returns focus on leave to whatever held it when presenting began, as a
- * dialog does, or to the toolbar's Present page button when that element is
- * gone or was the body, opening no tooltip over the board. The opener is read during the first render, since
- * `useInertBehind` blurs it before any effect runs, and this is called after
- * `useInertBehind` so its cleanup runs once the board is no longer inert.
+ * Returns focus on leave to its opener, read in the first render since
+ * `useInertBehind` blurs it before any effect, and called after it so cleanup
+ * runs once the board is no longer inert.
  */
 function useReturnFocus(): void {
   const [opener] = useState(() => document.activeElement)
@@ -196,10 +191,8 @@ function useRoom(element: RefObject<HTMLElement | null>) {
 }
 
 /**
- * The presented page, one frame at a time over the whole window, drawn on
- * black and scaled to fit. Mounted by the board screen and rendering nothing
- * until a page presents. `loadTransitions` reads the presented project's
- * own transitions, from the board server unless given.
+ * The presented page, one frame at a time over the window, rendering nothing
+ * until a page presents.
  */
 export function PresentOverlay({
   loadTransitions = fetchOwnTransitions,
@@ -290,9 +283,7 @@ function Presenting({
 
   if (!frame) return null
   const travel = leaving?.travel ?? CUT
-  // Keyed by frame and ordered by ref rather than by role, so a press that
-  // swaps the two roles moves neither node. A moved iframe loads again, and
-  // the layer's own stacking puts the arriving one on top.
+  // Ordered by ref rather than role, since a moved iframe would load again.
   const layers = [
     ...(leaving && leaving.frame.ref !== frame.ref
       ? [{ frame: leaving.frame, role: 'leave' as const }]
@@ -359,8 +350,7 @@ function ScaledFrame({
   frame: FrameRecord
   room: { width: number; height: number }
 } & LiveProps) {
-  // A frame in a device fits and centers with its body, which draws past its
-  // box, further below than above for a laptop.
+  // Fits by the device body, which a laptop's reaches further below than above.
   const { width, height } = frame.box
   const body = bezelBox({ x: 0, y: 0, width, height }, frame.device)
   const scale = fitScale(body, room)
@@ -442,11 +432,8 @@ function onEachLoad(
 const STEP_KEYS = ['data-step', 'data-step-effect', 'data-step-start']
 
 /**
- * Walks the arriving frame's steps: reads them on each load and each change
- * an agent makes, reports how many it holds, and shows as many as the store
- * has revealed, playing the entrance of one a press just revealed. A leaving
- * frame keeps its steps as it was left. Answers whether the frame's own
- * document has loaded, since the iframe's first document is a blank one.
+ * Walks the arriving frame's steps, re-read on each load and agent change.
+ * Answers whether the frame's own document loaded, since an iframe's first is blank.
  */
 function useStepsWhileLive(
   iframe: RefObject<HTMLIFrameElement | null>,
@@ -518,8 +505,7 @@ function PresentedFrame({
   const loaded = useStepsWhileLive(iframe, live)
   const theme = useFrameTheme(frame.ref)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
-  // The theme is read when the page loads or reloads, and a later flip
-  // rewrites the root below rather than restarting the page.
+  // Read at load, since a later flip rewrites the root rather than restart the page.
   const src = useMemo(
     () => frameThemeUrl(frame.ref, frameTheme(frame.ref), version),
     [frame.ref, version],

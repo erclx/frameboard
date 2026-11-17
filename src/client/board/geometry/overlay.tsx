@@ -33,12 +33,8 @@ interface OverlayProps {
 }
 
 /**
- * What the board draws over the frames on the canvas layer: the selection's
- * outline, corner handles, and chip, plus the empty marquee and guide
- * layers a gesture draws into. React draws the selection at rest, and a
- * gesture writes this DOM straight from its handler through `draw.ts`, so a
- * drag renders nothing. Every length that has to keep its screen size
- * divides by `--zoom`, as the frame label does.
+ * The selection overlay, drawn by React at rest and written by a gesture
+ * through `draw.ts`, so a drag renders nothing.
  */
 export function SelectionOverlay({
   frames,

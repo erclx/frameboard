@@ -20,10 +20,8 @@ export interface TokenWriteDeps {
 }
 
 /**
- * Sends one token edit made from the sheet `hash` names, the one
- * `change.sheet` picks, null for a project with no sheet of its own, and
- * answers what landed or null. Every refusal raises
- * one error toast, a sheet changed since the read saying so in its words.
+ * Sends one token edit from the sheet `hash` names, null for a project with no
+ * sheet, every refusal raising one error toast.
  */
 export async function writeToken(
   project: string,

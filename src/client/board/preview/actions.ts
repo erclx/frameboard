@@ -21,11 +21,8 @@ import {
 } from './store'
 
 /**
- * Preview at phone, tablet, and desktop width and End preview, each acting
- * on every selected frame. They live in the palette alone, with no key, and
- * draw the frames at the width without writing anything. Like the inspector's
- * Preview row, a preset reads checked while every width shown sits in its
- * range, and running it keeps a width already in range.
+ * The palette's keyless preview actions, writing nothing, a preset keeping a
+ * width already in its range, as the inspector's Preview row does.
  */
 export function previewActions(
   selection: SelectionStore = selectionStore,

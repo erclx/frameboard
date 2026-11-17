@@ -30,10 +30,8 @@ interface SectionRowProps {
 }
 
 /**
- * A section's row in Layers, holding its frames' rows indented under it, as
- * `canon/design/canvas/sections` draws it in Layers: a chevron, the section glyph, the
- * name, and how many frames it holds. A click selects the section and shows
- * its box, and a double-click or F2 renames it in place.
+ * A section's row in Layers, as `canon/design/canvas/sections` draws it, holding
+ * its frames' rows indented under it.
  */
 export function SectionRow({
   section,

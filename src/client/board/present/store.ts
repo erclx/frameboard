@@ -15,10 +15,8 @@ import { canPlayOwn } from './own-transitions'
 import { CUT, prefersReducedMotion, type Travel, travelOf } from './travel'
 
 /**
- * The page presenting and the frame it shows, by ref, both null while
- * nothing presents. The order is read from the page on every render rather
- * than held here, so a frame an agent adds or hides mid-talk joins or leaves
- * it at once.
+ * The page presenting and its frame, with the order read from the page each
+ * render, so an agent's added or hidden frame joins or leaves at once.
  */
 export interface PresentState {
   page: string | null
@@ -56,10 +54,8 @@ export function presenting(): boolean {
 }
 
 /**
- * The frames presenting steps through, in canvas reading order per
- * `readingOrder`, with the hidden ones left out. `current` keeps its place
- * even once hidden, so the frame on screen stays shown and a step leaves
- * from where it stands. `frames` arrives as the server sends a page's.
+ * The shown frames in reading order, `current` keeping its place once hidden,
+ * so the frame on screen stays and a step leaves from where it stands.
  */
 export function presentOrder(
   frames: readonly FrameRecord[],
@@ -107,10 +103,8 @@ export function pageOf(ref: string | null): PageRecord | undefined {
 }
 
 /**
- * Presents `page` from the frame `startFrame` picks, asking for the whole
- * document full screen. Called inside the press or click that asked for it,
- * since the browser grants full screen only under that activation. A refusal
- * leaves the overlay covering the window instead.
+ * Presents `page`, called inside the press that asked, since the browser grants
+ * full screen only under that activation, and a refusal covers the window instead.
  */
 export function startPresenting(page: PageRecord): void {
   const { page: selectedPage, frames } = selectionStore.getState()
@@ -127,10 +121,8 @@ export function startPresenting(page: PageRecord): void {
 }
 
 /**
- * Reveals the shown frame's next step, or hides its last revealed one going
- * back, and once none is left that way shows the frame a step of `by` lands
- * on, staying on the last or the first. A frame arrived at going forward
- * opens on no step and going back on every step, as it was left.
+ * Steps through the shown frame's steps, then to the next frame, a frame
+ * arrived at going back opening on every step, as it was left.
  */
 export function stepPresenting(by: 1 | -1): void {
   const { page, frame, steps } = presentStore.getState()
@@ -179,10 +171,8 @@ export function countSteps(steps: number): void {
 let steps = 0
 
 /**
- * What a step from `from` to `to` leaves drawn under the arriving frame. Going
- * forward the arriving frame's transition plays, and going back the leaving
- * frame takes back the one it arrived with. A project's own transition
- * whose keyframes have not arrived cuts, so no step plays half of one.
+ * What a step leaves drawn under the arriving frame, a project transition
+ * whose keyframes have not arrived cutting, so no step plays half of one.
  */
 function leavingOf(
   page: PageRecord,

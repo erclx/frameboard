@@ -36,10 +36,8 @@ const CAPTION: Record<AuthorSource, string> = {
 }
 
 /**
- * The developer's avatar, opening the menu of who notes are signed as,
- * keyboard shortcuts, the theme, and the docs. A writing tab edits the name
- * in place from its row. Shortcuts and the theme wait on the rows that
- * register `help.shortcuts` and the `theme` group.
+ * The avatar menu, a writing tab editing the signing name in place from its
+ * row, its shortcuts and theme rows waiting on their registrations.
  */
 export function AvatarMenu({
   name,

@@ -4,10 +4,8 @@ import { elapsed, initialOf } from './label'
 import { useNow } from './use-now'
 
 /**
- * The claim on a frame's label: the agent's initial, its tag with the agent
- * capitalized, and how long it has held the frame, ticking each second. On a
- * narrow frame it gives way after the name and before the findings count,
- * keeping the initial whole and ending the text after it in an ellipsis.
+ * The claim on a frame's label, ticking each second, giving way after the name
+ * and before the findings count while keeping the initial whole.
  */
 export function ClaimTag({ claim }: { claim: Claim }) {
   const now = useNow()

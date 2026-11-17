@@ -44,14 +44,9 @@ type Drawn =
   | { kind: 'shape'; shape: ShapeKind; fill: string; box: Box }
 
 /**
- * What a Rectangle, Ellipse, Image, Section, or Frame drag draws, from the
- * press to the pointer, once the press passes the click distance. A Rectangle
- * or Ellipse draws the shape in the fill it lands in, read from the frame
- * under the press, and draws nothing over bare canvas. The others draw a
- * tinted box as the marquee does. On release it leaves the box for
- * `takeDraft`, so the click placing the element lands it at the size drawn. A
- * Divider and Text draw nothing. The file holds nothing until release, since
- * the shape draws on the board's overlay.
+ * A drag's preview past the click distance, a shape drawn in the fill it lands
+ * in and others as a tinted box. On release `takeDraft` hands the box to the
+ * placing click, so the element lands at the size drawn.
  */
 export function ShapeDraft({
   viewport,
@@ -144,8 +139,7 @@ export function ShapeDraft({
   const reader = shaping ? (
     <TokenReader project={project} onTokens={keepTokens} />
   ) : null
-  // The reader keeps one place in the tree, so a drag never remounts it and
-  // fetches the tokens again.
+  // One place in the tree, so a drag never remounts it and refetches the tokens.
   return (
     <>
       {reader}

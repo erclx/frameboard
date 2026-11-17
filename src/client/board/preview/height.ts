@@ -1,10 +1,7 @@
 /**
- * The content height of the page a same-origin iframe shows, laid out at the
- * iframe's current width, or null when the page sizes itself off the
- * viewport and so has no height of its own. It reads the way the server's
- * fit step does, once with the iframe 1 px tall and again at `height`, since
- * `scrollHeight` never reads below the viewport. Both readings and the
- * restore run in one task, so the collapsed iframe never paints.
+ * The iframe page's content height at its width, null when sized off the
+ * viewport, read as the server's fit does in one task so the collapsed iframe
+ * never paints.
  */
 export function measureHeight(
   iframe: HTMLIFrameElement,
@@ -24,11 +21,9 @@ export function measureHeight(
   }
 }
 
-// The furthest bottom edge of any box, flow or out of flow, or of text
-// spilling below its own block to its line box, leaving out what an ancestor
-// inside the body or the block itself crops. It mirrors `readContentSize` in
-// `src/server/capture/fit.ts`, which runs inside a page and so cannot be
-// shared, and the two must agree.
+// The furthest uncropped bottom edge, mirroring `readContentSize` in
+// `src/server/capture/fit.ts`, which runs in a page and cannot be shared, so
+// the two must agree.
 function contentBottom(document: Document): number {
   const view = document.defaultView
   if (!view) return 1

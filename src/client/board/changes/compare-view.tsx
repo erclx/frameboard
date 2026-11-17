@@ -24,9 +24,7 @@ interface CompareViewProps {
 
 /**
  * The version before as a second iframe over the live one, which it never
- * touches, per agents/compare-flip and compare-split. Flip covers the frame
- * and split clips it at a divider. It follows the frame's theme the way the
- * live iframe does, rewriting its root rather than reloading it.
+ * touches, following the theme by rewriting its root rather than reloading.
  */
 export function CompareView({ frameRef: ref, name, hash }: CompareViewProps) {
   const mode = useCompare((state) => state.mode)
@@ -168,10 +166,8 @@ const OPTIONS: readonly { value: CompareMode | 'now'; label: string }[] = [
 ]
 
 /**
- * The label's compare control while the frame has a base: one button that
- * starts compare, and while compared a Now, Before, and Split choice, Now
- * ending it. The hit layer covers the label, so a press reaches a button
- * through `data-label-control` and the gestures click it on release.
+ * The label's compare control, reached through `data-label-control`, since the
+ * hit layer covers the label and the gestures click it on release.
  */
 export function CompareControl({
   frameRef: ref,
@@ -184,8 +180,7 @@ export function CompareControl({
   const mode = useCompare((state) => state.mode)
   const control = useRef<HTMLButtonElement>(null)
   const group = useRef<HTMLDivElement>(null)
-  // The button and the group swap on a start or an end, unmounting whichever
-  // held focus, so the one that mounts takes it rather than the body.
+  // The swap unmounts the focused control, so the one that mounts takes focus.
   const refocus = useRef(false)
   const keyed = useRef(false)
 
@@ -218,9 +213,7 @@ export function CompareControl({
         ref={control}
         aria-label={`Compare ${name} with before`}
         title="Compare with before"
-        // Only a keyboard start carries focus on. The gestures press this button
-        // through a script click, whose zero `detail` reads like a key's, so the
-        // key itself is the signal.
+        // The key is the signal, since a script click's zero `detail` reads like a key's.
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') keyed.current = true
         }}

@@ -85,10 +85,8 @@ export function armGuideLanding(path: string): void {
 }
 
 /**
- * Sends a tab whose first arrival is home on to the start page while the
- * board is still untouched, once the board and this tab's access are known,
- * and at most once. Returns whether home should hold its view meanwhile, so
- * the projects never flash before the move.
+ * Sends a tab arriving home to the start page once while the board is
+ * untouched, holding home's view meanwhile so the projects never flash.
  */
 export function useGuideLanding(): boolean {
   const board = useLive((state) => state.board)

@@ -101,12 +101,9 @@ export interface StructureContext {
 }
 
 /**
- * The frame structure actions: rename, duplicate, delete, hide, lock, copy,
- * cut, and paste. Each acts in Edit while the tab may write, on the frames
- * selected on this page, and none acts while an element is selected, since
- * the selection then holds the element's frame and Backspace would delete a
- * frame the developer sees as an element. Keys bind by code, as a Mac turns
- * Alt and Shift combinations into other characters.
+ * The frame structure actions, none acting while an element is selected, so
+ * Backspace never deletes a frame. Keys bind by code, since a Mac turns Alt
+ * and Shift combinations into other characters.
  */
 export function structureActions(context: StructureContext): Action[] {
   const { selection, mode, live, clipboard, calls } = context
@@ -149,8 +146,7 @@ export function structureActions(context: StructureContext): Action[] {
       group: 'frame',
       keys: ['F2'],
       command: { label: 'Rename frame', icon: PencilLine },
-      // The inspector shows one selected frame's name whenever the panels
-      // show, unlike a layers row, which another tab can hide.
+      // The inspector's name field shows whenever the panels do, unlike a layers row.
       enabled: () =>
         writable() && chosen().length === 1 && !mode.getState().hideUi,
       run: () => {
@@ -277,10 +273,8 @@ export function structureActions(context: StructureContext): Action[] {
 }
 
 /**
- * Registers the frame structure actions for the page a canvas shows,
- * rereading them as the selection, the board, the mode, or the clipboard
- * change. A dropped socket empties the clipboard's count, since the server
- * that held the frames may have restarted, so paste never sends to nothing.
+ * Registers the structure actions for the canvas's page. A dropped socket
+ * empties the clipboard's count, since the server may have restarted.
  */
 export function useStructureActions(
   page: string,

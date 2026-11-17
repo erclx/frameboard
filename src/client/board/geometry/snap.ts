@@ -32,10 +32,8 @@ type Lines = readonly ('start' | 'center' | 'end')[]
 const ALL: Lines = ['start', 'center', 'end']
 
 /**
- * Snaps a moving box's edges and center to the edges and centers of
- * `others`, within `threshold` canvas pixels, each axis apart. The box keeps
- * its size. Pass `SNAP_DISTANCE / zoom` as the threshold so the pull feels
- * the same at every zoom.
+ * Snaps a moving box to `others` per axis. Pass `SNAP_DISTANCE / zoom` as the
+ * threshold, so the pull feels the same at every zoom.
  */
 export function snapMove(
   box: Box,

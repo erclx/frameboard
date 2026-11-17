@@ -32,11 +32,8 @@ export const CHANGE_TOAST = 'change'
 type Toasts = Pick<typeof kitToasts, 'add' | 'update' | 'close'>
 
 /**
- * The toast offering Show, Previous, Next, and Mark all seen, per
- * agents/unseen-one and unseen-many, as the newest entry in the kit's one
- * stack. It stays while any change is unseen and closes 5 seconds after the
- * last clears, offering Undo for those 5 seconds when Mark all seen cleared
- * them.
+ * The change toast, staying while any change is unseen and closing 5 seconds
+ * after the last clears, with Undo for those seconds after Mark all seen.
  */
 export function ChangesToast({
   store = unseenStore,
@@ -49,15 +46,9 @@ export function ChangesToast({
 }
 
 /**
- * Opens the toast while any change is unseen and closes it 5 seconds after
- * the last clears, writing what it says into the toast as the stores move,
- * so a closing toast keeps the words of the last change.
- *
- * Mark all seen turns the toast into its cleared form, closed by the kit's
- * own timer, which pauses while the stack is hovered or focused, since the
- * Undo it holds is the only way back. A change landing within its 5 seconds
- * opens a fresh toast rather than taking that one over, so the Undo stays on
- * screen beside the change it would now leave marked.
+ * Keeps the toast's words in step, so a closing toast keeps the last change's.
+ * A change landing during the cleared form opens a fresh toast, so its Undo
+ * stays on screen.
  */
 function OpenWhileUnseen({
   store,
@@ -78,8 +69,7 @@ function OpenWhileUnseen({
       handed = null
     }
 
-    // A timeout of 0 keeps the toast open, so every write but the cleared
-    // form's stops a kit timer the cleared form started.
+    // A 0 timeout keeps it open, stopping any timer the cleared form started.
     const write = (data: ToastCopy, timeout = 0) => {
       if (id === null) {
         const opened = toasts.add({
@@ -159,14 +149,8 @@ function OpenWhileUnseen({
 }
 
 /**
- * The change toast in the kit's stack, its copy with Show, Previous, Next,
- * and Mark all seen, or Undo once Mark all seen cleared the pile, at the
- * width its form draws. Enter on the toast itself runs Show.
- *
- * Mark all seen or Undo run from its own focused button takes that button
- * away, so focus moves into the form that replaces it, Undo on the cleared
- * form and the first button on the change form, rather than falling to the
- * page.
+ * The change toast's body. Mark all seen or Undo removes its own focused button,
+ * so focus moves into the replacing form rather than falling to the page.
  */
 export function ChangeToastBody({
   toast: item,

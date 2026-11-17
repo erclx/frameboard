@@ -73,10 +73,8 @@ const STORES: CompareStores = {
 }
 
 /**
- * Compares a frame with its base in `mode`, or moves a compare already on it
- * to `mode`. It asks the server for the version first, so a version the
- * server dropped drops the frame's base and says so rather than showing a
- * 404 page in the frame.
+ * Compares a frame with its base, asking for the version first, so a dropped
+ * one drops the base with a toast rather than showing a 404 page.
  */
 export async function startCompare(
   ref: string,
@@ -139,11 +137,8 @@ const CONTEXT: CompareContext = {
 }
 
 /**
- * Registers `frame.compare`, `frame.compare.split`, and `frame.compare.end`
- * on Esc while the board is mounted. The first two act on the one selected
- * frame while it has a base. Compare ends on any selection change, on Play,
- * on the Note tool, and once the frame's base moves on, so a pick or an
- * element selection never reads the old version's indices.
+ * Registers the compare actions. Compare ends on a selection change, Play, the
+ * Note tool, or a moved base, so no pick reads the old version's indices.
  */
 export function useCompareActions(context: CompareContext = CONTEXT): void {
   useEffect(() => {

@@ -23,11 +23,8 @@ export interface SelectedElement {
 }
 
 /**
- * What a right-click at a board point lands on: the selected element when
- * the point sits inside its box, else the topmost shown frame under it, its
- * label strip included, else a reserved box under it, else empty canvas.
- * `frames` comes bottom to top and `zoom` sizes the strip, as `frameAt`
- * takes them.
+ * What a right-click lands on, the selected element, else the topmost frame or
+ * its label strip, else a reserved box, else empty canvas.
  */
 export function menuTarget(
   frames: readonly FrameRecord[],

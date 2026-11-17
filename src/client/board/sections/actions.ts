@@ -93,10 +93,8 @@ export interface SectionContext {
 }
 
 /**
- * The section actions: wrap the selected frames, rename or delete the
- * selected section, and the Section tool. Each acts in Edit while the tab may
- * write. Rename and Delete share F2 and Backspace with the frame's, and the
- * selection holds either frames or a section, so one of each pair is enabled.
+ * The section actions. Rename and Delete share keys with the frame's, and the
+ * selection holds frames or a section, so one of each pair is enabled.
  */
 export function sectionActions(context: SectionContext): Action[] {
   const { selection, mode, live, calls } = context
@@ -127,8 +125,7 @@ export function sectionActions(context: SectionContext): Action[] {
       membersOf(section).every((frame) => !frame.locked)
     )
   }
-  // One nudge is out at a time, since the next starts from the box the
-  // board carries back, and a press while one is out is dropped.
+  // One nudge at a time, since the next starts from the box the board carries back.
   let nudging = false
   const nudge = (dx: number, dy: number) => {
     const section = chosenSection()
@@ -200,8 +197,7 @@ export function sectionActions(context: SectionContext): Action[] {
           .catch(reportRefusal(`Couldn't delete ${section.name}`))
       },
     },
-    // A section moves by the keys as a frame does, its frames with it, which
-    // is the keyboard path its drag needs.
+    // The keyboard path a section's drag needs.
     ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
       {
         id: `section.nudge${name}`,

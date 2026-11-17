@@ -43,13 +43,8 @@ interface FrameRowMenuProps {
 }
 
 /**
- * The Frame in layers menu of `canon/design/menus/context` on a layers frame
- * row. Opening it selects the row's frame alone, unless it is already among
- * the frames selected, so every item acts on what the row shows selected.
- * Rename opens the row's own field rather than the inspector's, since the
- * developer is at the row. A hidden frame does not select, as its row click
- * does not, so the items acting on the selection grey whenever the row's
- * frame is not among the frames selected, never acting on another one.
+ * A layers frame row's menu, selecting the row's frame first. A hidden frame
+ * does not select, so its selection items grey rather than act on another one.
  */
 export function FrameRowMenu({ frame, page, trigger }: FrameRowMenuProps) {
   const actions = useActions(FRAME_IDS)

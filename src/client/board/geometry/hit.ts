@@ -55,10 +55,8 @@ export function onOutline(box: Box, point: Point, zoom: number): boolean {
 }
 
 /**
- * The topmost element matching `selector` drawn under a screen point, null
- * when none is. A label control draws under the hit layer at a constant
- * screen size, so it is found by where the layer drew it rather than by
- * canvas geometry.
+ * The topmost `selector` match drawn under a screen point, found by where the
+ * layer drew it, since a label control keeps a constant screen size.
  */
 export function drawnAt(
   layer: ParentNode,
@@ -156,10 +154,8 @@ export function selectedElementBoxes(
 }
 
 /**
- * The element whose ghost draws under a canvas point, null when none does.
- * A ghost shows only the part of an element past its frame's edge, so a
- * point inside the frame is left to the frame. It reads the boxes the layer
- * drew in canvas units, so the zoom moves nothing.
+ * The element whose ghost draws under a canvas point, leaving a point inside
+ * the frame to the frame.
  */
 export function ghostAt(
   layer: ParentNode,
@@ -206,10 +202,8 @@ function drawnBoxes({
 }
 
 /**
- * The topmost shown frame under a canvas point, the strip above it where its
- * label sits counting as the frame, and a linked width's box and strip
- * counting as the frame it shows. `frames` comes bottom to top, as the board
- * lists a page, and `zoom` sizes the strip, which keeps its screen size.
+ * The topmost shown frame under a point, its label strip and linked widths
+ * counting as the frame, with `frames` bottom to top as the board lists them.
  */
 export function frameAt(
   frames: readonly FrameRecord[],

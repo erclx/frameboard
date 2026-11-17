@@ -56,11 +56,8 @@ interface ScrollRailProps {
 }
 
 /**
- * A scroll frame's rail on the canvas, 6px wide and 8px right of the box at
- * any zoom, past any device body, its thumb the share of the page in view, as
- * `canon/design/canvas/scroll-rail` draws it. It draws nothing while the page
- * fits its box or cannot be read. The hit layer covers it, so a press reaches
- * it through `pressRail`, and the wheel over it pans the board.
+ * A scroll frame's rail per `canon/design/canvas/scroll-rail`, reached through
+ * `pressRail`, since the hit layer covers it.
  */
 export function ScrollRail({
   iframe,

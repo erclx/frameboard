@@ -18,11 +18,8 @@ interface RulesOffProps {
 }
 
 /**
- * The project menu's Rules turned off submenu: each rule `checks.off` lists,
- * as the file writes it, with a press turning it back on, after which the
- * server's recheck brings its findings back. A view-only tab lists the rules
- * and presses none, and a project with none off disables the trigger, as
- * Switch project is with one project.
+ * The rules `checks.off` lists, a press turning one back on so the server's
+ * recheck brings its findings back.
  */
 export function RulesOff({ project, calls = structure }: RulesOffProps) {
   const canWrite = useLive((state) => state.canWrite)

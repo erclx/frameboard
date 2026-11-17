@@ -4,10 +4,8 @@ import { type RefObject, useLayoutEffect, useState } from 'react'
 export type ToolbarStage = 'full' | 'folded' | 'tools' | 'active' | 'more'
 
 /**
- * The room each stage needs, widest first, being the bar's own width at that
- * stage in the bundled Geist face. Each runs wider than
- * `canon/design/toolbar/narrow` measures, since that frame draws no Present
- * button.
+ * Each stage's room in the bundled Geist face, wider than
+ * `canon/design/toolbar/narrow`, which draws no Present button.
  */
 const STAGE_FLOORS = [
   [601, 'full'],

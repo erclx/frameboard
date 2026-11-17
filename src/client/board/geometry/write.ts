@@ -109,10 +109,8 @@ interface WaitingBoxes {
 }
 
 /**
- * The box each frame's waiting edit started from, by ref, and that edit. A
- * gesture on a waiting frame starts from its pending box, which the file does
- * not hold, so the edit replacing the waiting one sends this box as
- * `expected`, and carries the waiting edit's other frames along with it.
+ * Each waiting edit's starting box, which a replacing edit sends as `expected`,
+ * since the pending box it started from is not in the file.
  */
 const waitingFrom = new Map<string, { box: Box; owner: WaitingBoxes }>()
 
@@ -123,14 +121,9 @@ export interface SectionBoxes {
 }
 
 /**
- * Sends a hand edit's boxes for one page, keyed by frame ref, with the boxes
- * the edit started from. A section move or resize sends its box in
- * `sections`, so the box and the frames it carries land as one step. The
- * new boxes draw at once and hold while another session holds a frame, the
- * edit waiting until the claim drops and a newer edit of the same frame
- * replacing it, the newer one taking up the older's other frames and section
- * boxes. A refusal or a cancelled wait drops them so the board shows the
- * stored ones. Resolves whether the write landed.
+ * Sends a hand edit's boxes with the boxes it started from, a section's box
+ * landing with its frames as one step. An edit on a held frame waits for the
+ * claim, and a newer edit of that frame replaces it, taking up its other boxes.
  */
 export async function writeBoxes(
   page: string,
@@ -140,8 +133,7 @@ export async function writeBoxes(
   sections?: SectionBoxes,
 ): Promise<boolean> {
   if (Object.keys(asked).length === 0 && !sections) return true
-  // An edit of a frame's box acts on the box itself, so it ends any preview
-  // rather than leave the frame drawn at a width it no longer starts from.
+  // Ends any preview, which would draw a width the edit no longer starts from.
   endPreview(Object.keys(asked))
   const boxes: Record<string, Box> = { ...asked }
   const started: Record<string, Box> = { ...expected }
@@ -150,8 +142,7 @@ export async function writeBoxes(
   for (const ref of Object.keys(asked)) {
     const waiting = waitingFrom.get(ref)
     if (!waiting) continue
-    // The waiting edit's section moves with the frames it carried, so its box
-    // goes with them rather than stay behind once they land.
+    // The waiting edit's section box travels with the frames it carried.
     for (const [name, box] of Object.entries(
       waiting.owner.sections?.boxes ?? {},
     )) {

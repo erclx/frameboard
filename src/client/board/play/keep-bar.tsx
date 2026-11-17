@@ -16,12 +16,8 @@ import {
 const INSET = 12
 
 /**
- * The bar Play shows inside the entered frame's bottom right corner once one
- * of its drawn controls moved, at a constant screen size: how many values
- * changed, Reset, and Keep values, which writes them as one undo step. A
- * view-only tab tunes live but offers no Keep values. It draws in the notes
- * layer, the board-space layer a press reaches in Play. While mounted it
- * binds the entered frame's controls, so it mounts for Play alone.
+ * The Keep values bar, drawn in the notes layer, which a press reaches in Play,
+ * and binding the entered frame's controls while mounted.
  */
 export function KeepBar({
   page,

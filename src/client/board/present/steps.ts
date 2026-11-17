@@ -85,11 +85,8 @@ function durationOf(effect: StepEffect): number {
 }
 
 /**
- * A document's steps, one group per press, in number order with gaps closed.
- * Equal numbers share a press, and a step starting with or after the one
- * before it joins that one's press, an after step waiting for it to finish.
- * Ties keep document order, and an element whose number is not a positive
- * integer is no step.
+ * A document's steps, one group per press with gaps closed, a with or after
+ * step joining the press before it, and a non-positive number being no step.
  */
 export function readSteps(doc: Document): StepGroup[] {
   const marked = [...doc.querySelectorAll(`[${STEP_ATTRIBUTES.step}]`)]
@@ -131,10 +128,8 @@ function holdsStep(node: Node): boolean {
 }
 
 /**
- * Whether a batch of mutations can change a document's steps: a step
- * attribute written, or a marked element added or removed. Anything else a
- * slide does to itself, a ticking clock or a style the board injects, leaves
- * the steps as read.
+ * Whether mutations can change the steps, being a step attribute or a marked
+ * element, so a ticking clock or an injected style leaves them as read.
  */
 export function touchesSteps(records: readonly MutationRecord[]): boolean {
   return records.some(

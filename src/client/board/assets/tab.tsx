@@ -26,11 +26,8 @@ interface AssetsTabProps {
 }
 
 /**
- * The Assets tab of `canon/design/tabs/assets`: the project's `assets/` files
- * as tiles grouped by folder, narrowed by a name search and a kind chip, a
- * click copying the path a frame links one by, and a drop or the header's
- * picker adding files. It reads the list again on every board message while
- * open, so a file an agent wrote shows without a reload.
+ * The Assets tab, re-reading the list on every board message while open, so a
+ * file an agent wrote shows without a reload.
  */
 export function AssetsTab({
   project,

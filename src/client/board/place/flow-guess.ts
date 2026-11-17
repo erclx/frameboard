@@ -18,16 +18,9 @@ export interface Margins {
 const NO_MARGINS: Margins = { top: 0, right: 0, bottom: 0, left: 0 }
 
 /**
- * The flow that keeps elements where they sit once wrapped: a row when their
- * centers spread wider than tall, else a column, and the mean space between
- * neighbors along it as the gap, since a flex gap is one value. Overlapping
- * neighbors read as no space at all.
- *
- * `margins` names each box's own, in the order of `boxes`, an absent one
- * reading as none. Flex items keep
- * both margins between them, so a pair's gap is the space left once those
- * are taken out. Margins that collapsed in a block parent sum past the space
- * they shared, which no gap can take back, so that pair reads as 0.
+ * The flow keeping wrapped elements in place, a row or column with the mean
+ * neighbor space as its one gap, less both margins flex keeps apart, and 0
+ * where margins collapsed in a block parent.
  */
 export function guessFlow(
   boxes: readonly Box[],

@@ -42,14 +42,9 @@ interface ElementRowsProps {
 }
 
 /**
- * One frame's element rows, read from the server's tree so a culled frame
- * lists them too, each indented by depth, with the glyph `elementGlyph`
- * picks by text, media, and layout, a chevron on one with children, and a
- * click selecting the element and Shift-click adding it or taking it out. A selected row alone is tinted, as `layers/edit` and
- * `inspector/text` draw it. A
- * double-click or F2 renames the element in place, writing `data-name`. A
- * row drags to another place among its siblings, never into another parent,
- * which stays a canvas drag.
+ * A frame's element rows, read from the server's tree so a culled frame lists
+ * them too. A row drags among its siblings alone, since moving into another
+ * parent stays a canvas drag.
  */
 export function ElementRows({
   frame,

@@ -483,8 +483,7 @@ describe('CanvasMenu', () => {
       index: 2,
       hash: 'h',
     })
-    // The overlay draws the selected element's outline once the frame's
-    // page loads, which no board serves here, so the test draws it.
+    // Drawn by hand, since no board serves the page that would draw the outline.
     const outline = document.createElement('div')
     outline.dataset.elementSelection = ''
     Object.assign(outline.style, {

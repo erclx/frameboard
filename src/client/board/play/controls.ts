@@ -49,11 +49,8 @@ interface Original {
 }
 
 /**
- * Binds `doc`'s controls: moving one sets its custom property inline on its
- * target, so the target's own CSS shows the value at once, and nothing is
- * written. A control whose selector matches nothing tunes nothing and
- * leaves no keep entry, which the `binding-target` check reports instead.
- * `onMove` hears how many controls stand moved after each change.
+ * Binds `doc`'s controls, a move setting its property inline on its target and
+ * writing nothing. A control matching nothing is left to `binding-target`.
  */
 export function bindControls(
   doc: Document,
@@ -80,12 +77,7 @@ export function bindControls(
     }
   }
 
-  /**
-   * Takes an emptied field out of the moved set and puts its property back,
-   * to the value of another moved control setting it or else the file's, so
-   * no later settle leaves its earlier value inline. An empty value set as
-   * the unit alone would be a defined property skipping the `var()` fallback.
-   */
+  // An emptied field restores its property, since a bare unit would skip the `var()` fallback.
   const unmove = (control: HTMLInputElement) => {
     const bound = moved.get(control)
     moved.delete(control)
@@ -128,8 +120,7 @@ export function bindControls(
       originals.set(bound.target, kept)
     }
     style.setProperty(bound.property, `${control.value}${bound.unit}`)
-    // Last moved goes last, since `keepEdits` keeps the later of two
-    // controls setting one property, as the live page shows it.
+    // Last moved goes last, since `keepEdits` keeps the later of two on one property.
     moved.delete(control)
     moved.set(control, bound)
     onMove(moved.size)
@@ -236,10 +227,7 @@ function enter(ref: string | null): void {
       : null
     report(ref, 0)
   }
-  // The frame can be entered before its iframe mounts, and a reload or a
-  // remount is a new document holding the file's values, so every load of
-  // the entered frame's iframe binds again with nothing left to reset. A
-  // load does not bubble, so the board's document hears it on the way down.
+  // Binds again on every load, captured since a load never bubbles, as a reload is a new document.
   const onLoad = (event: Event) => {
     if (event.target === liveIframe(ref)) bind()
   }
@@ -253,10 +241,8 @@ function enter(ref: string | null): void {
 }
 
 /**
- * Binds the controls of whichever frame Play has entered, for as long as
- * Play runs. Leaving the frame, a page switch, or leaving Play puts every
- * unkept value back, so Edit never shows a value the file does not hold.
- * Returns the function that stops following and resets.
+ * Binds the entered frame's controls while Play runs, putting every unkept
+ * value back on leaving, so Edit never shows a value the file does not hold.
  */
 export function followEnteredControls(): () => void {
   enter(enteredStore.getState().ref)
@@ -273,10 +259,8 @@ export function resetControls(): void {
 }
 
 /**
- * Writes the entered frame's moved values into its file as one edit and one
- * undo step, from the bytes its page shows, and answers whether it was
- * written. A refusal keeps the values moved, so Keep values can run again
- * or Reset drop them.
+ * Writes the moved values as one edit and one undo step, a refusal keeping
+ * them moved so Keep values can run again.
  */
 export async function keepControls(page: string): Promise<boolean> {
   const held = active

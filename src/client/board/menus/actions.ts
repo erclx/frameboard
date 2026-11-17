@@ -60,12 +60,8 @@ export interface MenuContext {
 }
 
 /**
- * The actions only a menu needs. `frame.flipTheme` flips the selected frames
- * to the opposite of the one right-clicked, or of the first selected from
- * the palette, labelling itself with the theme it flips to.
- * `frame.pasteAt`, `frame.newAt`, and `note.addHere` act at the board point
- * the menu opened at, so they stay disabled with no menu open. Each acts in
- * Edit alone, and each writing one while the tab may write.
+ * The actions only a menu needs. The point actions act where the menu opened,
+ * so they stay disabled with no menu open.
  */
 export function menuActions(context: MenuContext): Action[] {
   const { place, selection, mode, live, clipboard, theme, notes, calls } =
@@ -109,8 +105,7 @@ export function menuActions(context: MenuContext): Action[] {
       id: 'frame.pasteAt',
       label: 'Paste here',
       group: 'frame',
-      // It acts at the menu's point, which closing the menu clears, so the
-      // palette could never offer it.
+      // Off the palette, since closing the menu clears the point it acts at.
       palette: false,
       enabled: () =>
         writable() &&
@@ -169,8 +164,7 @@ export function menuActions(context: MenuContext): Action[] {
           .frames()
           .find((candidate) => candidate.ref === element?.frame)
         if (!at || !element || !frame) return
-        // A frame that has not finished a load names no file, so its note
-        // goes on the frame, as a Note tool click there does.
+        // An unloaded frame names no file, so its note goes on the frame.
         const renderedAt = context.renderedAt(frame.ref)
         mode.setState({ tool: 'note' })
         notes.setState({

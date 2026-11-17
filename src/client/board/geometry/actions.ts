@@ -116,12 +116,9 @@ export interface GeometryContext {
 }
 
 /**
- * The selection's keys and the arrange actions while a canvas is mounted:
- * Esc to clear, Cmd+A to select the page, or an element's siblings with one
- * selected, arrows to nudge, Cmd with an
- * arrow to resize, Fit height, and the aligns and distributes. Each `enabled` reads the
- * mode and the selection, so Esc means one thing at a time and an arrow
- * with nothing selected falls through to arrow pan.
+ * The selection and arrange keys. Each `enabled` reads the mode and the
+ * selection, so Esc means one thing at a time and an arrow with nothing
+ * selected falls through to arrow pan.
  */
 export function geometryActions(context: GeometryContext): Action[] {
   const { selection, mode, live } = context
@@ -141,8 +138,7 @@ export function geometryActions(context: GeometryContext): Action[] {
     )
   }
 
-  // A run holds its own page and frames, so the write it sends names what it
-  // started from even when the selection or the page changes before it rests.
+  // A run keeps its page and frames, so its write names its start if either moves.
   let run: {
     page: string
     refs: readonly string[]

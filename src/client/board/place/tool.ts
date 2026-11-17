@@ -148,12 +148,8 @@ const canWrite = () => liveStore.getState().canWrite
 const placing = () => placesElement(modeStore.getState().tool)
 
 /**
- * Registers the Text tool, key T, one action per shape, keys R, O, and L,
- * each choosing that shape for the Shape tool, and the Image tool, which
- * opens the picker whose choice arms it. They write, so they are enabled
- * only while this tab may, and a tab losing write returns to Move and closes
- * the picker, as the canvas leaving does, so a tool never carries to the
- * next page.
+ * Registers the placement tools, enabled only while the tab may write. Losing
+ * write returns to Move and closes the picker, so a tool never carries over.
  */
 export function usePlaceTools(): void {
   useEffect(() => {

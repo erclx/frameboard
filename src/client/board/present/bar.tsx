@@ -14,11 +14,8 @@ interface PresentBarProps {
 }
 
 /**
- * The bar at the foot of a presented frame, holding back, the count, the
- * frame's name, next, and leave, as `canon/design/present/bar` draws it. It
- * sits over black in either theme, so its colors are its own. It stays while
- * the pointer rests on it or focus is inside it, and fades with no motion
- * under reduced motion.
+ * The present bar per `canon/design/present/bar`, its colors its own since it
+ * sits over black in either theme.
  */
 export function PresentBar({
   shown,
@@ -97,10 +94,8 @@ function BarButton({
 const MOST_DOTS = 6
 
 /**
- * The steps at one width on every slide, sized for six dots, so Next and
- * Leave never move when a stepped slide arrives. It holds one dot per step,
- * filled up to the step shown, or the count as text past six, and stays an
- * empty, unnamed span on a slide with none. A screen reader hears the count.
+ * The steps at one width on every slide, sized for six dots, so Next and Leave
+ * never move when a stepped slide arrives.
  */
 function StepSlot({ step, steps }: { step: number; steps: number }) {
   const slot =

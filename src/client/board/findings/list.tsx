@@ -16,12 +16,8 @@ interface FindingsListProps {
 }
 
 /**
- * A frame's findings, each as its rule, the file it sits in when that is not
- * the frame's own, the line when it has one, and its message, which already ends on the fix. The badge's popover draws
- * it, the warning glyph in the destructive hue for an error and the note hue
- * for a warning. Each card of a tab that may write ends on a button turning
- * its rule off for the project, which the server's recheck then takes out of
- * every frame's list.
+ * A frame's findings, each card in a writing tab ending on a button turning
+ * its rule off for the project, which the server's recheck then clears.
  */
 export function FindingsList({
   findings,
@@ -36,8 +32,7 @@ export function FindingsList({
     setSending(rule)
     try {
       await calls.setProjectRule(project, rule, true)
-      // The pressed card leaves with its rule, so focus waits on the list
-      // rather than falling out of the popover, where Escape still closes it.
+      // Focus waits on the list, since the pressed card leaves with its rule.
       list.current?.focus()
       toast.add({
         title: `Turned off ${rule} in ${project}`,
@@ -57,9 +52,7 @@ export function FindingsList({
     <ul ref={list} tabIndex={-1} className="flex flex-col outline-none">
       {findings.map((finding, index) => (
         <li
-          // A frame can break one rule at several places, so the index keeps
-          // each key unique where rule, line, and message all repeat.
-          // oxlint-disable-next-line react/no-array-index-key
+          // oxlint-disable-next-line react/no-array-index-key -- rule, line, and message can all repeat
           key={`${finding.rule}:${finding.location?.startOffset ?? ''}:${index}`}
           data-severity={finding.severity}
           className="grid grid-cols-[14px_1fr] gap-1.5 rounded-md p-1.5 hover:bg-accent data-[severity=error]:[--h:var(--destructive)] data-[severity=warning]:[--h:var(--note)]"
@@ -82,8 +75,7 @@ export function FindingsList({
               <Button
                 variant="secondary"
                 size="xs"
-                // The visible text leads the name, and the rule tells the
-                // cards' buttons apart.
+                // The rule tells the cards' buttons apart.
                 aria-label={`Turn off in ${project}, ${finding.rule}`}
                 disabled={sending !== null}
                 onClick={() => void turnOff(finding.rule)}

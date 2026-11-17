@@ -34,11 +34,8 @@ interface FollowOptions {
 let unfollow: (() => void) | null = null
 
 /**
- * Follows a session: each frame it changes and each frame it newly claims is
- * centered at the current zoom, moving to the frame's page first when it sits
- * on another and keeping that zoom there. Any view change the developer
- * makes, opening another page, or the session leaving the listeners stops
- * it, since the board otherwise never moves the view on its own.
+ * Follows a session, centering each frame it changes or claims at the current
+ * zoom. Any hand move or the session leaving stops it.
  */
 export function follow(
   session: string,
@@ -48,8 +45,7 @@ export function follow(
   // The page the view is on as Follow sees it, moved only by Follow's own navigation.
   let page = canvasView.page()
   let target: string | null = null
-  // The zoom the view left its page at, which the next page opens on, since
-  // a page's canvas mounts at its own remembered or fitted view.
+  // Carried across pages, since a canvas mounts at its own remembered view.
   let carried: number | undefined
 
   const travel = () => {
@@ -105,8 +101,7 @@ export function follow(
   const stopAttach = canvasView.onAttach(() => {
     const attached = canvasView.page()
     if (attached === null) return
-    // Show, Next, and the `show` message set `focus` before they navigate,
-    // so a page holding the focused frame is the board's move, not a hand pick.
+    // A page holding the focused frame is the board's move, not a hand pick.
     const focus = live.getState().focus
     if (focus !== null && attached === pageOf(focus)) page = attached
     if (attached !== page) {
@@ -145,10 +140,8 @@ export function stopFollow(): void {
 }
 
 /**
- * Registers `follow.start` while the board is mounted, offered in the
- * palette while exactly one session listens and nobody is followed, since
- * with several the palette could not say which it follows. Its hint names
- * the session.
+ * Registers `follow.start`, offered only while one session listens, since with
+ * several the palette could not say which it follows.
  */
 export function useFollowActions(live: LiveStore = liveStore): void {
   useEffect(() => {

@@ -35,15 +35,9 @@ interface Landed {
 }
 
 /**
- * The Theme tab of `canon/design/tabs/theme`: the sheets it read, then the
- * project's tokens by group, each tagged Board or Project, colors with a
- * light and a dark swatch and the rest as a value. A writing tab edits a
- * value in place into the sheet its tag names while that sheet parses, so a
- * Board row changes every project without an override, and a row the
- * project overrides resets to the board's value. A `--tokens` sheet outside
- * the board folder belongs to whatever handed it over, so its rows stay
- * read-only. It reads the table again on every board message while open, so
- * an edited sheet shows without a reload.
+ * The Theme tab, editing each value into the sheet its tag names. A `--tokens`
+ * sheet outside the board belongs to whatever handed it over, so its rows stay
+ * read-only.
  */
 export function ThemeTab({
   project,

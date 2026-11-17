@@ -20,10 +20,8 @@ export interface Reserved {
 }
 
 /**
- * The reservations on a page whose frame is not listed yet, each placed in
- * its set in the order the agent named the frames. The member holding the
- * set's latest `drawingAt` reads as drawing, and every other one queued, so
- * a set reads all queued until the agent turns to its first frame.
+ * A page's unlisted reservations, the latest `drawingAt` reading as drawing
+ * and the rest queued, so a set reads all queued until its first frame starts.
  */
 export function reservedOn(
   claims: Readonly<Record<string, Claim>>,

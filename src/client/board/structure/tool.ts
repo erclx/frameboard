@@ -56,14 +56,9 @@ export const DRAWN_FRAME_MIN = 40
 const DRAWN_FRAME_NAME = 'frame'
 
 /**
- * Adds a frame with its top left corner on a board point, hugging neither
- * axis, at the chosen size's width and height and named for it as duplicate
- * and new page name theirs, or at a drawn box's size and named `frame`, then
- * selects it, returns to Move, and centers the view on it when it is not
- * wholly in view, as one click or drag of the Frame tool. It opens no rename
- * field, so the next keystroke still reaches the board. Resolves to the
- * added frame, or null once a refusal is reported, so a caller can act on its
- * box before the live store carries it.
+ * Adds a frame at a point, hugging neither axis, then selects it. It opens no
+ * rename field, so the next keystroke still reaches the board, and resolves to
+ * the frame before the live store carries it.
  */
 export async function placeFrame(
   point: { x: number; y: number; width?: number; height?: number },

@@ -931,8 +931,7 @@ describe('NotesLayer', () => {
 
     renderLayer()
 
-    // The marker sits on no positioned ancestor, so its spot is the page's
-    // 390,0, and the page is unscrolled.
+    // With no positioned ancestor, the marker's spot is the unscrolled page's 390,0.
     const origin = document.documentElement.getBoundingClientRect()
     const pin = screen
       .getByRole('button', { name: 'Note 1 on hero' })

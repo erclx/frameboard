@@ -31,13 +31,8 @@ interface NotesLayerProps {
 }
 
 /**
- * The page's notes on the canvas, in board coordinates on a layer that pans
- * and zooms with the frames: one amber numbered marker per open root note
- * at its element's corner, or its frame's once the element is lost, and the
- * composer or thread the Note tool has open. Two or more notes whose pins would
- * overlap at the current zoom show as one pin carrying their count, which
- * opens a list of them.
- * Markers hide in Play and once a note is done.
+ * The page's notes on a layer that pans and zooms with the frames, notes whose
+ * pins would overlap at this zoom sharing one count pin.
  */
 export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const notes = useLive((state) => state.notes[page])
@@ -45,13 +40,10 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const open = useNotesUi((state) => state.open)
   // The spot whose count pin has its list open.
   const [listed, setListed] = useState<string | null>(null)
-  // Markers read their elements' boxes from the live frames as they render,
-  // so a frame load renders the layer again.
+  // Markers read live boxes, so a frame load renders the layer again.
   useFrameLoads(container)
   useCloseOnEscape(open !== null)
-  // A marker sits on the frame as drawn, at a previewed width and at a
-  // released box the board has not carried back yet, so a pin a drag shifted
-  // stays where the drag left it.
+  // On the drawn frame, so a pin a drag shifted stays where the drag left it.
   const shown = useDrawnFrames(frames)
 
   const framesByName = new Map(shown.map((frame) => [frame.name, frame]))
@@ -93,8 +85,7 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
     ? (spots.find((spot) => spot.notes.some((n) => n.id === threadRoot.id))
         ?.at ?? place(threadRoot))
     : null
-  // A zoom can split the listed spot, so its list closes rather than
-  // reopening on whichever spot later takes its key.
+  // Closes when a zoom splits the spot, rather than reopen on a stranger's key.
   if (listed !== null && !list) setListed(null)
   const closeList = (spot: string) => {
     setListed(null)
@@ -207,10 +198,8 @@ function placedRoots(
 }
 
 /**
- * The pins the placed notes draw at the canvas zoom. The canvas zoom changes on
- * every frame of a gesture, so the layer subscribes to which notes share a pin
- * rather than to the zoom, and a gesture renders it, and reads every pinned
- * element's box, only on a frame that regroups the pins.
+ * The pins at the canvas zoom, subscribed to the grouping rather than the zoom,
+ * so a gesture renders only on a frame that regroups the pins.
  */
 function useSpots(placed: readonly Placed[]): Spot[] {
   const groups = () => groupsOf(placed, canvasView.zoom())
@@ -239,10 +228,8 @@ function groupsOf(placed: readonly Placed[], zoom: number): string {
 }
 
 /**
- * Moves focus to the pin now drawing the first note of a count list that
- * closed with focus inside it, as a zoom splitting its spot closes it, so
- * focus never drops to the page. Returns the focus handlers the list's
- * wrapper carries.
+ * Moves focus to the pin now drawing a closed list's first note, so a zoom
+ * splitting its spot never drops focus to the page.
  */
 function useRefocusOnSplit(
   list: Spot | undefined,
@@ -286,14 +273,11 @@ interface Spot {
 }
 
 /**
- * Groups the placed notes by where their pins draw at `zoom`, a note joining
- * the first spot whose pin its own would overlap, each spot's notes in number
- * order. A note joins a spot by the spot's point rather than its last member's,
- * so a row of close notes never chains into one pin wider than a pin.
+ * Groups notes whose pins would overlap at `zoom`, joining by the spot's point
+ * rather than its last member's, so close notes never chain into one wide pin.
  */
 function spotsOf(placed: readonly Placed[], zoom: number): Spot[] {
-  // Pins share their offset from their points, so two overlap when their
-  // points sit closer than a pin's side on both axes.
+  // Two pins overlap when their points sit closer than a pin's side on both axes.
   const reach = PIN_SIZE / zoom
   const spots: Spot[] = []
   for (const { note, at } of placed) {
@@ -410,11 +394,8 @@ const CARD_AT = {
 const EDGE_GAP = 12
 
 /**
- * Holds a note card beside its marker at screen size, on the marker's right
- * as the design sets it, or on its left when the right would run the card
- * under the inspector, capped at the canvas height and moved down or up to
- * stay inside it. A press outside the card or focus leaving it dismisses it,
- * a marker's press aside, since that opens the card the marker names.
+ * A note card beside its marker, flipping left before it would run under the
+ * inspector, and dismissed by an outside press other than a marker's.
  */
 function Popover({
   at,
@@ -442,8 +423,7 @@ function Popover({
     document.addEventListener('pointerdown', press, true)
     return () => document.removeEventListener('pointerdown', press, true)
   }, [onDismiss])
-  // A zoom or a pan moves the marker on screen without moving `at`, so the
-  // card measures again on each.
+  // Re-measured on each zoom or pan, which moves the marker without moving `at`.
   const [moves, setMoves] = useState(0)
   useEffect(() => {
     const bump = () => setMoves((count) => count + 1)
@@ -467,8 +447,7 @@ function Popover({
       bounds.bottom,
       toolbar?.getBoundingClientRect().top ?? bounds.bottom,
     )
-    // The View only pill sits in the app's slot above the canvas's head, so
-    // the card starts below it wherever the two overlap or not.
+    // Starts below the View only pill, which sits above the canvas's head.
     const notice = document.querySelector('[data-view-only-notice]')
     const ceiling = Math.max(
       bounds.top,
@@ -485,9 +464,7 @@ function Popover({
         top < ceiling + EDGE_GAP
           ? ceiling + EDGE_GAP - top
           : Math.min(0, bottom - EDGE_GAP - (top + box.height)),
-      // Taken from the canvas, the pill, and the toolbar, never the card, so
-      // the cap and the shift cannot chase each other. The card sits at
-      // screen size, so these screen measures need no zoom factor.
+      // Never measured from the card, so the cap and the shift cannot chase each other.
       cap: bottom - ceiling - 2 * EDGE_GAP,
     }
     // A shift moves the card it measured, so it settles once one repeats.
