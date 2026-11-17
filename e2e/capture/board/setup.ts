@@ -879,6 +879,13 @@ export function both(
   }
 }
 
+/** Runs a case's setup after the startup browser sweep, in the chosen theme. */
+export function themedFor(
+  theme: 'light' | 'dark',
+): (setup: (page: Page) => Promise<void>) => (page: Page) => Promise<void> {
+  return (setup) => both(browserSwept, chosenTheme(theme), setup)
+}
+
 /** The avatar draws the initials of the machine's git user.name, which differ between runs. */
 export const AVATAR = '[data-avatar]'
 

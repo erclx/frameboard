@@ -10,9 +10,7 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
   chooseOnLoad,
-  chosenTheme,
   elementInFrame,
   focusOnLoad,
   headlineOnHero,
@@ -27,6 +25,7 @@ import {
   ROW_FRAMES,
   SERVED_BOARD,
   STATE_ONLY,
+  themedFor,
 } from './setup'
 
 /**
@@ -373,8 +372,7 @@ function focusHeld(selector: string): (page: Page) => Promise<void> {
 }
 
 export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'pages-search',

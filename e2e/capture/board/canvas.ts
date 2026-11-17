@@ -12,8 +12,6 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
-  chosenTheme,
   inspectorTab,
   noAgentChanges,
   onCanvas,
@@ -22,6 +20,7 @@ import {
   ROW_FRAMES,
   SERVED_BOARD,
   STATE_ONLY,
+  themedFor,
 } from './setup'
 
 /**
@@ -430,8 +429,7 @@ function findingsOn(frame: string): (page: Page) => Promise<void> {
 }
 
 export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'select-one',

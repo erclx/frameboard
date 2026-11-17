@@ -7,8 +7,6 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
-  chosenTheme,
   focusOnLoad,
   headlineOnHero,
   menuOn,
@@ -18,6 +16,7 @@ import {
   readyWhen,
   ROW_FRAMES,
   STATE_ONLY,
+  themedFor,
 } from './setup'
 
 /**
@@ -179,8 +178,7 @@ async function stackedAbout(page: Page): Promise<void> {
 }
 
 export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'undo-refused',

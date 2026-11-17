@@ -16,8 +16,6 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
-  chosenTheme,
   focusOnLoad,
   LISTENING_SESSION,
   menuOn,
@@ -30,6 +28,7 @@ import {
   seededChanges,
   SERVED_BOARD,
   STATE_ONLY,
+  themedFor,
 } from './setup'
 
 /**
@@ -269,8 +268,7 @@ async function markAllSeenOnLoad(page: Page): Promise<void> {
 }
 
 export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'note-thread',

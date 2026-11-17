@@ -11,9 +11,7 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
   chooseOnLoad,
-  chosenTheme,
   noTokens,
   openOverlayOnLoad,
   PRESS_FRAMES,
@@ -23,6 +21,7 @@ import {
   SERVED_BOARD,
   STATE_ONLY,
   TAB_FRAMES,
+  themedFor,
 } from './setup'
 
 /**
@@ -402,8 +401,7 @@ async function rectangleDrawnFree(page: Page): Promise<void> {
 }
 
 export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'theme-tab',

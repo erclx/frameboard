@@ -9,8 +9,6 @@ import {
   asWriter,
   AVATAR,
   both,
-  browserSwept,
-  chosenTheme,
   elementInFrame,
   focusOnLoad,
   headlineOnHero,
@@ -20,6 +18,7 @@ import {
   readyWhen,
   ROW_FRAMES,
   STATE_ONLY,
+  themedFor,
   WRITES_GRANTED,
 } from './setup'
 
@@ -632,8 +631,7 @@ function labelRename(ref: string): (page: Page) => Promise<void> {
 }
 
 export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
-  const themed = (setup: (page: Page) => Promise<void>) =>
-    both(browserSwept, chosenTheme(theme), setup)
+  const themed = themedFor(theme)
   return [
     {
       section: 'marquee',
