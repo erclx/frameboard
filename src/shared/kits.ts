@@ -16,6 +16,14 @@ export const KIT_ASSETS = 'kit'
 /** The dot folder in a board holding the kits saved from its projects, which home never lists as a project. */
 export const KITS_FOLDER = '.kits'
 
+/**
+ * Where the board serves a kit's files for a preview card, as
+ * `/frameboard/kits/<name>/<path>`. It sits under `/frameboard/` beside the
+ * faces, since a bare `/kits` would shadow the client's own module folder
+ * of that name under the dev server.
+ */
+export const KITS_URL = '/frameboard/kits'
+
 /** The kits the tool ships, in the order a picker shows them. */
 export const SHIPPED_KITS = ['clean', 'sketch', 'wireframe'] as const
 

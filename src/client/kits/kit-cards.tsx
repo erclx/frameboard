@@ -3,7 +3,7 @@ import { type ReactNode, useState } from 'react'
 
 import { cn } from '@/client/lib/cn'
 import { useShownTheme } from '@/client/theme/store'
-import type { KitRecord } from '@/shared/kits'
+import { type KitRecord, KITS_URL } from '@/shared/kits'
 
 /** How tall a card's preview draws, the sample frame scaled to fit it. */
 const PREVIEW_HEIGHT = 76
@@ -149,7 +149,7 @@ function Preview({ kit }: { kit: KitRecord }) {
   if (!kit.preview) return <span className="block h-full bg-muted" />
   const { frame, width, height } = kit.preview
   const scale = PREVIEW_HEIGHT / height
-  const src = `/kits/${encodeURIComponent(kit.name)}/kit/${encodeURIComponent(frame)}.html?theme=${theme}`
+  const src = `${KITS_URL}/${encodeURIComponent(kit.name)}/kit/${encodeURIComponent(frame)}.html?theme=${theme}`
   return (
     <span
       className={cn(

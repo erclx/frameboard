@@ -17,7 +17,7 @@ import { saveKit } from '@/server/kits/save'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
-import { KIT_PAGE, KIT_SHEET } from '@/shared/kits'
+import { KIT_PAGE, KIT_SHEET, KITS_URL } from '@/shared/kits'
 
 import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal, parseBody } from './envelope'
@@ -33,9 +33,6 @@ const installSchema = z.object({
 })
 
 const saveSchema = z.object({ project: name, name })
-
-/** Where a kit's files are served for a preview, as `/kits/<name>/<path>`. */
-export const KITS_URL = '/kits'
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -60,7 +57,7 @@ export interface KitRouteOptions {
  * `POST /api/kits/install` installs one into a project and
  * `POST /api/kits/save` saves a project's look as a kit, each behind
  * `requireWriter`, recording one undo step, and answering the record the
- * `kit` verb prints. `GET /kits/<name>/<path>` serves a kit's files read
+ * `kit` verb prints. `GET /frameboard/kits/<name>/<path>` serves a kit's files read
  * only, a sample frame with the faces and the kit's own sheets spliced into
  * its head, so a preview card renders the kit before any project holds it.
  */

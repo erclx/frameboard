@@ -35,7 +35,6 @@ export default defineConfig({
       },
       '/frames': { target: boardServer, changeOrigin: true },
       '/frameboard': { target: boardServer, changeOrigin: true },
-      '/kits': { target: boardServer, changeOrigin: true },
     },
   },
   preview: {

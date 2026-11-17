@@ -124,15 +124,19 @@ describe('kitRoutes', () => {
   })
 
   it("serves a kit's sample frame with the kit's own sheets in its head", async () => {
-    const response = await app.request('/kits/sketch/kit/sample.html')
+    const response = await app.request(
+      '/frameboard/kits/sketch/kit/sample.html',
+    )
 
     const served = await response.text()
-    expect(served).toContain('@import url("/kits/sketch/tokens.css");')
-    expect(served).toContain('@import url("/kits/sketch/kit.css");')
+    expect(served).toContain(
+      '@import url("/frameboard/kits/sketch/tokens.css");',
+    )
+    expect(served).toContain('@import url("/frameboard/kits/sketch/kit.css");')
   })
 
   it("serves a kit's stylesheet byte for byte", async () => {
-    const response = await app.request('/kits/sketch/kit.css')
+    const response = await app.request('/frameboard/kits/sketch/kit.css')
 
     expect(response.headers.get('content-type')).toBe('text/css; charset=utf-8')
     expect(await response.text()).toBe(
@@ -144,9 +148,9 @@ describe('kitRoutes', () => {
   })
 
   it.each([
-    ['a kit nobody holds', '/kits/missing/kit.css'],
-    ['a path out of the kit', '/kits/sketch/..%2Fclean%2Fkit.css'],
-    ['the kit folder itself', '/kits/sketch'],
+    ['a kit nobody holds', '/frameboard/kits/missing/kit.css'],
+    ['a path out of the kit', '/frameboard/kits/sketch/..%2Fclean%2Fkit.css'],
+    ['the kit folder itself', '/frameboard/kits/sketch'],
   ])('answers 404 for %s', async (_case, path) => {
     const response = await app.request(path)
 
