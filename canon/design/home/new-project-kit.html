@@ -1498,7 +1498,7 @@
       }
       .kit .pv {
         position: relative;
-        height: 66px;
+        height: 76px;
         border-radius: 6px;
         overflow: hidden;
         box-shadow: 0 0 0 1px var(--border);
@@ -1521,26 +1521,26 @@
         font-style: normal;
       }
       .pv .n {
-        left: 6px;
+        left: 0;
         top: 9px;
         width: 30px;
-        height: 26px;
+        height: 24px;
       }
       .pv .c {
-        left: 42px;
-        top: 10px;
-        right: 6px;
-        height: 44px;
-        padding: 4px 5px;
-        font-size: 9px;
+        left: 55px;
+        top: 12px;
+        width: 48px;
+        height: 36px;
+        padding: 3px 4px;
+        font-size: 5px;
         line-height: 1.2;
       }
       .pv .c em {
         position: absolute;
-        left: 5px;
+        left: 4px;
         bottom: 5px;
-        width: 22px;
-        height: 8px;
+        width: 14px;
+        height: 5px;
       }
       .pv.blank {
         background: var(--raised);
@@ -1557,10 +1557,10 @@
         transform: rotate(-3deg);
       }
       .pv.sketch .c {
-        border: 1.5px solid #1e1e1e;
-        border-radius: 7px;
+        border: 1px solid #1e1e1e;
+        border-radius: 4px;
         font:
-          12px/1 Caveat,
+          6px/1 Caveat,
           cursive;
         color: #1e1e1e;
       }
@@ -1595,7 +1595,7 @@
       .pv.wire .c {
         border: 1px dashed #adb5bd;
         font:
-          8px/1.2 'Geist Mono',
+          4px/1.2 'Geist Mono',
           monospace;
         color: #343a40;
       }
@@ -8638,7 +8638,7 @@
         <div class="body">
           <span class="lab">Kit</span>
           <div class="kits">
-            <div class="kit">
+            <div class="kit on">
               <div class="pv blank">
                 <svg
                   width="18"
@@ -8659,7 +8659,7 @@
               </div>
               <b>Clean</b><span>The starter look</span>
             </div>
-            <div class="kit on">
+            <div class="kit">
               <div class="pv sketch">
                 <i class="n"></i><i class="c">Install a kit<em></em></i>
               </div>
@@ -8673,8 +8673,7 @@
             </div>
           </div>
           <div class="writes">
-            Creates <code>untitled/</code> with the Sketch tokens and a
-            <code>kit</code> page
+            Creates <code>untitled/</code> with the board&#39;s own look
           </div>
         </div>
         <div class="foot">
