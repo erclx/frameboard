@@ -88,6 +88,7 @@ test.describe('projects by hand from the home view', () => {
     await openAsWriter(page)
 
     await page.getByRole('button', { name: 'New project' }).click()
+    await page.getByRole('button', { name: 'Create project' }).click()
     await expect(
       page.getByRole('textbox', { name: 'Rename project untitled' }),
     ).toBeFocused()
@@ -121,6 +122,7 @@ test.describe('projects by hand from the home view', () => {
     await openAsWriter(page)
 
     await page.getByRole('button', { name: 'New project' }).click()
+    await page.getByRole('button', { name: 'Create project' }).click()
     await expect(
       page.getByRole('textbox', { name: 'Rename project untitled' }),
     ).toBeFocused()

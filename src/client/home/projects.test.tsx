@@ -684,13 +684,16 @@ describe('project actions', () => {
     liveStore.setState({ canWrite: false, board: null })
   })
 
-  it('adds an untitled project from New project and opens its name for renaming', async () => {
+  it('adds an untitled project from New project with no kit and opens its name for renaming', async () => {
     const { sent, calls } = server(() =>
       Response.json({ ok: true, data: project('untitled', NEW) }),
     )
     const home = renderLive(PROJECTS, calls)
 
     await userEvent.click(screen.getByRole('button', { name: 'New project' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Create project' }),
+    )
     home.receive([...PROJECTS, project('untitled', NEW)])
 
     expect(sent).toEqual([{ path: '/api/project/add', body: {} }])
@@ -706,6 +709,9 @@ describe('project actions', () => {
     const home = renderLive([], calls)
 
     await userEvent.click(screen.getByRole('button', { name: 'New project' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Create project' }),
+    )
     home.receive([project('untitled', NEW)])
 
     expect(sent.map((request) => request.path)).toEqual(['/api/project/add'])
@@ -714,16 +720,26 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, Archive, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Save as kit, Pin, Move to folder, Archive, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, pin, move, archive, remove, ...rest] =
-      within(menu).getAllByRole('menuitem')
+    const [
+      open,
+      rename,
+      duplicate,
+      saveKit,
+      pin,
+      move,
+      archive,
+      remove,
+      ...rest
+    ] = within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
     expect(rename).toHaveAccessibleName('Rename')
     expect(duplicate).toHaveAccessibleName('Duplicate')
+    expect(saveKit).toHaveAccessibleName('Save as kit')
     expect(pin).toHaveAccessibleName('Pin')
     expect(move).toHaveAccessibleName('Move to folder')
     expect(archive).toHaveAccessibleName('Archive')

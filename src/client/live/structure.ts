@@ -1,5 +1,6 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import type { FrameSize } from '@/shared/frame-sizes'
+import type { KitInstallRecord, KitSaveRecord } from '@/shared/kits'
 import type { Transition } from '@/shared/present-transition'
 import type {
   FrameRecord,
@@ -71,6 +72,12 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
     projectTokens: (ref: string, look: StarterLook) =>
       post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),
+    /** Installs a kit into a project, `replace` installing over a look a sheet already gives it. */
+    installKit: (project: string, kit: string, replace = false) =>
+      post<KitInstallRecord>('/api/kits/install', { project, kit, replace }),
+    /** Saves a project's look as the kit `name` on this board. */
+    saveKit: (project: string, name: string) =>
+      post<KitSaveRecord>('/api/kits/save', { project, name }),
     addPage: (ref: string, index?: number) =>
       post<PageRecord>('/api/page/add', { ref, index }),
     duplicatePage: (ref: string) =>

@@ -15,7 +15,6 @@ import {
   ResizablePanelGroup,
 } from '@/client/components/ui/resizable'
 import { identityOf, liveStore, renamedRef, useLive } from '@/client/live/store'
-import { structure } from '@/client/live/structure'
 import {
   useHomeAction,
   useNewProjectAction,
@@ -135,7 +134,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const goHome = useCallback(() => navigate('/'), [navigate])
   useProjectActions(openProject, { onDeleted: goHome })
   useHomeAction(goHome)
-  useNewProjectAction(structure, goHome)
+  useNewProjectAction(goHome)
   useBoardActions()
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)

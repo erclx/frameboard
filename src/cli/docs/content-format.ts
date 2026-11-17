@@ -25,6 +25,15 @@ import {
   frameSizeOf,
 } from '@/shared/frame-sizes'
 import {
+  KIT_ASSETS,
+  KIT_FILE,
+  KIT_NOTE,
+  KIT_PAGE,
+  KIT_SHEET,
+  KITS_FOLDER,
+  SHIPPED_KITS,
+} from '@/shared/kits'
+import {
   NAME_MAX_LENGTH,
   NAME_PATTERN,
   RESERVED_PAGE_NAMES,
@@ -93,10 +102,15 @@ export function contentFormat() {
       'An export, a thumbnail, a presented slide, and the phone link hide every control, a label holding one, and a container holding only controls and their labels. The canvas and capture show them.',
       `check reports binding-target at warning when a ${BINDS_ATTRIBUTE} misses its selector or property, sets a property that is not custom, or matches no element, as after a rewrite renames the target's id.`,
     ],
+    kits: [
+      `A kit is a folder of plain files: ${KIT_FILE} naming it, ${TOKEN_FILE} with a light and a dark block, ${KIT_SHEET} of component styles, ${KIT_NOTE} saying what to reach for, and a ${KIT_PAGE} page of sample frames. The tool ships ${SHIPPED_KITS.join(', ')}, and a board keeps the kits saved from its projects in ${KITS_FOLDER}/.`,
+      `kit add copies the kit's ${TOKEN_FILE} as the project's, its ${KIT_PAGE} page as the project's ${KIT_PAGE} page, and every other file into ${ASSETS_FOLDER}/${KIT_ASSETS}/. It refuses tokens-exist where a board, --tokens, or project sheet already reaches the project, and name-taken where the project holds a ${KIT_PAGE} page or ${ASSETS_FOLDER}/${KIT_ASSETS}/, unless --replace is given. kit save refuses name-taken for a name a shipped or saved kit holds, and tokens-not-found for a project no sheet reaches.`,
+      `The server imports ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_SHEET} into each frame after the project sheet, and check reads it with the token sheets. Read ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_NOTE} and the ${KIT_PAGE} page before drawing in a project that holds one.`,
+    ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
       `The board's ${TOKEN_FILE} holds the design tokens every project shares, and a project's own ${TOKEN_FILE} overrides it. serve --tokens <path> stands in for the board's sheet, resolved against the working folder and recorded as tokens in ${RUN_FOLDER}/${ADDRESS_FILE} while that server runs.`,
-      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
+      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, then an installed kit's stylesheet, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
       `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own. A project adds other faces in its ${ASSETS_FOLDER}/ folder.`,
       "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
       `A change to a token sheet reloads every frame it reaches.`,

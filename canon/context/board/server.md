@@ -68,6 +68,13 @@ Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-o
   - Under the hidden `serve --open-route` alone, `access.ts` also answers `GET /api/access/open` with a 303 to a fresh redeem URL
 - `structure.ts` answers `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags and one step each, and `history.ts` answers `POST /api/undo` and `/api/redo`, sharing `envelope.ts` refusals
   - `tokens.ts` answers `POST /api/tokens/edit` behind `requireWriter`, writing one token into the project's `tokens.css` or the board's sheet as one step, and shares those refusals
+
+The kit routes sit beside them in `kits.ts`.
+
+- `kits.ts` answers `GET /api/kits`, and `POST /api/kits/install` and `/api/kits/save` behind `requireWriter`, each recording one step
+  - A replace records the take-out of the old look as its own step first, since one step cannot take out a path and write it again, so two undos bring the old look back
+  - `GET /frameboard/kits/<name>/<path>` serves a kit's files read only, a sample frame with the faces and the kit's own sheets spliced in
+  - It sits under `/frameboard/`, since a bare `/kits` shadows the client's `kits/` module folder under Vite
 - `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
 
 ### `src/server/preview/`

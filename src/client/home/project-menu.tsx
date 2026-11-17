@@ -31,6 +31,7 @@ const IDS = [
   'project.open',
   'project.rename',
   'project.duplicate',
+  'project.saveKit',
   'project.pin',
   'project.group',
   'project.ungroup',
@@ -126,6 +127,7 @@ function ProjectItems({
     open,
     rename,
     duplicate,
+    saveKit,
     pin,
     newFolder,
     ungroup,
@@ -149,6 +151,7 @@ function ProjectItems({
         </MenuItem>
         <MenuItem action={rename}>Rename</MenuItem>
         <MenuItem action={duplicate}>Duplicate</MenuItem>
+        <MenuItem action={saveKit}>Save as kit</MenuItem>
         <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
       </ContextMenuGroup>
       <ContextMenuSeparator />

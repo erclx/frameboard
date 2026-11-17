@@ -16,6 +16,7 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 Owns the head spliced into a served frame, the Theme tab's token table, and the static reads of an element's colors and flow that the inspector shows.
 
 - The frame route splices one `<style data-frameboard>` first in `head`, importing the faces, then the board sheet, then the project sheet, so a frame's own stylesheet still wins
+  - An installed kit's `assets/kit/kit.css` imports after the project sheet, and `tokenSheets` hands it to the checks with the token sheets
 - The splice lands after a stated `head` start tag, else a stated `html` start tag, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
 - The style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from, beside the `data-rendered-at` stamp the note pin reads
 - A self-removing script beside the style applies the `?theme=` query's theme through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
@@ -35,6 +36,16 @@ The routes a frame imports from sit in `src/server/routes/`, which `canon/contex
   - `POST /api/tokens/edit` takes an optional `sheet` of `project`, the default, or `board`, and records one undo step per landed edit
   - Its `hash` is the named sheet's as the Theme tab read it, or null for a project with no sheet of its own
   - A Board row on the Theme tab writes the board sheet and a Project row the project's, and the rows of a `--tokens` sheet outside the board folder stay read-only
+
+### `src/server/kits/`
+
+Owns design kits, each a folder of plain files being `kit.json`, a `tokens.css` with a dark block, a `kit.css` of `kit-` classes, a `kit.md` an agent reads, and a `kit` page of sample frames. Clean, Sketch, and Wireframe sit in `shipped/`, copied to `dist/kits/` at build.
+
+- `install.ts` copies the tokens as the project's sheet, the page as its `kit` page, and the rest into `assets/kit/`
+  - It refuses `tokens-exist` where any sheet reaches the project, unless `replace` is given
+- `save.ts` writes a project's look into the board's `.kits/`, a dot folder so home never lists it, taking whichever sheet reaches the project and refusing a name a shipped or saved kit holds
+- `list.ts` answers the shipped kits in picker order, then the board's own, each with its preview frame's laid-out size
+- Sketch's rough outline is an SVG filter given as a data URL on a `::before` layer, since the kit sheet reaches a frame holding no SVG of its own, and only that layer takes it so text stays crisp
 
 ### `src/server/look/token-edit.ts`
 

@@ -26,6 +26,7 @@ import { elementsRoutes } from './routes/elements'
 import { findRoutes } from './routes/find'
 import type { FrameVersion } from './routes/frames'
 import { historyRoutes } from './routes/history'
+import { kitRoutes } from './routes/kits'
 import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
@@ -169,6 +170,7 @@ export function createApp({
   app.route('/', findRoutes(root))
   app.route('/', claimsRoutes(root, actions.access))
   app.route('/', tokenRoutes(root, actions.access, history, frames.look))
+  app.route('/', kitRoutes(root, actions.access, history, { tokens: given }))
   app.route(
     '/',
     editRoutes(

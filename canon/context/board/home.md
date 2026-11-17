@@ -32,8 +32,13 @@ The header and each card's menu run the `project.*` actions.
 - The header carries the grid and list switch, New project, and the theme toggle, and an empty board shows the terminal command beside New project
 - The Sort menu on the right of the Projects title runs `home.sortEdited`, `home.sortCreated`, and `home.sortName`, which the palette lists too
 - Under them it names the two directions after the key, such as Newest first and Oldest first, and picking the other one runs `home.sortReverse`
-- New project adds the next free `untitled` and opens its name in the rename field, and an `invalid-name` refusal stays inline under the field while any other raises the toast
-- A board registers New project too and goes home before the add, since leaving the board clears the rename field the add opens
+
+New project asks for a kit before it writes anything.
+
+- New project opens `new-project-dialog.tsx`, Blank and every kit as cards with Blank picked, so Enter alone adds a project the way the button always did
+- Create project adds the next free `untitled`, installs the kit picked with `replace` over a board sheet, and opens its name in the rename field
+- An `invalid-name` refusal stays inline under the rename field while any other raises the toast
+- A board registers New project too and goes home before the dialog opens, since leaving the board clears the project state the add opens
 
 The rename field takes a title rather than a folder name.
 

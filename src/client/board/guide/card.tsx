@@ -1,38 +1,26 @@
-import { ChevronDown } from 'lucide-react'
-import {
-  type CSSProperties,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { useStore } from 'zustand'
 
-import { SWATCH_RING } from '@/client/board/inspector/element/values'
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
 import { useTokenTable } from '@/client/board/tokens'
 import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
+import { KitCards } from '@/client/kits/kit-cards'
+import { useKits } from '@/client/kits/kits'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { projectLabel } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
-import { FACES, faceSheetUrl } from '@/shared/faces'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
+import type { KitRecord } from '@/shared/kits'
 import { folderName } from '@/shared/names'
 import type { PageRecord } from '@/shared/records/list'
 import type { TokenTable } from '@/shared/records/tokens'
-import {
-  STARTER_ACCENTS,
-  STARTER_FONTS,
-  type StarterAccent,
-  type StarterFont,
-} from '@/shared/starter-tokens'
 
 import {
   agentFolder,
@@ -42,7 +30,7 @@ import {
   guideStore,
 } from './state'
 
-type Step = 'name' | 'size' | 'look' | 'agent'
+type Step = 'name' | 'size' | 'kit' | 'agent'
 
 const SIZE_LABELS: Record<FrameSizePreset, string> = {
   phone: 'Phone',
@@ -57,33 +45,29 @@ const SIZE_SHAPES: Record<FrameSizePreset, string> = {
   desktop: 'h-[30px] w-[46px]',
 }
 
-const ACCENT_LABELS: Record<StarterAccent, string> = {
-  blue: 'Blue',
-  red: 'Red',
-  green: 'Green',
-  orange: 'Orange',
-  purple: 'Purple',
-}
-
 /**
  * The card a new board's empty page shows in place of its note, asking for
- * the project's name, the first frame's size, a starting look, and who draws
- * the first frame. Each answer goes through a write the board already makes,
- * so Undo takes it back, and the look step drops out where a token sheet
- * already reaches the project.
+ * the project's name, the first frame's size, a kit to start from, and who
+ * draws the first frame. Each answer goes through a write the board already
+ * makes, so Undo takes it back, and the kit step drops out where a token
+ * sheet already reaches the project.
  */
 export function GuideCard({
   page,
   calls = structure,
   loadTokens,
+  loadKits,
 }: {
   page: PageRecord
   calls?: Structure
   /** Reads the project's token table, the server's when absent. */
   loadTokens?: (project: string) => Promise<TokenTable | null>
+  /** Reads the kits the board can install, the server's when absent. */
+  loadKits?: () => Promise<KitRecord[] | null>
 }) {
   const state = useStore(guideStore)
   const table = useTokenTable(page.project, loadTokens)
+  const kits = useKits(loadKits)
   const root = useLive((live) => live.board?.root ?? '')
   const record = useLive((live) =>
     live.board?.projects.find(
@@ -98,7 +82,7 @@ export function GuideCard({
     state.withLook ??
     (table === undefined || table === null || table.sheets.length === 0)
   const steps: Step[] = withLook
-    ? ['name', 'size', 'look', 'agent']
+    ? ['name', 'size', 'kit', 'agent']
     : ['name', 'size', 'agent']
   const at = Math.min(state.at, steps.length - 1)
   const step = steps[at] ?? 'name'
@@ -129,10 +113,7 @@ export function GuideCard({
   const finish = async () => {
     if (withLook) {
       try {
-        await calls.projectTokens(project, {
-          accent: state.accent,
-          font: state.font,
-        })
+        await calls.installKit(project, state.kit)
       } catch (error) {
         // A sheet that reached the project meanwhile already gives it a look.
         if (
@@ -140,7 +121,9 @@ export function GuideCard({
         ) {
           // The last step draws no refusal line, so the toast carries it.
           set({ busy: false })
-          return reportRefusal(`Couldn't write ${project}/tokens.css`)(error)
+          return reportRefusal(`Couldn't install the kit into ${project}`)(
+            error,
+          )
         }
       }
     }
@@ -244,13 +227,12 @@ export function GuideCard({
               page={page.name}
               onChange={(size) => set({ size })}
             />
-          ) : step === 'look' ? (
-            <LookStep
-              accent={state.accent}
-              font={state.font}
+          ) : step === 'kit' ? (
+            <KitStep
+              kits={kits}
+              kit={state.kit}
               project={project}
-              refusal={state.refusal}
-              onChange={(look) => set(look)}
+              onChange={(kit) => set({ kit })}
             />
           ) : (
             <AgentStep
@@ -300,7 +282,7 @@ export function GuideCard({
 const HEADINGS: Record<Step, string> = {
   name: 'What are you designing?',
   size: 'Which screen first?',
-  look: 'Pick a starting look',
+  kit: 'Pick a kit',
   agent: 'Who draws the first frame?',
 }
 
@@ -484,105 +466,36 @@ function SizeStep({
   )
 }
 
-function LookStep({
-  accent,
-  font,
+function KitStep({
+  kits,
+  kit,
   project,
-  refusal,
   onChange,
 }: {
-  accent: StarterAccent
-  font: StarterFont
+  kits: KitRecord[] | null | undefined
+  kit: string
   project: string
-  refusal: string | null
-  onChange: (look: { accent: StarterAccent; font: StarterFont }) => void
+  onChange: (kit: string) => void
 }) {
-  const accents = Object.keys(STARTER_ACCENTS) as StarterAccent[]
-  const fonts = Object.keys(STARTER_FONTS) as StarterFont[]
   return (
     <>
       <Lead>
-        Every frame in this project reads these tokens, in light and dark. The
-        Theme tab shows them.
+        A kit sets the tokens, styles, and sample frames every frame in this
+        project draws with, in light and dark.
       </Lead>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-muted px-2.5 py-2">
-          <span
-            id="guide-accent"
-            className="mb-1.5 block text-label font-normal text-muted-foreground"
-          >
-            Accent
-          </span>
-          <div
-            role="radiogroup"
-            aria-labelledby="guide-accent"
-            className="flex gap-1.5"
-          >
-            {accents.map((each) => (
-              <Choice
-                key={each}
-                group="guide-accent"
-                label={ACCENT_LABELS[each]}
-                checked={accent === each}
-                onSelect={() => onChange({ accent: each, font })}
-                className="size-5 overflow-hidden rounded-[5px] has-checked:shadow-[0_0_0_2px_var(--muted),0_0_0_3.5px_var(--foreground)]"
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'absolute inset-0 rounded-[5px] bg-(--swatch) dark:bg-(--swatch-dark)',
-                    SWATCH_RING,
-                  )}
-                  style={
-                    {
-                      '--swatch': STARTER_ACCENTS[each].light,
-                      '--swatch-dark': STARTER_ACCENTS[each].dark,
-                    } as CSSProperties
-                  }
-                />
-              </Choice>
-            ))}
-          </div>
-        </div>
-        <label className="rounded-lg bg-muted px-2.5 py-2">
-          {FACES.filter((face) => face.startsLook).map((face) => (
-            <link
-              key={face.folder}
-              rel="stylesheet"
-              href={faceSheetUrl(face)}
-            />
-          ))}
-          <span className="mb-1.5 block text-label font-normal text-muted-foreground">
-            Font
-          </span>
-          <span className="relative block">
-            <select
-              value={font}
-              onChange={(event) =>
-                onChange({ accent, font: event.target.value as StarterFont })
-              }
-              className="h-[26px] w-full appearance-none rounded-md bg-card px-2 text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
-            >
-              {fonts.map((each) => (
-                <option
-                  key={each}
-                  value={each}
-                  style={{ fontFamily: STARTER_FONTS[each].stack }}
-                >
-                  {STARTER_FONTS[each].family}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 right-2 size-2.5 -translate-y-1/2"
-            />
-          </span>
-        </label>
-      </div>
-      {refusal ? <Refusal id="guide-refusal">{refusal}</Refusal> : null}
+      <KitCards
+        kits={kits}
+        value={kit}
+        onChange={(picked) => {
+          if (picked !== null) onChange(picked)
+        }}
+        group="guide-kit"
+        labelledBy="guide-step"
+        className="mt-3 grid-cols-3"
+      />
       <Writes>
-        Finish writes <Path>{project}/tokens.css</Path>
+        Finish writes <Path>{project}/tokens.css</Path> and a <Path>kit</Path>{' '}
+        page
       </Writes>
     </>
   )
@@ -600,7 +513,7 @@ function AgentStep({
   drawer: Drawer
   /** Where Claude Code opens to find this board. */
   folder: string
-  /** The token sheet Finish writes first, null where the look step dropped out. */
+  /** The token sheet Finish writes first, null where the kit step dropped out. */
   sheet: string | null
   prompt: string
   size: FrameSizePreset

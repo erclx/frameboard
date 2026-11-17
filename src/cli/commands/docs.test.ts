@@ -28,6 +28,7 @@ describe('docs', () => {
       records: Record<string, { type?: string }>
       contentFormat: {
         controls: string[]
+        kits: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -58,6 +59,9 @@ describe('docs', () => {
       'project group',
       'project archive',
       'project tokens',
+      'kit list',
+      'kit add',
+      'kit save',
       'page add',
       'page duplicate',
       'page rename',
@@ -131,6 +135,15 @@ describe('docs', () => {
     expect(contentFormat.controls[0]).toContain(
       'data-binds="<selector> <--property>" and data-unit="<unit>"',
     )
+  })
+
+  it('names the kit files, the shipped kits, and where an installed kit sits', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.kits[0]).toContain(
+      'The tool ships clean, sketch, wireframe',
+    )
+    expect(contentFormat.kits[1]).toContain('every other file into assets/kit/')
   })
 
   it('prints the exit table and the name rule from their sources', async () => {

@@ -1,0 +1,51 @@
+/* Wireframe: greys, dashed lines, and a mono face, for a layout read before any style. */
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 0.85em;
+}
+
+.kit-card,
+.kit-note {
+  padding: 14px;
+  border: var(--stroke) dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.kit-card {
+  background: var(--surface);
+}
+
+.kit-note {
+  background: var(--note);
+}
+
+.kit-button {
+  padding: 5px 12px;
+  border: var(--stroke) dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.kit-button.kit-primary {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.kit-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: var(--stroke);
+  stroke-dasharray: 4 3;
+}
+
+.kit-muted {
+  color: var(--muted);
+}

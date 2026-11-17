@@ -18,14 +18,17 @@ import { toast, Toaster } from '@/client/components/ui/toast'
 import { pinnedProjects } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
+import type { KitRecord } from '@/shared/kits'
 import type { ProjectRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import {
+  createProject,
   focusedProject,
   focusProject,
   projectStore,
   renameProject,
+  saveAsKit,
   startProjectRename,
   useNewProjectAction,
   useProjectActions,
@@ -55,7 +58,7 @@ beforeEach(() => {
 afterEach(() => {
   localStorage.clear()
   liveStore.setState({ canWrite: false, board: null })
-  projectStore.setState({ focused: null, renaming: null })
+  projectStore.setState({ focused: null, renaming: null, creating: false })
 })
 
 describe('useProjectActions', () => {
@@ -117,20 +120,80 @@ describe('useProjectActions', () => {
 })
 
 describe('useNewProjectAction', () => {
-  it('leaves the board before the add, then opens the new name for renaming', async () => {
+  it("leaves the board, then opens New project's dialog", () => {
     const steps: string[] = []
-    const { calls } = server({ name: 'untitled' })
     const leave = () => {
-      steps.push(`left with ${projectStore.getState().renaming?.project}`)
+      steps.push(`left with the dialog ${projectStore.getState().creating}`)
     }
-    renderHook(() => useNewProjectAction(calls, leave))
+    renderHook(() => useNewProjectAction(leave))
 
     findAction('project.new')?.run()
 
-    await expect
-      .poll(() => projectStore.getState().renaming?.project)
-      .toBe('untitled')
-    expect(steps).toEqual(['left with undefined'])
+    expect(steps).toEqual(['left with the dialog false'])
+    expect(projectStore.getState().creating).toBe(true)
+  })
+})
+
+describe('createProject', () => {
+  it('adds the project, installs the kit over the board look, and opens its name', async () => {
+    const { sent, calls } = server({ name: 'untitled' })
+
+    await createProject('sketch', calls)
+
+    expect(sent).toEqual([
+      { path: '/api/project/add', body: {} },
+      {
+        path: '/api/kits/install',
+        body: { project: 'untitled', kit: 'sketch', replace: true },
+      },
+    ])
+    expect(projectStore.getState().renaming?.project).toBe('untitled')
+  })
+
+  it('installs nothing for Blank', async () => {
+    const { sent, calls } = server({ name: 'untitled' })
+
+    await createProject(null, calls)
+
+    expect(sent.map((each) => each.path)).toEqual(['/api/project/add'])
+  })
+})
+
+describe('saveAsKit', () => {
+  const studio = () => {
+    const [project] = boardOf().projects
+    if (!project) throw new Error('boardOf holds no project')
+    return project
+  }
+  const kits =
+    (...names: string[]) =>
+    async (): Promise<KitRecord[]> =>
+      names.map((name) => ({
+        name,
+        title: name,
+        description: '',
+        source: 'shipped',
+        preview: null,
+      }))
+
+  it('saves the project as a kit named after its folder', async () => {
+    const { sent, calls } = server()
+
+    await saveAsKit(studio(), calls, kits('clean', 'sketch'))
+
+    expect(sent).toEqual([
+      { path: '/api/kits/save', body: { project: 'studio', name: 'studio' } },
+    ])
+  })
+
+  it('takes the next free name where a kit already holds the folder name', async () => {
+    const { sent, calls } = server()
+
+    await saveAsKit(studio(), calls, kits('studio', 'studio-2'))
+
+    expect(sent).toEqual([
+      { path: '/api/kits/save', body: { project: 'studio', name: 'studio-3' } },
+    ])
   })
 })
 

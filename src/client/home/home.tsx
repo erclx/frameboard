@@ -15,6 +15,7 @@ import { EmptyHome } from './empty'
 import { useFilterAction, useHomeFilter } from './filter'
 import { HomeHeader } from './header'
 import { useHomeLayout } from './layout'
+import { NewProjectDialog } from './new-project-dialog'
 import { usePins } from './pins'
 import { Projects } from './projects'
 import { orderProjects, splitArchived, useHomeSort } from './sort'
@@ -39,7 +40,7 @@ export function Home({ projects, calls }: HomeProps) {
   const pins = usePins()
   const filter = useHomeFilter()
   useFilterAction()
-  useNewProjectAction(calls)
+  useNewProjectAction()
   useProjectActions(focusedProject, { calls })
   useFolderActions(calls)
   useCardKeys()
@@ -48,6 +49,7 @@ export function Home({ projects, calls }: HomeProps) {
   return (
     <div className="flex min-h-full flex-col text-body">
       <HomeHeader hasProjects={projects.length > 0} />
+      <NewProjectDialog calls={calls} />
       {projects.length === 0 ? (
         <EmptyHome />
       ) : (

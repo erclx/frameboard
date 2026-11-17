@@ -25,3 +25,12 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 - The server puts the sheets and five faces, Geist, Geist Mono, Inter, Source Serif 4, and Caveat, ahead of each frame's own styles as it serves the frame
 - The file on disk stays as written
 - One toggle switches the board and every frame between light and dark
+
+## Design kits
+
+A kit gives a project a whole look at once, being its tokens, a stylesheet of drawn parts, a note for the agent, and a page of sample frames. Frameboard ships Clean, Sketch, and Wireframe.
+
+- The first-run guide and home's New project offer the kits as cards, each a live render of its sample frame
+- Installing copies the tokens as the project's `tokens.css`, the samples as a `kit` page, and the rest into `assets/kit/`, whose stylesheet the server adds after the token sheets
+- `frameboard kit add <project> <kit>` installs one from the terminal, `--from <folder>` installs a kit folder on disk, and `--replace` installs over a look the project already has
+- Save as kit on a project's menu, or `frameboard kit save`, keeps its look in the board's `.kits/` folder for the other projects

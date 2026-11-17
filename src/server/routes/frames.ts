@@ -1,4 +1,4 @@
-import { type BigIntStats, createReadStream } from 'node:fs'
+import { type BigIntStats, createReadStream, existsSync } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, relative, sep } from 'node:path'
 import { Readable } from 'node:stream'
@@ -11,6 +11,7 @@ import { contentHash } from '@/server/edit/address'
 import { frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
+import { KIT_ASSETS, KIT_SHEET } from '@/shared/kits'
 import { AT_QUERY } from '@/shared/theme'
 
 const NOTES_FILE = 'notes.json'
@@ -155,7 +156,9 @@ export function frameRoutes(
     const body = injectHead(
       bytes,
       frameHead(
-        sheetUrls(project, look.sheets(project)).map((url) => `${base}${url}`),
+        sheetUrls(project, look.sheets(project), hasKit(root, project)).map(
+          (url) => `${base}${url}`,
+        ),
         contentHash(bytes),
       ),
     )
@@ -222,15 +225,28 @@ function parseRange(
   return { start, end: Math.min(end, size - 1) }
 }
 
-/** The sheets a frame imports, being every face, then the board's tokens, then the project's. */
-function sheetUrls(project: string, sheets: TokenSheetPaths): string[] {
+/**
+ * The sheets a frame imports, being every face, then the board's tokens, then
+ * the project's, then an installed kit's stylesheet, which reads the tokens
+ * and still loses to the frame's own sheets.
+ */
+function sheetUrls(
+  project: string,
+  sheets: TokenSheetPaths,
+  kit: boolean,
+): string[] {
+  const folder = `/frames/${encodeURIComponent(project)}`
   return [
     ...FACES.map(faceSheetUrl),
     ...(sheets.board ? [BOARD_SHEET_URL] : []),
-    ...(sheets.project
-      ? [`/frames/${encodeURIComponent(project)}/${TOKEN_FILE}`]
-      : []),
+    ...(sheets.project ? [`${folder}/${TOKEN_FILE}`] : []),
+    ...(kit ? [`${folder}/${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_SHEET}`] : []),
   ]
+}
+
+/** Whether a kit is installed in the project, read per request so an install reaches the next load. */
+function hasKit(root: string, project: string): boolean {
+  return existsSync(join(root, project, ASSETS_FOLDER, KIT_ASSETS, KIT_SHEET))
 }
 
 export function decodeSegments(segments: string[]): string[] | null {

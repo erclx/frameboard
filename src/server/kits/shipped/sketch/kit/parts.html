@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Parts</title>
+    <style>
+      .sheet {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 20px 24px;
+        align-items: center;
+        width: 720px;
+        padding: 32px;
+        box-sizing: border-box;
+      }
+      .sheet h1 {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-size: 24px;
+      }
+      code {
+        font-family: 'Geist Mono', monospace;
+        font-size: 13px;
+      }
+      .kit-card,
+      .kit-note {
+        max-width: 280px;
+      }
+      .kit-card p,
+      .kit-note p {
+        margin: 0;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <h1>Kit parts</h1>
+      <code class="kit-muted">.kit-card</code>
+      <div class="kit-card">
+        <p>A box holding one idea or one control group.</p>
+      </div>
+      <code class="kit-muted">.kit-note</code>
+      <div class="kit-note">
+        <p>A sticky note for a thought beside the work.</p>
+      </div>
+      <code class="kit-muted">.kit-button</code>
+      <div class="row">
+        <button class="kit-button kit-primary">Primary</button>
+        <button class="kit-button">Secondary</button>
+      </div>
+      <code class="kit-muted">.kit-line</code>
+      <svg width="160" height="32" viewBox="0 0 160 32" aria-hidden="true">
+        <path class="kit-line" d="M4 24 C48 4, 104 4, 152 16" />
+      </svg>
+      <code class="kit-muted">.kit-muted</code>
+      <p class="kit-muted">Secondary text beside the main line.</p>
+    </main>
+  </body>
+</html>
