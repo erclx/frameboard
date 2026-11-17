@@ -40,7 +40,7 @@ The workflows the table leaves out own releases, labels, and the landing page.
 Holds the config the ship chain and the toolkit read, beside the sync record in `config.json`.
 
 - `pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
-- `painted.json` counts `src/client/**/*.ts` as painted, so a client logic change with no image, reel, or review waiver refuses `canon pr lift`
+- `painted.json` counts `src/client/**/*.ts` as painted, so a client logic change with no capture or waiver refuses `canon pr lift`, but not its test-only `fixtures.ts` and `*-harness.tsx`
 - `preview.json` and `app-drive.toml` feed the preview copy and the drives, which `canon/context/development/local.md` covers
 
 ## Gotchas
