@@ -720,16 +720,26 @@ describe('project actions', () => {
     ).toHaveFocus()
   })
 
-  it('opens the menu of Open, Rename, Duplicate, Pin, Move to folder, Archive, and Delete on a right click', async () => {
+  it('opens the menu of Open, Rename, Duplicate, Save as kit, Pin, Move to folder, Archive, and Delete on a right click', async () => {
     renderLive(PROJECTS, server().calls)
 
     const menu = await openMenu(/studio/)
-    const [open, rename, duplicate, pin, move, archive, remove, ...rest] =
-      within(menu).getAllByRole('menuitem')
+    const [
+      open,
+      rename,
+      duplicate,
+      saveKit,
+      pin,
+      move,
+      archive,
+      remove,
+      ...rest
+    ] = within(menu).getAllByRole('menuitem')
 
     expect(open).toHaveAccessibleName('Open')
     expect(rename).toHaveAccessibleName('Rename')
     expect(duplicate).toHaveAccessibleName('Duplicate')
+    expect(saveKit).toHaveAccessibleName('Save as kit')
     expect(pin).toHaveAccessibleName('Pin')
     expect(move).toHaveAccessibleName('Move to folder')
     expect(archive).toHaveAccessibleName('Archive')

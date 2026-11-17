@@ -6,6 +6,7 @@ import {
   FolderOpen,
   FolderPlus,
   House,
+  Package,
   PencilLine,
   Pin,
   Trash2,
@@ -37,10 +38,13 @@ import {
   pinnedProjects,
   togglePin,
 } from '@/client/home/pins'
+import { fetchKits } from '@/client/kits/kits'
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError } from '@/client/live/write'
 import { boardUrl } from '@/shared/board-urls'
+import type { KitRecord } from '@/shared/kits'
+import { nextFreeName } from '@/shared/names'
 import type { ProjectRecord } from '@/shared/records/list'
 
 /** The project a card's name shows as a rename field, with the refusal it last met. */
@@ -587,10 +591,37 @@ export async function createProject(
 }
 
 /**
+ * Saves the project's look as a kit named after its folder, the next free
+ * name where a kit already holds it, and says where New project now lists
+ * it, or why the save was refused.
+ */
+export async function saveAsKit(
+  project: ProjectRecord,
+  calls: Structure = structure,
+  loadKits: () => Promise<KitRecord[] | null> = fetchKits,
+): Promise<void> {
+  const kits = (await loadKits().catch(() => null)) ?? []
+  const name = nextFreeName(
+    project.name,
+    kits.map((kit) => kit.name),
+  )
+  await calls.saveKit(project.name, name).then(
+    () =>
+      toast.add({
+        title: `Saved ${projectLabel(project)} as a kit`,
+        description: `New project lists it as ${name}.`,
+        type: 'success',
+      }),
+    reportRefusal(`Couldn't save ${projectLabel(project)} as a kit`),
+  )
+}
+
+/**
  * Registers `project.open`, `project.rename`, `project.duplicate`,
- * `project.pin`, and `project.delete` acting on the project `target` names,
- * the focused card on the home view and the open project on the board.
- * Rename, Duplicate, Pin, and Delete reach the palette only while there is a
+ * `project.saveKit`, `project.pin`, and `project.delete` acting on the
+ * project `target` names, the focused card on the home view and the open
+ * project on the board. Rename, Duplicate, Save as kit, Pin, and Delete reach
+ * the palette only while there is a
  * target, each naming it as the row's hint, since an unnamed Delete is a
  * guess. Each write is lit while the tab may write, and Pin whenever there is
  * a target, since a pin lives in the browser rather than the board. Pass a stable `target` and `onDeleted`, since a new one
@@ -654,6 +685,17 @@ export function useProjectActions(
               (copy) => focusProject(copy.name),
               reportRefusal(`Couldn't duplicate ${project.name}`),
             )
+        },
+      },
+      {
+        id: 'project.saveKit',
+        label: 'Save as kit',
+        group: 'project',
+        command: { label: 'Save project as kit', icon: Package, hint },
+        enabled: onProject,
+        run: () => {
+          const project = focused()
+          if (project) void saveAsKit(project, calls)
         },
       },
       {

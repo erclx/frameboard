@@ -18,6 +18,7 @@ import { toast, Toaster } from '@/client/components/ui/toast'
 import { pinnedProjects } from '@/client/home/pins'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
+import type { KitRecord } from '@/shared/kits'
 import type { ProjectRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
@@ -27,6 +28,7 @@ import {
   focusProject,
   projectStore,
   renameProject,
+  saveAsKit,
   startProjectRename,
   useNewProjectAction,
   useProjectActions,
@@ -154,6 +156,44 @@ describe('createProject', () => {
     await createProject(null, calls)
 
     expect(sent.map((each) => each.path)).toEqual(['/api/project/add'])
+  })
+})
+
+describe('saveAsKit', () => {
+  const studio = () => {
+    const [project] = boardOf().projects
+    if (!project) throw new Error('boardOf holds no project')
+    return project
+  }
+  const kits =
+    (...names: string[]) =>
+    async (): Promise<KitRecord[]> =>
+      names.map((name) => ({
+        name,
+        title: name,
+        description: '',
+        source: 'shipped',
+        preview: null,
+      }))
+
+  it('saves the project as a kit named after its folder', async () => {
+    const { sent, calls } = server()
+
+    await saveAsKit(studio(), calls, kits('clean', 'sketch'))
+
+    expect(sent).toEqual([
+      { path: '/api/kits/save', body: { project: 'studio', name: 'studio' } },
+    ])
+  })
+
+  it('takes the next free name where a kit already holds the folder name', async () => {
+    const { sent, calls } = server()
+
+    await saveAsKit(studio(), calls, kits('studio', 'studio-2'))
+
+    expect(sent).toEqual([
+      { path: '/api/kits/save', body: { project: 'studio', name: 'studio-3' } },
+    ])
   })
 })
 
