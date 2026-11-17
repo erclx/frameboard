@@ -73,7 +73,14 @@ Owns the project verbs, being add, rename, title, delete, the two filing verbs, 
 - Unlike those routes, the verbs neither refuse a project another session holds nor journal the filing for undo
 - `group` refuses a blank folder as `invalid-name`, since the writer reads one as a clear, and a call giving both or neither of a folder and `--clear` as `usage`
 - `project title <name> <title>` sets a title in any characters through `retitleProject` and moves the folder to the name made from it, so the ref an agent passes next is the record's `name`
-- `project tokens` writes a starter token sheet the way the guide's look step does, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
+- `project tokens` writes a starter token sheet, and exits 4 with `tokens-exist` rather than write under a sheet that already reaches the project
+
+### `src/cli/commands/kit.ts`
+
+Owns `kit list`, `kit add`, and `kit save`, over the same `src/server/kits/` the board's routes call, writing with no journal the way the other verbs do.
+
+- `kit add <project> <kit>` takes a name `kit list` answers, and `--from <folder>` a kit folder resolved against the working folder in its place, refusing `usage` for both or neither
+- `--replace` installs over the project's own sheet, kit page, and kit files, or over a board sheet, and without it the verb exits 4 with `tokens-exist` or `name-taken`
 
 ### `src/cli/commands/references.ts`
 
