@@ -13,77 +13,40 @@ Owns how an agent's work shows on the board and how the developer hands work bac
 
 ### `src/client/board/notes/`
 
-Owns the Note tool, its markers, the composer, and the thread, which change together.
+Owns the Note tool, its markers, the composer, and the thread, which change together. Send hands a note to a listening session or starts one through New session, and the card closes on Esc, a press outside, or focus leaving, capped at the canvas height with its messages scrolling.
 
-- A Note tool pins a note on a frame or element, Send hands it to a listening session or, through the picker's New session, starts one, and replies show in the note's thread
-- The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection and marquee gestures bind only under the Move tool
+- The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection gestures bind only under Move
 - A pick hit-tests inside the iframe, counting through `board/frame-dom.ts` past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
-- An amber numbered marker points its tail, clear of the corner handle, at its element's top right corner, or its frame's once the element is lost per `board/pin-corner.ts`
-- The composer saves or sends, the thread replies, hands the thread on, or closes it, both reading the notes and listeners the live store holds, which a dropped socket clears until the next hello
-
-An open card closes on Esc, on a press outside it, and when focus leaves it, a marker's press aside. It caps at the canvas height above the toolbar, starting below the View only pill where one shows, and scrolls a long thread's messages under its header and reply box.
-
-Markers hide in Play and once done, and notes whose pins would overlap stack into a count pin listing them in `pin-list.tsx`. Unsent text waits in `notesUi`, a reply by its note and a new note by its frame, so the card reopens with it. A pasted or dropped image waits as a thumbnail until Save or Send uploads it, and drops when the card closes.
+- An amber numbered marker points its tail at its element's top right corner, or its frame's once the element is lost, per `board/pin-corner.ts`
+- Markers hide in Play and once done, and notes whose pins would overlap stack into a count pin listing them in `pin-list.tsx`
+- Unsent text waits in `notesUi` by note or frame, and a pasted image waits as a thumbnail until Save or Send uploads it, dropping when the card closes
 
 ### `src/client/board/claims/`
 
-Owns how a claimed frame shows and how an edit waits on one, apart from `frame.tsx` since the tag, header initials, and waiting card change together.
+Owns how a claimed frame shows and how an edit waits on one, apart from `frame.tsx`, since the tag, header initials, and waiting card change together. A claim is read from the live store's `claims` slice by frame ref.
 
-- A claimed frame, read from the live store's `claims` slice by frame ref, draws a dashed `--claim` outline at screen width whatever the zoom
-- Its label turns `--claim` with the agent's initial, its tag, and `editing · <elapsed>`, before any findings count
-- The outline and tag fade on one 2.4s cycle only when motion is allowed, and Play hides both
+- A claimed frame draws a dashed `--claim` outline at screen width, fading with its tag on one 2.4s cycle only when motion is allowed, and Play hides both
+- Its label turns `--claim` with the agent's initial, its tag, and `editing · <elapsed>`, before any findings count, and its layers row carries a ringed dot
 - The inspector header shows one initial per listening session, solid while it holds a claim, pale while it only listens, and none for a holder not listening
-- The layers row of a claimed frame carries a ringed `--claim` dot after its name
-
-`reserved.tsx` draws each reservation whose frame is not listed yet as a hatched `--claim` box in Edit, labeled with its name, the agent's initial, and its place in the set. The member with the set's latest `drawingAt` reads drawing and the rest queued, Zoom to fit takes the boxes in, and a right-click on one offers Release reservation.
+- `reserved.tsx` draws a reservation whose frame is not listed yet as a hatched box, the member with the latest `drawingAt` reading drawing and the rest queued
+- Zoom to fit takes the reserved boxes in, and a right-click on one offers Release reservation
 
 ### `src/client/board/changes/`
 
-Owns the change toast, the glow over changed elements, and the dwell clearing a mark once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads, and diffs its elements.
+Owns the change toast, the glow over changed elements, compare in `compare.ts` and `compare-view.tsx`, and how an agent's `show` lands through `show.ts`, `busy.ts`, and `show-toast.tsx`. `src/server/changes/` tells an agent's write from the board's own, keeping each replaced source as the change's `before`, which `persist.ts` saves.
 
-- The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, each key in its button's tooltip rather than on the button, and Enter on the toast itself runs Show
-- It rides the kit's one stack above the toolbar, per `canon/context/board/shell.md`, so no form covers a tool
-- Mark all seen clears every page and turns the toast into a cleared form whose Undo lasts 5 seconds, a kit timer that pauses while the stack is hovered or focused
-- Undo restores the `lastCleared` snapshot in `unseen.ts` and never joins `edit.undo`, since seen state touches no file
-
-Compare flips or splits one changed frame between the version before and the current one. The server holds each version, and the browser picks which one the before side shows.
-
-- `src/server/changes/tracker.ts` keeps the source each agent write replaced, and names its hash as the change's `before`
-- `persist.ts` saves the log and its versions under `.run/changes/` after each settle and show, so a restart replays them. A version leaves once no logged change names it, so `LOG_CAP` ends it.
-- The frame route serves that source under `?at=<hash>` with the same head, and answers 404 for any hash it lacks and for `at` off a frame
-- `compare.ts` holds the one frame compared and its actions, and ends compare on a selection change, Play, the Note tool, or a moved base
-- `compare-view.tsx` draws the before side as a second iframe over the live one, whose `src` it never touches, plus the label's control
-
-The hit layer covers the label, so the gestures click a `data-label-control` button on release and drag the `data-compare-divider`. Starting compare asks the server for the version first, and one it no longer holds drops the base and toasts rather than loading a 404 page.
-
-**How a show lands**
-
-`show.ts` decides in each tab alone whether an agent's `show` moves the view.
-
-- An idle board jumps to the frame, and a show for another project jumps only while Follow is on
-- While the developer is mid-action, a tab following a session waits for the busy read to clear and a tab not following offers the jump
-- `busy.ts` reads a focused text field, a held pointer, and an open menu, popover, or dialog, and the held pointer stands in for a drag, clearing on release, cancel, and window blur
-- The read names the popups by `data-slot` and leaves out the toast viewport, since the change toast and the offer take focus as dialogs
-- The offer is a toast in the kit's one stack, `show-toast.tsx`, naming the frame and Go, and it stays until Go, its close, a newer show, or the developer opening that page unaided
-
-Follow is read again when a wait ends, because a hand move stops it, and a newer show or a dropped socket drops a waiting one.
+- The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, rides the kit's one stack above the toolbar, and Enter on it runs Show
+- Mark all seen's Undo lasts 5 seconds and restores the `lastCleared` snapshot in `unseen.ts`, never joining `edit.undo`, since seen state touches no file
+- The hit layer covers the label, so a gesture clicks a `data-label-control` button on release, and a base the server no longer holds drops with a toast
+- An idle board jumps to a shown frame, another project's only while Follow is on, and mid-action a following tab waits while any other offers the jump
+- The busy read names popups by `data-slot`, leaving out the toast viewport, and Follow is read again when a wait ends, since a hand move stops it
 
 ### `src/client/live/`
 
-Owns the socket and the store every screen reads, and how an agent's changes show.
+Owns the socket and the store every screen reads, being unseen marks, seen replies, each frame's compare base, shown marks, findings counts, write access, and Follow, kept in memory or `localStorage`. `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`.
 
-- `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`
-- `unseen.ts` keeps each frame's latest unseen change, dotted on its label and layers row and counted on pages and projects, with each frame's seen hash in `localStorage`
-- It keeps the newest agent reply each note thread showed in `frameboard.seen-replies`, written by an open thread card, so the tab title counts a reply until its thread opens
 - A reply counts only while its root is not done and its frame stands, since only then can the thread open
-
-The same store carries what an agent is doing now.
-
-- Following an agent, from its initial or the palette while one session listens, centers each frame it changes or claims at the zoom it started with, skipping a reservation, and a hand move stops it
-- A board message keeps a reservation's claim, whose frame is listed only once it lands
-- A frame breaking a content rule carries its count beside the name, a filled red pill with a triangle for any error and a grey dot and count for warnings alone, cleared on the batch that fixes the file
-- `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` sends the cookie and marks the tab read-only on a 401
-
-`unseen.ts` also keeps each frame's compare base, the `before` of the first change since the developer last looked. It reads the base off the replayed log rather than the seen hash, keeps it past the look, and moves it on the next change after.
-
-A shown mark names a hash the developer may have seen already, so a look clears it by the show's id and time, kept in `frameboard.seen-shows`, and never by the hash. A show of a frame whose write is still unseen leaves the write's mark, so its glow and the changed title stay.
+- Follow skips a reservation and a hand move stops it, and a board message keeps a reservation's claim, whose frame is listed only once it lands
+- `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` marks the tab read-only on a 401
+- A look clears a shown mark by the show's id and time, never by hash, since the hash may already have been seen
+- A show of a frame whose write is still unseen leaves the write's mark, so its glow and the changed title stay
