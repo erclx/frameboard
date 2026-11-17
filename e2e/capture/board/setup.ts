@@ -70,10 +70,8 @@ export function inspectorTab(name: string): (page: Page) => Promise<void> {
 export const PRESS_FRAMES = 600
 
 /**
- * Presses the control named `label` once the board has drawn it. The harness
- * runs `setup` before it navigates, so the press waits in an init script for
- * the app to render the control and enable it. A button is named by its
- * `aria-label`, or by its text where it has none, as Edit and Play are.
+ * Presses the control named `label`, by `aria-label` or else its text, from an
+ * init script, since `setup` runs before the harness navigates.
  */
 export function pressOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -126,11 +124,8 @@ export function chooseOnLoad(label: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens an overlay, or the left panel's find, with its key once the board has
- * drawn, and types `query` into its search. Like `pressOnLoad`, it waits in an
- * init script, since `setup` runs before the harness navigates, and it reads
- * the platform to send the modifier `$mod` means there. `drawn` names what
- * the route draws first, which is a board's frame unless the route is home.
+ * Opens an overlay by its key once `drawn` shows and types `query`, sending the
+ * modifier `$mod` means on the page's platform.
  */
 export function openOverlayOnLoad(
   overlay: 'commands' | 'shortcuts' | 'find',
@@ -202,10 +197,8 @@ interface CanvasGesture {
 const GESTURE_FRAMES = 600
 
 /**
- * Drives the Move tool once the canvas has drawn its frames, so a capture
- * shows a selection, a marquee mid-drag, or a move mid-drag. Like
- * `pressOnLoad`, it waits in an init script, since `setup` runs before the
- * harness navigates.
+ * Drives the Move tool once the canvas draws, for a selection, a marquee, or a
+ * move held mid-drag.
  */
 export function onCanvas(
   gesture: CanvasGesture,
@@ -375,10 +368,8 @@ export async function noAgentChanges(page: Page): Promise<void> {
 export const ROW_FRAMES = 600
 
 /**
- * Waits for the add button to light, which it does once the server grants
- * writes, then opens the rename field on the home row, holds a drag of it
- * over the top of the settings row, never dropped, or renames the settings
- * row to `account`, which waits while one of its frames is claimed.
+ * Once writes are granted, renames the home row, holds it dragged over
+ * settings, or renames settings, which waits on its claimed frame.
  */
 export function onPagesList(
   act: 'rename' | 'drag' | 'rename-settings',
@@ -467,12 +458,8 @@ const PIXEL = Buffer.from(
 )
 
 /**
- * Holds the shot until `selector` has drawn and `absent`, when given, matches
- * nothing. The harness waits on the load event and on every image
- * completing, so a hidden image the page adds is answered only once the
- * state a setup drove has drawn, every SVG image on the page has decoded,
- * which the harness's own wait skips, and two frames have painted it, which
- * a state reached after a fetch needs to shoot alike twice.
+ * Holds the shot until `selector` draws, `absent` matches nothing, every SVG
+ * image decodes, and two frames paint, which the harness's own wait skips.
  */
 export function readyWhen(
   selector: string,
@@ -568,10 +555,8 @@ export async function headlineOnHero(page: Page): Promise<void> {
 }
 
 /**
- * Selects the element matching `selector` in the frame `ref` once the frame
- * has loaded and every video on the canvas has decoded its first frame, which
- * a capture would otherwise race. It double-clicks the element's middle, or
- * with `low` its bottom left, clear of the children a container holds.
+ * Double-clicks `selector` in `ref` once every canvas video decodes, at its
+ * middle or with `low` its bottom left, clear of a container's children.
  */
 export function elementInFrame(
   ref: string,
@@ -589,14 +574,12 @@ export function elementInFrame(
             ? iframe.contentDocument?.querySelector(target)
             : null
           const hit = document.querySelector('[data-hit-layer]')
-          // The page just left stays mounted, hidden and first, until the
-          // shown one is live, so the shown layer is the one checked.
+          // The page just left stays mounted and hidden, so check the shown layer.
           const layer =
             [...document.querySelectorAll<HTMLElement>('[data-layer]')].find(
               (each) => each.checkVisibility(),
             ) ?? null
-          // A layer still staging holds frames whose iframes are not built
-          // yet, so every iframe found decoding says nothing of those.
+          // A staging layer has unbuilt iframes that decoding cannot speak for.
           const decoded =
             layer !== null &&
             !layer.hasAttribute('data-staging') &&
@@ -774,11 +757,8 @@ type MenuSpot =
   | { row: string }
 
 /**
- * Once the server grants writes, right-clicks `spot` so its menu opens.
- * With `copy`, it first runs the menu's Copy as PNG, waits for its toast,
- * and opens the menu again, so the frame menu shows beside the toast. The
- * clipboard answers the write at once, since a synthetic click carries no
- * user activation for the browser to grant it.
+ * Right-clicks `spot` once writes are granted, after a Copy as PNG with `copy`,
+ * whose clipboard is stubbed since a synthetic click carries no activation.
  */
 export function menuOn(
   spot: MenuSpot,
@@ -880,8 +860,7 @@ export function menuOn(
       {
         spot,
         copy,
-        // The settings page holds no `about` row, so a reserved spot there
-        // waits on its one frame's lock instead.
+        // Settings has no `about` row, so a reserved spot waits on its frame's lock.
         ready:
           'reserved' in spot
             ? 'button[aria-label="Lock profile"]:not([disabled])'

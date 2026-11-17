@@ -30,11 +30,8 @@ import {
 } from './setup'
 
 /**
- * Answers the token read with the project's sheets and every token but its
- * colors, as a project whose sheets hold radius and font tokens alone, so
- * the inspector has no color to offer or match. Filtered in the page's own
- * `fetch`, since a route that fetches the real answer waits behind the held
- * `readyWhen` route and the board never draws.
+ * Drops color tokens from the token read, filtered in the page's `fetch`, since
+ * a route fetching the real answer waits behind the held `readyWhen` route.
  */
 async function noColorTokens(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -78,10 +75,8 @@ async function slidingHero(page: Page): Promise<void> {
 }
 
 /**
- * Sets the Motion section's track to its middle once it lights, as a drag
- * releasing there would, then marks the body `data-capture-held` once the
- * hero's page reads its animation paused at that moment. The Held chip
- * draws before the seek lands, so the shot waits on the page rather than it.
+ * Seeks the Motion track to its middle and marks the body once hero reads
+ * paused there, since the Held chip draws before the seek lands.
  */
 async function heldMidway(page: Page): Promise<void> {
   await page.addInitScript(
@@ -238,10 +233,8 @@ function searchPages(query: string): (page: Page) => Promise<void> {
 const EXPORT_IN_VIEW = 'data-capture-export-in-view'
 
 /**
- * Scrolls the inspector until its Export section's foot sits at the panel's
- * foot, since an element's sections run past the panel and Export is the
- * second last. It scrolls again on every frame, so a section above that
- * grows once its styles answer cannot push Export back out of view.
+ * Scrolls Export's foot to the panel's foot on every frame, since a section
+ * above it grows once its styles answer.
  */
 async function exportInView(page: Page): Promise<void> {
   await page.addInitScript(
@@ -275,11 +268,8 @@ const PLACED_TEXT =
   '<p data-name="Centered" style="text-align: center; position: absolute; left: 687px; top: 84px">Centered</p>'
 
 /**
- * Writes `PLACED_TEXT` into the served hero before its closing body tag and
- * puts the file back when the case's page closes, so the server hashes and
- * reads the bytes the board shows while every later case reads the fixture.
- * A response rewritten in the browser instead would show bytes the server's
- * element tree does not vouch for, and the pick refuses them.
+ * Writes `PLACED_TEXT` into the served hero until the page closes, on disk
+ * since the pick refuses bytes the server's element tree does not vouch for.
  */
 async function placedTextOnHero(page: Page): Promise<void> {
   const path = join(SERVED_BOARD, 'webapp/home/hero.html')
@@ -355,10 +345,8 @@ const FOCUS_HELD = 'body[data-focus-held]'
 const HELD_FRAMES = 30
 
 /**
- * Focuses `selector` every frame until it has kept focus for `HELD_FRAMES`,
- * then marks `body` with `FOCUS_HELD`. A focus set once is lost when a
- * dblclick selects the frame before its element, or a write remounts the
- * inspector, and the focus scrolls a low inspector row into the shot.
+ * Refocuses `selector` every frame until it holds for `HELD_FRAMES`, since a
+ * selection or a remount drops a focus set once.
  */
 function focusHeld(selector: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -444,8 +432,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // Every element section of `inspector/text` for the hero's headline,
-      // once its styles have answered and Selection colors has drawn.
+      // Every element section for hero's headline, once its styles answer.
       setup: themed(
         both(
           asWriter,
@@ -460,11 +447,9 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       route: '/p/webapp/home',
       evidence: true,
       excludeViewports: STATE_ONLY,
-      // The hero's write can land as an unseen change, whose toast comes and
-      // goes between runs with no code change.
+      // Hero's write can raise a toast that comes and goes between runs.
       mask: [AVATAR, '[data-slot="toast"]'],
-      // The centered paragraph Free placed, hugging its words where it
-      // rendered, beside the Text tool's paragraph placed the same way.
+      // A Free-placed paragraph hugging its words beside a Text tool one.
       setup: themed(
         both(
           asWriter,
@@ -537,8 +522,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The hero's Selection colors in a project no token sheet reaches,
-      // whose raw indigo row reads plain, with no mark and no swap.
+      // With no token sheet, the raw indigo row reads plain with no swap.
       setup: themed(
         both(
           rawIndigoHero,
@@ -557,17 +541,14 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The raw indigo headline equals primary in light alone, so its Fill
-      // row and Selection colors offer `Use primary` in light and nothing
-      // in dark, where primary reads 818cf8.
+      // Indigo equals primary in light alone, so only light offers `Use primary`.
       setup: themed(
         both(
           rawIndigoHero,
           noAgentChanges,
           asWriter,
           headlineOnHero,
-          // Focus brings Selection colors into view under the Fill row, and
-          // shows Select over the percent alone, short of the swap.
+          // Focus scrolls Selection colors into view and shows Select alone.
           focusHeld('button[aria-label="Copy #4f46e5"]'),
           readyWhen(FOCUS_HELD),
         ),
@@ -580,9 +561,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The headline holding the 1px 808080 stroke Add stroke writes in a
-      // project whose sheets name no color token. Seeded rather than
-      // pressed, since a press here kept the headline from selecting.
+      // The stroke Add stroke writes is seeded, since pressing it blocked selection.
       setup: themed(
         both(
           greyStrokeHero,
@@ -642,8 +621,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // An animated hero held mid-slide: the Motion section with its time
-      // and track, and the Held chip on the label.
+      // Hero held mid-slide, with the Held chip on its label.
       setup: themed(
         both(
           slidingHero,
@@ -661,8 +639,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // An animated hero that ran to its end on its own clock: the Motion
-      // section reads Play at its end time, with the track full.
+      // Hero run to its end on its own clock, so Motion reads Play.
       setup: themed(
         both(
           slidingHero,
@@ -682,8 +659,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The one-frame Export tab at its 2x and Both themes default, the
-      // Name field on the frame's name over one line per file.
+      // The one-frame Export tab at its defaults, one line per file.
       setup: themed(
         both(
           onCanvas({ select: ['webapp/home/hero'] }),
@@ -700,8 +676,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The hero's headline selected, its Export tab named for the frame
-      // and the element.
+      // The Export tab named for the frame and the selected headline.
       setup: themed(
         both(
           headlineOnHero,
@@ -718,8 +693,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // An animated hero's Export tab, the filmstrip under the frame's
-      // own Export and over Open on a phone.
+      // An animated hero's Export tab with its filmstrip.
       setup: themed(
         both(
           slidingHero,
@@ -753,8 +727,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The hero's headline on the Slides tab: the frame's crumb, then its
-      // step, This slide, and Page.
+      // Hero's headline on the Slides tab.
       setup: themed(
         both(
           headlineOnHero,

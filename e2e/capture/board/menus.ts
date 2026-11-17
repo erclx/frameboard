@@ -21,11 +21,8 @@ import {
 } from './setup'
 
 /**
- * Presses the guide's Next until the step headed `heading` draws, waiting in
- * an init script as `pressOnLoad` does. It reads the heading rather than a
- * step's radios, since the kit step draws its radios only once the kit list
- * answers. The name, size, and kit steps write nothing while the name is
- * left as it is, so only Finish would touch the board.
+ * Presses Next until `heading` draws, read over the radios since the kit step
+ * draws them late. No step before Finish writes the board.
  */
 function guideTo(heading: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -313,8 +310,7 @@ export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The about frame sits 20px under the hero, so at the fitted zoom
-      // its label has no room and hides.
+      // About sits 20px under hero, so its label hides at the fitted zoom.
       section: 'labels-low-zoom',
       theme,
       route: '/p/webapp/home',
@@ -342,8 +338,7 @@ export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The drawer step, where the unchecked radio ring shows beside the
-      // checked one. The folder path it prints differs per checkout.
+      // The printed folder path differs per checkout.
       section: 'guide-agent',
       theme,
       route: '/p/untitled/page-1',

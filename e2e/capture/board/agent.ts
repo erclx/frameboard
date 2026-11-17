@@ -58,10 +58,8 @@ async function listening(page: Page): Promise<void> {
 }
 
 /**
- * Claims `frame` for the listening session, held 40 seconds already, and
- * releases it once the capture page closes so no later case shows it. It
- * writes through the claims store with a fixed tag, since the CLI's tag
- * names the folder the run happens in.
+ * Claims `frame` for the listening session until the page closes, through the
+ * claims store with a fixed tag, since the CLI's tag names the run's folder.
  */
 function claimed(frame: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -85,13 +83,8 @@ function claimed(frame: string): (page: Page) => Promise<void> {
 const claimedHero = claimed('webapp/home/hero')
 
 /**
- * Reserves three frames on the settings page as one set, a row of 180 by 200
- * boxes from the origin that fits the canvas between the panels at 1280,
- * which its one hidden frame leaves clear, and claims
- * `faq` plainly so it reads drawing and the other two queued. It writes
- * through the claims store, as `claimed` does, under a session of its own,
- * since the previous page's release lands after the next page reserves, and
- * releases that session's claims once the capture page closes.
+ * Reserves a row of three settings frames and claims `faq` so it reads drawing,
+ * under its own session, since the last page's release lands after this reserve.
  */
 async function reservedRow(page: Page): Promise<void> {
   const root = SERVED_BOARD
@@ -211,10 +204,8 @@ async function longThread(page: Page): Promise<void> {
 }
 
 /**
- * Hands the board three frame notes on hero through the socket's notes
- * message, so they stack into one count pin on its corner with no note
- * written into the fixture. The fixture's Note 2 on hero's heading draws a few
- * pixels below that corner, so it joins them and the pin reads 4.
+ * Sends three hero notes over the socket so they stack into one pin, which
+ * reads 4 since the fixture's note on hero's heading sits close enough to join.
  */
 async function stackedNotes(page: Page): Promise<void> {
   const notes: BoardNote[] = [
@@ -349,10 +340,7 @@ export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The 390 px about frame at the fitted zoom, claimed beside its
-      // findings badge, so the label has to truncate the claim tag. The
-      // elapsed time sits wholly past the ellipsis, so it takes no mask,
-      // whose box would draw outside the label.
+      // The elapsed time falls past the truncated tag, so a mask would draw outside it.
       section: 'claimed-narrow',
       theme,
       route: '/p/webapp/home',
@@ -370,8 +358,7 @@ export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // Three frames an agent reserved and has not written, the middle
-      // one drawing, per the picked reserve-row mock.
+      // Three reserved frames, the middle one drawing, per the reserve-row mock.
       section: 'reserved-row',
       theme,
       route: '/p/webapp/settings',
@@ -404,8 +391,7 @@ export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR, '[data-claim-elapsed]', '[data-waiting-elapsed]'],
-      // A move of the claimed hero, dropped and waiting on its card. The
-      // claim is released as the page closes, which takes the wait with it.
+      // The claim's release on page close takes the waiting move with it.
       setup: themed(
         both(
           asWriter,
@@ -428,8 +414,7 @@ export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR, '[data-waiting-elapsed]'],
-      // A rename of the settings page, waiting on its claimed profile frame,
-      // which this page does not show, so its card docks above the toolbar.
+      // The claimed profile frame is off this page, so the waiting card docks.
       setup: themed(
         both(
           asWriter,

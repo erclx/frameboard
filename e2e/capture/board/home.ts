@@ -67,10 +67,8 @@ async function neverConnects(page: Page): Promise<void> {
 }
 
 /**
- * Waits for New project to light, which it does once the server grants
- * writes, then opens the `webapp` card's menu with a right click over the
- * card's well, clear of the masked edited time, or opens its name for
- * renaming with F2.
+ * Waits for writes, then opens the `webapp` card's menu by a right click on
+ * its well, clear of the masked edited time, or its rename with F2.
  */
 function onHomeCard(act: 'menu' | 'rename'): (page: Page) => Promise<void> {
   return async (page) => {
@@ -190,10 +188,8 @@ function renamedProject(source: ProjectRecord, name: string): ProjectRecord {
 }
 
 /**
- * Serves home a board with `webapp` and two copies of it filed in Client A,
- * and with an archived copy when `archived` is set, by rewriting the board
- * message on the live socket, so the fixture on disk keeps no folder. A copy
- * names frames the server never captured, so its well draws boxes alone.
+ * Files `webapp` and two copies in Client A by rewriting the socket's board
+ * message, so the fixture keeps no folder. A copy's well draws boxes alone.
  */
 function filedBoard({ archived = false }: { archived?: boolean } = {}): (
   page: Page,
@@ -312,12 +308,8 @@ const CARD_UNCAPTURED = 'main li [data-skeleton] g:not(:has(image))'
 const DROP_HINT = 'li[data-drop-over] > [role="status"]'
 
 /**
- * The home bundle's states: the change toast with Next under focus naming its
- * key in a tooltip, the open folder with its pen under focus, the Deleted
- * toast a delete raises with its Undo, the Pinned label over the pinned
- * group in the grid and the list, a pinned card's corner buttons under
- * keyboard focus, and a folder card's tab ringed under focus. The delete is
- * answered in the browser, so the served board keeps its project.
+ * The home bundle's focus and toast states. The delete is answered in the
+ * browser, so the served board keeps its project.
  */
 export const HOME_BUNDLE_CASES: CaptureCase[] = (
   ['light', 'dark'] as const

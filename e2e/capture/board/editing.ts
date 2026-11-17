@@ -59,14 +59,12 @@ function elementsInFrame(
           const shown = document.querySelector(`[data-frame="${owner}"]`)
           const iframe = shown?.querySelector('iframe')
           const hit = document.querySelector('[data-hit-layer]')
-          // The page just left stays mounted, hidden and first, until the
-          // shown one is live, so the shown layer is the one checked.
+          // The page just left stays mounted and hidden, so check the shown layer.
           const layer =
             [...document.querySelectorAll<HTMLElement>('[data-layer]')].find(
               (each) => each.checkVisibility(),
             ) ?? null
-          // A layer still staging holds frames whose iframes are not built
-          // yet, so every iframe found decoding says nothing of those.
+          // A staging layer has unbuilt iframes that decoding cannot speak for.
           const decoded =
             layer !== null &&
             !layer.hasAttribute('data-staging') &&
@@ -204,10 +202,8 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Holds an Ellipse drag mid-way across empty space in the frame `ref`'s
- * body, once the Ellipse tool is on, so the preview draws in the frame's
- * fill with its corners and size. The press is never released, so nothing
- * is placed.
+ * Holds an Ellipse drag mid-way in `ref`'s body so the preview draws, never
+ * released, so nothing is placed.
  */
 function ellipseHeld(ref: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -254,10 +250,8 @@ function ellipseHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens the frame `ref`'s headline for typing with one double-click, then
- * adds a line with Enter and a second line after it, so the shot shows a
- * text open with two lines. A write is held back rather than sent, so the
- * served board keeps its bytes whatever ends the edit.
+ * Opens `ref`'s headline and types a second line, holding the write back so
+ * the served board keeps its bytes whatever ends the edit.
  */
 function textLinesHeld(ref: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -326,8 +320,7 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
               type(heading)
               return
             }
-            // The pick waits on the frame's tree, so a press is sent again
-            // only after it had time to land.
+            // The pick waits on the frame's tree, so the press repeats slowly.
             if (asked++ % 60 === 0) doubleClick(heading)
           }
           if (--left > 0) requestAnimationFrame(run)
@@ -343,10 +336,8 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Serves the hero with its headline placed Free at 100, 300, added to the
- * bytes on the way to the tab. The headline stays the element the file's
- * tree names at that index, so a pick selects it, which an element the
- * file never held would not be.
+ * Serves hero with its headline placed Free, rewriting the bytes in flight so
+ * the headline keeps its tree index and a pick still selects it.
  */
 async function freeHeadlineOnHero(page: Page): Promise<void> {
   await page.route('**/frames/webapp/home/hero.html*', async (route) => {
@@ -362,11 +353,8 @@ async function freeHeadlineOnHero(page: Page): Promise<void> {
 }
 
 /**
- * Drags the hero's Free headline 200 px right and 100 px down and releases it,
- * answering the write as landed on the bytes the frame already shows, so no
- * reload comes and the capture holds the outline at the drop as it stands
- * between a release and the reload. The release marks the root
- * `data-free-dropped` for the capture to wait on.
+ * Drops hero's Free headline and answers the write as landed on the shown
+ * bytes, so no reload comes and the outline holds at the drop.
  */
 async function freeDragReleased(page: Page): Promise<void> {
   await page.route('**/api/frames/edit', async (route) => {
@@ -488,10 +476,8 @@ async function hiddenSketch(page: Page): Promise<void> {
 }
 
 /**
- * Opens hero's rows in Layers down to the Command its Caption holds, selects
- * the Headline, and Shift-clicks the Command, so two rows are selected with
- * the Caption between them left unselected. Waits in an init script as
- * `pressOnLoad` does.
+ * Selects hero's Headline and Shift-clicks the Command in Layers, leaving the
+ * Caption between them unselected.
  */
 async function twoLayersSelected(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
@@ -734,8 +720,7 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
       route: '/p/webapp/home',
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The hero's top lands 3 px below the about frame's, which snaps it
-      // up and draws the top guide with the 120 px gap between them.
+      // Hero lands 3 px below about's top, so it snaps and draws the guide.
       setup: themed(
         both(
           asWriter,

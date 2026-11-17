@@ -47,8 +47,7 @@ describe('attachGestures', () => {
     expect([selectedRefs(), canvas.writes]).toEqual([[], []])
   })
 
-  // First in the file, since d3-drag swallows the next click for one timer
-  // tick after a drag, and a drag ending the test before would eat this one.
+  // First in the file, since d3-drag swallows the click after a drag's tick.
   describe('on a label control', () => {
     const BOX = { x: 140, y: 80, width: 18, height: 18 }
 
@@ -333,8 +332,7 @@ describe('attachGestures', () => {
   })
 
   describe('on a section', () => {
-    // Holds LEFT by its center, and not RIGHT. Its name sits inside the top
-    // left, clear of LEFT, and every offset below stays outside the snap.
+    // Holds LEFT alone, and every offset below stays outside the snap.
     const FLOW: SectionRecord = {
       name: 'flow',
       box: { x: 60, y: 60, width: 300, height: 300 },

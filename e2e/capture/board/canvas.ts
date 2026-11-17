@@ -257,10 +257,8 @@ async function aboutSmall(page: Page): Promise<void> {
 }
 
 /**
- * Presents the page from the toolbar once its Present button lights, then
- * keeps the bar shown with a pointer move every half second, since it hides
- * two seconds still. The click carries no user activation, so the page
- * presents in the window rather than full screen.
+ * Presents from the toolbar and moves the pointer every half second, since the
+ * bar hides after two still seconds. With no user activation it stays windowed.
  */
 async function presentOnLoad(page: Page): Promise<void> {
   await presentingOnLoad(page, null)
@@ -467,8 +465,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // A selected scroll frame whose page runs past its screen: the rail
-      // says there is more, and no overflow ghost fills the canvas under it.
+      // A scroll frame shows its rail and no overflow ghost under it.
       setup: themed(
         both(
           aboutScrolling,
@@ -503,8 +500,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // One frame selected holding two linked widths: the Also shows at
-      // row lists a chip per width beside its plus, and the canvas draws both.
+      // A frame holding two linked widths, a chip each in the Also shows at row.
       setup: themed(
         both(
           asWriter,
@@ -524,8 +520,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // The plus pressed on a frame holding two widths: the menu offers the
-      // Phone, Tablet, and Desktop sizes it neither holds nor lists.
+      // The plus menu offers only the sizes the frame neither holds nor lists.
       setup: themed(
         both(
           asWriter,
@@ -544,8 +539,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // A frame hugging its width holds the plus, and the caption says to
-      // set a width first.
+      // A frame hugging its width holds the plus until a width is set.
       setup: themed(
         both(
           asWriter,
@@ -757,8 +751,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       theme,
       route: '/p/webapp/home',
       excludeViewports: STATE_ONLY,
-      // Carries the active Preview row, the label's chip, and the frame at
-      // phone width into the evidence comparison.
+      // The Preview row, the label's chip, and the frame at phone width.
       evidence: true,
       mask: [AVATAR],
       setup: themed(
@@ -778,8 +771,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       theme,
       route: '/p/webapp/home',
       excludeViewports: STATE_ONLY,
-      // Carries the Open on a phone button and its open card into the
-      // evidence comparison.
+      // The Open on a phone button and its open card.
       evidence: true,
       mask: [AVATAR],
       setup: themed(
@@ -798,8 +790,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       theme,
       route: '/p/webapp/home',
       excludeViewports: STATE_ONLY,
-      // Carries a 1440 frame taking the tablet default, 834, from outside
-      // the tablet range, with Tablet pressed, into the evidence comparison.
+      // A 1440 frame outside the tablet range takes the 834 default.
       evidence: true,
       mask: [AVATAR],
       setup: themed(

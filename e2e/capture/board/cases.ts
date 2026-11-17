@@ -26,11 +26,8 @@ const CASES: CaptureCase[] = [
 ]
 
 /**
- * The cases that write the served board, in the order they run. A fresh
- * browser reads the server's whole change log as unseen, so a raw write raises
- * a toast and a glow in whichever later case its watch batch lands in, and a
- * board edit leaves Undo and Redo lit there. A case that writes joins this
- * list, so every other case reads a pristine server, alone or in a full sweep.
+ * Cases that write the served board, run last in this order, since a write
+ * leaks a toast, a glow, or lit Undo into whichever case runs next.
  */
 const WRITING_SECTIONS = [
   'rectangle-drawn-free',
@@ -64,10 +61,8 @@ const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')
 let previousSection = 'the start of the run'
 
 /**
- * Wraps a case outside `WRITING_SECTIONS` so its setup throws when the served
- * board already holds a change log, which only a case that wrote the board
- * before it can have left. The previous case is named as the likely writer,
- * since the log lands after the write and the next setup is the first to see it.
+ * Throws when a non-writing case finds a change log, naming the case before it,
+ * since the log lands after a write and the next setup is the first to see it.
  */
 function onPristineServer({
   section,
@@ -111,11 +106,8 @@ function newestWrite(folder: string): number {
 }
 
 /**
- * Holds a case's page load until the served board's last write has been
- * through the watch. A case restores its files when its page closes and the
- * next one writes its own in setup, and either write reaches a page that
- * loaded in the meantime as a reload, which a case waiting on a state its
- * page has not reached never recovers from.
+ * Holds a page load until the board's last write is through the watch, since a
+ * late write reloads the page and strands a case waiting on its state.
  */
 function onWatchSettled(captureCase: CaptureCase): CaptureCase {
   const { setup } = captureCase

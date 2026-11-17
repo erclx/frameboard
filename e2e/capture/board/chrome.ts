@@ -177,13 +177,8 @@ async function tunerHero(page: Page): Promise<void> {
 }
 
 /**
- * Enters the hero in Play once its live page holds the sliders, then moves
- * the first one as a drag would, so the Keep values bar draws. Play is
- * pressed only then, since the chrome drawn while the board loads carries a
- * Play button that does nothing, and the hero is entered by a click on the
- * shield over it, as a person enters a frame. It polls in an init script as
- * `pressOnLoad` does, and steps again whenever a reload of the swapped file
- * puts the slider back.
+ * Enters hero in Play and drags its first slider so Keep values draws. Play is
+ * pressed late, since the loading chrome's Play does nothing, and a reload resets.
  */
 async function slideOnLoad(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
@@ -224,10 +219,8 @@ async function slideOnLoad(page: Page): Promise<void> {
 }
 
 /**
- * Waits for the Assets tab to draw the `clip.webm` tile, then picks it up and
- * holds it over bare canvas, never dropped, until the ghost of the frame a
- * drop would make draws. The point is the first on a grid across the hit
- * layer that no frame's box holds, since the fixture's frames can move.
+ * Holds the `clip.webm` tile over bare canvas until the drop ghost draws, at
+ * the first grid point no frame holds, since the fixture's frames can move.
  */
 async function holdTileOverCanvas(page: Page): Promise<void> {
   await page.addInitScript((frames) => {
@@ -326,11 +319,8 @@ async function rulesOff(page: Page): Promise<void> {
 }
 
 /**
- * Opens the avatar menu and clicks its name row into a field, waiting in an
- * init script as `pressOnLoad` does. The row turns clickable only once write
- * access lights it, and names the machine's git user.name only once its read
- * lands, so the click waits on the row's `Edit your name` item. A click on
- * the `Set your name` row drawn while the read is pending opens an empty field.
+ * Opens the avatar's name row into a field, waiting on `Edit your name`, since
+ * the `Set your name` row drawn before the read lands opens an empty field.
  */
 async function nameEditOnLoad(page: Page): Promise<void> {
   await page.addInitScript(
@@ -366,12 +356,8 @@ async function nameEditOnLoad(page: Page): Promise<void> {
 }
 
 /**
- * Draws a Rectangle across empty space in the hero's block body, with
- * real pointer input, and waits for the write to land, so the reload the
- * harness makes next shows it out of the flow where it was drawn. The board
- * undoes it when the page closes, through its own undo rather than a file
- * write, which would mark hero changed by an agent in every later case. The
- * close handler cannot await, so the undo goes out synchronously.
+ * Draws a Rectangle in hero's body and undoes it through the board on close,
+ * synchronously, since a file write would mark hero agent-changed in later cases.
  */
 async function rectangleDrawnFree(page: Page): Promise<void> {
   const hero = join(SERVED_BOARD, 'webapp/home/hero.html')
@@ -550,8 +536,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(pressOnLoad('^Hide UI$')),
     },
     {
-      // At a 1024 window, where the default panels leave the 513 stage, so
-      // the image under the 1280 file name shows the bar folded with More open.
+      // A 1024 window leaves the 513 stage, so the 1280 shot shows the bar folded.
       section: 'toolbar-narrow',
       theme,
       route: '/p/webapp/home',
