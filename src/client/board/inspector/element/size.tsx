@@ -32,10 +32,8 @@ interface SizeRowProps {
 }
 
 /**
- * The element's W and H in px, each with its Fixed, Hug, or Fill menu. A
- * typed or scrubbed value writes Fixed. Fill is offered only under a flex
- * parent, as Figma offers it only inside auto layout, so a block parent's
- * child takes Fixed and Hug, and Add flow on the parent reaches Fill.
+ * W and H with their Fixed, Hug, or Fill menu. Fill shows only under a flex
+ * parent, as Figma offers it only inside auto layout.
  */
 export function SizeRow({
   layout,

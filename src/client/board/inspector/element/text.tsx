@@ -22,14 +22,9 @@ interface TextSectionProps {
 }
 
 /**
- * Text, for an element holding text alone: a text area applying on Enter or
- * blur and cancelling on Esc, with the keys hinted on a line kept for them
- * while it has focus. The field adds no line, since Enter applies, and a
- * pasted newline becomes a space unless the element keeps its breaks, as a
- * text given lines on the canvas does, whose breaks it keeps as they are. The
- * written text stays shown until the frame reloads with it. Text an agent's
- * write to the element refused stays as an unsaved draft, here or once the
- * element is selected again, so Enter applies it over the agent's version.
+ * Text for a text-only element. A pasted newline becomes a space unless the
+ * element keeps its breaks, and text an agent's write refused stays as a draft
+ * that Enter applies over the agent's version.
  */
 export function TextSection({
   text,

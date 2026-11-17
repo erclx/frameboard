@@ -58,10 +58,8 @@ export interface WriteDeps {
   /** Brings the frame's element tree up to the bytes an edit answered, `catchUpHeldTree` by default. */
   catchUp?: (ref: string, hash: string) => Promise<void>
   /**
-   * Whether the frame's live page already previews every declaration the
-   * edit writes, as a drag's release does. Such an edit, sent from the bytes
-   * the frame shows and answered where it was sent, leaves the page as it is
-   * and is not reloaded. False by default, which reloads.
+   * Whether the live page already previews every declaration written, so an
+   * answer landing where it was sent skips the reload.
    */
   previewed?: boolean
 }
@@ -75,10 +73,8 @@ function showsSent(previewed: boolean, frame: string, hash: string): boolean {
 }
 
 /**
- * Takes a live edit's answer onto the page that already shows it, ahead of
- * the selection moving to the answered hash, so the outline measures the
- * element at once: the frame is stamped with the new hash, its previews are
- * kept as written, and the reload of those bytes is marked for skipping.
+ * Adopts a live edit's answer on the page already showing it, before the
+ * selection moves to the answered hash, so the outline measures at once.
  */
 function adoptLive(frame: string, hash: string): void {
   rememberLiveHash(frame, hash)
@@ -100,13 +96,9 @@ function catchUpHeldTree(ref: string, hash: string): Promise<void> {
 }
 
 /**
- * The hashes an element edit's chain went from and to, null when it was not
- * written. `at` maps each element index the chain edited, as its edits were
- * made, to where it now sits, and `shifted` says whether any was found again
- * past an agent's write, after which an index the chain never edited may
- * name another element. `moves`, which only a sibling move writes, maps
- * each `hash\nindex` an element the chain moved was addressed at to where it
- * now sits, since a key pressed between two moves names a middle hash.
+ * Where an edit chain's elements now sit. Past `shifted`, an index the chain
+ * never edited may name another element, and `moves` keys each middle hash,
+ * since a key pressed between two moves names one.
  */
 export type Landed = {
   from: readonly string[]
@@ -139,14 +131,9 @@ export function forgetText(at: Pick<ElementKey, 'frame' | 'index'>): void {
 }
 
 /**
- * Writes one change into the element `key` names, made from the hash its
- * frame rendered. The server finds the element again past an agent's write by
- * the bytes the change reads, and refuses as stale once the agent changed
- * those. The answered hash goes to the selection before the watcher reloads
- * the frame. A refusal raises the toast and answers false, so the field shows
- * the stored value. Edits of one frame go in order, each sent from the hash
- * the one before answered, and wait while another session holds the frame. A
- * refusal drops the edits behind it.
+ * Writes one change from the hash the frame rendered, in the frame's turn and
+ * waiting on another session's claim. The server refuses it as stale once an
+ * agent changed the bytes it reads, and a refusal drops the edits behind it.
  */
 export function writeElement(
   page: string,
@@ -160,10 +147,8 @@ export function writeElement(
 }
 
 /**
- * Writes these changes, all to elements of one frame at one hash, as one write
- * and one undo step, in that frame's turn as `writeElement` does one, refused
- * whole. Every selected element stays selected at the hash answered, and one
- * the batch left alone is dropped once the server found the others elsewhere,
+ * Writes changes to one frame's elements as one write and one undo step. An
+ * element the batch left alone drops from the selection once the others moved,
  * since its index may then name another element.
  */
 export function writeElements(
@@ -179,16 +164,9 @@ export function writeElements(
 }
 
 /**
- * Runs one write of `frame`'s file behind the element edits and inserts
- * already queued on it, handing it what the one before it landed, so a
- * write made from the hash that one started from is sent from the hash it
- * answered, or not at all once it was refused.
- *
- * A turn stays the frame's latest until its write settles, and an element
- * edit settles only once the frame's element tree holds the bytes it
- * answered. A Layers row keys a move off that tree, so a move pressed from
- * the tree before then is queued behind the edit and follows it, and one
- * pressed after reads the answered bytes itself.
+ * Runs one write of `frame`'s file behind those already queued, sent from the
+ * hash the one before answered. An element edit settles only once the element
+ * tree holds its bytes, so a Layers move pressed before then queues behind it.
  */
 export function inFrameTurn(
   frame: string,
@@ -402,8 +380,7 @@ async function editInTurn(
       const text = change.kind === 'text' ? change.value : undefined
       const stale =
         error instanceof BoardWriteError && error.code === 'stale-address'
-      // Only a collision whose element count held leaves the index on the
-      // element the text was typed for, so only then is the draft kept.
+      // Only a collision that kept the element count leaves the index on this text's element.
       const kept = stale && text !== undefined && error.details.moved === false
       if (kept) keptTexts.set(textKey(key), text)
       notify({

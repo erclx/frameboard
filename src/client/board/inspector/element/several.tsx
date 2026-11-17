@@ -119,12 +119,9 @@ interface SeveralElementsProps {
 }
 
 /**
- * Several selected elements' sections as `inspector/multi-elements` draws
- * them: `<n> elements` over every section any of them has, `Mixed` where their
- * values differ, and `1 of 3` on a section only some hold, whose edit writes
- * those alone. An edit lands as one write and one undo step. Rotation, the
- * flow, gap, padding, and the finer type fields stay on one element at a time,
- * as the picked frame leaves them out.
+ * Several elements' sections, a `1 of 3` section's edit writing only those
+ * holding it, as one write and one undo step. Rotation, flow, gap, padding,
+ * and the finer type fields stay single-element, as the picked frame has it.
  */
 export function SeveralElements({
   page,

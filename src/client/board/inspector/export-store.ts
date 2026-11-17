@@ -37,10 +37,8 @@ export function exportFileNames(
 }
 
 /**
- * The name the exported files open with, being what was typed with its
- * path separators turned to dashes and its leading dots dropped, so a
- * download never names a folder or a hidden file. A typed name with
- * nothing left takes `fallback`.
+ * The exported files' name, separators turned to dashes and leading dots
+ * dropped so a download never names a folder or a hidden file.
  */
 export function exportBaseName(typed: string, fallback: string): string {
   const cleaned = typed
@@ -67,13 +65,9 @@ export interface ExportElement {
 }
 
 /**
- * Downloads one frame's PNG at a scale, in one theme or both, inside its
- * device when the settings ask and the frame holds one. The files take
- * `name` once cleaned, or the frame's name without one. Given `element`,
- * it downloads that element alone on a transparent ground instead, with no
- * device. Every theme renders through the board's PNG route before any
- * file downloads, so a refusal on one leaves nothing half saved. It writes
- * nothing to the board, so a view-only tab exports too.
+ * Downloads a frame's or `element`'s PNG. Every theme renders before any file
+ * downloads, so a refusal leaves nothing half saved, and it writes nothing, so
+ * a view-only tab exports too.
  */
 export async function exportFrame(
   frame: Pick<FrameRecord, 'ref' | 'name' | 'device'>,
@@ -107,10 +101,8 @@ export function filmstripFileNames(
 }
 
 /**
- * Downloads one frame's filmstrip of `count` moments at the Export section's
- * scale, in one theme or both. Every theme renders before any file
- * downloads, so a refusal on one, such as a frame that stopped moving,
- * leaves nothing half saved. It writes nothing, so a view-only tab exports too.
+ * Downloads a frame's filmstrip, rendering every theme before any file
+ * downloads, so a refusal leaves nothing half saved.
  */
 export async function exportFilmstrip(
   frame: Pick<FrameRecord, 'ref' | 'name'>,

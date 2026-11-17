@@ -49,11 +49,9 @@ export function familyOptions(fonts: readonly TokenRow[]): FamilyOption[] {
 }
 
 /**
- * The option an element shows as: the token its source names, read from the
- * static cascade since the computed stack never names one, else the face
- * the computed stack starts with, else null for a family the menu does not
- * hold. A token the menu does not list, such as one holding another
- * token's `var()`, still shows by its name.
+ * The option an element shows as, its source's token read from the static
+ * cascade since the computed stack never names one, else the stack's first
+ * face, else null. An unlisted token still shows by its name.
  */
 export function familyIn(
   stack: string,

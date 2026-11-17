@@ -36,10 +36,8 @@ interface ShadowSectionProps {
 }
 
 /**
- * Shadow: a menu of the project's shadow tokens and None, writing
- * `box-shadow: var(--token)`, or `box-shadow: none` for None, which also
- * covers a shadow a stylesheet rule sets. None writes nothing while no
- * shadow is set.
+ * Shadow writes `box-shadow: none` for None, which also covers a rule's
+ * shadow, and writes nothing while no shadow is set.
  */
 export function ShadowSection({
   boxShadow,

@@ -69,14 +69,8 @@ interface TypographySectionProps {
 const NORMAL_LINE = 1.2
 
 /**
- * The Typography section of `inspector/text`: the family from the project's
- * font tokens and the served faces, each drawn in its own face, the weight
- * by name among those the face ships, size in px, line height and letter
- * spacing in px, four alignment buttons, each writing one declaration, and
- * the Type details popover at the alignment row's end.
- * Every icon control is captioned or names itself in a tooltip. A family
- * the menu does not hold reads as written, and a `normal` line height reads
- * Auto and writes nothing until changed.
+ * The Typography section. A family the menu does not hold reads as written,
+ * and a `normal` line height reads Auto and writes nothing until changed.
  */
 export function TypographySection({
   fonts,

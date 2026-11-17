@@ -22,11 +22,8 @@ interface PreviewRowProps {
 }
 
 /**
- * Shows the selected frames at another width without writing anything: a
- * phone, tablet, or desktop toggle, a width that scrubs from the previewed
- * width or the stored one, and End preview. A toggle reads pressed while every
- * width shown sits in its range, and a click keeps a width already in range. Every part reads as a preview,
- * never as the frame's size, which the W field above owns.
+ * Shows frames at another width, writing nothing. A toggle reads pressed while
+ * every shown width sits in its range, and a click keeps a width already there.
  */
 export function PreviewRow({ frames }: PreviewRowProps) {
   const previews = usePreviews()
@@ -37,8 +34,7 @@ export function PreviewRow({ frames }: PreviewRowProps) {
   const previewed = refs.some((ref) => previews[ref] !== undefined)
   const width = shared(widths)
 
-  // The previews a scrub or a step started from, which it moves each frame
-  // from and an Esc puts back, since its own moves change `widths`.
+  // The starting previews, kept since the gesture's own moves change `widths`.
   const started = useRef<{
     widths: readonly number[]
     previews: Readonly<Record<string, Preview | undefined>>

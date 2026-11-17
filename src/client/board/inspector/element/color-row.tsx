@@ -135,16 +135,9 @@ const PERCENT: Intl.NumberFormatOptions = {
 }
 
 /**
- * The token-first color row of `inspector/text`. The swatch opens the
- * picker on Custom and the chip or hex on Tokens, the percent writes the
- * paint's opacity, stepping and scrubbing from a drag on the number with a
- * preview, and the link detaches a token to its value in the frame's theme.
- * A raw value equal to a token offers `Use <token>` in place of the link,
- * and the minus after either removes the paint.
- *
- * The picker previews a custom color while open and writes it once as it
- * closes, or on Enter in its hex field, and Esc puts the stored color back
- * and writes nothing. A token writes at once and closes it.
+ * The token-first color row. A custom color previews while the picker is open
+ * and writes once as it closes or on Enter, Esc writing nothing, while a token
+ * writes at once.
  */
 export function ColorRow({
   label,
@@ -205,9 +198,7 @@ export function ColorRow({
 
   const pressedOutside = useEffectEvent(() => close(true))
   const shown = picking !== null
-  // The popover closes on the click a press ends in, which a press that
-  // becomes a drag never fires, so the drag's write would land first and
-  // the pick be lost. A press elsewhere closes it as it goes down instead.
+  // Closes on press down, since a drag never fires the click and its write would beat the pick.
   useEffect(() => {
     if (!shown) return
     const start = () => {

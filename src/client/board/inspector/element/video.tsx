@@ -17,13 +17,9 @@ interface VideoSectionProps {
 }
 
 /**
- * The Video section, or Audio for an `<audio>`: play and pause, the time,
- * and the speaker over the scrub track, each acting on the live page and
- * writing nothing, then the switches, the controls here that write, each
- * setting or dropping one attribute on the element: Controls, Autoplay,
- * Loop, and Muted in the file. An audio shows no Controls switch, since one
- * without `controls` draws nothing to pick on the canvas. A file the browser
- * cannot decode shows the codec line in place of the live controls.
+ * The Video or Audio section. Playback acts on the live page and writes
+ * nothing, and an audio shows no Controls switch, since one without
+ * `controls` draws nothing to pick on the canvas.
  */
 export function VideoSection({ media, disabled, write }: VideoSectionProps) {
   const { reading } = media

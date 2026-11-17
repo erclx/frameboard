@@ -48,11 +48,9 @@ interface StrokeSectionProps {
 }
 
 /**
- * Stroke: one color row writing `border-color` while the element draws a
- * border, and beside it a width field writing `border-width` for all four
- * sides. `+` writes `border: 1px solid var(--border)`, else the first color
- * token, else a raw grey, matching the 1px stroke Figma adds. Remove drops the element's own
- * `border` and its longhands, or writes `border-style: none` over a rule's.
+ * Stroke. `+` writes a 1px solid border in `--border`, else the first color
+ * token, else a raw grey, matching Figma, and remove writes
+ * `border-style: none` over a rule's border.
  */
 export function StrokeSection({
   bordered,

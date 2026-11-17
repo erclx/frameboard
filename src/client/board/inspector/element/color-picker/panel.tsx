@@ -90,11 +90,8 @@ interface ColorPickerPanelProps {
 }
 
 /**
- * The picker's body, as the intake's `color-picker-fix` frame draws it:
- * Custom holds the saturation square, hue and opacity bars, an eyedropper
- * where the browser has one, a hex field switchable to RGB or HSL beside
- * the opacity percent, and the project's tokens as swatches, and Tokens
- * lists them by name.
+ * The picker's body as the `color-picker-fix` frame draws it, Custom holding
+ * the square, bars, eyedropper, and value field, and Tokens listing by name.
  */
 export function ColorPickerPanel({
   label,

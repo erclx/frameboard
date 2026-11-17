@@ -53,22 +53,9 @@ import { SelectionColors } from './selection-colors'
 import { InspectorTabs } from './tabs'
 
 /**
- * The right panel: the header of the avatar and the zoom level, over the
- * Frame tool's presets while that tool is on, a line in Play, and otherwise
- * the Design, Slides, and Export tabs, each holding the sections for its job.
- * The tab holds across selections, and every selection kind draws each tab.
- *
- * ```text
- * Design: Frame, Arrange, Position, Layout, Appearance, Typography, Fill, Text, Stroke, Shadow, Video, Motion playback, Selection colors
- * Slides: This slide for frames, Appears on step for one element, Page
- * Export: Export, Export filmstrip, Open on a phone
- * ```
- *
- * An element selected inside the frame puts one row naming its frame over
- * every tab in place of the frame's fields, and several selected inside the
- * frame take Design with their shared sections. Export reads one line where
- * no single frame or element is selected. A tab that reads opens the panel on
- * one View only line, since every field under it reads greyed.
+ * The right panel, its Design, Slides, and Export tabs held across selections
+ * and drawn for every selection kind. A read-only tab opens on one View only
+ * line, since every field under it reads greyed.
  */
 export function InspectorPanel({
   open,
@@ -287,10 +274,8 @@ function ElementExport({
 }
 
 /**
- * The selected element's Design sections in the order `inspector/text` draws them,
- * read from the live element and from the frame's static cascade, each
- * control disabled while the tab may not write. Nothing draws until the
- * frame's live page shows the element, which a placeholder never does.
+ * The element's Design sections in `inspector/text` order, drawing nothing
+ * until the live page shows the element, which a placeholder never does.
  */
 function ElementDesign({ page, element }: ElementProps) {
   const canWrite = useLive((state) => state.canWrite)
@@ -443,10 +428,8 @@ function layerName(tree: TreeEntry | null, index: number): string {
 }
 
 /**
- * One frame's Fill, the `background-color` of its `body` written as an
- * element edit, so it waits under a claim and undoes like one. Nothing
- * draws until the frame's live page shows its body. A file stating no
- * `body` has no bytes to write, which the edit refuses with a toast.
+ * A frame's Fill, written as an element edit on its `body` so it waits under
+ * a claim and undoes like one. A file stating no `body` refuses it.
  */
 function FrameFill({ page, frame }: { page: string; frame: string }) {
   const canWrite = useLive((state) => state.canWrite)
@@ -474,10 +457,8 @@ function FrameFill({ page, frame }: { page: string; frame: string }) {
 }
 
 /**
- * Selection colors for one frame or several, merged across them once each,
- * read again whenever one of them reloads. One frame replaces a raw color
- * across the whole frame, from the bytes it shows, and several replace
- * nothing, since one replace is one write to one file.
+ * Selection colors across frames. Several frames replace nothing, since one
+ * replace is one write to one file.
  */
 function FramesColors({
   page,

@@ -72,15 +72,9 @@ const CAPTION_LIT =
   'group-has-[[data-scrub]:hover]/number:text-foreground group-data-[scrubbing]/number:text-foreground'
 
 /**
- * One inspector number on base-ui's `NumberField`. ArrowUp and ArrowDown step
- * it, Shift by ten, and dragging the prefix or the caption scrubs it, each previewing as it
- * goes and writing once, on the arrow's keyup or the scrub's release. A typed
- * value writes on Enter or blur, and Esc puts the stored value back and
- * writes nothing.
- *
- * base-ui commits a keyboard step with every press, so the field steps on
- * its own keys rather than base-ui's, and takes base-ui's commit only for a
- * scrub release. A value it sent stays shown until the stored value moves.
+ * One number on base-ui's `NumberField`, previewing a step or scrub and writing
+ * once on keyup or release. It steps on its own keys, since base-ui commits a
+ * keyboard step on every press, and takes base-ui's commit for a scrub alone.
  */
 export function NumberField({
   label,
@@ -106,8 +100,7 @@ export function NumberField({
   const [sent, setSent] = useState<{ value: number; over: number } | null>(null)
   if (sent && sent.over !== value) setSent(null)
   const held = sent?.over === value ? sent.value : null
-  // The value a gesture started from, since a preview the caller draws may
-  // move the stored value under it, as a frame's pending box does.
+  // Kept, since a caller's preview can move the stored value mid-gesture.
   const started = useRef<number | null>(null)
   const setDraft = (next: Draft | null) => {
     if (!latest.current && next) started.current = held ?? value
@@ -194,8 +187,7 @@ export function NumberField({
     }
     if (event.key === 'Enter') {
       commit()
-      // base-ui formats typed text, and follows the stored value again, only
-      // once the field blurs, so a refused value would stay shown until then.
+      // base-ui reformats only on blur, so a refused value would otherwise stay shown.
       const input = event.currentTarget
       input.blur()
       input.focus()
@@ -350,10 +342,8 @@ export function NumberField({
 }
 
 /**
- * The east-west glyph drawn in place of the pointer while a scrub holds it,
- * since pointer lock hides the native `ew-resize` cursor. Base UI renders it
- * only during a scrub and moves it to the pointer, so it is offset by half its
- * size to stay centered there.
+ * The scrub cursor, since pointer lock hides the native `ew-resize` one,
+ * offset by half its size because Base UI moves it to the pointer.
  */
 function ScrubCursor() {
   return (

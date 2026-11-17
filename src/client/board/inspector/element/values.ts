@@ -25,10 +25,8 @@ export const SWATCH_RING = 'shadow-[inset_0_0_0_1px_var(--faint)]'
 export type ColorSource = { token: string } | { raw: string }
 
 /**
- * The CSS a color row writes. A token at 100 percent is `var(--token)`, and
- * below it `color-mix()` over the token, so it keeps following the theme. A
- * raw hex below 100 percent gains an alpha pair, and any other raw value is
- * mixed like a token.
+ * The CSS a color row writes, `color-mix()` over a token below 100 percent so
+ * it keeps following the theme, and an alpha pair on a raw hex.
  */
 export function colorCss(source: ColorSource, percent: number): string {
   const color = 'token' in source ? `var(${source.token})` : source.raw
@@ -56,12 +54,9 @@ function rgbOf(css: string): Rgba | null {
 }
 
 /**
- * The first color token, in sheet order, whose value in the theme shows the
- * same red, green, and blue as the raw `value`, or null. Equal rather than
- * near, since a swap is meant to keep the color it replaces. Both sides must
- * be opaque: the server folds only an 8-digit hex's alpha into the row's
- * percent, so a translucent `rgba()` or 4-digit hex reads 100 percent and a
- * swap written at it would drop the alpha.
+ * The first token whose theme value equals the raw opaque `value` exactly, or
+ * null. Both must be opaque, since a translucent value reads 100 percent and
+ * a swap written at it would drop the alpha.
  */
 export function matchingToken(
   value: string,

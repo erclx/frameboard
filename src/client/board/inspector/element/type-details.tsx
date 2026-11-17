@@ -65,10 +65,9 @@ const TRUNCATIONS: readonly Segment[] = [
 ]
 
 /**
- * One-line truncation takes all three declarations, and turning it off
- * writes each back rather than dropping it, so a frame rule setting one of
- * them cannot show through. It writes the `text-wrap-mode` longhand, so a
- * frame's whitespace collapsing stays as it was.
+ * Turning truncation off writes each declaration back rather than dropping it,
+ * so a frame rule cannot show through, and `text-wrap-mode` leaves whitespace
+ * collapsing as it was.
  */
 const TRUNCATE = {
   on: [
@@ -96,10 +95,8 @@ interface TypeDetailsProps {
 }
 
 /**
- * The settings button ending Typography's alignment row, opening Type
- * details: decoration, case, one-line truncation, and the wrap style, each
- * written on the selected element alone. Wrap writes the `text-wrap-style`
- * longhand, so it never undoes the `nowrap` a truncation writes.
+ * Opens Type details. Wrap writes the `text-wrap-style` longhand, so it never
+ * undoes the `nowrap` a truncation writes.
  */
 export function TypeDetailsButton({
   details,
@@ -107,12 +104,9 @@ export function TypeDetailsButton({
   write,
 }: TypeDetailsProps) {
   const [open, setOpen] = useState(false)
-  // Opening on the popup rather than its first button keeps that button's
-  // tooltip shut until a key moves focus there.
+  // Focus opens on the popup, keeping the first button's tooltip shut.
   const popup = useRef<HTMLDivElement>(null)
-  // A focused button's tooltip takes Escape first, so Escape from inside the
-  // popup closes the popover whole. The Wrap menu sits in its own portal and
-  // keeps its Escape.
+  // A tooltip takes Escape first, so this closes the popover whole.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
     if (!(event.target instanceof Node)) return
@@ -273,11 +267,8 @@ const STEPS: Record<string, (at: number, count: number) => number> = {
 }
 
 /**
- * A row of icon buttons, one `aria-pressed` per value, each named in a
- * tooltip. The row holds one tab stop, following focus inside the row and
- * resting on the lit button or the first outside it, so Tab leaves the row
- * in one press from any button. The arrow keys, Home, and End move focus
- * along it without writing.
+ * A row of `aria-pressed` icon buttons holding one tab stop, so Tab leaves in
+ * one press, while the arrows, Home, and End move focus without writing.
  */
 export function Segmented({
   labelledBy,

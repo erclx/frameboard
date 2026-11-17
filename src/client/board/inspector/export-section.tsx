@@ -33,12 +33,9 @@ interface ExportSectionProps {
 }
 
 /**
- * One frame's PNG export, or one element's, picking the scale and theme
- * `exportFrame` renders at, in one theme or both, and for a frame holding a
- * device whether the PNG draws it. The Name field starts as the frame's
- * name, or `<frame>-<element>` for an element, and names every file once
- * typed over. It lives in the section, so the caller keys the section by
- * what is selected and a new selection starts from its own name.
+ * One frame's or element's PNG export. The Name field lives in the section, so
+ * the caller keys it by the selection and a new selection starts from its own
+ * name.
  */
 export function ExportSection({ frame, element }: ExportSectionProps) {
   const scale = useStore(exportStore, (state) => state.scale)

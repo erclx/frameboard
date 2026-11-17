@@ -31,10 +31,8 @@ const TAG =
   'absolute origin-top-left rounded-[4px] px-1.5 font-mono text-[9px] leading-[14px] whitespace-nowrap [transform:scale(calc(1/var(--zoom,1)))]'
 
 /**
- * Each selected frame's drawn controls in Edit: a tag under every control
- * naming the selector and property it binds, and a dashed link from its
- * target. A binding matching nothing takes a red tag saying so and no link,
- * the canvas half of what the `binding-target` check reports.
+ * Each selected frame's drawn controls, linked from their targets. A binding
+ * matching nothing takes a red tag, the canvas half of `binding-target`.
  */
 export function BindingLinks({
   frames,
@@ -87,10 +85,8 @@ function FrameBindings({
 }
 
 /**
- * The dashed link from a binding's target to its control's tag: across the
- * gap at the tag's middle when the two sit side by side, or down from the
- * target to the control when the control sits under it. Overlapping boxes
- * draw no link, since the tag already sits on the target.
+ * The dashed link from a target to its control's tag, none for overlapping
+ * boxes, since the tag already sits on the target.
  */
 function Link({
   binding: { control, target },
@@ -168,8 +164,7 @@ function useBindingMeasures(
       }
     }
     measure()
-    // Neither a load nor a restamp bubbles, so a frame mounting, reloading,
-    // or keeping a live edit's page is caught on the way down.
+    // Captured, since neither a load nor a restamp bubbles.
     container.addEventListener('load', measure, true)
     container.addEventListener(RESTAMPED, measure, true)
     return () => {

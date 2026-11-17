@@ -52,8 +52,7 @@ interface MotionControlsProps {
 function MotionControls({ frame, found, hold }: MotionControlsProps) {
   const { span } = found
   const ended = useMotionEnded(frame.ref, found, hold !== undefined)
-  // A frame the board does not drive runs on its own clock, so it reads as
-  // playing until that clock reaches the timeline's end.
+  // An undriven frame runs on its own clock, so it plays until the timeline ends.
   const playing = hold?.playing ?? !ended
   const at = hold ? Math.min(hold.at, span) : ended ? span : null
   const control = {
@@ -112,9 +111,7 @@ function FilmstripRow({
   const theme = useStore(exportStore, (state) => state.theme)
   const [picked, setPicked] = useState<number>(DEFAULT_COUNT)
   const [exporting, setExporting] = useState(false)
-  // Only the counts whose strip the screenshot surface holds at this scale,
-  // so a pick never refuses after a round trip. A raised scale lowers a
-  // pick past the new cap to the cap rather than to the default.
+  // Only counts the screenshot surface holds at this scale, so a pick never refuses.
   const fitting = COUNTS.filter(
     (one) => one <= maxFilmstripCount(frame.box.width, scale),
   )

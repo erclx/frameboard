@@ -87,11 +87,8 @@ export function MediaTime({
 }
 
 /**
- * The scrub track, a native range so the arrow keys step it, moving the live
- * page's position as it is dragged and writing nothing. `format` reads a
- * position aloud in the unit the track counts, m:ss of seconds by default.
- * Its focus ring draws on the thumb alone, through `seek-track` in the
- * stylesheet, which fills the track up to `--seek`.
+ * The scrub track, a native range so the arrow keys step it, writing nothing.
+ * Its focus ring draws on the thumb alone through `seek-track` in the stylesheet.
  */
 export function SeekTrack({
   media,
@@ -143,13 +140,9 @@ const OVER_VIDEO = {
 }
 
 /**
- * The slim bar of a selected `<video>` or `<audio>` on the canvas in Edit:
- * play and pause, the scrub track, the time, and the speaker, each acting on
- * the live page alone. A video's sits over its picture, so it takes the dark
- * scrim. As the bar narrows the time gives way first, then the track, then
- * the speaker, each before it would overflow, so no control is left in the
- * tab order with nothing drawn. The inspector's section holds all four at
- * any zoom.
+ * The selected media's bar, acting on the live page alone. As it narrows each
+ * control drops before it would overflow, so none stays in the tab order
+ * undrawn, and the inspector holds all four at any zoom.
  */
 export function MediaBar({ media }: { media: LiveMedia }) {
   const over = media.reading.tag === 'video'

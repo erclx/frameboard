@@ -38,17 +38,13 @@ const CONTROL =
   'outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40'
 
 /**
- * The extra widths one frame also shows at, a chip per width in draw order
- * with a remove button, and a plus opening the Phone, Tablet, and Desktop
- * sizes the frame neither holds nor lists. A pick appends, so the new view
- * draws last. A change shows at once and writes the whole list with the
- * drawn one as `expected`, and a refusal puts the stored list back.
+ * The frame's extra widths in draw order. A change writes the whole list with
+ * the drawn one as `expected`, and a refusal puts the stored list back.
  */
 export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
   const stored = frame.widths.map((linked) => linked.width)
   const from = `${frame.ref}:${stored.join(',')}`
-  // A change stands until the frame reads another list than the one it was
-  // made from, and is then forgotten, so an undo back to it reads as stored.
+  // Forgotten once the stored list moves, so an undo back to it reads as stored.
   const [pending, setPending] = useState<{
     from: string
     widths: number[]

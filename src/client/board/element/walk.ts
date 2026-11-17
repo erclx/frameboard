@@ -49,11 +49,9 @@ export function siblingPlace(
 }
 
 /**
- * The gap `/api/frames/move` takes to move `at` to another place among its
- * siblings, `to` mapping the place it holds to the one it lands on, counted
- * with it lifted out, out of how many siblings there are. `body` is named by the index just before its first
+ * The gap `/api/frames/move` takes to move `at` among its siblings, counted
+ * with it lifted out. `body` is named by the index just before its first
  * child's, since the file lists an element right ahead of what it holds.
- * Undefined when the place is the one it holds or past either end.
  */
 export function siblingGap(
   tree: readonly TreeElement[],

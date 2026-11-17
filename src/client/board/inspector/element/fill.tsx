@@ -71,13 +71,9 @@ interface FillSectionProps {
 }
 
 /**
- * Fill: one color row writing `color` on an element holding text alone and
- * `background-color` otherwise. `+` adds the project's first color token
- * while nothing sets one, and a transparent background reads as none.
- * Remove drops the element's own fill, the whole `background` only where
- * the shorthand states it so a background image stays otherwise, or writes
- * `transparent` over a rule's background, and a rule's text color has no
- * remove.
+ * Fill writes `color` on a text-only element and `background-color` otherwise.
+ * Remove drops the whole `background` only where the shorthand states the
+ * fill, so a background image stays, and a rule's text color has no remove.
  */
 export function FillSection({
   textOnly,

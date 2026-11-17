@@ -94,8 +94,7 @@ describe('BindingLinks', () => {
     const photo = iframe?.contentDocument?.getElementById('photo')
     if (!iframe || !photo) throw new Error('The frame draws no photo')
 
-    // A transform moves the box and resizes nothing an observer watches, as
-    // a kept preview can, so only the restamp tells the overlay to measure.
+    // A transform resizes nothing, so only the restamp makes the overlay measure.
     photo.style.transform = 'translateX(-40px)'
     act(() => {
       iframe.dispatchEvent(new Event(RESTAMPED))
