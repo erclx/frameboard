@@ -1,21 +1,8 @@
 #!/usr/bin/env bash
 
-# Hands back the absolute path form for a write made from a linked worktree.
-#
-# A relative path emitted from a linked worktree resolves against that
-# worktree rather than the editor root, so the terminal's path detection and
-# the desktop app's link both fail silently: nothing happens on the click
-# and no error appears. This computes the fact a session was asking itself
-# to infer on every response and hands the answer back instead.
-#
-# The link form a response uses comes from the harness's own instruction for
-# its surface, not from this hook or the output rule.
-#
-# The worktree branch comes from the path rather than from `git rev-parse`,
-# the way `records-index.sh` already derives its main root from a path suffix
-# instead of the session. A git call would answer for
-# whatever directory the hook's own process happens to run in, which is not
-# necessarily the worktree the write came from.
+# Hands back the absolute form of a write from a linked worktree, where a
+# relative path resolves against the worktree and a click on it does nothing.
+# The worktree comes from the path, since a git call answers for the hook's cwd.
 
 # Claude Code sends a payload and closes stdin. A bare read with nothing
 # feeding it blocks forever and holds the session open, so the read is

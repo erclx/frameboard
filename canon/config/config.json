@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.93.0",
-      "syncedAt": "2026-11-15T12:38:55.565Z",
+      "version": "5.98.0",
+      "syncedAt": "2026-11-17T22:01:23.055Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -26,7 +26,7 @@
         ".claude/rules/canon/lib/test-scope.md": "sha256:be592b8fb8e316a336bf4719b26e4e1ab186c0ac07ed0a17a45449b24b812972",
         ".claude/rules/canon/lib/testing-ts.md": "sha256:48e6b1693fccf0931ce216247cbbef4f3b5694c6858ccbe397a5939e8504b23f",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
-        ".claude/rules/canon/tooling/code-comments.md": "sha256:64aefa372c435719203b94084d2cc4fec7679bae6c3f9c63b2e0a276b56f1e1d",
+        ".claude/rules/canon/tooling/code-comments.md": "sha256:254e6be8a127b39b0ab64be0a6184f52dcbc008b9aaa263f036222bfc08f8492",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:df6b5c282cad711211d45620599bd550679d8a15c48c77c72a7ef44c384a2b53",
         ".claude/rules/canon/tooling/dependencies.md": "sha256:beef3a95783523a1853a1501d2b235dea3ca88b46ba14bda77356349932a4093",
         ".claude/rules/canon/ui/craft.md": "sha256:166ac910f3e81e0ecad2bf850741992801db4b6eb1055aece5a854ed4d159ba6",
@@ -36,8 +36,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.93.0",
-      "syncedAt": "2026-11-15T12:39:13.311Z",
+      "version": "5.98.0",
+      "syncedAt": "2026-11-17T22:01:25.506Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
@@ -55,7 +55,7 @@
         "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
         "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
-        "scripts/verify.ts": "sha256:027b3082b20c6486e865665d4c3e12fac957d1edecb94a0e92230e404f692fb9",
+        "scripts/verify.ts": "sha256:60c1e951c29a438ec60bacf5c4e23f41448e7f791739fe3640e3f10925d9d0ba",
         "scripts/worktree-port.sh": "sha256:3d0f0a5e01f796bda1b8591103aef0509c1c077d160d15dfff565edc4d3a30cb",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
@@ -99,7 +99,7 @@
         },
         "e2e/screenshot.ts": {
           "disposition": "customized",
-          "base": "sha256:91a71054f64ce1455c641c62b4304fe6da154375d12d82ee1b8c0e23f414f13b"
+          "base": "sha256:18c692151d45977b240d61c185c95fc18939a4e6f3960bb93f9429f5e84c0e53"
         },
         "package.json:lint": {
           "disposition": "customized",

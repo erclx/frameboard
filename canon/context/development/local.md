@@ -17,16 +17,20 @@ Setup is Bun and the `canon` CLI from `bun add -g @erclx/canon`, which the pre-c
 
 These gate a change, and `bun run check` is the one the pre-push hook runs.
 
-| Command                            | Purpose                                                                                                                |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `bun run check`                    | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, markdown bans, and embedded code |
-| `bun run check:full`               | Runs `check`, then `test:e2e`                                                                                          |
-| `bun run typecheck`                | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                                          |
-| `bun run lint`, `bun run lint:fix` | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                                      |
-| `bun run format`                   | Auto-fixes oxfmt formatting                                                                                            |
-| `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown                   |
+| Command                            | Purpose                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `bun run check`                    | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, and `canon gate` |
+| `bun run check:full`               | Runs `check`, then `test:e2e`                                                                          |
+| `bun run typecheck`                | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                          |
+| `bun run lint`, `bun run lint:fix` | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                      |
+| `bun run format`                   | Auto-fixes oxfmt formatting                                                                            |
+| `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown   |
 
-The CLI run from source needs no build for its faces. It writes them into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale. The board needs `bun run build` outside `dev`, since a source `serve` refuses without `dist/client`, and an old build serves the old board.
+Three conditions sit behind those commands.
+
+- The `canon gate` stage fails a document past 300 rendered lines, a code file past 2000 lines, and a comment run past its cap in a file the branch touches, and `canon gate run` prints each finding
+- The CLI run from source writes its faces into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale
+- The board needs `bun run build` outside `dev`, since a source `serve` refuses without `dist/client`, and an old build serves the old board
 
 These serve the board and run the test layers.
 
@@ -45,6 +49,14 @@ Two of those need a companion command or variable.
 - Point `preview` or `dev` at a drive copy with `CANON_PREVIEW_ROOT=<copyRoot>` from `canon pr drive-copy --json`. Unset, `preview` serves the committed board and `dev` a temporary copy of it.
 - Run the edit writer's tests on Bun with `bun --bun vitest run --project node src/server/edit`, adding `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest
 
+A running `preview` and the drive copy it serves carry these conditions.
+
+- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` keeps that path, so a running `preview` keeps its address file and board key
+- The rebuild copies the checkout as it stands, so the seeded pages and the reservation on `webapp/settings` reach the copy through the `seed` key, which runs `scripts/drive-seed.ts`
+- The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, which a server reused from a bare `serve` answers with 404
+- A claim lives in the ignored `.run/` and lapses after five minutes, so a drive renews it with `bun dist/cli.js editing <frame-ref> --root <copyRoot>/test/fixtures/boards/basic --session drive-review`
+- The board port `dev` starts serves `src/client` unbuilt, so opening it directly gets a page that never loads, and only Vite's address works
+
 These capture and measure what the board renders.
 
 | Command                      | Purpose                                                                                                |
@@ -58,13 +70,9 @@ These capture and measure what the board renders.
 
 The capture scripts each carry a condition the table leaves out.
 
-- `screenshot` leaves a committed image alone when at most 200 pixels differ and no channel moves past 64, so a smaller real change stays uncaptured
-- Antialiased rounded corners land apart between runs on every panel, and no mask can hold them, which is what that tolerance absorbs
+- `screenshot` leaves a committed image alone when at most 200 pixels differ and no channel moves past 64, which absorbs antialiased corners no mask can hold, so a smaller real change stays uncaptured
 - `FRAMEBOARD_EVIDENCE_ROOT` sends `screenshot` evidence to that folder as captured, with no tolerance, and the committed set stays unread
 - A painted change inside those limits writes its image with `FRAMEBOARD_EVIDENCE_ROOT=e2e/evidence SCREENSHOT_FILTER=<case> bun run screenshot`
-
-The other two scripts carry one condition each.
-
 - `screenshot:compare` builds first and serves its own boards
 - `measure:canvas` sits outside the gate, because its number describes the developer's own browser and screen and a CI runner's says nothing about either
 
@@ -79,20 +87,11 @@ The other two scripts carry one condition each.
 
 Owns the shell scripts and the verify runner the commands above call, and every `.sh` file lives here but the plugin's resolver and `.claude/hooks/`.
 
-- `worktree-port.sh` hashes a linked worktree's name into a port offset from 1 to 50, leaving 0 for the main checkout
-- Two worktrees collide on a port offset about 1 time in 50, so set `WORKTREE_PORT_OFFSET` by hand to break the tie
-- `screenshot-compare.ts` sits here and serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
-- `.prettierignore` and `.oxlintrc.json` keep `canon/design/` out of format and lint, since only `references sync` writes the folder
+- `dev.ts` starts the board from source on the port `vite.config.ts` proxies to, then Vite, and `preview.ts` runs the built CLI's `serve --open-route`, then `open --no-open`
 
-One script wraps the capture.
-
-- `evidence-capture.sh` backs `screenshot` and wraps the synced `screenshot.sh`, serving a throwaway copy of `basic` with pinned file times
-- A capture run in the fixture itself rewrites the tracked `notes.json` and leaves a change log the next run paints as unseen
-
-Two scripts back the serving commands.
-
-- `dev.ts` backs `bun run dev`, starting the board from source with `src/client` as its client, on the port the proxy in `vite.config.ts` names, and then Vite in front of it
-- `preview.ts` backs `bun run preview`, running the built CLI's `serve --open-route` and then `open --no-open`, so it prints a once-only edit link and one fresh per open, and exits as its server does
+- `worktree-port.sh` hashes a worktree's name into a port offset from 1 to 50, 0 being the main checkout, and `WORKTREE_PORT_OFFSET` breaks the 1 in 50 collision by hand
+- `evidence-capture.sh` backs `screenshot` with a throwaway copy of `basic` at pinned file times, since a run in the fixture rewrites `notes.json` and leaves a change log
+- `screenshot-compare.ts` serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
 
 ### `.husky/`
 
@@ -114,52 +113,16 @@ Owns the public landing page, a second project with its own `package.json`, `bun
 
 ### Other folders
 
-Test support that lives inside the source tree.
+Test support and design references sit outside the folders above.
 
-- `src/test/` owns the setup file the Vitest `browser` project loads, the board records client tests build from, and the contrast measure component tests read rendered colors with
-- `src/test/motion.js` emulates reduced motion and `hover-contrast.js` reads contrast under the real pointer, in plain JavaScript since a `.ts` import of `vitest/browser` fails typecheck
-- `src/test/real-pointer.js` moves that pointer on and off an element, for a `:hover` rule user-event never reaches, in plain JavaScript too
-- `src/test/focus-ring.js` reads a focus ring's contrast after a real key press, since user-event's untrusted keys never reach a `:focus-visible` rule, in plain JavaScript for the same reason
+- `src/test/` owns the setup file the Vitest `browser` project loads, the board records client tests build from, and the contrast measures component tests read
+- `src/test/` keeps its real pointer, key, motion, and contrast helpers in plain JavaScript, since a `.ts` import of `vitest/browser` fails typecheck
+- `canon/design/` owns the accepted references, which only `references sync` writes, so `.prettierignore` and `.oxlintrc.json` keep it out of format and lint
 
 ## Gotchas
 
-### Tooling
-
-These catch the toolchain out.
-
-- `canon tooling sync web . --write` overwrites the project's own `e2e/screenshot.ts`, `.oxlintrc.json`, and `commitlint.config.js`, so copy a stack file by hand instead
-- `e2e/home.spec.ts` is a sync seed, so `canon/config/config.json` declines it and the spec lives at `e2e/shell/home.spec.ts`
 - `canon sync` writes `canon/config/config.json` in a shape oxfmt rejects, so run `bun run format` before the commit
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
-- `vitest.config.ts` also strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching whatever listens on 6173
-
-One catches the landing page out.
-
+- `vitest.config.ts` strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching 6173
 - `web/` has no Preflight, so a rule outside `@layer base` beats every utility, and `[hidden]` hides only through `global.css`
-
-One covers parallel source runs.
-
-- A cold faces cache under `node_modules/.cache/frameboard/` is safe to fill from parallel source runs, since `writeFaces` keeps a complete folder another run placed first
-
-### Preview servers
-
-These catch a running `preview` out.
-
-- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` lists only that path under `keep`, so a running `preview` keeps its address file and board key
-- `canon/config/app-drive.toml` carries the launch, data, and personas a drive reads, so a drive stops asking for them, and the skills read it and never write it
-- The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, the config's `access`, and a reel edits what it is served
-- A server `preview` reused from a bare `serve` lacks `--open-route`, so `/api/access/open` answers 404 there
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs
-
-Two catch a copy missing the seeded states.
-
-- A rebuild copies the checkout as it stands, so the seeded pages reach the copy by the `seed` key in `canon/config/preview.json`, which runs `scripts/drive-seed.ts` on the copy after each rebuild
-- The rebuild never copies `.run/` either, so a copy rebuilt without that seed lacks the reservation on `webapp/settings`
-
-One catches a drive that needs a claimed frame.
-
-- A claim lives in the ignored `.run/` and lapses after five minutes, so a drive renews it with `bun dist/cli.js editing <frame-ref> --root <copyRoot>/test/fixtures/boards/basic --session drive-review`
-
-One catches a running `dev` out.
-
-- The board port `dev` starts serves `src/client` unbuilt, so opening it directly gets a page that never loads, and only Vite's address works

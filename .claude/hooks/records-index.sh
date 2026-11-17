@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 
-# Regenerates the index.md of the gitignored `tasks` record folder after a
-# file in it changes.
-#
-# That folder is gitignored, so the whole-repo walk in `bun run check` drops
-# it and never regenerates its index. Naming the file as a positional
-# argument to `canon indexes regen` below bypasses that filter, which makes this
-# hook the only trigger that reaches the folder.
+# Regenerates the gitignored `tasks` folder's index.md after a file in it
+# changes. The repo walk skips ignored folders, so naming the file to
+# `canon indexes regen` makes this hook the only trigger that reaches it.
 
 # Claude Code sends a payload and closes stdin. A bare read with nothing feeding
 # it blocks forever and holds the session open, so the read is bounded. `read`
@@ -26,20 +22,9 @@ esac
 file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
 [ -n "$file_path" ] || exit 0
 
-# Both record roots, since a project the move has reached keeps its records under
-# `.canon/` and a guard fixed at the old spelling stops matching with nothing
-# said. The index then goes stale while every save reports success.
-#
-# A shell `case` `*` crosses `/`, so each arm also matches a file in a subfolder
-# the index does not render: an archived or declined task, or the index itself.
-# Those exit here, before the regen call. A task under `review/` is
-# indexed, and no other folder is read.
-#
-# The walk-up boundary has to come from the path, not from the session. Shared
-# scratch resolves at the main worktree root, so a session inside a linked
-# worktree passes a path that sits outside its own project directory and the
-# default boundary would reject it. The messages below name the index read out
-# of the same match, so they name the file that actually went stale.
+# Both record roots, since a moved project keeps its records under `.canon/`.
+# A `case` `*` crosses `/`, so a subfolder the index does not render exits
+# first, and the walk-up boundary comes from the path, outside a worktree.
 case "$file_path" in
 */.canon/tasks/index.md | */.canon/tasks/archive/* | */.canon/tasks/declined/*) exit 0 ;;
 */.claude/tasks/index.md | */.claude/tasks/archive/* | */.claude/tasks/declined/*) exit 0 ;;
@@ -72,10 +57,9 @@ fi
 # record files to whatever commit is being assembled.
 output=$(canon indexes regen --no-stage --root "$root" "$file_path" 2>&1) && exit 0
 
-# Regen failed, which on these folders means a file is missing `title` or
-# `description`. Report it. Nothing else can: the folder is gitignored, so the
-# whole-repo walk never reaches it and no gate stage will ever fail on a stale
-# index. Staying quiet here is what makes the drift permanent.
+# A failed regen means a file lacks `title` or `description`. Report it, since
+# no gate stage reaches this gitignored folder and silence makes the drift
+# permanent.
 errors=$(printf '%s\n' "$output" | grep '^ERROR: ' | head -5)
 [ -n "$errors" ] || errors="$output"
 

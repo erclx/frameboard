@@ -20,10 +20,8 @@ interface Viewport {
 }
 
 /**
- * The breakpoint buckets every case is crossed with, named by width. 320 is
- * the base a page has to hold without wrapping or clipping. Committing every
- * width multiplies the tracked frames by the width count, so only the base and
- * the desktop width carry `evidence`.
+ * Widths every case is crossed with. Only the 320 base and the desktop width
+ * carry `evidence`, since committing every width multiplies the tracked frames.
  */
 const VIEWPORTS: readonly Viewport[] = [
   { name: '320', width: 320, height: 800, evidence: true },
@@ -115,12 +113,8 @@ const SETTLE_TIMEOUT = 15_000
 const FLOATING_ATTRIBUTE = 'data-capture-floating'
 
 /**
- * Brings the page to the state a reader arrives at, before anything is shot.
- * A figure gated on an IntersectionObserver and a frame marked `loading=lazy`
- * both stay at their start state until something scrolls past them, and a full
- * page capture scrolls nothing, so each named section is scrolled into view
- * once and the page then returns to the top. Fonts, images and frames settle
- * afterwards, since the scroll is what starts the lazy loads.
+ * Scrolls each named section into view once before anything is shot, since a
+ * full page capture scrolls nothing and lazy loads wait on a scroll.
  */
 async function settle(
   page: Page,
@@ -130,13 +124,7 @@ async function settle(
   const present: CaptureSection[] = []
   for (const section of sections) {
     const element = page.locator(section.selector)
-    // Read the count before scrolling, since a selector matching nothing
-    // otherwise costs the default timeout once per section. A miss is
-    // reported and skipped rather than raised, because `CASES` is a template
-    // a project rewrites and a target that syncs this file before editing its
-    // own list would otherwise capture nothing at all. The project owning the
-    // selectors is the one that tests them, which is what the section spec
-    // beside its own page does.
+    // A miss is warned and skipped, since a scroll on nothing waits out the timeout.
     if ((await element.count()) === 0) {
       console.warn(
         `${label}: no element matches ${section.selector}, named as section "${section.name}". Skipped.`,
@@ -148,15 +136,11 @@ async function settle(
   }
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.evaluate(() => document.fonts.ready.then(() => undefined))
-  // Settle on what the scroll started rather than on a second `networkidle`,
-  // which is a lifecycle event of the navigation and does not re-arm for a
-  // load a scroll triggered afterwards.
+  // A second `networkidle` never re-arms for a load the scroll started.
   await page.waitForFunction(
     () => {
       if (document.readyState !== 'complete') return false
-      // A board still making its frames live has iframes left to build, so
-      // the loop below would pass over frames that are empty boxes yet. A
-      // hidden layer is the page just left, which never finishes staging.
+      // A visible staging layer still has empty frames, and a hidden one never settles.
       const staging = document.querySelectorAll('[data-staging]')
       if ([...staging].some((layer) => layer.checkVisibility())) return false
       for (const image of document.images) if (!image.complete) return false
@@ -165,13 +149,10 @@ async function settle(
           const inner = frame.contentDocument
           if (inner === null) continue
           if (inner.readyState !== 'complete') return false
-          // A frame's own fonts load after its `readyState` reads complete, and
-          // the swap reflows its text. The outer document's fonts never cover
-          // them.
+          // A frame's fonts load after its `readyState`, outside the outer document's.
           if (inner.fonts.status !== 'loaded') return false
         } catch {
-          // Cross-origin, so there is nothing here to read and nothing to
-          // wait on.
+          // A cross-origin frame has nothing to read or wait on.
         }
       }
       return true
@@ -183,15 +164,8 @@ async function settle(
 }
 
 /**
- * Marks every element the page floats over its own content, which is chrome
- * such as a sticky bar or a fixed dialog. A section taller than the viewport
- * is scrolled into view to be shot, and the chrome rides that scroll into the
- * middle of the frame, painting over the part the frame exists to show. The
- * mark is an attribute rather than a style, so the rule that acts on it is
- * carried by the screenshot itself and no state is left behind to restore.
- *
- * Marking costs the whole-page frame nothing, since that one is shot before
- * this runs and carries the chrome where a reader meets it.
+ * Marks sticky and fixed chrome, which would ride a section's scroll over the
+ * part it shows. An attribute leaves no state behind for the shot to restore.
  */
 async function markFloatingChrome(page: Page) {
   await page.evaluate((attribute) => {
@@ -205,9 +179,53 @@ async function markFloatingChrome(page: Page) {
 }
 
 /**
- * Turns a case's mask selectors into the locators every frame paints over. A
- * selector matching nothing is reported and kept out rather than raised, for
- * the same template reason `settle` gives for a missing section.
+ * Whether an opaque element outside this one paints over its center, since a
+ * mask's bar draws above every layer and would land across an open dialog.
+ */
+async function isCovered(element: Locator): Promise<boolean> {
+  return element.evaluate((target: HTMLElement | SVGElement) => {
+    const box = target.getBoundingClientRect()
+    const x = box.left + box.width / 2
+    const y = box.top + box.height / 2
+    // The hit test answers only inside the window.
+    if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) {
+      return false
+    }
+    // A dimmed backdrop still shows the value through, so only a solid box covers.
+    const isOpaque = (node: Element) => {
+      const style = getComputedStyle(node)
+      if (style.visibility === 'hidden') return false
+      const alpha = style.backgroundColor.match(/[\d.]+/g)?.[3]
+      const solid =
+        style.backgroundColor !== 'transparent' &&
+        (alpha === undefined || Number(alpha) === 1)
+      if (!solid && !(node instanceof HTMLImageElement)) return false
+      for (let at: Element | null = node; at !== null; at = at.parentElement) {
+        if (Number(getComputedStyle(at).opacity) < 1) return false
+      }
+      return true
+    }
+    // The hit test skips `pointer-events: none`, so the target is made hittable.
+    const { pointerEvents } = target.style
+    const priority = target.style.getPropertyPriority('pointer-events')
+    target.style.setProperty('pointer-events', 'auto', 'important')
+    try {
+      for (const hit of document.elementsFromPoint(x, y)) {
+        if (target === hit || target.contains(hit) || hit.contains(target)) {
+          return false
+        }
+        if (isOpaque(hit)) return true
+      }
+      return false
+    } finally {
+      target.style.setProperty('pointer-events', pointerEvents, priority)
+    }
+  })
+}
+
+/**
+ * Turns a case's mask selectors into the locators every frame paints over,
+ * reporting and keeping out a selector matching nothing or a covered match.
  */
 async function resolveMask(
   page: Page,
@@ -217,13 +235,26 @@ async function resolveMask(
   const mask: Locator[] = []
   for (const selector of selectors) {
     const element = page.locator(selector)
-    if ((await element.count()) === 0) {
+    const count = await element.count()
+    if (count === 0) {
       console.warn(
         `${label}: no element matches ${selector}, named as a mask. Skipped.`,
       )
       continue
     }
-    mask.push(element)
+    const matches = Array.from({ length: count }, (_, index) =>
+      element.nth(index),
+    )
+    const covered = await Promise.all(matches.map(isCovered))
+    const shown = matches.filter((_, index) => !covered[index])
+    const skipped = count - shown.length
+    if (skipped > 0) {
+      console.warn(
+        `${label}: ${skipped} of ${count} elements matching ${selector}, named as a mask, are covered by another element. Skipped.`,
+      )
+    }
+    if (skipped === 0) mask.push(element)
+    else mask.push(...shown)
   }
   return mask
 }
@@ -240,8 +271,7 @@ async function shoot(
   if (selector === undefined) {
     await page.screenshot({ path: target, fullPage: true, mask })
   } else {
-    // Floating chrome keeps the space it already occupies, so dropping it out
-    // of its own layer moves nothing and leaves every box the size it was.
+    // Dropping floating chrome from its layer moves no box, since it keeps its space.
     await page.locator(selector).screenshot({
       path: target,
       mask,
