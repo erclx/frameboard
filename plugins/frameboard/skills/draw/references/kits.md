@@ -15,7 +15,7 @@ A kit is board content, not a rule. Its files sit in the project, and the board 
 2. Read the frames on the project's `kit` page, which draw each part the way the kit means it.
 3. Draw with those classes, such as `kit-card`, `kit-note`, `kit-button`, and `kit-line`, and take every color from the kit's tokens through `var()`.
 
-Leave the kit's own styles out of the frame. A frame that copies `kit.css` stops following the kit, and one that sets a filter or a background on a kit box draws over the kit's outline.
+Leave the kit's own styles out of the frame. A frame that copies `kit.css` stops following the kit. A kit may draw a box's fill on a layer of its own, as Sketch does, where a background set on the box hides under that fill, so follow what `kit.md` says to set instead.
 
 ## Set one up when asked
 

@@ -13,6 +13,8 @@ Hand drawn boxes, tilted notes, and Caveat, for a brainstorm that should read as
 ## Keep to
 
 - Color through `--accent`, `--surface`, `--text`, `--muted`, `--line`, and `--note` alone, so dark mode follows
-- No `filter` or `background` of your own on a kit box, since its outline and fill sit on its `::before` layer
+- Set a box's fill through `--fill`, as in `style="--fill: var(--accent)"`, never `background`, since the outline and fill sit on its `::before` layer above the box's own background
+- No `filter` of your own on a kit box, which would roughen its text too
+- A fill set by hand in the inspector writes `background`, so it stays hidden under a Sketch box's fill
 - Short labels, since Caveat reads slower than a text face
 - The `kit` page shows every part drawn in this look
