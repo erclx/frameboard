@@ -58,7 +58,7 @@ const DRAWN_FRAME_NAME = 'frame'
 /**
  * Adds a frame at a point, hugging neither axis, then selects it. It opens no
  * rename field, so the next keystroke still reaches the board, and resolves to
- * the frame before the live store carries it.
+ * the frame before the live store carries it, or null once a refusal is reported.
  */
 export async function placeFrame(
   point: { x: number; y: number; width?: number; height?: number },
