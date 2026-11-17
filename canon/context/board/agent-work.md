@@ -33,20 +33,7 @@ Owns how a claimed frame shows and how an edit waits on one, apart from `frame.t
 
 ### `src/client/board/changes/`
 
-Owns the change toast, the glow over changed elements, compare, and how an agent's `show` lands, with a mark cleared once selected or half on screen for 1.5 seconds. `src/server/changes/` tells an agent's write from the board's own, which `History`'s `onWrite` rereads.
-
-| Piece                           | Role                                                                                         |
-| ------------------------------- | -------------------------------------------------------------------------------------------- |
-| `src/server/changes/tracker.ts` | Keeps the source each agent write replaced and names its hash as the change's `before`       |
-| `persist.ts`                    | Saves the log and versions under `.run/changes/`, so a restart replays them, up to `LOG_CAP` |
-| The frame route                 | Serves a version under `?at=<hash>` with the same head, and 404 for a hash it lacks          |
-| `compare.ts`                    | Holds the frame compared, ending on a selection change, Play, the Note tool, or a moved base |
-| `compare-view.tsx`              | Draws the before side as a second iframe over the live one, whose `src` it never touches     |
-| `show.ts`                       | Decides in each tab whether an agent's `show` moves the view                                 |
-| `busy.ts`                       | Reads a focused field, a held pointer, and an open popup, which a show waits on              |
-| `show-toast.tsx`                | Offers the jump as a toast naming the frame and Go                                           |
-
-The rules below are what the pieces do not say.
+Owns the change toast, the glow over changed elements, compare in `compare.ts` and `compare-view.tsx`, and how an agent's `show` lands through `show.ts`, `busy.ts`, and `show-toast.tsx`. `src/server/changes/` tells an agent's write from the board's own, keeping each replaced source as the change's `before`, which `persist.ts` saves.
 
 - The toast offers Show on `\`, Previous on `[`, Next on `]`, and Mark all seen on `⇧]`, rides the kit's one stack above the toolbar, and Enter on it runs Show
 - Mark all seen's Undo lasts 5 seconds and restores the `lastCleared` snapshot in `unseen.ts`, never joining `edit.undo`, since seen state touches no file
@@ -56,18 +43,7 @@ The rules below are what the pieces do not say.
 
 ### `src/client/live/`
 
-Owns the socket and the store every screen reads, and how an agent's changes and current work show. `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`.
-
-| State        | Held                                                                                      |
-| ------------ | ----------------------------------------------------------------------------------------- |
-| Unseen marks | `unseen.ts`, each frame's latest unseen change, with its seen hash in `localStorage`      |
-| Seen replies | `frameboard.seen-replies`, so the tab title counts a reply until its thread opens         |
-| Compare base | The `before` of the first change since the last look, read off the replayed log           |
-| Shown marks  | `frameboard.seen-shows`, by show id and time rather than hash                             |
-| Findings     | A red pill for any error or a grey dot for warnings, cleared by the batch fixing the file |
-| Follow       | Centers each frame a followed agent changes or claims at its starting zoom                |
-
-The rules below keep the store honest about what the developer saw.
+Owns the socket and the store every screen reads, being unseen marks, seen replies, each frame's compare base, shown marks, findings counts, write access, and Follow, kept in memory or `localStorage`. `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`.
 
 - A reply counts only while its root is not done and its frame stands, since only then can the thread open
 - Follow skips a reservation and a hand move stops it, and a board message keeps a reservation's claim, whose frame is listed only once it lands

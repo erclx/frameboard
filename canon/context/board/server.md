@@ -45,20 +45,7 @@ Owns who may write, apart from the route modules.
 
 ### `src/server/routes/`
 
-Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing.
-
-| Module         | Answers                                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| Frame route    | `/frames/<project>/<page>/<file>`, `/frames/<project>/assets/<path>`, and a replaced version under `?at=` |
-| `assets.ts`    | A project's asset listing with each file's `frames` count, and a drop under a 64 MiB limit answering 413  |
-| `access.ts`    | A ticket traded for the cookie, a failed redeem landing on `/?link=expired`, and `GET /api/access/open`   |
-| `api.ts`       | Every write route, mounted behind `requireWriter`                                                         |
-| `structure.ts` | `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags, one step each, beside `history.ts`'s undo  |
-| `tokens.ts`    | `POST /api/tokens/edit`, one token into the project's or the board's sheet as one step                    |
-| `kits.ts`      | `GET /api/kits`, install and save as one step each, and a kit's files under `/frameboard/kits/`           |
-| `elements.ts`  | A frame's element tree from the file, so a culled frame lists the indices `edit` takes, and the selection |
-
-The caching and step rules below are what the modules leave unsaid.
+Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame and asset routes, access, the structure, history, token, and kit writes `api.ts` mounts behind `requireWriter`, and the element tree. Frames load same-origin and unsandboxed, since selection works inside a frame's DOM, and the board key keeps other pages from writing.
 
 - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is served whole since its head is spliced in memory
 - A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads every frame

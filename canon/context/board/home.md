@@ -13,24 +13,7 @@ Owns where the developer picks a project, being the home view and the project ac
 
 ### `src/client/home/`
 
-Owns the home view, where every project shows as a card with a thumbnail of its frames or as a list row. Opening a card opens its board, and the board's home button is the one way back and between projects.
-
-| Feature        | Behavior                                                                                                   |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| Card           | The title or folder name and when it was last edited, a list row adding the day `project.json` was made    |
-| Well           | The first page's visible frames through `src/shared/card-frames.ts`, so no box lacks a stamped capture     |
-| Loading shell  | `loading.tsx` draws the real header and four grey cards, its actions disabled until `home.tsx` takes over  |
-| Header         | The grid and list switch, New project, the theme toggle, and Sort by edited, created, or name              |
-| New project    | `new-project-dialog.tsx` offers Blank and every kit, then adds the next free `untitled` and opens its name |
-| Rename         | Saves a title through `POST /api/project/title`, the server moving the folder, under a `Folder` line       |
-| Menus          | A right click, the menu key, or Shift+F10 opens `project-menu.tsx`, and F2 and Delete act on a focus       |
-| Corner buttons | Rename, Pin, and More on the well, shown on hover, focus, or an open menu, outside the tab sequence        |
-| Filter         | `filter-field.tsx` matches a title or folder name flat, archived ones included, and Cmd+F focuses it       |
-| Archived       | `archived.tsx` holds archived projects in a collapsed section last, their menu reading Restore             |
-| Focus keys     | One card in the tab sequence, the arrows and H J K L roving through `rove.ts`, Home and End at the ends    |
-| Sort and pins  | `sort.ts` and `pins.ts` keep the viewer's own order in `localStorage`, pinned projects above the rest      |
-
-The rules below are what the table leaves out.
+Owns the home view, every project a card with a thumbnail or a list row, under a header with the layout switch, New project's kit dialog, the theme toggle, and Sort. A title renames through `POST /api/project/title`, the filter and Archived section narrow the list, and `sort.ts` and `pins.ts` keep the viewer's own order.
 
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a changed frame, and each landing reaches the live store over the socket
 - An `invalid-name` refusal stays inline under the rename field, and a board's New project goes home first, since leaving the board clears the state the add opens

@@ -13,23 +13,7 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 ### `src/client/board/element/`
 
-Owns picking, walking, and outlining an element, and with the board folder's `selection.ts` the selection keys and menus on the canvas. Selecting writes nothing, so element addresses stay put, and several elements in one frame select together at one hash, `element` holding the last picked.
-
-| Input                      | Result                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| A click                    | The frame, or inside a selected element's frame another element, the bare `body` reselecting the frame |
-| Cmd-click or double-click  | The element under the cursor, a double-click on text also opening it for typing in place               |
-| Shift-click or a marquee   | Several frames, or with an element selected several elements, `group.ts` drawing one box around them   |
-| Enter, Esc, and Tab        | Walk down to `body`'s first child, up to the frame, and across within the parent, on the canvas alone  |
-| Tab with one frame         | The next frame in Layers order through `board-actions.ts`, wrapping, skipping hidden, centering it     |
-| Alt+Shift+ArrowUp or Down  | Moves the element among its siblings, since Alt+ArrowUp alone is `nav.home`                            |
-| Shift+A                    | Wraps siblings in one flow `div` named `Container` through `POST /api/frames/wrap`                     |
-| An Absolute element's drag | Previews `left` and `top` and writes both on release through `resize.ts`, Esc writing nothing          |
-| A selected video or audio  | `media-bar.tsx` drives the live node through `media.ts`, writing nothing, over the browser's own strip |
-| A frame's drawn controls   | `binding-links.tsx` tags each with its selector and property, red where it matches nothing             |
-| An element past the edge   | `overflow.ts` draws a dashed ghost a press selects and drags, and a scroll frame draws none            |
-
-The rules below keep a selection on the element it names.
+Owns picking, walking, and outlining elements, with the board's `selection.ts`: a click selects the frame, Cmd-click or a double-click the element, Shift-click or a marquee several, and Enter, Esc, and Tab walk the tree. Selecting writes nothing, so addresses stay put, and it draws the media bar, binding links, and overflow ghosts.
 
 - A selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame unless the board's own edit or undo left those bytes or is still in flight
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked one in each index, parent, tag, and every name but its own
@@ -59,18 +43,7 @@ Owns the frame structure actions, being rename, duplicate, delete, hide, lock, c
 
 ### `src/client/board/geometry/`
 
-Owns turning pointer and keys into frame boxes, apart from the canvas's pan and zoom. A press on the canvas while an inspector field has focus blurs and applies it, selecting nothing, while a drag from that press still moves frames.
-
-| Piece                            | Role                                                                                            |
-| -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `gestures.ts`                    | Binds `d3-drag` to the hit layer beside `d3-zoom`, reading the corner marks' cursor by position |
-| `draw.ts`                        | Writes the overlay's DOM from the drag handler                                                  |
-| `snap.ts`, `resize.ts`, `hit.ts` | Pure, as is `src/shared/arrange.ts`, which frames and elements both align through               |
-| `write.ts`                       | Sends every hand move or resize through `POST /api/frames/boxes`, pending until the next board  |
-| `overlay.tsx`                    | The selection chip, naming the frame and its Layers place, or `N frames`                        |
-| A section's name                 | Its handle, moving the box, its frames, and their pins in one write                             |
-
-The traps below sit under those pieces.
+Owns turning pointer and keys into frame boxes apart from pan and zoom, with `gestures.ts` binding `d3-drag`, `draw.ts` drawing the overlay, pure `snap.ts`, `resize.ts`, and `hit.ts`, and `write.ts` sending every box through `POST /api/frames/boxes`. A press while an inspector field has focus blurs and applies it.
 
 - A frame snaps to other frames' edges and centers unless Ctrl is held, and a box edit on a held frame waits for the claim, then goes with the first `expected` it started from
 - The chip takes no pointer, so its controls carry `data-label-control` for the gestures to click on release, and a drag's readout goes into `[data-move-chip]`

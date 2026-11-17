@@ -23,16 +23,7 @@ Owns the hold, a frame's timeline driven by the board in this tab alone, set fro
 
 ### `src/client/board/play/`
 
-Owns Play's own state and surfaces, being the frame entered, the shield, the drawn controls that run in the entered frame alone, and what the banner says about a page's reach. A layers row in Play reveals its frame and enters it.
-
-| Piece          | Role                                                                                                     |
-| -------------- | -------------------------------------------------------------------------------------------------------- |
-| `entered.ts`   | Holds the one entered frame, cleared on leaving Play, a page switch, or the frame losing its live page   |
-| `shield.tsx`   | Sits under the frames' layer, a click entering the frame `frameAt` finds and one on empty canvas leaving |
-| `controls.ts`  | Listens for `input` on the entered document, setting a moved control's property inline on its target     |
-| `keep-bar.tsx` | Draws inside the frame's bottom right once a control moves, and Keep values writes through `keepEdits`   |
-
-The traps below sit under those pieces.
+Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.tsx` under the frames' layer, and the drawn controls `controls.ts` runs in the entered frame alone, with `keep-bar.tsx` offering Keep values once one moves. A layers row in Play reveals its frame and enters it.
 
 - d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
@@ -42,20 +33,7 @@ The traps below sit under those pieces.
 
 ### `src/client/board/present/`
 
-Owns present mode, which shows a page's frames one at a time over the whole window on black through the Fullscreen API, each scaled to fit and never past twice its size. `present.start` runs on Shift+P, the Present button, or the palette, and present is a view that records no undo step.
-
-| Piece                | Role                                                                                                |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `order.ts`           | Reads rows top to bottom, each left to right, a frame joining a row while its top clears its middle |
-| `store.ts`           | Holds the page, frame, and step by ref, rereading the order so an agent's change joins it           |
-| `bar.tsx`            | Back, the count, the name in a fixed slot, next, and leave, hidden after two seconds still          |
-| `overlay.tsx`        | Takes keys in the capture phase on both windows and makes the board behind it inert                 |
-| `transition.tsx`     | Keeps the leaving slide mounted under the arriving one, each a `data-present-layer`                 |
-| `travel.ts`          | Resolves a frame's transition over its page's, going back taking back the one a slide arrived with  |
-| `own-transitions.ts` | Fetches a project's own keyframes when presenting starts and when its names change                  |
-| `steps.ts`           | Reads `data-step`, closing gaps and joining with-previous steps, and hides the unrevealed           |
-
-The rules below are what the pieces leave unsaid.
+Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `order.ts` reads rows, `store.ts` holds the page, frame, and step, `overlay.tsx` takes the keys, and transitions and steps are the board's own drawing.
 
 - It asks for full screen inside the starting press, since the browser grants it only then, and a refusal presents in the window
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page

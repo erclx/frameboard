@@ -13,19 +13,7 @@ Owns the board's left side, being the project header, the page list, the layers 
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being `project-header.tsx` with the way home, the project name, and Hide UI, then the Design, Theme, and Assets tabs, with `page-actions.ts` registering the `page.*` actions. A click on the project name renames it, and its chevron opens Rename, Duplicate, Switch project, Rules turned off from `rules-off.tsx`, and All projects.
-
-| Area          | Behavior                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------- |
-| Pages list    | Searchable, over a per-project divider that opens fit to 4 to 8 rows, a double-click fitting every page       |
-| Page edits    | Add after the current page, rename on a double-click or F2, delete with Delete, and drag through `reorder.ts` |
-| Theme         | `theme/` tags each token Board or Project, per `canon/context/content/themes-and-tokens.md`                   |
-| Layer rows    | Top of the stack first, click selects, Shift-click adds, F2 renames, a drag restacks, eye and lock on hover   |
-| Section rows  | `section-rows.tsx` indents each section's frames under it, and the frames in no section follow                |
-| Element rows  | A glyph per kind read from `GET /api/frames/elements` off the static cascade, so a culled frame keeps them    |
-| Element names | A double-click or F2 writes `data-name`, the only place an element is renamed                                 |
-
-These hold across the rows and the reveal.
+Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/`, and Assets, with `page-actions.ts` registering the `page.*` actions. The project name renames on a click, and its chevron opens the project menu.
 
 - `board/frame-order.ts` holds the section grouping, so the selection chip's count and the Tab step read the order the rows draw
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by

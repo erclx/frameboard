@@ -18,20 +18,7 @@ The rest of the app sits in its own entries:
 
 ### `src/client/board/`
 
-Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
-
-| Feature            | Behavior                                                                                                         |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Frame tool         | Key F places the picked size at the click, or a frame named `frame` at a dragged box, then returns to Move       |
-| Placed out of view | A frame placed partly out of view centers at the current zoom, and an untouched empty page fits its first frames |
-| Play               | The board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claims hide          |
-| Culling            | Frames past one viewport swap to a placeholder once a gesture rests 150 ms, the rest live six per frame          |
-| Loading shell      | `loading.tsx` draws both panels, the real toolbar, and still grey rows, registering no actions                   |
-| Label chips        | A sun while a frame follows the theme, Dark or Light while flipped alone, and a previewed width's chip           |
-| Open-alone link    | Over the right edge on hover or selection in Edit, opening the frame's `/frames/` address in a new tab           |
-| Crowded label      | `label-room.ts` hides a label shorter than the gap above it until hover, selection, or open findings             |
-
-These are the rules a session working on the canvas meets.
+Owns the board screen and canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the view controller. It covers the Frame tool, culling frames past one viewport, the loading shell in `loading.tsx`, and each frame's label with its theme chips, open-alone link, and crowding in `label-room.ts`.
 
 - The layer carries `data-staging` until its last kept frame is live, and a harness reads the layer whose `checkVisibility()` passes, since two `[data-layer]` stand until the drop
 - A page switch keeps the page left behind under a hidden React `Activity` until the new canvas calls `onLive`, so a quick return reveals its frames loaded

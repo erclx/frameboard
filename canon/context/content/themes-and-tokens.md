@@ -13,17 +13,7 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 ### `src/server/look/`
 
-Owns the head spliced into a served frame, the Theme tab's token table, and the static reads of an element's colors and flow that the inspector shows. `starter.ts` creates a project `tokens.css` from the presets in `src/shared/starter-tokens.ts`, refusing `tokens-exist` where any sheet already reaches the project.
-
-| Route                                | Serves                                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `/frameboard/faces/<family>/`        | Each `FACES` face renamed to its plain family, `immutable` under `v<version>/` alone |
-| `/frameboard/tokens.css`             | The `--tokens` sheet when `serve` was given one, else the board's `tokens.css`       |
-| `/frames/<project>/tokens.css`       | The project's sheet, so its relative `url(assets/...)` resolves                      |
-| `GET /api/projects/<project>/tokens` | The token table, one row per property, naming a sheet that fails to parse            |
-| `POST /api/tokens/edit`              | One edit to the `project` sheet or the `board` one, one undo step per landed edit    |
-
-Those routes sit in `src/server/routes/`, which `canon/context/board/server.md` owns, and the splice holds to these rules.
+Owns the head spliced into a served frame, the Theme tab's token table, and the static color and flow reads the inspector shows, served through the face, sheet, and token routes in `src/server/routes/`, which `canon/context/board/server.md` owns. `starter.ts` writes a project `tokens.css`, refusing `tokens-exist` where a sheet reaches it.
 
 - One `<style data-frameboard>` goes first in `head`, importing the faces, the board sheet, the project sheet, then a kit's `assets/kit/kit.css`, so a frame's own stylesheet still wins
 - It lands after a stated `head` start tag, else `html`, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes

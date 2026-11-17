@@ -23,19 +23,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 
 ### `src/server/board/`
 
-Owns reading, watching, and writing the board folder, being `.frameboard/` where a first `serve` ran, a standalone folder holding `board.json` that a verb finds by walking up, or any `--root`. A project is a folder in it, not a repository, a page is a folder in a project, and a frame is one `.html` file in a page.
-
-| Record key                        | Meaning                                                                                          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| A `layout.json` entry             | A frame's box keyed by name, and none reads as unplaced at desktop size past the last placed one |
-| `sections`                        | Named boxes with an order, a frame belonging to the topmost holding its center, via `membersOf`  |
-| `present`                         | The page's `transition`, which an entry may override, each a `name` with `ms` and `direction`    |
-| `hugWidth`, `hugHeight`, `scroll` | False when absent, a server measuring a hugging axis after each write and writing the size       |
-| `widths`                          | Extra widths drawn in a row past the frame at its `y`, a value `widthsOf` cannot read being none |
-| `showDevice`                      | The device `deviceForWidth` picks, a phone from 320, a tablet from 480, and a laptop from 1024   |
-| `project.json` pages and `checks` | The pages in display order and the project's rule settings                                       |
-
-The writers below hold to these rules.
+Owns reading, watching, and writing the board folder: `.frameboard/` where a first `serve` ran, a folder holding `board.json`, or any `--root`. A project is a folder, a page a folder in it, and a frame one `.html` file, each page's `layout.json` holding boxes, sections, a transition, and each frame's hug, scroll, widths, and device keys.
 
 - Each page's `notes.json` sits beside its frames, since writing a note into a frame would shift every element address after it
 - Frame order is stacking order, so a reorder in the layers panel changes what draws on top and leaves positions alone

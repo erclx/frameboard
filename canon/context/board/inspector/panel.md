@@ -13,26 +13,7 @@ Owns the right panel's shell and its frame-level controls, being the tabs, the f
 
 ### `src/client/board/inspector/`
 
-Owns the right panel, under a header of the avatar and the zoom level, and its controls. Every write below goes out as one undo step, and the controls that act on the live frame write nothing to it.
-
-| Control          | Behavior                                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| Tabs             | `tabs.tsx` splits Design, Slides, and Export, and `tab-store.ts` keeps the pick for the page's life alone   |
-| Frame size       | `Frame ⌄` names the matched preset, `Custom`, or `Mixed`, and a pick sets W and H in one write              |
-| Frame fill       | One frame alone writes its `body`'s `background-color` as an element edit, refused where no `body` stands   |
-| Height           | Fixed, Fit, or Scroll through `POST /api/frame/height`, a refusal putting the stored mode back              |
-| Show device      | The device each width picks through `POST /api/frame/device`, No device under 320                           |
-| Preview          | A preset or scrubbed width that writes nothing, a preset pressed while every shown width fits its range     |
-| Linked widths    | Also shows at chips, written whole through `POST /api/frame/widths`, refusing `stale-layout` on a drift     |
-| Slides           | This slide through `POST /api/frame/transition`, and Page's three picks through `POST /api/page/transition` |
-| Export           | Scale, theme, Name, and one line per file, rendering every theme before any file downloads                  |
-| Filmstrip        | 2 to 12 moments that fit the screenshot limit, disabled for a frame that repeats forever                    |
-| Motion           | Play, the time, and a scrub track that move the live page in this tab alone                                 |
-| Phone link       | Open on a phone starts the link through `POST /api/preview` and ends it by token on close                   |
-| Selection colors | Raw rows first, Replace through `POST /api/frames/recolor`, and `Use <token>` on an exact opaque match      |
-| Select           | Every element `uses` names, stating or inheriting the color, never `body`, within one frame alone           |
-
-These hold across the panel's controls.
+Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it.
 
 - An element selected inside a frame shows that frame as one row under the tab strip, and the Frame tool lists its presets and devices there as radio rows
 - `label-tip.tsx` keeps a label's sentence in a hidden node the control names in `aria-describedby`, shown on hover and keyboard focus
