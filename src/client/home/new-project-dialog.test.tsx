@@ -85,6 +85,38 @@ describe('NewProjectDialog', () => {
     expect(screen.getByText(/with the Sketch tokens/)).toBeInTheDocument()
   })
 
+  it('stays open for another try when the add is refused', async () => {
+    const user = userEvent.setup()
+    const sent: string[] = []
+    const calls = createStructure(async (path) => {
+      sent.push(String(path))
+      return Response.json(
+        {
+          ok: false,
+          error: {
+            code: 'unauthorized',
+            message: 'Writes need the board key.',
+          },
+        },
+        { status: 401 },
+      )
+    })
+    render(<NewProjectDialog calls={calls} loadKits={KITS} />)
+
+    await user.click(await screen.findByRole('radio', { name: 'Sketch' }))
+    await user.click(screen.getByRole('button', { name: 'Create project' }))
+
+    await expect.poll(() => sent).toEqual(['/api/project/add'])
+    expect(projectStore.getState().creating).toBe(true)
+    await expect
+      .poll(() =>
+        screen
+          .getByRole('button', { name: 'Create project' })
+          .getAttribute('aria-disabled'),
+      )
+      .toBe('false')
+  })
+
   it('closes on Escape, adding nothing', async () => {
     const user = userEvent.setup()
     const { sent, calls } = server()

@@ -574,13 +574,20 @@ export function useNewProjectAction(leave?: () => void): void {
  * look, then focuses its card and opens its name for renaming. The kit goes
  * in with `replace`, since the new project holds no look of its own and a
  * board sheet would otherwise refuse it. A refused install leaves the project
- * added and says why.
+ * added and says why. A refused add says why and answers false, so a dialog
+ * waiting on it stays open for another try.
  */
 export async function createProject(
   kit: string | null,
   calls: Structure = structure,
-): Promise<void> {
-  const added = await calls.addProject()
+): Promise<boolean> {
+  let added: ProjectRecord
+  try {
+    added = await calls.addProject()
+  } catch (error) {
+    reportRefusal("Couldn't add a project")(error)
+    return false
+  }
   if (kit !== null) {
     await calls
       .installKit(added.name, kit, true)
@@ -588,6 +595,7 @@ export async function createProject(
   }
   focusProject(added.name)
   startProjectRename(added.name)
+  return true
 }
 
 /**

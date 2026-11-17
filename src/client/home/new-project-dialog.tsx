@@ -69,8 +69,9 @@ function Body({
     if (busy) return
     setBusy(true)
     try {
-      await createProject(kit, calls)
-      projectStore.setState({ creating: false })
+      if (await createProject(kit, calls)) {
+        projectStore.setState({ creating: false })
+      }
     } finally {
       setBusy(false)
     }
