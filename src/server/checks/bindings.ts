@@ -23,10 +23,8 @@ export const BINDING_RULES: RuleDoc[] = [
 const finding = findingFor(BINDING_RULES)
 
 /**
- * `binding-target`, one finding per control whose `data-binds` tunes
- * nothing: a value missing its selector or property, a property that is not
- * custom, or a selector matching no element. The frame still renders, so
- * only the tuning breaks, which is why it warns.
+ * `binding-target`, one finding per control whose `data-binds` tunes nothing,
+ * a warning since the frame still renders.
  */
 export function checkBindings(source: FrameSource): Finding[] {
   const path = boardPath(source.root, source.path)

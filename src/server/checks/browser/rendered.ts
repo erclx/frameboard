@@ -36,13 +36,8 @@ export interface CheckRenderedOptions {
 }
 
 /**
- * Runs every browser rule on one frame at its layout size, in light and in
- * dark, and merges the two. A rule tripping in one theme alone names that
- * theme in its message. A missing face is measured in the fallback the board
- * shows rather than refused, since the board shows it too. Finite animations
- * finish before any rule reads, so an entrance is measured at rest. The declaration
- * and scroll-effect rules read no theme, so they run on the first theme's
- * page alone. A rule the project turned off lands no finding.
+ * Runs every browser rule in both themes and merges them, measuring a missing
+ * face in the board's fallback rather than refusing, after animations finish.
  */
 export async function checkRendered(
   browser: Browser,
@@ -61,8 +56,7 @@ export async function checkRendered(
       fonts: 'wait',
     })
     try {
-      // A `wait` open leaves an entrance wherever the load ended, so the
-      // rules would read a frame mid-slide rather than where the board rests.
+      // Finished, since a `wait` open can leave an entrance mid-slide.
       await settleResize(opened.page)
       await opened.page.evaluate(finishAnimations)
       byTheme.set(theme, [

@@ -107,12 +107,8 @@ interface Offender {
 }
 
 /**
- * `outranked`, over two versions of one frame: `before`, the bytes an agent's
- * write replaced, and `after`, the frame as that write left it. It names each
- * element whose style attribute declares, unchanged since `before`, a property
- * a rule the write changed in the frame's own `<style>` blocks also sets, since
- * a normal inline declaration beats every normal rule. Linked and token sheets
- * change through files of their own, so they are left out.
+ * `outranked`, naming each element whose unchanged inline style beats a rule an
+ * agent's write changed in the frame's own `<style>`.
  */
 export function checkOutranked(
   before: FrameSource,

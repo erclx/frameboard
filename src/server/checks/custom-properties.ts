@@ -31,10 +31,8 @@ const finding = findingFor(CUSTOM_PROPERTY_RULES)
 const BARE_VAR = /var\(\s*(--[\w-]+)\s*\)/g
 
 /**
- * The two ways a script writes a custom property by a name it spells out:
- * `setProperty('--name', …)`, and a `--name:` declaration in a string it
- * hands a style attribute or `cssText`. A read such as `getPropertyValue`
- * matches neither, so it still reports.
+ * The two ways a script writes a spelled-out custom property, so a read such
+ * as `getPropertyValue` still reports.
  */
 const SCRIPT_WRITES = [
   /\.setProperty\(\s*(['"`])(--[\w-]+)\1/g,
@@ -48,14 +46,9 @@ interface Use {
 }
 
 /**
- * `unknown-token`, one finding per bare `var()` in the frame's own sheets
- * and style attributes whose name nothing declares. A token sheet's own
- * references are the board's to answer for, so only its declarations count.
- * A name a `<script>` writes counts as declared, read off its text since the
- * check never runs it, so a name the script builds at runtime still reports.
- * A linked sheet's rule matching no element in the frame stays quiet, since a
- * site sheet styles other pages. The frame's own `<style>` keeps reporting,
- * since its theme and state rules match elements no static tree marks.
+ * `unknown-token`, per bare `var()` nothing declares, a script's spelled-out
+ * writes counting as declared. A linked sheet's unmatched rule stays quiet,
+ * since a site sheet styles other pages.
  */
 export function checkUnknownTokens(
   source: FrameSource,

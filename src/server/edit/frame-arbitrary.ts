@@ -2,10 +2,8 @@ import fc from 'fast-check'
 
 import type { SingleChange } from './apply'
 
-// Test-only. Generates frames shaped to reach every guard the writer carries:
-// line endings, entities, every attribute quoting, duplicated and mixed-case
-// names, values ending in `/`, void and raw-text elements, templates, SVG,
-// tables, misnesting, and a leading BOM.
+// Test-only. Generates frames shaped to reach every guard the writer carries,
+// from quoting and entities to misnesting and a leading BOM.
 
 const lineBreak = fc.constantFrom('\n', '\r\n', '', ' ', '\t')
 const textChunk = fc.constantFrom(

@@ -91,15 +91,9 @@ function collided(
 }
 
 /**
- * Edits one element of a frame file and replaces the file through a
- * temporary file and a rename. A file whose bytes do not survive a UTF-8
- * round trip is refused, since decoding would rewrite every invalid byte. An
- * address carrying a hash the file no longer has is found again through
- * `sourceAt`, by the bytes the edit reads, and refused as stale when no source
- * is kept or those bytes changed. The file is read again just before the
- * rename so a write landing meanwhile is refused rather than overwritten. No
- * lock is taken, since an agent's raw write never takes one and the hash is
- * what protects a hand edit.
+ * Edits one element through a temp file and a rename, re-reading just before
+ * the rename so a write landing meanwhile is refused. No lock is taken, since
+ * an agent's raw write never takes one and the hash protects a hand edit.
  */
 export function editFrameFile(
   path: string,
@@ -156,14 +150,9 @@ export type FrameFileEdits =
   | Collided
 
 /**
- * Edits several elements of a frame file as one write, each found again and
- * verified as `editFrameFile` does one, in the order sent through the bytes
- * the one before it left. Any refusal writes nothing, so a batch never lands
- * in part. Naming one element twice is refused, since one undo could not
- * put both spans back, except for a text change beside one style change.
- * That pair answers one span over the whole element, both changes in it,
- * since an undo checks every span against the bytes as they stand and the
- * text's own span no longer reads once the style wrote its start tag.
+ * Edits several elements as one write, all or none. One element named twice is
+ * refused, since one undo could not put both spans back, except a text and a
+ * style change, which answer one span over the whole element.
  */
 export function editFrameFileAll(
   path: string,
@@ -289,14 +278,9 @@ export type FrameFileInsert =
 export type PlaceInserted = (html: string, index: number) => Placed
 
 /**
- * Writes one new element into a frame file the way `editFrameFile` writes an
- * edit, through a temporary file and a rename after reading the file again.
- * A hash the file no longer has is refused as stale with no search, since the
- * gap's indices name nothing once the file moved, which also lands a retried
- * insert at most once. Given `place`, the element is placed out of the flow
- * in the same write. Its span carries the placed bytes and `parent` the start
- * tag a static parent took, so one undo takes the element out after the
- * parent's tag goes back, and a redo finds the gap as it first stood.
+ * Writes one new element as `editFrameFile` writes, refusing a moved hash with
+ * no search, since the gap's indices name nothing once the file moved, so a
+ * retried insert lands at most once.
  */
 export function insertFrameFile(
   path: string,
@@ -373,10 +357,8 @@ export type FrameFileRemoveAll =
   | EditRefused
 
 /**
- * Takes several elements out of a frame file as one write, refused as
- * `removeFrameFile` refuses one. Each goes last in the file first, so the
- * indices ahead of it hold, and one inside another named element goes with
- * that one rather than on its own.
+ * Takes several elements out as one write, last in the file first, so the
+ * indices ahead of each hold.
  */
 export function removeFrameFileAll(
   path: string,
@@ -471,11 +453,8 @@ export type FrameFilePlace =
   | EditRefused
 
 /**
- * Places one element of a frame file at a spot, or puts it back in the flow
- * dropping the sizes `drop` names,
- * written as `moveFrameFile` writes and refused as stale on a hash the file
- * no longer has. `facts` is the static cascade read from the bytes `hash`
- * names, so a parent's position is never read from another version.
+ * Places one element at a spot or back in the flow, `facts` read from the
+ * bytes `hash` names, so a parent's position never comes from another version.
  */
 export function placeFrameFile(
   path: string,
@@ -522,12 +501,8 @@ export type FrameFilePlaceAll =
   | EditRefused
 
 /**
- * Places several elements of a frame file as one write, refused whole as
- * `placeFrameFile` refuses one. They go in file order, so a parent placed too
- * is positioned ahead of its child, which then writes no second span on its
- * tag that would strand the undo. `factsOf` reads the static cascade of the
- * bytes the one before left, so siblings share the parent the first one made
- * relative rather than writing it twice.
+ * Places several elements as one write in file order, so a placed parent comes
+ * first and no second span strands the undo.
  */
 export function placeFrameFileAll(
   path: string,
@@ -574,10 +549,8 @@ export type FrameFileWrap =
   | EditRefused
 
 /**
- * Wraps sibling elements of a frame file in one flow container, written as
- * `moveFrameFile` writes and refused as stale on a hash the file no longer
- * has, since the indices name nothing once the file moved. `facts` is the
- * static cascade read from the bytes `hash` names.
+ * Wraps siblings in one flow container, refused as stale on a moved hash, since
+ * the indices name nothing once the file moved.
  */
 export function wrapFrameFile(
   path: string,
@@ -616,10 +589,8 @@ export type FrameFileRecolor =
   | EditRefused
 
 /**
- * Replaces a raw color with a token across the subtree `root` names, or the
- * frame's body when undefined, written as `placeFrameFile` writes and refused
- * as stale on a hash the file no longer has, so a retried replace lands once.
- * A subtree stating the color nowhere inline writes nothing.
+ * Replaces a raw color with a token across a subtree, refused as stale on a
+ * moved hash, so a retried replace lands once.
  */
 export function recolorFrameFile(
   path: string,

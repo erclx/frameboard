@@ -11,14 +11,9 @@ export interface UnloadedVideo {
 }
 
 /**
- * Waits, within `timeoutMs`, until every `<video>` in the frame holds a
- * picture, and holds each one still on it, so two captures of one frame match.
- * A video with a poster that loads rests on the poster, and any other on its
- * first frame, paused. Autoplay is dropped and a `preload="none"` video is
- * made to load in the loaded page, never in the file.
- *
- * Returns the videos with no picture when the time ran out and never refuses,
- * since a clip the capture browser cannot decode is no fault of the frame.
+ * Holds every `<video>` still on its poster or first frame, so two captures
+ * match, returning rather than refusing the ones with no picture, since an
+ * undecodable clip is no fault of the frame.
  */
 export async function settleVideos(
   page: Page,
@@ -40,8 +35,7 @@ async function waitForVideos(timeoutMs: number): Promise<UnloadedVideo[]> {
       element.getAttribute('src') ||
       element.querySelector('source[src]')?.getAttribute('src') ||
       ''
-    // A video naming no file and no poster requests nothing, so there is
-    // nothing to wait on.
+    // No file and no poster requests nothing to wait on.
     if (!src && !element.getAttribute('poster')) continue
     videos.push({ index: own, video: element, src })
   }
@@ -57,9 +51,7 @@ async function waitForVideos(timeoutMs: number): Promise<UnloadedVideo[]> {
     )
   }
 
-  // Resolves once the video shows its first frame, paused there. The `error`
-  // listener captures, since a failed `<source>` child fires on itself and
-  // never on the video.
+  // `error` captures, since a failed `<source>` fires on itself, never the video.
   const firstFrame = (video: HTMLVideoElement): Promise<'ok' | 'error'> =>
     new Promise((done) => {
       const events = ['loadeddata', 'seeked', 'canplay'] as const
@@ -90,8 +82,7 @@ async function waitForVideos(timeoutMs: number): Promise<UnloadedVideo[]> {
       video.autoplay = false
       video.pause()
       read()
-      // A reload reads as holding no source until it picks one, so the read
-      // above comes first and the events alone answer after it.
+      // Read before the reload, which holds no source until it picks one.
       if (video.preload === 'none') {
         video.preload = 'auto'
         video.load()

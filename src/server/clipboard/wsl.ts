@@ -11,12 +11,8 @@ const CLIP_FOLDER = 'frameboard-clip'
 const WINDOWS_RESERVED = /[<>:"/\\|?*]/g
 
 /**
- * The Windows clipboard reached from WSL. The images land in Windows' temp
- * folder, since a file drop list names Windows paths and a pasting app reads
- * the files after the copy returns. Each copy clears the last one's folder,
- * the only time a pasted list is known to be done with. Copies run one at a
- * time, since a copy clearing the folder while another is still setting the
- * clipboard deletes the files that copy is about to name.
+ * The Windows clipboard from WSL, images in Windows' temp folder, which each
+ * copy clears, so copies run one at a time to keep a pending copy's files.
  */
 export function wslClipboard(run: RunCommand): ClipboardFiles {
   // Settles when the last copy does, either way, so it never rejects.

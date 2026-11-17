@@ -69,10 +69,7 @@ export function frameFrom(target: FrameTarget, html: string): FrameSource {
   const path = framePath(target)
   const pageDir = dirname(path)
   const projectDir = dirname(pageDir)
-  // As the edit writer's parseFrame does in src/server/edit/address.ts: a
-  // browser drops a leading BOM before the tokenizer, where parse5 would read
-  // it as text and imply the wrappers. A space is ignored alike and keeps
-  // every offset.
+  // A BOM becomes a space, as `parseFrame` does, so parse5 implies no wrappers.
   const parseErrors: ParseError[] = []
   const document = parse(html.replace(/^﻿/, ' '), {
     treeAdapter: adapter,
@@ -200,12 +197,8 @@ export interface ParsedSheet {
 }
 
 /**
- * Parses `css` past every break postcss refuses, so a rule reads every
- * declaration a browser keeps. An unknown word, such as a declaration
- * missing its colon, is blanked out to its `;` or `}`, as a browser drops
- * that one declaration, with newlines kept so every offset holds. Any other
- * break, such as an unclosed block or string, cuts the sheet there, and the
- * cut's own leftovers are not breaks in the file, so none is recorded.
+ * Parses `css` past every postcss break, blanking an unknown word as a browser
+ * drops that declaration, offsets kept, and cutting the sheet at any other break.
  */
 export function parseSheet(css: string): ParsedSheet {
   let text = css

@@ -150,8 +150,7 @@ export function wrapElements(
     .map((range) => `${inner}${html.slice(range?.[0], range?.[1])}`)
     .join('')}${indent}</div>`
 
-  // Later members leave with the whitespace before them, from the end back,
-  // so each range still names the bytes it was read from.
+  // From the end back, so each range still names the bytes it was read from.
   let wrapped = html
   for (const range of ranges.slice(1).toReversed()) {
     if (!range) continue

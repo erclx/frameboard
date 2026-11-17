@@ -40,13 +40,8 @@ interface Entry {
 }
 
 /**
- * The home view's frame captures, one per frame and theme under
- * `.run/thumbnails/<project>/<page>/<frame>.<theme>.png`. A stamp names the
- * server run, how often the frame changed, and its size, so a capture of a
- * changed or resized frame, or one a previous server served, is never
- * answered as current. A failed render is remembered against its stamp, so a
- * frame refusing `font-missing`, or a board with no headless shell, costs one
- * render until the frame changes.
+ * Home's frame captures, stamped by server run, change count, and size, so a
+ * stale capture is never current, and a failed render costs one try per stamp.
  */
 export function createThumbnailStore({
   root,

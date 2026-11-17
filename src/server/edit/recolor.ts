@@ -35,15 +35,9 @@ const COLOR_PROPERTIES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Writes the token in place of every inline declaration of `from` on the
- * element `root` names and its descendants, or on the frame's `body` and its
- * descendants when `root` is undefined. Only the color part of a `border` or
- * `background` shorthand changes, a value below 100 percent keeps its
- * percent as a `color-mix()` over the token, and a value a `<style>` rule
- * sets is never touched. The output is parsed again and refused as
- * `verify-failed` unless each changed element differs only in its style, by
- * exactly the swap, so a write never lands in part. An empty `spans` means
- * nothing in the subtree states the color inline.
+ * Swaps the token in for every inline `from` in a subtree, keeping alpha as a
+ * `color-mix()` and never touching a `<style>` rule, refusing `verify-failed`
+ * unless only the styles changed.
  */
 export function recolorElements(
   source: string,
@@ -165,10 +159,8 @@ function replaceParts(
 }
 
 /**
- * Whether the output's tree is the input's with each changed element's style
- * swapped and nothing else, its decoded style being exactly the swap of the
- * one it had. The changed styles are copied across before the trees are
- * compared, so the comparison covers every other node.
+ * Whether only the changed styles moved, each exactly the swap, copied across
+ * so the comparison covers every other node.
  */
 function changesOnlyStyles(
   before: ReturnType<typeof parseFrame>,

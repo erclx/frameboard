@@ -106,16 +106,9 @@ function reanchored(
 }
 
 /**
- * Places the element at `index` at a pixel spot as `position: absolute` with
- * `left` and `top`, or puts it back in the flow when `spot` is null, which
- * drops `left`, `top`, and the sizes `drop` names, and drops `position` from
- * the style attribute, or writes `position: static` where only a rule places
- * it, since dropping nothing would leave it placed. A
- * static parent other than `body` takes `position: relative` first, so the
- * spot counts from it, and is refused as `reanchors-descendant` when another
- * absolute element under it anchors above it now. `facts` is the static
- * cascade's read by the same index. Each tag is written by `applyEdit`,
- * which verifies that only that element changed.
+ * Places an element absolutely, or back in the flow, writing `position: static`
+ * where only a rule places it. A static parent becomes relative, refused when
+ * that would reanchor another absolute descendant.
  */
 export function placeElement(
   source: string,

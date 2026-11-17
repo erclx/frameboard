@@ -136,10 +136,8 @@ export interface Reservation {
 }
 
 /**
- * Reserves every frame named as one set, each a claim carrying its box and
- * the set's id, in one write. A frame another session holds live refuses
- * `frame-claimed` before any is written, and the session's own claim on a
- * named frame is replaced.
+ * Reserves the frames as one set in one write, refusing all on another live
+ * session's claim and replacing the session's own.
  */
 export async function reserve(
   root: string,

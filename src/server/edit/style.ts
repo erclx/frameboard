@@ -1,10 +1,8 @@
 import { shorthandPart } from '@/server/checks/cascade'
 
 /**
- * The longhands a shorthand write drops, so a later longhand in the attribute
- * does not keep overriding the value just set. A longhand write leaves its
- * shorthand alone, since the longhand comes later and already wins, except
- * where `PART_SHORTHANDS` rewrites the shorthand's own part instead.
+ * The longhands a shorthand write drops, so a later one cannot keep overriding
+ * the value just set.
  */
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left'] as const
 const BORDER_PARTS = ['color', 'style', 'width'] as const
@@ -63,12 +61,8 @@ function referenceEnd(style: string, at: number): number | undefined {
 }
 
 /**
- * Splits a raw, still-encoded style value at each semicolon outside
- * parentheses, quotes, and comments, keeping every segment's own spacing so
- * an untouched one is written back as it was. A character reference's own
- * semicolon never splits, a quote written as one is still a quote to CSS once
- * decoded, and a backslash escapes the character after it, so `'a\'` leaves
- * the quote open.
+ * Splits a raw style at top-level semicolons, keeping each segment's spacing,
+ * never at a character reference's own `;`.
  */
 function declarations(style: string): Declarations {
   const segments: string[] = []
@@ -155,13 +149,8 @@ export type DeclarationResult =
   | { readonly ok: false }
 
 /**
- * Sets one declaration in a raw style value, or drops it on an empty value.
- * The first declaration of the property is replaced in place and any later one
- * dropped, so nothing further in the attribute overrides the edit, and a
- * shorthand also drops its longhands. A paint longhand over a shorthand
- * holding its part rewrites that part instead. The value arrives already escaped for
- * the attribute. An empty style means none is left. A style ending inside an
- * open quote or comment refuses, since an appended declaration would land in it.
+ * Sets or drops one declaration, dropping later ones so nothing overrides the
+ * edit, and refusing a style ending inside an open quote or comment.
  */
 export function setDeclaration(
   style: string,
@@ -188,8 +177,7 @@ export function setDeclaration(
   if (rewritten !== null) return { ok: true, style: rewritten }
 
   if (!segments.some((segment) => propertyOf(segment) === property)) {
-    // Drop empty segments rather than strip trailing `;` characters, since an
-    // entity's own `;` ends a value such as `&quot;A&quot;`.
+    // Drops empty segments, since an entity's own `;` can end a value.
     const kept = segments
       .filter((segment) => segment.trim() !== '')
       .join(';')
@@ -212,13 +200,8 @@ export function setDeclaration(
 }
 
 /**
- * The segments with `value` in place of the part of the last shorthand that
- * sets `property`, so a paint edit over `border: 1px solid var(--primary)`
- * leaves no token behind it as dead text. A declaration of the property ahead
- * of the shorthand is already overridden by it, so it drops. Null when the
- * property has no such shorthand, a later declaration sets the part on any
- * side and would keep winning there, its value holds no such part, or a
- * comment sits in it.
+ * The segments with `value` in the last shorthand's part, so a paint edit
+ * leaves no dead token behind, null when a later declaration would still win.
  */
 function withShorthandPart(
   segments: readonly string[],
@@ -269,11 +252,8 @@ function setsPart(declared: string, property: string): boolean {
 }
 
 /**
- * Rewrites each declaration's value in a raw style through `rewrite`, which
- * takes the property and the value with its spacing and answers the value to
- * keep, so every byte it leaves alone is written back as it was. A
- * declaration carrying a comment is kept as written, since its `:` may sit
- * inside the comment. Null for a style ending inside an open quote or comment.
+ * Rewrites each declaration's value, keeping one with a comment as written,
+ * since its `:` may sit inside the comment.
  */
 export function rewriteValues(
   style: string,

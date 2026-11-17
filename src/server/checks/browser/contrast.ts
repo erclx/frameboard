@@ -76,11 +76,8 @@ function formatRatio(ratio: number): string {
   return String(Math.round(ratio * 100) / 100)
 }
 
-// Runs in the page, so it carries everything it reads. It picks text
-// elements and counts their index the way `font-size.ts` does, so `inspect`
-// and `edit` reach the element named. Colors convert to sRGB by painting a
-// canvas pixel, which reads every syntax the browser does. Text the reader
-// cannot measure against one solid color is left out rather than guessed.
+// Runs in the page, counting as `font-size.ts` does, converting colors through
+// a canvas pixel, and leaving out text with no single solid backdrop.
 function readContrasts(): MeasuredText[] {
   type Rgba = [number, number, number, number]
   const notText = new Set([
@@ -176,8 +173,7 @@ function readContrasts(): MeasuredText[] {
   const canvasColor = toRgba(getComputedStyle(probe).backgroundColor)
   probe.remove()
 
-  // The root's background propagates to the canvas, and body's does when
-  // the root's is transparent, so text below body's box still sits on it.
+  // The root's or else body's background propagates, so text below body still sits on it.
   const html = document.documentElement
   const htmlStyle = getComputedStyle(html)
   const body = document.body
@@ -199,8 +195,7 @@ function readContrasts(): MeasuredText[] {
         : []
     })
 
-  // A hit test leaves out an element with pointer-events: none, which a
-  // background layer often sets, so every element takes hits while it runs.
+  // Every element takes hits, since a background layer often sets pointer-events none.
   const hits = document.createElement('style')
   hits.textContent = '* { pointer-events: auto !important; }'
   document.head.append(hits)

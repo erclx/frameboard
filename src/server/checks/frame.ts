@@ -85,11 +85,8 @@ export function readProjectContext(
 }
 
 /**
- * The project's `checks` config, read by hand rather than through the
- * project record's schema, which the hook cannot afford to load. A file that
- * does not read, or a key of the wrong type, leaves that rule off, and an
- * `off` that is not a list of ids turns nothing off. The server's browser
- * checker reads it too, for `minFontSize`, `minContrast`, and `off`.
+ * The project's `checks` config, read by hand since the hook cannot afford the
+ * schema, a bad key leaving its rule off.
  */
 export function readConfig(root: string, project: string): ProjectChecks {
   let parsed: unknown

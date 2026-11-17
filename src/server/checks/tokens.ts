@@ -20,11 +20,8 @@ export interface TokenSheetPaths {
 }
 
 /**
- * Where a project's token sheets sit. The board sheet is the one `serve
- * --tokens` recorded in the address file, else the board folder's own, and
- * `tokens` stands in for the address file where the caller already knows it.
- * The address file is read with a plain `JSON.parse` rather than its schema,
- * which the write hook cannot afford to load.
+ * Where a project's token sheets sit, the address file read by plain
+ * `JSON.parse`, since the write hook cannot afford its schema.
  */
 export function tokenSheetPaths(
   root: string,

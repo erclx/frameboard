@@ -32,10 +32,8 @@ export function escapeText(value: string): string {
 }
 
 /**
- * Replaces the text of an element holding text alone. The source between its
- * tags must be exactly its one text node, or nothing, since misnested markup
- * such as `<b>1<p>2</b>` leaves the element's end tag past markup the tree
- * builder gave to another element.
+ * Replaces a text-only element's text, refusing unless its source is exactly
+ * one text node, since misnesting can put its end tag past another's markup.
  */
 export function setText(
   source: string,
