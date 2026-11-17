@@ -1,0 +1,5 @@
+# Code roots every Layout section must name, the audit's default made explicit.
+roots = ["src"]
+
+# Entries under these prefixes fail the gate on a shape break.
+gated = ["canon/context/"]
