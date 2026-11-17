@@ -1,3 +1,4 @@
 {
-  "painted": ["src/client/**/*.ts"]
+  "painted": ["src/client/**/*.ts"],
+  "unpainted": ["src/client/**/fixtures.ts", "src/client/**/*-harness.tsx"]
 }
