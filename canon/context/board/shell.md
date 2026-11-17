@@ -20,34 +20,24 @@ The rest of the app sits in its own entries:
 
 Owns the board screen and its canvas, with `mode.ts` holding Edit, Play, the tool, and Hide UI, and `view.ts` the canvas view controller the zoom controls call. Selection on the canvas is described in `canon/context/board/hand-actions.md`.
 
-- The Frame tool, key F, places the size picked from its list at the click, named for it, or draws a frame named `frame` at a dragged box, then selects it and returns to Move, opening no name field
-- A frame placed partly out of view moves the view to center it at the current zoom
-- An empty page nobody has panned or zoomed fits its first frames when they arrive partly out of view, on a return as well, and a press on the guide card counts as no move
-- In Play the board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claim outlines hide
-- Frames beyond one viewport of the view swap their iframe for a placeholder once a gesture rests 150 ms
-  - The kept frames come live six per animation frame, nearest the view center first, and the layer carries `data-staging` until the last one is
-  - A page switch keeps the page left behind under a hidden React `Activity` until the new canvas calls `onLive`, so its iframes tear down after the click, and a quick return reveals them loaded
-  - `screen.tsx` holds one page at most and appends a new canvas after the held one, since moving an iframe's node reloads it
-  - Until the drop the document holds two `[data-canvas]` and two `[data-layer]`, the hidden one possibly first, so a harness reads the layer whose `checkVisibility()` passes
+| Feature            | Behavior                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Frame tool         | Key F places the picked size at the click, or a frame named `frame` at a dragged box, then returns to Move       |
+| Placed out of view | A frame placed partly out of view centers at the current zoom, and an untouched empty page fits its first frames |
+| Play               | The board keeps the wheel, pinch, and drag over every frame, nothing selects, and notes and claims hide          |
+| Culling            | Frames past one viewport swap to a placeholder once a gesture rests 150 ms, the rest live six per frame          |
+| Loading shell      | `loading.tsx` draws both panels, the real toolbar, and still grey rows, registering no actions                   |
+| Label chips        | A sun while a frame follows the theme, Dark or Light while flipped alone, and a previewed width's chip           |
+| Open-alone link    | Over the right edge on hover or selection in Edit, opening the frame's `/frames/` address in a new tab           |
+| Crowded label      | `label-room.ts` hides a label shorter than the gap above it until hover, selection, or open findings             |
 
-**Loading shell**
+These are the rules a session working on the canvas meets.
 
-Until the first board arrives, `app.tsx` routes a board page to `loading.tsx` rather than to `screen.tsx`.
-
-- The shell draws both panels at the widths `panels.ts` remembers, the project name from the route, the real toolbar, and a visible Connecting to the board status
-- Grey blocks stand only for the page rows, the layer rows, the inspector's rows, and one frame on the canvas, and none of them moves
-- It registers none of the board's actions, so the tools and the panels' controls read disabled while the theme toggle stays live
-- A remembered width or Hide UI read differently in the shell jumps the page on arrival, so both screens read `panels.ts` and `mode.ts`
-
-A frame's label carries a sun on hover while the frame follows the board's theme, and a Dark or Light chip while it is flipped alone. A click on either flips it. Under a width preview the label adds a plain chip naming that width.
-
-In Edit, hover or selection shows an open-alone link over the frame's right edge, opening the frame's `/frames/` address in a new tab. The label shrinks to clear it while it shows.
-
-- A double-click in the label strip opens a rename field over the label through F2's gates, so a read-only tab opens nothing, while F2 itself still opens the inspector's name
-- `LabelRename` draws that field in the notes layer, since the hit layer covers the frames' layer and would take a click meant to place the caret
-- It skips a point over a `[data-label-control]`, which clicks on release, and anywhere else a double-click picks inside the frame
-
-`label-room.ts` measures the board gap above each frame, and the zoom handler marks the frame crowded when that gap is shorter than its label. A crowded label hides until hover, selection, or open findings, and a findings dot stays on its top left.
+- The layer carries `data-staging` until its last kept frame is live, and a harness reads the layer whose `checkVisibility()` passes, since two `[data-layer]` stand until the drop
+- A page switch keeps the page left behind under a hidden React `Activity` until the new canvas calls `onLive`, so a quick return reveals its frames loaded
+- `screen.tsx` holds one page at most and appends a new canvas after the held one, since moving an iframe's node reloads it
+- The loading shell and the board both read `panels.ts` and `mode.ts`, since a width or Hide UI read differently jumps the page on arrival
+- A double-click in the label strip opens `LabelRename` in the notes layer, since the hit layer would take the caret's click, and it skips a `[data-label-control]`
 
 ### `src/client/board/widths/`
 
@@ -98,21 +88,13 @@ Owns find, being the panel Cmd+F puts in place of the left panel's tabs under th
 
 ### `src/client/board/chrome/`
 
-Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu.
+Owns what floats over the canvas, being the toolbar, the Play banner, the Hide UI pills, the zoom control, and the avatar menu. The toolbar floats bottom center on the canvas column and publishes its top edge as `--toast-lift`, so the toast stack sits above it and layers over a dialog's overlay.
 
-- The toolbar floats bottom center on the canvas column with Move, Frame, Text, Shape, Note, Undo, Redo, Zoom to fit, the theme toggle, the Edit and Play toggle, and Present
-- The Move button shows Hand while Hand is on, and the Frame button Frame or Section, whichever was chosen last, and each caret opens both, keys V and H, and F and Shift+S
-- The Shape button places the last shape chosen and shows its icon, and its caret opens Rectangle, Ellipse, and Divider, keys R, O, and L
+- The Move, Frame, and Shape buttons show the tool chosen last, Hand, Section, or a shape, and each caret opens its tools, keys V and H, F and Shift+S, and R, O, and L
 - The Hide UI pill renders the header's own `ProjectTitle` between the way home and Show UI, so the two project menus never drift
 - A primary drag on the canvas pans under the Hand tool, or under any tool while Space is held outside a field, a button, a menu, or a dialog
-
-The toolbar folds in stages to fit its column.
-
-- `toolbar-stage.ts` picks one of five stages from the column's width, never the window's, since a dragged panel narrows the column at any window size
-- Below 601 px of room Undo, Redo, Zoom to fit, and the theme toggle fold into More, and `more-menu.tsx` takes what the bar no longer draws, each row running the action the bar's button runs
-- The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, and the clip test in `toolbar.test.tsx` catches a width that stopped fitting
-
-The toolbar publishes its measured top edge as `--toast-lift` while mounted, so the toast stack sits above it, and a screen with no toolbar keeps the stack in the corner. The stack layers over a dialog's overlay, so a toast raised inside a dialog takes its clicks, and menus, popovers, and tooltips layer over the stack.
+- `toolbar-stage.ts` picks one of five stages from the column's width, never the window's, and below 601 px Undo, Redo, Zoom to fit, and the theme toggle fold into `more-menu.tsx`
+- The stages hold widths measured against the bundled Geist faces, so a new control or a face swap means re-measuring, which the clip test in `toolbar.test.tsx` catches
 
 ### `src/client/`
 
