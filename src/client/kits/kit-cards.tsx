@@ -1,5 +1,5 @@
 import { Square } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 
 import { cn } from '@/client/lib/cn'
 import { useShownTheme } from '@/client/theme/store'
@@ -145,17 +145,26 @@ function Card({
 /** The kit's sample frame at its own size, scaled down to the preview's height and centered. */
 function Preview({ kit }: { kit: KitRecord }) {
   const theme = useShownTheme()
+  const [loaded, setLoaded] = useState<string | null>(null)
   if (!kit.preview) return <span className="block h-full bg-muted" />
   const { frame, width, height } = kit.preview
   const scale = PREVIEW_HEIGHT / height
+  const src = `/kits/${encodeURIComponent(kit.name)}/kit/${encodeURIComponent(frame)}.html?theme=${theme}`
   return (
-    <span className="relative block h-full">
+    <span
+      className={cn(
+        'relative block h-full',
+        loaded !== src && 'animate-pulse bg-muted',
+      )}
+    >
       <iframe
         title={`${kit.title} sample`}
-        src={`/kits/${encodeURIComponent(kit.name)}/kit/${encodeURIComponent(frame)}.html?theme=${theme}`}
+        src={src}
         tabIndex={-1}
         loading="lazy"
-        className="pointer-events-none absolute top-0 left-1/2 origin-top border-0"
+        onLoad={() => setLoaded(src)}
+        data-loaded={loaded === src ? '' : undefined}
+        className="pointer-events-none absolute top-0 left-1/2 origin-top border-0 not-data-loaded:opacity-0"
         style={{
           width,
           height,
