@@ -13,67 +13,52 @@ Owns how the board runs what a frame draws over time, being the motion hold, Pla
 
 ### `src/client/board/motion/`
 
-Owns the hold, a frame's timeline driven by the board in this tab alone. The inspector's Motion section sets it, and the label shows a Held chip naming the moment, whose click ends it.
+Owns the hold, a frame's timeline driven by the board in this tab alone, set from the inspector's Motion section and shown as a Held chip on the label, whose click ends it. A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded`.
 
 - `store.ts` keeps each held or playing frame's moment by ref, and nothing in it reaches the server, the history, or another tab
 - `seek.ts` calls the seek functions in `src/shared/motion.ts` on the iframe's own window, so the hold lands on the frame's clock and never the board's
-- A drag keeps only the latest moment while a seek runs, and play seeks every animation frame. A finite timeline stops held at its end, and one that repeats forever loops over one iteration.
+- A drag keeps only the latest moment while a seek runs, and a finite timeline stops held at its end while one that repeats forever loops over one iteration
 - A hold ends on entering Play and when the frame leaves the canvas on a page switch, and an agent's write reloading the frame lands it on the same moment
 - Ending a hold plays CSS animations on from where they stand, and reloads a `__hf` or `__timelines` page, since neither contract names a play
 
-A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded` rather than a read every frame.
-
 ### `src/client/board/play/`
 
-Owns Play's own state and surfaces, being the frame entered, the shield, and what the banner can say about a page's reach.
+Owns Play's own state and surfaces, being the frame entered, the shield, the drawn controls that run in the entered frame alone, and what the banner says about a page's reach. A layers row in Play reveals its frame and enters it.
 
-- `entered.ts` holds the one entered frame by ref, cleared on leaving Play, on a page switch, and when the frame stops drawing a live page
-- `shield.tsx` sits under the frames' layer, so the wheel and a drag over any other frame reach `d3-zoom`. A click enters the frame `frameAt` finds and a click on empty canvas leaves.
+| Piece          | Role                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| `entered.ts`   | Holds the one entered frame, cleared on leaving Play, a page switch, or the frame losing its live page   |
+| `shield.tsx`   | Sits under the frames' layer, a click entering the frame `frameAt` finds and one on empty canvas leaving |
+| `controls.ts`  | Listens for `input` on the entered document, setting a moved control's property inline on its target     |
+| `keep-bar.tsx` | Draws inside the frame's bottom right once a control moves, and Keep values writes through `keepEdits`   |
+
+The traps below sit under those pieces.
+
 - d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
-- A layers row in Play reveals its frame and enters it
-
-Drawn controls run in the entered frame alone, through `controls.ts` and `keep-bar.tsx`.
-
-- `controls.ts` listens for `input` on the entered frame's document from the board, so the frame holds no script and gains no element, and a moved control sets its custom property inline on its target
-  - It binds again on every load of the entered frame's iframe, since a frame can be entered before its page draws and a reload is a new document
-- Leaving the frame, a page switch, or leaving Play puts each moved control and property back to the file's values, so Edit never shows a value the file does not hold
-- `keep-bar.tsx` draws in the notes layer inside the frame's bottom right corner once a control moves
-- Keep values sends `keepEdits` from `src/shared/bindings.ts` through `writeElements`, so one undo puts the file back
-- A view-only tab tunes live and its bar offers Reset alone
+- `controls.ts` binds again on every load of the entered iframe, since a frame can be entered before its page draws and a reload is a new document
+- Leaving the frame, a page switch, or leaving Play puts each moved control back to the file's values, so Edit never shows a value the file does not hold
+- Keep values is one `writeElements` call, so one undo puts the file back, and a view-only tab tunes live with a bar offering Reset alone
 
 ### `src/client/board/present/`
 
-Owns present mode, which shows a page's frames one at a time over the whole window on black, through the browser's Fullscreen API. Each frame scales to fit, never past twice its size. It is a view and never a write, so it records no undo step.
+Owns present mode, which shows a page's frames one at a time over the whole window on black through the Fullscreen API, each scaled to fit and never past twice its size. `present.start` runs on Shift+P, the Present button, or the palette, and present is a view that records no undo step.
 
-- `present.start`, on Shift+P, the Present button, or the palette, opens on the first selected frame in reading order, or the next shown one when that is hidden
-- It asks for full screen inside that press, since the browser grants it only then, and a refusal presents in the window
-- `order.ts` reads rows top to bottom, each left to right. A frame joins the open row while its top sits above the middle of that row's first frame.
+| Piece                | Role                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `order.ts`           | Reads rows top to bottom, each left to right, a frame joining a row while its top clears its middle |
+| `store.ts`           | Holds the page, frame, and step by ref, rereading the order so an agent's change joins it           |
+| `bar.tsx`            | Back, the count, the name in a fixed slot, next, and leave, hidden after two seconds still          |
+| `overlay.tsx`        | Takes keys in the capture phase on both windows and makes the board behind it inert                 |
+| `transition.tsx`     | Keeps the leaving slide mounted under the arriving one, each a `data-present-layer`                 |
+| `travel.ts`          | Resolves a frame's transition over its page's, going back taking back the one a slide arrived with  |
+| `own-transitions.ts` | Fetches a project's own keyframes when presenting starts and when its names change                  |
+| `steps.ts`           | Reads `data-step`, closing gaps and joining with-previous steps, and hides the unrevealed           |
+
+The rules below are what the pieces leave unsaid.
+
+- It asks for full screen inside the starting press, since the browser grants it only then, and a refusal presents in the window
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
-- `store.ts` holds the page and frame by ref and rereads the order from the live page, so an agent's added or hidden frame joins or leaves it and the frame on screen stays
-
-The overlay and its bar carry the stepping, the keys, and the way back.
-
-- `bar.tsx` draws back, the count, the name in a fixed 150px slot, next, and leave, shown on a pointer move and hidden after two seconds still
-- The arrows and Space step, stopping on the last frame, and Esc, the bar's leave, or leaving full screen returns to the board with that frame selected
-- Leaving returns focus to what opened presenting, or to the Present button once that is gone
-- `overlay.tsx` takes keys in the capture phase on the board's window and the frame's own, and makes the board behind it inert, so focus and keys never reach the board
-- It puts the drawn controls' hiding style, marked `data-frameboard`, into each slide's document on every load, so a slide shows the design alone
-
-A transition between slides and the steps inside one are the board's own drawing, and neither writes a frame's file.
-
-- `transition.tsx` keeps the leaving slide mounted under the arriving one for the transition's length, each a `data-present-layer`, and the leaving layer takes no pointer
-- `travel.ts` resolves a frame's own transition over its page's. Going back, the leaving slide takes back the one it arrived with, and reduced motion makes every one a cut.
-
-A project's own transition plays keyframes the server read out of its file, never the file.
-
-- `own-transitions.ts` fetches them when presenting starts and when the project record's names change, and a step taken before they arrive cuts
-- `ownKeyframesName` names each pair with its project, and a transition holding no `leave` keeps its leaving slide still
-
-Steps sit inside one slide.
-
-- `steps.ts` reads `data-step` off the presented document, closes gaps in the numbers, joins a with-previous or after-previous step to the one before, and hides the unrevealed through one injected style
-- `store.ts` holds the step shown, so a press reveals the next and moves a slide only once none is left. A slide arrived at going back opens on every step.
-- `bar.tsx` draws the steps in one slot sized for six dots on every slide, empty and unnamed on a slide with none, so the bar keeps its width
-- Past six steps the slot shows `N/M` as text, and the count reserves the width of the deck's last number
-- Only present mode hides a step, so Edit, Play, a capture, and an export show every one.
+- Leaving returns focus to what opened presenting, or to the Present button once that is gone, with the frame shown selected
+- Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
+- Only present mode hides a step, so Edit, Play, a capture, and an export show every one

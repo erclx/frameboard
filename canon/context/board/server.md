@@ -17,32 +17,23 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 ### `src/server/live/`
 
-Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection the open board reports. A reload carries a frame's content hash only when its own file was the batch's sole cause for it, which a tab reads to keep a page already showing those bytes.
+Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection `selection.ts` keeps in memory from the last writing tab, forgotten once that tab's socket closes. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page already showing those bytes.
 
-- A frame's own `.html` or a temp file such as `hero.html.swap` reloads that frame, unless the board's own rename only moved it, and any other page-folder file reloads the page
-- A file under `assets/` reloads every frame in the project, and `layout.json` and `notes.json` reload nothing
+- A frame's own `.html` or a temp file such as `hero.html.swap` reloads that frame, any other page file the page, and `assets/` the whole project, while `layout.json` and `notes.json` reload nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
-- The server checks every frame at start and rechecks each batch's frames
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
-
-`hug.ts` measures a hugging frame its own file reloaded or `frame add` placed before the board is sent, and one an asset or token sheet reloaded after it, writing the size under the layout lock with no undo step. At start only a frame written with no server running holds the first board. Its own batch reloads nothing, so nothing measures twice.
-
-- A frame placed while a batch measured is in that batch's rescan, so the batch measures it once more before sending the board
-- A size whose frame file changed since the scan it was measured from is dropped, since that write's own batch measures it again
-
-`selection.ts` keeps the last selection a writing tab reported, in memory alone, and forgets it once the socket of the tab that sent it closes, which the tab's hello names by id.
+- `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board is sent for a frame its own write reloaded and after it for an asset or sheet reload
+- A frame placed while a batch measured is measured once more in that batch's rescan, and a size whose file changed since its scan is dropped for that write's own batch
 
 ### `src/server/claims/`
 
-Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together.
+Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together. `land.ts` runs at start and ahead of each batch's scan, writing a reserved frame's layout entry at the claim's box once its file exists and dropping the box.
 
-- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`, and a reservation adds the `box` it lands in and its `set`
+- `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`, and a reservation adds its `box` and `set`
 - A renewal keeps `claimedAt`, `box`, and `set`, moves `expiresAt` for every live claim in the set, and stamps `drawingAt` on a reserved frame
-- A batch naming the claims file sends `claims` alone, with no rescan or browser check
-- A timer armed at start and on every change rebroadcasts at the soonest expiry
+- A batch naming the claims file sends `claims` alone, with no rescan or browser check, and a timer rebroadcasts at the soonest expiry
 - A file that does not parse reads as no claims on the board, and `editing` refuses it as `claims-invalid` rather than overwrite it
-
-`land.ts` runs at start and ahead of each batch's scan. Once a reserved frame's file exists it writes the layout entry at the claim's box and drops the box, so nothing writes `layout.json` for a frame with no file. `POST /api/claims/release` drops a reservation whichever session holds it, behind `requireWriter`, and refuses a claim with no box.
+- `POST /api/claims/release` drops a reservation whichever session holds it, behind `requireWriter`, and refuses a claim with no box
 
 ### `src/server/access/`
 
@@ -56,41 +47,34 @@ Owns who may write, apart from the route modules.
 
 Owns the HTTP route modules `app.ts` mounts, one per surface. Frames load same-origin and unsandboxed, since element selection and the inspector work inside a frame's DOM, and the board key keeps other pages from writing.
 
-- `/frames/<project>/<page>/<file>` serves a page folder and `/frames/<project>/assets/<path>` the assets, so relative links resolve unrewritten, and `?at=<hash>` a replaced frame version
-  - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is always served whole since its head is spliced in memory
-  - A non-frame file served whole carries a weak `ETag` of size and `mtimeNs` under `no-cache`, and a match answers 304, so a page switch resends no unchanged bytes
-  - A frame, a `?at=` version, a 206, and a 416 stay `no-store`, and nothing under `/frames/` takes a `max-age`, since an asset edit reloads every frame and the reload must see it
-- `assets.ts` answers `GET /api/projects/:project/assets` with the listing and `POST` with a `multipart/form-data` drop in `files`, behind `requireWriter` and a 64 MiB limit answering 413
-  - Each listed file carries `frames`, the count of frames linking it, from the per-project cache in `src/server/board/asset-usage.ts`
-  - The cache counts the loads `frameLoads` in `src/server/checks/links.ts` gathers for the link check, and a watcher batch under a project drops it
-  - `GET /api/projects/:project/transitions` answers each of the project's transitions as renamed keyframes, to any caller
-- `access.ts` trades a ticket for the cookie, mints one with its `expiresAt` for a bearer, and lands a failed redeem on `/?link=expired`. `api.ts` mounts every write route behind `requireWriter`
-  - Under the hidden `serve --open-route` alone, `access.ts` also answers `GET /api/access/open` with a 303 to a fresh redeem URL
-- `structure.ts` answers `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags and one step each, and `history.ts` answers `POST /api/undo` and `/api/redo`, sharing `envelope.ts` refusals
-  - `tokens.ts` answers `POST /api/tokens/edit` behind `requireWriter`, writing one token into the project's `tokens.css` or the board's sheet as one step, and shares those refusals
+| Module         | Answers                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| Frame route    | `/frames/<project>/<page>/<file>`, `/frames/<project>/assets/<path>`, and a replaced version under `?at=` |
+| `assets.ts`    | A project's asset listing with each file's `frames` count, and a drop under a 64 MiB limit answering 413  |
+| `access.ts`    | A ticket traded for the cookie, a failed redeem landing on `/?link=expired`, and `GET /api/access/open`   |
+| `api.ts`       | Every write route, mounted behind `requireWriter`                                                         |
+| `structure.ts` | `POST /api/<noun>/<verb>` with bodies mirroring the CLI flags, one step each, beside `history.ts`'s undo  |
+| `tokens.ts`    | `POST /api/tokens/edit`, one token into the project's or the board's sheet as one step                    |
+| `kits.ts`      | `GET /api/kits`, install and save as one step each, and a kit's files under `/frameboard/kits/`           |
+| `elements.ts`  | A frame's element tree from the file, so a culled frame lists the indices `edit` takes, and the selection |
 
-The kit routes sit beside them in `kits.ts`.
+The caching and step rules below are what the modules leave unsaid.
 
-- `kits.ts` answers `GET /api/kits`, and `POST /api/kits/install` and `/api/kits/save` behind `requireWriter`, each recording one step
-  - A replace records the take-out of the old look as its own step first, since one step cannot take out a path and write it again, so two undos bring the old look back
-  - `GET /frameboard/kits/<name>/<path>` serves a kit's files read only, a sample frame with the faces and the kit's own sheets spliced in
-  - It sits under `/frameboard/`, since a bare `/kits` shadows the client's `kits/` module folder under Vite
-- `elements.ts` answers a frame's element tree from the file, so a culled frame lists the indices `edit` takes, and holds `GET /api/selection` and the tab's `POST` behind `requireWriter`
+- A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is served whole since its head is spliced in memory
+- A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads every frame
+- A file's `frames` count comes from the cache in `src/server/board/asset-usage.ts` over the link check's `frameLoads`, which a watcher batch under the project drops
+- A kit replace records the take-out of the old look as its own step first, since one step cannot take out a path and write it again, so two undos bring it back
+- Kit files sit under `/frameboard/` and `GET /api/access/open` answers only under `serve --open-route`, since a bare `/kits` shadows the client's module folder under Vite
 
 ### `src/server/preview/`
 
-Owns the phone link, a second read-only listener for one project, apart from `access/`, which guards the board's own port.
+Owns the phone link, a second read-only listener for one project, apart from `access/`, which guards the board's own port. `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`.
 
-- `listener.ts` binds the address `address.ts` picked, alone, at port 4400 or the one the start names, and a free port when that is taken. The board's own listener stays on loopback.
-- It answers GET and HEAD under `/v/<token>/` alone, mapping `frames/<project>/...` and `frameboard/...` onto the board's own frame and look routes, so their refusals hold unrestated
-  - Another token, another project, any other path, and any other method answer 404
-  - A served frame imports its sheets under the link, since the frame route's `base` prefixes the URLs its head names
-  - A `?at=` query never reaches the frame route, so the phone reads only the file as it stands
-  - A served page takes the drawn controls' hiding style in its head, so the phone shows the design alone
-- The board holds one listener at a time. A start ends the last and mints a new 96-bit token, a stop naming a token ends only the listener holding it, and the board ends it as it closes.
-- `address.ts` picks the machine's private IPv4 address, preferring 192.168, then 10, then 172.16 to 172.31, where container bridges sit
-- `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`
-  - A start on a machine with no such address refuses `no-network-address` and opens nothing
+- `listener.ts` binds the private address `address.ts` picked, alone, at port 4400 or the one given, and a free port when that is taken, while the board's own listener stays on loopback
+- It answers GET and HEAD under `/v/<token>/` alone, mapping onto the board's own frame and look routes so their refusals hold, and any other token, project, path, or method answers 404
+- A served frame imports its sheets under the link through the frame route's `base`, takes the drawn controls' hiding style, and never sees a `?at=` query
+- The board holds one listener at a time, a start ending the last and minting a new 96-bit token, and the board ends it as it closes
+- `address.ts` prefers 192.168, then 10, then 172.16 to 172.31, where container bridges sit, and a machine with none refuses `no-network-address`
 
 ### `src/server/clipboard/`
 
