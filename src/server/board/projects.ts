@@ -56,14 +56,9 @@ export async function renameProject(
 }
 
 /**
- * Sets the name a person reads for the project, which may hold any
- * characters, and moves the folder to the name made from it, the next free
- * one when another project holds it. A title naming no folder, such as one in
- * a script a name cannot hold, or one naming the folder it is in, keeps the
- * folder. A blank title takes the key out, so readers show the folder again.
- * The title goes in first under the old folder and the move follows, which
- * the board's undo reverses in turn. The times are put back as a filing's
- * are, since a title draws nothing.
+ * Sets a project's title and moves its folder to the name made from it. The
+ * title goes in under the old folder before the move, so undo reverses them in
+ * turn.
  */
 export async function retitleProject(
   root: string,
@@ -152,11 +147,8 @@ export async function deleteProject(
 export type Filing = { group: string | null } | { archived: boolean }
 
 /**
- * Files every named project at once, each `project.json` read and merged
- * under its lock so pages, checks, and unknown keys stay as written. A file
- * that does not parse refuses the whole filing before any is written. The
- * file's and folder's times are put back, since a filing is not an edit to
- * the project and must not move it in home's Edited sort.
+ * Files projects at once under each file's lock, refusing all on an unparsed
+ * file, and puts the times back, since a filing must not move the Edited sort.
  */
 export async function fileProjects(
   root: string,
@@ -237,13 +229,8 @@ export interface ProjectRules {
 }
 
 /**
- * Turns one check rule off for the project, or back on, by adding or removing
- * its id in `checks.off` of `project.json` under the file's lock, so every
- * other key stays as written. A rule already as asked writes nothing, and an
- * `off` that is not a list of ids reads as none and is replaced by the first
- * rule turned off. A `checks` that is not an object refuses as
- * `project-file-invalid`, since no rule could be written beside it. The times
- * are put back as a filing's are, since a rule switch draws nothing.
+ * Turns a rule off or on in `checks.off` under the file's lock, refusing a
+ * `checks` that is no object, and puts the times back as a filing does.
  */
 export async function setProjectRule(
   root: string,
@@ -286,11 +273,8 @@ export async function setProjectRule(
 }
 
 /**
- * `file` with its `checks.off` set to `off`, or without the key for
- * undefined, every other check kept in place. A `checks` this empties goes
- * too, so turning a rule off and on leaves no empty object behind. A file
- * holding no `off` to take out comes back as it is, so a `checks` of another
- * type, or an empty one, survives the undo of a write that never touched it.
+ * `file` with `checks.off` set or removed, dropping a `checks` it empties so
+ * off and on leaves no empty object.
  */
 export function withOff(file: ProjectFile, off: unknown): ProjectFile {
   if (
@@ -315,14 +299,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Runs `run`, a section holding the lock of each project file it writes, and
- * puts back the times that file and its folder held, which the scanner reads
- * as the project's last edit. `land` names where a file stands once `run`
- * is done, for a run that moves its folder, and the times go back there. `run` calls `keep` under the lock before each
- * write, so the file's time is read after any writer that held the lock first.
- * The folder's time is read before the lock, since taking and dropping the
- * lock moves it, and goes back only where the file kept its time until `keep`,
- * so a writer that ran in between keeps the Edited time it earned.
+ * Runs `run` and puts back the times the scanner reads as the last edit. The
+ * folder's time is read before the lock, which moves it, and restored only if
+ * no writer ran in between, so that writer keeps its Edited time.
  */
 export async function keepingTimes<T>(
   files: string[],

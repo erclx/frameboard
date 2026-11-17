@@ -73,12 +73,8 @@ const SCREENSHOT = { animations: 'disabled', caret: 'hide' } as const
 const HELD_SCREENSHOT = { animations: 'allow', caret: 'hide' } as const
 
 /**
- * The file name of one image, `<name>.<theme>.png` at 1x so a path an agent
- * saved stays true, and `<name>.<theme>@<n>x.png` at any other scale. A shot
- * scrolled down takes `.scroll-<px>` after the name, the offset asked for,
- * and a linked width takes `@<width>` ahead of both. A timed shot takes
- * `.at-<ms>`, the moment asked for, and a filmstrip `.filmstrip-<n>`, each
- * after the width.
+ * One image's file name, unscaled at 1x so a path an agent saved stays true,
+ * with width, scroll, moment, and filmstrip suffixes.
  */
 function imageName(
   name: string,
@@ -128,9 +124,7 @@ export function compositeImagePath(
 }
 
 /**
- * The composite's size and the shift placing each frame in it, so the
- * leftmost and topmost frames sit one margin in and one margin is left past
- * the far edges, each frame's linked widths included. Refuses
+ * The composite's size and each frame's shift, one margin on every side, and
  * `capture-too-large` past Chromium's screenshot limit.
  */
 export function compositeBounds(
@@ -195,12 +189,8 @@ export function filmstripBounds(
 }
 
 /**
- * Captures each frame in each theme at its layout size times `scale`, one PNG
- * apiece, and again at each linked width it lists, at the height that width
- * holds. Every image renders before any is written, so a refusal on one frame
- * leaves no half-written set an agent could read as current. A `scroll`
- * offset shoots each view that far down, clamped to the page's end. `width`
- * shoots each frame at that one width alone, its own or a linked one.
+ * Captures each frame per theme and linked width, rendering every image before
+ * writing any, so a refusal leaves no half-written set an agent reads as current.
  */
 export async function captureFrameImages(
   browser: Browser,
@@ -330,12 +320,8 @@ export async function captureComposite(
 }
 
 /**
- * Captures one frame held at set moments of its timeline, in each theme and
- * at each width it shows at, or the one `width` names. `timing.at` writes one
- * PNG per moment, and `timing.filmstrip` one PNG per view and theme holding that many
- * moments spaced from 0 to the timeline's end. A frame with no seekable
- * timeline refuses `motion-missing`, and a filmstrip of one that never ends
- * `motion-unbounded`. Every image renders before any is written.
+ * Captures a frame held at moments of its timeline, per theme and width,
+ * rendering every image before writing any.
  */
 export async function captureMotionImages(
   browser: Browser,
@@ -433,10 +419,7 @@ export interface RenderedFilmstrip {
 }
 
 /**
- * One frame's filmstrip in one theme: `count` moments spaced from 0 to the
- * timeline's end, held one by one and laid in a row on the theme's canvas
- * color. Refuses `motion-missing` for a frame with no seekable timeline and
- * `motion-unbounded` for one that never ends, and `capture-too-large` before
+ * One frame's filmstrip in one theme, refusing `capture-too-large` before
  * opening the frame for a strip past the screenshot limit.
  */
 export async function renderFilmstrip(

@@ -107,9 +107,7 @@ describe.skipIf(shell === null)(
         hugWidth,
       })
 
-    // The bottom edge the first `span` paints to, read straight off a page
-    // laid out at the frame's width, so a test names the edge without the
-    // reader under test.
+    // Read off a probe page, so a test names the edge without the reader under test.
     async function paintedBottom(html: string) {
       const probe = await browser.newPage({
         viewport: { width: 1440, height: 900 },

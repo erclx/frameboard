@@ -58,10 +58,8 @@ export interface PasteOptions extends RefOptions, JournalOptions {
 }
 
 /**
- * Writes held frames onto a page as new files on top of its stack, each
- * taking the next free name so nothing on the page is overwritten. Without
- * `at`, a frame keeps its box on another page and lands beside its source
- * on its own, the way `duplicateFrame` places a copy.
+ * Writes held frames onto a page under free names, so nothing is overwritten,
+ * placed as `duplicateFrame` places a copy without `at`.
  */
 export async function pasteFrames(
   root: string,

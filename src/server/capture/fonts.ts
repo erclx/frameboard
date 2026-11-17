@@ -47,13 +47,8 @@ export function parseFontFamilies(fontFamily: string): string[] {
 }
 
 /**
- * The family a text element asks for, being the first in its stack, or null
- * when that one is generic or is the browser's own default. Later families
- * are fallbacks the author chose, so they are never looked for.
- *
- * The default is what a frame declaring no font computes to, such as "Times
- * New Roman" in the Linux headless shell, where it is not installed. A frame
- * naming that family on purpose is skipped too, since a computed style cannot
+ * The first family in a stack, null when generic or the browser's default,
+ * which a frame naming it on purpose also hits, since a computed style cannot
  * tell the two apart.
  */
 export function requestedFamily(
@@ -134,8 +129,7 @@ function readTextElements(): TextRead {
     'NOSCRIPT',
     'TEMPLATE',
   ])
-  // An unstyled document reads the browser's own default, which the frame's
-  // styles cannot reach. The probe is gone before the elements are counted.
+  // An unstyled probe reads the default, removed before the elements are counted.
   const probe = document.createElement('iframe')
   document.documentElement.append(probe)
   const defaultFamily = probe.contentDocument

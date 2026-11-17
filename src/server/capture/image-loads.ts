@@ -18,13 +18,9 @@ interface UnsettledImage {
 }
 
 /**
- * Waits, within `timeoutMs`, until every `<img>` in the frame has loaded and
- * decoded, so an image marked `decoding="async"` never shoots as an empty
- * box. A lazy image is made eager in the loaded page first, never in the
- * file. Under `require` an image that errored or is still loading at the
- * deadline refuses `image-missing`, and under `wait` the frame opens as the
- * board shows it. `stalled` reads a page whose load event never fired, and
- * refuses only for an image that failed or whose request is still open.
+ * Waits until every `<img>` decodes, so an async image never shoots empty,
+ * making lazy ones eager in the page alone. Under `require` a failed or
+ * unfinished image refuses `image-missing`.
  */
 export async function settleImages(
   page: Page,
@@ -75,8 +71,7 @@ async function waitForImages(timeoutMs: number): Promise<UnsettledImage[]> {
         img.addEventListener('error', done, { once: true })
       })
     }
-    // `decode` rejects for an image that failed, which covers both a failed
-    // request and bytes the browser could not read.
+    // `decode` rejects for both a failed request and unreadable bytes.
     return img.decode().then(
       () => 'ok' as const,
       () => 'error' as const,

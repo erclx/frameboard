@@ -35,10 +35,8 @@ export const LOCK_SUFFIX = '.lock'
 export const TEMP_SUFFIX = '.tmp'
 
 /**
- * Reads and validates one record. The value returned is the parsed JSON itself
- * rather than the schema's output, so key order and unknown keys survive a
- * write back. Every schema here reads through `looseObject` with no defaults,
- * so the two hold the same data.
+ * Reads and validates one record, returning the parsed JSON rather than the
+ * schema's output, so key order and unknown keys survive a write back.
  */
 export async function readRecord<T>(
   path: string,
@@ -174,12 +172,8 @@ async function staleContent(lock: string): Promise<string | null> {
 }
 
 /**
- * Breaks a stale lock under a guard, so one writer at a time re-reads the
- * lock and retires it only while it still holds the content judged stale.
- * Without the guard, a second breaker could rename aside the lock a first
- * one had just taken, and put it back after its owner released it, leaving
- * a lock nobody holds. A guard a crashed breaker left behind ages out like a
- * lock. False while another breaker holds the guard, so the caller waits.
+ * Breaks a stale lock under a guard, since a second breaker could otherwise
+ * restore a lock its owner released, leaving one nobody holds.
  */
 async function breakLock(lock: string, judged: string): Promise<boolean> {
   const guard = `${lock.slice(0, -LOCK_SUFFIX.length)}.break${LOCK_SUFFIX}`

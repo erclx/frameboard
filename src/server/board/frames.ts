@@ -85,13 +85,9 @@ export interface DeviceOptions {
 export type FrameFlag = 'hidden' | 'locked'
 
 /**
- * Places a frame on its page, writing a skeleton file only when none exists.
- * A file with no entry keeps its bytes and lands 80 past the placed frames,
- * as `placeNext` puts it, ignoring the page's other unplaced files, unless a
- * size or position is given. Every axis no size names hugs its
- * content, a preset fixing the width alone, and the box stands in until the
- * server measures. A scroll frame hugs neither axis, and with no height named
- * takes the reference height of its width.
+ * Places a frame, writing a skeleton only when no file exists. Every axis no
+ * size names hugs, the box standing in until the server measures, and a scroll
+ * frame hugs neither axis.
  */
 export async function addFrame(
   root: string,
@@ -153,8 +149,7 @@ export async function addFrame(
         )
       }
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
-      // Another unplaced file would take a slot ahead of this one, so the
-      // frame lands past the placed frames alone.
+      // Lands past the placed frames alone, ignoring other unplaced files.
       const slot = names.filter(
         (name) => name === frame.name || layout.hasEntry(name),
       )
@@ -198,10 +193,8 @@ export async function addFrame(
 }
 
 /**
- * Copies the frame's file byte for byte, into its own page beside the source
- * or into `--to` at the source's box, on top of the target page. An `offset`
- * places the copy that far from the source's box instead, as an Alt-drag
- * drops it.
+ * Copies the frame byte for byte beside its source or into `--to`, an `offset`
+ * placing it that far away, as an Alt-drag drops it.
  */
 export async function duplicateFrame(
   root: string,
@@ -339,10 +332,8 @@ export async function renameFrame(
 }
 
 /**
- * Sets the size each option names and fixes those axes. `scroll` on fixes
- * both, dropping a hugging height no option names to the reference height of
- * the width, since a frame kept at its content's full height has nothing to
- * scroll. `scroll` off clears the key and keeps the box as it stands.
+ * Fixes the axes the options size. `scroll` drops a hugging height to the
+ * width's reference height, since a full-height frame has nothing to scroll.
  */
 export async function resizeFrame(
   root: string,
@@ -376,11 +367,8 @@ export interface WidthsTarget {
 }
 
 /**
- * Sets the whole list of widths each frame also shows at, every frame in one
- * write under one lock. A frame whose stored list differs from its `expected`
- * refuses `stale-layout` before any frame is written, so a list an agent
- * changed since the caller drew it is never overwritten. The list itself is
- * refused as `resizeFrame --widths` refuses it.
+ * Sets each frame's whole width list in one write, refusing `stale-layout`
+ * before any write when a stored list moved off its `expected`.
  */
 export async function setLinkedWidths(
   root: string,
@@ -454,9 +442,7 @@ function resizedPlacement(
     hugWidth,
     hugHeight: !scroll && placement.hugHeight && size.height === undefined,
     scroll,
-    // Scroll turned on over a hugging height takes each linked width to
-    // its own screen height, whatever height the frame's own box is given,
-    // so every view of a scroll frame scrolls.
+    // Each linked width takes its own screen height, so every view of a scroll frame scrolls.
     widths:
       scroll && placement.hugHeight
         ? widths.map((linked) => ({
@@ -468,10 +454,8 @@ function resizedPlacement(
 }
 
 /**
- * The linked widths a verb writes, keeping the height each one already held
- * and giving a new one the reference height of its width, which a hugging
- * frame's measure replaces. A repeated width, the frame's own width, or a
- * frame hugging its width refuses `usage`.
+ * The linked widths a verb writes, a new one taking its reference height until
+ * measured, refusing a repeat, the own width, or a width-hugging frame.
  */
 export function linkedWidths(
   ref: string,
@@ -522,10 +506,8 @@ export function pastExtent({ box, widths, device }: Placement): number {
 }
 
 /**
- * Sets a frame's height to its content's measured height and turns hugging
- * back on for that axis, the inverse of the resize that fixed it, writing
- * each linked width's measured height beside it while the entry lists it. A
- * scroll frame refuses `fit-scroll`, since its height is fixed on purpose.
+ * Sets the measured height and hugs it, the inverse of a fixing resize, and
+ * refuses `fit-scroll` on a scroll frame, whose height is fixed on purpose.
  */
 export async function fitHeight(
   root: string,
@@ -572,14 +554,9 @@ export interface HeightTarget {
 }
 
 /**
- * Sets how each frame holds its height in one write under one lock, all of
- * them or none. `fixed` keeps the box and clears hugging and scroll. `fit`
- * takes the measured height and hugs it, clearing scroll. `scroll` fixes both
- * axes as `frame resize --scroll` does, at the target's `height` when it
- * gives one. Every frame is checked before any is
- * set: one moved or sized since its `expected` refuses `stale-layout`, leaving
- * out an axis the frame hugs, since the server measures that one, and a `fit`
- * without `measured` refuses `usage`.
+ * Sets each frame's height mode in one write, all or none. Every frame is
+ * checked first against its `expected`, leaving out a hugged axis, since the
+ * server measures that one.
  */
 export async function setHeightModes(
   root: string,
@@ -672,10 +649,8 @@ export function fitScrollError(ref: string): FrameboardError {
 }
 
 /**
- * Writes the sizes the server measured, on the axes each frame's stored entry
- * hugs and nowhere else, under the page's lock. It sets no flag and takes no
- * journal, since the developer never set that size, and answers the names
- * whose entry changed, none when every size already stands.
+ * Writes measured sizes on hugged axes alone, with no flag and no journal,
+ * since the developer never set them.
  */
 export async function setMeasured(
   root: string,
@@ -701,8 +676,7 @@ export async function setMeasured(
             ? size.height
             : placement.box.height,
       }
-      // A linked width takes its measure only while the stored entry still
-      // lists it and the frame still hugs its height.
+      // Only while the entry still lists the width and hugs its height.
       const widths = placement.widths.map((linked) => ({
         ...linked,
         height: placement.hugHeight
@@ -743,12 +717,8 @@ export interface SectionBoxes {
 }
 
 /**
- * Sets the boxes of several frames on one page under one lock and one write,
- * the one path a hand move or resize takes. `expected` holds the boxes the
- * client started from, and a frame whose stored box differs from it refuses
- * the whole write, so a hand edit never silently undoes an agent's. A section
- * move carries its box in `sections` beside its members' boxes, so the box
- * and the frames move as one step or not at all.
+ * Sets frame boxes in one write, the hand path. A box moved off its `expected`
+ * refuses the whole write, so a hand edit never silently undoes an agent's.
  */
 export async function setBoxes(
   root: string,
@@ -825,8 +795,7 @@ export async function setBoxes(
           box: { ...box, ...kept },
           hugWidth: placement.hugWidth && box.width === started.width,
           hugHeight: placement.hugHeight && box.height === started.height,
-          // A hand resize onto a width the frame lists takes that view's
-          // place, so the list never names the frame's own width.
+          // A resize onto a listed width drops it, so the list never names the own width.
           widths: placement.widths.filter(
             (linked) => linked.width !== (kept.width ?? box.width),
           ),
@@ -923,10 +892,8 @@ export async function setFrameDevice(
 }
 
 /**
- * Sets the transition a frame arrives with in present mode, over its page's,
- * or clears it with null so the frame takes its page's. The frame's file and
- * box are left as they stand. A name that is neither built in nor the
- * project's own refuses `usage` and writes nothing.
+ * Sets or clears a frame's present transition, refusing a name neither built
+ * in nor the project's own.
  */
 export async function setFrameTransition(
   root: string,
@@ -1015,9 +982,7 @@ export function sizeOf({ size, width, height }: SizeOptions): {
 
 /**
  * The skeleton states `head` with `body`, so the browser builds neither and
- * every element address in the file holds. A `body` markup is written edge to
- * edge, in a column with no margin, so no line box adds a gap under a media
- * element and the content is exactly the markup's size.
+ * every address holds, and a body column has no margin, so media fits exactly.
  */
 export function skeleton(name: string, body?: string): string {
   const content =
@@ -1073,14 +1038,8 @@ class PageLayout {
   }
 
   /**
-   * Writes the seven fixed keys on the entry it creates or changes, after any
-   * key the entry already held, so unknown keys survive in place. A hug flag
-   * is written once it is on or when the entry holds it, so an entry from
-   * before the flags gains no key, and a scroll entry writes both hug flags
-   * false, since it fixes both axes. `scroll` follows the same rule. `widths`,
-   * `showDevice`, and `transition` are written while the frame holds one and
-   * removed once cleared, leaving a held value no reader understands as is.
-   * A `device` name from before `showDevice` is replaced by it on any write.
+   * Writes the fixed keys after the entry's own, so unknown keys survive, and a
+   * flag only once on or already held, so an older entry gains no key.
    */
   set(
     name: string,
@@ -1196,10 +1155,8 @@ class PageLayout {
 }
 
 /**
- * Runs one frame change under the lock of every page it touches, taken in
- * path order. Every layout is read and validated before `run` moves a file,
- * and only the layouts it changed are written, reporting each entry that
- * differs to the journal.
+ * Runs one frame change under every touched page's lock in path order,
+ * validating every layout before `run` moves a file.
  */
 export async function withLayouts<T>(
   pages: string[],

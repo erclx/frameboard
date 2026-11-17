@@ -20,12 +20,9 @@ export function installCommands(): { npx: string; bunx: string } {
 }
 
 /**
- * Launches Playwright's pinned headless shell, the one browser capture uses.
- * An installed Chrome or Edge is never a fallback, since a branded build of
- * another version rasterizes text differently, so the same frame would
- * capture differently by machine. Without the shell it refuses
- * `browser-not-found` and downloads nothing, since a verb never fetches a
- * browser unasked. `purpose` names what needed the browser in the refusal.
+ * Launches the pinned headless shell, never an installed Chrome, which
+ * rasterizes text differently, and refuses `browser-not-found` rather than
+ * download one unasked.
  */
 export async function launchCaptureBrowser({
   purpose,
