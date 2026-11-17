@@ -23,7 +23,7 @@ Owns the rules, the cascade they read, and the runner over a frame, a page, or a
 
 ### `src/server/checks/browser/`
 
-Owns the browser tier, the rules that read a rendered page. `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'`, and finite animations finish before any rule reads. Each rule reports at most one finding per frame, naming the first offender by its edit index and how many more, except `dropped-declaration`, which reports each declaration.
+Owns the browser tier, the rules that read a rendered page. `checkRendered` opens a frame through capture's `openFrame` at its layout size, in light then dark, with `fonts: 'wait'`. Each rule reports one finding per frame naming the first offender, except `dropped-declaration`, which reports each declaration.
 
 | Rule                  | Reads                                                                                         |
 | --------------------- | --------------------------------------------------------------------------------------------- |
@@ -39,8 +39,8 @@ The server's checker runs every rule once per box through `acrossWidths` in `ren
 
 - A finding read at a linked width carries `width`, which `formatFinding` prints as `<path>@<width>`, and one the frame's own box already reported is left out
 - A `scroll` frame overflows on purpose, so `clipped` reads its width alone and `viewport` skips it
-- `dropped-declaration` skips custom properties, at-rules that are not style rules, `@supports`, and `-moz-`, `-ms-`, and `-o-` prefixes, plus a `-webkit-` fallback whose standard property sits in the same rule
-- Findings each frame holds are its static ones, then the change findings its last agent write raised, then the browser findings last landed for it, held in `src/server/live/`, which `canon/context/board/server.md` owns
+- `dropped-declaration` skips custom properties, `@supports`, other at-rules, the `-moz-`, `-ms-`, and `-o-` prefixes, and a `-webkit-` fallback beside its standard property
+- A frame holds its static findings, then its last agent write's change findings, then its last browser findings, in `src/server/live/`, which `canon/context/board/server.md` owns
 - A frame queued for recheck again before its result lands drops that result, a failed recheck lands an empty list, and a reading of a file since rewritten lands nothing
 
 ### `src/server/routes/checks.ts`
@@ -52,6 +52,8 @@ Owns `POST /api/checks`, behind the write token, which `check` calls with the re
 - `check` with no live server, or one silent for 120 seconds, sets `browser.reason` to `server-not-running` and says so on its last line
 
 ### Other folders
+
+The plugin side of the hook sits outside `src/`.
 
 - `plugins/frameboard/hooks/` owns `hooks.json` and the `check.sh` resolver the plugin runs after every agent write
 
