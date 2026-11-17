@@ -17,7 +17,7 @@ const BOM = [0xef, 0xbb, 0xbf]
  * same `setFrameTheme` the board calls on a theme change, then removes
  * itself, so the one injected element a live frame keeps is the stylesheet.
  */
-const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme.toString()})(document.documentElement,t);s.remove()})(document.currentScript,new URLSearchParams(location.search).get(${JSON.stringify(THEME_QUERY)}))`
+export const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme.toString()})(document.documentElement,t);s.remove()})(document.currentScript,new URLSearchParams(location.search).get(${JSON.stringify(THEME_QUERY)}))`
 
 /**
  * What the frame route puts first in a frame's `head`: one marked stylesheet

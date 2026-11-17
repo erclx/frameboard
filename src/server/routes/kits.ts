@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, sep } from 'node:path'
 
@@ -14,7 +15,7 @@ import {
   shippedKitsDir,
 } from '@/server/kits/list'
 import { saveKit } from '@/server/kits/save'
-import { frameHead, injectHead } from '@/server/look/inject'
+import { frameHead, injectHead, THEME_SCRIPT } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import { KIT_PAGE, KIT_SHEET, KITS_URL } from '@/shared/kits'
@@ -24,6 +25,16 @@ import { answerRefusal, parseBody } from './envelope'
 import { decodeSegments } from './frames'
 
 const name = z.string().min(1).max(256)
+
+/**
+ * The policy a kit's sample frame is served under for a preview card. A
+ * saved kit's samples come from a project an agent drew, and the card runs
+ * them on the board's origin as soon as New project opens, so the policy
+ * lets the injected theme script alone run, by its hash, and blocks every
+ * script and inline handler the sample carries. A sandbox would block the
+ * theme script too, and draw every preview in light.
+ */
+const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`
 
 const installSchema = z.object({
   project: name,
@@ -149,6 +160,7 @@ export function kitRoutes(
     return c.body(body, 200, {
       'Content-Type': type,
       'Cache-Control': 'no-store',
+      ...(isSample ? { 'Content-Security-Policy': PREVIEW_POLICY } : {}),
     })
   })
 

@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { THEME_SCRIPT } from '@/server/look/inject'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { History } from '../history/stack'
@@ -133,6 +136,16 @@ describe('kitRoutes', () => {
       '@import url("/frameboard/kits/sketch/tokens.css");',
     )
     expect(served).toContain('@import url("/frameboard/kits/sketch/kit.css");')
+  })
+
+  it('lets a sample frame run the injected theme script alone, by its hash', async () => {
+    const response = await app.request(
+      '/frameboard/kits/sketch/kit/sample.html',
+    )
+
+    expect(response.headers.get('content-security-policy')).toBe(
+      `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`,
+    )
   })
 
   it("serves a kit's stylesheet byte for byte", async () => {
