@@ -13,35 +13,23 @@ Owns how every button, menu item, and key reaches the board, being the action re
 
 ### `src/client/actions/`
 
-Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read.
+Owns the action registry every toolbar button, menu item, and key runs through, and the palette and shortcuts sheet read. The type checker refuses an action carrying neither `command` nor `palette: false`, and the opt-out is kept to nudges, pans, Esc aliases, focus walks, and context-menu actions run at their point.
 
-- An action is `{ id, label, group, keys?, run, enabled?, checked?, repeat? }` plus `command` or `palette: false`, and a row registers its own and removes them on unmount
-- `command` is the label, icon, right-hand `hint`, search `keywords`, and `searchOnly` the palette reads, and the palette lists only enabled actions carrying it
-- A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers
+- An action is `{ id, label, group, keys?, run, enabled?, checked?, repeat? }` plus `command`, which carries the label, icon, `hint`, `keywords`, and `searchOnly` the palette reads
+- A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers and its row removes it on unmount
 - `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
-
-The type checker refuses an action carrying neither `command` nor `palette: false`, so leaving one out of the palette is a choice. The opt-out is kept to arrow nudges and pans, Esc aliases, focus walks the open palette could never run, and the actions a context menu runs at its point. A row needing a field adds it to `ActionBase` as optional.
-
-`character-keys.ts` holds the Single-key shortcuts switch the WCAG character key shortcuts criterion asks for, on by default and kept in `localStorage`. While it is off, `press` skips a key typing a character before `preventDefault`, so the press reaches the browser untouched, and every chip reads its key through `liveKey`, which skips that key.
+- `character-keys.ts` holds the Single-key shortcuts switch, on by default in `localStorage`, and while off `press` lets a character key reach the browser and `liveKey` skips it on every chip
 
 ### `src/client/palette/`
 
-Owns the two overlays that list the registry, being Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both routes.
+Owns Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both routes. With nothing typed the palette opens on Recent, then the actions fitting the selection, then pages, and a query searches frames and pages, then every action, then projects.
 
-With nothing typed the palette opens on Recent, then the actions fitting the selection, or every enabled action with nothing selected, then pages. A query searches frames and pages, the open project's first, then every action, `searchOnly` rows such as Resize to among them, then projects. A mode or theme row naming the one on stays out.
-
-- Cmd+K jumps to any project, page, or frame and runs board actions such as new page, theme toggle, and zoom, while inspector edits stay in the inspector
 - `recent.ts` keeps the last 5 action ids run from the palette in `localStorage`, and a refused write keeps none, so a blocked store shows no Recent group
 - A frame row sets the selection on its page, navigates, and runs `view.zoomToSelection` once the page's canvas attaches
-- A hidden frame's row is marked and shows the frame first, jumping once the board holds it shown, since `pruneSelection` would drop it sooner. A read-only tab greys it.
+- A hidden frame's row shows the frame first and jumps once the board holds it shown, since `pruneSelection` would drop it sooner, and a read-only tab greys it
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
-
-The sheet reads each key from the registry and greys a row whose action no row has registered yet, while gesture rows carry their own text. Its header carries the Single-key shortcuts switch, an off key stays listed but faint, an Agents group lists `]` and `[`, and a Present group last lists Shift+P, the arrows and Space, and Esc.
-
-- On a board the Tools group ends with All projects, `nav.home` on Alt+ArrowUp
-- On home it reads `/` through wouter's `useRoute` and shows Projects, in a wider `1.3fr` column, and General in place of the board's sections, with H J K L faint while the switch is off
-- It sits outside the routes, so a test rendering it needs a `Router` on the path it means
+- The sheet reads each key from the registry and greys an unregistered row, and it sits outside the routes, so a test rendering it needs a `Router` on the path it means
 
 ### `src/client/history/`
 
@@ -49,17 +37,13 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac,
 
 ### `src/server/history/`
 
-Owns the edit history undo reads. Undo and redo cover hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes, held as small before-and-after records.
+Owns the edit history undo reads, covering hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes as small before-and-after records. Only the board's own writes record, so the CLI verbs, a note write, and an asset drop pass no journal and an agent's change never enters the developer's history.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
 - A change is one layout or section entry, page order, rename, hashed path, hand-edited or placed element, or token, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
-- A page or project rename, a title that moved a project's folder, and the undo and redo of each broadcast `renamed` ahead of the batch, so every tab keeps its canvas and frames live and moves its route
-
-On `renamed` the socket moves the selection, the flipped frames, and the unseen marks ahead of the live store, since the renamed board prunes a selection it no longer holds. A frame rename broadcasts it too, and its frame takes all three along but no alias, so it remounts from its new file.
-
-Only the board's own writes record. The CLI verbs pass no journal, and neither do a note write or an asset drop, so an agent's change never enters the developer's history.
+- A rename and its undo broadcast `renamed` ahead of the batch, and the socket moves the selection, flips, and unseen marks first, since the renamed board prunes a selection it lacks
 
 ### `src/server/history/changes.ts`
 
