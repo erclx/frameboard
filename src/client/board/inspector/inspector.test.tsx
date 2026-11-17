@@ -1760,8 +1760,7 @@ describe('FrameSection', () => {
     })
 
     it('reads a field key letter at 4.5:1 or better on the field fill', () => {
-      // The letter overlays its input, a sibling rather than an ancestor, so
-      // the wrapper stands in for the fill behind it.
+      // The letter overlays a sibling input, so the wrapper stands in for its fill.
       render(
         <div className="bg-input">
           <FrameSection

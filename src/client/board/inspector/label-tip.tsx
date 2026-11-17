@@ -20,9 +20,8 @@ interface LabelTipProps {
 }
 
 /**
- * A field label with a small mark beside it that shows its sentence on
- * hover and on keyboard focus. The sentence also sits in a visually hidden
- * node under `tipId`, so the control the label names reads it as its
+ * A label whose mark shows its sentence on hover and focus, the sentence also
+ * kept in a hidden node under `tipId`, so the control reads it as its
  * description whether the tooltip is open or not.
  */
 export function LabelTip({

@@ -88,13 +88,9 @@ export function readMedia(media: HTMLMediaElement): MediaReading {
 }
 
 /**
- * The selected element as a live media element, read again on every play,
- * pause, seek, time, and sound change, and found again when its frame loads
- * or swaps its page for a placeholder, which releases it. While the frame
- * still shows bytes older than the key's hash, as between a hand edit and its
- * reload, the last reading of the same element is kept and still follows the
- * element on screen, so the Video section holds its place. Null for anything
- * but a `<video>` or an `<audio>` the frame has shown under the key.
+ * The selected media as a live element, re-read on every playback change and
+ * held while the frame shows older bytes than the key's hash, so the Video
+ * section keeps its place between a hand edit and its reload.
  */
 export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
   const [held, setHeld] = useState<{
@@ -112,8 +108,7 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
     const host = document.querySelector(`[data-frame="${CSS.escape(frame)}"]`)
     if (!host) return
     let media: HTMLMediaElement | null = null
-    // Whether the frame shows older bytes than the key's hash, when a read
-    // only refreshes a reading already held of this same node.
+    // True while the frame shows older bytes, so a read only refreshes the held node.
     let stale = false
     const read = () => {
       if (!media) return
@@ -134,8 +129,7 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
       const shown = page ? renderedHash(page) : null
       // A placeholder has no page, so it falls through to the release below.
       stale = page !== null && page !== undefined && shown !== hash
-      // A stale page's own hash finds the node still on screen, and a page
-      // mid-navigation, stamped with none, finds nothing yet.
+      // A stale page's own hash finds the node on screen, an unstamped page nothing.
       const showing = stale ? shown : hash
       const found = showing === null ? null : mediaAt(host, index, showing)
       if (found === media) return
@@ -149,9 +143,7 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
       read()
     }
     resolve()
-    // The iframe and the placeholder are the box's own children, so a swap
-    // between them shows here, and a load does not bubble, so it is caught
-    // on the way down.
+    // A swap shows as a child change, and a load is captured since it never bubbles.
     const swaps = new MutationObserver(resolve)
     swaps.observe(host, { childList: true })
     host.addEventListener('load', resolve, true)

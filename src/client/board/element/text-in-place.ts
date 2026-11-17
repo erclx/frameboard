@@ -30,15 +30,9 @@ function collapsesBreaks(element: HTMLElement, view: Window): boolean {
 }
 
 /**
- * Opens the text of the element `key` names for typing on the canvas, in its
- * live frame, with its text selected. Enter and Shift+Enter add a line, and
- * Esc or a blur writes the new text through `write`. A break is a newline in
- * the element's one text node, never a `<br>`, which would end its text-only
- * state. Where the style collapses newlines the edit opens on the text as
- * shown, and a text holding a break goes out with `white-space: pre-line`.
- * A frame reload ends the edit with nothing sent. Answers the function that
- * cancels the edit, or null when the frame does not show those bytes or the
- * element holds more than text or none, so a placed shape never takes text.
+ * Opens an element's text for typing in place. A break is a newline in its one
+ * text node, never a `<br>`, which would end its text-only state, and a reload
+ * ends the edit with nothing sent.
  */
 export function editTextInPlace(
   document: Document,
@@ -130,8 +124,7 @@ export function editTextInPlace(
     if (!range || !element.contains(range.commonAncestorContainer)) return
     // The break shows while typing, as the written style will show it.
     if (collapses && text.includes('\n')) element.style.whiteSpace = 'pre-line'
-    // Written as the one text node, so the caret lands past the insert
-    // rather than wherever merging split nodes would leave it.
+    // One text node, so the caret lands past the insert rather than at a split.
     const offset = (node: Node, at: number) => {
       const before = document.createRange()
       before.selectNodeContents(element)
@@ -142,8 +135,7 @@ export function editTextInPlace(
     const end = offset(range.endContainer, range.endOffset)
     const value = element.textContent ?? ''
     const after = value.slice(end)
-    // A last newline draws no line, so the caret would sit before it. One
-    // more gives it a line to sit on, and the commit trims it.
+    // A last newline draws no line, so a placeholder gives the caret one to trim later.
     const placeholder = after === '' && text.endsWith('\n') ? '\n' : ''
     element.textContent = value.slice(0, start) + text + (after || placeholder)
     const caret = document.createRange()
@@ -198,11 +190,8 @@ export function overElement(
 }
 
 /**
- * Opens the element `key` names for typing once its frame shows the bytes
- * the key was read from, at once when it already does, else on the reload
- * that brings them, as a placed Text waits for the frame to show it. It
- * stops waiting once the selection names another element. Answers the
- * function that stops waiting or cancels the edit.
+ * Opens an element for typing once its frame shows the key's bytes, as a
+ * placed Text waits, and stops waiting once the selection moves on.
  */
 export function editTextWhenShown(
   container: HTMLElement,

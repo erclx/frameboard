@@ -23,12 +23,9 @@ type Result =
   | { attempt: number; message: string }
 
 /**
- * Opens the frame's project on a phone on the same network. The button opens
- * a card that starts the board's phone listener and shows the link as a code
- * and as text, with what it covers. Closing the card ends the link, and so do
- * anything that unmounts it and the tab closing or reloading, so no listener
- * outlives the card that started it. A link a second card started since is left running, since the
- * stop names the token this card holds.
+ * Opens the project on a phone. Closing, unmounting, or leaving the tab ends
+ * the link, so no listener outlives its card, and a stop names this card's
+ * token, leaving a link another card started.
  */
 export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
   const [open, setOpen] = useState(false)
@@ -40,8 +37,7 @@ export function PhoneLink({ frame, disabled, send = fetch }: PhoneLinkProps) {
     if (!open) return
     let token: string | null = null
     let ended = false
-    // A tab closing or reloading runs no effect cleanup, so the stop rides a
-    // keepalive request the browser finishes after the page is gone.
+    // A closing tab runs no cleanup, so the stop rides a keepalive request.
     const endOnLeave = () => {
       if (token !== null) void leaveLink(token, send)
     }

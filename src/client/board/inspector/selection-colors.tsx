@@ -53,16 +53,9 @@ interface SelectionColorsProps {
 }
 
 /**
- * Selection colors: one row per color the selection uses, raw values first
- * since they are the ones to replace, capped at five rows until `Show all`.
- * A row shows its swatch, its token chip or raw hex, its percent, and the
- * link on a token, and pressing it copies the hex or the token's `var()`.
- * A raw value equal to a token offers `Use <token>` after its percent where
- * the selection can take a replace. A raw row's swatch is its own button
- * opening the project's color tokens, nearest value first, and a pick
- * replaces the value with that token. A Select over the row's end on hover
- * and keyboard focus selects the elements using the color. A caller keys it
- * by the selection, so a new selection caps the list again.
+ * The colors the selection uses, raw values first since they are the ones to
+ * replace. A caller keys it by the selection, so a new selection caps the list
+ * at five rows again.
  */
 export function SelectionColors({
   colors,
@@ -256,9 +249,7 @@ function RawColorRow({
   const row = useRef<HTMLDivElement>(null)
   const swatch = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
-  // The pick waits for the list to finish closing, since the replace turns
-  // this row into a token row and unmounting a closing popup strands focus
-  // inside it, where no board key fires.
+  // Waits for the list to close, since unmounting a closing popup strands focus.
   const picked = useRef<string | null>(null)
   const shown = color.value.replace(/^#/, '')
   const match = matchingToken(color.value, tokens, theme)

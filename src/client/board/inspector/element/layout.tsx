@@ -113,10 +113,8 @@ export const WRAP_SIBLINGS_ONLY =
   'Use auto layout wraps elements that share one parent'
 
 /**
- * The Layout header's Use auto layout button, which wraps the selected
- * elements in one flow container through the registered action and names
- * its key on hover, or why it cannot while it stands disabled. It stays
- * focusable when disabled, so the reason reaches a keyboard too.
+ * The Use auto layout button, which stays focusable while disabled so its
+ * tooltip's reason reaches a keyboard too.
  */
 export function WrapButton({ disabled }: { disabled: boolean }) {
   const [action] = useActions([WRAP_ACTION])
@@ -154,12 +152,9 @@ interface LayoutSectionProps {
 }
 
 /**
- * The Layout section: the flow as Block, Vertical, Horizontal, Wrap, or
- * Grid, the size per axis, alignment with gap or Auto gap, and padding.
- * Every control writes the selected element's own `style`, so a flow a
- * shared rule sets is overridden on this element alone, which the caption
- * names with the rule's match count. A grid takes gap and padding and
- * keeps its tracks.
+ * The Layout section. Every control writes the element's own `style`, so a
+ * shared rule's flow is overridden here alone, as the caption's match count
+ * says, and a grid keeps its tracks.
  */
 export function LayoutSection({
   layout,
@@ -389,8 +384,7 @@ function AlignmentGrid({
   const lit = Array.from({ length: 9 }, (_, at) =>
     litAt(Math.floor(at / 3), at % 3),
   ).indexOf(true)
-  // One tab stop, following focus inside the grid and resting on the first
-  // lit cell outside it, so Tab leaves the grid in one press from any cell.
+  // One tab stop, so Tab leaves the grid in one press from any cell.
   const stop = focused ?? (lit === -1 ? 0 : lit)
   const onKeyDown = (event: KeyboardEvent, at: number) => {
     const step = GRID_STEPS[event.key]

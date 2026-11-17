@@ -47,10 +47,8 @@ export function createModeStore(width: number): ModeStore {
 }
 
 /**
- * Holds `spacePan` while Space is down outside a field, a button, a menu, or
- * a dialog, where Space types or presses. Space is held while a pointer
- * moves, so it is a gesture here rather than a registry key. Returns the
- * function that stops listening.
+ * Holds `spacePan` while Space is down outside a field, button, menu, or
+ * dialog, a gesture held while the pointer moves rather than a registry key.
  */
 export function followSpacePan(
   target: Window,

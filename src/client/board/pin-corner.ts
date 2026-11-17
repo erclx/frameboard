@@ -3,10 +3,8 @@ import type { FrameRecord } from '@/shared/records/list'
 import { elementAt } from './frame-dom'
 
 /**
- * Where a note's pin sits on the board: the top right corner of its element
- * while the live frame under `container` holds it, clamped to the frame's
- * width, else of the frame. The frame's box is the one it is drawn at, so a
- * drag reads the pin's next spot by passing the box it is about to draw.
+ * A pin's spot, its element's top right corner clamped to the frame, else the
+ * frame's, read from the drawn box so a drag passes the box it will draw.
  */
 export function cornerOf(
   frame: Pick<FrameRecord, 'ref' | 'box'>,

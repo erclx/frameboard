@@ -43,16 +43,9 @@ interface ElementOverlayProps {
 }
 
 /**
- * The ghosts of elements past their frame's edge, under the selected
- * element's outline, its size chip, and the four corner marks of an element
- * a corner drag resizes, the marks at a constant screen size through `--zoom`
- * as the frame selection draws them. Several selected draw one bare outline
- * each, the last picked last, since a corner drag and a size name one element.
- * Each is placed from the live element's box
- * inside the frame's iframe and follows that element as it resizes, so it
- * draws nothing while the frame is a placeholder or shows other bytes than
- * the selection names. The marks take no pointer events, since the gestures
- * find a press on one by where it draws.
+ * The selected element's outline, chip, and corner marks over the overflow
+ * ghosts, drawn from the live box and nothing while the frame shows other
+ * bytes. The marks take no pointer, since the gestures find them by position.
  */
 export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   return (
@@ -64,11 +57,8 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
 }
 
 /**
- * A faint dashed box over the part of each element past its frame's edge,
- * for every selected frame but one that scrolls, where the iframe cannot
- * paint it. It is the
- * element's measured box rather than its pixels, and draws in Edit with the
- * Move tool alone, the one place a press on it is taken.
+ * A dashed box over each element past its frame's edge, where the iframe
+ * cannot paint it, drawn under the Move tool alone, where a press takes it.
  */
 function ElementGhosts({ frames, container }: ElementOverlayProps) {
   const selected = useSelection((state) => state.frames)
@@ -76,8 +66,7 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
     (state) => state.mode === 'edit' && state.tool === 'move',
   )
   const drawn = usePendingFrames(frames)
-  // A scroll frame shows its overflow by scrolling, so a ghost past its edge
-  // would mark content the frame already reaches.
+  // A scroll frame reaches its overflow by scrolling, so it draws no ghost.
   const walked = moving
     ? selected.filter(
         (ref) => !frames.some((frame) => frame.ref === ref && frame.scroll),
@@ -127,12 +116,8 @@ function outsideOf(box: Box, frame: Box): string {
 }
 
 /**
- * The elements past the edge of each named frame, read when the frames
- * change, when one loads or its viewport resizes, when an inline style
- * inside one changes, as a drag's preview writes it, and when its rendered
- * hash is stamped, as a drop that keeps the page moves it. Reads coalesce to
- * one an animation frame. Empty while no frame is named, so the walk runs
- * only under a selection.
+ * The elements past each named frame's edge, re-read on a load, resize, inline
+ * style change, or restamp, coalesced to one read an animation frame.
  */
 function useGhosts(
   container: HTMLElement | null,
@@ -150,10 +135,7 @@ function useGhosts(
       container.querySelector<HTMLIFrameElement>(
         `[data-frame="${CSS.escape(ref)}"] iframe`,
       )
-    // Each node is observed once, since an observe fires a first callback
-    // and observing again on every read would read on every frame. That first
-    // callback reports the size the read observing it already saw, so it is
-    // skipped.
+    // Observed once, its first callback skipped, since it repeats the read already taken.
     const sized = new WeakSet<Element>()
     const seen = new WeakSet<Element>()
     const styled = new WeakSet<Node>()
@@ -229,13 +211,8 @@ interface GroupOutlineProps extends ElementOverlayProps {
 }
 
 /**
- * One box around several selected elements with their size in its chip, as
- * a design tool draws a selection, and four corner marks while every member
- * is free and takes a corner resize, since only then does a corner drag
- * scale them. Each member keeps a thin outline of its own, drawn after the
- * box so the last picked reads last. Both follow a drag's preview, since the
- * measure watches the members' inline styles, and draw once every member
- * measures.
+ * One box around several elements, with corner marks only while every member
+ * is free, since only then does a corner drag scale them.
  */
 function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
@@ -321,8 +298,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const held = useStore(heldStore, (state) => state.held)
   const at = pending ?? frame?.box
   const holds = held !== null && held.key.frame === element?.frame
-  // A box measured for another key than the held one is the reloaded frame,
-  // or another element chosen, either of which the hold gives way to.
+  // A box measured under another key ends the hold.
   const settled = holds && rect !== null && !sameKey(held.key, element)
   useEffect(() => {
     if (held && (!holds || settled)) holdOutline(null)
@@ -404,14 +380,9 @@ function hideVideoStrips(doc: Document): () => void {
 }
 
 /**
- * The media bar of a selected `<video>` or `<audio>` in Edit, at a constant
- * screen size. A video's draws inside its bottom edge at its width less the
- * inset on each side, in place of the strip the browser draws for `controls`,
- * which is hidden while the bar is up. An audio's draws under it at its
- * width, since inside would cover the player. It draws in the notes layer,
- * the board-space layer over the hit layer, since a press on the frames'
- * layer never reaches it, and goes when the frame is culled or reloads other
- * bytes, as the live element does.
+ * The media bar at a constant screen size, an audio's under the player rather
+ * than over it. It draws in the notes layer, since a press on the frames' layer
+ * never reaches it.
  */
 function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
   const editing = useMode((state) => state.mode === 'edit')
@@ -458,10 +429,8 @@ interface MemberMeasure {
 }
 
 /**
- * Every named element's box inside their one frame, measured as
- * `useElementMeasure` measures one, and again when any of them resizes or
- * its inline style changes, since a group drag previews offsets no
- * `ResizeObserver` sees. Null until all of them measure.
+ * Every named element's box, re-measured on an inline style change too, since
+ * a group drag previews offsets no `ResizeObserver` sees.
  */
 function useElementMeasures(
   container: HTMLElement | null,
@@ -544,10 +513,8 @@ function useElementMeasures(
 }
 
 /**
- * The element's box inside its frame, in the frame's own pixels, and how it
- * takes a corner resize, measured again whenever the frame loads, the element
- * resizes, or the frame's page scrolls. Null while no live iframe shows the
- * bytes the key was read from.
+ * The element's box in frame pixels and its corner resize kind, null while no
+ * live iframe shows the bytes the key was read from.
  */
 function useElementMeasure(
   container: HTMLElement | null,

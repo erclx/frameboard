@@ -31,10 +31,8 @@ export interface Trees {
 }
 
 /**
- * Each frame's element tree from `GET /api/frames/elements`, fetched once
- * per reload of the frame, so the rows and the keys read the indices `edit`
- * addresses whether or not the frame's iframe is live. An answer for a reload
- * count older than the one last asked for is dropped.
+ * Each frame's element tree, fetched once per reload, so rows and keys read
+ * `edit`'s indices whether or not the iframe is live, and a stale answer drops.
  */
 export function createTrees(
   load: (ref: string) => Promise<ElementTree>,

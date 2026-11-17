@@ -90,11 +90,9 @@ export interface ElementContext {
 }
 
 /**
- * Whether focus sits on the page itself or inside the canvas. A click on the
- * canvas's hit layer, which takes no focus, leaves it on the body, while a
- * panel row or a toolbar button keeps it until it moves on. A note pin, the
- * card it opens, a media bar, and a frame label's buttons sit in the canvas
- * but are controls, so focus on any of them keeps Enter and Tab for them.
+ * Whether focus sits on the page or the canvas. A note pin, its card, a media
+ * bar, and a label's buttons sit in the canvas but are controls, so focus on
+ * them keeps Enter and Tab for them.
  */
 export function focusOnBoard(): boolean {
   const focused = document.activeElement
@@ -109,11 +107,8 @@ export function focusOnBoard(): boolean {
 }
 
 /**
- * The keys that walk the selection through a frame's elements: Enter goes
- * down, Esc up, and Tab and Shift+Tab to the next and previous sibling. Each
- * is enabled only in Edit with the selection it moves from and somewhere to
- * move to, so Esc at a frame falls through to clearing the selection and Tab
- * with no element selected keeps its focus move. Registered ahead of the
+ * The keys walking a frame's elements, each enabled only with somewhere to move
+ * so Esc at a frame falls through to clearing. Registered ahead of the
  * geometry actions, since the first enabled action holding a key runs.
  */
 export function elementActions(context: ElementContext): Action[] {
@@ -178,12 +173,7 @@ export function elementActions(context: ElementContext): Action[] {
       Boolean(element)
     )
   }
-  /**
-   * A move key holds the press with any element selected, even at the end of
-   * its siblings, where the move sends nothing, so it never falls through to
-   * a frame's key. It reads no tree here, since a press queued behind a move
-   * still in flight reads the place that move left it at.
-   */
+  // Holds the press even at an end, so it never falls through to a frame's key.
   const shift = (step: 1 | -1) => ({
     enabled: () =>
       elementSelected() && context.writable() && context.boardFocused(),
@@ -194,11 +184,7 @@ export function elementActions(context: ElementContext): Action[] {
       }
     },
   })
-  /**
-   * A restack the menus run takes no key, so it reads the tree, with no
-   * focus test, and stands disabled where `to` lands the element on its own
-   * place or past either end.
-   */
+  // Keyless, so it reads the tree with no focus test.
   const restack = (to: (place: number, count: number) => number) => {
     const moves = () => {
       const state = current()
@@ -216,11 +202,7 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
-  /**
-   * The selected elements an arrow moves, while one of them is placed
-   * freely, since a flow element's place is its container's. With none free
-   * the press falls through to the frame's nudge.
-   */
+  // With no free member, the press falls through to the frame's nudge.
   const nudged = () => {
     const state = selection.getState()
     if (!elementSelected() || !context.writable() || !context.boardFocused()) {
@@ -232,8 +214,7 @@ export function elementActions(context: ElementContext): Action[] {
       ? { page: state.page, keys, members }
       : null
   }
-  // A run of nudges holds its own elements, so the write it sends names the
-  // offsets it started from even when the selection changes before it rests.
+  // A nudge run keeps its elements, so its write names its start if the selection moves.
   let run: {
     keys: readonly ElementKey[]
     members: readonly GroupMember[]
@@ -272,11 +253,7 @@ export function elementActions(context: ElementContext): Action[] {
       timer = setTimeout(flush, NUDGE_REST_MS)
     },
   })
-  /**
-   * An align or a distribute of the selected elements, which takes `least`
-   * of them, every one placed freely, as one write. A member in the flow
-   * leaves it disabled, since its place is its container's alignment.
-   */
+  // A flow member disables it, since its place is its container's alignment.
   const arrange = (
     least: number,
     arranged: (boxes: Record<string, Box>) => Record<string, Box>,
@@ -301,12 +278,7 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
-  /**
-   * The selected elements a wrap takes: siblings of one parent read off a
-   * tree at their own bytes, none of them the document's own wrappers, all
-   * shown live. Elements of different parents stay disabled, since moving
-   * one between parents changes what it inherits.
-   */
+  // Siblings alone, since moving an element between parents changes what it inherits.
   const wrappable = () => {
     const state = selection.getState()
     if (!elementSelected() || !context.writable() || !state.page) return null
@@ -326,9 +298,7 @@ export function elementActions(context: ElementContext): Action[] {
     const members = context.group(keys)
     return members ? { page: state.page, keys, members } : null
   }
-  // The walks and the sibling moves take no palette row. Enter, Tab, and the
-  // Alt+Shift moves need focus on the board, which the open palette holds,
-  // and Esc's walk up is a navigation key. The restack rows cover the moves.
+  // No palette rows, since these keys need board focus the open palette holds.
   return [
     // Ahead of the frame's nudges, which hold the same keys.
     ...NUDGES.flatMap(({ name, key, dx, dy }): Action[] => [
@@ -351,8 +321,7 @@ export function elementActions(context: ElementContext): Action[] {
         ...nudge(dx * 10, dy * 10),
       },
     ]),
-    // Ahead of the frames' aligns, which hold the same keys, and off the
-    // palette, which lists the frames' rows under the same names.
+    // Ahead of the frames' aligns, which share their keys and palette names.
     ...ALIGNMENTS.map(({ id, label, alignment, key }): Action => ({
       id: elementArrangeId(id),
       label,
@@ -415,10 +384,7 @@ export function elementActions(context: ElementContext): Action[] {
       group: 'selection',
       palette: false,
       keys: ['Escape'],
-      // With a note card open, the card's own listener closes it and this
-      // row holds the press, so the selection clear behind it never runs
-      // on the same Esc.
-      // An armed tool takes Esc first, returning to Move.
+      // Holds Esc for an open note card or an armed tool before clearing the selection.
       enabled: () =>
         elementSelected() &&
         (context.noteOpen() ||
@@ -469,8 +435,7 @@ export function elementActions(context: ElementContext): Action[] {
       },
       ...restack((_place, count) => count - 1),
     },
-    // The menu's one-place rows, standing in for the moves whose keys hold
-    // the press at either end and only while focus sits on the board.
+    // The menu's rows, since the move keys need board focus.
     {
       id: 'element.forward',
       label: 'Bring forward',
@@ -538,8 +503,7 @@ export function useElementActions(page: string): void {
         wrap: (at, keys, request) => void wrapSelection(at, keys, request),
       }),
     )
-    // The keys walk the one selected frame's tree, so it is fetched once
-    // that frame is selected and again on each reload of it.
+    // Fetched on selection and on each reload, since the keys walk this tree.
     const fetchSelected = () => {
       const { frames } = selectionStore.getState()
       if (frames.length === 1 && frames[0]) requestTree(frames[0])

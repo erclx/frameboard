@@ -70,10 +70,8 @@ interface FrameProps {
 }
 
 /**
- * One frame at its box on the canvas layer, with its name above it at a
- * constant screen size. The label is the surface later rows add check
- * findings, claim tags, and the theme marker to. In Play an entered frame
- * takes focus, so Esc is bound into its window to reach the board.
+ * One frame at its box with its label above. In Play an entered frame takes
+ * focus, so Esc is bound into its window to reach the board.
  */
 export const Frame = memo(function Frame({
   frame,
@@ -83,8 +81,7 @@ export const Frame = memo(function Frame({
   claim,
   unseen = false,
 }: FrameProps) {
-  // A released move holds its place until the board carries it back, and a
-  // preview draws its width without touching either box.
+  // A released move holds until the board carries it, and a preview touches no box.
   const { x, y, width, height } = useDrawnBox(frame)
   const storedWidth = (usePendingBox(frame.ref) ?? frame.box).width
   const preview = usePreview(frame.ref)
@@ -100,22 +97,17 @@ export const Frame = memo(function Frame({
   const compared = useCompare((state) =>
     state.ref === frame.ref ? state.hash : null,
   )
-  // Read on each load rather than bound to the effect, so a newer record
-  // arriving before the reload stamps the file the iframe then shows.
+  // Read per load, so a record arriving before the reload stamps the file shown.
   const modifiedAt = useRef(frame.modifiedAt)
   useEffect(() => {
     modifiedAt.current = frame.modifiedAt
   }, [frame.modifiedAt])
-  // The ref is taken when the iframe mounts, reloads, or comes live, never on
-  // a rename alone, which moves the file the iframe already shows. A reload
-  // after one asks for the new path.
+  // Not on a rename alone, which moves the file the iframe already shows.
   const [loaded, setLoaded] = useState({ ref: frame.ref, version, live })
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
   }
-  // The theme is read when the iframe mounts or reloads, never on a theme
-  // change, so a switch rewrites the frame's root below rather than
-  // reloading it and restarting its animation and video.
+  // Not on a theme change, which rewrites the root rather than restart the frame.
   const src = useMemo(
     () =>
       loaded.live
@@ -136,8 +128,7 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', write)
   }, [theme, live])
 
-  // A note's element pick reads which file the iframe rendered, so a pick
-  // made after an agent rewrote the frame but before it reloaded is refused.
+  // Stamps the rendered file, so a pick made before an agent's reload is refused.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
@@ -148,12 +139,7 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', stamp)
   }, [live])
 
-  // An element selected in this frame stays only while the frame shows the
-  // bytes its index was read from. Any other write may have shifted every
-  // index, so the selection drops to the frame rather than outline whatever
-  // element took the old one. Bytes the board's own writes left the frame at
-  // are kept, as is any reload while such a write is in flight, since the
-  // reload of the bytes the selection names is still to come.
+  // Drops an element selection on foreign bytes, which may have shifted every index.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
@@ -169,10 +155,7 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', check)
   }, [live, frame.ref])
 
-  // A previewed frame hugging its height takes its content's height at the
-  // previewed width, read again on each load, as an agent's write reloads it,
-  // and on each stamp, as a drop the page keeps moves its content.
-  // It reads at the width's reference height, as the server's fit does.
+  // Read at the width's reference height, as the server's fit reads it.
   const previewWidth = preview?.width
   const { hugHeight } = frame
   useEffect(() => {
@@ -236,8 +219,7 @@ export const Frame = memo(function Frame({
       data-entered={entered || undefined}
       className={cn(
         'absolute',
-        // Play passes the pointer through every frame to the shield but the
-        // entered one, and marks the frame under it as one a click enters.
+        // The entered frame alone takes the pointer back from the shield.
         entered &&
           'pointer-events-auto [outline:calc(2px/var(--zoom,1))_solid_var(--primary)]',
         playing &&
@@ -249,9 +231,7 @@ export const Frame = memo(function Frame({
       <div
         className={cn(
           'absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label font-normal [transform:scale(calc(1/var(--zoom,1)))]',
-          // Hidden while the canvas marks the frame crowded, its room above
-          // shorter than the label at this zoom, unless the pointer is over
-          // it, it is selected, or its findings are open.
+          // Hidden while crowded, unless hovered, selected, or its findings are open.
           '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:hidden',
           claimed ? 'text-claim' : 'text-muted-foreground',
           'max-w-(--label-room)',
@@ -260,9 +240,7 @@ export const Frame = memo(function Frame({
           // `LabelRename` draws the field over it.
           renaming && 'invisible',
         )}
-        // A preview narrower than the stored box leaves that box's room above
-        // it, so the name and the Preview chip may use it. While the
-        // open-alone link shows, the label stops short of it.
+        // A narrower preview keeps the stored box's room for the name and chip.
         style={{
           ['--label-room' as string]: `calc(${Math.max(width, storedWidth)}px * var(--zoom, 1))`,
           ...(inset ? { bottom: `calc(100% + ${inset}px)`, left: -inset } : {}),
@@ -308,8 +286,7 @@ export const Frame = memo(function Frame({
           ref={iframe}
           title={frame.name}
           src={src ?? undefined}
-          // The iframe's canvas follows its element's scheme, so a flipped
-          // frame with no background of its own paints its own theme's color.
+          // A flipped frame with no background paints its own theme's color.
           style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
         />
@@ -343,9 +320,7 @@ export const Frame = memo(function Frame({
           data-severity={severityOf(findings)}
           className={cn(
             'absolute top-0 left-0 hidden size-2.5 rounded-full shadow-[0_0_0_2px_var(--background)] [transform:translate(-50%,-50%)_scale(calc(1/var(--zoom,1)))] data-[severity=error]:bg-destructive data-[severity=warning]:bg-muted-foreground',
-            // Shown exactly while the label hides, by the label's own rule,
-            // on the top left where the label starts, since a frame note
-            // takes the top right.
+            // Shown while the label hides, top left, since a frame note takes the top right.
             '[[data-label-crowded]:not([data-label-hover]):not([data-selected]):not([data-findings-open])>&]:block',
           )}
         />
@@ -362,10 +337,8 @@ interface LabelRenameProps {
 }
 
 /**
- * The rename field a frame's label opens, drawn over the label it hides at
- * the label's constant screen size. It mounts above the hit layer rather
- * than in the label, so a click inside it places the caret instead of
- * pressing the canvas. Its width follows the frame's within a readable range.
+ * The label's rename field, mounted above the hit layer rather than in the
+ * label, so a click inside it places the caret instead of pressing the canvas.
  */
 export function LabelRename({ frames, calls = structure }: LabelRenameProps) {
   const ref = useRenamingFrame('canvas')
@@ -407,12 +380,8 @@ function LabelRenameAt({
 }
 
 /**
- * The frame's theme on its label: a sun while it follows the board, shown
- * only while the pointer is over the frame as `canon/design/canvas/labels`
- * draws it, and a Dark or Light chip while it is flipped alone, so a flipped
- * frame never reads as a theme bug. A click flips it, reaching the button through the
- * hit layer as the compare control does. It gives way before the findings
- * count on a narrow frame, which matters more.
+ * The frame's theme on its label, a chip while flipped alone so a flipped
+ * frame never reads as a theme bug, giving way before the findings count.
  */
 function ThemeMarker({
   frameRef,
@@ -460,11 +429,8 @@ function ThemeMarker({
 }
 
 /**
- * Opens the frame's own page in a new tab, at the right end of its label
- * strip over the frame's right edge, clear of a long name, as
- * `canon/design/canvas/open-alone` draws it. Shown while the pointer is over
- * the frame or it is selected, and reaching the link through the hit layer as
- * the theme marker does.
+ * Opens the frame's own page in a new tab, as `canon/design/canvas/open-alone`
+ * draws it, reached through the hit layer as the theme marker is.
  */
 function OpenAlone({
   frameRef,
@@ -498,11 +464,8 @@ function OpenAlone({
 }
 
 /**
- * The width a frame is previewed at, beside its name. It reads as a preview
- * rather than a size, since the frame's stored box is unchanged. A narrow
- * label truncates the name first, which shrinks far faster beside it, then
- * ends the chip in an ellipsis, so a clipped width never reads as a different
- * number and the chip stays inside the label.
+ * The previewed width beside the name, ending in an ellipsis rather than
+ * clipping, so a narrow label never shows a different number.
  */
 function PreviewChip({ width }: { width: number }) {
   return (
@@ -518,10 +481,8 @@ function PreviewChip({ width }: { width: number }) {
 }
 
 /**
- * The moment a held frame stands still at, beside its name, so a frame left
- * frozen after deselecting never reads as broken. Pressing it hands the
- * frame back to its own clock. It sits beside the preview chip in the same
- * shape and shrinks the same way.
+ * The moment a held frame stands at, so a frame left frozen never reads as
+ * broken, and a press hands it back to its own clock.
  */
 function HeldChip({ frameRef, at }: { frameRef: string; at: number }) {
   const moment = `${formatMoment(at)} s`
@@ -569,8 +530,7 @@ function ClaimOutline() {
         width="100%"
         height="100%"
         fill="none"
-        // Sized against the zoom like the label. A stroke takes a fractional
-        // width where a CSS outline snaps to whole pixels before the zoom.
+        // A stroke, since a CSS outline snaps to whole pixels before the zoom.
         className="stroke-claim [stroke-width:calc(1.5px/var(--zoom,1))] [stroke-dasharray:calc(4.5px/var(--zoom,1))_calc(3px/var(--zoom,1))] motion-safe:animate-claim-outline"
       />
     </svg>
@@ -583,11 +543,8 @@ interface FindingsMarkProps {
 }
 
 /**
- * The count of a frame's check findings beside its name, as a pill filled in
- * the destructive hue when any finding is an error and a grey dot and count
- * with no fill when all are warnings. It never shrinks, so a narrow frame truncates the name and
- * any claim tag and keeps the count. It opens a popover listing each finding, which a press
- * reaches through the hit layer and a key through the badge itself.
+ * The findings count beside the name, which never shrinks, so a narrow frame
+ * truncates the name first, and opens a popover listing each finding.
  */
 function FindingsMark({ frame, findings }: FindingsMarkProps) {
   const open = useFindingsOpen(frame.ref)
@@ -617,8 +574,7 @@ function FindingsMark({ frame, findings }: FindingsMarkProps) {
         align="start"
         sideOffset={6}
         ref={popup}
-        // The list opens with focus on itself rather than on its first Turn
-        // off button, so a second Enter on the badge switches no rule off.
+        // Focus on the list, so a second Enter on the badge switches no rule off.
         initialFocus={popup}
         className="w-[330px] gap-1.5 p-2.5 text-body"
       >

@@ -10,11 +10,9 @@ const STRETCHING = new Set(['normal', 'stretch'])
 type Declarations = { property: string; value: string }[]
 
 /**
- * The declarations that set one axis to `to` on the child alone, from the
- * mode the static read gives it. Fill writes `flex: 1 1 0` along a flex
- * parent's main axis and `align-self: stretch` across it, and leaving Fill
- * puts back the `flex` initial value or stops the stretch, since a mode
- * declared on the child is the only one an edit may take off.
+ * The declarations setting one axis to `to` on the child alone. Leaving Fill
+ * puts back `flex`'s initial value or stops the stretch, since only a mode
+ * declared on the child may be taken off by an edit.
  */
 export function sizeDeclarations(
   layout: LiveLayout,
@@ -40,8 +38,7 @@ export function sizeDeclarations(
     return declarations
   }
   if (to === 'fill') {
-    // A declared size holds the child at it, a `fit-content` Hug included, so
-    // across the parent it would block the stretch.
+    // A declared size, `fit-content` included, would block the stretch.
     if (from === 'fixed' || (!main && from === 'hug')) {
       declarations.push({ property: axis, value: 'auto' })
     }
@@ -59,8 +56,7 @@ export function sizeDeclarations(
     })
     return declarations
   }
-  // A null mode is a parent the static read could not see as flex, so Hug
-  // writes everything that could be holding the child at another size.
+  // A null mode is an unread parent, so Hug clears everything that could size the child.
   if (from === 'fixed' || from === null) {
     declarations.push({ property: axis, value: 'auto' })
   }

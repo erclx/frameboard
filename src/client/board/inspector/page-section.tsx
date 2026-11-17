@@ -34,10 +34,8 @@ export const TRANSITION_TIP =
   'Drawn by the board while presenting. Slide files are unchanged.'
 
 /**
- * The open page's settings, shown with nothing selected: the transition
- * present mode draws between its slides, its direction for Slide and Push,
- * and its length. Each pick writes the page's `layout.json` in one undo
- * step, keeping the other two as they stand.
+ * The open page's transition, direction, and length, each pick writing the
+ * page's `layout.json` in one undo step and keeping the other two.
  */
 export function PageSection({
   page,

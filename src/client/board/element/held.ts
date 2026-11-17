@@ -13,11 +13,8 @@ export interface HeldOutline {
 }
 
 /**
- * The outline a free drag dropped, drawn in place of the measured box until
- * the reloaded frame measures the element again. The measured box still holds
- * the start until then, since `ResizeObserver` fires on a size change and
- * never on a move, and the written element takes a new key the frame does
- * not show yet.
+ * The outline a free drag dropped, drawn until the reloaded frame measures
+ * the element again, since `ResizeObserver` never fires on a move.
  */
 export const heldStore = createStore<{ held: HeldOutline | null }>()(() => ({
   held: null,

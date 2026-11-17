@@ -145,12 +145,9 @@ interface CanvasProps {
 }
 
 /**
- * One page's frames on a pannable, zoomable layer. Pan and zoom write the
- * layer's transform straight from the `d3-zoom` handler and never touch React
- * state, so a gesture renders nothing. Only once the view settles does React
- * hear of it, to swap frames far offscreen for placeholders. It registers
- * itself with the view controller in `view.ts`, which the chrome's zoom
- * controls call.
+ * One page's frames on a pannable layer. Pan and zoom write the transform from
+ * the `d3-zoom` handler and never touch React state, so a gesture renders
+ * nothing until the view settles.
  */
 export function Canvas({
   page,
@@ -174,13 +171,11 @@ export function Canvas({
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const moveToRef = useRef<((view: View) => void) | null>(null)
   const controlsRef = useRef<CanvasControls | null>(null)
-  // The page as this session first knew it, so a rename keeps the view and
-  // every frame while the code reading the ref follows the new one.
+  // The page as first known, so a rename keeps the view and every frame.
   const aliases = useLive((state) => state.aliases)
   const identity = identityOf(aliases, page.ref)
   const picks = useRef(0)
-  // The element selected when a double-click's first press landed, since
-  // that press selects the frame before the double-click arrives.
+  // Kept, since a double-click's first press selects the frame before it arrives.
   const pressedOn = useRef<ElementKey | null>(null)
   // Ends the in-place text edit open or waiting on a frame's reload.
   const stopEditing = useRef<(() => void) | null>(null)
@@ -209,8 +204,7 @@ export function Canvas({
     () => page.frames.filter((frame) => !frame.hidden),
     [page.frames],
   )
-  // Read by the zoom effect for the first fit and by the gestures at each
-  // press, so a frame change rebinds neither.
+  // Refs, so a frame change rebinds neither the zoom effect nor the gestures.
   const framesRef = useRef(frames)
   const sectionsRef = useRef(page.sections)
   const pageFramesRef = useRef(page.frames)
@@ -248,9 +242,7 @@ export function Canvas({
     if (!viewport || !layer) return
     const selection = select(viewport)
     let timer: ReturnType<typeof setTimeout> | undefined
-    // Set while the canvas moves the view itself, so every other zoom event
-    // is the developer's. `sourceEvent` cannot tell them apart, since the
-    // wheel and the pan keys go through `translateBy` and carry none.
+    // Marks the canvas's own moves, since `sourceEvent` is absent on wheel and key pans.
     let travelling = false
 
     const settle = (view: View) => setSettled({ view, size: sizeOf(viewport) })
@@ -260,13 +252,9 @@ export function Canvas({
       unknown
     >()
       .scaleExtent(SCALE_EXTENT)
-      // d3 swallows the click ending a press that moved past this, and the
-      // Play shield enters a frame on that click, so a trackpad press that
-      // jitters a pixel or two still enters rather than panning.
+      // Slack, so a jittered trackpad press still enters a frame in Play.
       .clickDistance(PLAY_CLICK_SLOP)
-      // A primary-button drag pans under the Hand tool, in Play, and while
-      // Space is held, since in Move it selects. The middle button and the
-      // wheel always pan.
+      // A primary drag pans only under Hand, in Play, or with Space, since Move selects.
       .filter((event: MouseEvent | WheelEvent | TouchEvent) => {
         if (event.type === 'wheel' || event.type.startsWith('touch')) {
           return true
@@ -302,8 +290,7 @@ export function Canvas({
     selection
       .call(zoomer)
       .on('dblclick.zoom', null)
-      // A plain wheel pans and a pinch, which browsers send as a wheel with
-      // ctrlKey, zooms, as design tools do, rather than d3's wheel-zooms.
+      // A plain wheel pans and a pinch, a wheel with ctrlKey, zooms, as design tools do.
       .on(
         'wheel.zoom',
         (event: WheelEvent) => {
@@ -316,10 +303,7 @@ export function Canvas({
             )
             return
           }
-          // Each axis reads alone, so a notch glides and a trackpad's small
-          // deltas follow the fingers one to one.
-          // Shift turns a wheel sideways, which macOS sends as deltaX and
-          // Chromium on Linux leaves on deltaY.
+          // Shift turns a wheel sideways, which Chromium on Linux leaves on deltaY.
           const sideways = event.shiftKey && event.deltaX === 0
           const deltaX = sideways ? event.deltaY : event.deltaX
           const deltaY = sideways ? 0 : event.deltaY
@@ -341,8 +325,7 @@ export function Canvas({
       zoomer.translateBy(selection, dx / k, dy / k)
     }
 
-    // A notch's pan, held in screen pixels so a zoom mid-glide moves nothing.
-    // A notch arriving mid-glide adds to what is left and starts it again.
+    // In screen pixels, so a zoom mid-glide moves nothing.
     let glide = 0
     let left = { x: 0, y: 0 }
     const stopGlide = () => {
@@ -381,8 +364,7 @@ export function Canvas({
       }
     }
 
-    // A page drawn on while away from its untouched empty start opens
-    // fitted rather than at the start it was left at.
+    // A page drawn on since it was left empty opens fitted.
     const stored = pageViews.get(identity)
     const untouched = !stored || untouchedEmpty.has(identity)
     const empty = framesRef.current.length === 0
@@ -435,8 +417,7 @@ export function Canvas({
     }
     viewport.addEventListener('pointerdown', press, { capture: true })
 
-    // The hit layer covers every frame, so the frame under the pointer is
-    // found by geometry and marked, which shows its label while crowded.
+    // Found by geometry, since the hit layer covers every frame.
     let hovered: string | null = null
     const hover = (ref: string | null) => {
       if (ref === hovered) return
@@ -444,15 +425,13 @@ export function Canvas({
       markHovered(layer, ref)
     }
     const track = (event: PointerEvent) => {
-      // A held button in Play pans the board, so no frame reads as one a
-      // click would enter until it is released.
+      // A held button in Play pans, so no frame reads as enterable until release.
       if (event.buttons !== 0 && modeStore.getState().mode === 'play') {
         hover(null)
         viewport.style.cursor = ''
         return
       }
-      // A scroll frame's rail sits 8px past its edge, so the pointer crossing
-      // that gap or on the rail keeps the frame marked and its rail shown.
+      // A rail sits 8px past its frame, so that gap keeps the frame marked.
       const hoveredFrame =
         hovered === null
           ? null
@@ -464,9 +443,7 @@ export function Canvas({
         frameAt(withDrawn(framesRef.current), { x, y }, transform.k)?.ref ??
           null,
       )
-      // The marks draw in a layer that takes no pointer, so they cannot carry
-      // a cursor themselves. In Play a frame under the shield shows a click
-      // enters it.
+      // Set here, since the marks' layer takes no pointer and cannot carry a cursor.
       viewport.style.cursor =
         cursorAtRef.current?.(event) ??
         (hovered !== null &&
@@ -485,8 +462,7 @@ export function Canvas({
     controlsRef.current = {
       zoomBy: (factor) => zoomer.scaleBy(selection, factor),
       zoomTo: (scale) => zoomer.scaleTo(selection, scale),
-      // The toolbar's fit is the developer's, though the canvas travels it.
-      // The fit also shows where an agent's reserved frames will land.
+      // The toolbar's fit counts as the developer's move.
       fit: () => {
         reportHandMove()
         const reserved = reservedOn(
@@ -542,8 +518,7 @@ export function Canvas({
     }
   }, [identity])
 
-  // Attached apart from the view, so a rename hands the controller the new
-  // ref without rebuilding the zoom.
+  // Apart from the view, so a rename reaches the controller without a new zoom.
   useLayoutEffect(() => {
     const controls = controlsRef.current
     return controls ? attachCanvas(controls, page.ref) : undefined
@@ -576,8 +551,7 @@ export function Canvas({
     const layer = layerRef.current
     const hit = hitRef.current
     if (!viewport || !layer || !hit) return
-    // A press on a shown scroll rail scrolls its page, so it never reaches
-    // the hit layer's gestures under it.
+    // A rail press scrolls its page and never reaches the hit layer's gestures.
     const railPress = (event: PointerEvent) => {
       if (pressRail(layer, event)) event.stopPropagation()
     }
@@ -591,8 +565,7 @@ export function Canvas({
       pageFrames: () => pageFramesRef.current,
     })
     cursorAtRef.current = cursorAt
-    // An inline cursor beats a tool's class, so a tool armed with the pointer
-    // still over a mark takes the cursor back, and the next move reads it again.
+    // Cleared, since an inline cursor would beat a newly armed tool's class.
     const stopMode = modeStore.subscribe(() => {
       viewport.style.cursor = ''
     })
@@ -609,8 +582,7 @@ export function Canvas({
     const viewport = viewportRef.current
     if (frames.length === 0 || !viewport || !moveToRef.current) return
     if (!untouchedEmpty.delete(identity)) return
-    // A Frame tool click lands its frame in view, which a fit would slide
-    // out from under the pointer.
+    // No fit, which would slide a Frame tool click's frame from under the pointer.
     const transform = zoomTransform(viewport)
     const size = sizeOf(viewport)
     const [left, top] = transform.invert([0, 0])
@@ -625,8 +597,7 @@ export function Canvas({
     if (!inView) moveToRef.current(fitView(frames, size))
   }, [frames, identity])
 
-  // Waits for the frame to reach this page's record, since a shown frame can
-  // arrive a batch ahead of the board that holds it.
+  // Waits, since a shown frame can arrive a batch ahead of the board holding it.
   useEffect(() => {
     const frame = frames.find((candidate) => candidate.ref === focus)
     const viewport = viewportRef.current
@@ -679,8 +650,7 @@ export function Canvas({
     return stopEditing.current !== null
   }
 
-  // A double-click on the text element selected before it edits that
-  // text, and anywhere else picks inside the frame, editing a text it picks.
+  // Edits the text selected before the double-click, else picks inside the frame.
   const doubleClick = (event: MouseEvent) => {
     const viewport = viewportRef.current
     const held = pressedOn.current
@@ -726,11 +696,7 @@ export function Canvas({
     )
   }
 
-  /**
-   * Whether a double-click landed in a frame's label strip, off its theme
-   * and compare controls, which click on release and would click twice. The
-   * first click selected the frame, so the label renames only that frame.
-   */
+  // Off the label's controls, which click on release and would click twice.
   const onLabel = (event: MouseEvent): boolean => {
     const viewport = viewportRef.current
     if (
@@ -762,11 +728,7 @@ export function Canvas({
     () => (settled ? mountedRefs(frames, settled.view, settled.size) : null),
     [frames, settled],
   )
-  // The culled frames come live a batch per animation frame, nearest the
-  // view center first, so a page switch or a long pan answers with empty
-  // boxes at once rather than building every iframe in one commit. Admission
-  // keys on a frame's identity, as its element does, so a project or page
-  // rename that moves every ref keeps each frame live.
+  // Keyed on identity, nearest first, so a rename moving every ref keeps each frame live.
   const order = useMemo(
     () =>
       settled && culled
@@ -780,8 +742,7 @@ export function Canvas({
   )
   const { live: liveIdentities, staging } = useStagedLive(order)
   const isLive = liveIdentities !== null && !staging
-  // Reset only when the effects are destroyed, which a hidden `Activity`
-  // does, so a reveal reports live again and a later re-stage never does.
+  // Reset only when a hidden `Activity` destroys the effects, so a reveal reports again.
   const reportedLiveRef = useRef(false)
   useEffect(
     () => () => {
@@ -830,8 +791,7 @@ export function Canvas({
         data-staging={staging || undefined}
         className={cn(
           'absolute top-0 left-0 origin-top-left',
-          // The pointer passes through to the shield under every frame but
-          // the entered one, which takes it back.
+          // The pointer passes to the shield under every frame but the entered one.
           playing && 'pointer-events-none',
         )}
       >
@@ -848,8 +808,7 @@ export function Canvas({
                   <Frame
                     frame={frame}
                     live={live}
-                    // A reload the live page kept leaves its iframe as it is,
-                    // while the linked widths, which drew no preview, reload.
+                    // A kept reload leaves the iframe, while linked widths still reload.
                     version={version - (kept[frame.ref] ?? 0)}
                     findings={findings?.[frame.ref]}
                     claim={claims?.[frame.ref]}
@@ -902,11 +861,7 @@ export function Canvas({
               ref={hitRef}
               data-hit-layer
               className="absolute inset-0"
-              // A Note click opens the composer, a Frame click places a
-              // frame, and a Text or Shape click places an element, and none
-              // goes further. Selection and marquee gestures start on
-              // pointerdown, so they bind only while the Move tool is on and
-              // never see these presses.
+              // A tool click goes no further, since selection gestures bind only under Move.
               onClickCapture={(event) => {
                 const viewport = viewportRef.current
                 if (
@@ -937,8 +892,7 @@ export function Canvas({
                   return
                 }
                 if (kind) {
-                  // A Rectangle or Ellipse drag reads its gap where it started,
-                  // at the size drawn, and lands on the box drawn when placed free.
+                  // A shape drag reads its gap where it started, at the size drawn.
                   const draft = takeDraft()
                   void placeElement(
                     layer,
@@ -954,8 +908,7 @@ export function Canvas({
                   return
                 }
                 if (sectioning) {
-                  // A drag draws the section at its box, and one too small
-                  // to use draws the clicked size, as the Frame tool does.
+                  // A drag too small to use draws the clicked size, as the Frame tool does.
                   const draft = takeDraft()
                   const drawn =
                     draft &&
@@ -967,9 +920,7 @@ export function Canvas({
                   return
                 }
                 if (framing) {
-                  // A drag draws the frame at its box, and one too small to
-                  // use places the picked size, as a click does. The floor
-                  // reads on screen, so a short drag stays a click at any zoom.
+                  // The floor reads on screen, so a short drag stays a click at any zoom.
                   const draft = takeDraft()
                   const drawn =
                     draft &&
@@ -995,8 +946,7 @@ export function Canvas({
                 if (pick) notesUi.setState({ open: { kind: 'new', pick } })
                 else closeNote()
               }}
-              // The gestures select the frame on pointerup and the click follows,
-              // so a Cmd-click or a double-click picks inside the frame just selected.
+              // The click follows the gestures' pointerup, so it picks inside the frame just selected.
               onClick={(event) => {
                 if (event.metaKey) pickInside(event.nativeEvent)
               }}
@@ -1005,8 +955,7 @@ export function Canvas({
                   pressedOn.current = selectionStore.getState().element ?? null
                 }
               }}
-              // The label strip renames in place, through F2's gates, and
-              // anywhere else a double-click edits text or picks inside the frame.
+              // The label strip renames through F2's gates, elsewhere a double-click edits or picks.
               onDoubleClick={(event) => {
                 if (onLabel(event.nativeEvent)) {
                   const rename = findAction('frame.rename')
@@ -1074,10 +1023,8 @@ function EmptyState({ page, calls }: { page: PageRecord; calls: Structure }) {
 }
 
 /**
- * The notice on a page drawing no frame. A page whose frames are all hidden
- * says so, since its layers still list them, and a tab that may write offers
- * to show them. Its body mixes the muted text toward the foreground, since
- * the muted token alone reads 4.3:1 on the light canvas.
+ * The notice on a page drawing no frame, its body mixing muted text toward the
+ * foreground, since the muted token alone reads 4.3:1 on the light canvas.
  */
 function EmptyNotice({
   hidden,

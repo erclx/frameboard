@@ -59,14 +59,9 @@ interface FrameSectionProps {
 }
 
 /**
- * The selection's place and size. One frame shows its name, which a click
- * renames in place, and several show `N frames` with `Mixed` where their
- * values differ. A field writes through the same write the gestures use, a
- * typed value setting every selected frame and a step on `Mixed` moving each
- * by the step. The heading opens the Frame tool's sizes. The Height row sets
- * how every frame holds its height, the Show device switch whether the board
- * draws each inside the device its width names, and the Preview row shows the frames at another width
- * and writes nothing. One frame also lists the widths it shows at.
+ * The selection's place and size, written through the gestures' own write. A
+ * typed value sets every selected frame, and a step on `Mixed` moves each by
+ * the step from its own value.
  */
 export function FrameSection({
   frames,
@@ -193,10 +188,8 @@ export function FrameSection({
 }
 
 /**
- * The selected element's frame as one row over the element's sections, the
- * frame's name going up to select the frame and the element's Layers name
- * after it. It stands in for the frame's own fields, which the frame shows
- * once selected.
+ * The selected element's frame as one row, its name selecting the frame, in
+ * place of the frame's own fields.
  */
 export function FrameCrumb({
   page,
@@ -406,10 +399,8 @@ const DEVICE_TIP =
   'Drawn by the board around the frame, a phone from 320 wide, a tablet from 480, and a laptop from 1024. The file is unchanged, and export can include it.'
 
 /**
- * Whether the board draws the frames inside the device each one's width
- * names, which leaves each frame file and its size as they are. While on,
- * the row names that device, or says none fits a frame under 320 wide, and
- * frames that differ read `Mixed`, which a press turns on for all.
+ * Whether the board draws each frame inside its width's device, leaving the
+ * file and its size as they are. A press on `Mixed` turns it on for all.
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   const id = 'inspector-device'
@@ -483,11 +474,9 @@ interface ChoiceRowProps<T extends string> {
 }
 
 /**
- * One setting of the frames read off the records, null where they differ,
- * and a pick that writes every frame in one step. The pick shows at once and
- * stands until the frames read another value than the one it was made from,
- * and is then forgotten, so an undo back to it reads as stored. A refused
- * write puts the stored value back.
+ * One frame setting, null where frames differ, with a pick that writes all in
+ * one step. The pick stands until the records move off its starting value, so
+ * an undo back to it reads as stored.
  */
 function usePick<T>({
   frames,
@@ -531,11 +520,8 @@ function usePick<T>({
 }
 
 /**
- * One setting of the frames as one radio group read off the records,
- * checking nothing and reading `Mixed` where they differ. A pick writes
- * every frame in one step and shows at once, until the board answers with
- * the frames' new value or the write is refused, which puts the stored
- * value back.
+ * One frame setting as a radio group, checking nothing where frames differ.
+ * A pick shows at once until the board answers, and a refusal puts it back.
  */
 function ChoiceRow<T extends string>({
   id,

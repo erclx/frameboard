@@ -42,10 +42,8 @@ const ABOUT = frameOf('about', {
 })
 
 /**
- * The wait for a copy toast. The toast sits behind an image fetch no board
- * serves in the test, and a machine running several test processes stretched
- * it past testing-library's 1000 ms default in 5 of 36 measured copies. No
- * ceiling was measured, so 5 s is a fivefold margin.
+ * The copy toast's wait, since under parallel test load its image fetch ran past
+ * testing-library's 1000 ms default, and 5 s is a fivefold margin.
  */
 const TOAST_WAIT_MS = 5_000
 
@@ -145,8 +143,7 @@ describe('useBoardActions', () => {
       await userEvent.click(
         await screen.findByRole('menuitemradio', { name: /Hand/ }),
       )
-      // The menu hands focus back to its trigger once it closes, which lands
-      // late under load, after a disarm that ran too early.
+      // The menu's focus return lands late under load, after an early disarm.
       await waitFor(() =>
         expect(document.activeElement).toBe(
           screen.getByRole('button', { name: 'Pointer tools' }),

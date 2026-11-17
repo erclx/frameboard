@@ -37,13 +37,9 @@ export interface RecolorDeps {
 }
 
 /**
- * Writes `token` in place of the raw color `from` on every element of the
- * target that states it inline, as one step one undo puts back. It goes in
- * the frame's turn behind any element edit, from the hash that edit
- * answered, and waits under a claim as an edit does. The selected element
- * stays selected at the hash written, since a replace moves no index. A
- * toast names how many elements changed, or that none stated the color
- * inline. Answers whether it landed.
+ * Writes `token` over the raw color `from` wherever it is inline, as one undo
+ * step in the frame's turn. The selection holds at the written hash, since a
+ * replace moves no index.
  */
 export async function replaceColor(
   page: string,

@@ -7,12 +7,8 @@ import type { SelectionState, SelectionStore } from '../selection'
 export type SendReport = (report: SelectionReport) => Promise<unknown>
 
 /**
- * Tells the server each selection this tab makes while it may write, so
- * `frameboard selection` reads what the developer has selected. One report
- * is in flight at a time and only the newest waiting one follows it, so an
- * older report never lands after a newer one, and a tab that regains write
- * access, as after a server restart, reports again. Returns the function
- * that stops reporting.
+ * Reports each selection to the server for `frameboard selection`, one report
+ * in flight and only the newest waiting, so an older one never lands last.
  */
 export function followReports(
   selection: SelectionStore,

@@ -47,12 +47,8 @@ const INSPECTOR_LABELS = {
 const PAGES_HEIGHT = 152
 
 /**
- * A board page while the board loads: both panels at their remembered
- * widths, the project name from the route, and the real toolbar, with grey
- * rows for the pages, layers, and inspector and one grey frame on the
- * canvas. It registers none of the board's actions, so the tools and the
- * panels' controls show disabled until `BoardScreen` takes over. Hide UI
- * draws the canvas alone, as the real screen does.
+ * A board page while the board loads, registering none of the board's
+ * actions, so its controls show disabled until `BoardScreen` takes over.
  */
 export function BoardLoading({ project }: { project: string }) {
   const hideUi = useMode((state) => state.hideUi)

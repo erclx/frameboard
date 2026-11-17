@@ -273,8 +273,7 @@ describe('VideoSection', () => {
     )
 
     expect(screen.queryByRole('heading', { name: 'Video' })).toBeNull()
-    // The older page holds the same audio at that index, so showing it here
-    // would mean the hold adopted a node it never read under this key.
+    // The older page's audio at that index must not be adopted under this key.
     expect(screen.queryByRole('heading', { name: 'Audio' })).toBeNull()
     await loadPage(
       iframe,

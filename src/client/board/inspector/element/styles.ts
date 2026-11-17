@@ -67,11 +67,9 @@ export interface LiveElement {
 }
 
 /**
- * Where the element sits for the Position section. Its offsets count from
- * the box a placement anchors it to, being its containing block once placed,
- * and for one in the flow the box a placement would give it: any parent but
- * `body`, which the place writes `relative` on when static, else the nearest
- * positioned ancestor, else the frame.
+ * Where the element sits, its offsets counted from the box a placement would
+ * anchor it to, being any parent but `body`, else the nearest positioned
+ * ancestor, else the frame.
  */
 export interface Placement {
   /** Whether it is out of the flow, as `position: absolute` or `fixed`. */
@@ -160,11 +158,9 @@ export interface Rotation {
 }
 
 /**
- * The selected element as its frame's live iframe renders it, read again on
- * every load of that frame. While the frame still shows bytes older than the
- * key's hash, as between a hand edit and its reload, the last reading of the
- * same element is kept, so the sections hold their place. Null until the
- * frame shows the element, which a placeholder never does.
+ * The selected element as its live iframe renders it, keeping the last reading
+ * while the frame shows bytes older than the key's hash, so the sections hold
+ * their place between a hand edit and its reload.
  */
 export function useLiveElement(key: ElementKey | null): LiveElement | null {
   const [held, setHeld] = useState<{
@@ -206,10 +202,8 @@ export interface ElementMember {
 }
 
 /**
- * Each of several selected elements as its frame's live iframe renders it, and
- * its static styles, read again on every load of that frame. The last reading
- * of the same elements is kept while the frame shows older bytes than their
- * hash, as `useLiveElement` keeps one's. Null until the frame shows them all.
+ * Several elements as their live iframe renders them, with their static
+ * styles, held across older bytes as `useLiveElement` holds one.
  */
 export function useElementMembers(
   keys: readonly ElementKey[],
@@ -318,10 +312,8 @@ export function mergeColors(
 }
 
 /**
- * A frame's `body` as an element key, read off its live iframe on every
- * load and every stamp a kept drop makes, so a frame Fill writes through
- * the element edit from the bytes the page shows. Null until the frame
- * shows stamped bytes, which a placeholder never does.
+ * A frame's `body` as an element key read off its live iframe, so a frame
+ * Fill writes through the element edit from the bytes the page shows.
  */
 export function useLiveBody(frame: string): ElementKey | null {
   const [held, setHeld] = useState<ElementKey | null>(null)
@@ -334,9 +326,7 @@ export function useLiveBody(frame: string): ElementKey | null {
       const index = doc?.body ? elementIndex(doc, doc.body) : null
       if (hash !== null && index !== null) setHeld({ frame, index, hash })
     }
-    // The canvas mounts a frame's iframe only once the view settles near it,
-    // and swaps it for a placeholder far off, so a load is caught wherever it
-    // lands rather than on the iframe present when the frame was selected.
+    // Caught wherever it lands, since the canvas swaps a distant frame's iframe out.
     const loaded = (event: Event) => {
       const target = event.target
       if (target instanceof HTMLIFrameElement && target.closest(scope)) {
@@ -486,10 +476,9 @@ function placementOf(
 const TEXT_NODE = 3
 
 /**
- * Where a box shrunk to its words would start for text alone, the left of
- * its words less its border and padding, or null for anything else. A
- * placement writes no width on text alone, so where no length sizes it the
- * box shrinks, and its own left would move aligned words to the left edge.
+ * Where a text-only box shrunk to its words would start, or null, since a
+ * placement writes no width there and the box's own left would move aligned
+ * words to the edge.
  */
 function wordsLeft(
   element: Element,
@@ -703,11 +692,9 @@ interface Replaced {
 const previews = new Map<string, Replaced>()
 
 /**
- * Sets one inline declaration on the selected element's live node, so a
- * step shows on the canvas before it is written, or puts the declaration it
- * replaced back on null. A written step needs no putting back, since the
- * frame reloads with the written bytes, so the next preview of a new node
- * forgets the old one.
+ * Previews one inline declaration on the live node, or puts the replaced one
+ * back on null. A written step needs no putting back, since the frame reloads
+ * with the written bytes.
  */
 export function previewStyle(
   key: ElementKey,
@@ -748,10 +735,8 @@ export function previewStyle(
 }
 
 /**
- * Forgets a frame's previews without putting anything back, once a write
- * of exactly what they show landed and the frame keeps its page rather than
- * reloading. The previewed value is then the written one, so a later
- * cancel puts it back rather than the value from before the write.
+ * Forgets a frame's previews once a write of exactly what they show landed
+ * without a reload, so a later cancel restores the written value.
  */
 export function keepPreviews(frame: string): void {
   for (const at of previews.keys()) {

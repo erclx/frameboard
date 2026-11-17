@@ -36,12 +36,9 @@ export type ResizeKind = 'box' | 'text' | 'media' | 'container'
 const ROOTS = new Set(['html', 'body'])
 
 /**
- * The kind of corner resize an element's markup takes, or null for one sized
- * by its line, being a divider, or one of the document's own wrappers. A box
- * is a `div` holding no element and no text, as a placed Rectangle or Ellipse
- * is, and text holds words whose every element child lays out inline, so a
- * `<p>` holding a `<b>` is text. Any other element holding another is a
- * container.
+ * The corner resize an element's markup takes, null for a divider or a wrapper.
+ * Text holds words whose every element child lays out inline, so a `<p>`
+ * holding a `<b>` is text.
  */
 export function resizeKindOf(element: Element | null): ResizeKind | null {
   if (!element || ROOTS.has(element.localName)) return null
@@ -95,10 +92,8 @@ export type ResizeTarget = Pick<ResizeRead, 'kind' | 'inset'> &
   Partial<Pick<ResizeRead, 'sizing'>>
 
 /**
- * How a live element takes a corner resize, or null for one it would not
- * size. A rotated element's outline is its turned bounding box, whose corners
- * are not the element's own, and a width does nothing to inline text or an
- * inline container.
+ * How a live element takes a corner resize, null for a rotated one, whose
+ * outline corners are not its own, and for inline content a width cannot size.
  */
 export function readResize(element: Element): ResizeRead | null {
   const kind = resizeKindOf(element)
@@ -196,10 +191,8 @@ export function shownResize(
 }
 
 /**
- * The size dragging `corner` of an element drawn at `start` by a canvas offset
- * makes, at least 1 px a side and never flipped. `keepRatio`, Shift held,
- * scales both sides by whichever moved further to the shape of `ratio`, so an
- * Ellipse stays a circle.
+ * The size a corner drag makes, at least 1 px a side and never flipped, with
+ * `keepRatio` scaling both sides to `ratio` so an Ellipse stays a circle.
  */
 export function cornerSize(
   start: Box,
@@ -240,10 +233,8 @@ export function dragSize(
 }
 
 /**
- * The declarations a corner drag to a drawn size writes on an element. A
- * container writes only the sides the drag moved a pixel or more from the
- * size it drew at, each through `sizeDeclarations` as Fixed, so a Fill child
- * drops its flex and a side the drag left keeps its mode.
+ * The declarations a corner drag writes. A container writes only the sides
+ * the drag moved, as Fixed, so a side the drag left keeps its mode.
  */
 export function resizeDeclarations(
   { kind, inset, sizing }: ResizeTarget,
@@ -301,12 +292,9 @@ export function startElementResize(
     })
     return null
   }
-  // The properties the latest preview wrote, in the order it wrote them, since
-  // a container's drag may write its flex too and a row parent's draw puts it
-  // between width and height.
+  // Kept in write order, since a container's flex can land between width and height.
   const shown = new Set<string>()
-  // Newest first, since `previewStyle` may put back the whole `style` it saved,
-  // which holds every earlier preview.
+  // Newest first, since `previewStyle` may restore a `style` holding earlier previews.
   const putBack = () => {
     for (const property of [...shown].toReversed()) {
       previewStyle(key, property, null)
@@ -370,10 +358,9 @@ export interface PlacedMove {
 }
 
 /**
- * Starts a drag of the placed element `key` names, or answers null for a
- * frame another session holds, refused with the claim's toast before
- * anything previews. It writes `left` and `top` on the element alone, never
- * its parent, since the offsets count from the box that already holds it.
+ * Starts a placed element's drag, null under another session's claim. It
+ * writes `left` and `top` on the element alone, since its parent already
+ * anchors it.
  */
 export function startPlacedMove(
   page: string,
@@ -415,10 +402,8 @@ export function startPlacedMove(
 }
 
 /**
- * The `left` and `top` a live element holds when it is placed freely and no
- * other element of `group` holds it, else null. One inside another selected
- * element moves with that one, so a group drag moving it too would carry it
- * twice.
+ * A free element's `left` and `top`, null when another group member holds it,
+ * since a group drag would otherwise carry it twice.
  */
 export function placedIn(
   element: Element,

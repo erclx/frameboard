@@ -103,14 +103,12 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     storage: panelStorage,
   })
   const current = record?.pages.find((candidate) => candidate.name === page)
-  // A rename keeps the canvas, so its view and frames stay, and a page
-  // switch mounts a fresh one unless it returns to the held page.
+  // A rename keeps the canvas, and a page switch mounts a fresh one unless returning.
   const aliases = useLive((state) => state.aliases)
   const canvasKey = current ? identityOf(aliases, current.ref) : ''
   const [mounted, setMounted] = useState<Mounted>(() => show(EMPTY, canvasKey))
   if (mounted.shown !== canvasKey) setMounted(show(mounted, canvasKey))
-  // A transition, so the held page's teardown never lands in the task that
-  // answered a click, which a return to a live page would otherwise do.
+  // A transition, so the held page's teardown never lands in a click's task.
   const dropHeld = useCallback((key: string) => {
     startTransition(() =>
       setMounted((latest) =>
@@ -119,8 +117,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
     )
   }, [])
   const [, navigate] = useLocation()
-  // Follows a rename in the same update that renames the board, whether this
-  // tab, another, or an undo made it, so the old name never shows missing.
+  // Follows a rename in the board's own update, so the old name never shows missing.
   useEffect(() => {
     if (page === undefined) return
     return liveStore.subscribe((state, previous) => {

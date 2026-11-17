@@ -38,11 +38,8 @@ function parseStep(value: string): number | null | undefined {
 }
 
 /**
- * The Present section: which press of its slide reveals the element. Each
- * field writes its own attribute, `data-step`, `data-step-effect`, or
- * `data-step-start`, and an empty step drops `data-step`, which takes the
- * element out of the slide's steps whatever else it holds. Effect and Start
- * show once the element holds a step.
+ * Which press of its slide reveals the element. An empty step drops
+ * `data-step`, which takes the element out of the steps whatever else it holds.
  */
 export function StepSection({ step, disabled, write }: StepSectionProps) {
   const effect: StepEffect =

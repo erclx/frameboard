@@ -15,10 +15,8 @@ export interface Overflowing {
 const SLACK_PX = 1
 
 /**
- * A live frame's elements whose box runs past its viewport on any side, in
- * file order. A reported element's descendants travel with it, so the walk
- * lists none of them. A fixed element sits against the viewport by design,
- * and one an ancestor crops shows nothing past the edge, so neither counts.
+ * A live frame's elements running past its viewport, not their descendants.
+ * A fixed element and one an ancestor crops show nothing past the edge.
  */
 export function overflowing(document: Document): Overflowing[] {
   const view = document.defaultView
@@ -56,10 +54,8 @@ export function overflowing(document: Document): Overflowing[] {
 }
 
 /**
- * Whether an ancestor below the body crops the element. An ancestor crops
- * only what its box contains, so the walk follows the containing block
- * chain, as the `clipped` check does: an absolute element skips every static
- * ancestor up to the one positioned.
+ * Whether an ancestor below the body crops the element, walking the
+ * containing block chain as the `clipped` check does.
  */
 function isCropped(element: Element, body: HTMLElement): boolean {
   const view = element.ownerDocument.defaultView

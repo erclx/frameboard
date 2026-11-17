@@ -54,10 +54,8 @@ export interface SizeGroup {
 }
 
 /**
- * The Frame tool's list, one group per preset holding the preset and the
- * devices in its group, then the slides, the social cards, and the video
- * sizes, each group
- * narrowest first.
+ * The Frame tool's list, a group per preset with its devices, then slides,
+ * social cards, and video sizes, each narrowest first.
  */
 export const FRAME_TOOL_GROUPS: readonly SizeGroup[] = (
   [

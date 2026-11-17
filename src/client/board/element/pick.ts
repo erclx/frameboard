@@ -7,15 +7,9 @@ import { type BoardPoint, pickAt } from '../notes/pick'
 import type { ElementKey } from '../selection'
 
 /**
- * The element a Cmd-click or a double-click selects at a board point: the
- * deepest element under it that the frame's file states, found the way a
- * note pin finds its element, so the two agree and neither picks the page's
- * root or wrappers. An element a frame script added is passed over for its
- * nearest stated ancestor, read off the server's tree, since its live index
- * names nothing in the file. Null over bare canvas, a frame placeholder, a
- * frame's wrappers, an iframe that has not finished a load, or a frame whose
- * tree for the bytes it shows is not held, since then nothing vouches for
- * the index.
+ * The deepest element the file states under a point, found as a note pin finds
+ * its element, a script's element giving way to its stated ancestor. Null
+ * where no held tree vouches for the index.
  */
 export function pickElement(
   container: ParentNode,
@@ -79,10 +73,8 @@ function shownAt(
 }
 
 /**
- * The elements a canvas rectangle touches inside one frame, with their boxes
- * on the canvas, outermost first in the frame's order, one held inside a
- * touched one left to it. Empty while the frame shows other bytes than the
- * tree names, since then nothing vouches for an index.
+ * The elements a rectangle touches in one frame, outermost first, empty while
+ * the frame shows bytes the tree does not name.
  */
 export function elementsIn(
   container: ParentNode,
@@ -119,10 +111,8 @@ export function elementsIn(
 }
 
 /**
- * Whether a board point inside a frame lands on its bare `body`, where a
- * press starts a marquee of its elements, rather than on an element it holds.
- * False for a frame with no live page or with nothing in it, which a drag
- * still moves, as it does when no element is there to select.
+ * Whether a point lands on a frame's bare `body`, where a press marquees its
+ * elements, false for a frame with no live page or nothing in it.
  */
 export function onBareFrame(
   container: ParentNode,

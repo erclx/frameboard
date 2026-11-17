@@ -85,11 +85,9 @@ interface RotationRowProps {
 }
 
 /**
- * The Rotation row of `inspector/text`: the `rotate` property in clockwise
- * degrees, then Rotate 90°, Flip horizontal, and Flip vertical, the flips
- * writing `scale`. Neither touches the element's `transform`. The row is
- * off where that transform moves the element, since `rotate` composes ahead
- * of it, and for a 3D value, each saying why.
+ * The Rotation row, writing `rotate` and flips as `scale`, never `transform`.
+ * It is off where the transform translates, since `rotate` composes ahead of
+ * it, and for a 3D value.
  */
 export function RotationRow({
   rotation,

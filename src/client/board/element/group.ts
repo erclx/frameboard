@@ -45,10 +45,8 @@ export function scalesAsGroup(members: readonly GroupMember[]): boolean {
 }
 
 /**
- * The `left` and `top` a move by a canvas offset gives each free member,
- * every one shifted by the same whole pixels so no offset between them
- * changes. A member in the flow is left out, since its place is its
- * container's.
+ * The `left` and `top` a move gives each free member, all shifted by the same
+ * whole pixels so no offset between them changes.
  */
 export function moveMembers(
   members: readonly GroupMember[],
@@ -100,10 +98,8 @@ export function groupBox(
 }
 
 /**
- * What scaling the group from `from` to `to` writes on each member: its
- * offsets moved by as far as its box moved, and its size scaled, so every
- * member keeps its proportion of the group. Text takes its width alone, and
- * no font size changes. A group that does not scale writes nothing.
+ * What scaling the group writes on each member, keeping its proportion of the
+ * group. Text takes its width alone, and no font size changes.
  */
 export function scaleMembers(
   members: readonly GroupMember[],
@@ -140,10 +136,8 @@ export function scaleMembers(
 }
 
 /**
- * What an align or a distribute writes on each member: its offsets moved by
- * as far as `arranged` moves its box, and nothing on one it leaves in place.
- * It takes every member free, since a flow member's place is its container's,
- * and writes nothing otherwise.
+ * What an arrange writes on each member, taking every member free, since a
+ * flow member's place is its container's.
  */
 export function arrangeMembers(
   members: readonly GroupMember[],

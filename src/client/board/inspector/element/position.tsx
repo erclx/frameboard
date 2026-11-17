@@ -24,12 +24,9 @@ interface PositionSectionProps {
 }
 
 /**
- * The Position section of `inspector/position`: an In flow and Absolute toggle
- * in the header, and while Absolute, the `left` and `top` the element holds as
- * X and Y, each stepping and scrubbing, as `inspector/position-flow` hides
- * them in the flow. Absolute places it where it renders, counted from its parent,
- * at the size it renders at unless it holds text alone, which hugs its words
- * from where they start.
+ * The Position section. Absolute places the element where it renders, at its
+ * rendered size unless it holds text alone, which hugs its words from where
+ * they start, and X and Y then show its `left` and `top`.
  */
 export function PositionSection({
   placement,

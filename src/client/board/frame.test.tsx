@@ -613,8 +613,7 @@ describe('Frame', () => {
       </div>,
     )
 
-    // The label box is capped at the frame's width while its children can
-    // overflow it, so the frame's own edge is the one the badge must hold.
+    // The label's children can overflow it, so the badge must hold the frame's edge.
     const edge = container
       .querySelector('[data-frame]')
       ?.getBoundingClientRect().right

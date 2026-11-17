@@ -60,11 +60,8 @@ export const canvasView = {
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
   centerOn: (box: Box, scale?: number): void => controls?.centerOn(box, scale),
   /**
-   * Centers the box at the current zoom unless it lies wholly inside the
-   * view, so a frame half under a panel comes into view too, and a box larger
-   * than the view is fitted unless `fit` is false, which leaves the view put
-   * for one. The developer asked for it, so it reports as a hand move, which
-   * stops Follow.
+   * Centers a box not wholly in view, fitting a larger one unless `fit` is
+   * false, and reports as a hand move, which stops Follow.
    */
   reveal: (box: Box, { fit = true }: { fit?: boolean } = {}): void => {
     if (!controls) return
