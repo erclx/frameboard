@@ -297,6 +297,63 @@ describe('editFrameFileAll', () => {
     ).toBe(OLD)
   })
 
+  describe('with two attributes on one element', () => {
+    const VIEWER = '<model-viewer src="a.glb"></model-viewer>'
+    const orbit = (value: string) => ({
+      index: 3,
+      change: { kind: 'attribute', name: 'camera-orbit', value } as const,
+    })
+    const reach = {
+      index: 3,
+      change: {
+        kind: 'attribute',
+        name: 'max-camera-orbit',
+        value: 'auto auto 4m',
+      } as const,
+    }
+
+    it('should write both as one write', () => {
+      writeFileSync(frame, VIEWER)
+
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        reach,
+      ])
+
+      expect(result).toMatchObject({ ok: true, indexes: [3, 3] })
+      expect(readFileSync(frame, 'utf8')).toBe(
+        '<model-viewer src="a.glb" camera-orbit="40deg 75deg 4m" max-camera-orbit="auto auto 4m"></model-viewer>',
+      )
+    })
+
+    it('should answer the pair as one span that swaps back to the old bytes', () => {
+      writeFileSync(frame, VIEWER)
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        reach,
+      ])
+      if (!result.ok) throw new Error(result.reason)
+      const [span] = result.spans
+
+      expect(result.spans).toHaveLength(1)
+      expect(
+        span && swapSpan(readFileSync(frame, 'utf8'), span, 'after')?.html,
+      ).toBe(VIEWER)
+    })
+
+    it('should refuse one attribute named twice and write nothing', () => {
+      writeFileSync(frame, VIEWER)
+
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        orbit('0deg 75deg 4m'),
+      ])
+
+      expect(result).toMatchObject({ ok: false, reason: 'invalid-edit' })
+      expect(readFileSync(frame, 'utf8')).toBe(VIEWER)
+    })
+  })
+
   it('should refuse two style changes on one element and write nothing', () => {
     writeFileSync(frame, OLD)
 

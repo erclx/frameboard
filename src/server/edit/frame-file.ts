@@ -153,7 +153,8 @@ export type FrameFileEdits =
 /**
  * Edits several elements as one write, all or none. One element named twice is
  * refused, since one undo could not put both spans back, except a text and a
- * style change, which answer one span over the whole element.
+ * style change or several attributes, which answer one span over the whole
+ * element.
  */
 export function editFrameFileAll(
   path: string,
@@ -233,27 +234,38 @@ function mergedTwice(
 }
 
 /**
- * Whether each element a batch names is named once, or twice only as one
- * `text` change and one `style` or `styles` change.
+ * Whether each element a batch names is named once, twice as one `text`
+ * change and one `style` or `styles` change, or by `attribute` changes that
+ * each name another attribute.
  */
 function namedOnceEach(
   indexes: readonly number[],
   edits: readonly ElementEdit[],
 ): boolean {
-  const kinds = new Map<number, string[]>()
+  const changes = new Map<number, EditChange[]>()
   for (const [at, index] of indexes.entries()) {
-    kinds.set(index, [
-      ...(kinds.get(index) ?? []),
-      edits[at]?.change.kind ?? '',
-    ])
+    const change = edits[at]?.change
+    if (change) changes.set(index, [...(changes.get(index) ?? []), change])
   }
-  return [...kinds.values()].every(
+  return [...changes.values()].every(
     (named) =>
-      named.length === 1 ||
-      (named.length === 2 &&
-        named.filter((kind) => kind === 'text').length === 1 &&
-        named.some((kind) => kind === 'style' || kind === 'styles')),
+      named.length === 1 || textAndStyle(named) || separateAttributes(named),
   )
+}
+
+function textAndStyle(named: readonly EditChange[]): boolean {
+  return (
+    named.length === 2 &&
+    named.filter(({ kind }) => kind === 'text').length === 1 &&
+    named.some(({ kind }) => kind === 'style' || kind === 'styles')
+  )
+}
+
+function separateAttributes(named: readonly EditChange[]): boolean {
+  const names = named.flatMap((change) =>
+    change.kind === 'attribute' ? [change.name.toLowerCase()] : [],
+  )
+  return names.length === named.length && new Set(names).size === names.length
 }
 
 export type FrameFileInsert =
