@@ -100,3 +100,63 @@ test.describe("scrubbing a frame's motion", () => {
     expect(files()).toEqual(before)
   })
 })
+
+test.describe("a slide's speaker notes", () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const entry = () =>
+    JSON.parse(
+      readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+    ).frames.hero
+
+  const selectHero = async (page: Page) => {
+    const frame = page.locator(`[data-frame="${HERO}"]`)
+    // A click before the canvas fits lands beside the frame, so it retries.
+    await expect(async () => {
+      const box = await frame.boundingBox()
+      if (!box) throw new Error('The hero has no box on screen')
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      await expect(frame).toHaveAttribute('data-selected', 'true', {
+        timeout: 1000,
+      })
+    }).toPass({ timeout: 10_000 })
+  }
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/studio/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('keeps a note typed under a slide across a reload, and one undo removes it', async ({
+    page,
+  }) => {
+    const frameFile = readFileSync(join(board.root, `${HERO}.html`), 'utf8')
+    await selectHero(page)
+    await page.getByRole('tab', { name: 'Slides' }).click()
+
+    const notes = page.getByRole('textbox', { name: 'Speaker notes' })
+    await notes.fill('Open on the price.\nThen the demo.')
+    await notes.press('ControlOrMeta+Enter')
+    await expect
+      .poll(() => entry().speakerNotes)
+      .toBe('Open on the price.\nThen the demo.')
+
+    await page.reload()
+    await selectHero(page)
+    await expect(notes).toHaveValue('Open on the price.\nThen the demo.')
+
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect.poll(() => entry()).not.toHaveProperty('speakerNotes')
+    expect(readFileSync(join(board.root, `${HERO}.html`), 'utf8')).toBe(
+      frameFile,
+    )
+  })
+})
