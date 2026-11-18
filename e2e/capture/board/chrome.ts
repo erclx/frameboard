@@ -218,6 +218,60 @@ async function slideOnLoad(page: Page): Promise<void> {
 }
 
 /**
+ * Enters hero in Play, focuses its first slider, and presses Esc there, marking
+ * the root `data-esc-left` once the frame is left with Play still on.
+ */
+async function escFromSliderOnLoad(page: Page): Promise<void> {
+  await page.addInitScript((frames) => {
+    let left = frames
+    let pressed = false
+    const leave = () => {
+      const iframe = document.querySelector<HTMLIFrameElement>(
+        '[data-frame="webapp/home/hero"] iframe',
+      )
+      const inner = iframe?.contentWindow as typeof window | null | undefined
+      const control =
+        iframe?.contentDocument?.querySelector<HTMLInputElement>('[data-binds]')
+      const shield = document.querySelector('[data-play-shield]')
+      const entered = document.body?.textContent?.includes(
+        'In frame, Esc to leave',
+      )
+      if (iframe && control && !shield) {
+        ;[...document.querySelectorAll('button')]
+          .find((button) => button.textContent?.trim() === 'Play')
+          ?.click()
+      } else if (iframe && control && shield && !entered && !pressed) {
+        const box = iframe.getBoundingClientRect()
+        shield.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            clientX: box.left + box.width / 2,
+            clientY: box.top + box.height / 2,
+          }),
+        )
+      } else if (inner && control && entered && !pressed) {
+        control.focus()
+        control.dispatchEvent(
+          new inner.KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+        pressed = true
+      } else if (pressed && shield && !entered) {
+        document.documentElement.dataset.escLeft = ''
+        return
+      }
+      if (--left > 0) requestAnimationFrame(leave)
+      else console.error('Esc on the hero slider never left the frame')
+    }
+    document.addEventListener('DOMContentLoaded', leave)
+  }, PRESS_FRAMES)
+}
+
+/**
  * Holds the `clip.webm` tile over bare canvas until the drop ghost draws, at
  * the first grid point no frame holds, since the fixture's frames can move.
  */
@@ -592,6 +646,18 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(tunerHero, asWriter, slideOnLoad, readyWhen('[data-keep-bar]')),
+      ),
+    },
+    {
+      // Esc pressed on the tuner's focused slider, so the hero is left and Play stays on.
+      section: 'controls-play-left',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(tunerHero, escFromSliderOnLoad, readyWhen('[data-esc-left]')),
       ),
     },
     {
