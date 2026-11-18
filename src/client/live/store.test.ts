@@ -39,6 +39,7 @@ function boardWith(...names: string[]): ListResult {
         projectFileError: null,
         transitions: [],
         checksOff: [],
+        kits: [],
         pages: [
           {
             ref: 'studio/home',

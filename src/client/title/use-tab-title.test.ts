@@ -79,6 +79,7 @@ const BOARD: ListResult = {
       projectFileError: null,
       transitions: [],
       checksOff: [],
+      kits: [],
       pages: [pageOf([frameOf('hero')])],
     },
   ],

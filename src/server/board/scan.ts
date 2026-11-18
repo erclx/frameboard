@@ -42,6 +42,7 @@ import type {
 } from '@/shared/records/list'
 import { membersOf } from '@/shared/sections'
 
+import { projectKits } from '../kits/project'
 import { isCode, readRecord, type RecordSpec } from './json-record'
 import { listTransitionNames } from './transitions'
 
@@ -348,6 +349,7 @@ export async function scanProject(
     projectFileError: error,
     transitions,
     checksOff,
+    kits: await projectKits(path, pages),
     pages,
   }
 }

@@ -50,6 +50,7 @@ function project(
     projectFileError: null,
     transitions: [],
     checksOff: [],
+    kits: [],
     pages: pages.map((page, index) => ({
       ref: `${name}/${page}`,
       project: name,

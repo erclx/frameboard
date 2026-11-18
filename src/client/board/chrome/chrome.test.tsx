@@ -77,6 +77,7 @@ describe('HiddenPills', () => {
     projectFileError: null,
     transitions: [],
     checksOff: [],
+    kits: [],
     pages: [],
   }
 

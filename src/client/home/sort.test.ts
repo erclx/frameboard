@@ -20,6 +20,7 @@ function project(
     projectFileError: null,
     transitions: [],
     checksOff: [],
+    kits: [],
     pages: [],
   }
 }

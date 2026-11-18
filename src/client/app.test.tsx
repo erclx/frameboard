@@ -45,6 +45,7 @@ const BOARD: ListResult = {
       projectFileError: null,
       transitions: [],
       checksOff: [],
+      kits: [],
       pages: [
         page('home', 0),
         page('pricing', 1, {
