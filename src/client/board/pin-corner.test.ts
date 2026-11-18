@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { BRIDGE } from '@/test/frame-bridge'
 
-import { cornerOf, usePinCorners } from './pin-corner'
+import { cornerOf, refreshCorners, usePinCorners } from './pin-corner'
 
 const FRAME = {
   ref: 'studio/home/card',
@@ -77,6 +77,24 @@ describe('cornerOf', () => {
     const { container } = await canvasWith('<div></div>', [9])
 
     expect(cornerOf(FRAME, 9, container)).toEqual({ x: 300, y: 50 })
+  })
+
+  it('reads the corner again once asked, for a move no resize pushes', async () => {
+    const { container, iframe } = await canvasWith(
+      '<div style="position:absolute;left:20px;top:30px;width:50px;height:10px"></div>',
+    )
+    await expect
+      .poll(() => cornerOf(FRAME, 3, container))
+      .toEqual({ x: 170, y: 80 })
+    iframe.contentDocument
+      ?.querySelector<HTMLElement>('body > div')
+      ?.style.setProperty('left', '60px')
+
+    refreshCorners()
+
+    await expect
+      .poll(() => cornerOf(FRAME, 3, container))
+      .toEqual({ x: 210, y: 80 })
   })
 
   it('moves to the corner the frame pushes once it reflows', async () => {

@@ -45,7 +45,7 @@ import { readTree, treeOf } from '../element/tree'
 import { openFindings } from '../findings/open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
-import { cornerOf, subscribeCorners } from '../pin-corner'
+import { cornerOf, refreshCorners, subscribeCorners } from '../pin-corner'
 import { carriedStore } from '../place/tool'
 import { moveElement } from '../place/write'
 import { endPreview } from '../preview/store'
@@ -360,6 +360,8 @@ export function attachGestures(
         refs.includes(pin.dataset.noteFrame ?? '') && (dx !== 0 || dy !== 0)
       pin.style.translate = moves ? `${dx}px ${dy}px` : ''
     }
+    // A drag's end puts every pin back, so each reads its element's corner where the drag left it.
+    if (refs.length === 0) refreshCorners()
   }
   // A placed element's drag carries the pins pinned on it, so none is left behind.
   const shiftElementPins = (key: ElementKey, dx: number, dy: number) => {

@@ -3,19 +3,29 @@ import { useEffect, useSyncExternalStore } from 'react'
 import type { PinCorner } from '@/shared/frame-bridge/live-element'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { subscribe } from './bridge/channel'
+import { request, subscribe } from './bridge/channel'
 import { followFrame } from './bridge/shown'
 
 /** Each frame's element pin corners as its page last pushed them, by file index. */
 const corners = new Map<string, ReadonlyMap<number, PinCorner>>()
 const listeners = new Set<() => void>()
 let version = 0
+/** Each followed frame's one-off read of its corners, which a drag's end asks for. */
+const rereads = new Set<() => void>()
 
 function hold(ref: string, pushed: readonly PinCorner[] | null): void {
   if (pushed) corners.set(ref, new Map(pushed.map((at) => [at.index, at])))
   else corners.delete(ref)
   version += 1
   for (const listener of listeners) listener()
+}
+
+/**
+ * Reads every followed frame's corners again, for a drag that moved an
+ * element by its style, which no resize or scroll pushes.
+ */
+export function refreshCorners(): void {
+  for (const reread of rereads) reread()
 }
 
 /** Hears every pushed corner until the answer is called, so a drag can place its pins again. */
@@ -72,8 +82,13 @@ export function usePinCorners(
           }
           const pins = subscribe(iframe, 'pins', { indexes }, held)
           void pins.opened.then(held)
+          const reread = () => {
+            void request(iframe, 'pins', { indexes }).then(held)
+          }
+          rereads.add(reread)
           return () => {
             live = false
+            rereads.delete(reread)
             pins.close()
           }
         },
