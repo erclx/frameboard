@@ -772,6 +772,44 @@ describe('structureRoutes', () => {
       expect(readFileSync(frameFile('hero'))).toEqual(bytes)
     })
 
+    it('folds a named foldable as one step and unfolds it on undo', async () => {
+      await post('/api/frame/device', {
+        refs: ['studio/home/hero'],
+        foldable: true,
+        pose: 'closed',
+      })
+
+      await post('/api/frame/device', {
+        refs: ['studio/home/hero'],
+        pose: 'open',
+      })
+      expect(layout().hero).toMatchObject({
+        pose: 'open',
+        width: 890,
+        height: 626,
+      })
+      expect(history.counts().undo).toBe(2)
+      await history.undo()
+
+      expect(layout().hero).toMatchObject({
+        foldable: true,
+        pose: 'closed',
+        width: 466,
+        height: 678,
+      })
+    })
+
+    it('refuses a pose no device has and writes nothing', async () => {
+      const response = await post('/api/frame/device', {
+        refs: ['studio/home/hero'],
+        foldable: true,
+        pose: 'tent',
+      })
+
+      expect(response.status).toBe(400)
+      expect(layout().hero).not.toHaveProperty('foldable')
+    })
+
     it('refuses a show that is not a boolean and writes nothing', async () => {
       const response = await post('/api/frame/device', {
         refs: ['studio/home/hero'],
