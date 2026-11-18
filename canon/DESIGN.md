@@ -1,6 +1,6 @@
 # Design
 
-Values live in `src/client/styles.css`, light on `:root` and dark on `.dark`. This record holds the intent behind the board chrome, not frames, which take their own project's tokens. Accepted designs live in `canon/design/`.
+Values live in `src/client/styles.css`, light on `:root` and `.light` and dark on `.dark`. This record holds the intent behind the board chrome, not frames, which take their own project's tokens. Accepted designs live in `canon/design/`.
 
 ## Overview
 
@@ -59,8 +59,9 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 ## Motion
 
-- The claim pulse is the one looped motion, fading a claimed frame's outline and tag tint and breathing a ring on the agent's initial.
-- The pulse never dims its text or initial, and under reduced motion it holds the outline, tint, and initial at full strength.
+- Two motions loop. The claim pulse fades a claimed frame's outline and tag tint and breathes a ring on the agent's initial. The loading pulse fades the grey block over a frame still waiting on its page past a second.
+- The claim pulse never dims its text or initial, and under reduced motion it holds the outline, tint, and initial at full strength.
+- Under reduced motion the loading block holds still at full strength.
 - No marching ants, animated guides, or panel entrance motion, and under reduced motion kit popups open and close unanimated.
 
 ## Iconography
